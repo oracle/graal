@@ -26,7 +26,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.SymbolTable;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -35,15 +37,15 @@ import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.descriptors.SignatureDescriptors;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptors;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Types;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import java.net.URL;
 import java.net.URLClassLoader;
 
-@TruffleLanguage.Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE)
+@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String ID = "java";
@@ -57,8 +59,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     private static final SymbolTable symbols = new SymbolTable();
 
-    private final TypeDescriptors typeDescriptors = new TypeDescriptors();
-    private final SignatureDescriptors signatureDescriptors = new SignatureDescriptors(typeDescriptors);
+    private final Types types = new Types();
+    private final Signatures signatures = new Signatures(types);
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -117,7 +119,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         EspressoError.guarantee(mainClass != null, "Error: Could not find or load main class %s", className);
 
-        Meta.Method mainMethod = Meta.meta(mainClass).method("main", void.class, String[].class);
+        Method mainMethod = Meta.meta(mainClass).method("main", void.class, String[].class);
 
         EspressoError.guarantee(mainMethod != null,
                         "Error: Main method not found in class %s, please define the main method as:\n" +
@@ -126,7 +128,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         assert mainMethod != null && mainMethod.isPublic() && mainMethod.isStatic();
         mainClass.initialize();
-        return Truffle.getRuntime().createCallTarget(new MainLauncherRootNode(this, mainMethod.rawMethod()));
+        return Truffle.getRuntime().createCallTarget(new MainLauncherRootNode(this, mainMethod));
     }
 
     /*
@@ -136,7 +138,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private static StaticObjectClass loadMainClass(EspressoContext context, LaunchMode mode, String name) {
         assert context.isInitialized();
         Meta meta = context.getMeta();
-        Meta.Klass launcherHelperKlass = meta.loadKlass("sun.launcher.LauncherHelper", StaticObject.NULL);
+        Klass launcherHelperKlass = meta.loadKlass("sun.launcher.LauncherHelper", StaticObject.NULL);
         return (StaticObjectClass) launcherHelperKlass.staticMethod("checkAndLoadMain", Class.class, boolean.class, int.class, String.class).invokeDirect(true, mode.ordinal(), meta.toGuest(name));
     }
 
@@ -167,12 +169,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return symbols;
     }
 
-    public TypeDescriptors getTypeDescriptors() {
-        return typeDescriptors;
+    public Types getTypes() {
+        return types;
     }
 
-    public SignatureDescriptors getSignatureDescriptors() {
-        return signatureDescriptors;
+    public Signatures getSignatures() {
+        return signatures;
     }
 
     public static EspressoContext getCurrentContext() {

@@ -27,17 +27,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
-import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 
-public class ClassRegistries {
+public final class ClassRegistries {
 
     private final ClassRegistry bootClassRegistry;
     private final ConcurrentHashMap<StaticObject, ClassRegistry> registries;
@@ -51,20 +46,23 @@ public class ClassRegistries {
 
     public Klass findLoadedClass(ByteString<Type> type, StaticObject classLoader) {
         assert classLoader != null;
-        if (type.isArray()) {
-            Klass pepe = findLoadedClass(type.getComponentType(), classLoader);
-            if (pepe != null) {
-                return pepe.getArrayClass();
+        if (Types.isArray(type)) {
+            Klass elemental = findLoadedClass(Types.getElementalType(type), classLoader);
+            if (elemental == null) {
+                return null;
             }
-            return null;
+            return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
-        if (StaticObject.isNull(classLoader)) {
-            return bootClassRegistry.findLoadedKlass(type);
-        }
-        ClassRegistry registry = registries.get(classLoader);
+
+        ClassRegistry registry = StaticObject.isNull(classLoader)
+                        ? bootClassRegistry
+                        : registries.get(classLoader);
+
+        // Unknown class loader; no class has been loaded with it.
         if (registry == null) {
             return null;
         }
+
         return registry.findLoadedKlass(type);
     }
 
@@ -95,5 +93,16 @@ public class ClassRegistries {
 
     public Klass defineKlass(ByteString<Type> type, byte[] bytes, StaticObject classLoader) {
         assert classLoader != null;
+        if (StaticObject.isNull(classLoader)) {
+            return bootClassRegistry.defineKlass(type, bytes);
+        } else {
+            ClassRegistry registry = registries.computeIfAbsent(classLoader, new Function<StaticObject, ClassRegistry>() {
+                @Override
+                public ClassRegistry apply(StaticObject cl) {
+                    return new GuestClassRegistry(context, cl);
+                }
+            });
+            return registry.resolve(type);
+        }
     }
 }

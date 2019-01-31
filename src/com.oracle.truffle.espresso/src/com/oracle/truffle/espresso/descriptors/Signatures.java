@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,15 @@
  */
 package com.oracle.truffle.espresso.descriptors;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Descriptor;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Represents a method signature provided by the runtime.
@@ -43,10 +44,21 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  * @see <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">Method
  *      Descriptors</a>
  */
-public final class SignatureDescriptor {
+public final class Signatures extends DescriptorCache<ByteString<Signature>, ByteString<Type>[]> {
 
-    private SignatureDescriptor() {
-        /* no instances */
+    private final Types typeDescriptors;
+
+    public Signatures(Types typeDescriptors) {
+        this.typeDescriptors = typeDescriptors;
+    }
+
+    public Types getTypeDescriptors() {
+        return typeDescriptors;
+    }
+
+    @Override
+    protected ByteString<Type>[] create(ByteString<Signature> key) {
+        return Signatures.parse(getTypeDescriptors(), key, 0);
     }
 
     /**
@@ -55,7 +67,7 @@ public final class SignatureDescriptor {
      * @return the parsed parameter types followed by the return type.
      * @throws ClassFormatError if {@code string} is not well formed
      */
-    static ByteString<Type>[] parse(TypeDescriptors typeDescriptors, ByteString<Signature> signature, int startIndex) throws ClassFormatError {
+    static ByteString<Type>[] parse(Types typeDescriptors, ByteString<Signature> signature, int startIndex) throws ClassFormatError {
         if ((startIndex > signature.length() - 3) || signature.byteAt(startIndex) != '(') {
             throw new ClassFormatError("Invalid method signature: " + signature);
         }
@@ -74,7 +86,7 @@ public final class SignatureDescriptor {
         if (i + descriptor.length() != signature.length()) {
             throw new ClassFormatError("Invalid method signature: " + signature);
         }
-        final ByteString<Type>[] descriptors = buf.toArray(new ByteString<Type>[buf.size() + 1]);
+        final ByteString<Type>[] descriptors = buf.toArray(new ByteString[buf.size() + 1]);
         descriptors[buf.size()] = descriptor;
         return descriptors;
     }
@@ -91,24 +103,24 @@ public final class SignatureDescriptor {
         }
         int i = beginIndex + 1;
         while (signature.byteAt(i) != ')') {
-            int endIndex = TypeDescriptors.skipValidTypeDescriptor(signature, i, true);
+            int endIndex = Types.skipValidTypeDescriptor(signature, i, true);
             if (i >= signature.length()) {
                 throw new ClassFormatError("Invalid method signature: " + signature);
             }
             i = endIndex;
         }
         i++;
-        return TypeDescriptors.skipValidTypeDescriptor(signature, i, true);
+        return Types.skipValidTypeDescriptor(signature, i, true);
     }
 
     @SuppressWarnings("unchecked")
-    public static ByteString<Signature> check(ByteString<? extends Descriptor> descriptor) {
+    public static ByteString<Signature> check(ByteString<? extends ByteString.Descriptor> descriptor) {
         assert isValid((ByteString<Signature>) descriptor);
         return (ByteString<Signature>) descriptor;
     }
 
     public static JavaKind resultKind(final ByteString<Type>[] signature) {
-        return TypeDescriptor.getJavaKind(returnType(signature));
+        return Types.getJavaKind(returnType(signature));
     }
 
     /**
@@ -122,7 +134,7 @@ public final class SignatureDescriptor {
      * Gets the kind of the return type in this (parsed) signature object.
      */
     public static JavaKind returnKind(final ByteString<Type>[] signature) {
-        return TypeDescriptor.getJavaKind(returnType(signature));
+        return Types.getJavaKind(returnType(signature));
     }
 
     /**
@@ -132,7 +144,7 @@ public final class SignatureDescriptor {
     public static int getNumberOfSlots(final ByteString<Type>[] signature) {
         int slots = 0;
         for (ByteString<Type> type : signature) {
-            slots += TypeDescriptor.getJavaKind(type).getSlotCount();
+            slots += Types.getJavaKind(type).getSlotCount();
         }
         return slots;
     }
@@ -177,7 +189,7 @@ public final class SignatureDescriptor {
      * Gets the kind of the `paramIndex`-th parameter in this (parsed) signature object.
      */
     public static JavaKind parameterKind(final ByteString<Type>[] signature, int paramIndex) {
-        return TypeDescriptor.getJavaKind(signature[paramIndex]);
+        return Types.getJavaKind(signature[paramIndex]);
     }
 
     /**
@@ -186,5 +198,19 @@ public final class SignatureDescriptor {
     public ByteString<Type> parameterType(final ByteString<Type>[] signature, int paramIndex) {
         assert paramIndex + 1 < signature.length;
         return signature[paramIndex];
+    }
+
+    public ByteString<Type>[] makeParsed(Class<?> returnType, Class<?>... parameterTypes) {
+        throw EspressoError.unimplemented();
+    }
+
+    public ByteString<Type>[] makeParsed(ByteString<Type> returnType, ByteString<Type>... parameterTypes) {
+        final ByteString<Type>[] signature = Arrays.copyOf(parameterTypes, parameterTypes.length + 1);
+        signature[signature.length - 1] = returnType;
+        throw EspressoError.unimplemented();
+    }
+
+    public ByteString<Signature> makeRaw(Class<?> returnType, Class<?>... parameterTypes) {
+        throw EspressoError.unimplemented();
     }
 }

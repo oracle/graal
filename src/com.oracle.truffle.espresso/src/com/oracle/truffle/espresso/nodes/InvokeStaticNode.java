@@ -27,7 +27,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 
 public final class InvokeStaticNode extends QuickNode {
-    protected final MethodInfo method;
+    protected final Method method;
     @Child private DirectCallNode directCallNode;
 
     public InvokeStaticNode(MethodInfo method) {
@@ -40,7 +40,7 @@ public final class InvokeStaticNode extends QuickNode {
     public int invoke(final VirtualFrame frame, int top) {
         // TODO(peterssen): Constant fold this check.
         method.getDeclaringClass().initialize();
-        EspressoRootNode root = (EspressoRootNode) getParent();
+        BytecodeNode root = (BytecodeNode) getParent();
         Object[] args = root.peekArguments(frame, top, false, method.getSignature());
         Object result = directCallNode.call(args);
         int resultAt = top - method.getSignature().slotsForParameters(); // no receiver

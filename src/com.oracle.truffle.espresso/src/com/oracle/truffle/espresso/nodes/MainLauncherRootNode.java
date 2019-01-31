@@ -22,21 +22,21 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import java.util.function.IntFunction;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-import java.util.function.IntFunction;
-
 public class MainLauncherRootNode extends RootNode {
 
-    private final MethodInfo main;
+    private final Method main;
 
-    public MainLauncherRootNode(EspressoLanguage language, MethodInfo main) {
+    public MainLauncherRootNode(EspressoLanguage language, Method main) {
         super(language);
         this.main = main;
     }

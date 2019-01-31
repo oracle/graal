@@ -25,6 +25,8 @@ import com.oracle.truffle.espresso.impl.ByteString.Constant;
 
 public abstract class ConstantPool {
 
+    public static final ConstantPool EMPTY = new ConstantPoolImpl(new PoolConstant[]{InvalidConstant.VALUE});
+
     enum Tag {
         INVALID(0),
         UTF8(1),
@@ -195,7 +197,6 @@ public abstract class ConstantPool {
         }
     }
 
-
     // region unresolved constants
 
     public final NameAndTypeConstant nameAndTypeAt(int index) {
@@ -283,7 +284,6 @@ public abstract class ConstantPool {
     }
 
     // endregion unresolved constants
-
 
     @Override
     public String toString() {

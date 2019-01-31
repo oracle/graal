@@ -34,7 +34,7 @@ public class Target_java_lang_Thread {
 
     // TODO(peterssen): Remove single thread shim, support real threads.
     @Substitution
-    public static @Type(Thread.class) StaticObject currentThread() {
+    public static @Host(Thread.class) StaticObject currentThread() {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         if (context.getMainThread() == null) {
             Meta meta = context.getMeta();
@@ -55,17 +55,17 @@ public class Target_java_lang_Thread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void setPriority0(@Type(Thread.class) StaticObject self, int newPriority) {
+    public static void setPriority0(@Host(Thread.class) StaticObject self, int newPriority) {
         /* nop */ }
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void setDaemon(@Type(Thread.class) StaticObject self, boolean on) {
+    public static void setDaemon(@Host(Thread.class) StaticObject self, boolean on) {
         /* nop */ }
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static boolean isAlive(@Type(Thread.class) StaticObject self) {
+    public static boolean isAlive(@Host(Thread.class) StaticObject self) {
         return false;
     }
 
@@ -76,12 +76,12 @@ public class Target_java_lang_Thread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void start0(@Type(Thread.class) StaticObject self) {
+    public static void start0(@Host(Thread.class) StaticObject self) {
         /* nop */ }
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static boolean isInterrupted(@Type(Thread.class) StaticObject self, boolean ClearInterrupted) {
+    public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean ClearInterrupted) {
         return false;
     }
 

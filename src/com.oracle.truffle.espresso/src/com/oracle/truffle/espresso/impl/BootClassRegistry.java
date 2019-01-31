@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -57,20 +58,20 @@ public class BootClassRegistry implements ClassRegistry {
         // Primitive classes do not have a .class definition, inject them directly in the BCL.
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive()) {
-                classes.put(context.getTypeDescriptors().make(kind.getTypeChar() + ""), new PrimitiveKlass(context, kind));
+                classes.put(context.getTypes().make(kind.getTypeChar() + ""), new PrimitiveKlass(context, kind));
             }
         }
     }
 
     @Override
     public Klass resolve(ByteString<Type> type) {
-        if (TypeDescriptor.isArray(type)) {
-            ByteString<Type> elemental = TypeDescriptor.getElementalType(type);
+        if (Types.isArray(type)) {
+            ByteString<Type> elemental = Types.getElementalType(type);
             Klass klass = resolve(elemental);
             if (klass == null) {
                 return null;
             }
-            return klass.getArrayClass(TypeDescriptor.getArrayDimensions(type));
+            return klass.getArrayClass(Types.getArrayDimensions(type));
         }
 
         // TODO(peterssen): Make boot class registry thread-safe. Class loading is not a
@@ -84,7 +85,7 @@ public class BootClassRegistry implements ClassRegistry {
         Klass hostClass = null;
         // String className = TypeDescriptor.slashified(type.toJavaName());
 
-        EspressoError.guarantee(!TypeDescriptor.isPrimitive(type), "Primitives must be in the registry");
+        EspressoError.guarantee(!Types.isPrimitive(type), "Primitives must be in the registry");
 
         ClasspathFile classpathFile = context.getBootClasspath().readClassFile(type);
         if (classpathFile == null) {
@@ -105,13 +106,13 @@ public class BootClassRegistry implements ClassRegistry {
 
     @Override
     public Klass findLoadedKlass(ByteString<Type> type) {
-        if (TypeDescriptor.isArray(type)) {
-            ByteString<Type> elemental = TypeDescriptor.getElementalType(type);
+        if (Types.isArray(type)) {
+            ByteString<Type> elemental = Types.getElementalType(type);
             Klass klass = findLoadedKlass(elemental);
             if (klass == null) {
                 return null;
             }
-            return klass.getArrayClass(TypeDescriptor.getArrayDimensions(type));
+            return klass.getArrayClass(Types.getArrayDimensions(type));
         }
         return classes.get(type);
     }

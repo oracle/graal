@@ -23,13 +23,11 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import java.util.Arrays;
-import java.util.EnumMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Descriptor;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
 /**
@@ -37,38 +35,24 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se10/html/jvms-4.html#jvms-4.3.2"
  */
-public final class TypeDescriptors extends DescriptorCache<ByteString<Type>, ByteString<Type>> {
+public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Type>> {
 
     @Override
     protected ByteString<Type> create(ByteString<Type> key) {
         return key;
     }
 
-    private static final EnumMap<JavaKind, ByteString<Type>> primitives = new EnumMap<>(JavaKind.class);
-
-    static {
-        for (JavaKind kind : JavaKind.values()) {
-            if (kind.isPrimitive()) {
-                primitives.put(kind, ByteString.singleASCII(kind.getTypeChar()));
-            }
-        }
-    }
-
     @Override
     public ByteString<Type> lookup(ByteString<Type> type) {
-        if (type.length() == 1) {
-            JavaKind kind = JavaKind.fromPrimitiveOrVoidTypeChar((char) type.byteAt(0));
-            ByteString<Type> value = primitives.get(kind);
-            if (value != null) {
-                return value;
-            }
+        if (Types.isPrimitive(type)) {
+            return Types.getJavaKind(type).getType();
         }
         return super.lookup(type);
     }
 
     public static ByteString<Type> forPrimitive(JavaKind kind) {
         assert kind.isPrimitive();
-        return primitives.get(kind);
+        return kind.getType();
     }
 
     /**
@@ -140,7 +124,7 @@ public final class TypeDescriptors extends DescriptorCache<ByteString<Type>, Byt
      */
     public ByteString<Type> arrayOf(ByteString<Type> type, int dimensions) {
         assert dimensions > 0;
-        if (TypeDescriptor.getArrayDimensions(type) + dimensions > 255) {
+        if (Types.getArrayDimensions(type) + dimensions > 255) {
             throw new ClassFormatError("Array type with more than 255 dimensions");
         }
         // Prepend #dimensions '[' to type descriptor.
@@ -148,6 +132,10 @@ public final class TypeDescriptors extends DescriptorCache<ByteString<Type>, Byt
         Arrays.fill(bytes, 0, dimensions, (byte) '[');
         ByteString.copyBytes(type, 0, bytes, dimensions, type.length());
         return make(new ByteString<>(bytes));
+    }
+
+    public ByteString<Type> arrayOf(ByteString<Type> type) {
+        return arrayOf(type, 1);
     }
 
     private static int skipClassName(ByteString<? extends Descriptor> descriptor, int from, final char separator) throws ClassFormatError {
@@ -167,5 +155,141 @@ public final class TypeDescriptors extends DescriptorCache<ByteString<Type>, Byt
             index++;
         }
         return index;
+    }
+
+// public static String stringToJava(String string) {
+// switch (string.charAt(0)) {
+// // @formatter: off
+// case 'L':
+// return dottified(string.substring(1, string.length() - 1));
+// case '[':
+// return stringToJava(string.substring(1)) + "[]";
+// case 'B':
+// return "byte";
+// case 'C':
+// return "char";
+// case 'D':
+// return "double";
+// case 'F':
+// return "float";
+// case 'I':
+// return "int";
+// case 'J':
+// return "long";
+// case 'S':
+// return "short";
+// case 'V':
+// return "void";
+// case 'Z':
+// return "boolean";
+// default:
+// throw new InternalError("invalid type descriptor: " + "\"" + string + "\"");
+// // @formatter: on
+// }
+// }
+
+    public static String fromCanonicalClassName(String javaName) {
+        if (javaName.endsWith("[]")) {
+            return "[" + fromCanonicalClassName(javaName.substring(0, javaName.length() - 2));
+        }
+        switch (javaName) {
+            case "byte":
+                return "B";
+            case "char":
+                return "C";
+            case "double":
+                return "D";
+            case "float":
+                return "F";
+            case "int":
+                return "I";
+            case "long":
+                return "J";
+            case "short":
+                return "S";
+            case "void":
+                return "V";
+            case "boolean":
+                return "Z";
+            default:
+                // Reference descriptor.
+                return "L" + javaName.replace(".", "/") + ";";
+        }
+    }
+
+    public static boolean isPrimitive(ByteString<Type> type) {
+        if (type.length() != 1) {
+            return false;
+        }
+        switch (type.byteAt(0)) {
+            case 'B': // byte
+            case 'C': // char
+            case 'D': // double
+            case 'F': // float
+            case 'I': // int
+            case 'J': // long
+            case 'S': // short
+            case 'V': // void
+            case 'Z': // boolean
+                return true;
+            default:
+                return false;
+        }
+    }
+
+// public String toJavaName() {
+// return stringToJava(toString());
+// }
+
+    /**
+     * Gets the kind denoted by this type descriptor.
+     *
+     * @return the kind denoted by this type descriptor
+     */
+    public static JavaKind getJavaKind(ByteString<Type> type) {
+        if (type.length() == 1) {
+            return JavaKind.fromPrimitiveOrVoidTypeChar((char) type.byteAt(0));
+        }
+        return JavaKind.Object;
+    }
+
+    /**
+     * Gets the number of array dimensions in this type descriptor.
+     */
+    public static int getArrayDimensions(ByteString<Type> type) {
+        int dims = 0;
+        while (dims < type.length() && type.byteAt(dims) == '[') {
+            dims++;
+        }
+        return dims;
+    }
+
+    public static void verify(ByteString<Type> value) {
+        int endIndex = Types.skipValidTypeDescriptor(value, 0, true);
+        if (endIndex != value.length()) {
+            throw new ClassFormatError("Invalid type descriptor " + value);
+        }
+    }
+
+    public static boolean isArray(ByteString<Type> type) {
+        return type.byteAt(0) == '[';
+    }
+
+    public static ByteString<Type> getComponentType(ByteString<Type> type) {
+        if (isArray(type)) {
+            return type.substring(1);
+        }
+        return null;
+    }
+
+    public static ByteString<Type> getElementalType(ByteString<Type> type) {
+        if (isArray(type)) {
+            return type.substring(getArrayDimensions(type));
+        }
+        return type;
+    }
+
+    public static ByteString<Type> fromClass(Class<?> clazz) {
+        return ByteString.fromJavaString(fromCanonicalClassName(clazz.getCanonicalName()));
     }
 }

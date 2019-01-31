@@ -20,29 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.descriptors;
 
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+package com.oracle.truffle.espresso.substitutions;
 
-/**
- *
- */
-public final class SignatureDescriptors extends DescriptorCache<ByteString<Signature>, ByteString<Type>[]> {
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    private final TypeDescriptors typeDescriptors;
+import static java.lang.annotation.ElementType.TYPE_USE;
 
-    public SignatureDescriptors(TypeDescriptors typeDescriptors) {
-        this.typeDescriptors = typeDescriptors;
-    }
+@Retention(RetentionPolicy.RUNTIME)
+@Target(value = {TYPE_USE})
+public @interface Host {
+    Class<?> value() default Host.class;
 
-    public TypeDescriptors getTypeDescriptors() {
-        return typeDescriptors;
-    }
-
-    @Override
-    protected ByteString<Type>[] create(ByteString<Signature> key) {
-        return SignatureDescriptor.parse(getTypeDescriptors(), key, 0);
-    }
+    String typeName() default "";
 }

@@ -1,23 +1,31 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class ParserField {
+
+    public static final ParserField[] EMPTY_ARRAY = new ParserField[0];
+
+    /**
+     * This value contains all flags as stored in the VM including internal ones.
+     */
     private final int flags;
-    private final int nameIndex;
-    private final int typeIndex;
+    private final ByteString<Name> name;
+    private final ByteString<Type> type;
 
     public int getFlags() {
         return flags;
     }
 
-    public int getNameIndex() {
-        return nameIndex;
+    public ByteString<Name> getName() {
+        return name;
     }
 
-    public int getTypeIndex() {
-        return typeIndex;
+    public ByteString<Type> getType() {
+        return type;
     }
 
     public Attribute[] getAttributes() {
@@ -27,10 +35,10 @@ public final class ParserField {
     @CompilerDirectives.CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
-    public ParserField(int flags, int nameIndex, int typeIndex, Attribute[] attributes) {
+    public ParserField(int flags, ByteString<Name> name, ByteString<Type> type, Attribute[] attributes) {
         this.flags = flags;
-        this.nameIndex = nameIndex;
-        this.typeIndex = typeIndex;
+        this.name = name;
+        this.type = type;
         this.attributes = attributes;
     }
 }

@@ -25,12 +25,13 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public class JniNativeNode extends NativeRootNode {
 
-    public JniNativeNode(TruffleLanguage<?> language, TruffleObject boundNative, Meta.Method originalMethod) {
+    public JniNativeNode(TruffleLanguage<?> language, TruffleObject boundNative, Method originalMethod) {
         super(language, boundNative, originalMethod);
     }
 

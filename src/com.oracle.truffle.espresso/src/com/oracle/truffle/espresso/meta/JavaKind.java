@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 
 import java.lang.reflect.Array;
@@ -75,6 +77,7 @@ public enum JavaKind {
     private final Class<?> boxedJavaClass;
     private final int slotCount;
     private final int basicType;
+    private final ByteString<Type> type;
 
     JavaKind(char typeChar, int basicType, String javaName, int slotCount, boolean isStackInt, Class<?> primitiveJavaClass, Class<?> boxedJavaClass) {
         this.typeChar = typeChar;
@@ -84,6 +87,7 @@ public enum JavaKind {
         this.primitiveJavaClass = primitiveJavaClass;
         this.boxedJavaClass = boxedJavaClass;
         this.basicType = basicType;
+        this.type = ByteString.singleASCII(typeChar);
         assert primitiveJavaClass == null || javaName.equals(primitiveJavaClass.getName());
     }
 
@@ -392,6 +396,15 @@ public enum JavaKind {
     }
 
     /**
+     * Returns the Espresso type (symbol) of this kind.
+     *
+     * @return the Espresso type (symbol) of this kind
+     */
+    public ByteString<Type> getType() {
+        return type;
+    }
+
+    /**
      * Marker interface for types that should be {@linkplain JavaKind#format(Object) formatted} with
      * their {@link Object#toString()} value. Calling {@link Object#toString()} on other objects
      * poses a security risk because it can potentially call user code.
@@ -428,7 +441,7 @@ public enum JavaKind {
                         return "String:\"" + s + '"';
                     }
                 } else if (value instanceof Klass) {
-                    return "JavaType:" + ((Klass) value).getName();
+                    return "JavaType:" + ((Klass) value).getType();
                 } else if (value instanceof Enum) {
                     return MetaUtil.getSimpleName(value.getClass(), true) + ":" + ((Enum<?>) value).name();
                 } else if (value instanceof FormatWithToString) {

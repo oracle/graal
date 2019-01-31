@@ -30,18 +30,18 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
 
-    public static int hashCode(@Type(Object.class) StaticObject self) {
+    public static int hashCode(@Host(Object.class) StaticObject self) {
         return System.identityHashCode(MetaUtil.unwrap(self));
     }
 
     @Substitution(hasReceiver = true)
-    public static @Type(Class.class) StaticObject getClass(@Type(Object.class) StaticObject self) {
+    public static @Host(Class.class) StaticObject getClass(@Host(Object.class) StaticObject self) {
         return self.getKlass().mirror();
     }
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true, methodName = "<init>")
-    public static void init(@Type(Object.class) StaticObject self) {
+    public static void init(@Host(Object.class) StaticObject self) {
         /* nop */
     }
 }

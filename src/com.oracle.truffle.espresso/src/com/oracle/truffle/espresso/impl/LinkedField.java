@@ -12,19 +12,27 @@ public final class LinkedField {
         return holderLinkedKlass.getConstantPool();
     }
 
-    int slot; // already computed here
-    // Location location;
+    private final int slot; // already computed here
 
-    public LinkedField(ParserField parserField, LinkedKlass holderLinkedKlass) {
+    public LinkedField(ParserField parserField, LinkedKlass holderLinkedKlass, int slot) {
         this.parserField = parserField;
         this.holderLinkedKlass = holderLinkedKlass;
+        this.slot = slot;
     }
 
     public ByteString<Type> getType() {
-        return getConstantPool().utf8At(parserField.getTypeIndex(), "type");
+        return parserField.getType();
     }
 
     public ByteString<Name> getName() {
-        return getConstantPool().utf8At(parserField.getNameIndex(), "name");
+        return parserField.getName();
+    }
+
+    public int getSlot() {
+        return slot;
+    }
+
+    public int getFlags() {
+        return parserField.getFlags();
     }
 }

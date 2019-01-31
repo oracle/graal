@@ -31,12 +31,12 @@ import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 @EspressoSubstitutions
 public class Target_java_lang_System {
     @Substitution
-    public static int identityHashCode(@Type(Object.class) StaticObject self) {
+    public static int identityHashCode(@Host(Object.class) StaticObject self) {
         return System.identityHashCode(MetaUtil.unwrap(self));
     }
 
     @Substitution
-    public static void arraycopy(@Type(Object.class) StaticObject src, int srcPos, @Type(Object.class) StaticObject dest, int destPos, int length) {
+    public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
         try {
             if (src instanceof StaticObjectArray && dest instanceof StaticObjectArray) {
                 System.arraycopy(((StaticObjectArray) src).unwrap(), srcPos, ((StaticObjectArray) dest).unwrap(), destPos, length);

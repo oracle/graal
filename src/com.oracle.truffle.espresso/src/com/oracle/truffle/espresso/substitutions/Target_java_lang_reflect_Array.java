@@ -35,7 +35,7 @@ import java.lang.reflect.Array;
 public class Target_java_lang_reflect_Array {
 
     @Substitution
-    public static Object newArray(@Type(Class.class) StaticObjectClass componentType, int length) {
+    public static Object newArray(@Host(Class.class) StaticObjectClass componentType, int length) {
         if (componentType.getMirror().isPrimitive()) {
             byte jvmPrimitiveType = (byte) componentType.getMirror().getJavaKind().getBasicType();
             return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length);
@@ -45,14 +45,14 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static Object multiNewArray(@Type(Class.class) StaticObject componentType,
-                    @Type(int[].class) StaticObject guestDimensions) {
+    public static Object multiNewArray(@Host(Class.class) StaticObject componentType,
+                    @Host(int[].class) StaticObject guestDimensions) {
         int[] dimensions = ((StaticObjectArray) guestDimensions).unwrap();
         return EspressoLanguage.getCurrentContext().getInterpreterToVM().newMultiArray(((StaticObjectClass) componentType).getMirror(), dimensions);
     }
 
     @Substitution
-    public static boolean getBoolean(@Type(Object.class) StaticObject array, int index) {
+    public static boolean getBoolean(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
@@ -64,7 +64,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static byte getByte(@Type(Object.class) StaticObject array, int index) {
+    public static byte getByte(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
@@ -76,7 +76,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static char getChar(@Type(Object.class) StaticObject array, int index) {
+    public static char getChar(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
@@ -88,7 +88,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static short getShort(@Type(Object.class) StaticObject array, int index) {
+    public static short getShort(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
@@ -100,7 +100,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static int getInt(@Type(Object.class) StaticObject array, int index) {
+    public static int getInt(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
@@ -112,7 +112,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static float getFloat(@Type(Object.class) StaticObject array, int index) {
+    public static float getFloat(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
@@ -124,7 +124,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static double getDouble(@Type(Object.class) StaticObject array, int index) {
+    public static double getDouble(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
@@ -136,7 +136,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static long getLong(@Type(Object.class) StaticObject array, int index) {
+    public static long getLong(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
@@ -148,7 +148,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setBoolean(@Type(Object.class) StaticObject array, int index, boolean value) {
+    public static void setBoolean(@Host(Object.class) StaticObject array, int index, boolean value) {
         try {
             Array.setBoolean(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
@@ -157,7 +157,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setByte(@Type(Object.class) StaticObject array, int index, byte value) {
+    public static void setByte(@Host(Object.class) StaticObject array, int index, byte value) {
         try {
             Array.setByte(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
@@ -166,7 +166,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setChar(@Type(Object.class) StaticObject array, int index, char value) {
+    public static void setChar(@Host(Object.class) StaticObject array, int index, char value) {
         try {
             Array.setChar(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
@@ -175,7 +175,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setShort(@Type(Object.class) StaticObject array, int index, short value) {
+    public static void setShort(@Host(Object.class) StaticObject array, int index, short value) {
         try {
             Array.setShort(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
@@ -184,7 +184,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setInt(@Type(Object.class) StaticObject array, int index, int value) {
+    public static void setInt(@Host(Object.class) StaticObject array, int index, int value) {
         try {
             Array.setInt(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
@@ -193,7 +193,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setFloat(@Type(Object.class) StaticObject array, int index, float value) {
+    public static void setFloat(@Host(Object.class) StaticObject array, int index, float value) {
         try {
             Array.setFloat(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
@@ -202,7 +202,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setDouble(@Type(Object.class) StaticObject array, int index, double value) {
+    public static void setDouble(@Host(Object.class) StaticObject array, int index, double value) {
         try {
             Array.setDouble(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
@@ -211,7 +211,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setLong(@Type(Object.class) StaticObject array, int index, long value) {
+    public static void setLong(@Host(Object.class) StaticObject array, int index, long value) {
         try {
             Array.setLong(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
@@ -220,7 +220,7 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void set(@Type(Object.class) StaticObject array, int index, @Type(Object.class) StaticObject value) {
+    public static void set(@Host(Object.class) StaticObject array, int index, @Host(Object.class) StaticObject value) {
         if (array instanceof StaticObjectArray) {
             EspressoLanguage.getCurrentContext().getInterpreterToVM().setArrayObject(value, index, (StaticObjectArray) array);
         } else {

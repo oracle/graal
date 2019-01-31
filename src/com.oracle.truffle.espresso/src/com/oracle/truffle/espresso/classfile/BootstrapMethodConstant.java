@@ -22,11 +22,14 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
 
+/**
+ * Interface denoting a bootstrap method constant entry in a constant pool.
+ */
 public interface BootstrapMethodConstant extends PoolConstant {
 
     int getBootstrapMethodAttrIndex();
@@ -62,7 +65,7 @@ public interface BootstrapMethodConstant extends PoolConstant {
 
         @Override
         public final ByteString<Signature> getSignature(ConstantPool pool) {
-            return SignatureDescriptor.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
+            return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }
     }
 }

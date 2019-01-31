@@ -23,16 +23,14 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.concurrent.ConcurrentHashMap;
+
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
-
-import java.util.concurrent.ConcurrentHashMap;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 /**
  * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
@@ -64,12 +62,12 @@ public class GuestClassRegistry implements ClassRegistry {
 
     @Override
     public Klass resolve(ByteString<Type> type) {
-        if (TypeDescriptor.isArray(type)) {
-            Klass klass = resolve(TypeDescriptor.getElementalType(type));
+        if (Types.isArray(type)) {
+            Klass klass = resolve(Types.getElementalType(type));
             if (klass == null) {
                 return null;
             }
-            int dims = TypeDescriptor.getArrayDimensions(type);
+            int dims = Types.getArrayDimensions(type);
             for (int i = 0; i < dims; ++i) {
                 klass = klass.getArrayClass();
             }
@@ -87,12 +85,12 @@ public class GuestClassRegistry implements ClassRegistry {
 
     @Override
     public Klass findLoadedKlass(ByteString<Type> type) {
-        if (TypeDescriptor.isArray(type)) {
-            Klass klass = findLoadedKlass(TypeDescriptor.getElementalType(type));
+        if (Types.isArray(type)) {
+            Klass klass = findLoadedKlass(Types.getElementalType(type));
             if (klass == null) {
                 return null;
             }
-            int dims = TypeDescriptor.getArrayDimensions(type);
+            int dims = Types.getArrayDimensions(type);
             for (int i = 0; i < dims; ++i) {
                 klass = klass.getArrayClass();
             }

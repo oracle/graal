@@ -40,24 +40,24 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 @EspressoSubstitutions
 public class Target_java_security_AccessController {
     @Substitution
-    public static Object doPrivileged(@Type(PrivilegedAction.class) StaticObject action) {
-        MethodInfo runMethod = action.getKlass().findDeclaredConcreteMethod("run", EspressoLanguage.getCurrentContext().getSignatureDescriptors().make("()Ljava/lang/Object;"));
+    public static Object doPrivileged(@Host(PrivilegedAction.class) StaticObject action) {
+        MethodInfo runMethod = action.getKlass().findDeclaredConcreteMethod("run", EspressoLanguage.getCurrentContext().getSignatures().make("()Ljava/lang/Object;"));
         Object result = runMethod.getCallTarget().call(action);
         return result;
     }
 
     @Substitution(methodName = "doPrivileged")
-    public static Object doPrivileged2(@Type(PrivilegedExceptionAction.class) StaticObject action) {
+    public static Object doPrivileged2(@Host(PrivilegedExceptionAction.class) StaticObject action) {
         return doPrivileged3(action, StaticObject.NULL);
     }
 
     @Substitution
-    public static @Type(AccessControlContext.class) StaticObject getStackAccessControlContext() {
+    public static @Host(AccessControlContext.class) StaticObject getStackAccessControlContext() {
         return StaticObject.NULL;
     }
 
     @Substitution(methodName = "doPrivileged")
-    public static Object doPrivileged3(@Type(PrivilegedExceptionAction.class) StaticObject action, @SuppressWarnings("unused") @Type(AccessControlContext.class) StaticObject context) {
+    public static Object doPrivileged3(@Host(PrivilegedExceptionAction.class) StaticObject action, @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
         try {
             return doPrivileged(action);
         } catch (EspressoException e) {
@@ -71,7 +71,7 @@ public class Target_java_security_AccessController {
     }
 
     @Substitution(methodName = "doPrivileged")
-    public static Object doPrivileged4(@Type(PrivilegedAction.class) StaticObject action, @SuppressWarnings("unused") @Type(AccessControlContext.class) StaticObject context) {
+    public static Object doPrivileged4(@Host(PrivilegedAction.class) StaticObject action, @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
         return doPrivileged(action);
     }
 }

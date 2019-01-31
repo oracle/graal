@@ -23,6 +23,13 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  */
 public final class ByteString<T> {
 
+    public static final ByteString[] EMPTY_ARRAY = new ByteString[0];
+
+    @SuppressWarnings("unchecked")
+    public static <S> ByteString<S>[] emptyArray() {
+        return (ByteString<S>[]) EMPTY_ARRAY;
+    }
+
     @Stable @CompilationFinal(dimensions = 1) //
     private final byte[] value;
 

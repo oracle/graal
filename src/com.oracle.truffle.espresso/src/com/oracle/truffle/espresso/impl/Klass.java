@@ -23,10 +23,13 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
+
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
@@ -36,26 +39,21 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Signature;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.substitutions.Host;
 
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toList;
-
-public abstract class Klass implements ModifiersProvider {
+public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     public static final Klass[] EMPTY_ARRAY = new Klass[0];
 
@@ -63,11 +61,12 @@ public abstract class Klass implements ModifiersProvider {
     private final JavaKind kind;
 
     // All further resolutions will overwrite this copy.
-    private final RuntimeConstantPool pool;
+    // private final RuntimeConstantPool pool;
 
-    private final LinkedKlass linkedKlass; // Shared structural metadata.
     // (copy) Constant pool, it's a spawn-off ConstantPool with the superKlass and the
     // superinterfaces resolved.
+
+    private final EspressoContext context;
 
     // Espresso super
     private final ObjectKlass superKlass;
@@ -81,9 +80,10 @@ public abstract class Klass implements ModifiersProvider {
 // @CompilationFinal(dimensions = 1) //
 // private final Method[] declaredMethods;
 
-    public ConstantPool getConstantPool() {
-        return pool;
-    }
+    // Read-only version.
+// public ConstantPool getConstantPool() {
+// return linkedKlass.getConstantPool();
+// }
 
     public Klass getSuperKlass() {
         return superKlass;
@@ -93,23 +93,15 @@ public abstract class Klass implements ModifiersProvider {
         return superInterfaces;
     }
 
-    public Klass(LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
-        this.type = linkedKlass.getType();
-        this.linkedKlass = linkedKlass;
-        this.kind = TypeDescriptor.getJavaKind(type);
-        this.pool = linkedKlass.getConstantPool(); // create runtime constant pool with writable
-                                                   // entries.
+    public Klass(EspressoContext context, ByteString<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
+        this.context = context;
+        this.type = type;
+        this.kind = Types.getJavaKind(type);
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
     }
 
-    public ClassLoader getDefiningClassLoader() {
-        return pool.getDefiningClassLoader();
-    }
-
-    public int getFlags() {
-        return linkedKlass.getFlags();
-    }
+    public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
 
     @CompilationFinal //
     private StaticObject statics;
@@ -125,13 +117,13 @@ public abstract class Klass implements ModifiersProvider {
     }
 
     public final boolean isArray() {
-        return TypeDescriptor.isArray(getType());
+        return Types.isArray(getType());
     }
 
     public StaticObject mirror() {
         if (mirrorCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            mirrorCache = new StaticObjectClass((ObjectKlass) getContext().getMeta().CLASS.rawKlass());
+            mirrorCache = new StaticObjectClass(getMeta().CLASS);
             mirrorCache.setMirror(this);
         }
         return mirrorCache;
@@ -148,7 +140,7 @@ public abstract class Klass implements ModifiersProvider {
         return this.mirror().equals(that.mirror());
     }
 
-    public ArrayKlass getArrayClass() {
+    public final ArrayKlass getArrayClass() {
         // TODO(peterssen): Make thread-safe.
         if (arrayClass == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -157,17 +149,22 @@ public abstract class Klass implements ModifiersProvider {
         return arrayClass;
     }
 
+    public final ArrayKlass array() {
+        return getArrayClass();
+    }
+
     public ArrayKlass getArrayClass(int dimensions) {
         assert dimensions > 0;
-        ArrayKlass klass = getArrayClass();
+        ArrayKlass array = getArrayClass();
         for (int i = 1; i < dimensions; ++i) {
-            klass = klass.getArrayClass();
+            array = array.getArrayClass();
         }
-        return klass;
+        return array;
     }
 
     protected ArrayKlass createArrayKlass() {
-        return new ArrayKlass(this);
+        throw EspressoError.unimplemented("Make thread-safe");
+        // return new ArrayKlass(this);
     }
 
     @Override
@@ -175,10 +172,13 @@ public abstract class Klass implements ModifiersProvider {
         return getType().hashCode();
     }
 
-    public abstract EspressoContext getContext();
+    @Override
+    public final EspressoContext getContext() {
+        return context;
+    }
 
     public Method findDeclaredMethod(String klassName, Class<?> returnType, Class<?>... parameterTypes) {
-        SignatureDescriptor signature = getContext().getSignatureDescriptors().create(returnType, parameterTypes);
+        ByteString<Signature> signature = getContext().getSignatures().makeRaw(returnType, parameterTypes);
         return findDeclaredConcreteMethod(klassName, signature);
     }
 
@@ -206,7 +206,8 @@ public abstract class Klass implements ModifiersProvider {
      * @return {@code true} if this type is primitive
      */
     public final boolean isPrimitive() {
-        return kind.isPrimitive(); // TypeDescriptor.isPrimitive(getType());
+        // TypeDescriptor.isPrimitive(getType());
+        return kind.isPrimitive();
     }
 
     /*
@@ -247,7 +248,34 @@ public abstract class Klass implements ModifiersProvider {
      * type represented by the specified parameter. This method is identical to
      * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
      */
-    public abstract boolean isAssignableFrom(Klass other);
+    @TruffleBoundary
+    public final boolean isAssignableFrom(Klass other) {
+        if (this == other) {
+            return true;
+        }
+        if (this.isPrimitive() || other.isPrimitive()) {
+            // Reference equality is enough within the same context.
+            assert this.getContext() == other.getContext();
+            return this == other;
+        }
+        if (this.isArray() && other.isArray()) {
+            return this.getComponentType().isAssignableFrom(other.getComponentType());
+        }
+        if (isInterface()) {
+            return other.getInterfacesStream(true).anyMatch(new Predicate<Klass>() {
+                @Override
+                public boolean test(Klass i) {
+                    return i == Klass.this;
+                }
+            });
+        }
+        return other.getSupertypesStream(true).anyMatch(new Predicate<Klass>() {
+            @Override
+            public boolean test(Klass k) {
+                return k == Klass.this;
+            }
+        });
+    }
 
     /**
      * Returns the {@link Klass} object representing the host class of this VM anonymous class (as
@@ -291,16 +319,15 @@ public abstract class Klass implements ModifiersProvider {
      * @return the least common type that is a super type of both the current and the given type, or
      *         {@code null} if primitive types are involved.
      */
-    public abstract Klass findLeastCommonAncestor(Klass otherType);
-
-    // public abstract Klass getComponentType();
+    // public abstract Klass findLeastCommonAncestor(Klass otherType);
 
     public final Klass getElementalType() {
-        Klass t = this;
-        while (t.isArray()) {
-            t = t.getComponentType();
+        // TODO(peterssen): Push implementation down-the-hierarchy as virtual methods.
+        Klass elemental = this;
+        while (elemental.isArray()) {
+            elemental = elemental.getComponentType();
         }
-        return t;
+        return elemental;
     }
 
     /**
@@ -313,7 +340,7 @@ public abstract class Klass implements ModifiersProvider {
      * @return the method that would be selected at runtime (might be abstract) or {@code null} if
      *         it can not be resolved
      */
-    public abstract Method resolveMethod(Method method, Klass callerType);
+    // public abstract Method resolveMethod(Method method, Klass callerType);
 
     /**
      * A convenience wrapper for {@link #resolveMethod(Method, Klass)} that only returns
@@ -360,7 +387,7 @@ public abstract class Klass implements ModifiersProvider {
      * @param offset the offset of the field to look for
      * @return the field with the given offset, or {@code null} if there is no such field.
      */
-    public abstract Field findInstanceFieldWithOffset(long offset, JavaKind expectedKind);
+    // public abstract Field findInstanceFieldWithOffset(long offset, JavaKind expectedKind);
 
     /**
      * Returns {@code true} if the type is a local type.
@@ -399,26 +426,26 @@ public abstract class Klass implements ModifiersProvider {
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public Method getClassInitializer() {
-        return Arrays.stream(getDeclaredMethods()).filter(new Predicate<Method>() {
-            @Override
-            public boolean test(Method m) {
-                return "<clinit>".equals(m.getName());
+        for (int i = 0; i < declaredMethods; ++i) {
+            if (Method.CLINIT.equals(linkedmMethods[i].getName())) {
+                return spawnMethod(i);
             }
-        }).findAny().orElse(null);
+        }
+        return null;
     }
 
-    public Method findDeclaredConcreteMethod(String methodName, SignatureDescriptor signature) {
+    public Method findDeclaredConcreteMethod(ByteString<Name> methodName, ByteString<String> signature) {
         for (Method method : getDeclaredMethods()) {
-            if (!method.isAbstract() && method.getName().equals(methodName) && method.getSignature().equals(signature)) {
+            if (!method.isAbstract() && methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
                 return method;
             }
         }
         return null;
     }
 
-    public Method findMethod(String methodName, SignatureDescriptor signature) {
+    public Method findMethod(ByteString<Name> methodName, ByteString<String> signature) {
         for (Method method : getDeclaredMethods()) {
-            if (method.getName().equals(methodName) && method.getSignature().equals(signature)) {
+            if (methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
                 return method;
             }
         }
@@ -443,7 +470,7 @@ public abstract class Klass implements ModifiersProvider {
         return null;
     }
 
-    public Method findConcreteMethod(String methodName, SignatureDescriptor signature) {
+    public Method findConcreteMethod(ByteString<Name> methodName, ByteString<String> signature) {
         for (Klass c = this; c != null; c = c.getSuperclass()) {
             Method method = c.findDeclaredConcreteMethod(methodName, signature);
             if (method != null && !method.isAbstract()) {
@@ -462,92 +489,53 @@ public abstract class Klass implements ModifiersProvider {
         return "Klass<" + getType() + ">";
     }
 
-
     // region Meta.Klass
 
     public void safeInitialize() {
         try {
             initialize();
         } catch (EspressoException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ExceptionInInitializerError.class, e.getException());
+            throw getMeta().throwEx(ExceptionInInitializerError.class, e.getException());
         }
     }
 
-    public Klass getComponentType() {
-        return isArray() ? meta(klass.getComponentType()) : null;
-    }
+    public abstract Klass getComponentType();
 
-    public Meta getMeta() {
-        return getContext().getMeta();
-    }
+// public Method[] methods(boolean includeInherited) {
+// return methodStream(includeInherited).toArray(new IntFunction<Method[]>() {
+// @Override
+// public Method[] apply(int value) {
+// return new Method[value];
+// }
+// });
+// }
 
-//    public Method[] methods(boolean includeInherited) {
-//        return methodStream(includeInherited).toArray(new IntFunction<Method[]>() {
-//            @Override
-//            public Method[] apply(int value) {
-//                return new Method[value];
-//            }
-//        });
-//    }
+// private Stream<Method> methodStream(boolean includeInherited) {
+// Stream<Method> methods = Arrays.stream(klass.getDeclaredMethods()).map(new Function<Method,
+// Method>() {
+// @Override
+// public Method apply(Method method) {
+// return meta(method);
+// }
+// });
+// if (includeInherited && getSuperclass() != null) {
+// methods = Stream.concat(methods, getSuperclass().methodStream(includeInherited));
+// }
+// return methods;
+// }
 
-//    private Stream<Method> methodStream(boolean includeInherited) {
-//        Stream<Method> methods = Arrays.stream(klass.getDeclaredMethods()).map(new Function<Method, Method>() {
-//            @Override
-//            public Method apply(Method method) {
-//                return meta(method);
-//            }
-//        });
-//        if (includeInherited && getSuperclass() != null) {
-//            methods = Stream.concat(methods, getSuperclass().methodStream(includeInherited));
-//        }
-//        return methods;
-//    }
-
-    public ObjectKlass getSupertype() {
+    public final Klass getSupertype() {
         if (isArray()) {
-            Klass componentType = getComponentType();
-            if (this == getMeta().OBJECT.getArray() || componentType.isPrimitive()) {
+            Klass component = getComponentType();
+            if (this == getMeta().OBJECT.array() || component.isPrimitive()) {
                 return getMeta().OBJECT;
             }
-            return componentType.getSupertype().array();
+            return component.getSupertype().array();
         }
         if (isInterface()) {
             return getMeta().OBJECT;
         }
         return getSuperclass();
-    }
-
-    /**
-     * Determines if this type is either the same as, or is a superclass or superinterface of,
-     * the type represented by the specified parameter. This method is identical to
-     * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
-     */
-    @TruffleBoundary
-    public boolean isAssignableFrom(Klass other) {
-        if (this == other) {
-            return true;
-        }
-        if (this.isPrimitive() || other.isPrimitive()) {
-            // Reference equality is enough within the same context.
-            return this == other;
-        }
-        if (this.isArray() && other.isArray()) {
-            return this.getComponentType().isAssignableFrom(other.getComponentType());
-        }
-        if (isInterface()) {
-            return other.getInterfacesStream(true).anyMatch(new Predicate<Klass>() {
-                @Override
-                public boolean test(Klass i) {
-                    return i == Klass.this;
-                }
-            });
-        }
-        return other.getSupertypesStream(true).anyMatch(new Predicate<Klass>() {
-            @Override
-            public boolean test(Klass k) {
-                return k == Klass.this;
-            }
-        });
     }
 
     private final boolean isPrimaryType() {
@@ -559,14 +547,11 @@ public abstract class Klass implements ModifiersProvider {
     }
 
     @TruffleBoundary
-    private Stream<ObjectKlass> getSupertypesStream(boolean includeOwn) {
-        ObjectKlass supertype = getSupertype();
-        Stream<Klass> supertypes;
-        if (supertype != null) {
-            supertypes = supertype.getSupertypesStream(true);
-        } else {
-            supertypes = Stream.empty();
-        }
+    private Stream<Klass> getSupertypesStream(boolean includeOwn) {
+        Klass supertype = getSupertype();
+        Stream<Klass> supertypes = (supertype != null)
+                        ? supertype.getSupertypesStream(true)
+                        : Stream.empty();
         if (includeOwn) {
             return Stream.concat(Stream.of(this), supertypes);
         }
@@ -574,7 +559,7 @@ public abstract class Klass implements ModifiersProvider {
     }
 
     @TruffleBoundary
-    private Stream<ObjectKlass> getInterfacesStream(boolean includeInherited) {
+    protected Stream<ObjectKlass> getInterfacesStream(boolean includeInherited) {
         Stream<ObjectKlass> interfaces = Stream.of(getInterfaces());
         ObjectKlass superclass = getSuperclass();
         if (includeInherited && superclass != null) {
@@ -600,19 +585,19 @@ public abstract class Klass implements ModifiersProvider {
         }));
     }
 
-    @TruffleBoundary
-    public StaticObject allocateInstance() {
-        assert !isArray();
-        return getContext().getInterpreterToVM().newObject(klass);
-    }
+// @TruffleBoundary
+// public StaticObject allocateInstance() {
+// assert !isArray();
+// return getContext().getInterpreterToVM().newObject(klass);
+// }
 
-    public String getName() {
-        return MetaUtil.internalNameToJava(getName(), true, true);
-    }
+// public String getName() {
+// return MetaUtil.internalNameToJava(getName(), true, true);
+// }
 
-    public String getInternalName() {
-        return getName();
-    }
+// public String getInternalName() {
+// return getName();
+// }
 
     @TruffleBoundary
     public Object allocateArray(int length) {
@@ -629,25 +614,15 @@ public abstract class Klass implements ModifiersProvider {
         return new StaticObjectArray(getArrayClass(), array);
     }
 
-    public Optional<Method.WithInstance> getClassInitializer() {
-        Method clinit = findDeclaredMethod("<clinit>", void.class);
-        return Optional.ofNullable(clinit).map(new Function<Method, Method.WithInstance>() {
-            @Override
-            public Method.WithInstance apply(Method mi) {
-                Method m = meta(mi);
-                assert m.isClassInitializer();
-                return m.forInstance(tryInitializeAndGetStatics());
-            }
-        });
-    }
-
     @TruffleBoundary
-    public Method method(String name, Class<?> returnType, Class<?>... parameterTypes) {
-        SignatureDescriptor target = getContext().getSignatureDescriptors().create(returnType, parameterTypes);
+    public Method method(ByteString<Name> name, Class<?> returnType, Class<?>... parameterTypes) {
+        ByteString<Signature> target = getContext().getSignatures().makeRaw(returnType, parameterTypes);
+        // ByteString<Type>[] target = getContext().getSignatures().makeParsed(returnType,
+        // parameterTypes);
         Method found = Arrays.stream(getDeclaredMethods()).filter(new Predicate<Method>() {
             @Override
             public boolean test(Method m) {
-                return m.getName().equals(name) && m.getSignature().equals(target);
+                return name.equals(m.getName()) && target.equals(m.getRawSignature());
             }
         }).findFirst().orElse(null);
         if (found == null) {
@@ -656,12 +631,6 @@ public abstract class Klass implements ModifiersProvider {
             }
         }
         return found == null ? null : new Method(found);
-    }
-
-    public Method.WithInstance staticMethod(String name, Class<?> returnType, Class<?>... parameterTypes) {
-        Method m = method(name, returnType, parameterTypes);
-        assert m.isStatic();
-        return m.forInstance(m.getDeclaringClass().rawKlass().tryInitializeAndGetStatics());
     }
 
     public Field declaredField(String name) {
@@ -674,7 +643,7 @@ public abstract class Klass implements ModifiersProvider {
         return null;
     }
 
-    public Field field(String name) {
+    public Field field(ByteString<Name> name) {
         // TODO(peterssen): Improve lookup performance.
         Field f = declaredField(name);
         if (f == null) {
@@ -684,4 +653,11 @@ public abstract class Klass implements ModifiersProvider {
         }
         return f;
     }
+
+    @Override
+    public final int getModifiers() {
+        return getFlags() & Modifier.classModifiers();
+    }
+
+    protected abstract int getFlags();
 }

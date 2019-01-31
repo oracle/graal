@@ -22,13 +22,13 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.runtime.ClasspathFile;
-
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.runtime.ClasspathFile;
 
 /**
  * Operations for sequentially scanning data items in a class file. Any IO exceptions that occur
@@ -157,16 +157,6 @@ public final class ClassfileStream {
             throw ioError(ioException);
         }
     }
-
-//    public String readString() {
-//        try {
-//            return stream.readUTF();
-//        } catch (EOFException eofException) {
-//            throw eofError();
-//        } catch (IOException ioException) {
-//            throw ioError(ioException);
-//        }
-//    }
 
     public ByteString readUTF() {
         try {

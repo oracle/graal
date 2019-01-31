@@ -23,8 +23,6 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
@@ -35,11 +33,11 @@ import java.util.Objects;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -48,12 +46,15 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ClassLoader;
@@ -70,11 +71,17 @@ import com.oracle.truffle.espresso.substitutions.Target_sun_misc_URLClassPath;
 import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
 import com.oracle.truffle.espresso.substitutions.Target_sun_misc_VM;
 import com.oracle.truffle.espresso.substitutions.Target_sun_reflect_NativeMethodAccessorImpl;
-import com.oracle.truffle.espresso.substitutions.Type;
 
 import sun.misc.Unsafe;
 
-public class InterpreterToVM {
+public final class InterpreterToVM implements ContextAccess {
+
+    private final EspressoContext context;
+
+    @Override
+    public EspressoContext getContext() {
+        return context;
+    }
 
     private static Unsafe hostUnsafe;
 
@@ -88,7 +95,7 @@ public class InterpreterToVM {
         }
     }
 
-    private final Map<MethodKey, RootNode> substitutions = new HashMap<>();
+    private final Map<MethodKey, EspressoRootNode> substitutions = new HashMap<>();
 
     public static List<Class<?>> DEFAULTS = Arrays.asList(
                     Target_java_lang_Class.class,
@@ -107,14 +114,15 @@ public class InterpreterToVM {
                     Target_sun_misc_VM.class,
                     Target_sun_reflect_NativeMethodAccessorImpl.class);
 
-    private InterpreterToVM(EspressoLanguage language, List<Class<?>> substitutions) {
+    private InterpreterToVM(EspressoContext context, List<Class<?>> substitutions) {
+        this.context = context;
         for (Class<?> clazz : substitutions) {
-            registerSubstitutions(clazz, language);
+            registerSubstitutions(clazz);
         }
     }
 
-    public InterpreterToVM(EspressoLanguage language) {
-        this(language, DEFAULTS);
+    public InterpreterToVM(EspressoContext context) {
+        this(context, DEFAULTS);
     }
 
     public StaticObject intern(StaticObject obj) {
@@ -130,7 +138,7 @@ public class InterpreterToVM {
     }
 
     @TruffleBoundary
-    public RootNode getSubstitution(Method method) {
+    public EspressoRootNode getSubstitution(Method method) {
         assert method != null;
         return substitutions.get(getMethodKey(method));
     }
@@ -210,7 +218,7 @@ public class InterpreterToVM {
         }
     }
 
-    public void registerSubstitutions(Class<?> clazz, EspressoLanguage language) {
+    public void registerSubstitutions(Class<?> clazz) {
 
         String className;
         Class<?> annotatedClass = clazz.getAnnotation(EspressoSubstitutions.class).value();
@@ -228,13 +236,13 @@ public class InterpreterToVM {
                 continue;
             }
 
-            RootNode rootNode = createRootNodeForMethod(language, method);
+            RootNode rootNode = createRootNodeForMethod(getContext(), method);
             StringBuilder signature = new StringBuilder("(");
             java.lang.reflect.Parameter[] parameters = method.getParameters();
             for (int i = substitution.hasReceiver() ? 1 : 0; i < parameters.length; i++) {
                 java.lang.reflect.Parameter parameter = parameters[i];
                 String parameterTypeName;
-                Type annotatedType = parameter.getAnnotatedType().getAnnotation(Type.class);
+                Host annotatedType = parameter.getAnnotatedType().getAnnotation(Host.class);
                 if (annotatedType != null) {
                     parameterTypeName = annotatedType.value().getName();
                 } else {
@@ -244,7 +252,7 @@ public class InterpreterToVM {
             }
             signature.append(')');
 
-            Type annotatedReturnType = method.getAnnotatedReturnType().getAnnotation(Type.class);
+            Host annotatedReturnType = method.getAnnotatedReturnType().getAnnotation(Host.class);
             String returnTypeName;
             if (annotatedReturnType != null) {
                 returnTypeName = annotatedReturnType.value().getName();
@@ -262,8 +270,8 @@ public class InterpreterToVM {
         }
     }
 
-    private static RootNode createRootNodeForMethod(EspressoLanguage language, Method method) {
-        if (!EspressoOptions.RUNNING_ON_SVM && language.getContextReference().get().getEnv().getOptions().get(EspressoOptions.IntrinsicsViaMethodHandles)) {
+    private static RootNode createRootNodeForMethod(EspressoContext context, Method method) {
+        if (!EspressoOptions.RUNNING_ON_SVM && context.getEnv().getOptions().get(EspressoOptions.IntrinsicsViaMethodHandles)) {
             MethodHandle handle;
             try {
                 handle = MethodHandles.publicLookup().unreflect(method);
@@ -567,7 +575,7 @@ public class InterpreterToVM {
                 return i < 0;
             }
         })) {
-            throw meta(klass).getMeta().throwEx(NegativeArraySizeException.class);
+            throw klass.getMeta().throwEx(NegativeArraySizeException.class);
         }
 
         Klass componentType = klass.getComponentType();

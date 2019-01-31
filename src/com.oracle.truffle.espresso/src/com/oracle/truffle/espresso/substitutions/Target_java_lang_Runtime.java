@@ -35,7 +35,7 @@ import java.util.function.IntFunction;
 public class Target_java_lang_Runtime {
     // TODO(peterssen): This a hack to be able to spawn processes without going down to UNIXProcess.
     @Substitution(hasReceiver = true)
-    public static @Type(Process.class) Object exec(@SuppressWarnings("unused") StaticObject self, @Type(String[].class) StaticObject cmdarray) {
+    public static @Host(Process.class) Object exec(@SuppressWarnings("unused") StaticObject self, @Host(String[].class) StaticObject cmdarray) {
         StaticObject[] wrapped = ((StaticObjectArray) cmdarray).unwrap();
         String[] hostArgs = new String[wrapped.length];
         Arrays.setAll(hostArgs, new IntFunction<String>() {

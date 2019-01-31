@@ -13,7 +13,7 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 @EspressoSubstitutions
 public class Target_sun_reflect_NativeMethodAccessorImpl {
     @Substitution
-    public static Object invoke0(@Type(Method.class) StaticObject method, @Type(Object.class) StaticObject receiver, @Type(Object[].class) StaticObject args) {
+    public static Object invoke0(@Host(Method.class) StaticObject method, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args) {
         StaticObject curMethod = method;
         MethodInfo target = null;
         while (target == null) {

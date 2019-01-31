@@ -28,14 +28,17 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.substitutions.Type;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -49,16 +52,16 @@ public final class Meta {
         this.context = context;
         OBJECT = knownKlass(Object.class);
         STRING = knownKlass(String.class);
-        CLASS = knownKlass(java.lang.Class.class);
-        BOOLEAN = knownKlass(boolean.class);
-        BYTE = knownKlass(byte.class);
-        CHAR = knownKlass(char.class);
-        SHORT = knownKlass(short.class);
-        FLOAT = knownKlass(float.class);
-        INT = knownKlass(int.class);
-        DOUBLE = knownKlass(double.class);
-        LONG = knownKlass(long.class);
-        VOID = knownKlass(void.class);
+        CLASS = knownKlass(Class.class);
+        BOOLEAN = knownPrimitive(boolean.class);
+        BYTE = knownPrimitive(byte.class);
+        CHAR = knownPrimitive(char.class);
+        SHORT = knownPrimitive(short.class);
+        FLOAT = knownPrimitive(float.class);
+        INT = knownPrimitive(int.class);
+        DOUBLE = knownPrimitive(double.class);
+        LONG = knownPrimitive(long.class);
+        VOID = knownPrimitive(void.class);
 
         BOXED_BOOLEAN = knownKlass(Boolean.class);
         BOXED_BYTE = knownKlass(Byte.class);
@@ -76,40 +79,45 @@ public final class Meta {
 
         CLONEABLE = knownKlass(Cloneable.class);
         SERIALIZABLE = knownKlass(Serializable.class);
+
+        ARRAY_SUPERINTERFACES = new ObjectKlass[]{CLONEABLE, SERIALIZABLE};
     }
 
-    public final Klass OBJECT;
-    public final Klass STRING;
-    public final Klass CLASS;
+    public final ObjectKlass OBJECT;
+    public final ObjectKlass STRING;
+    public final ObjectKlass CLASS;
 
     // Primitives
-    public final Klass BOOLEAN;
-    public final Klass BYTE;
-    public final Klass CHAR;
-    public final Klass SHORT;
-    public final Klass FLOAT;
-    public final Klass INT;
-    public final Klass DOUBLE;
-    public final Klass LONG;
-    public final Klass VOID;
+    public final PrimitiveKlass BOOLEAN;
+    public final PrimitiveKlass BYTE;
+    public final PrimitiveKlass CHAR;
+    public final PrimitiveKlass SHORT;
+    public final PrimitiveKlass FLOAT;
+    public final PrimitiveKlass INT;
+    public final PrimitiveKlass DOUBLE;
+    public final PrimitiveKlass LONG;
+    public final PrimitiveKlass VOID;
 
     // Boxed
-    public final Klass BOXED_BOOLEAN;
-    public final Klass BOXED_BYTE;
-    public final Klass BOXED_CHAR;
-    public final Klass BOXED_SHORT;
-    public final Klass BOXED_FLOAT;
-    public final Klass BOXED_INT;
-    public final Klass BOXED_DOUBLE;
-    public final Klass BOXED_LONG;
-    public final Klass BOXED_VOID;
+    public final ObjectKlass BOXED_BOOLEAN;
+    public final ObjectKlass BOXED_BYTE;
+    public final ObjectKlass BOXED_CHAR;
+    public final ObjectKlass BOXED_SHORT;
+    public final ObjectKlass BOXED_FLOAT;
+    public final ObjectKlass BOXED_INT;
+    public final ObjectKlass BOXED_DOUBLE;
+    public final ObjectKlass BOXED_LONG;
+    public final ObjectKlass BOXED_VOID;
 
-    public final Klass STACK_OVERFLOW_ERROR;
-    public final Klass OUT_OF_MEMORY_ERROR;
-    public final Klass THROWABLE;
+    public final ObjectKlass STACK_OVERFLOW_ERROR;
+    public final ObjectKlass OUT_OF_MEMORY_ERROR;
+    public final ObjectKlass THROWABLE;
 
-    public final Klass CLONEABLE;
-    public final Klass SERIALIZABLE;
+    public final ObjectKlass CLONEABLE;
+    public final ObjectKlass SERIALIZABLE;
+
+    @CompilationFinal(dimensions = 1) //
+    public final ObjectKlass[] ARRAY_SUPERINTERFACES;
 
     private static boolean isKnownClass(java.lang.Class<?> clazz) {
         // Cheap check: (host) known classes are loaded by the BCL.
@@ -134,7 +142,7 @@ public final class Meta {
         return ex;
     }
 
-    public StaticObject initEx(java.lang.Class<?> clazz, @Type(Throwable.class) StaticObject cause) {
+    public StaticObject initEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         StaticObject ex = throwableKlass(clazz).allocateInstance();
         meta(ex).method("<init>", void.class, Throwable.class).invoke(cause);
         return ex;
@@ -148,7 +156,7 @@ public final class Meta {
         throw new EspressoException(initEx(clazz, message));
     }
 
-    public EspressoException throwEx(java.lang.Class<?> clazz, @Type(Throwable.class) StaticObject cause) {
+    public EspressoException throwEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         throw new EspressoException(initEx(clazz, cause));
     }
 
@@ -160,16 +168,24 @@ public final class Meta {
     }
 
     @TruffleBoundary
-    public Klass knownKlass(java.lang.Class<?> hostClass) {
+    public ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
         // Resolve classes using BCL.
-        return context.getRegistries().resolveWithBootClassLoader(context.getTypeDescriptors().make(MetaUtil.toInternalName(hostClass.getName())));
+        return context.getRegistries().resolveWithBootClassLoader(context.getTypes().make(MetaUtil.toInternalName(hostClass.getName())));
+    }
+
+    @TruffleBoundary
+    public PrimitiveKlass knownPrimitive(java.lang.Class<?> hostClass) {
+        assert isKnownClass(hostClass);
+        assert hostClass.isPrimitive();
+        // Resolve classes using BCL.
+        return context.getRegistries().resolveWithBootClassLoader(context.getTypes().make(MetaUtil.toInternalName(hostClass.getName())));
     }
 
     @TruffleBoundary
     public Klass loadKlass(String className, StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
-        return context.getRegistries().resolve(context.getTypeDescriptors().make(MetaUtil.toInternalName(className)), classLoader));
+        return context.getRegistries().resolve(context.getTypes().make(MetaUtil.toInternalName(className)), classLoader));
     }
 
     @TruffleBoundary

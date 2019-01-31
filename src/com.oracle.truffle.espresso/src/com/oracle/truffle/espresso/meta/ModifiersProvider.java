@@ -160,5 +160,4 @@ public interface ModifiersProvider {
         final int accSynthethic = 0x1000;
         return PUBLIC | PRIVATE | PROTECTED | STATIC | FINAL | VOLATILE | TRANSIENT | accEnum | accSynthethic;
     }
-
 }

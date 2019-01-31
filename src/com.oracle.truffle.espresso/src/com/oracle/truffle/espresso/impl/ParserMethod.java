@@ -7,6 +7,8 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 // Unresolved unlinked.
 public final class ParserMethod {
 
+    public static final ParserMethod[] EMPTY_ARRAY = new ParserMethod[0];
+
     private final int flags;
     private final int nameIndex;
     private final int signatureIndex;

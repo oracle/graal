@@ -9,41 +9,35 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
-import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.LineNumberTable;
 import com.oracle.truffle.espresso.meta.LocalVariableTable;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
 import com.oracle.truffle.espresso.nodes.JniNativeNode;
-import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
-public final class Method implements ModifiersProvider {
+public final class Method implements ModifiersProvider, ContextAccess {
 
-    private static final ByteString<Name> INIT = ByteString.fromJavaString("<init>");
-    private static final ByteString<Name> CLINIT = ByteString.fromJavaString("<clinit>");
+    public static final ByteString<Name> INIT = ByteString.fromJavaString("<init>");
+    public static final ByteString<Name> CLINIT = ByteString.fromJavaString("<clinit>");
 
     public static final Method[] EMPTY_ARRAY = new Method[0];
+    private static final ByteString<Signature> CLINIT_SIGNATURE = ByteString.fromJavaString("()V");
 
     private final LinkedMethod linkedMethod;
     private final ConstantPool pool;
@@ -64,13 +58,13 @@ public final class Method implements ModifiersProvider {
     private final ExceptionHandler[] exceptionHandlers;
     private final LineNumberTable lineNumberTable;
     private final LocalVariableTable localVariableTable;
-    private final int modifiers;
     private final ExceptionsAttribute exceptionsAttribute;
 
-    @CompilationFinal private CallTarget callTarget;
-    @CompilationFinal private Klass returnType;
-    @CompilationFinal(dimensions = 1) private Klass[] parameterTypes;
-    @CompilationFinal(dimensions = 1) private Klass[] checkedExceptions;
+    @CompilationFinal //
+    private CallTarget callTarget;
+
+    @CompilationFinal(dimensions = 1) //
+    private Klass[] checkedExceptions;
 
     // can have a different constant pool than it's declaring class
     public ConstantPool getConstantPool() {
@@ -93,23 +87,27 @@ public final class Method implements ModifiersProvider {
         return parsedSignature;
     }
 
-    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, byte[] code, int maxStackSize, int maxLocals, int modifiers,
-                    ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable, ExceptionsAttribute exceptionsAttribute) {
+    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, byte[] code, int maxStackSize, int maxLocals,
+                    ExceptionHandler[] exceptionHandlers,
+                    LineNumberTable lineNumberTable,
+                    LocalVariableTable localVariableTable,
+                    ExceptionsAttribute exceptionsAttribute) {
+
         this.declaringKlass = declaringKlass;
-
-// this.name = linkedMethod.;
-// this.signature = signature;
-
+        this.name = linkedMethod.getName();
+        this.rawSignature = linkedMethod.getSignature();
+        this.parsedSignature = declaringKlass.getSignatures().make(linkedMethod.getSignature());
+        this.linkedMethod = linkedMethod;
         this.code = code;
         this.maxStackSize = maxStackSize;
         this.maxLocals = maxLocals;
-        this.modifiers = modifiers;
         this.exceptionHandlers = exceptionHandlers;
         this.lineNumberTable = lineNumberTable;
         this.localVariableTable = localVariableTable;
         this.exceptionsAttribute = exceptionsAttribute;
     }
 
+    @Override
     public EspressoContext getContext() {
         return declaringKlass.getContext();
     }
@@ -142,12 +140,12 @@ public final class Method implements ModifiersProvider {
         // Receiver for instance methods, class for static methods.
         sb.append(", ").append(NativeSimpleType.NULLABLE);
 
-        int argCount = SignatureDescriptor.parameterCount(signature, false);
+        int argCount = Signatures.parameterCount(signature, false);
         for (int i = 0; i < argCount; ++i) {
-            sb.append(", ").append(Utils.kindToType(SignatureDescriptor.parameterKind(signature, i), true));
+            sb.append(", ").append(Utils.kindToType(Signatures.parameterKind(signature, i), true));
         }
 
-        sb.append("): ").append(Utils.kindToType(SignatureDescriptor.returnKind(signature), false));
+        sb.append("): ").append(Utils.kindToType(Signatures.returnKind(signature), false));
 
         return sb.toString();
     }
@@ -169,15 +167,8 @@ public final class Method implements ModifiersProvider {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             // TODO(peterssen): Rethink method substitution logic.
-            RootNode redirectedMethod = getContext().getInterpreterToVM().getSubstitution(this);
+            EspressoRootNode redirectedMethod = getInterpreterToVM().getSubstitution(this);
             if (redirectedMethod != null) {
-                if (redirectedMethod instanceof IntrinsicReflectionRootNode) {
-                    ((IntrinsicReflectionRootNode) redirectedMethod).setOriginalMethod(this);
-                } else if (redirectedMethod instanceof IntrinsicRootNode) {
-                    ((IntrinsicRootNode) redirectedMethod).setOriginalMethod(this);
-                } else if (redirectedMethod instanceof NativeRootNode) {
-                    ((NativeRootNode) redirectedMethod).setOriginalMethod(this);
-                }
                 callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
             } else {
                 if (this.isNative()) {
@@ -185,19 +176,17 @@ public final class Method implements ModifiersProvider {
                     // System.err.println("Linking native method: " +
                     // meta(this).getDeclaringClass().getName() + "#" + getName() + " " +
                     // getSignature());
-                    Meta meta = getContext().getMeta();
 
                     // If the loader is null we have a system class, so we attempt a lookup in
                     // the native Java library.
                     if (StaticObject.isNull(getDeclaringKlass().getClassLoader())) {
                         // Look in libjava
-                        VM vm = EspressoLanguage.getCurrentContext().getVM();
                         for (boolean withSignature : new boolean[]{false, true}) {
                             String mangledName = Mangle.mangleMethod(this, withSignature);
 
                             try {
-                                TruffleObject nativeMethod = bind(vm.getJavaLibrary(), this, mangledName);
-                                callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
+                                TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
+                                callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getLanguage(), nativeMethod, this));
                                 return callTarget;
                             } catch (UnknownIdentifierException e) {
                                 // native method not found in libjava, safe to ignore
@@ -205,7 +194,7 @@ public final class Method implements ModifiersProvider {
                         }
                     }
 
-                    Method findNative = meta.knownKlass(ClassLoader.class).staticMethod("findNative", long.class, ClassLoader.class, String.class);
+                    Method findNative = getMeta().knownKlass(ClassLoader.class).staticMethod("findNative", long.class, ClassLoader.class, String.class);
 
                     // Lookup the short name first, otherwise lookup the long name (with signature).
                     callTarget = lookupJniCallTarget(findNative, false);
@@ -217,11 +206,11 @@ public final class Method implements ModifiersProvider {
                     // (print_jni_name_suffix_on ...)
 
                     if (callTarget == null) {
-                        System.err.println("Failed to link native method: " + meta(this).getDeclaringClass().getName() + "#" + getName() + " " + getRawSignature());
-                        throw meta.throwEx(UnsatisfiedLinkError.class);
+                        System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                        throw getMeta().throwEx(UnsatisfiedLinkError.class);
                     }
                 } else {
-                    callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(getContext().getLanguage(), this, getContext().getInterpreterToVM()));
+                    callTarget = Truffle.getRuntime().createCallTarget(new BytecodeNode(getLanguage(), this, getInterpreterToVM()));
                 }
             }
         }
@@ -235,13 +224,13 @@ public final class Method implements ModifiersProvider {
         if (handle == 0) { // not found
             return null;
         }
-        TruffleObject symbol = EspressoLanguage.getCurrentContext().getVM().getFunction(handle);
+        TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol, this);
-        return Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
+        return Truffle.getRuntime().createCallTarget(new JniNativeNode(getLanguage(), nativeMethod, this));
     }
 
     public boolean isConstructor() {
-        assert SignatureDescriptor.returnKind(getParsedSignature()) == JavaKind.Void;
+        assert Signatures.returnKind(getParsedSignature()) == JavaKind.Void;
         assert !isStatic();
         return INIT.equals(getName());
     }
@@ -327,24 +316,23 @@ public final class Method implements ModifiersProvider {
      */
     @TruffleBoundary
     public Object invoke(Object self, Object... args) {
-        assert args.length == SignatureDescriptor.parameterCount(getParsedSignature(), false);
+        assert args.length == Signatures.parameterCount(getParsedSignature(), false);
         assert !isStatic() || ((StaticObjectImpl) self).isStatic();
-        Meta meta = getContext().getMeta();
 
         final Object[] filteredArgs;
         if (isStatic()) {
             filteredArgs = new Object[args.length];
             for (int i = 0; i < filteredArgs.length; ++i) {
-                filteredArgs[i] = meta.toGuestBoxed(args[i]);
+                filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
             }
         } else {
             filteredArgs = new Object[args.length + 1];
-            filteredArgs[0] = meta.toGuestBoxed(self);
+            filteredArgs[0] = getMeta().toGuestBoxed(self);
             for (int i = 1; i < filteredArgs.length; ++i) {
-                filteredArgs[i] = meta.toGuestBoxed(args[i - 1]);
+                filteredArgs[i] = getMeta().toGuestBoxed(args[i - 1]);
             }
         }
-        return meta.toHostBoxed(getCallTarget().call(filteredArgs));
+        return getMeta().toHostBoxed(getCallTarget().call(filteredArgs));
     }
 
     /**
@@ -354,10 +342,10 @@ public final class Method implements ModifiersProvider {
     @TruffleBoundary
     public Object invokeDirect(Object self, Object... args) {
         if (isStatic()) {
-            assert args.length == SignatureDescriptor.parameterCount(getParsedSignature(), false);
+            assert args.length == Signatures.parameterCount(getParsedSignature(), false);
             return getCallTarget().call(args);
         } else {
-            assert args.length + 1 /* self */ == SignatureDescriptor.parameterCount(getParsedSignature(), !isStatic());
+            assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
             Object[] fullArgs = new Object[args.length + 1];
             System.arraycopy(args, 0, fullArgs, 1, args.length);
             fullArgs[0] = self;
@@ -366,9 +354,24 @@ public final class Method implements ModifiersProvider {
     }
 
     public final boolean isClassInitializer() {
-        assert SignatureDescriptor.resultKind(getParsedSignature()) == JavaKind.Void;
+        assert Signatures.resultKind(getParsedSignature()) == JavaKind.Void;
         assert isStatic();
-        assert SignatureDescriptor.parameterCount(getParsedSignature(), false) == 0;
+        assert Signatures.parameterCount(getParsedSignature(), false) == 0;
+        assert !CLINIT.equals(getName()) || CLINIT_SIGNATURE.equals(getRawSignature());
         return CLINIT.equals(getName());
+    }
+
+    @Override
+    public int getModifiers() {
+        return linkedMethod.getFlags() & Modifier.methodModifiers();
+    }
+
+    @Override
+    public String toString() {
+        return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature() + ">";
+    }
+
+    public final JavaKind getReturnKind() {
+        return Signatures.returnKind(getParsedSignature());
     }
 }

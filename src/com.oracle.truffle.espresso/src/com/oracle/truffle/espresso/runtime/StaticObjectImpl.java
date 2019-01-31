@@ -39,7 +39,7 @@ public class StaticObjectImpl extends StaticObject {
 
     private final Object[] fields;
 
-    public StaticObjectImpl(Klass klass, Map<String, Object> hiddenFields, Object[] fields) {
+    public StaticObjectImpl(ObjectKlass klass, Map<String, Object> hiddenFields, Object[] fields) {
         super(klass);
         this.hiddenFields = hiddenFields;
         this.fields = fields;
@@ -52,7 +52,7 @@ public class StaticObjectImpl extends StaticObject {
     // Shallow copy.
     public StaticObject copy() {
         HashMap<String, Object> hiddenFieldsCopy = hiddenFields != null ? new HashMap<>(hiddenFields) : null;
-        return new StaticObjectImpl(getKlass(), hiddenFieldsCopy, fields.clone());
+        return new StaticObjectImpl((ObjectKlass) getKlass(), hiddenFieldsCopy, fields.clone());
     }
 
     public StaticObjectImpl(ObjectKlass klass) {
@@ -84,7 +84,7 @@ public class StaticObjectImpl extends StaticObject {
         if (getKlass() == meta.STRING) {
             return Meta.toHostString((StaticObject) meta(this).method("toString", String.class).invokeDirect());
         }
-        return getKlass().getName();
+        return getKlass().getType().toString();
     }
 
     public final void setField(Field field, Object value) {

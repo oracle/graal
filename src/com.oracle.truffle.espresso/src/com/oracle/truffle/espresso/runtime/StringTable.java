@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Constant;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.substitutions.Type;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
  * Used to implement String interning.
@@ -58,7 +58,7 @@ public final class StringTable { // ByteString<Constant> => StaticObject
         return value.toString();
     }
 
-    public StaticObject intern(@Type(String.class) StaticObject stringObject) {
+    public StaticObject intern(@Host(String.class) StaticObject stringObject) {
         String hostString = Meta.toHostString(stringObject);
         return interned.computeIfAbsent(hostString, k -> stringObject);
     }

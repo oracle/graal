@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 
@@ -32,7 +33,7 @@ public class VmNativeNode extends NativeRootNode {
 
     private final boolean isJni;
 
-    public VmNativeNode(TruffleLanguage<?> language, TruffleObject boundNative, boolean isJni, Meta.Method originalMethod) {
+    public VmNativeNode(TruffleLanguage<?> language, TruffleObject boundNative, boolean isJni, Method originalMethod) {
         super(language, boundNative, originalMethod);
         this.isJni = isJni;
     }
@@ -43,8 +44,8 @@ public class VmNativeNode extends NativeRootNode {
         assert jniEnv.getNativePointer() != 0;
 
         Object[] processedArgs = super.preprocessArgs(args);
-        Object[] argsWithEnv = getOriginalMethod().isStatic()
-                        ? prepend1(getOriginalMethod().getDeclaringClass().rawKlass().mirror(), processedArgs)
+        Object[] argsWithEnv = getMethod().isStatic()
+                        ? prepend1(getMethod().getDeclaringKlass().mirror(), processedArgs)
                         : processedArgs;
 
         if (isJni) {

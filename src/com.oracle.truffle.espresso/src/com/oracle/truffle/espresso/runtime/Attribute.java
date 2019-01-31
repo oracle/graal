@@ -28,16 +28,18 @@ import com.oracle.truffle.espresso.impl.ByteString.Name;
 
 public class Attribute {
 
+    public static final Attribute[] EMPTY_ARRAY = new Attribute[0];
+
     private final ByteString<Name> name;
 
     @CompilationFinal(dimensions = 1) //
     private final byte[] data;
 
-    public ByteString getName() {
+    public final ByteString<Name> getName() {
         return name;
     }
 
-    public byte[] getData() {
+    public final byte[] getData() {
         return data;
     }
 

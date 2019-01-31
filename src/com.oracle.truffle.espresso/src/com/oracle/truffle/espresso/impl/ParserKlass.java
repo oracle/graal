@@ -1,19 +1,64 @@
 package com.oracle.truffle.espresso.impl;
 
+import java.lang.reflect.Modifier;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 // Straight out of the parser, loading.
 // superKlass and superInterfaces not resolved.
 public final class ParserKlass {
 
-    private final int flags;
-    private final int thisKlassIndex; // ClassConstant
-    private final int superKlassIndex; // unresolved
+//    public static final ParserKlass BOOLEAN = primitive(JavaKind.Boolean);
+//    public static final ParserKlass BYTE = primitive(JavaKind.Byte);
+//    public static final ParserKlass CHAR = primitive(JavaKind.Char);
+//    public static final ParserKlass SHORT = primitive(JavaKind.Short);
+//    public static final ParserKlass INT = primitive(JavaKind.Int);
+//    public static final ParserKlass FLOAT = primitive(JavaKind.Float);
+//    public static final ParserKlass DOUBLE = primitive(JavaKind.Double);
+//    public static final ParserKlass LONG = primitive(JavaKind.Long);
+//    public static final ParserKlass VOID = primitive(JavaKind.Void);
+//
+//    private static final int PRIMITIVE_FLAGS = Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
+//
+//    private static ParserKlass primitive(JavaKind kind) {
+//        assert kind.isPrimitive();
+//        return new ParserKlass(ConstantPool.EMPTY,
+//                        PRIMITIVE_FLAGS,
+//                        kind.getType(),
+//                        null,
+//                        ByteString.emptyArray(),
+//                        ParserMethod.EMPTY_ARRAY,
+//                        ParserField.EMPTY_ARRAY,
+//                        Attribute.EMPTY_ARRAY);
+//    }
+//
+//    private static ParserKlass primitive(JavaKind kind) {
+//        assert kind.isPrimitive();
+//        return new ParserKlass(ConstantPool.EMPTY,
+//                PRIMITIVE_FLAGS,
+//                kind.getType(),
+//                null,
+//                ByteString.emptyArray(),
+//                ParserMethod.EMPTY_ARRAY,
+//                ParserField.EMPTY_ARRAY,
+//                Attribute.EMPTY_ARRAY);
+//    }
 
+    private final ByteString<Type> type;
+    private final ByteString<Type> superKlass;
     @CompilationFinal(dimensions = 1) //
-    private final int[] superInterfacesIndices; // unresolved
+    private final ByteString<Type>[] superInterfaces;
+
+    private final int flags;
+    // private final int thisKlassIndex; // ClassConstant
+// private final int superKlassIndex; // unresolved
+//
+// @CompilationFinal(dimensions = 1) //
+// private final int[] superInterfacesIndices; // unresolved
 
     @CompilationFinal(dimensions = 1) //
     private final ParserMethod[] methods; // name + signature + attributes
@@ -28,23 +73,31 @@ public final class ParserKlass {
         return flags;
     }
 
-    public int getThisKlassIndex() {
-        return getThisKlassIndex();
+    public ByteString<Type> getType() {
+        return type;
     }
 
-    public int getSuperKlassIndex() {
-        return superKlassIndex;
+    public ByteString<Type> getSuperKlass() {
+        return superKlass;
     }
 
-    public int[] getSuperInterfacesIndices() {
-        return superInterfacesIndices;
+    public ByteString<Type>[] getSuperInterfaces() {
+        return superInterfaces;
     }
+//
+// public int getSuperKlassIndex() {
+// return superKlassIndex;
+// }
 
-    public ParserMethod[] getMethods() {
+// public int[] getSuperInterfacesIndices() {
+// return superInterfacesIndices;
+// }
+
+    ParserMethod[] getMethods() {
         return methods;
     }
 
-    public ParserField[] getFields() {
+    ParserField[] getFields() {
         return fields;
     }
 
@@ -53,17 +106,23 @@ public final class ParserKlass {
     }
 
     /**
-     * Unresolved constant pool, only the trivial entries (no resolution involved) could be
-     * resolved.
+     * Unresolved constant pool, only trivial entries (with no resolution involved) are computed.
      */
     private final ConstantPool pool;
 
-    public ParserKlass(ConstantPool pool, int flags, int thisKlassIndex, int superKlassIndex, int[] superInterfacesIndices, ParserMethod[] methods, ParserField[] fields, Attribute[] attributes) {
+    public ParserKlass(ConstantPool pool,
+                    int flags,
+                    ByteString<Type> type,
+                    ByteString<Type> superKlass,
+                    final ByteString<Type>[] superInterfaces,
+                    final ParserMethod[] methods,
+                    final ParserField[] fields,
+                    Attribute[] attributes) {
         this.pool = pool;
         this.flags = flags;
-        this.thisKlassIndex = thisKlassIndex;
-        this.superKlassIndex = superKlassIndex;
-        this.superInterfacesIndices = superInterfacesIndices;
+        this.type = type;
+        this.superKlass = superKlass;
+        this.superInterfaces = superInterfaces;
         this.methods = methods;
         this.fields = fields;
         this.attributes = attributes;

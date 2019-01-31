@@ -24,18 +24,17 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.SharedConstantPool;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptors;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 import java.lang.reflect.Modifier;
 
 /**
  * Implementation of {@link Klass} for primitive types.
+ * Primitive classes don't have a .class representation, so the associated LinkedKlass is null.
  */
 public final class PrimitiveKlass extends Klass {
     private final EspressoContext context;
@@ -46,14 +45,9 @@ public final class PrimitiveKlass extends Klass {
      * @param kind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind kind) {
-        super(null /* linkedKlass for primitives */, null, ObjectKlass.EMPTY_ARRAY);
+        super(context, kind.getType(), null, ObjectKlass.EMPTY_ARRAY);
         this.context = context;
-        assert kind.isPrimitive() : kind + " not a primitive type";
-    }
-
-    @Override
-    public final int getModifiers() {
-        return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
+        assert kind.isPrimitive() : kind + " not a primitive kind";
     }
 
     @Override
@@ -62,11 +56,6 @@ public final class PrimitiveKlass extends Klass {
             return null;
         }
         return super.createArrayKlass();
-    }
-
-    @Override
-    public Klass getElementalType() {
-        return this;
     }
 
     @Override
@@ -90,13 +79,6 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public boolean isAssignableFrom(Klass other) {
-        assert other != null;
-        // TODO(peterssen): Reference equality should be enough per context.
-        return other.equals(this);
-    }
-
-    @Override
     public Klass getHostClass() {
         return null;
     }
@@ -116,19 +98,15 @@ public final class PrimitiveKlass extends Klass {
         // nop
     }
 
-    @Override
-    public Field findInstanceFieldWithOffset(long offset, JavaKind expectedType) {
-        return null;
-    }
+//
+//    @Override
+//    public Field findInstanceFieldWithOffset(long offset, JavaKind expectedType) {
+//        return null;
+//    }
 
     @Override
-    public ConstantPool getConstantPool() {
-        return null;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
+    public final @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+        return StaticObject.NULL; // BCL
     }
 
     @Override
@@ -174,5 +152,10 @@ public final class PrimitiveKlass extends Klass {
     @Override
     public String toString() {
         return "PrimitiveKlass<" + getJavaKind() + ">";
+    }
+
+    @Override
+    protected final int getFlags() {
+        return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
     }
 }

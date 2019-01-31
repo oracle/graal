@@ -24,20 +24,21 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.impl.LinkedMethod;
+import com.oracle.truffle.espresso.impl.Method;
 
 public final class InvokeSpecialNode extends QuickNode {
-    protected final MethodInfo method;
+    protected final LinkedMethod method;
     @Child private DirectCallNode directCallNode;
 
-    public InvokeSpecialNode(MethodInfo method) {
+    public InvokeSpecialNode(Method method) {
         this.method = method;
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
     }
 
     @Override
     public int invoke(final VirtualFrame frame, int top) {
-        EspressoRootNode root = (EspressoRootNode) getParent();
+        BytecodeNode root = (BytecodeNode) getParent();
         // TODO(peterssen): IsNull Node?
         nullCheck(root.peekReceiver(frame, top, method));
         Object[] args = root.peekArguments(frame, top, true, method.getSignature());

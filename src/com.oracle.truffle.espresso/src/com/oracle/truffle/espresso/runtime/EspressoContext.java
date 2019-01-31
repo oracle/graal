@@ -35,8 +35,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.descriptors.SignatureDescriptors;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptors;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -44,7 +44,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 
-public class EspressoContext {
+public final class EspressoContext {
 
     private final EspressoLanguage language;
 
@@ -215,7 +215,7 @@ public class EspressoContext {
     }
 
     private void initializeClass(String name) {
-        Klass klass = getRegistries().resolve(getTypeDescriptors().make(name), StaticObject.NULL);
+        Klass klass = getRegistries().resolve(getTypes().make(name), StaticObject.NULL);
         klass.initialize();
     }
 
@@ -244,12 +244,12 @@ public class EspressoContext {
 //        return getLanguage().getSymbolTable();
 //    }
 
-    public TypeDescriptors getTypeDescriptors() {
-        return getLanguage().getTypeDescriptors();
+    public Types getTypes() {
+        return getLanguage().getTypes();
     }
 
-    public SignatureDescriptors getSignatureDescriptors() {
-        return getLanguage().getSignatureDescriptors();
+    public Signatures getSignatures() {
+        return getLanguage().getSignatures();
     }
 
     public StaticObject getAppClassLoader() {
@@ -259,7 +259,7 @@ public class EspressoContext {
     public JniEnv getJNI() {
         if (jniEnv == null) {
             CompilerAsserts.neverPartOfCompilation();
-            jniEnv = JniEnv.create();
+            jniEnv = JniEnv.create(this);
         }
         return jniEnv;
     }

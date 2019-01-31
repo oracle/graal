@@ -80,6 +80,8 @@ public final class ClassfileParser {
     private int maxBootstrapMethodAttrIndex;
     private Tag badConstantSeen;
 
+    private ConstantPool pool;
+
 // /**
 // * The host class for an anonymous class.
 // */
@@ -90,7 +92,7 @@ public final class ClassfileParser {
     private ClassfileParser(ClasspathFile classpathFile, String requestedClassName, Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
         this.className = requestedClassName;
-        this.hostClass = hostClass;
+        // this.hostClass = hostClass;
         this.context = context;
         this.classfile = classpathFile;
         this.stream = new ClassfileStream(classfile);
@@ -99,7 +101,7 @@ public final class ClassfileParser {
     private ClassfileParser(ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
         this.className = requestedClassName;
-        this.hostClass = hostClass;
+        // this.hostClass = hostClass;
         this.context = context;
         this.classfile = null;
         this.stream = Objects.requireNonNull(stream);
@@ -155,7 +157,7 @@ public final class ClassfileParser {
             throw new UnsupportedClassVersionError("Unsupported class file version: " + majorVersion + "." + minorVersion);
         }
 
-        final ConstantPool pool = ConstantPool.parse(context.getLanguage(), stream, this);
+        this.pool = ConstantPool.parse(context.getLanguage(), stream, this);
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
         int accessFlags;
@@ -199,21 +201,26 @@ public final class ClassfileParser {
         // if this is an anonymous class fix up its name if it's in the unnamed
         // package. Otherwise, throw IAE if it is in a different package than
         // its host class.
-        if (hostClass != null) {
-            fixAnonymousClassName();
-        }
+// if (hostClass != null) {
+// fixAnonymousClassName();
+// }
 
-        int superKlassIndex = parseSuperKlass();
-        int[] superInterfaces = parseInterfaces();
+        ByteString<Type> thisKlass = pool.classAt(thisClassIndex).getType(pool);
+        ByteString<Type> superKlass = parseSuperKlass();
+        ByteString<Type>[] superInterfaces = parseInterfaces();
+
         ParserField[] fields = parseFields();
         ParserMethod[] methods = parseMethods();
         Attribute[] attributes = parseAttributes();
 
-        return new ParserKlass(pool, accessFlags, thisClassIndex, superKlassIndex, superInterfaces, methods, fields, attributes);
+        return new ParserKlass(pool, accessFlags, thisKlass, superKlass, superInterfaces, methods, fields, attributes);
     }
 
     private ParserMethod[] parseMethods() {
         int methodCount = stream.readU2();
+        if (methodCount == 0) {
+            return ParserMethod.EMPTY_ARRAY;
+        }
         ParserMethod[] methods = new ParserMethod[methodCount];
         for (int i = 0; i < methodCount; ++i) {
             methods[i] = parseMethod();
@@ -230,9 +237,12 @@ public final class ClassfileParser {
     }
 
     private Attribute[] parseAttributes() {
-        int count = stream.readU2();
-        Attribute[] attrs = new Attribute[count];
-        for (int i = 0; i < count; i++) {
+        int attributeCount = stream.readU2();
+        if (attributeCount == 0) {
+            return Attribute.EMPTY_ARRAY;
+        }
+        Attribute[] attrs = new Attribute[attributeCount];
+        for (int i = 0; i < attributeCount; i++) {
             attrs[i] = parseAttribute();
         }
         return attrs;
@@ -257,8 +267,8 @@ public final class ClassfileParser {
             return parseBootstrapMethods(name);
         }
         int length = stream.readS4();
-        byte[] info = stream.readByteArray(length);
-        return new Attribute(name, info);
+        byte[] data = stream.readByteArray(length);
+        return new Attribute(name, data);
     }
 
     private ExceptionsAttribute parseExceptions(ByteString<Name> name) {
@@ -343,14 +353,17 @@ public final class ClassfileParser {
 
     private ParserField parseField() {
         int flags = stream.readU2();
-        final int nameIndex = stream.readU2();
-        final int typeIndex = stream.readU2();
+        int nameIndex = stream.readU2();
+        int typeIndex = stream.readU2();
         Attribute[] fieldAttributes = parseAttributes();
-        return new ParserField(flags, nameIndex, typeIndex, fieldAttributes);
+        return new ParserField(flags, pool.utf8At(nameIndex), pool.utf8At(typeIndex), fieldAttributes);
     }
 
     private ParserField[] parseFields() {
         int fieldCount = stream.readU2();
+        if (fieldCount == 0) {
+            return ParserField.EMPTY_ARRAY;
+        }
         ParserField[] fields = new ParserField[fieldCount];
         for (int i = 0; i < fieldCount; i++) {
             fields[i] = parseField();
@@ -363,22 +376,27 @@ public final class ClassfileParser {
      * parsing the current class file so that resolution is only attempted if there are no format
      * errors in the current class file.
      */
-    private int parseSuperKlass() {
+    private ByteString<Type> parseSuperKlass() {
         int index = stream.readU2();
         if (index == 0) {
             if (!className.equals("java/lang/Object")) {
                 throw classfile.classFormatError("Invalid superclass index 0");
             }
+            return null;
         }
-        return index;
+        return pool.classAt(index).getType(pool);
     }
 
-    private int[] parseInterfaces() {
-        int count = stream.readU2();
-        int[] interfaces = new int[count];
-        for (int i = 0; i < count; i++) {
+    @SuppressWarnings("unchecked")
+    private ByteString<Type>[] parseInterfaces() {
+        int interfaceCount = stream.readU2();
+        if (interfaceCount == 0) {
+            return ByteString.emptyArray();
+        }
+        ByteString<Type>[] interfaces = new ByteString[interfaceCount];
+        for (int i = 0; i < interfaceCount; i++) {
             int interfaceIndex = stream.readU2();
-            interfaces[i] = interfaceIndex;
+            interfaces[i] = pool.classAt(interfaceIndex).getType(pool);
         }
         return interfaces;
     }
@@ -402,27 +420,27 @@ public final class ClassfileParser {
         return null;
     }
 
-    /**
-     * If the host class and the anonymous class are in the same package then do nothing. If the
-     * anonymous class is in the unnamed package then move it to its host's package. If the classes
-     * are in different packages then throw an {@link IllegalArgumentException}.
-     */
-    private void fixAnonymousClassName() {
-        int slash = this.typeDescriptor.toJavaName().lastIndexOf('/');
-        String hostPackageName = getPackageName(hostClass.getName());
-        if (slash == -1) {
-            // For an anonymous class that is in the unnamed package, move it to its host class's
-            // package by prepending its host class's package name to its class name.
-            if (hostPackageName != null) {
-                String newClassName = 'L' + hostPackageName + '/' + this.typeDescriptor.toJavaName() + ';';
-                this.className = pool.getContext().getTypeDescriptors().make(newClassName).toJavaName();
-            }
-        } else {
-            String packageName = getPackageName(this.className);
-            if (!hostPackageName.equals(packageName)) {
-                throw new IllegalArgumentException("Host class " + hostClass + " and anonymous class " +
-                                this.className + " are in different packages");
-            }
-        }
-    }
+// /**
+// * If the host class and the anonymous class are in the same package then do nothing. If the
+// * anonymous class is in the unnamed package then move it to its host's package. If the classes
+// * are in different packages then throw an {@link IllegalArgumentException}.
+// */
+// private void fixAnonymousClassName() {
+// int slash = this.typeDescriptor.toJavaName().lastIndexOf('/');
+// String hostPackageName = getPackageName(hostClass.getName());
+// if (slash == -1) {
+// // For an anonymous class that is in the unnamed package, move it to its host class's
+// // package by prepending its host class's package name to its class name.
+// if (hostPackageName != null) {
+// String newClassName = 'L' + hostPackageName + '/' + this.typeDescriptor.toJavaName() + ';';
+// this.className = pool.getContext().getTypeDescriptors().make(newClassName).toJavaName();
+// }
+// } else {
+// String packageName = getPackageName(this.className);
+// if (!hostPackageName.equals(packageName)) {
+// throw new IllegalArgumentException("Host class " + hostClass + " and anonymous class " +
+// this.className + " are in different packages");
+// }
+// }
+// }
 }

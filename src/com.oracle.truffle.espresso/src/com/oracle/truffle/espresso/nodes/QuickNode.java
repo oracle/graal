@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class QuickNode extends Node {
 
-    public static QuickNode[] EMPTY_ARRAY = new QuickNode[0];
+    public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
 
     public abstract int invoke(VirtualFrame frame, int top);
 

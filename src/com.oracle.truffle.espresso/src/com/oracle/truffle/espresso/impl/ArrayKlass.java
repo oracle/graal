@@ -25,43 +25,37 @@ package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 public final class ArrayKlass extends Klass {
+
     private final Klass componentType;
+    private final Klass elementalType;
 
     ArrayKlass(Klass componentType) {
-        super(componentType.getContext().getTypeDescriptors().arrayOf(componentType.getType(), 1));
+        super(componentType.getContext(),
+                        componentType.getContext().getTypes().arrayOf(componentType.getType()),
+                        componentType.getMeta().OBJECT,
+                        componentType.getMeta().ARRAY_SUPERINTERFACES);
         this.componentType = componentType;
+        this.elementalType = componentType.getElementalType();
     }
 
-    @Override
-    public ConstantPool getConstantPool() {
-        return getElementalType().getConstantPool();
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return getComponentType().getContext();
-    }
+// @Override
+// public ConstantPool getConstantPool() {
+// return getElementalType().getConstantPool();
+// }
 
     @Override
     public StaticObject tryInitializeAndGetStatics() {
         throw EspressoError.shouldNotReachHere("Arrays do not have static fields");
     }
 
-//    @Override
-//    public boolean hasFinalizer() {
-//        return false;
-//    }
-
     @Override
-    public int getModifiers() {
-        return (getElementalType().getModifiers() & (Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED)) | Modifier.FINAL | Modifier.ABSTRACT;
+    public final int getFlags() {
+        return (getElementalType().getFlags() & (Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED)) | Modifier.FINAL | Modifier.ABSTRACT;
     }
 
     @Override
@@ -74,78 +68,68 @@ public final class ArrayKlass extends Klass {
         return !isArray() && !isInterface();
     }
 
-//    @Override
-//    public boolean isPrimitive() {
-//        return false;
-//    }
-
     @Override
     public boolean isInitialized() {
-        return getComponentType().isInitialized();
+        return getElementalType().isInitialized();
     }
 
     @Override
     public void initialize() {
-        getComponentType().initialize();
-    }
-
-    @Override
-    public boolean isLinked() {
-        return getComponentType().isLinked();
-    }
-
-    @Override
-    public boolean isAssignableFrom(Klass other) {
-        throw EspressoError.unimplemented();
+        getElementalType().initialize();
     }
 
     @Override
     public Klass getHostClass() {
         return null;
     }
+//
+// @Override
+// public Method resolveMethod(Method method, Klass callerType) {
+// return null;
+// }
 
     @Override
-    public Klass getSuperclass() {
-        return getContext().getMeta().OBJECT.rawKlass();
+    public Field[] getInstanceFields(boolean includeSuperclasses) {
+        return new Field[0];
     }
 
     @Override
-    public Klass[] getInterfaces() {
-        Klass cloneable = getContext().getMeta().CLONEABLE.rawKlass();
-        Klass serializable = getContext().getMeta().SERIALIZABLE.rawKlass();
-        return new Klass[]{cloneable, serializable};
+    public Field[] getStaticFields() {
+        return new Field[0];
     }
 
-    @Override
-    public Klass findLeastCommonAncestor(Klass otherType) {
-        throw EspressoError.unimplemented();
-    }
+//
+// @Override
+// public ObjectKlass[] getInterfaces() {
+// Klass cloneable = getMeta().CLONEABLE;
+// Klass serializable = getMeta().SERIALIZABLE;
+// return new ObjectKlass[]{cloneable, serializable};
+// }
+
+// @Override
+// public Klass findLeastCommonAncestor(Klass otherType) {
+// throw EspressoError.unimplemented();
+// }
 
     @Override
     public Klass getComponentType() {
         return componentType;
     }
 
-
     @Override
     public StaticObject getClassLoader() {
         return getElementalType().getClassLoader();
     }
 
-//    @Override
-//    public Field[] getInstanceFields(boolean includeSuperclasses) {
-//        return FieldInfo.EMPTY_ARRAY;
-//    }
+// @Override
+// public Field[] getInstanceFields(boolean includeSuperclasses) {
+// return FieldInfo.EMPTY_ARRAY;
+// }
 //
-//    @Override
-//    public Field[] getStaticFields() {
-//        return FieldInfo.EMPTY_ARRAY;
-//    }
-//
-//    @Override
-//    public Field findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-//        throw EspressoError.unimplemented();
-//    }
+// @Override
+// public Field[] getStaticFields() {
+// return FieldInfo.EMPTY_ARRAY;
+// }
 
     @Override
     public boolean isLocal() {
@@ -162,24 +146,38 @@ public final class ArrayKlass extends Klass {
         return null;
     }
 
-//    @Override
-//    public Method[] getDeclaredConstructors() {
-//        return Method.EMPTY_ARRAY;
-//    }
-//
-//    @Override
-//    public Method[] getDeclaredMethods() {
-//        return Method.EMPTY_ARRAY;
-//    }
-//
-//    @Override
-//    public Field[] getDeclaredFields() {
-//        return Field.EMPTY_ARRAY;
-//    }
-
     @Override
-    public Method getClassInitializer() {
-        return null;
+    public Method[] getDeclaredConstructors() {
+        return new Method[0];
     }
 
+    @Override
+    public Method[] getDeclaredMethods() {
+        return new Method[0];
+    }
+
+    @Override
+    public Field[] getDeclaredFields() {
+        return new Field[0];
+    }
+
+    @Override
+    public final @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+        return elementalType.getDefiningClassLoader();
+    }
+
+    // @Override
+// public Method[] getDeclaredConstructors() {
+// return Method.EMPTY_ARRAY;
+// }
+//
+// @Override
+// public Method[] getDeclaredMethods() {
+// return Method.EMPTY_ARRAY;
+// }
+//
+// @Override
+// public Field[] getDeclaredFields() {
+// return Field.EMPTY_ARRAY;
+// }
 }

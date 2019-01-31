@@ -77,7 +77,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        EspressoRootNode root = (EspressoRootNode) getParent();
+        BytecodeNode root = (BytecodeNode) getParent();
         // TODO(peterssen): IsNull Node?.
         final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
         final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getSignature());

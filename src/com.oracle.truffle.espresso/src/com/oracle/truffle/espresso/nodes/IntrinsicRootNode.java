@@ -23,22 +23,23 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 import java.lang.invoke.MethodHandle;
 
-public class IntrinsicRootNode extends RootNode implements LinkedNode {
+public class IntrinsicRootNode extends EspressoRootNode {
 
     private final MethodHandle handle;
-    private Meta.Method originalMethod;
 
-    public IntrinsicRootNode(EspressoLanguage language, MethodHandle handle) {
-        super(language);
+    public IntrinsicRootNode(EspressoContext, MethodHandle handle) {
+        super(, language);
         this.handle = handle;
     }
 
@@ -55,17 +56,8 @@ public class IntrinsicRootNode extends RootNode implements LinkedNode {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private Object callIntrinsic(Object... args) throws Throwable {
         return handle.invokeWithArguments(args);
-    }
-
-    @Override
-    public Meta.Method getOriginalMethod() {
-        return originalMethod;
-    }
-
-    public void setOriginalMethod(Meta.Method originalMethod) {
-        this.originalMethod = originalMethod;
     }
 }
