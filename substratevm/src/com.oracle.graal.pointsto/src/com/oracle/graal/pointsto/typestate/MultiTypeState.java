@@ -267,12 +267,12 @@ public class MultiTypeState extends TypeState {
         assert someIdx >= 0 : "The inquired type must be in the array.";
 
         int firstIdx = someIdx;
-        while (firstIdx >= 0 && objects[firstIdx].type().equals(type)) {
+        while (firstIdx >= 0 && objects[firstIdx].getTypeId() == type.getId()) {
             /* Find the first index by walking down from the found index until the type changes. */
             firstIdx--;
         }
         int lastIdx = someIdx;
-        while (lastIdx < objects.length && objects[lastIdx].type().equals(type)) {
+        while (lastIdx < objects.length && objects[lastIdx].getTypeId() == type.getId()) {
             /* Find the last index by walking up from the found index until the type changes. . */
             lastIdx++;
         }

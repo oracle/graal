@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.JavaKind;
  */
 public class AnalysisObject implements Comparable<AnalysisObject> {
 
-    public static final Comparator<AnalysisObject> objectsTypeComparator = Comparator.comparingInt(o -> o.type().getId());
+    public static final Comparator<AnalysisObject> objectsTypeComparator = Comparator.comparingInt(o -> o.getTypeId());
     public static final AnalysisObject[] EMPTY_ARRAY = new AnalysisObject[0];
 
     private static final AtomicInteger nextObjectId = new AtomicInteger();

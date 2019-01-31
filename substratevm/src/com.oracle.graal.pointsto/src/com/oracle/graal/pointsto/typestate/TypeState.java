@@ -184,7 +184,7 @@ public abstract class TypeState {
 
         /** Returns true if there are more objects of the current type. */
         public boolean hasNextObject(AnalysisType type) {
-            return objectIdx < state.objects().length && state.objects()[objectIdx].type().equals(type);
+            return objectIdx < state.objects().length && state.objects()[objectIdx].getTypeId() == type.getId();
         }
 
         /** Gets the next type. */
@@ -553,7 +553,9 @@ public abstract class TypeState {
     private static TypeState doUnion(BigBang bb, MultiTypeState s1, SingleTypeState s2) {
         boolean resultCanBeNull = s1.canBeNull() || s2.canBeNull();
 
-        if (s2.objects.length == 1 && s1.containsObject(s2.objects[0])) {
+        AnalysisObject[] so1 = s1.objects;
+        AnalysisObject[] so2 = s2.objects;
+        if (so2.length == 1 && s1.containsObject(so2[0])) {
             /*
              * Speculate that s2 has a single object and s1 already contains that object. This
              * happens often during object scanning where we repeatedly add the scanned constants to
@@ -572,7 +574,7 @@ public abstract class TypeState {
             AnalysisObject[] s1ObjectsSlice = s1.objectsArray(typeRange);
 
             /* Create the resulting objects array. */
-            AnalysisObject[] unionObjects = TypeStateUtils.union(bb, s1ObjectsSlice, s2.objects);
+            AnalysisObject[] unionObjects = TypeStateUtils.union(bb, s1ObjectsSlice, so2);
 
             /* Check if s1 contains s2's objects for this type. */
             if (unionObjects == s1ObjectsSlice) {
@@ -589,12 +591,12 @@ public abstract class TypeState {
              * Replace the s1 objects slice of the same type as s2 with the union objects and create
              * a new state.
              */
-            int resultSize = s1.objects.length + unionObjects.length - s1ObjectsSlice.length;
+            int resultSize = so1.length + unionObjects.length - s1ObjectsSlice.length;
             AnalysisObject[] resultObjects = new AnalysisObject[resultSize];
 
-            System.arraycopy(s1.objects, 0, resultObjects, 0, typeRange.left);
+            System.arraycopy(so1, 0, resultObjects, 0, typeRange.left);
             System.arraycopy(unionObjects, 0, resultObjects, typeRange.left, unionObjects.length);
-            System.arraycopy(s1.objects, typeRange.right, resultObjects, typeRange.left + unionObjects.length, s1.objects.length - typeRange.right);
+            System.arraycopy(so1, typeRange.right, resultObjects, typeRange.left + unionObjects.length, so1.length - typeRange.right);
 
             /* The types bit set of the result and s1 are the same. */
 
@@ -611,23 +613,23 @@ public abstract class TypeState {
         } else {
             AnalysisObject[] resultObjects;
             if (s2.exactType().getId() < s1.firstType().getId()) {
-                resultObjects = TypeStateUtils.concat(s2.objects, s1.objects);
+                resultObjects = TypeStateUtils.concat(so2, so1);
             } else if (s2.exactType().getId() > s1.lastType().getId()) {
-                resultObjects = TypeStateUtils.concat(s1.objects, s2.objects);
+                resultObjects = TypeStateUtils.concat(so1, so2);
             } else {
 
                 /* Find insertion point within the s1.objects. */
                 int idx1 = 0;
-                while (idx1 < s1.objects.length && s1.objects[idx1].type().getId() < s2.exactType().getId()) {
+                while (idx1 < so1.length && so1[idx1].getTypeId() < s2.exactType().getId()) {
                     idx1++;
                 }
 
                 /* Create the resulting objects array and insert the s2 objects. */
-                resultObjects = new AnalysisObject[s1.objects.length + s2.objects.length];
+                resultObjects = new AnalysisObject[so1.length + so2.length];
 
-                System.arraycopy(s1.objects, 0, resultObjects, 0, idx1);
-                System.arraycopy(s2.objects, 0, resultObjects, idx1, s2.objects.length);
-                System.arraycopy(s1.objects, idx1, resultObjects, idx1 + s2.objects.length, s1.objects.length - idx1);
+                System.arraycopy(so1, 0, resultObjects, 0, idx1);
+                System.arraycopy(so2, 0, resultObjects, idx1, so2.length);
+                System.arraycopy(so1, idx1, resultObjects, idx1 + so2.length, so1.length - idx1);
             }
 
             /* Create the types bit set by adding the s2 type to avoid walking the objects. */
@@ -727,14 +729,17 @@ public abstract class TypeState {
     private static TypeState allocationSensitiveSpeculativeUnion1(BigBang bb, MultiTypeState s1, MultiTypeState s2, boolean resultCanBeNull) {
         int idx1 = 0;
         int idx2 = 0;
-        while (idx1 < s1.objectsCount() && idx2 < s2.objectsCount()) {
-            AnalysisObject o1 = s1.objects[idx1];
-            AnalysisObject o2 = s2.objects[idx2];
-            if (bb.analysisPolicy().isSummaryObject(o1) && o1.type().equals(o2.type())) {
+        AnalysisPolicy analysisPolicy = bb.analysisPolicy();
+        AnalysisObject[] so1 = s1.objects;
+        AnalysisObject[] so2 = s2.objects;
+        while (idx1 < so1.length && idx2 < so2.length) {
+            AnalysisObject o1 = so1[idx1];
+            AnalysisObject o2 = so2[idx2];
+            if (analysisPolicy.isSummaryObject(o1) && o1.getTypeId() == o2.getTypeId()) {
                 idx1++;
                 /* Skip over s2 objects of this type while marking them as merged. */
-                while (idx2 < s2.objectsCount() && s2.objects[idx2].type().equals(o1.type())) {
-                    bb.analysisPolicy().noteMerge(bb, s2.objects[idx2]);
+                while (idx2 < s2.objectsCount() && so2[idx2].getTypeId() == o1.getTypeId()) {
+                    analysisPolicy.noteMerge(bb, so2[idx2]);
                     idx2++;
                 }
             } else if (o1.getId() < o2.getId()) {
@@ -748,7 +753,7 @@ public abstract class TypeState {
                 break;
             }
 
-            if (idx2 == s2.objectsCount()) {
+            if (idx2 == so2.length) {
                 return s1.forCanBeNull(bb, resultCanBeNull);
             }
         }
@@ -984,20 +989,21 @@ public abstract class TypeState {
 
         int idx1 = 0;
         int idx2 = 0;
-
-        while (idx2 < s2.objects.length) {
-            AnalysisObject o1 = s1.objects[idx1];
-            AnalysisObject o2 = s2.objects[idx2];
+        AnalysisObject[] so1 = s1.objects;
+        AnalysisObject[] so2 = s2.objects;
+        while (idx2 < so2.length) {
+            AnalysisObject o1 = so1[idx1];
+            AnalysisObject o2 = so2[idx2];
 
             /* See comment above for the limitation explanation. */
             assert o2.isContextInsensitiveObject() : "Current implementation limitation.";
 
-            if (o1.type().getId() > o2.type().getId()) {
+            if (o1.getTypeId() > o2.getTypeId()) {
                 /* s2 is behind, advance s2. */
                 idx2++;
-            } else if (o1.type().getId() == o2.type().getId()) {
+            } else if (o1.getTypeId() == o2.getTypeId()) {
                 /* If the types are equal continue with speculation. */
-                while (idx1 < s1.objects.length && s1.objects[idx1].type().equals(o2.type())) {
+                while (idx1 < so1.length && so1[idx1].getTypeId() == o2.getTypeId()) {
                     /* Walk over the s1 objects of the same type as o2. */
                     idx1++;
                 }
@@ -1007,7 +1013,7 @@ public abstract class TypeState {
                 break;
             }
 
-            if (idx1 == s1.objects.length) {
+            if (idx1 == so1.length) {
                 /*
                  * Our speculation succeeded: we walked down the whole s1 list, and all of its types
                  * are included in s2.
@@ -1298,21 +1304,23 @@ public abstract class TypeState {
         int idx1 = 0;
         int idx2 = 0;
 
+        AnalysisObject[] so1 = s1.objects;
+        AnalysisObject[] so2 = s2.objects;
         while (true) {
-            AnalysisObject o1 = s1.objects[idx1];
-            AnalysisObject o2 = s2.objects[idx2];
+            AnalysisObject o1 = so1[idx1];
+            AnalysisObject o2 = so2[idx2];
 
             /* See comment above for the limitation explanation. */
             assert o2.isContextInsensitiveObject() : "Current implementation limitation.";
 
-            if (o1.type().getId() < o2.type().getId()) {
+            if (o1.getTypeId() < o2.getTypeId()) {
                 idx1++;
-                if (idx1 == s1.objects.length) {
+                if (idx1 == so1.length) {
                     return s1.forCanBeNull(bb, resultCanBeNull);
                 }
-            } else if (o1.type().getId() > o2.type().getId()) {
+            } else if (o1.getTypeId() > o2.getTypeId()) {
                 idx2++;
-                if (idx2 == s2.objects.length) {
+                if (idx2 == so2.length) {
                     return s1.forCanBeNull(bb, resultCanBeNull);
                 }
             } else {
