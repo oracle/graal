@@ -379,7 +379,7 @@ class TruffleRunnerSnippets {
 
         public TestExecuteNode() {
             super(null);
-            interop = InteropLibrary.getFactory().createCachedLimit(5);
+            interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
         @Override

@@ -139,7 +139,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
 
     static class CallNode extends Node {
 
-        @Child private InteropLibrary interop = InteropLibrary.getFactory().createCachedLimit(1);
+        @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(1);
 
         private final SourceSection sourceSection;
 

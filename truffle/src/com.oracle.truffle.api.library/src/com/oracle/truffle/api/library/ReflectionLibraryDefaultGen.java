@@ -91,7 +91,7 @@ final class ReflectionLibraryDefaultGen {
             @Child private SendCachedData sendCached_cache;
 
             Cached(Object receiver) {
-                this.dynamicDispatch_ = DYNAMIC_DISPATCH_LIBRARY_.createCached(receiver);
+                this.dynamicDispatch_ = DYNAMIC_DISPATCH_LIBRARY_.create(receiver);
             }
 
             @Override
@@ -154,7 +154,7 @@ final class ReflectionLibraryDefaultGen {
                             }
                         }
                         if (s1_ == null) {
-                            Library cachedLibrary__ = super.insert((arg1Value.getFactory().createCached(arg0Value)));
+                            Library cachedLibrary__ = super.insert((arg1Value.getFactory().create(arg0Value)));
                             // assert (arg1Value == s1_.cachedMessage_);
                             if ((cachedLibrary__.accepts(arg0Value)) && count1_ < (ReflectionLibraryDefault.LIMIT)) {
                                 s1_ = new SendCachedData(sendCached_cache);

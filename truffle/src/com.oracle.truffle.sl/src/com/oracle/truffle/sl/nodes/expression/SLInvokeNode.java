@@ -71,7 +71,7 @@ public final class SLInvokeNode extends SLExpressionNode {
     public SLInvokeNode(SLExpressionNode functionNode, SLExpressionNode[] argumentNodes) {
         this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
-        this.library = InteropLibrary.getFactory().createCachedLimit(3);
+        this.library = InteropLibrary.getFactory().createDispatched(3);
     }
 
     @ExplodeLoop

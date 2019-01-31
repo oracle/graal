@@ -100,10 +100,10 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
         Object o = new Object();
 
         // defaults are cached as singleton and don't have a parent.
-        NodeAdoptionLibrary cached = LibraryFactory.resolve(NodeAdoptionLibrary.class).createCached(o);
+        NodeAdoptionLibrary cached = LibraryFactory.resolve(NodeAdoptionLibrary.class).create(o);
         assertEquals("default", cached.m0(o));
 
-        NodeAdoptionLibrary dispatched = LibraryFactory.resolve(NodeAdoptionLibrary.class).createCachedLimit(3);
+        NodeAdoptionLibrary dispatched = LibraryFactory.resolve(NodeAdoptionLibrary.class).createDispatched(3);
         assertEquals("default", dispatched.m0(o));
     }
 
@@ -111,12 +111,12 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
     public void testExports() {
         NodeAdoptionObject o = new NodeAdoptionObject();
 
-        NodeAdoptionLibrary cached = LibraryFactory.resolve(NodeAdoptionLibrary.class).createCached(new NodeAdoptionObject());
+        NodeAdoptionLibrary cached = LibraryFactory.resolve(NodeAdoptionLibrary.class).create(new NodeAdoptionObject());
         assertAssertionError(() -> cached.m0(o));
         adopt(cached);
         assertEquals("cached", cached.m0(o));
 
-        NodeAdoptionLibrary dispatched = LibraryFactory.resolve(NodeAdoptionLibrary.class).createCachedLimit(3);
+        NodeAdoptionLibrary dispatched = LibraryFactory.resolve(NodeAdoptionLibrary.class).createDispatched(3);
         assertAssertionError(() -> dispatched.m0(o));
         adopt(dispatched);
         assertEquals("cached", dispatched.m0(o));

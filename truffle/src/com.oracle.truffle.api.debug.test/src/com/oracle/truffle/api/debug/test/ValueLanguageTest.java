@@ -474,7 +474,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             private final String name;
             protected final Object value;
             protected final ContextReference<Context> contextReference;
-            @Child private InteropLibrary interop = InteropLibrary.getFactory().createCachedLimit(5);
+            @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
             @CompilerDirectives.CompilationFinal protected FrameSlot slot;
 
             VarNode(String name, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
@@ -540,7 +540,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
             private final String var;
             private final String prop;
-            @Child private InteropLibrary interop = InteropLibrary.getFactory().createCachedLimit(5);
+            @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
 
             PropNode(String var, String prop, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
                 super(null, value, sourceSection, contextReference);

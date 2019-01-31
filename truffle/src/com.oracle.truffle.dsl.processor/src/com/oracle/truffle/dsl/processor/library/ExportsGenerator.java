@@ -385,7 +385,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
             builder = constructor.createBuilder();
             if (cached) {
-                builder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".createCached(receiver)").end();
+                builder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".create(receiver)").end();
             } else {
                 builder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".getUncached(receiver)").end();
             }

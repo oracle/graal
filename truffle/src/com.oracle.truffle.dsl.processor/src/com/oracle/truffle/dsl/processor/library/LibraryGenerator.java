@@ -432,7 +432,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.declaration(cachedDispatch.asType(), "current", "this");
         builder.declaration(libraryTypeMirror, "thisLibrary", "current.library");
         builder.startIf().string("thisLibrary == null").end().startBlock();
-        builder.statement("this.library = insert(INSTANCE.createCached(receiver_))");
+        builder.statement("this.library = insert(INSTANCE.create(receiver_))");
         builder.end().startElseBlock();
         builder.declaration(context.getType(Lock.class), "lock", "getLock()");
         builder.statement("lock.lock()");
@@ -451,7 +451,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.statement("this.next = null");
         builder.end().startElseBlock();
         builder.startStatement().string("this.next = insert(");
-        builder.startNew(cachedDispatchNext.asType()).string("INSTANCE.createCached(receiver_)").string("next").end();
+        builder.startNew(cachedDispatchNext.asType()).string("INSTANCE.create(receiver_)").string("next").end();
         builder.string(")");
         builder.end(); // statement
         builder.end();
@@ -488,7 +488,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         genClass.add(cachedDispatch);
 
-        CodeExecutableElement createCachedDispatch = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(LibraryFactory.class), "createCachedDispatchImpl"));
+        CodeExecutableElement createCachedDispatch = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(LibraryFactory.class), "createDispatchImpl"));
         createCachedDispatch.getModifiers().remove(Modifier.ABSTRACT);
         createCachedDispatch.setReturnType(libraryTypeMirror);
         createCachedDispatch.renameArguments("limit");

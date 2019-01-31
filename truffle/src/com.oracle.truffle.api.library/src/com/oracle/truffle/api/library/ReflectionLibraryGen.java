@@ -91,7 +91,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
     }
 
     @Override
-    protected ReflectionLibrary createCachedDispatchImpl(int limit) {
+    protected ReflectionLibrary createDispatchImpl(int limit) {
         return new CachedDispatchFirst(null, null, limit);
     }
 
@@ -275,7 +275,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
             CachedDispatch current = this;
             ReflectionLibrary thisLibrary = current.library;
             if (thisLibrary == null) {
-                this.library = insert(INSTANCE.createCached(receiver_));
+                this.library = insert(INSTANCE.create(receiver_));
             } else {
                 Lock lock = getLock();
                 lock.lock();
@@ -293,7 +293,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
                         this.library = insert(new CachedToUncachedDispatch());
                         this.next = null;
                     } else {
-                        this.next = insert(new CachedDispatchNext(INSTANCE.createCached(receiver_), next));
+                        this.next = insert(new CachedDispatchNext(INSTANCE.create(receiver_), next));
                     }
                 } finally {
                     lock.unlock();

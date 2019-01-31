@@ -1305,7 +1305,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private abstract static class AbstractExecuteNode extends InteropNode {
 
-            @Child private InteropLibrary executables = InteropLibrary.getFactory().createCachedLimit(CACHE_LIMIT);
+            @Child private InteropLibrary executables = InteropLibrary.getFactory().createDispatched(CACHE_LIMIT);
             private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
             private final BranchProfile invalidArgument = BranchProfile.create();
             private final BranchProfile arity = BranchProfile.create();
@@ -1482,7 +1482,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private abstract static class AbstractInvokeNode extends InteropNode {
 
-            @Child private InteropLibrary objects = InteropLibrary.getFactory().createCachedLimit(CACHE_LIMIT);
+            @Child private InteropLibrary objects = InteropLibrary.getFactory().createDispatched(CACHE_LIMIT);
             private final ToHostValueNode toHostValue;
             private final BranchProfile invalidArgument = BranchProfile.create();
             private final BranchProfile arity = BranchProfile.create();

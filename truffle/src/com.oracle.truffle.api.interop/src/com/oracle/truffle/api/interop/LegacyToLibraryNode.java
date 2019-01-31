@@ -52,7 +52,7 @@ final class LegacyToLibraryNode extends Node {
 
     final Message message;
 
-    @Child private InteropLibrary interop = InteropLibrary.getFactory().createCachedLimit(LIMIT);
+    @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(LIMIT);
     @Child private InteropAccessNode legacyUnbox;
     @Child private InteropAccessNode legacyIsBoxed;
 

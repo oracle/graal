@@ -1936,7 +1936,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     TypeMirror usedLibraryType = parameter.getType();
 
                     DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
-                    DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createCachedLimit",
+                    DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createDispatched",
                                     Arrays.asList(limitExpression));
                     DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
                                     Arrays.asList());
@@ -2071,7 +2071,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
                 DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(LibraryFactory.class));
 
-                DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createCached",
+                DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "create",
                                 Arrays.asList(receiverExpression));
                 defaultExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, defaultExpression, value);
                 cachedLibrary.setDefaultExpression(defaultExpression);

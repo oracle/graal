@@ -83,11 +83,11 @@ public abstract class InteropLibraryBaseTest {
         LibraryFactory<T> lib = LibraryFactory.resolve(library);
         switch (run) {
             case CACHED:
-                return adopt(lib.createCached(receiver));
+                return adopt(lib.create(receiver));
             case UNCACHED:
                 return lib.getUncached(receiver);
             case DISPATCHED_CACHED:
-                return adopt(lib.createCachedLimit(2));
+                return adopt(lib.createDispatched(2));
             case DISPATCHED_UNCACHED:
                 return lib.getUncached();
         }

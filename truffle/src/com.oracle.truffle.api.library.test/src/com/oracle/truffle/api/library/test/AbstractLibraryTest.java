@@ -52,11 +52,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 public abstract class AbstractLibraryTest {
 
     protected static final <T extends Library> T createCached(Class<T> library, Object receiver) {
-        return adopt(LibraryFactory.resolve(library).createCached(receiver));
+        return adopt(LibraryFactory.resolve(library).create(receiver));
     }
 
     protected static final <T extends Library> T createCachedDispatch(Class<T> library, int limit) {
-        return adopt(LibraryFactory.resolve(library).createCachedLimit(limit));
+        return adopt(LibraryFactory.resolve(library).createDispatched(limit));
     }
 
     protected static final <T extends Library> T getUncached(Class<T> library, Object receiver) {

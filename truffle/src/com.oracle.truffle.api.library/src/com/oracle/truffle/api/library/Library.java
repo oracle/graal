@@ -67,7 +67,7 @@ public abstract class Library extends Node {
      * {@link NullPointerException} or {@link ClassCastException} may be thrown by the method.
      * <p>
      * A library that was created using a receiver value i.e. a
-     * {@link LibraryFactory#createCached(Object)} only guarantees to accept the value it was
+     * {@link LibraryFactory#create(Object)} only guarantees to accept the value it was
      * constructed with. For other values, the method may return <code>false</code>. Such libraries
      * need to check for acceptance before calling a library method with a receiver. If receiver
      * values are not accepted then a new library library needs to be created or fetched. Dispatched

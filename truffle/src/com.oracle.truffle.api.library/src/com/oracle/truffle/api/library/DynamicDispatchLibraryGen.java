@@ -93,7 +93,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
     }
 
     @Override
-    protected DynamicDispatchLibrary createCachedDispatchImpl(int limit) {
+    protected DynamicDispatchLibrary createDispatchImpl(int limit) {
         return new CachedDispatchFirst(null, null, limit);
     }
 
@@ -389,7 +389,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             CachedDispatch current = this;
             DynamicDispatchLibrary thisLibrary = current.library;
             if (thisLibrary == null) {
-                this.library = insert(INSTANCE.createCached(receiver_));
+                this.library = insert(INSTANCE.create(receiver_));
             } else {
                 Lock lock = getLock();
                 lock.lock();
@@ -407,7 +407,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
                         this.library = insert(new CachedToUncachedDispatch());
                         this.next = null;
                     } else {
-                        this.next = insert(new CachedDispatchNext(INSTANCE.createCached(receiver_), next));
+                        this.next = insert(new CachedDispatchNext(INSTANCE.create(receiver_), next));
                     }
                 } finally {
                     lock.unlock();
