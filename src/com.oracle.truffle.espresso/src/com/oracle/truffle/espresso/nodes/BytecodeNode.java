@@ -248,13 +248,18 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.DoubleConstant;
+import com.oracle.truffle.espresso.classfile.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.FloatConstant;
 import com.oracle.truffle.espresso.classfile.IntegerConstant;
 import com.oracle.truffle.espresso.classfile.LongConstant;
+import com.oracle.truffle.espresso.classfile.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.PoolConstant;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.StringConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Signature;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -1070,18 +1075,22 @@ public final class BytecodeNode extends EspressoRootNode {
         } else if (constant instanceof StringConstant) {
             assert opcode == LDC || opcode == LDC_W;
             // TODO(peterssen): Must be interned once, on creation.
-            putObject(frame, top, ((StringConstant) constant).resolve(pool));
+            putObject(frame, top, getStrings().intern(((StringConstant) constant).getConstant(pool)));
         } else if (constant instanceof ClassConstant) {
             assert opcode == LDC || opcode == LDC_W;
-            Klass klass = ((ClassConstant) constant).resolve(pool, cpi);
+
+            ByteString<Type> type = ((ClassConstant) constant).getType(getConstantPool());
+            Klass klass = getContext().getRegistries().resolve(type, getConstantPool().getClassLoader());
+
+            // Klass klass = ((ClassConstant) constant).resolve(pool, cpi);
             putObject(frame, top, klass.mirror());
         } else {
             throw EspressoError.unimplemented(constant.toString());
         }
     }
 
-    private ConstantPool getConstantPool() {
-        return getMethod().getConstantPool();
+    private RuntimeConstantPool getConstantPool() {
+        return getMethod().getRuntimeConstantPool();
     }
 
     // region Bytecode quickening
@@ -1155,22 +1164,121 @@ public final class BytecodeNode extends EspressoRootNode {
 
     private Klass resolveType(@SuppressWarnings("unused") int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
-        ConstantPool pool = getConstantPool();
-        return pool.classAt(cpi).resolve(pool, cpi);
+        RuntimeConstantPool pool = getConstantPool();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+
+        ByteString<Type> type = pool.classAt(cpi).getType(pool);
+
+        try {
+            try {
+                Klass klass = getContext().getRegistries().resolve(type, pool.getClassLoader());
+                // pool.updateAt(index, new Resolved(klass));
+                return klass;
+            } catch (RuntimeException e) {
+                throw (NoClassDefFoundError) new NoClassDefFoundError(type.toString()).initCause(e);
+            }
+        } catch (VirtualMachineError e) {
+            // Comment from Hotspot:
+            // Just throw the exception and don't prevent these classes from
+            // being loaded for virtual machine errors like StackOverflow
+            // and OutOfMemoryError, etc.
+            // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
+            throw e;
+        }
+
+        // return pool.classAt(cpi).resolve(pool, cpi);
+    }
+
+    // TODO(peterssen): Re-implement resolution properly, update CP entry.
+    private Method lookupInterfaceMethod(Klass declaringInterface, ByteString<Name> name, ByteString<Signature> signature) {
+        Method m = declaringInterface.findMethod(name, signature);
+        if (m != null) {
+            return m;
+        }
+        for (Klass i : declaringInterface.getInterfaces()) {
+            m = lookupInterfaceMethod(i, name, signature);
+            if (m != null) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    // TODO(peterssen): Re-implement resolution properly, update CP entry.
+    public Method resolveInterfaceMethod(RuntimeConstantPool pool, int index) {
+        // TODO(peterssen): Re-enable invalidation after updating resolved entry.
+        // CompilerDirectives.transferToInterpreterAndInvalidate();
+        MethodRefConstant methodRefConstant = pool.methodAt(index);
+        ByteString<Type> declaringKlass = methodRefConstant.getDeclaringClass(pool);
+
+        Klass declaringInterface = getContext().getRegistries().resolve(declaringKlass, pool.getClassLoader());
+        assert declaringInterface.isInterface();
+        ByteString<Name> name = methodRefConstant.getName(pool);
+
+        ByteString<Signature> signature = methodRefConstant.getSignature(pool);
+        Method m = lookupInterfaceMethod(declaringInterface, name, signature);
+        if (m != null) {
+            return m;
+        }
+        throw EspressoError.shouldNotReachHere(declaringInterface + "." + name + signature);
+    }
+
+    private Method resolveClassMethod(RuntimeConstantPool pool, int index) {
+        // TODO(peterssen): Re-enable invalidation after updating resolved entry.
+        // CompilerDirectives.transferToInterpreterAndInvalidate();
+        MethodRefConstant methodRefConstant = pool.methodAt(index);
+        ByteString<Type> declaringKlass = methodRefConstant.getDeclaringClass(pool);
+        Klass klass = getContext().getRegistries().resolve(declaringKlass, pool.getClassLoader());
+        // assert declaringInterface.isInterface();
+        ByteString<Name> name = methodRefConstant.getName(pool);
+        ByteString<Signature> signature = methodRefConstant.getSignature(pool);
+        Method m = klass.findMethod(name, signature);
+        return m;
     }
 
     private Method resolveMethod(int opcode, char cpi) {
         CompilerAsserts.partialEvaluationConstant(cpi);
         CompilerAsserts.partialEvaluationConstant(opcode);
-        ConstantPool pool = getConstantPool();
-        Method methodInfo = pool.methodAt(cpi).resolve(pool, cpi);
-        return methodInfo;
+        RuntimeConstantPool pool = getConstantPool();
+        if (pool.tagAt(cpi) == ConstantPool.Tag.INTERFACE_METHOD_REF) {
+            return resolveInterfaceMethod(getConstantPool(), cpi);
+        } else {
+            return resolveClassMethod(getConstantPool(), cpi);
+        }
+
+    }
+
+    public Field fieldRefConstant(RuntimeConstantPool pool, int index) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+
+        FieldRefConstant fieldRefConstant = pool.fieldAt(index);
+
+        ByteString<Type> declaringKlass = fieldRefConstant.getDeclaringClass(pool);
+        Klass klass = getContext().getRegistries().resolve(declaringKlass, pool.getClassLoader());
+
+        // assert declaringInterface.isInterface();
+        ByteString<Name> name = fieldRefConstant.getName(pool);
+        ByteString<Type> type = fieldRefConstant.getType(pool);
+
+        Klass declaringClass = getContext().getRegistries().resolve(declaringKlass, pool.getClassLoader());
+
+        while (declaringClass != null) {
+            for (Field fi : declaringClass.getDeclaredFields()) {
+                if (fi.getName().equals(name) && type.equals(fi.getType())) {
+                    return fi;
+                }
+            }
+            declaringClass = declaringClass.getSuperclass();
+        }
+        throw EspressoError.shouldNotReachHere();
     }
 
     private Field resolveField(@SuppressWarnings("unused") int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
-        ConstantPool pool = getConstantPool();
-        return pool.fieldAt(cpi).resolve(pool, cpi);
+        RuntimeConstantPool pool = getConstantPool();
+        return fieldRefConstant(pool, cpi);
+
+        // return pool.fieldAt(cpi).resolve(pool, cpi);
     }
 
     // endregion Class/Method/Field resolution

@@ -31,14 +31,15 @@ import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
  * Represents resolved non-primitive, non-array types in Espresso.
@@ -51,7 +52,7 @@ public final class ObjectKlass extends Klass {
     // private final Field[] declaredFields;
 
     private final EnclosingMethodAttribute enclosingMethod;
-    private final ConstantPool pool;
+    private final RuntimeConstantPool pool;
 
     private final LinkedKlass linkedKlass;
 
@@ -85,6 +86,7 @@ public final class ObjectKlass extends Klass {
     public static final int INITIALIZED = 3;
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces,
+                    StaticObject classLoader,
                     EnclosingMethodAttribute enclosingMethod,
                     InnerClassesAttribute innerClasses,
                     Attribute runtimeVisibleAnnotations) {
@@ -92,8 +94,10 @@ public final class ObjectKlass extends Klass {
         this.enclosingMethod = enclosingMethod;
         this.linkedKlass = linkedKlass;
         this.innerClasses = innerClasses;
-        // this.pool = pool;
         this.runtimeVisibleAnnotations = runtimeVisibleAnnotations;
+
+        // TODO(peterssen): Make writable copy.
+        this.pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), classLoader);
     }
 
     private static int countDeclaredInstanceFields(Field[] declaredFields) {
@@ -144,14 +148,18 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    @Override
-    public Method resolveMethod(Method method, Klass callerType) {
-        return null;
-    }
+// @Override
+// public Method resolveMethod(Method method, Klass callerType) {
+// return null;
+// }
 
     @Override
-    public StaticObject getClassLoader() {
-        return getConstantPool().getClassLoader();
+    public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+        return pool.getClassLoader();
+    }
+
+    public RuntimeConstantPool getConstantPool() {
+        return pool;
     }
 
     @Override

@@ -129,8 +129,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return mirrorCache;
     }
 
-    public abstract StaticObject getClassLoader();
-
     @Override
     public final boolean equals(Object obj) {
         if (!(obj instanceof Klass)) {
@@ -443,7 +441,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public Method findMethod(ByteString<Name> methodName, ByteString<String> signature) {
+    public Method findMethod(ByteString<Name> methodName, ByteString<Signature> signature) {
         for (Method method : getDeclaredMethods()) {
             if (methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
                 return method;

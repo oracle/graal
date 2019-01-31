@@ -12,6 +12,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
@@ -40,7 +41,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     private static final ByteString<Signature> CLINIT_SIGNATURE = ByteString.fromJavaString("()V");
 
     private final LinkedMethod linkedMethod;
-    private final ConstantPool pool;
+    private final RuntimeConstantPool pool;
 
     private final ObjectKlass declaringKlass;
 
@@ -71,6 +72,10 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return pool;
     }
 
+    public RuntimeConstantPool getRuntimeConstantPool() {
+        return pool;
+    }
+
     public Klass getDeclaringKlass() {
         return declaringKlass;
     }
@@ -94,6 +99,10 @@ public final class Method implements ModifiersProvider, ContextAccess {
                     ExceptionsAttribute exceptionsAttribute) {
 
         this.declaringKlass = declaringKlass;
+
+        // TODO(peterssen): Custom constant pool for methods is not supported.
+        this.pool = declaringKlass.getConstantPool();
+
         this.name = linkedMethod.getName();
         this.rawSignature = linkedMethod.getSignature();
         this.parsedSignature = declaringKlass.getSignatures().make(linkedMethod.getSignature());

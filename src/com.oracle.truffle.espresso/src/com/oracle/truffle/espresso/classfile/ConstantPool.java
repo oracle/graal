@@ -27,7 +27,7 @@ public abstract class ConstantPool {
 
     public static final ConstantPool EMPTY = new ConstantPoolImpl(new PoolConstant[]{InvalidConstant.VALUE});
 
-    enum Tag {
+    public enum Tag {
         INVALID(0),
         UTF8(1),
         INTEGER(3),

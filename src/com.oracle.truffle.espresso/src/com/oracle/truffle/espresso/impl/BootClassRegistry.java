@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.impl;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
