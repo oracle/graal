@@ -31,6 +31,7 @@ import java.util.List;
 
 import org.graalvm.compiler.debug.DebugContext;
 
+import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -51,10 +52,17 @@ public class SharedLibraryViaCCBootImage extends NativeBootImageViaCC {
     }
 
     @Override
-    public Path write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
-        Path imagePath = super.write(debug, outputDirectory, tempDirectory, imageName, config);
-        writeHeaderFiles(outputDirectory, imageName, false);
-        writeHeaderFiles(outputDirectory, imageName, true);
-        return imagePath;
+    protected void addMainEntryPoint(CCLinkerInvocation inv) {
+        if (mainEntryPoint != null) {
+            inv.addSymbolAlias(mainEntryPoint, "run_main");
+        }
+    }
+
+    @Override
+    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
+        LinkerInvocation inv = super.write(debug, outputDirectory, tempDirectory, imageName, config);
+        writeHeaderFiles(outputDirectory, imageName, inv.getSymbolAliases(), false);
+        writeHeaderFiles(outputDirectory, imageName, inv.getSymbolAliases(), true);
+        return inv;
     }
 }

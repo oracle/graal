@@ -569,6 +569,7 @@ def svm_gate_body(args, tasks):
                 javac_command = ' '.join(javac_image_command(svmbuild_dir()))
                 helloworld(['--output-path', svmbuild_dir(), '--javac-command', javac_command])
                 if mx.get_os() != 'windows':  # building shared libs on Windows currently not working (GR-13594)
+                    helloworld(['--output-path', svmbuild_dir(), '--shared']) # Building and running helloworld as shared library
                     cinterfacetutorial([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
@@ -805,7 +806,27 @@ def _helloworld(native_image, javac_command, path, args):
         actual_output.append(x)
         mx.log(x)
 
-    mx.run([join(path, 'helloworld')], out=_collector)
+    if '--shared' in args:
+        # If helloword got built into a shared library we use python to load the shared library and call its `run_main`.  We are
+        # capturing the stdout during the call into an unnamed pipe so that we can use it in the actual vs. expected check below.
+        try:
+            import ctypes
+            so_name = mx.add_lib_suffix('helloworld')
+            lib = ctypes.CDLL(join(path, so_name))
+            stdout = os.dup(1) # save original stdout
+            pout, pin = os.pipe()
+            os.dup2(pin, 1) # connect stdout to pipe
+            lib.run_main(1, 'dummy') # call run_main of shared lib
+            call_stdout = os.read(pout, 120) # get pipe contents
+            actual_output.append(call_stdout)
+            os.dup2(stdout, 1) # restore original stdout
+            mx.log("Stdout from calling run_main in shared object " + so_name)
+            mx.log(call_stdout)
+        finally:
+            os.close(pin)
+            os.close(pout)
+    else:
+        mx.run([join(path, 'helloworld')], out=_collector)
 
     if actual_output != expected_output:
         raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
