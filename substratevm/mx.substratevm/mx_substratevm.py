@@ -598,10 +598,15 @@ def build_libgraal(image_args):
         return 'libgraal is unsupported on Windows'
 
     graal_hotspot_library = mx.dependency('substratevm:GRAAL_HOTSPOT_LIBRARY', fatalIfMissing=False)
+    truffle_compiler_library = mx.dependency('compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL', fatalIfMissing=False)
+
     if not graal_hotspot_library:
         return 'libgraal dependency substratevm:GRAAL_HOTSPOT_LIBRARY is missing'
 
-    libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', graal_hotspot_library.classpath_repr(),
+    if not truffle_compiler_library:
+        return 'libgraal dependency compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL is missing'
+
+    libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', os.pathsep.join([graal_hotspot_library.classpath_repr(), truffle_compiler_library.classpath_repr()]),
         '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
         '--tool:truffle',
         '-H:-UseServiceLoaderFeature',
