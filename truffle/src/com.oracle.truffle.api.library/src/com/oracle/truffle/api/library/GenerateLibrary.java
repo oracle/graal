@@ -51,7 +51,7 @@ import java.lang.annotation.Target;
  * extend {@linkplain Library} and are annotated by <code>@GenerateLibrary</code>. A library
  * consists of a set of messages, that are specified using public Java methods. The methods may be
  * abstract or use a default implementations. The first parameter of every method is the receiver
- * parameter, which is mandatory and must be a subtype of {@link Object} and the same across all
+ * parameter, which is mandatory and must be a sub type of {@link Object} and the same across all
  * messages of a library. There are no restrictions on the return type or argument types of a
  * message. Every method that specifies a message must have a name that is unique for a library.
  * Final or private methods are ignored. Parameter type overloading is currently not support for
@@ -67,43 +67,20 @@ import java.lang.annotation.Target;
  * &#64;GenerateLibrary
  * public abstract class ArrayLibrary extends Library {
  *
- *     public abstract boolean isArray(Object receiver);
+ *     public boolean isArray(Object receiver) {
+ *         return false;
+ *     }
  *
  *     public abstract int read(Object receiver, int index);
  * }
  * </pre>
  *
- * These messages will throw an {@link AbstractMethodError} if they are invoked and not exported for
- * a given receiver type. In order to customize the abstract message behavior, default
- * implementations can be provided. For example:
- *
- * <pre>
- * &#64;GenerateLibrary
- * public abstract class ArrayLibrary extends Library {
- *
- *     &#64;Abstract(ifExported = "read")
- *     public boolean isArray(Object receiver) {
- *         return false;
- *     }
- *
- *     &#64;Abstract(ifExported = "isArray")
- *     public int read(Object receiver, int index) {
- *         throw new UnsupportedOperationException();
- *     }
- * }
- * </pre>
- *
- * In this example a receiver that does not export the <code>ArrayLibrary</code> will return
- * <code>false</code> for <code>isArray</code> and throw an
- * {@linkplain UnsupportedOperationException} for <code>read</code> calls.
- * <p>
- * If messages should be abstract and have a default implementation the
- * {@linkplain Abstract @Abstract} annotation can be used. This is useful to require messages to be
- * implemented only if the library is exported. The abstract annotation may be specified on the
- * condition of whether other messages are {@link Abstract#ifExported() exported}. In the example
- * above we use
+ * Messages that are not implemented and have no default implementation throw an
+ * {@link AbstractMethodError}. The {@link Abstract} annotation can be used, to provide a default
+ * implementation for receiver types but at the same time make the message abstract.
  *
  * @see DefaultExport to specify default exports.
+ * @see Abstract to make messages abstract if they have a default implemetnation
  * @since 1.0
  */
 @Retention(RetentionPolicy.CLASS)
@@ -193,10 +170,69 @@ public @interface GenerateLibrary {
         }
     }
 
+    /**
+     * Makes a library message abstract independent whether it has an implementation. By default,
+     * abstract messages throw an {@link AbstractMethodError} if they are not exported for a given
+     * receiver type. To customize this behavior the library message can specify a method body and
+     * annotate it with {@link Abstract}.
+     * <p>
+     * <b>For example:</b>
+     *
+     * <pre>
+     * &#64;GenerateLibrary
+     * public abstract class ArrayLibrary extends Library {
+     *
+     *     &#64;Abstract(ifExported = "read")
+     *     public boolean isArray(Object receiver) {
+     *         return false;
+     *     }
+     *
+     *     &#64;Abstract(ifExported = "isArray")
+     *     public int read(Object receiver, int index) {
+     *         throw new UnsupportedOperationException();
+     *     }
+     * }
+     * </pre>
+     *
+     * In this example a receiver that does not export the <code>ArrayLibrary</code> will return
+     * <code>false</code> for <code>isArray</code> and throw an
+     * {@linkplain UnsupportedOperationException} for <code>read</code> calls. A message can be made
+     * conditionally abstract by specifying the {@link Abstract#ifExported()} attribute.
+     *
+     * @see #ifExported()
+     * @since 1.0
+     */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.METHOD})
     public @interface Abstract {
 
+        /**
+         * Specifies a message to be abstract only if another message is implemented. Multiple other
+         * messages can be specified.
+         * <p>
+         * <b>For example:</b>
+         *
+         * <pre>
+         * &#64;GenerateLibrary
+         * public abstract class ArrayLibrary extends Library {
+         *
+         *     &#64;Abstract(ifExported = "read")
+         *     public boolean isArray(Object receiver) {
+         *         return false;
+         *     }
+         *
+         *     &#64;Abstract(ifExported = "isArray")
+         *     public int read(Object receiver, int index) {
+         *         throw new UnsupportedOperationException();
+         *     }
+         * }
+         * </pre>
+         *
+         * In this example the isArray message only needs to be exported if the read message is
+         * exported and vice-versa.
+         *
+         * @since 1.0
+         */
         String[] ifExported() default {};
 
     }
