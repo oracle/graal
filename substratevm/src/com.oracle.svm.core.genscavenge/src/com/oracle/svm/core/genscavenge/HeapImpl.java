@@ -31,6 +31,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import javax.management.MBeanNotificationInfo;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationFilter;
+import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -711,7 +715,7 @@ public class HeapImpl extends Heap {
  * memory usage, the other kind of memory will still be walked. If someone asks for both the heap
  * memory usage <em>and</em> the non-heap memory usage, all the memory will be walked twice.
  */
-final class HeapImplMemoryMXBean implements MemoryMXBean {
+final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmitter {
 
     /** Constant for the {@link MemoryUsage} constructor. */
     static final long UNDEFINED_MEMORY_USAGE = -1L;
@@ -766,6 +770,23 @@ final class HeapImplMemoryMXBean implements MemoryMXBean {
     @Override
     public void gc() {
         System.gc();
+    }
+
+    @Override
+    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+    }
+
+    @Override
+    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+    }
+
+    @Override
+    public void removeNotificationListener(NotificationListener listener) {
+    }
+
+    @Override
+    public MBeanNotificationInfo[] getNotificationInfo() {
+        return new MBeanNotificationInfo[0];
     }
 }
 
