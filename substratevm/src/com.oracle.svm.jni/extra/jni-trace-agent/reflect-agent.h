@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef TRACE_AGENT_H
-#define TRACE_AGENT_H
+#ifndef REFLECT_AGENT_H
+#define REFLECT_AGENT_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <jvmti.h>
-
-#define MAX_PATH_LEN 4096
-
-// A copy of the initial JNI function table before any modifications
-extern jniNativeInterface *jnifun;
-
-// Non-debug assertion
-void __guarantee_fail(const char *test, const char *file, unsigned int line, const char *funcname);
-#define guarantee(expr) \
-  ((expr) \
-   ? (void) (0) \
-   : __guarantee_fail (#expr, __FILE__, __LINE__, __func__))
+jint OnLoad_Reflection(JavaVM *vm, char *options, jvmtiEnv *jvmti, jvmtiEventCallbacks *callbacks);
+void OnVMInit_Reflection(jvmtiEnv *jvmti, JNIEnv *jni, jthread thread);
+void OnVMStart_Reflection(jvmtiEnv *jvmti, JNIEnv *jni);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* TRACE_AGENT_H */
+#endif /* REFLECT_AGENT_H */

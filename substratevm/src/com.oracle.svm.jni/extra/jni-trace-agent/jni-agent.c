@@ -99,14 +99,16 @@ static jfieldID JNICALL GetStaticFieldID(JNIEnv *env, jclass clazz, const char *
 }
 
 jint OnLoad_JNI(JavaVM *vm, char *options, void *reserved, jvmtiEventCallbacks *callbacks) {
-  guarantee((output = fopen(options, "w")) != NULL);
+  char path[MAX_PATH_LEN];
+  guarantee(snprintf(path, MAX_PATH_LEN, "%s%s", options, ".jni.log") < MAX_PATH_LEN);
+  guarantee((output = fopen(path, "w")) != NULL);
   return JVMTI_ERROR_NONE;
 }
 
 void OnVMStart_JNI(jvmtiEnv *jvmti, JNIEnv *jni) {
   jclass classClass;
-  guarantee((classClass = (*jni)->FindClass(jni, "java/lang/Class")) != NULL);
-  guarantee((classGetName = (*jni)->GetMethodID(jni, classClass, "getName", "()Ljava/lang/String;")) != NULL);
+  guarantee((classClass = jnifun->FindClass(jni, "java/lang/Class")) != NULL);
+  guarantee((classGetName = jnifun->GetMethodID(jni, classClass, "getName", "()Ljava/lang/String;")) != NULL);
 
   jniNativeInterface *functions;
   guarantee((*jvmti)->GetJNIFunctionTable(jvmti, &functions) == JVMTI_ERROR_NONE);

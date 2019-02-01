@@ -26,7 +26,7 @@
 CC=cc
 CFLAGS=-g -c -Wall -fPIC
 LDFLAGS=-Wall -shared
-SOURCES=trace-agent.c jni-agent.c
+SOURCES=trace-agent.c jni-agent.c reflect-agent.c
 OBJECTS=$(SOURCES:.c=.o)
 RESULT=trace-agent.so
 

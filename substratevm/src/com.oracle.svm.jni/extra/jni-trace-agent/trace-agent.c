@@ -32,6 +32,7 @@ extern "C" {
 #include <string.h>
 
 #include "jni-agent.h"
+#include "reflect-agent.h"
 
 void __guarantee_fail(const char *test, const char *file, unsigned int line, const char *funcname) {
     fprintf(stderr, "%s:%u: %s: check failed, aborting: %s\n", file, line, funcname, test);
@@ -44,6 +45,11 @@ void JNICALL OnVMStart(jvmtiEnv *jvmti, JNIEnv *jni) {
   guarantee((*jvmti)->GetJNIFunctionTable(jvmti, &jnifun) == JVMTI_ERROR_NONE);
 
   OnVMStart_JNI(jvmti, jni);
+  OnVMStart_Reflection(jvmti, jni);
+}
+
+void JNICALL OnVMInit(jvmtiEnv *jvmti, JNIEnv *jni, jthread thread) {
+  OnVMInit_Reflection(jvmti, jni, thread);
 }
 
 void JNICALL OnVMDeath(jvmtiEnv *jvmti, JNIEnv *jni) {
@@ -57,9 +63,14 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
   jvmtiEventCallbacks callbacks;
   memset(&callbacks, 0, sizeof (callbacks));
   callbacks.VMStart = &OnVMStart;
+  callbacks.VMInit = &OnVMInit;
   callbacks.VMDeath = &OnVMDeath;
 
   jint result = OnLoad_JNI(vm, options, jvmti, &callbacks);
+  if (result != JNI_OK) {
+    return result;
+  }
+  result = OnLoad_Reflection(vm, options, jvmti, &callbacks);
   if (result != JNI_OK) {
     return result;
   }
