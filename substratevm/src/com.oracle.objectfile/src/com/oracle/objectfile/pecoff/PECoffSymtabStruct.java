@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,7 +94,8 @@ final class PECoffSymtabStruct {
 
             sym = new PECoffSymbolStruct(index, type, storageclass, secHdrIndex, offset);
             symbols.add(sym);
-            if (storageclass == IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL) {
+            // Only add exports for external class symbols that are defined
+            if (storageclass == IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL && secHdrIndex != -1) {
                 addDirective(name, type);
             }
         }
@@ -142,6 +143,10 @@ final class PECoffSymtabStruct {
         buff.putInt(0, strTabNrOfBytes);
 
         return (strs);
+    }
+
+    int getDirectiveSize() {
+        return (directives.length());
     }
 
     byte[] getDirectiveArray() {
