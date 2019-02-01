@@ -73,6 +73,10 @@ public class CachedLibraryTest extends AbstractLibraryTest {
     @SuppressWarnings("unused")
     public abstract static class SomethingLibrary extends Library {
 
+        public boolean guard(Object receiver) {
+            return true;
+        }
+
         public String call(Object receiver) {
             return "default";
         }
@@ -562,8 +566,11 @@ public class CachedLibraryTest extends AbstractLibraryTest {
 
         @Specialization
         public static String s1(Object receiver,
-                        @ExpectError("A limit must be specified for a dispatched @CachedLibrary. A @CachedLibrary annotation without value attribute needs to specifiy a limit for the number of " +
-                                        "entries in the cache per library. Either specify the limit or specify a value attribute to resolve this.") @CachedLibrary SomethingLibrary lib2) {
+                        @ExpectError("A specialized value expression or limit must be specified for @CachedLibrary. " +
+                                        "Use @CachedLibrary(\"value\") for a specialized " +
+                                        "or @CachedLibrary(limit=\"\") for a dispatched library. " +
+                                        "See the javadoc of @CachedLibrary for further details.") //
+                        @CachedLibrary SomethingLibrary lib2) {
             return lib2.call(receiver);
         }
     }
@@ -656,6 +663,21 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         public static String s0(Object receiver,
                         @CachedLibrary("receiver") SomethingLibrary lib1,
                         @SuppressWarnings("unused") @Cached SimpleNode testNode) {
+            return lib1.call(receiver);
+        }
+    }
+
+    /*
+     * Test that dispatched libraries in guards don't require an outer limit.
+     */
+    public abstract static class DispatchedLibrariesSingleInstance extends Node {
+
+        abstract String execute(Object receiver);
+
+        @ExpectError("The limit expression has no effect. Multiple specialization instantiations are impossible for this specialization.")
+        @Specialization(guards = "lib1.guard(receiver)", limit = "3")
+        public static String s0(Object receiver,
+                        @CachedLibrary(limit = "2") SomethingLibrary lib1) {
             return lib1.call(receiver);
         }
     }

@@ -505,6 +505,8 @@ public final class SpecializationData extends TemplateMethod {
                     for (CacheExpression cache : getCaches()) {
                         if (cache.isInitializedInFastPath()) {
                             continue;
+                        } else if (!guard.isLibraryAcceptsGuard() && cache.isCachedLibrary()) {
+                            continue;
                         }
                         if (boundVariables.contains(cache.getParameter().getVariableElement())) {
                             return true;

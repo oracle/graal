@@ -1904,7 +1904,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private SpecializationData initializeCaches(SpecializationData specialization, DSLExpressionResolver resolver) {
-
         List<CacheExpression> expressions = new ArrayList<>();
         List<CacheExpression> cachedLibraries = new ArrayList<>();
         for (Parameter parameter : specialization.getParameters()) {
@@ -1921,10 +1920,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 if (expression == null) {
                     // its cached dispatch version treat it as normal cached
                     if (limit == null) {
-                        library.addError("A limit must be specified for a dispatched @%s. " +
-                                        "A @%s annotation without value attribute needs to specifiy a limit for the number of entries in the cache per library. " +
-                                        "Either specify the limit or specify a value attribute to resolve this.",
-                                        CachedLibrary.class.getSimpleName(), CachedLibrary.class.getSimpleName());
+                        library.addError("A specialized value expression or limit must be specified for @%s. " +
+                                        "Use @%s(\"value\") for a specialized or " +
+                                        "@%s(limit=\"\") for a dispatched library. " +
+                                        "See the javadoc of @%s for further details.",
+                                        CachedLibrary.class.getSimpleName(),
+                                        CachedLibrary.class.getSimpleName(),
+                                        CachedLibrary.class.getSimpleName(),
+                                        CachedLibrary.class.getSimpleName());
                         continue;
                     }
                     DSLExpression limitExpression = parseCachedExpression(resolver, library, context.getType(int.class), limit);
@@ -1945,7 +1948,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     library.setUncachedExpression(resolveCachedExpression(cachedResolver, library, libraryType, uncachedExpression, null));
                 } else {
                     if (limit != null) {
-                        library.addError("The limit and value attribute cannot be specified at the same time. They are mutually exclusive.");
+                        library.addError("The limit and specialized value expression cannot be specified at the same time. They are mutually exclusive.");
+                        continue;
                     }
                     cachedLibraries.add(library);
                 }
@@ -2062,7 +2066,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 acceptGuard = resolveCachedExpression(resolver, cachedLibrary, context.getType(boolean.class), acceptGuard, value);
                 if (acceptGuard != null) {
                     GuardExpression guard = new GuardExpression(specialization, acceptGuard);
-                    guard.setForceConstantTrueInSlowPath(true);
+                    guard.setLibraryAcceptsGuard(true);
                     specialization.getGuards().add(guard);
                 }
                 TypeMirror libraryType = context.getType(Library.class);

@@ -68,7 +68,7 @@ public final class GuardExpression extends MessageContainer {
     private final SpecializationData source;
     private final DSLExpression expression;
 
-    private boolean forceConstantTrueInSlowPath;
+    private boolean libraryAcceptsGuard;
 
     public GuardExpression(SpecializationData source, DSLExpression expression) {
         this.source = source;
@@ -94,8 +94,12 @@ public final class GuardExpression extends MessageContainer {
         return expression;
     }
 
-    public void setForceConstantTrueInSlowPath(boolean forceConstantTrueInSlowPath) {
-        this.forceConstantTrueInSlowPath = forceConstantTrueInSlowPath;
+    public void setLibraryAcceptsGuard(boolean forceConstantTrueInSlowPath) {
+        this.libraryAcceptsGuard = forceConstantTrueInSlowPath;
+    }
+
+    public boolean isLibraryAcceptsGuard() {
+        return libraryAcceptsGuard;
     }
 
     @Override
@@ -104,7 +108,7 @@ public final class GuardExpression extends MessageContainer {
     }
 
     public boolean isConstantTrueInSlowPath(ProcessorContext context) {
-        if (forceConstantTrueInSlowPath) {
+        if (libraryAcceptsGuard) {
             return true;
         }
         DSLExpression reducedExpression = getExpression().reduce(new AbstractDSLExpressionReducer() {
