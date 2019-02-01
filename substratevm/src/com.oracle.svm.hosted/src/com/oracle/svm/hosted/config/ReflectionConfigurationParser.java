@@ -90,7 +90,7 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
     private void parseClass(Map<String, Object> data) {
         Object classObject = data.get("name");
         if (classObject == null) {
-            throw new JSONParserException("Missing atrribute 'name' in class descriptor object");
+            throw new JSONParserException("Missing attribute 'name' in class descriptor object");
         }
         String className = asString(classObject, "name");
 
@@ -167,7 +167,7 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
         }
 
         if (fieldName == null) {
-            throw new JSONParserException("Missing atribute 'name' in definition of field for class " + clazz.getTypeName());
+            throw new JSONParserException("Missing attribute 'name' in definition of field for class " + clazz.getTypeName());
         }
 
         try {

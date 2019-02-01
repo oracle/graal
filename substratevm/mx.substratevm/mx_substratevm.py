@@ -606,8 +606,7 @@ def build_libgraal(image_args):
         '--tool:truffle',
         '-H:-UseServiceLoaderFeature',
         '-H:+AllowFoldMethods',
-        '-Djdk.vm.ci.services.aot=true',
-        '-H:JNIConfigurationResources=com/oracle/svm/graal/hotspot/libgraal/HotSpotGraalLibrary.json']
+        '-Djdk.vm.ci.services.aot=true']
 
     native_image_on_jvm(libgraal_args + image_args)
 

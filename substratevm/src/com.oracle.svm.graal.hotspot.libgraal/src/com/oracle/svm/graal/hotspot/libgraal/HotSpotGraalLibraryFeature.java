@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,23 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Array;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -58,6 +68,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -67,12 +78,19 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.jni.JNIRuntimeAccess.JNIRuntimeAccessibilitySupport;
 import com.oracle.svm.jni.hosted.JNIFeature;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotSignature;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -102,6 +120,178 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(MethodAnnotationSupport.class, new MethodAnnotationSupport());
+
+        JNIRuntimeAccessibilitySupport registry = ImageSingletons.lookup(JNIRuntimeAccessibilitySupport.class);
+        registerJNIConfiguration(registry, ((AfterRegistrationAccessImpl) access).getImageClassLoader());
+    }
+
+    /**
+     * Helper for registering the JNI configuration for libgraal by parsing the output of the
+     * {@code -XX:JVMCILibDumpJNIConfig} VM option.
+     */
+    static class JNIConfigSource implements AutoCloseable {
+        /**
+         * VM command executed to read the JNI config.
+         */
+        private final String quotedCommand;
+
+        /**
+         * JNI config lines.
+         */
+        private final List<String> lines;
+
+        /**
+         * Loader used to resolve type names in the config.
+         */
+        private final ImageClassLoader loader;
+
+        /**
+         * Path to intermediate file containing the config. This is deleted unless there is an
+         * {@link #error(String, Object...)} parsing the config to make diagnosing the error easier.
+         */
+        private Path configFilePath;
+
+        int lineNo;
+
+        JNIConfigSource(ImageClassLoader loader) {
+            this.loader = loader;
+            Path javaHomePath = Paths.get(System.getProperty("java.home"));
+            Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
+            Path javaExe = javaHomePath.resolve(binJava);
+            if (!Files.isExecutable(javaExe)) {
+                throw UserError.abort("Java launcher " + javaExe + " does not exist or is not executable");
+            }
+            configFilePath = Paths.get("libgraal_jniconfig.txt");
+
+            String[] command = {javaExe.toFile().getAbsolutePath(), "-XX:JVMCILibDumpJNIConfig=" + configFilePath};
+            quotedCommand = Arrays.asList(command).stream().map(e -> e.indexOf(' ') == -1 ? e : '\'' + e + '\'').collect(Collectors.joining(" "));
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.redirectErrorStream(true);
+            Process p;
+            try {
+                p = pb.start();
+            } catch (IOException e) {
+                throw UserError.abort(String.format("Could not run command: %s%n%s", quotedCommand, e));
+            }
+
+            String nl = System.getProperty("line.separator");
+            String out = new BufferedReader(new InputStreamReader(p.getInputStream()))
+                            .lines().collect(Collectors.joining(nl));
+
+            int exitValue;
+            try {
+                exitValue = p.waitFor();
+            } catch (InterruptedException e) {
+                throw UserError.abort(String.format("Interrupted waiting for command: %s%n%s", quotedCommand, out));
+            }
+            if (exitValue != 0) {
+                throw UserError.abort(String.format("Command finished with exit value %d: %s%n%s", exitValue, quotedCommand, out));
+            }
+            try {
+                lines = Files.readAllLines(configFilePath);
+            } catch (IOException e) {
+                configFilePath = null;
+                throw UserError.abort(String.format("Reading JNI config in %s dumped by command: %s%n%s", configFilePath, quotedCommand, out));
+            }
+        }
+
+        @Override
+        public void close() {
+            if (configFilePath != null && Files.exists(configFilePath)) {
+                try {
+                    Files.delete(configFilePath);
+                    configFilePath = null;
+                } catch (IOException e) {
+                    System.out.printf("WARNING: Cound not delete %s: %s%n", configFilePath, e);
+                }
+            }
+        }
+
+        Class<?> findClass(String name) {
+            Class<?> c = loader.findClassByName(name, false);
+            if (c == null) {
+                throw error("Class " + name + " not found");
+            }
+            return c;
+        }
+
+        void check(boolean condition, String format, Object... args) {
+            if (!condition) {
+                error(format, args);
+            }
+        }
+
+        UserException error(String format, Object... args) {
+            Path path = configFilePath;
+            configFilePath = null; // prevent deletion
+            String errorMessage = String.format(format, args);
+            String errorLine = lines.get(lineNo - 1);
+            throw UserError.abort(String.format("Line %d of %s: %s%n%s%n%s generated by command: %s",
+                            lineNo, path.toAbsolutePath(), errorMessage, errorLine, path, quotedCommand));
+
+        }
+    }
+
+    private static void registerJNIConfiguration(JNIRuntimeAccessibilitySupport registry, ImageClassLoader loader) {
+        try (JNIConfigSource source = new JNIConfigSource(loader)) {
+            Map<String, Class<?>> classes = new HashMap<>();
+            for (String line : source.lines) {
+                source.lineNo++;
+                String[] tokens = line.split(" ");
+                source.check(tokens.length >= 2, "Expected at least 2 tokens");
+                String className = tokens[1].replace('/', '.');
+                Class<?> clazz = classes.get(className);
+                if (clazz == null) {
+                    clazz = source.findClass(className);
+                    registry.register(clazz);
+                    registry.register(Array.newInstance(clazz, 0).getClass());
+                    classes.put(className, clazz);
+                }
+
+                switch (tokens[0]) {
+                    case "field": {
+                        source.check(tokens.length == 4, "Expected 4 tokens for a field");
+                        String fieldName = tokens[2];
+                        try {
+                            registry.register(false, clazz.getDeclaredField(fieldName));
+                        } catch (NoSuchFieldException e) {
+                            throw source.error("Field %s.%s not found", clazz.getTypeName(), fieldName);
+                        } catch (NoClassDefFoundError e) {
+                            throw source.error("Could not register field %s.%s: %s", clazz.getTypeName(), fieldName, e);
+                        }
+                        break;
+                    }
+                    case "method": {
+                        source.check(tokens.length == 4, "Expected 4 tokens for a method");
+                        String methodName = tokens[2];
+                        HotSpotSignature descriptor = new HotSpotSignature(runtime(), tokens[3]);
+                        Class<?>[] parameters = Arrays.asList(descriptor.toParameterTypes(null))//
+                                        .stream().map(JavaType::toClassName).map(source::findClass)//
+                                        .collect(Collectors.toList())//
+                                        .toArray(new Class<?>[descriptor.getParameterCount(false)]);
+                        try {
+                            if ("<init>".equals(methodName)) {
+                                registry.register(clazz.getDeclaredConstructor(parameters));
+                            } else {
+                                registry.register(clazz.getDeclaredMethod(methodName, parameters));
+                            }
+                        } catch (NoSuchMethodException e) {
+                            throw source.error("Method %s.%s%s not found: %e", clazz.getTypeName(), methodName, descriptor, e);
+                        } catch (NoClassDefFoundError e) {
+                            throw source.error("Could not register method %s.%s%s: %e", clazz.getTypeName(), methodName, descriptor, e);
+                        }
+                        break;
+                    }
+                    case "class": {
+                        source.check(tokens.length == 2, "Expected 2 tokens for a class");
+                        break;
+                    }
+                    default: {
+                        throw source.error("Unexpected token: " + tokens[0]);
+                    }
+                }
+            }
+        }
     }
 
     @Override
