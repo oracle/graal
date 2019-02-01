@@ -72,7 +72,7 @@ Now let's try to make the array read specialize on the constant-ness of values o
 class ReadArrayNode extends ExpressionNode {
     /*...*/
     @Specialization(guards = {"array.stride == cachedStride", 
-                               array.start  == cachedStart}, limit = "1")
+                              "array.start  == cachedStart"}, limit = "1")
     int doSequenceCached(SequenceArray array, int index, 
              @Cached("array.start")  int cachedStart,
              @Cached("array.stride") int cachedStride) {
@@ -118,7 +118,6 @@ Let's try to address these problems by using Java interfaces. We start by defini
 interface Array { 
     int read(int index); 
 }
-
 ```
 
 The implementations can now implement the `Array` interface and implement the read method in the representation class.
@@ -256,12 +255,11 @@ final class SequenceArray {
     
     @ExportMessage static class Read {
         @Specialization(guards = {"array.stride == cachedStride", 
-                                   array.start  == cachedStart}, limit = "1")
+                                  "array.start  == cachedStart"}, limit = "1")
         static int doSequenceCached(SequenceArray array, int index, 
                  @Cached("array.start")  int cachedStart,
                  @Cached("array.stride") int cachedStride) {
-            boundsCheck(array.length, index);
-            return cachedStart + (cachedStride * index);
+            return cachedStart + cachedStride * index;
         }
     
         @Specialization(replaces = "doSequenceCached")
@@ -274,7 +272,6 @@ final class SequenceArray {
 
 Since the message is declared using an inner class we need to specify the receiver type.
 Compared to normal nodes, this class must not extend `Node` and its methods must be `static` to allow the annotation processor to generate efficient code for the library subclass.
-
 
 Last, we need to use the array library in our read operation. The Library API provides an annotation called `@CachedLibrary` that is responsible for dispatching to libraries. The array read operation now looks like this:
 
@@ -347,6 +344,7 @@ In this tutorial, we have learned that with Truffle Libraries we no longer need 
 ### Are there known limitations?
 
 * Library exports currently cannot explicitly invoke their `super` implementation. This makes reflective implementations currently infeasible. See the example [here](https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.api.library.test/src/com/oracle/truffle/api/library/test/examples/ReflectiveCallExample.java).
+* Boxing elimination for return values is currently not supported. A message can only have one generic return type. Support for this is planned.
 
 
 ### When should I use Truffle Libraries?
