@@ -158,6 +158,8 @@ public abstract class LibraryFactory<T extends Library> {
     }
 
     /**
+     * Returns an uncached and specialized version of the library.
+     *
      * Returns an cached and manually dispatched version of this library.
      *
      * @see Library#getUncached(Class, Object) for further details.

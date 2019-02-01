@@ -45,27 +45,29 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 
 /**
- * The cached library annotation allows to use Truffle Libraries in parameters for
- * {@link Specialization} or {@link ExportMessage} annotated methods of exported libraries or nodes.
+ * The cached library annotation allows to use {@link com.oracle.truffle.api.library Truffle
+ * Libraries} conveniently in {@link Specialization specializations} or {@link ExportMessage
+ * exported messages}. It is designed as the primary way of using libraries. The
+ * {@link CachedLibrary} annotation may be used for any parameters of methods annotated with
+ * {@linkplain Specialization @Specialization} or {@linkplain @ExportMessage}.
  *
- * The cached library annotation can be used for internal and external dispatch. Internal dispatch
- * performs the lookup of the target export once per specialization instance and verifies its
- * {@link Library#accepts(Object) acceptance} automatically. This allows to avoid the repeated
- * lookups. This is also the recommended way of using Truffle Libraries by default:
+ * <h3>Using Specialized Libraries</h3>
  *
+ * A cached library can be specialized for a value that is referred to with the {@link #value()
+ * value expression} attribute. A specialized library implicitly prepends a guard for the
+ * {@link Library#accepts(Object) acceptance} of a library with the provided value expression.
+ * Adding the acceptance guard leads to multiple specialization instances as it binds to the cached
+ * library value. The {@link Specialization#limit() specialization} or {@link ExportMessage#limit()
+ * export} limit attribute must therefore be specified. If this limit overflows then the operation
+ * will rewrite itself to an {@link LibraryFactory#getUncached(Object) uncached} version of the
+ * library. Multiple specialized libraries may be used per export or specialization. The acceptance
+ * guards for these libraries will be added in the order of their declaration.
  * <p>
- * <h3>Internal Dispatch</h3>
- *
- *
- * <ul>
- * <li>Internally dispatched:
- * <li>Externally dispatched:
- * </ul>
- *
- * <b>Basic Usage Example:</b>
+ * <h4>Usage:</h4>
  *
  * <pre>
  * &#64;NodeChild
@@ -79,23 +81,71 @@ import com.oracle.truffle.api.dsl.Specialization;
  * }
  * </pre>
  *
+ * <p>
+ * It is recommended to use the plural of the specialized parameter name as naming convention for
+ * the library parameter name, e.g. a library for an <code>array</code> value is called
+ * <code>arrays</code>. If multiple libraries are specialized for the same specialized expression it
+ * is recommended to prepend the library name e.g. <code>interopArrays</code>.
  *
+ * <h3>Using Dispatched Libraries</h3>
+ * <p>
+ * If no specialized value expression can be specified, i.e. if the value is computed as part of the
+ * operation, then a dispatched version of a library can be used by omitting the {@link #value()
+ * value} attribute and specifying the {@link #limit()} attribute instead. A dispatched library
+ * builds the specialized value inline cache internally for each invocation of a message instead of
+ * once per outer specialization or export. An instance of a dispatched library therefore
+ * {@link Library#accepts(Object) accepts} any value as receiver. It is recommended to use the same
+ * generic library instance for few message invocations of similar values only, could lead to
+ * duplication of inline cache dispatches in the compiled code. The limit of a dispatched library
+ * may be set to 0 to directly switch to an uncached version of a library.
+ * <p>
  *
- * Note that the ArrayLibrary class is reused from the {@link GenerateLibrary} javadoc.
+ * <h4>Usage:</h4>
  *
+ * The following example combines the use of specialized and dispatched libraries. In this example
+ * the array is read twice. For the first <i>outer</i> read the specializing expression can be used.
+ * For the second read the specializing expression cannot be used as it depends on the result of the
+ * outer read. We therefore use a dispatched library for the inner array.
  *
- * Note that the following use is equivalent to
+ * <pre>
+ * &#64;NodeChild
+ * &#64;NodeChild
+ * &#64;NodeChild
+ * abstract static class TwoDimReadNode extends ExpressionNode {
+ *     &#64;Specialization(guards = "outerArrays.isArray(array)", limit = "2")
+ *     int doDefault(Object array, int outerIndex, int innerIndex,
+ *                     &#64;CachedLibrary("array") ArrayLibrary outerArrays,
+ *                     &#64;CachedLibrary(limit = "2") ArrayLibrary innerArrays) {
+ *         return innerArrays.read(outerArrays.read(outerIndex), innerIndex);
+ *     }
+ * }
+ * </pre>
  *
- *
- *
- *
+ * @see LibraryFactory for manually instantiating libraries
+ * @see com.oracle.truffle.api.library Truffle Library reference documentation
+ * @since 1.0
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
 public @interface CachedLibrary {
 
+    /**
+     * Sets the specialized value expression when using specialized libraries. The same syntax
+     * applies as for {@link Cached} value expressions.
+     *
+     * @see CachedLibrary for usage examples.
+     * @since 1.0
+     */
     String value() default "";
 
+    /**
+     * Sets the limit expression when using dispatched libraries. The limit expression sets the
+     * number of internally dispatched specialized libraries until an
+     * {@link LibraryFactory#getUncached() uncachedd} version of the library will be used.
+     *
+     * @see CachedLibrary for usage examples.
+     * @since 1.0
+     */
     String limit() default "";
 
 }

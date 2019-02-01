@@ -41,11 +41,12 @@
 package com.oracle.truffle.api.library.test.examples;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -56,8 +57,8 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ArgumentNode;
-import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExpressionNode;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExampleRootNode;
+import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExpressionNode;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy3Factory.ArrayReadNodeGen;
 
 @SuppressWarnings({"static-method", "unused"})
@@ -70,6 +71,15 @@ public class ArrayStrategy3 {
 
         public abstract int read(Object receiver, int index);
 
+        public static LibraryFactory<ArrayLibrary> getFactory() {
+            return FACTORY;
+        }
+
+        public static ArrayLibrary getUncached() {
+            return FACTORY.getUncached();
+        }
+
+        private static final LibraryFactory<ArrayLibrary> FACTORY = LibraryFactory.resolve(ArrayLibrary.class);
     }
 
     @ExportLibrary(ArrayLibrary.class)
@@ -135,4 +145,22 @@ public class ArrayStrategy3 {
         assertEquals(3, target.call(new SequenceArray(1, 2, 3), 1));
         assertEquals(0, target.call(new BufferArray(2), 1));
     }
+
+    @Test
+    public void uncachedExample() {
+        Object noArray = new Object();
+
+        ArrayLibrary arrays = ArrayLibrary.getUncached();
+
+        assertFalse(arrays.isArray(noArray));
+
+        Object sequence = new SequenceArray(1, 2, 3);
+        assertTrue(arrays.isArray(sequence));
+        assertEquals(1, arrays.read(sequence, 1));
+
+        Object buffer = new BufferArray(2);
+        assertTrue(arrays.isArray(buffer));
+        assertEquals(0, arrays.read(buffer, 1));
+    }
+
 }

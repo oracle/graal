@@ -103,7 +103,7 @@ import java.lang.annotation.Target;
  * condition of whether other messages are {@link Abstract#ifExported() exported}. In the example
  * above we use
  *
- *
+ * @see DefaultExport to specify default exports.
  * @since 1.0
  */
 @Retention(RetentionPolicy.CLASS)
@@ -111,10 +111,57 @@ import java.lang.annotation.Target;
 public @interface GenerateLibrary {
 
     /**
-     * Specifies a wrapper class that wraps all instances of that library only if Java assertions
-     * are enabled.
+     * Specifies an assertion wrapper class that can be to verify pre and post conditions of a
+     * library. Assertion wrappers are only inserted when assertions (-ea) are enabled. It is
+     * required that assertion wrappers don't introduce additional side-effects and call the
+     * delegate methods exactly once. If assertions are disabled no library wrapper will be inserted
+     * therefore not performing any checks when library messages are invoked.
+     * <p>
      *
-     * @return
+     * <b>Example Usage:</b>
+     *
+     * <pre>
+     * &#64;GenerateLibrary(assertions = ArrayAssertions.class)
+     * public abstract class ArrayLibrary extends Library {
+     *
+     *     public boolean isArray(Object receiver) {
+     *         return false;
+     *     }
+     *
+     *     public int read(Object receiver, int index) {
+     *         throw new UnsupportedOperationException();
+     *     }
+     *
+     *     static class ArrayAssertions extends ArrayLibrary {
+     *
+     *         &#64;Child private ArrayLibrary delegate;
+     *
+     *         ArrayAssertions(ArrayLibrary delegate) {
+     *             this.delegate = delegate;
+     *         }
+     *
+     *         &#64;Override
+     *         public boolean isArray(Object receiver) {
+     *             return delegate.isArray(receiver);
+     *         }
+     *
+     *         &#64;Override
+     *         public int read(Object receiver, int index) {
+     *             int result = super.read(receiver, index);
+     *             assert delegate.isArray(receiver) : "if a read was successful the receiver must be an array";
+     *             return result;
+     *         }
+     *
+     *         &#64;Override
+     *         public boolean accepts(Object receiver) {
+     *             return delegate.accepts(receiver);
+     *         }
+     *     }
+     * }
+     *
+     * </pre>
+     *
+     * @since 1.0
      */
     Class<? extends Library> assertions() default Library.class;
 
