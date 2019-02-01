@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
@@ -50,5 +51,6 @@ class SubstrateLIRBackendFeature implements Feature {
                 return new LIRNativeImageCodeCache(compileQueue.getCompilations(), heap);
             }
         });
+        ImageSingletons.add(SnippetRuntime.ExceptionStackFrameVisitor.class, new SnippetRuntime.ExceptionStackFrameVisitor());
     }
 }
