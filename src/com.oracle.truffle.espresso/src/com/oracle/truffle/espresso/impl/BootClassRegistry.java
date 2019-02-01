@@ -23,9 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.concurrent.ConcurrentHashMap;
-
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -33,44 +30,35 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
- * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
- * loader is associated with a {@link GuestClassRegistry} and vice versa.
- *
- * This class is analogous to the ClassLoaderData C++ class in HotSpot.
+ * A {@link BootClassRegistry} maps type names to resolved {@link Klass} instances loaded by the
+ * boot class loader.
  */
-public class BootClassRegistry implements ClassRegistry {
+public final class BootClassRegistry extends ClassRegistry {
 
     private final EspressoContext context;
-
-    /**
-     * The map from symbol to classes for the classes defined by the class loader associated with
-     * this registry. Use of {@link ConcurrentHashMap} allows for atomic insertion while still
-     * supporting fast, non-blocking lookup. There's no need for deletion as class unloading removes
-     * a whole class registry and all its contained classes.
-     */
-    private final ConcurrentHashMap<ByteString<Type>, Klass> classes = new ConcurrentHashMap<>();
 
     public BootClassRegistry(EspressoContext context) {
         this.context = context;
         // Primitive classes do not have a .class definition, inject them directly in the BCL.
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive()) {
-                classes.put(context.getTypes().make(kind.getTypeChar() + ""), new PrimitiveKlass(context, kind));
+                classes.put(context.getTypes().make(kind.getType()), new PrimitiveKlass(context, kind));
             }
         }
     }
 
     @Override
-    public Klass resolve(ByteString<Type> type) {
+    public Klass loadKlass(ByteString<Type> type) {
         if (Types.isArray(type)) {
             ByteString<Type> elemental = Types.getElementalType(type);
-            Klass klass = resolve(elemental);
-            if (klass == null) {
+            Klass elementalKlass = loadKlass(elemental);
+            if (elementalKlass == null) {
                 return null;
             }
-            return klass.getArrayClass(Types.getArrayDimensions(type));
+            return elementalKlass.getArrayClass(Types.getArrayDimensions(type));
         }
 
         // TODO(peterssen): Make boot class registry thread-safe. Class loading is not a
@@ -82,7 +70,7 @@ public class BootClassRegistry implements ClassRegistry {
         }
 
         Klass hostClass = null;
-        // String className = TypeDescriptor.slashified(type.toJavaName());
+        String className = type.toString(); // TypeDescriptor.slashified(type.toJavaName());
 
         EspressoError.guarantee(!Types.isPrimitive(type), "Primitives must be in the registry");
 
@@ -91,38 +79,17 @@ public class BootClassRegistry implements ClassRegistry {
             return null;
         }
 
-        // TODO(peterssen): Parsing does not trigger any additional loading, so this doesn't deadlock the BCL.
-        synchronized (this) {
-            klass = classes.get(type);
-            if (klass == null) {
-                klass = ClassfileParser.parse(StaticObject.NULL, classpathFile, className, hostClass, context);
-                classes.putIfAbsent(type, klass);
-            }
-        }
+        // Defining a class also loads the superclass and the superinterfaces which excludes the
+        // use of computeIfAbsent to insert the class since the map is modified.
+        klass = defineKlass(context, type, classpathFile.contents);
+        Klass previous = classes.put(type, klass);
+        EspressoError.guarantee(previous == null, "Klass " + previous + " loaded twice");
 
         return klass;
     }
 
     @Override
-    public Klass findLoadedKlass(ByteString<Type> type) {
-        if (Types.isArray(type)) {
-            ByteString<Type> elemental = Types.getElementalType(type);
-            Klass klass = findLoadedKlass(elemental);
-            if (klass == null) {
-                return null;
-            }
-            return klass.getArrayClass(Types.getArrayDimensions(type));
-        }
-        return classes.get(type);
-    }
-
-    @Override
-    public Klass defineKlass(ByteString<Type> type, Klass klass) {
-        assert !classes.containsKey(type);
-        Klass prevKlass = classes.putIfAbsent(type, klass);
-        if (prevKlass != null) {
-            return prevKlass;
-        }
-        return klass;
+    public @Host(ClassLoader.class) StaticObject getClassLoader() {
+        return StaticObject.NULL;
     }
 }

@@ -102,7 +102,10 @@ public final class ClassRegistries {
                     return new GuestClassRegistry(context, cl);
                 }
             });
-            return registry.resolve(type);
+            return registry.defineKlass(type, bytes);
         }
     }
+
+
+
 }

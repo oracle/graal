@@ -23,14 +23,14 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
  * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
@@ -38,74 +38,52 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
  *
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
-public class GuestClassRegistry implements ClassRegistry {
+public final class GuestClassRegistry extends ClassRegistry {
 
     private final EspressoContext context;
-
-    /**
-     * The map from symbol to classes for the classes defined by the class loader associated with
-     * this registry. Use of {@link ConcurrentHashMap} allows for atomic insertion while still
-     * supporting fast, non-blocking lookup. There's no need for deletion as class unloading removes
-     * a whole class registry and all its contained classes.
-     */
-    private final ConcurrentHashMap<ByteString<Type>, Klass> classes = new ConcurrentHashMap<>();
 
     /**
      * The class loader associated with this registry.
      */
     private final StaticObject classLoader;
 
-    public GuestClassRegistry(EspressoContext context, StaticObject classLoader) {
+    public GuestClassRegistry(EspressoContext context, @Host(ClassLoader.class) StaticObject classLoader) {
         this.context = context;
+        assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
     }
 
     @Override
-    public Klass resolve(ByteString<Type> type) {
+    public Klass loadKlass(ByteString<Type> type) {
         if (Types.isArray(type)) {
-            Klass klass = resolve(Types.getElementalType(type));
-            if (klass == null) {
+            Klass elemental = loadKlass(Types.getElementalType(type));
+            if (elemental == null) {
                 return null;
             }
-            int dims = Types.getArrayDimensions(type);
-            for (int i = 0; i < dims; ++i) {
-                klass = klass.getArrayClass();
-            }
-            return klass;
+            return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
         assert StaticObject.notNull(classLoader);
-        // TODO(peterssen): Should the class be resolved?
+
         StaticObjectClass guestClass = (StaticObjectClass) Meta.meta(classLoader).method("loadClass", Class.class, String.class, boolean.class).invokeDirect(
                         context.getMeta().toGuest(type.toJavaName()), false);
-        Klass k = guestClass.getMirror();
+
+        Klass klass = guestClass.getMirror();
+
         meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(guestClass);
-        classes.put(type, k);
-        return k;
+
+        Klass previuos = classes.put(type, klass);
+        EspressoError.guarantee(previuos == null, "Klass " + type + " defined twice");
+        return klass;
     }
 
     @Override
-    public Klass findLoadedKlass(ByteString<Type> type) {
-        if (Types.isArray(type)) {
-            Klass klass = findLoadedKlass(Types.getElementalType(type));
-            if (klass == null) {
-                return null;
-            }
-            int dims = Types.getArrayDimensions(type);
-            for (int i = 0; i < dims; ++i) {
-                klass = klass.getArrayClass();
-            }
-            return klass;
-        }
-        return classes.get(type);
+    public @Host(ClassLoader.class) StaticObject getClassLoader() {
+        return classLoader;
     }
 
     @Override
-    public Klass defineKlass(ByteString<Type> type, Klass klass) {
-        assert !classes.containsKey(type);
-        Klass prevKlass = classes.putIfAbsent(type, klass);
-        if (prevKlass != null) {
-            return prevKlass;
-        }
+    public ObjectKlass defineKlass(EspressoContext context, ByteString<Type> type, final byte[] bytes) {
+        ObjectKlass klass = super.defineKlass(context, type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
         meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(klass.mirror());
         return klass;

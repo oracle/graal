@@ -23,10 +23,79 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import java.util.concurrent.ConcurrentHashMap;
 
-public interface ClassRegistry {
-    Klass resolve(ByteString<Type> type);
-    Klass findLoadedKlass(ByteString<Type> type);
-    Klass defineKlass(ByteString<Type> type, Klass klass);
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Host;
+
+/**
+ * A {@link ClassRegistry} maps type names to resolved {@link Klass} instances. Each class
+ * loader is associated with a {@link ClassRegistry} and vice versa.
+ *
+ * This class is analogous to the ClassLoaderData C++ class in HotSpot.
+ */
+public abstract class ClassRegistry {
+
+    /**
+     * The map from symbol to classes for the classes defined by the class loader associated with
+     * this registry. Use of {@link ConcurrentHashMap} allows for atomic insertion while still
+     * supporting fast, non-blocking lookup. There's no need for deletion as class unloading removes
+     * a whole class registry and all its contained classes.
+     */
+    protected final ConcurrentHashMap<ByteString<Type>, Klass> classes = new ConcurrentHashMap<>();
+
+    public abstract Klass loadKlass(ByteString<Type> type);
+
+    public Klass findLoadedKlass(ByteString<Type> type) {
+        if (Types.isArray(type)) {
+            ByteString<Type> elemental = Types.getElementalType(type);
+            Klass elementalKlass = findLoadedKlass(elemental);
+            if (elementalKlass == null) {
+                return null;
+            }
+            return elementalKlass.getArrayClass(Types.getArrayDimensions(type));
+        }
+        return classes.get(type);
+    }
+
+    public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
+
+    public ObjectKlass defineKlass(EspressoContext context, ByteString<Type> type, final byte[] bytes) {
+        // EspressoError.guarantee(!classes.containsKey(type), "Class " + type + " already defined
+        // in the BCL");
+
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), type.toString(), null, context);
+
+        ByteString<Type> superKlassType = parserKlass.getSuperKlass();
+
+        // TODO(peterssen): Superclass must be a class, and non-final.
+        ObjectKlass superKlass = superKlassType != null
+                        ? (ObjectKlass) loadKlass(superKlassType) // Should only be an ObjectKlass,
+                        // not primitives nor arrays.
+                        : null;
+
+        final ByteString<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
+
+        LinkedKlass[] linkedInterfaces = new LinkedKlass[superInterfacesTypes.length];
+        ObjectKlass[] superInterfaces = new ObjectKlass[superInterfacesTypes.length];
+
+        // TODO(peterssen): Superinterfaces must be interfaces.
+        for (int i = 0; i < superInterfacesTypes.length; ++i) {
+            ObjectKlass interf = (ObjectKlass) loadKlass(superInterfacesTypes[i]);
+            superInterfaces[i] = interf;
+            linkedInterfaces[i] = interf.getLinkedKlass();
+        }
+
+        // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
+        LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass.getLinkedKlass(), linkedInterfaces);
+
+        ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), null, null, null);
+        classes.put(type, klass);
+        return klass;
+    }
 }
