@@ -26,7 +26,7 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
-public class Target_java_lang_Package {
+public final class Target_java_lang_Package {
     @Substitution
     public static @Host(String.class) Object getSystemPackage0(@SuppressWarnings("unused") @Host(String.class) StaticObject name) {
         // TODO(peterssen): This is a workaround, mainly to be able to run on SVM.

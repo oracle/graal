@@ -38,7 +38,7 @@ import java.security.PrivilegedExceptionAction;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoSubstitutions
-public class Target_java_security_AccessController {
+public final class Target_java_security_AccessController {
     @Substitution
     public static Object doPrivileged(@Host(PrivilegedAction.class) StaticObject action) {
         MethodInfo runMethod = action.getKlass().findDeclaredConcreteMethod("run", EspressoLanguage.getCurrentContext().getSignatures().make("()Ljava/lang/Object;"));

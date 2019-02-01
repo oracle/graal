@@ -58,7 +58,7 @@ public final class StringTable { // ByteString<Constant> => StaticObject
         return value.toString();
     }
 
-    public StaticObject intern(@Host(String.class) StaticObject stringObject) {
+    public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject stringObject) {
         String hostString = Meta.toHostString(stringObject);
         return interned.computeIfAbsent(hostString, k -> stringObject);
     }

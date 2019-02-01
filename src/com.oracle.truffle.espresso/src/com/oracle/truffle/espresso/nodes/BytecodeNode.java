@@ -1078,11 +1078,8 @@ public final class BytecodeNode extends EspressoRootNode {
             putObject(frame, top, getStrings().intern(((StringConstant) constant).getConstant(pool)));
         } else if (constant instanceof ClassConstant) {
             assert opcode == LDC || opcode == LDC_W;
-
             ByteString<Type> type = ((ClassConstant) constant).getType(getConstantPool());
             Klass klass = getContext().getRegistries().resolve(type, getConstantPool().getClassLoader());
-
-            // Klass klass = ((ClassConstant) constant).resolve(pool, cpi);
             putObject(frame, top, klass.mirror());
         } else {
             throw EspressoError.unimplemented(constant.toString());

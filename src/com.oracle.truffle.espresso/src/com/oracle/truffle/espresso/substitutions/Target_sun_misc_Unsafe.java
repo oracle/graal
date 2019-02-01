@@ -42,7 +42,7 @@ import java.util.Arrays;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoSubstitutions
-public class Target_sun_misc_Unsafe {
+public final class Target_sun_misc_Unsafe {
 
     private static final int SAFETY_FIELD_OFFSET = 123456789;
 

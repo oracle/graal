@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
-public class Target_java_lang_Thread {
+public final class Target_java_lang_Thread {
 
     // TODO(peterssen): Remove single thread shim, support real threads.
     @Substitution

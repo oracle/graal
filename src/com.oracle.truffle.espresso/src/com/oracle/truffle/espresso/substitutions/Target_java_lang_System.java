@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 @EspressoSubstitutions
-public class Target_java_lang_System {
+public final class Target_java_lang_System {
     @Substitution
     public static int identityHashCode(@Host(Object.class) StaticObject self) {
         return System.identityHashCode(MetaUtil.unwrap(self));

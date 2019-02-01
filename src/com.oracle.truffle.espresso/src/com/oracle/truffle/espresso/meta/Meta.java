@@ -125,7 +125,7 @@ public final class Meta {
     }
 
     public StaticObject initEx(java.lang.Class<?> clazz) {
-        StaticObject ex = throwableKlass(clazz).allocateInstance();
+        StaticObject ex = context.getInterpreterToVM().newObject(throwableKlass(clazz));
         meta(ex).method("<init>", void.class).invokeDirect();
         return ex;
     }

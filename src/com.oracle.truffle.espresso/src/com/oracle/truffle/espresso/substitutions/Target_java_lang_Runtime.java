@@ -32,7 +32,7 @@ import java.util.Arrays;
 import java.util.function.IntFunction;
 
 @EspressoSubstitutions
-public class Target_java_lang_Runtime {
+public final class Target_java_lang_Runtime {
     // TODO(peterssen): This a hack to be able to spawn processes without going down to UNIXProcess.
     @Substitution(hasReceiver = true)
     public static @Host(Process.class) Object exec(@SuppressWarnings("unused") StaticObject self, @Host(String[].class) StaticObject cmdarray) {

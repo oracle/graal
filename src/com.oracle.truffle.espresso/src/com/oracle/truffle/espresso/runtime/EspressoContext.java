@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -231,18 +232,13 @@ public final class EspressoContext {
         return vm;
     }
 
-    public StaticObject getMainThread() {
+    public @Host(Thread.class) StaticObject getMainThread() {
         return mainThread;
     }
 
     public void setMainThread(StaticObject mainThread) {
         this.mainThread = mainThread;
     }
-
-//
-//    public SymbolTable getSymbolTable() {
-//        return getLanguage().getSymbolTable();
-//    }
 
     public Types getTypes() {
         return getLanguage().getTypes();
@@ -252,7 +248,7 @@ public final class EspressoContext {
         return getLanguage().getSignatures();
     }
 
-    public StaticObject getAppClassLoader() {
+    public @Host(ClassLoader.class) StaticObject getAppClassLoader() {
         return appClassLoader;
     }
 
@@ -265,6 +261,7 @@ public final class EspressoContext {
     }
 
     public void disposeContext() {
+        getVM().dispose();
         getJNI().dispose();
     }
 }

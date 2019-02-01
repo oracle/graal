@@ -48,9 +48,6 @@ public final class ObjectKlass extends Klass {
 
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
 
-    // private final Method[] declaredMethods;
-    // private final Field[] declaredFields;
-
     private final EnclosingMethodAttribute enclosingMethod;
     private final RuntimeConstantPool pool;
 
@@ -282,6 +279,10 @@ public final class ObjectKlass extends Klass {
 // }
 // return getSuperclass();
 // }
+
+    public final LinkedKlass getLinkedKlass() {
+        return linkedKlass;
+    }
 
     public Attribute getRuntimeVisibleAnnotations() {
         return runtimeVisibleAnnotations;

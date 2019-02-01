@@ -27,7 +27,7 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
-public class Target_java_lang_Object {
+public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
 
     public static int hashCode(@Host(Object.class) StaticObject self) {

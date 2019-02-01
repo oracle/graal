@@ -38,7 +38,6 @@ import java.util.stream.Stream;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
@@ -154,6 +153,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     public ArrayKlass getArrayClass(int dimensions) {
         assert dimensions > 0;
         ArrayKlass array = getArrayClass();
+
+        // Careful with of impossible void[].
+        if (array == null) {
+            return null;
+        }
+
         for (int i = 1; i < dimensions; ++i) {
             array = array.getArrayClass();
         }
@@ -599,7 +604,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     @TruffleBoundary
     public Object allocateArray(int length) {
-        return getContext().getInterpreterToVM().newArray(klass, length);
+        return getInterpreterToVM().newArray(this, length);
     }
 
     @TruffleBoundary

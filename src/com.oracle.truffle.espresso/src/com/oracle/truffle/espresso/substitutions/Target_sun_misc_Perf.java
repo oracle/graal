@@ -33,7 +33,7 @@ import sun.misc.Perf;
 import java.nio.ByteBuffer;
 
 @EspressoSubstitutions
-public class Target_sun_misc_Perf {
+public final class Target_sun_misc_Perf {
 
     static class ByteUtils {
         private static ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);

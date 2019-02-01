@@ -57,7 +57,7 @@ import java.util.function.Predicate;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoSubstitutions
-public class Target_java_lang_Class {
+public final class Target_java_lang_Class {
 
     public static final String HIDDEN_METHOD_KEY = "$$method_info";
     public static final String HIDDEN_FIELD_KEY = "$$field_info";

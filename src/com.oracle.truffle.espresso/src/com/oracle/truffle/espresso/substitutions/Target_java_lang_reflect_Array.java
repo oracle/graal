@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import java.lang.reflect.Array;
 
 @EspressoSubstitutions
-public class Target_java_lang_reflect_Array {
+public final class Target_java_lang_reflect_Array {
 
     @Substitution
     public static Object newArray(@Host(Class.class) StaticObjectClass componentType, int length) {

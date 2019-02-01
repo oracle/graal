@@ -11,18 +11,18 @@ import java.lang.reflect.Method;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoSubstitutions
-public class Target_sun_reflect_NativeMethodAccessorImpl {
+public final class Target_sun_reflect_NativeMethodAccessorImpl {
     @Substitution
     public static Object invoke0(@Host(Method.class) StaticObject method, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args) {
         StaticObject curMethod = method;
-        MethodInfo target = null;
+        Method target = null;
         while (target == null) {
-            target = (MethodInfo) ((StaticObjectImpl) curMethod).getHiddenField("$$method_info");
+            target = (Method) ((StaticObjectImpl) curMethod).getHiddenField("$$method_info");
             if (target == null) {
                 curMethod = (StaticObject) meta(curMethod).declaredField("root").get();
             }
         }
-        Meta.Method m = meta(target);
+        Method m = target;
 
         return m.invokeDirect(receiver,
                         StaticObject.isNull(args)
