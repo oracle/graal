@@ -30,6 +30,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 
 /**
  * A simple recursive pattern matcher for a DAG of nodes.
@@ -149,39 +150,48 @@ public class MatchPattern {
      */
     private final boolean singleUser;
 
+    /**
+     * Can this node be subsumed into a match even if there are side effecting nodes between this node and the match.
+     */
+    private final boolean ignoresSideEffects;
+
     private static final MatchPattern[] EMPTY_PATTERNS = new MatchPattern[0];
 
-    public MatchPattern(String name, boolean singleUser) {
-        this(null, name, singleUser);
+    public MatchPattern(String name, boolean singleUser, boolean ignoresSideEffects) {
+        this(null, name, singleUser, ignoresSideEffects);
     }
 
-    public MatchPattern(Class<? extends Node> nodeClass, String name, boolean singleUser) {
+    public MatchPattern(Class<? extends Node> nodeClass, String name, boolean singleUser, boolean ignoresSideEffects) {
         this.nodeClass = nodeClass;
         this.name = name;
         this.singleUser = singleUser;
+        this.ignoresSideEffects = ignoresSideEffects;
         this.patterns = EMPTY_PATTERNS;
         this.inputs = null;
+        assert !ignoresSideEffects || FloatingNode.class.isAssignableFrom(nodeClass);
     }
 
-    private MatchPattern(Class<? extends Node> nodeClass, String name, boolean singleUser, MatchPattern[] patterns, Position[] inputs) {
+    private MatchPattern(Class<? extends Node> nodeClass, String name, boolean singleUser, boolean ignoresSideEffects, MatchPattern[] patterns, Position[] inputs) {
         assert inputs == null || inputs.length == patterns.length;
         this.nodeClass = nodeClass;
         this.name = name;
         this.singleUser = singleUser;
+        this.ignoresSideEffects = ignoresSideEffects;
         this.patterns = patterns;
         this.inputs = inputs;
+        assert !ignoresSideEffects || FloatingNode.class.isAssignableFrom(nodeClass);
     }
 
-    public MatchPattern(Class<? extends Node> nodeClass, String name, MatchPattern first, Position[] inputs, boolean singleUser) {
-        this(nodeClass, name, singleUser, new MatchPattern[]{first}, inputs);
+    public MatchPattern(Class<? extends Node> nodeClass, String name, MatchPattern first, Position[] inputs, boolean singleUser, boolean ignoresSideEffects) {
+        this(nodeClass, name, singleUser, ignoresSideEffects, new MatchPattern[]{first}, inputs);
     }
 
-    public MatchPattern(Class<? extends Node> nodeClass, String name, MatchPattern first, MatchPattern second, Position[] inputs, boolean singleUser) {
-        this(nodeClass, name, singleUser, new MatchPattern[]{first, second}, inputs);
+    public MatchPattern(Class<? extends Node> nodeClass, String name, MatchPattern first, MatchPattern second, Position[] inputs, boolean singleUser, boolean ignoresSideEffects) {
+        this(nodeClass, name, singleUser, ignoresSideEffects, new MatchPattern[]{first, second}, inputs);
     }
 
-    public MatchPattern(Class<? extends Node> nodeClass, String name, MatchPattern first, MatchPattern second, MatchPattern third, Position[] inputs, boolean singleUser) {
-        this(nodeClass, name, singleUser, new MatchPattern[]{first, second, third}, inputs);
+    public MatchPattern(Class<? extends Node> nodeClass, String name, MatchPattern first, MatchPattern second, MatchPattern third, Position[] inputs, boolean singleUser, boolean ignoresSideEffects) {
+        this(nodeClass, name, singleUser, ignoresSideEffects, new MatchPattern[]{first, second, third}, inputs);
     }
 
     Class<? extends Node> nodeClass() {
@@ -215,8 +225,8 @@ public class MatchPattern {
         if (result != Result.OK) {
             return result;
         }
-        if (singleUser && !atRoot) {
-            result = context.consume(node);
+        if (singleUser) {
+            result = context.consume(node, ignoresSideEffects, atRoot);
             if (result != Result.OK) {
                 return result;
             }

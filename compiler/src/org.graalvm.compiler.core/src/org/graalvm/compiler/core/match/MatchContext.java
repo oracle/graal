@@ -28,8 +28,10 @@ import static org.graalvm.compiler.debug.DebugOptions.LogVerbose;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
+import jdk.vm.ci.meta.Value;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
@@ -53,11 +55,100 @@ public class MatchContext {
 
     private EconomicMap<String, NamedNode> namedNodes;
 
-    private ArrayList<Node> consumed;
+    /**
+     * A node consumed by a match. Keeps track of whether side effects can be ignored.
+     */
+    static final class ConsumedNode {
+        final Node node;
+        final boolean ignoresSideEffects;
+
+        ConsumedNode(Node node, boolean ignoresSideEffects) {
+            this.node = node;
+            this.ignoresSideEffects = ignoresSideEffects;
+        }
+    }
+
+    /**
+     * The collection of nodes consumed by this match.
+     */
+    static final class ConsumedNodes implements Iterable<Node> {
+        private ArrayList<ConsumedNode> nodes;
+
+
+        private final class ConsumedNodesIterator implements Iterator<Node> {
+            final Iterator<ConsumedNode> iterator;
+
+            ConsumedNodesIterator() {
+                iterator = nodes.iterator();
+            }
+
+            @Override
+            public boolean hasNext() {
+                return iterator.hasNext();
+            }
+
+            @Override
+            public Node next() {
+                return iterator.next().node;
+            }
+        }
+
+        ConsumedNodes() {
+            this.nodes = null;
+        }
+
+        public void add(Node node, boolean ignoresSideEffects) {
+            if (nodes == null) {
+                nodes = new ArrayList<>(2);
+            }
+            nodes.add(new ConsumedNode(node, ignoresSideEffects));
+        }
+
+        public boolean contains(Node node) {
+            for (ConsumedNode c : nodes) {
+                if (c.node == node) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public ConsumedNode find(Node node) {
+            for (ConsumedNode c : nodes) {
+                if (c.node == node) {
+                    return c;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            Node[] arr = new Node[nodes.size()];
+            int i = 0;
+            for (ConsumedNode c : nodes) {
+                arr[i++] = c.node;
+            }
+            return Arrays.toString(arr);
+        }
+
+        @Override
+        public Iterator<Node> iterator() {
+            return new ConsumedNodesIterator();
+        }
+    }
+
+    ConsumedNodes consumed = new ConsumedNodes();
 
     private int startIndex;
 
     private int endIndex;
+
+    /**
+     * Index in the block at which the match should be emitted.
+     * Differs from endIndex for (ZeroExtend Read=access) for instance: match should be emitted where the Read is.
+     */
+    private int emitIndex;
 
     private final NodeLIRBuilder builder;
 
@@ -78,7 +169,7 @@ public class MatchContext {
         this.nodes = nodes;
         assert index == nodes.indexOf(node);
         // The root should be the last index since all the inputs must be scheduled before it.
-        startIndex = endIndex = index;
+        emitIndex = startIndex = endIndex = index;
     }
 
     public Node getRoot() {
@@ -104,25 +195,61 @@ public class MatchContext {
 
     public Result validate() {
         // Ensure that there's no unsafe work in between these operations.
+        Node sideEffect = null;
+        boolean consumedSideEffect = false;
         for (int i = startIndex; i <= endIndex; i++) {
             Node node = nodes.get(i);
             if (node instanceof VirtualObjectNode || node instanceof FloatingNode) {
                 // The order of evaluation of these nodes controlled by data dependence so they
                 // don't interfere with this match.
                 continue;
-            } else if ((consumed == null || !consumed.contains(node)) && node != root) {
-                if (LogVerbose.getValue(root.getOptions())) {
-                    DebugContext debug = root.getDebug();
-                    debug.log("unexpected node %s", node);
-                    for (int j = startIndex; j <= endIndex; j++) {
-                        Node theNode = nodes.get(j);
-                        debug.log("%s(%s) %1s", (consumed != null && consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.getUsageCount(), theNode);
+            } else {
+                ConsumedNode cn = consumed.find(node);
+                if (cn == null) {
+                    sideEffect = node;
+                } else if (!cn.ignoresSideEffects) {
+                    emitIndex = i;
+                    // There should be no side effects between 2 nodes that are affected by side effects.
+                    if (consumedSideEffect && sideEffect != null) {
+                        logFailedMatch("unexpected node %s", sideEffect);
+                        return Result.notSafe(node, rule.getPattern());
+                    }
+                    consumedSideEffect = true;
+                }
+            }
+        }
+        assert emitIndex == endIndex || consumed.find(root).ignoresSideEffects;
+        // We are going to emit the match at emitIndex. We need to make sure nodes of the match between emitIndex and
+        // endIndex don't have inputs after position emitIndex that would make emitIndex an illegal position.
+        for (int i = emitIndex + 1; i <= endIndex; i++) {
+            Node node = nodes.get(i);
+            ConsumedNode cn = consumed.find(node);
+            if (cn != null) {
+                assert cn.ignoresSideEffects;
+                for (Node in : node.inputs()) {
+                    if (!consumed.contains(in)) {
+                        for (int j = emitIndex + 1; j < i; j++) {
+                            if (nodes.get(j) == in) {
+                                logFailedMatch("Earliest position in block is too late %s", in);
+                                return Result.notSafe(node, rule.getPattern());
+                            }
+                        }
                     }
                 }
-                return Result.notSafe(node, rule.getPattern());
             }
         }
         return Result.OK;
+    }
+
+    private void logFailedMatch(String s, Node node) {
+        if (LogVerbose.getValue(root.getOptions())) {
+            DebugContext debug = root.getDebug();
+            debug.log(s, node);
+            for (int j = startIndex; j <= endIndex; j++) {
+                Node theNode = nodes.get(j);
+                debug.log("%s(%s) %1s", consumed.contains(theNode) ? "*" : " ", theNode.getUsageCount(), theNode);
+            }
+        }
     }
 
     /**
@@ -133,20 +260,27 @@ public class MatchContext {
      */
     public void setResult(ComplexMatchResult result) {
         ComplexMatchValue value = new ComplexMatchValue(result);
+        Node emitNode = nodes.get(emitIndex);
         DebugContext debug = root.getDebug();
         if (debug.isLogEnabled()) {
             debug.log("matched %s %s", rule.getName(), rule.getPattern());
             debug.log("with nodes %s", rule.formatMatch(root));
         }
-        if (consumed != null) {
-            for (Node node : consumed) {
-                // All the interior nodes should be skipped during the normal doRoot calls in
-                // NodeLIRBuilder so mark them as interior matches. The root of the match will get a
-                // closure which will be evaluated to produce the final LIR.
-                builder.setMatchResult(node, ComplexMatchValue.INTERIOR_MATCH);
+        for (Node node : consumed) {
+            if (node == root || node == emitNode) {
+                continue;
             }
+            // All the interior nodes should be skipped during the normal doRoot calls in
+            // NodeLIRBuilder so mark them as interior matches. The root of the match will get a
+            // closure which will be evaluated to produce the final LIR.
+            builder.setMatchResult(node, ComplexMatchValue.INTERIOR_MATCH);
         }
-        builder.setMatchResult(root, value);
+        builder.setMatchResult(emitNode, value);
+        if (root != emitNode) {
+            // Match is not emitted at the position of root in the block but the uses of root needs the result of the
+            // match so add a ComplexMatchValue that will simply return the result of the actual match above.
+            builder.setMatchResult(root, new ComplexMatchValue(gen -> gen.operand(emitNode)));
+        }
     }
 
     /**
@@ -154,7 +288,11 @@ public class MatchContext {
      *
      * @return Result.OK if the node can be safely consumed.
      */
-    public Result consume(Node node) {
+    public Result consume(Node node, boolean ignoresSideEffects, boolean atRoot) {
+        if (atRoot) {
+            consumed.add(node, ignoresSideEffects);
+            return Result.OK;
+        }
         assert MatchPattern.isSingleValueUser(node) : "should have already been checked";
 
         // Check NOT_IN_BLOCK first since that usually implies ALREADY_USED
@@ -168,10 +306,7 @@ public class MatchContext {
         }
 
         startIndex = Math.min(startIndex, index);
-        if (consumed == null) {
-            consumed = new ArrayList<>(2);
-        }
-        consumed.add(node);
+        consumed.add(node, ignoresSideEffects);
         return Result.OK;
     }
 
@@ -194,6 +329,6 @@ public class MatchContext {
 
     @Override
     public String toString() {
-        return String.format("%s %s (%d, %d) consumed %s", rule, root, startIndex, endIndex, consumed != null ? Arrays.toString(consumed.toArray()) : "");
+        return String.format("%s %s (%d, %d) consumed %s", rule, root, startIndex, endIndex, consumed);
     }
 }
