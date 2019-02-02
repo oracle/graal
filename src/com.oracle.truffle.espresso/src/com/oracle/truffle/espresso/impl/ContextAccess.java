@@ -6,6 +6,7 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StringTable;
+import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -42,5 +43,9 @@ public interface ContextAccess {
 
     default ClassRegistries getRegistries() {
         return getContext().getRegistries();
+    }
+
+    default Substitutions getSubstitutions() {
+        return getContext().getSubstitutions();
     }
 }
