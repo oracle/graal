@@ -163,42 +163,42 @@ public final class EspressoContext {
         // Spawn JNI first, then the VM.
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
-        initializeClass(Object.class);
+        initializeKnownClass(Type.Object);
 
         // Primitive classes have no dependencies.
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive()) {
-                initializeClass(kind.toJavaClass());
+                initializeKnownClass(kind.getType());
             }
         }
 
-        for (Class<?> clazz : new Class<?>[]{
-                        String.class,
-                        System.class,
-                        ThreadGroup.class,
-                        Thread.class,
-                        Class.class,
-                        Method.class}) {
-            initializeClass(clazz);
+        for (ByteString<Type> type : Arrays.asList(
+                        Type.String,
+                        Type.System,
+                        Type.ThreadGroup,
+                        Type.Thread,
+                        Type.Class,
+                        Type.Method)) {
+            initializeKnownClass(type);
         }
 
         // Finalizer is not public.
-        initializeClass("Ljava/lang/ref/Finalizer;");
+        initializeKnownClass(Type.java_lang_ref_Finalizer);
 
         // Call System.initializeSystemClass
-        meta.knownKlass(System.class).staticMethod("initializeSystemClass", void.class).invokeDirect();
+        meta.System.lookupDeclaredMethod(Name.initializeSystemClass, meta.getSignatures().makeRaw(Type._void)).invokeDirect(null);
 
         // System exceptions.
-        for (Class<?> clazz : new Class<?>[]{
-                        OutOfMemoryError.class,
-                        NullPointerException.class,
-                        ClassCastException.class,
-                        ArrayStoreException.class,
-                        ArithmeticException.class,
-                        StackOverflowError.class,
-                        IllegalMonitorStateException.class,
-                        IllegalArgumentException.class}) {
-            initializeClass(clazz);
+        for (ByteString<Type> type : Arrays.asList(
+                        Type.OutOfMemoryError,
+                        Type.NullPointerException,
+                        Type.ClassCastException,
+                        Type.ArrayStoreException,
+                        Type.ArithmeticException,
+                        Type.StackOverflowError,
+                        Type.IllegalMonitorStateException,
+                        Type.IllegalArgumentException)) {
+            initializeKnownClass(type);
         }
 
         // Load system class loader.

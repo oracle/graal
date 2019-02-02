@@ -56,87 +56,89 @@ public final class Meta implements ContextAccess {
 
     private final EspressoContext context;
 
+    @SuppressWarnings("unchecked")
     public Meta(EspressoContext context) {
         this.context = context;
 
         // Core types.
-        Object = knownKlass(Object.class);
-        String = knownKlass(String.class);
-        Class = knownKlass(Class.class);
+        Object = knownKlass(Type.Object);
+        String = knownKlass(Type.String);
+        Class = knownKlass(Type.Class);
+        Class_forName_String = Class.lookupDeclaredMethod(Name.forName, getSignatures().makeRaw(Type.Class, Type.String));
 
         // Primitives.
-        _boolean = knownPrimitive(boolean.class);
-        _byte = knownPrimitive(byte.class);
-        _char = knownPrimitive(char.class);
-        _short = knownPrimitive(short.class);
-        _float = knownPrimitive(float.class);
-        _int = knownPrimitive(int.class);
-        _double = knownPrimitive(double.class);
-        _long = knownPrimitive(long.class);
-        _void = knownPrimitive(void.class);
+        _boolean = knownPrimitive(Type._boolean);
+        _byte = knownPrimitive(Type._byte);
+        _char = knownPrimitive(Type._char);
+        _short = knownPrimitive(Type._short);
+        _float = knownPrimitive(Type._float);
+        _int = knownPrimitive(Type._int);
+        _double = knownPrimitive(Type._double);
+        _long = knownPrimitive(Type._long);
+        _void = knownPrimitive(Type._void);
 
         // Boxed types.
-        Boolean = knownKlass(Boolean.class);
-        Byte = knownKlass(Byte.class);
-        Char = knownKlass(Character.class);
-        Short = knownKlass(Short.class);
-        Float = knownKlass(Float.class);
-        Int = knownKlass(Integer.class);
-        Double = knownKlass(Double.class);
-        Long = knownKlass(Long.class);
-        Void = knownKlass(Void.class);
+        Boolean = knownKlass(Type.Boolean);
+        Byte = knownKlass(Type.Byte);
+        Character = knownKlass(Type.Character);
+        Short = knownKlass(Type.Short);
+        Float = knownKlass(Type.Float);
+        Integer = knownKlass(Type.Integer);
+        Double = knownKlass(Type.Double);
+        Long = knownKlass(Type.Long);
+        Void = knownKlass(Type.Void);
 
-        Boolean_valueOf = Boolean.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Boolean.class, boolean.class));
-        Byte_valueOf = Byte.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Byte.class, byte.class));
-        Char_valueOf = Char.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Character.class, char.class));
-        Short_valueOf = Short.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Short.class, short.class));
-        Float_valueOf = Float.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Float.class, float.class));
-        Int_valueOf = Int.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Integer.class, int.class));
-        Double_valueOf = Double.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Double.class, double.class));
-        Long_valueOf = Long.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Long.class, long.class));
+        Boolean_valueOf = Boolean.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Boolean, Type._boolean));
+        Byte_valueOf = Byte.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Byte, Type._byte));
+        Character_valueOf = Character.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Character, Type._char));
+        Short_valueOf = Short.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Short, Type._short));
+        Float_valueOf = Float.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Float, Type._float));
+        Integer_valueOf = Integer.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Integer, Type._int));
+        Double_valueOf = Double.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Double, Type._double));
+        Long_valueOf = Long.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Long, Type._long));
 
-        String_value = String.lookupDeclaredField(Name.value, Types.fromClass(byte[].class));
-        String_hash = String.lookupDeclaredField(Name.hash, Types.fromClass(int.class));
-        String_hashCode = String.lookupDeclaredMethod(Name.hashCode, context.getSignatures().makeRaw(int.class));
-        String_length = String.lookupDeclaredMethod(Name.length, context.getSignatures().makeRaw(int.class));
+        String_value = String.lookupDeclaredField(Name.value, Type._byte_array);
+        String_hash = String.lookupDeclaredField(Name.hash, Type._int);
+        String_hashCode = String.lookupDeclaredMethod(Name.hashCode, context.getSignatures().makeRaw(Type._int));
+        String_length = String.lookupDeclaredMethod(Name.length, context.getSignatures().makeRaw(Type._int));
 
-        Throwable = knownKlass(Throwable.class);
-        Throwable_backtrace = Throwable.lookupField(Name.backtrace, Object.getType());
+        Throwable = knownKlass(Type.Throwable);
+        Throwable_backtrace = Throwable.lookupField(Name.backtrace, Type.Object);
 
-        StackOverflowError = knownKlass(StackOverflowError.class);
-        OutOfMemoryError = knownKlass(OutOfMemoryError.class);
+        StackOverflowError = knownKlass(Type.StackOverflowError);
+        OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
 
-        PrivilegedActionException = knownKlass(PrivilegedActionException.class);
-        PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(void.class, Exception.class));
+        PrivilegedActionException = knownKlass(Type.PrivilegedActionException);
+        PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void, Type.Exception));
 
-        Cloneable = knownKlass(Cloneable.class);
-        Serializable = knownKlass(Serializable.class);
+        Cloneable = knownKlass(Type.Cloneable);
+        Serializable = knownKlass(Type.Serializable);
 
-        ClassLoader = knownKlass(Throwable.class);
-        ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, context.getSignatures().makeRaw(long.class, ClassLoader.class, String.class));
-        ClassLoader_getSystemClassLoader = ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, context.getSignatures().makeRaw(ClassLoader.class));
+        ClassLoader = knownKlass(Type.Throwable);
+        ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, context.getSignatures().makeRaw(Type._long, Type.ClassLoader, Type.String));
+        ClassLoader_getSystemClassLoader = ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, context.getSignatures().makeRaw(Type.ClassLoader));
 
         // Guest reflection.
-        Constructor = knownKlass(Constructor.class);
+        Constructor = knownKlass(Type.Constructor);
         Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Class.getType());
         Constructor_root = Constructor.lookupDeclaredField(Name.root, Constructor.getType());
 
-        Method = knownKlass(java.lang.reflect.Method.class);
+        Method = knownKlass(Type.Method);
         Method_root = Method.lookupDeclaredField(Name.root, Method.getType());
 
-        ByteBuffer = knownKlass(ByteBuffer.class);
-        ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, context.getSignatures().makeRaw(ByteBuffer.class, byte[].class));
+        ByteBuffer = knownKlass(Type.ByteBuffer);
+        ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, context.getSignatures().makeRaw(Type.ByteBuffer, Type._byte_array));
 
-        Thread = knownKlass(Thread.class);
-        ThreadGroup = knownKlass(ThreadGroup.class);
+        Thread = knownKlass(Type.Thread);
+        ThreadGroup = knownKlass(Type.ThreadGroup);
 
         Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
         Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
         Thread_priority = Thread.lookupDeclaredField(Name.priority, _int.getType());
         Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
 
-        System = knownKlass(System.class);
-        System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, context.getSignatures().makeRaw(void.class));
+        System = knownKlass(Type.System);
+        System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, context.getSignatures().makeRaw(Type._void));
 
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{Cloneable, Serializable};
     }

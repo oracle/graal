@@ -5,10 +5,8 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.jni.Utf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 
 /**
  * Modified-UTF8 byte string for internal use by Espresso.
@@ -76,6 +74,10 @@ public final class ByteString<T> {
         public static final ByteString<Name> name = ByteString.fromJavaString("name");
         public static final ByteString<Name> priority = ByteString.fromJavaString("priority");
         public static final ByteString<Name> blockerLock = ByteString.fromJavaString("blockerLock");
+        public static final ByteString<Name> constantPoolOop = ByteString.fromJavaString("constantPoolOop");
+        public static final ByteString<Name> main = ByteString.fromJavaString("main");
+        public static final ByteString<Name> checkAndLoadMain = ByteString.fromJavaString("checkAndLoadMain");
+        public static final ByteString<Name> forName = ByteString.fromJavaString("forName");
     }
 
     public static class Constant extends ModifiedUTF8 {
@@ -85,10 +87,20 @@ public final class ByteString<T> {
     }
 
     public static class Type extends Descriptor {
+        // Core types.
         public static final ByteString<Type> String = Types.fromClass(String.class);
-        public static final ByteString<Type> Object = Types.fromClass(ObjectKlass.class);
-        public static final ByteString<Type> Class = Types.fromClass(Class.class);
+        public static final ByteString<Type> String_array = Types.fromClass(String[].class);
 
+        public static final ByteString<Type> Object = Types.fromClass(Object.class);
+        public static final ByteString<Type> Object_array = Types.fromClass(Object[].class);
+
+        public static final ByteString<Type> Class = Types.fromClass(Class.class);
+        public static final ByteString<Type> Throwable = Types.fromClass(Throwable.class);
+        public static final ByteString<Type> Exception = Types.fromClass(Exception.class);
+        public static final ByteString<Type> System = Types.fromClass(System.class);
+        public static final ByteString<Type> ClassLoader = Types.fromClass(ClassLoader.class);
+
+        // Primitive types. Use JavaKind.getType()?
         public static final ByteString<Type> _boolean = Types.fromClass(boolean.class);
         public static final ByteString<Type> _byte = Types.fromClass(byte.class);
         public static final ByteString<Type> _char = Types.fromClass(char.class);
@@ -98,6 +110,54 @@ public final class ByteString<T> {
         public static final ByteString<Type> _double = Types.fromClass(double.class);
         public static final ByteString<Type> _long = Types.fromClass(long.class);
         public static final ByteString<Type> _void = Types.fromClass(void.class);
+
+        public static final ByteString<Type> _boolean_array = Types.fromClass(boolean[].class);
+        public static final ByteString<Type> _byte_array = Types.fromClass(byte[].class);
+        public static final ByteString<Type> _char_array = Types.fromClass(char[].class);
+        public static final ByteString<Type> _short_array = Types.fromClass(short[].class);
+        public static final ByteString<Type> _int_array = Types.fromClass(int[].class);
+        public static final ByteString<Type> _float_array = Types.fromClass(float[].class);
+        public static final ByteString<Type> _double_array = Types.fromClass(double[].class);
+        public static final ByteString<Type> _long_array = Types.fromClass(long[].class);
+
+        // Boxed types.
+        public static final ByteString<Type> Boolean = Types.fromClass(Boolean.class);
+        public static final ByteString<Type> Byte = Types.fromClass(Byte.class);
+        public static final ByteString<Type> Character = Types.fromClass(Character.class);
+        public static final ByteString<Type> Short = Types.fromClass(Short.class);
+        public static final ByteString<Type> Integer = Types.fromClass(Integer.class);
+        public static final ByteString<Type> Float = Types.fromClass(Float.class);
+        public static final ByteString<Type> Double = Types.fromClass(Double.class);
+        public static final ByteString<Type> Long = Types.fromClass(Long.class);
+        public static final ByteString<Type> Void = Types.fromClass(Void.class);
+
+        public static final ByteString<Type> Cloneable = Types.fromClass(Cloneable.class);
+
+        public static final ByteString<Type> StackOverflowError = Types.fromClass(StackOverflowError.class);
+        public static final ByteString<Type> OutOfMemoryError = Types.fromClass(OutOfMemoryError.class);
+
+        public static final ByteString<Type> NullPointerException = Types.fromClass(NullPointerException.class);
+        public static final ByteString<Type> ClassCastException = Types.fromClass(ClassCastException.class);
+        public static final ByteString<Type> ArrayStoreException = Types.fromClass(ArrayStoreException.class);
+        public static final ByteString<Type> ArithmeticException = Types.fromClass(ArithmeticException.class);
+        public static final ByteString<Type> IllegalMonitorStateException = Types.fromClass(IllegalMonitorStateException.class);
+        public static final ByteString<Type> IllegalArgumentException = Types.fromClass(IllegalArgumentException.class);
+
+        public static final ByteString<Type> Thread = Types.fromClass(Thread.class);
+        public static final ByteString<Type> ThreadGroup = Types.fromClass(ThreadGroup.class);
+        
+        public static final ByteString<Type> Field = Types.fromClass(java.lang.reflect.Field.class);
+        public static final ByteString<Type> Method = Types.fromClass(java.lang.reflect.Method.class);
+        public static final ByteString<Type> Constructor = Types.fromClass(java.lang.reflect.Constructor.class);
+
+        public static final ByteString<Type> Serializable = Types.fromClass(java.io.Serializable.class);
+        public static final ByteString<Type> ByteBuffer = Types.fromClass(java.nio.ByteBuffer.class);
+        public static final ByteString<Type> PrivilegedActionException = Types.fromClass(java.security.PrivilegedActionException.class);
+
+        public static final ByteString<Type> sun_launcher_LauncherHelper = Types.fromClass(sun.launcher.LauncherHelper.class);
+
+        // Finalizer is not public.
+        public static final ByteString<Type> java_lang_ref_Finalizer = Types.fromJavaString("Ljava/lang/ref/Finalizer;");
     }
 
     public static class Signature extends Descriptor {
@@ -153,33 +213,9 @@ public final class ByteString<T> {
         return new ByteString<>(new byte[]{(byte) ch});
     }
 
+    @Deprecated
     public static <T> ByteString<T> fromJavaString(String string) {
         return Utf8.fromJavaString(string);
     }
 
-}
-
-final class K {
-    private K() {
-        /* no instances */
-    }
-
-    public static ByteString<Type> Class = ByteString.fromJavaString("Ljava/lang/Class;");
-    public static ByteString<Type> Object = ByteString.fromJavaString("Ljava/lang/Object;");
-    public static ByteString<Type> String = ByteString.fromJavaString("Ljava/lang/String;");
-    public static ByteString<Type> Exception = ByteString.fromJavaString("Ljava/lang/Exception;");
-    public static ByteString<Type> Throwable = ByteString.fromJavaString("Ljava/lang/Throwable;");
-    public static ByteString<Type> ClassLoader = ByteString.fromJavaString("Ljava/lang/ClassLoader;");
-    public static ByteString<Type> System = ByteString.fromJavaString("Ljava/lang/System;");
-
-    // Primitives
-    public static ByteString<Type> _boolean = JavaKind.Boolean.getType();
-    public static ByteString<Type> _byte = JavaKind.Byte.getType();
-    public static ByteString<Type> _char = JavaKind.Char.getType();
-    public static ByteString<Type> _short = JavaKind.Short.getType();
-    public static ByteString<Type> _int = JavaKind.Int.getType();
-    public static ByteString<Type> _float = JavaKind.Float.getType();
-    public static ByteString<Type> _double = JavaKind.Double.getType();
-    public static ByteString<Type> _long = JavaKind.Long.getType();
-    public static ByteString<Type> _void = JavaKind.Void.getType();
 }

@@ -171,7 +171,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             // TODO(peterssen): Rethink method substitution logic.
-            EspressoRootNode redirectedMethod = getInterpreterToVM().getSubstitution(this);
+            EspressoRootNode redirectedMethod = getSubstitutions().get(this);
             if (redirectedMethod != null) {
                 callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
             } else {
@@ -236,7 +236,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     public boolean isConstructor() {
         assert Signatures.returnKind(getParsedSignature()) == JavaKind.Void;
         assert !isStatic();
-        return INIT.equals(getName());
+        return Name.INIT.equals(getName());
     }
 
     public boolean isDefault() {
@@ -364,8 +364,8 @@ public final class Method implements ModifiersProvider, ContextAccess {
         assert Signatures.resultKind(getParsedSignature()) == JavaKind.Void;
         assert isStatic();
         assert Signatures.parameterCount(getParsedSignature(), false) == 0;
-        assert !CLINIT.equals(getName()) || CLINIT_SIGNATURE.equals(getRawSignature());
-        return CLINIT.equals(getName());
+        assert !Name.CLINIT.equals(getName()) || CLINIT_SIGNATURE.equals(getRawSignature());
+        return Name.CLINIT.equals(getName());
     }
 
     @Override

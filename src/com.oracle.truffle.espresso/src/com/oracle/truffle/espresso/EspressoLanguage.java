@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso;
 
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -117,7 +119,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         EspressoError.guarantee(mainClass != null, "Error: Could not find or load main class %s", className);
 
-        Method mainMethod = mainClass.lookupDeclaredMethod(ByteString.fromJavaString("main"), getSignatures().makeRaw(void.class, String[].class));
+        Method mainMethod = mainClass.lookupDeclaredMethod(Name.main, getSignatures().makeRaw(Type._void, Type.String_array));
 
         EspressoError.guarantee(mainMethod != null && mainMethod.isStatic(),
                         "Error: Main method not found in class %s, please define the main method as:\n" +
@@ -135,10 +137,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private static StaticObjectClass loadMainClass(EspressoContext context, LaunchMode mode, String name) {
         assert context.isInitialized();
         Meta meta = context.getMeta();
-        Klass launcherHelperKlass = meta.loadKlass(Types.fromClass(sun.launcher.LauncherHelper.class), StaticObject.NULL);
+        Klass launcherHelperKlass = meta.loadKlass(Type.sun_launcher_LauncherHelper, StaticObject.NULL);
 
-        Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(ByteString.fromJavaString("checkAndLoadMain"),
-                context.getSignatures().makeRaw(Class.class, boolean.class, int.class, String.class));
+        Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(Name.checkAndLoadMain,
+                context.getSignatures().makeRaw(Type.Class, Type._boolean, Type._int, Type.String));
 
         return (StaticObjectClass) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuest(name));
     }
