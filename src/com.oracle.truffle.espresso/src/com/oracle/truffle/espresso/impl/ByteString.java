@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.jni.Utf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -68,6 +69,13 @@ public final class ByteString<T> {
         public static final ByteString<Name> findNative = ByteString.fromJavaString("findNative");
         public static final ByteString<Name> getSystemClassLoader = ByteString.fromJavaString("getSystemClassLoader");
         public static final ByteString<Name> valueOf = ByteString.fromJavaString("valueOf");
+        public static final ByteString<Name> wrap = ByteString.fromJavaString("wrap");
+        public static final ByteString<Name> initializeSystemClass = ByteString.fromJavaString("initializeSystemClass");
+
+        public static final ByteString<Name> group = ByteString.fromJavaString("group");
+        public static final ByteString<Name> name = ByteString.fromJavaString("name");
+        public static final ByteString<Name> priority = ByteString.fromJavaString("priority");
+        public static final ByteString<Name> blockerLock = ByteString.fromJavaString("blockerLock");
     }
 
     public static class Constant extends ModifiedUTF8 {
@@ -77,6 +85,19 @@ public final class ByteString<T> {
     }
 
     public static class Type extends Descriptor {
+        public static final ByteString<Type> String = Types.fromClass(String.class);
+        public static final ByteString<Type> Object = Types.fromClass(ObjectKlass.class);
+        public static final ByteString<Type> Class = Types.fromClass(Class.class);
+
+        public static final ByteString<Type> _boolean = Types.fromClass(boolean.class);
+        public static final ByteString<Type> _byte = Types.fromClass(byte.class);
+        public static final ByteString<Type> _char = Types.fromClass(char.class);
+        public static final ByteString<Type> _short = Types.fromClass(short.class);
+        public static final ByteString<Type> _int = Types.fromClass(int.class);
+        public static final ByteString<Type> _float = Types.fromClass(float.class);
+        public static final ByteString<Type> _double = Types.fromClass(double.class);
+        public static final ByteString<Type> _long = Types.fromClass(long.class);
+        public static final ByteString<Type> _void = Types.fromClass(void.class);
     }
 
     public static class Signature extends Descriptor {

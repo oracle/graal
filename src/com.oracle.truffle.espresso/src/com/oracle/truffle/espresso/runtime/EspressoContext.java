@@ -202,7 +202,7 @@ public final class EspressoContext {
         }
 
         // Load system class loader.
-        appClassLoader = (StaticObject) meta.knownKlass(ClassLoader.class).staticMethod("getSystemClassLoader", ClassLoader.class).invokeDirect();
+        appClassLoader = (StaticObject) meta.ClassLoader_getSystemClassLoader.invokeDirect(null);
     }
 
     private EspressoProperties vmProperties;

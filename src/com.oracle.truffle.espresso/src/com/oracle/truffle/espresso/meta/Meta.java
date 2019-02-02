@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.meta;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.ByteBuffer;
+import java.security.PrivilegedActionException;
 import java.util.Arrays;
 import java.util.function.Predicate;
 
@@ -104,6 +106,9 @@ public final class Meta implements ContextAccess {
         StackOverflowError = knownKlass(StackOverflowError.class);
         OutOfMemoryError = knownKlass(OutOfMemoryError.class);
 
+        PrivilegedActionException = knownKlass(PrivilegedActionException.class);
+        PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(void.class, Exception.class));
+
         Cloneable = knownKlass(Cloneable.class);
         Serializable = knownKlass(Serializable.class);
 
@@ -118,6 +123,20 @@ public final class Meta implements ContextAccess {
 
         Method = knownKlass(java.lang.reflect.Method.class);
         Method_root = Method.lookupDeclaredField(Name.root, Method.getType());
+
+        ByteBuffer = knownKlass(ByteBuffer.class);
+        ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, context.getSignatures().makeRaw(ByteBuffer.class, byte[].class));
+
+        Thread = knownKlass(Thread.class);
+        ThreadGroup = knownKlass(ThreadGroup.class);
+
+        Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
+        Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
+        Thread_priority = Thread.lookupDeclaredField(Name.priority, _int.getType());
+        Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
+
+        System = knownKlass(System.class);
+        System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, context.getSignatures().makeRaw(void.class));
 
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{Cloneable, Serializable};
     }
@@ -180,9 +199,25 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Throwable;
     public final Field Throwable_backtrace;
 
+    public final ObjectKlass PrivilegedActionException;
+    public final Method PrivilegedActionException_init_Exception;
+
     // Array support.
     public final ObjectKlass Cloneable;
     public final ObjectKlass Serializable;
+
+    public final ObjectKlass ByteBuffer;
+    public final Method ByteBuffer_wrap;
+
+    public final ObjectKlass ThreadGroup;
+    public final ObjectKlass Thread;
+    public final Field Thread_group;
+    public final Field Thread_name;
+    public final Field Thread_priority;
+    public final Field Thread_blockerLock;
+
+    public final ObjectKlass System;
+    public final Method System_initializeSystemClass;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;

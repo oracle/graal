@@ -23,64 +23,35 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_ClassLoader;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Object;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Package;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Runtime;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_reflect_Array;
-import com.oracle.truffle.espresso.substitutions.Target_java_security_AccessController;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Perf;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Signal;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_URLClassPath;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_VM;
-import com.oracle.truffle.espresso.substitutions.Target_sun_reflect_NativeMethodAccessorImpl;
 
 import sun.misc.Unsafe;
 
 public final class InterpreterToVM implements ContextAccess {
 
     private final EspressoContext context;
+
+    public InterpreterToVM(EspressoContext context) {
+        this.context = context;
+    }
 
     @Override
     public EspressoContext getContext() {
@@ -96,204 +67,6 @@ public final class InterpreterToVM implements ContextAccess {
             hostUnsafe = (Unsafe) f.get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    private final Map<MethodKey, EspressoRootNode> substitutions = new HashMap<>();
-
-    public static List<Class<?>> DEFAULTS = Arrays.asList(
-                    Target_java_lang_Class.class,
-                    Target_java_lang_ClassLoader.class,
-                    Target_java_lang_Object.class,
-                    Target_java_lang_Package.class,
-                    Target_java_lang_Runtime.class,
-                    Target_java_lang_System.class,
-                    Target_java_lang_Thread.class,
-                    Target_java_lang_reflect_Array.class,
-                    Target_java_security_AccessController.class,
-                    Target_sun_misc_Perf.class,
-                    Target_sun_misc_Signal.class,
-                    Target_sun_misc_Unsafe.class,
-                    Target_sun_misc_URLClassPath.class,
-                    Target_sun_misc_VM.class,
-                    Target_sun_reflect_NativeMethodAccessorImpl.class);
-
-    private InterpreterToVM(EspressoContext context, List<Class<?>> substitutions) {
-        this.context = context;
-        for (Class<?> clazz : substitutions) {
-            registerSubstitutions(clazz);
-        }
-    }
-
-    public InterpreterToVM(EspressoContext context) {
-        this(context, DEFAULTS);
-    }
-
-    public StaticObject intern(StaticObject obj) {
-        assert obj.getKlass().equals(obj.getKlass().getContext().getMeta().String);
-        return obj.getKlass().getContext().getStrings().intern(obj);
-    }
-
-    private static MethodKey getMethodKey(Method method) {
-        return new MethodKey(
-                        method.getDeclaringKlass(),
-                        method.getName(),
-                        method.getRawSignature());
-    }
-
-    @TruffleBoundary
-    public EspressoRootNode getSubstitution(Method method) {
-        assert method != null;
-        return substitutions.get(getMethodKey(method));
-    }
-
-    private static final class MethodKey {
-        private final String clazz;
-        private final String methodName;
-        private final String signature;
-
-        public MethodKey(String clazz, String methodName, String signature) {
-            this.clazz = clazz;
-            this.methodName = methodName;
-            this.signature = signature;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o)
-                return true;
-            if (o == null || getClass() != o.getClass())
-                return false;
-            MethodKey methodKey = (MethodKey) o;
-            return Objects.equals(clazz, methodKey.clazz) &&
-                            Objects.equals(methodName, methodKey.methodName) &&
-                            Objects.equals(signature, methodKey.signature);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(clazz, methodName, signature);
-        }
-
-        @Override
-        public String toString() {
-            return "MethodKey{" +
-                            "clazz='" + clazz + '\'' +
-                            ", methodName='" + methodName + '\'' +
-                            ", signature='" + signature + '\'' +
-                            '}';
-        }
-    }
-
-    public static String fixTypeName(String type) {
-        if ((type.startsWith("L") && type.endsWith(";"))) {
-            return type;
-        }
-
-        if (type.startsWith("[")) {
-            return type.replace('.', '/');
-        }
-
-        if (type.endsWith("[]")) {
-            return "[" + fixTypeName(type.substring(0, type.length() - 2));
-        }
-
-        switch (type) {
-            case "boolean":
-                return "Z";
-            case "byte":
-                return "B";
-            case "char":
-                return "C";
-            case "double":
-                return "D";
-            case "float":
-                return "F";
-            case "int":
-                return "I";
-            case "long":
-                return "J";
-            case "short":
-                return "S";
-            case "void":
-                return "V";
-            default:
-                return "L" + type.replace('.', '/') + ";";
-        }
-    }
-
-    public void registerSubstitutions(Class<?> clazz) {
-
-        String className;
-        Class<?> annotatedClass = clazz.getAnnotation(EspressoSubstitutions.class).value();
-        if (annotatedClass == EspressoSubstitutions.class) {
-            // Target class is derived from class name by simple substitution
-            // e.g. Target_java_lang_System becomes java.lang.System
-            assert clazz.getSimpleName().startsWith("Target_");
-            className = MetaUtil.toInternalName(clazz.getSimpleName().substring("Target_".length()).replace('_', '.'));
-        } else {
-            throw EspressoError.shouldNotReachHere("Substitutions class must be decorated with @" + EspressoSubstitutions.class.getName());
-        }
-        for (java.lang.reflect.Method method : clazz.getDeclaredMethods()) {
-            Substitution substitution = method.getAnnotation(Substitution.class);
-            if (substitution == null) {
-                continue;
-            }
-
-            RootNode rootNode = createRootNodeForMethod(getContext(), method);
-            StringBuilder signature = new StringBuilder("(");
-            java.lang.reflect.Parameter[] parameters = method.getParameters();
-            for (int i = substitution.hasReceiver() ? 1 : 0; i < parameters.length; i++) {
-                java.lang.reflect.Parameter parameter = parameters[i];
-                String parameterTypeName;
-                Host annotatedType = parameter.getAnnotatedType().getAnnotation(Host.class);
-                if (annotatedType != null) {
-                    parameterTypeName = annotatedType.value().getName();
-                } else {
-                    parameterTypeName = parameter.getType().getName();
-                }
-                signature.append(fixTypeName(parameterTypeName));
-            }
-            signature.append(')');
-
-            Host annotatedReturnType = method.getAnnotatedReturnType().getAnnotation(Host.class);
-            String returnTypeName;
-            if (annotatedReturnType != null) {
-                returnTypeName = annotatedReturnType.value().getName();
-            } else {
-                returnTypeName = method.getReturnType().getName();
-            }
-            signature.append(fixTypeName(returnTypeName));
-
-            String methodName = substitution.methodName();
-            if (methodName.length() == 0) {
-                methodName = method.getName();
-            }
-
-            registerSubstitution(fixTypeName(className), methodName, signature.toString(), rootNode, false);
-        }
-    }
-
-    private static RootNode createRootNodeForMethod(java.lang.reflect.Method method) {
-        if (!EspressoOptions.RUNNING_ON_SVM && context.getEnv().getOptions().get(EspressoOptions.IntrinsicsViaMethodHandles)) {
-            MethodHandle handle;
-            try {
-                handle = MethodHandles.publicLookup().unreflect(method);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-            return new IntrinsicRootNode(language, handle);
-        } else {
-            return new IntrinsicReflectionRootNode(language, method);
-        }
-    }
-
-    public void registerSubstitution(ByteString<Type> clazz, ByteString<Name> methodName, ByteString<Signature> signature, RootNode intrinsic, boolean update) {
-        MethodKey key = new MethodKey(clazz, methodName, signature);
-        assert intrinsic != null;
-        if (update || !substitutions.containsKey(key)) {
-            // assert !substitutions.containsKey(key) : key + " intrinsic is already registered";
-            substitutions.put(key, intrinsic);
         }
     }
 
@@ -661,11 +434,16 @@ public final class InterpreterToVM implements ContextAccess {
 
     public StaticObject newObject(Klass klass) {
         assert klass != null && !klass.isArray() && !klass.isPrimitive() && !klass.isAbstract();
-        klass.initialize();
+        klass.safeInitialize();
         return new StaticObjectImpl((ObjectKlass) klass);
     }
 
     public int arrayLength(StaticObject arr) {
         return ((StaticObjectArray) arr).length();
+    }
+
+    public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
+        assert getMeta().String == guestString.getKlass();
+        return getStrings().intern(guestString);
     }
 }

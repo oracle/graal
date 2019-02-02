@@ -35,11 +35,11 @@ import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class Method implements ModifiersProvider, ContextAccess {
 
-    public static final ByteString<Name> INIT = ByteString.fromJavaString("<init>");
-    public static final ByteString<Name> CLINIT = ByteString.fromJavaString("<clinit>");
+
+    // TODO(peterssen): Move signature constants to ByteString.Signature .
+    private static final ByteString<Signature> CLINIT_SIGNATURE = ByteString.fromJavaString("()V");
 
     public static final Method[] EMPTY_ARRAY = new Method[0];
-    private static final ByteString<Signature> CLINIT_SIGNATURE = ByteString.fromJavaString("()V");
 
     private final LinkedMethod linkedMethod;
     private final RuntimeConstantPool pool;
@@ -62,7 +62,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     private CallTarget callTarget;
 
     @CompilationFinal(dimensions = 1) //
-    private Klass[] checkedExceptions;
+    private ObjectKlass[] checkedExceptions;
 
     // can have a different constant pool than it's declaring class
     public ConstantPool getConstantPool() {
@@ -252,13 +252,16 @@ public final class Method implements ModifiersProvider, ContextAccess {
         if (checkedExceptions == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (exceptionsAttribute == null) {
-                checkedExceptions = Klass.EMPTY_ARRAY;
+                checkedExceptions = ObjectKlass.EMPTY_ARRAY;
                 return checkedExceptions;
             }
             final int[] entries = exceptionsAttribute.getCheckedExceptionsCPI();
-            checkedExceptions = new Klass[entries.length];
+            checkedExceptions = new ObjectKlass[entries.length];
             for (int i = 0; i < entries.length; ++i) {
-                checkedExceptions[i] = getConstantPool().classAt(entries[i]).resolve(getConstantPool(), entries[i]);
+                // getConstantPool().classAt(entries[i]).
+                // TODO(peterssen): Resolve and cache CP entries.
+                checkedExceptions[i] = (ObjectKlass) getRegistries().loadKlass(getConstantPool().classAt(entries[i]).getType(getConstantPool()),
+                        getDeclaringKlass().getDefiningClassLoader());
             }
         }
         return checkedExceptions;

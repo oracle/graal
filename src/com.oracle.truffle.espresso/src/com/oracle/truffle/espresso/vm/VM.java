@@ -48,6 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
@@ -512,14 +513,14 @@ public final class VM extends NativeEnv implements ContextAccess {
         });
         StaticObject backtrace = getMeta().Object.allocateInstance();
         ((StaticObjectImpl) backtrace).setHiddenField("$$frames", frames.toArray(new FrameInstance[0]));
-        getMeta().Throwable.declaredField("backtrace").set(self, backtrace);
+        getMeta().Throwable_backtrace.set(self, backtrace);
         return self;
     }
 
     @VmImpl
     @JniImpl
     public int JVM_GetStackTraceDepth(@Host(Throwable.class) StaticObject self) {
-        StaticObject backtrace = (StaticObject) getMeta().Throwable.declaredField("backtrace").get(self);
+        StaticObject backtrace = (StaticObject) getMeta().Throwable_backtrace.get(self);
         if (StaticObject.isNull(backtrace)) {
             return 0;
         }
@@ -531,14 +532,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index) {
         Meta meta = getMeta();
         StaticObject ste = meta.knownKlass(StackTraceElement.class).allocateInstance();
-        StaticObject backtrace = (StaticObject) meta.Throwable.declaredField("backtrace").get(self);
+        StaticObject backtrace = (StaticObject) meta.Throwable_backtrace.get(self);
 
         FrameInstance[] frames = ((FrameInstance[]) ((StaticObjectImpl) backtrace).getHiddenField("$$frames"));
 
         FrameInstance frame = frames[index];
 
         RootNode rootNode = ((RootCallTarget) frame.getCallTarget()).getRootNode();
-        Meta.Method.WithInstance init = meta(ste).method("<init>", void.class, String.class, String.class, String.class, int.class);
+        Meta.Method.WithInstance init = meta(ste).method(Name.INIT, void.class, String.class, String.class, String.class, int.class);
         if (rootNode instanceof LinkedNode) {
             LinkedNode linkedNode = (LinkedNode) rootNode;
             String className = linkedNode.getOriginalMethod().getDeclaringClass().getName();

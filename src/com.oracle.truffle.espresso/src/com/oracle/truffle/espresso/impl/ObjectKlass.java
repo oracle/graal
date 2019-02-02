@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -133,6 +134,11 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
+    public boolean isInstanceClass() {
+        throw EspressoError.unimplemented();
+    }
+
+    @Override
     public int getFlags() {
         return linkedKlass.getFlags();
     }
@@ -157,6 +163,21 @@ public final class ObjectKlass extends Klass {
             assert isInitialized();
         }
     }
+
+    @Override
+    public Klass getElementalType() {
+        return null;
+    }
+//
+//    @Override
+//    public Field[] getInstanceFields(boolean includeSuperclasses) {
+//        return new Field[0];
+//    }
+
+//    @Override
+//    public Field[] getStaticFields() {
+//        return new Field[0];
+//    }
 
 // @Override
 // public Method resolveMethod(Method method, Klass callerType) {
@@ -247,6 +268,11 @@ public final class ObjectKlass extends Klass {
     @Override
     public Klass getEnclosingType() {
         return null;
+    }
+
+    @Override
+    public Method[] getDeclaredConstructors() {
+        return new Method[0];
     }
 
 // @Override

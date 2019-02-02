@@ -38,16 +38,13 @@ public final class Target_java_lang_Thread {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         if (context.getMainThread() == null) {
             Meta meta = context.getMeta();
-            Meta.Klass threadGroupKlass = meta.knownKlass(ThreadGroup.class);
-            Meta.Klass threadKlass = meta.knownKlass(Thread.class);
+            StaticObject mainThread = meta.Thread.allocateInstance();
+            meta.Thread_group.set(mainThread, meta.ThreadGroup.allocateInstance());
+            meta.Thread_name.set(mainThread, meta.toGuest("mainThread"));
+            meta.Thread_priority.set(mainThread, 5);
 
-            StaticObject mainThread = threadKlass.metaNew().fields(
-                            Meta.Field.set("group", threadGroupKlass.allocateInstance()),
-                            Meta.Field.set("name", meta.toGuest("mainThread")),
-                            Meta.Field.set("priority", 5),
-                            // Lock object used by NIO.
-                            Meta.Field.set("blockerLock", meta.Object.allocateInstance())).getInstance();
-
+            // Lock object used by NIO.
+            meta.Thread_blockerLock.set(mainThread, meta.Object.allocateInstance());
             context.setMainThread(mainThread);
         }
         return context.getMainThread();

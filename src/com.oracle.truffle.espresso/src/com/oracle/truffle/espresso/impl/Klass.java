@@ -358,7 +358,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      *            type are included in the result
      * @return an array of instance fields
      */
-    public abstract Field[] getInstanceFields(boolean includeSuperclasses);
+    // public abstract Field[] getInstanceFields(boolean includeSuperclasses);
 
     /**
      * Returns the static fields of this class, including {@linkplain Field#isInternal() internal}
@@ -366,7 +366,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * returned by this method is stable. That is, for a single JVM execution the same order is
      * returned each time this method is called.
      */
-    public abstract Field[] getStaticFields();
+    // public abstract Field[] getStaticFields();
 
     /**
      * Returns the instance field of this class (or one of its super classes) at the given offset,
