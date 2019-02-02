@@ -84,23 +84,23 @@ public final class Meta implements ContextAccess {
         Long = knownKlass(Long.class);
         Void = knownKlass(Void.class);
 
-        ByteString<Name> valueOf = ByteString.fromJavaString("valueOf");
+        Boolean_valueOf = Boolean.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Boolean.class, boolean.class));
+        Byte_valueOf = Byte.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Byte.class, byte.class));
+        Char_valueOf = Char.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Character.class, char.class));
+        Short_valueOf = Short.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Short.class, short.class));
+        Float_valueOf = Float.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Float.class, float.class));
+        Int_valueOf = Int.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Integer.class, int.class));
+        Double_valueOf = Double.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Double.class, double.class));
+        Long_valueOf = Long.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Long.class, long.class));
 
-        Boolean_valueOf = Boolean.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Boolean.class, boolean.class));
-        Byte_valueOf = Byte.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Byte.class, byte.class));
-        Char_valueOf = Char.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Character.class, char.class));
-        Short_valueOf = Short.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Short.class, short.class));
-        Float_valueOf = Float.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Float.class, float.class));
-        Int_valueOf = Int.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Integer.class, int.class));
-        Double_valueOf = Double.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Double.class, double.class));
-        Long_valueOf = Long.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Long.class, long.class));
-
-        String_value = String.lookupDeclaredField(ByteString.fromJavaString("value"), Types.fromClass(byte[].class));
-        String_hash = String.lookupDeclaredField(ByteString.fromJavaString("hash"), Types.fromClass(int.class));
-        String_hashCode = String.lookupDeclaredMethod(ByteString.fromJavaString("hashCode"), context.getSignatures().makeRaw(int.class));
-        String_length = String.lookupDeclaredMethod(ByteString.fromJavaString("length"), context.getSignatures().makeRaw(int.class));
+        String_value = String.lookupDeclaredField(Name.value, Types.fromClass(byte[].class));
+        String_hash = String.lookupDeclaredField(Name.hash, Types.fromClass(int.class));
+        String_hashCode = String.lookupDeclaredMethod(Name.hashCode, context.getSignatures().makeRaw(int.class));
+        String_length = String.lookupDeclaredMethod(Name.length, context.getSignatures().makeRaw(int.class));
 
         Throwable = knownKlass(Throwable.class);
+        Throwable_backtrace = Throwable.lookupField(Name.backtrace, Object.getType());
+
         StackOverflowError = knownKlass(StackOverflowError.class);
         OutOfMemoryError = knownKlass(OutOfMemoryError.class);
 
@@ -108,11 +108,16 @@ public final class Meta implements ContextAccess {
         Serializable = knownKlass(Serializable.class);
 
         ClassLoader = knownKlass(Throwable.class);
-        ClassLoader_findNative = Class.lookupDeclaredMethod(ByteString.fromJavaString("findNative"), context.getSignatures().makeRaw(long.class, ClassLoader.class, String.class));
+        ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, context.getSignatures().makeRaw(long.class, ClassLoader.class, String.class));
+        ClassLoader_getSystemClassLoader = ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, context.getSignatures().makeRaw(ClassLoader.class));
 
+        // Guest reflection.
         Constructor = knownKlass(Constructor.class);
-        Constructor_clazz = Constructor.lookupDeclaredField(ByteString.fromJavaString("clazz"), Class.getType());
-        Constructor_root = Constructor.lookupDeclaredField(ByteString.fromJavaString("root"), Constructor.getType());
+        Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Class.getType());
+        Constructor_root = Constructor.lookupDeclaredField(Name.root, Constructor.getType());
+
+        Method = knownKlass(java.lang.reflect.Method.class);
+        Method_root = Method.lookupDeclaredField(Name.root, Method.getType());
 
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{Cloneable, Serializable};
     }
@@ -161,14 +166,19 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass ClassLoader;
     public final Method ClassLoader_findNative;
+    public final Method ClassLoader_getSystemClassLoader;
 
     public final ObjectKlass Constructor;
     public final Field Constructor_clazz;
     public final Field Constructor_root;
 
+    public final ObjectKlass Method;
+    public final Field Method_root;
+
     public final ObjectKlass StackOverflowError;
     public final ObjectKlass OutOfMemoryError;
     public final ObjectKlass Throwable;
+    public final Field Throwable_backtrace;
 
     // Array support.
     public final ObjectKlass Cloneable;
@@ -183,26 +193,33 @@ public final class Meta implements ContextAccess {
     }
 
     public StaticObject initEx(java.lang.Class<?> clazz) {
-        StaticObject ex = getInterpreterToVM().newObject(throwableKlass(clazz));
-        ex.getKlass().lookupDeclaredMethod(Method.INIT, getSignatures().makeRaw(void.class)).invokeDirect(ex);
+        assert clazz.isAssignableFrom(Throwable.class);
+        Klass exKlass = throwableKlass(clazz);
+        StaticObject ex = getInterpreterToVM().newObject(exKlass);
+        exKlass.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(void.class)).invokeDirect(ex);
         return ex;
     }
 
-    public static StaticObject initEx(Klass clazz, String message) {
-        StaticObject ex = clazz.allocateInstance();
-        meta(ex).method("<init>", void.class, String.class).invoke(message);
+    public static StaticObject initEx(Klass klass, String message) {
+        StaticObject ex = klass.allocateInstance();
+        // Call constructor.
+        klass.lookupDeclaredMethod(Name.INIT, klass.getSignatures().makeRaw(void.class, String.class)).invokeDirect(ex, message);
         return ex;
     }
 
     public StaticObject initEx(java.lang.Class<?> clazz, String message) {
-        StaticObject ex = throwableKlass(clazz).allocateInstance();
-        meta(ex).method("<init>", void.class, String.class).invoke(message);
+        assert clazz.isAssignableFrom(Throwable.class);
+        Klass exKlass = throwableKlass(clazz);
+        StaticObject ex = getInterpreterToVM().newObject(exKlass);
+        exKlass.lookupDeclaredMethod(Name.INIT, exKlass.getSignatures().makeRaw(void.class, String.class)).invokeDirect(ex, message);
         return ex;
     }
 
-    public StaticObject initEx(java.lang.Class<?> clazz, @com.oracle.truffle.espresso.substitutions.Host(Throwable.class) StaticObject cause) {
-        StaticObject ex = throwableKlass(clazz).allocateInstance();
-        meta(ex).method("<init>", void.class, Throwable.class).invoke(cause);
+    public StaticObject initEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
+        assert clazz.isAssignableFrom(Throwable.class);
+        Klass exKlass = throwableKlass(clazz);
+        StaticObject ex = getInterpreterToVM().newObject(exKlass);
+        exKlass.lookupDeclaredMethod(Name.INIT, exKlass.getSignatures().makeRaw(void.class, Throwable.class)).invokeDirect(ex, cause);
         return ex;
     }
 
@@ -214,7 +231,7 @@ public final class Meta implements ContextAccess {
         throw new EspressoException(initEx(clazz, message));
     }
 
-    public EspressoException throwEx(java.lang.Class<?> clazz, @com.oracle.truffle.espresso.substitutions.Host(Throwable.class) StaticObject cause) {
+    public EspressoException throwEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         throw new EspressoException(initEx(clazz, cause));
     }
 

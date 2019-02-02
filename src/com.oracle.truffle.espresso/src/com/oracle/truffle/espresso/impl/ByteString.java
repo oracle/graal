@@ -56,6 +56,18 @@ public final class ByteString<T> {
     }
 
     public static class Name extends ModifiedUTF8 {
+        public static final ByteString<Name> INIT = ByteString.fromJavaString("<init>");
+        public static final ByteString<Name> CLINIT = ByteString.fromJavaString("<clinit>");
+        public static final ByteString<Name> backtrace = ByteString.fromJavaString("backtrace");
+        public static final ByteString<Name> clazz = ByteString.fromJavaString("clazz");
+        public static final ByteString<Name> root = ByteString.fromJavaString("root");
+        public static final ByteString<Name> value = ByteString.fromJavaString("value");
+        public static final ByteString<Name> hash = ByteString.fromJavaString("hash");
+        public static final ByteString<Name> hashCode = ByteString.fromJavaString("hashCode");
+        public static final ByteString<Name> length = ByteString.fromJavaString("length");
+        public static final ByteString<Name> findNative = ByteString.fromJavaString("findNative");
+        public static final ByteString<Name> getSystemClassLoader = ByteString.fromJavaString("getSystemClassLoader");
+        public static final ByteString<Name> valueOf = ByteString.fromJavaString("valueOf");
     }
 
     public static class Constant extends ModifiedUTF8 {

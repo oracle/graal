@@ -531,7 +531,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index) {
         Meta meta = getMeta();
         StaticObject ste = meta.knownKlass(StackTraceElement.class).allocateInstance();
-        StaticObject backtrace = (StaticObject) meta.THROWABLE.declaredField("backtrace").get(self);
+        StaticObject backtrace = (StaticObject) meta.Throwable.declaredField("backtrace").get(self);
+
         FrameInstance[] frames = ((FrameInstance[]) ((StaticObjectImpl) backtrace).getHiddenField("$$frames"));
 
         FrameInstance frame = frames[index];
@@ -559,8 +560,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool, int index) {
-        Meta meta = getMeta();
-        return meta.toGuest(jcpool.getMirror().getConstantPool().utf8At(index).getValue());
+        return getMeta().toGuest(jcpool.getMirror().getConstantPool().utf8At(index).toString());
     }
 
     @VmImpl
