@@ -23,18 +23,11 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.Arrays;
-import java.util.function.Consumer;
-import java.util.function.IntFunction;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -56,13 +49,16 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal private StaticObject statics;
 
     @CompilationFinal(dimensions = 1) //
-    private Field[] instanceFieldsCache;
+    private Field[] declaredFields;
 
     @CompilationFinal(dimensions = 1) //
-    private Field[] declaredInstanceFieldsCache;
+    private Method[] declaredMethods;
 
-    @CompilationFinal(dimensions = 1) //
-    private Field[] staticFieldsCache;
+// @CompilationFinal(dimensions = 1) //
+// private Field[] declaredInstanceFields;
+
+// @CompilationFinal(dimensions = 1) //
+// private Field[] staticFieldsCache;
 
     private final InnerClassesAttribute innerClasses;
 
@@ -76,7 +72,9 @@ public final class ObjectKlass extends Klass {
 // return getStaticFields().length;
 // }
 
+    // @CompilationFinal //
     private int initState = LINKED;
+
     public static final int LOADED = 0; //
     public static final int LINKED = 1;
     public static final int PREPARED = 2;
@@ -88,24 +86,41 @@ public final class ObjectKlass extends Klass {
                     InnerClassesAttribute innerClasses,
                     Attribute runtimeVisibleAnnotations) {
         super(context, linkedKlass.getType(), superKlass, superInterfaces);
+
         this.enclosingMethod = enclosingMethod;
         this.linkedKlass = linkedKlass;
+
         this.innerClasses = innerClasses;
         this.runtimeVisibleAnnotations = runtimeVisibleAnnotations;
 
         // TODO(peterssen): Make writable copy.
         this.pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), classLoader);
+
+        LinkedField[] linkedFields = linkedKlass.getLinkedFields();
+        Field[] fields = new Field[linkedFields.length];
+        for (int i = 0; i < fields.length; ++i) {
+            fields[i] = new Field(linkedFields[i], this);
+        }
+
+        LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
+        Method[] methods = new Method[linkedMethods.length];
+        for (int i = 0; i < methods.length; ++i) {
+            methods[i] = new Method(this, linkedMethods[i], null, linkedMethods[i].);
+        }
+
+        this.declaredFields = fields;
+        this.declaredMethods = methods;
     }
 
-    private static int countDeclaredInstanceFields(Field[] declaredFields) {
-        int count = 0;
-        for (Field fi : declaredFields) {
-            if (!fi.isStatic()) {
-                count++;
-            }
-        }
-        return count;
-    }
+//    private static int countDeclaredInstanceFields(Field[] declaredFields) {
+//        int count = 0;
+//        for (Field fi : declaredFields) {
+//            if (!fi.isStatic()) {
+//                count++;
+//            }
+//        }
+//        return count;
+//    }
 
     @Override
     public StaticObject tryInitializeAndGetStatics() {
@@ -135,12 +150,10 @@ public final class ObjectKlass extends Klass {
                 getSuperclass().initialize();
             }
             initState = INITIALIZED;
-            meta(this).getClassInitializer().ifPresent(new Consumer<Meta.Method.WithInstance>() {
-                @Override
-                public void accept(Meta.Method.WithInstance clinit) {
-                    clinit.invokeDirect();
-                }
-            });
+            Method clinit = getClassInitializer();
+            if (clinit != null) {
+                clinit.getCallTarget().call();
+            }
             assert isInitialized();
         }
     }
@@ -155,69 +168,71 @@ public final class ObjectKlass extends Klass {
         return pool.getClassLoader();
     }
 
+    @Override
     public RuntimeConstantPool getConstantPool() {
         return pool;
     }
-
-    @Override
-    public Field[] getInstanceFields(boolean includeSuperclasses) {
-        if (!includeSuperclasses) {
-            if (declaredInstanceFieldsCache == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                declaredInstanceFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<Field>() {
-                    @Override
-                    public boolean test(Field f) {
-                        return !f.isStatic();
-                    }
-                }).toArray(new IntFunction<Field[]>() {
-                    @Override
-                    public Field[] apply(int value) {
-                        return new Field[value];
-                    }
-                });
-            }
-            return declaredInstanceFieldsCache;
-        }
-        if (instanceFieldsCache == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Stream<Field> fields = Arrays.stream(declaredFields).filter(new Predicate<Field>() {
-                @Override
-                public boolean test(Field f) {
-                    return !f.isStatic();
-                }
-            });
-            if (includeSuperclasses && getSuperclass() != null) {
-                fields = Stream.concat(Arrays.stream(getSuperclass().getInstanceFields(includeSuperclasses)), fields);
-            }
-            instanceFieldsCache = fields.toArray(new IntFunction<Field[]>() {
-                @Override
-                public Field[] apply(int value) {
-                    return new Field[value];
-                }
-            });
-        }
-        return instanceFieldsCache;
-    }
-
-    @Override
-    public Field[] getStaticFields() {
-        // TODO(peterssen): Cache static fields.
-        if (staticFieldsCache == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            staticFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<Field>() {
-                @Override
-                public boolean test(Field fieldInfo) {
-                    return fieldInfo.isStatic();
-                }
-            }).toArray(new IntFunction<Field[]>() {
-                @Override
-                public Field[] apply(int value) {
-                    return new Field[value];
-                }
-            });
-        }
-        return staticFieldsCache;
-    }
+//
+// @Override
+// public Field[] getInstanceFields(boolean includeSuperclasses) {
+// if (!includeSuperclasses) {
+// if (declaredInstanceFieldsCache == null) {
+// CompilerDirectives.transferToInterpreterAndInvalidate();
+// declaredInstanceFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<Field>() {
+// @Override
+// public boolean test(Field f) {
+// return !f.isStatic();
+// }
+// }).toArray(new IntFunction<Field[]>() {
+// @Override
+// public Field[] apply(int value) {
+// return new Field[value];
+// }
+// });
+// }
+// return declaredInstanceFieldsCache;
+// }
+// if (instanceFieldsCache == null) {
+// CompilerDirectives.transferToInterpreterAndInvalidate();
+// Stream<Field> fields = Arrays.stream(declaredFields).filter(new Predicate<Field>() {
+// @Override
+// public boolean test(Field f) {
+// return !f.isStatic();
+// }
+// });
+// if (includeSuperclasses && getSuperclass() != null) {
+// fields = Stream.concat(Arrays.stream(getSuperclass().getInstanceFields(includeSuperclasses)),
+// fields);
+// }
+// instanceFieldsCache = fields.toArray(new IntFunction<Field[]>() {
+// @Override
+// public Field[] apply(int value) {
+// return new Field[value];
+// }
+// });
+// }
+// return instanceFieldsCache;
+// }
+//
+// @Override
+// public Field[] getStaticFields() {
+// // TODO(peterssen): Cache static fields.
+// if (staticFieldsCache == null) {
+// CompilerDirectives.transferToInterpreterAndInvalidate();
+// staticFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<Field>() {
+// @Override
+// public boolean test(Field fieldInfo) {
+// return fieldInfo.isStatic();
+// }
+// }).toArray(new IntFunction<Field[]>() {
+// @Override
+// public Field[] apply(int value) {
+// return new Field[value];
+// }
+// });
+// }
+// return staticFieldsCache;
+// }
 
     @Override
     public boolean isLocal() {
@@ -271,14 +286,6 @@ public final class ObjectKlass extends Klass {
     public InnerClassesAttribute getInnerClasses() {
         return innerClasses;
     }
-
-// @Override
-// public ObjectKlass getSupertype() {
-// if (isInterface()) {
-// return getContext().getMeta().OBJECT;
-// }
-// return getSuperclass();
-// }
 
     public final LinkedKlass getLinkedKlass() {
         return linkedKlass;

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -37,7 +38,7 @@ public final class ArrayKlass extends Klass {
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
                         componentType.getContext().getTypes().arrayOf(componentType.getType()),
-                        componentType.getMeta().OBJECT,
+                        componentType.getMeta().Object,
                         componentType.getMeta().ARRAY_SUPERINTERFACES);
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
@@ -82,6 +83,11 @@ public final class ArrayKlass extends Klass {
     public Klass getHostClass() {
         return null;
     }
+
+    @Override
+    public Klass getElementalType() {
+        return null;
+    }
 //
 // @Override
 // public Method resolveMethod(Method method, Klass callerType) {
@@ -101,8 +107,8 @@ public final class ArrayKlass extends Klass {
 //
 // @Override
 // public ObjectKlass[] getInterfaces() {
-// Klass cloneable = getMeta().CLONEABLE;
-// Klass serializable = getMeta().SERIALIZABLE;
+// Klass cloneable = getMeta().Cloneable;
+// Klass serializable = getMeta().Serializable;
 // return new ObjectKlass[]{cloneable, serializable};
 // }
 
@@ -116,10 +122,10 @@ public final class ArrayKlass extends Klass {
         return componentType;
     }
 
-    @Override
-    public StaticObject getClassLoader() {
-        return getElementalType().getClassLoader();
-    }
+//    @Override
+//    public StaticObject getClassLoader() {
+//        return getElementalType().getDefiningClassLoader();
+//    }
 
 // @Override
 // public Field[] getInstanceFields(boolean includeSuperclasses) {
@@ -164,6 +170,11 @@ public final class ArrayKlass extends Klass {
     @Override
     public final @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
         return elementalType.getDefiningClassLoader();
+    }
+
+    @Override
+    public ConstantPool getConstantPool() {
+        return getElementalType().getConstantPool();
     }
 
     // @Override

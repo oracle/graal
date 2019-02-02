@@ -67,7 +67,7 @@ public final class Target_java_lang_Class {
                     @Host(String.class) StaticObject name) {
 
         String hostName = MetaUtil.toInternalName(Meta.toHostString(name));
-        return EspressoLanguage.getCurrentContext().getRegistries().resolveWithBootClassLoader(Types.forPrimitive(JavaKind.fromTypeString(hostName))).mirror();
+        return EspressoLanguage.getCurrentContext().getRegistries().loadKlassWithBootClassLoader(Types.forPrimitive(JavaKind.fromTypeString(hostName))).mirror();
     }
 
     @Substitution(hasReceiver = true)
@@ -94,7 +94,7 @@ public final class Target_java_lang_Class {
         }
 
         try {
-            Klass klass = context.getRegistries().resolve(context.getTypes().make(typeDesc), loader);
+            Klass klass = context.getRegistries().loadKlass(context.getTypes().make(typeDesc), loader);
             if (initialize) {
                 meta(klass).safeInitialize();
             }
@@ -343,7 +343,7 @@ public final class Target_java_lang_Class {
             if (enclosingMethodAttr == null) {
                 return StaticObject.NULL;
             }
-            StaticObjectArray arr = (StaticObjectArray) meta.OBJECT.allocateArray(3);
+            StaticObjectArray arr = (StaticObjectArray) meta.Object.allocateArray(3);
 
             Klass enclosingKlass = self.getMirror().getConstantPool().classAt(enclosingMethodAttr.getClassIndex()).resolve(self.getMirror().getConstantPool(), enclosingMethodAttr.getClassIndex());
 

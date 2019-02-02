@@ -1079,7 +1079,7 @@ public final class BytecodeNode extends EspressoRootNode {
         } else if (constant instanceof ClassConstant) {
             assert opcode == LDC || opcode == LDC_W;
             ByteString<Type> type = ((ClassConstant) constant).getType(getConstantPool());
-            Klass klass = getContext().getRegistries().resolve(type, getConstantPool().getClassLoader());
+            Klass klass = getContext().getRegistries().loadKlass(type, getConstantPool().getClassLoader());
             putObject(frame, top, klass.mirror());
         } else {
             throw EspressoError.unimplemented(constant.toString());
@@ -1168,7 +1168,7 @@ public final class BytecodeNode extends EspressoRootNode {
 
         try {
             try {
-                Klass klass = getContext().getRegistries().resolve(type, pool.getClassLoader());
+                Klass klass = getContext().getRegistries().loadKlass(type, pool.getClassLoader());
                 // pool.updateAt(index, new Resolved(klass));
                 return klass;
             } catch (RuntimeException e) {
@@ -1208,7 +1208,7 @@ public final class BytecodeNode extends EspressoRootNode {
         MethodRefConstant methodRefConstant = pool.methodAt(index);
         ByteString<Type> declaringKlass = methodRefConstant.getDeclaringClass(pool);
 
-        Klass declaringInterface = getContext().getRegistries().resolve(declaringKlass, pool.getClassLoader());
+        Klass declaringInterface = getContext().getRegistries().loadKlass(declaringKlass, pool.getClassLoader());
         assert declaringInterface.isInterface();
         ByteString<Name> name = methodRefConstant.getName(pool);
 
@@ -1225,7 +1225,7 @@ public final class BytecodeNode extends EspressoRootNode {
         // CompilerDirectives.transferToInterpreterAndInvalidate();
         MethodRefConstant methodRefConstant = pool.methodAt(index);
         ByteString<Type> declaringKlass = methodRefConstant.getDeclaringClass(pool);
-        Klass klass = getContext().getRegistries().resolve(declaringKlass, pool.getClassLoader());
+        Klass klass = getContext().getRegistries().loadKlass(declaringKlass, pool.getClassLoader());
         // assert declaringInterface.isInterface();
         ByteString<Name> name = methodRefConstant.getName(pool);
         ByteString<Signature> signature = methodRefConstant.getSignature(pool);
@@ -1251,13 +1251,13 @@ public final class BytecodeNode extends EspressoRootNode {
         FieldRefConstant fieldRefConstant = pool.fieldAt(index);
 
         ByteString<Type> declaringKlass = fieldRefConstant.getDeclaringClass(pool);
-        Klass klass = getContext().getRegistries().resolve(declaringKlass, pool.getClassLoader());
+        Klass klass = getContext().getRegistries().loadKlass(declaringKlass, pool.getClassLoader());
 
         // assert declaringInterface.isInterface();
         ByteString<Name> name = fieldRefConstant.getName(pool);
         ByteString<Type> type = fieldRefConstant.getType(pool);
 
-        Klass declaringClass = getContext().getRegistries().resolve(declaringKlass, pool.getClassLoader());
+        Klass declaringClass = getContext().getRegistries().loadKlass(declaringKlass, pool.getClassLoader());
 
         while (declaringClass != null) {
             for (Field fi : declaringClass.getDeclaredFields()) {

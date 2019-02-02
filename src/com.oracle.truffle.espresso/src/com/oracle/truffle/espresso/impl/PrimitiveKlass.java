@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.lang.reflect.Modifier;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -30,15 +32,11 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
-import java.lang.reflect.Modifier;
-
 /**
- * Implementation of {@link Klass} for primitive types.
- * Primitive classes don't have a .class representation, so the associated LinkedKlass is null.
+ * Implementation of {@link Klass} for primitive types. Primitive classes don't have a .class
+ * representation, so the associated LinkedKlass is null.
  */
 public final class PrimitiveKlass extends Klass {
-    private final EspressoContext context;
-
     /**
      * Creates Espresso type for a primitive {@link JavaKind}.
      *
@@ -46,7 +44,6 @@ public final class PrimitiveKlass extends Klass {
      */
     public PrimitiveKlass(EspressoContext context, JavaKind kind) {
         super(context, kind.getType(), null, ObjectKlass.EMPTY_ARRAY);
-        this.context = context;
         assert kind.isPrimitive() : kind + " not a primitive kind";
     }
 
@@ -63,10 +60,10 @@ public final class PrimitiveKlass extends Klass {
         return null;
     }
 
-    @Override
-    public StaticObject getClassLoader() {
-        return StaticObject.NULL; // BCL
-    }
+// @Override
+// public StaticObject getDefiningClassLoader() {
+// return StaticObject.NULL; // BCL
+// }
 
     @Override
     public boolean isInitialized() {
@@ -84,6 +81,11 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
+    public Klass getElementalType() {
+        return null;
+    }
+
+    @Override
     public Field[] getInstanceFields(boolean includeSuperclasses) {
         return Field.EMPTY_ARRAY;
     }
@@ -95,18 +97,17 @@ public final class PrimitiveKlass extends Klass {
 
     @Override
     public void initialize() {
-        // nop
+        /* nop */
     }
-
-//
-//    @Override
-//    public Field findInstanceFieldWithOffset(long offset, JavaKind expectedType) {
-//        return null;
-//    }
 
     @Override
     public final @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
         return StaticObject.NULL; // BCL
+    }
+
+    @Override
+    public ConstantPool getConstantPool() {
+        return ConstantPool.EMPTY;
     }
 
     @Override

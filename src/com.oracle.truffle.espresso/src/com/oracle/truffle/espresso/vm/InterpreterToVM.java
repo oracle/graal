@@ -37,6 +37,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Signature;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -126,7 +130,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public StaticObject intern(StaticObject obj) {
-        assert obj.getKlass().equals(obj.getKlass().getContext().getMeta().STRING);
+        assert obj.getKlass().equals(obj.getKlass().getContext().getMeta().String);
         return obj.getKlass().getContext().getStrings().intern(obj);
     }
 
@@ -284,7 +288,7 @@ public final class InterpreterToVM implements ContextAccess {
         }
     }
 
-    public void registerSubstitution(String clazz, String methodName, String signature, RootNode intrinsic, boolean update) {
+    public void registerSubstitution(ByteString<Type> clazz, ByteString<Name> methodName, ByteString<Signature> signature, RootNode intrinsic, boolean update) {
         MethodKey key = new MethodKey(clazz, methodName, signature);
         assert intrinsic != null;
         if (update || !substitutions.containsKey(key)) {

@@ -37,6 +37,12 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  */
 public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Type>> {
 
+    public static ByteString<Type> fromJavaString(String typeString) {
+        ByteString<Type> type = ByteString.fromJavaString(typeString);
+        assert isValid(type);
+        return type;
+    }
+
     @Override
     protected ByteString<Type> create(ByteString<Type> key) {
         return key;
@@ -264,11 +270,15 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         return dims;
     }
 
-    public static void verify(ByteString<Type> value) {
-        int endIndex = Types.skipValidTypeDescriptor(value, 0, true);
-        if (endIndex != value.length()) {
-            throw new ClassFormatError("Invalid type descriptor " + value);
+    public static void verify(ByteString<Type> type) throws ClassFormatError {
+        if (!isValid(type)) {
+            throw new ClassFormatError("Invalid type descriptor " + type);
         }
+    }
+
+    private static boolean isValid(ByteString<Type> type) {
+        int endIndex = Types.skipValidTypeDescriptor(type, 0, true);
+        return endIndex == type.length();
     }
 
     public static boolean isArray(ByteString<Type> type) {

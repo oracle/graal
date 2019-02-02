@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.jni.Utf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 
 /**
  * Modified-UTF8 byte string for internal use by Espresso.
@@ -121,4 +123,30 @@ public final class ByteString<T> {
     public static <T> ByteString<T> fromJavaString(String string) {
         return Utf8.fromJavaString(string);
     }
+
+}
+
+final class K {
+    private K() {
+        /* no instances */
+    }
+
+    public static ByteString<Type> Class = ByteString.fromJavaString("Ljava/lang/Class;");
+    public static ByteString<Type> Object = ByteString.fromJavaString("Ljava/lang/Object;");
+    public static ByteString<Type> String = ByteString.fromJavaString("Ljava/lang/String;");
+    public static ByteString<Type> Exception = ByteString.fromJavaString("Ljava/lang/Exception;");
+    public static ByteString<Type> Throwable = ByteString.fromJavaString("Ljava/lang/Throwable;");
+    public static ByteString<Type> ClassLoader = ByteString.fromJavaString("Ljava/lang/ClassLoader;");
+    public static ByteString<Type> System = ByteString.fromJavaString("Ljava/lang/System;");
+
+    // Primitives
+    public static ByteString<Type> _boolean = JavaKind.Boolean.getType();
+    public static ByteString<Type> _byte = JavaKind.Byte.getType();
+    public static ByteString<Type> _char = JavaKind.Char.getType();
+    public static ByteString<Type> _short = JavaKind.Short.getType();
+    public static ByteString<Type> _int = JavaKind.Int.getType();
+    public static ByteString<Type> _float = JavaKind.Float.getType();
+    public static ByteString<Type> _double = JavaKind.Double.getType();
+    public static ByteString<Type> _long = JavaKind.Long.getType();
+    public static ByteString<Type> _void = JavaKind.Void.getType();
 }

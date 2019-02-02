@@ -51,6 +51,7 @@ import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -203,7 +204,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     public TruffleObject lookupJniImpl(String methodName) {
-        Method m = jniMethods.get(methodName);
+        java.lang.reflect.Method m = jniMethods.get(methodName);
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
@@ -474,7 +475,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (StaticObject.isNull(string)) {
             return 0;
         }
-        return (int) meta(string).method("length", int.class).invokeDirect();
+        return (int) getMeta().String_length.invokeDirect(string);
     }
 
     // region Get*ID
@@ -501,12 +502,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public long GetFieldID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         Klass klass = ((StaticObjectClass) clazz).getMirror();
         klass.safeInitialize();
-        Field field = klass.field(name);
+        ByteString<Type> fieldType = Types.fromJavaString(signature);
+        Field field = klass.lookupField(ByteString.fromJavaString(name), fieldType);
         if (field == null) {
             throw getMeta().throwEx(NoSuchFieldError.class, name);
         }
         assert !field.isStatic();
-        assert field.getType().getInternalName().equals(signature);
+        assert field.getType().equals(fieldType);
         return fieldIds.handlify(field);
     }
 
@@ -522,7 +524,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * 
      * @param clazz a Java class object.
      * @param name the static field name in a 0-terminated modified UTF-8 string.
-     * @param sig the field signature in a 0-terminated modified UTF-8 string.
+     * @param signature the field signature in a 0-terminated modified UTF-8 string.
      *
      * @return a field ID, or NULL if the specified static field cannot be found.
      * @throws NoSuchFieldError if the specified static field cannot be found.
@@ -530,15 +532,16 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public long GetStaticFieldID(@Host(Class.class) StaticObject clazz, String name, String sig) {
+    public long GetStaticFieldID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         Klass klass = ((StaticObjectClass) clazz).getMirror();
         klass.safeInitialize();
-        Field field = klass.staticField(name).getField();
+        ByteString<Type> fieldType = Types.fromJavaString(signature);
+        Field field = klass.lookupDeclaredField(ByteString.fromJavaString(name), fieldType);
         if (field == null) {
             throw getMeta().throwEx(NoSuchFieldError.class, name);
         }
         assert field.isStatic();
-        assert field.getType().getInternalName().equals(sig);
+        assert field.getType().equals(fieldType);
         return fieldIds.handlify(field);
     }
 
@@ -556,7 +559,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *
      * @param clazz a Java class object.
      * @param name the method name in a 0-terminated modified UTF-8 string.
-     * @param sig the method signature in 0-terminated modified UTF-8 string.
+     * @param signature the method signature in 0-terminated modified UTF-8 string.
      *
      * @return a method ID, or NULL if the specified method cannot be found.
      *
@@ -566,16 +569,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *
      */
     @JniImpl
-    public long GetMethodID(@Host(Class.class) StaticObject clazz, String name, String sig) {
+    public long GetMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         Klass klass = ((StaticObjectClass) clazz).getMirror();
         klass.safeInitialize();
-        Method[] methods = klass.methods(true);
-        for (Method m : methods) {
-            if (m.getName().equals(name) && m.getSignature().toString().equals(sig)) {
-                return methodIds.handlify(m);
-            }
+        Method method = klass.lookupMethod(ByteString.fromJavaString(name), Signatures.fromJavaString(signature));
+        if (method == null) {
+            throw getMeta().throwEx(NoSuchMethodError.class, name + signature);
         }
-        throw getMeta().throwEx(NoSuchMethodError.class, name + sig);
+        assert !method.isStatic();
+        return methodIds.handlify(method);
     }
 
     /**
@@ -589,7 +591,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *
      * @param clazz a Java class object.
      * @param name the static method name in a 0-terminated modified UTF-8 string.
-     * @param sig the method signature in a 0-terminated modified UTF-8 string.
+     * @param signature the method signature in a 0-terminated modified UTF-8 string.
      *
      * @return a method ID, or NULL if the operation fails.
      *
@@ -598,16 +600,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public long GetStaticMethodID(@Host(Class.class) StaticObject clazz, String name, String sig) {
+    public long GetStaticMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         Klass klass = ((StaticObjectClass) clazz).getMirror();
         klass.safeInitialize();
-        Method[] methods = klass.methods(false);
-        for (Method m : methods) {
-            if (m.isStatic() && m.getName().equals(name) && m.getSignature().toString().equals(sig)) {
-                return methodIds.handlify(m);
-            }
+        Method method = klass.lookupDeclaredMethod(ByteString.fromJavaString(name), Signatures.fromJavaString(signature));
+        if (method == null) {
+            throw getMeta().throwEx(NoSuchMethodError.class, name + signature);
         }
-        throw getMeta().throwEx(NoSuchMethodError.class, name + sig);
+        assert method.isStatic();
+        return methodIds.handlify(method);
     }
 
     // endregion Get*ID
@@ -741,6 +742,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public boolean CallBooleanMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        new RuntimeException().printStackTrace();
         throw EspressoError.unimplemented();
     }
 
@@ -748,6 +750,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public char CallCharMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        new RuntimeException().printStackTrace();
         throw EspressoError.unimplemented();
     }
 
@@ -755,6 +758,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public byte CallByteMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        new RuntimeException().printStackTrace();
         throw EspressoError.unimplemented();
     }
 
@@ -762,6 +766,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public short CallShortMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        new RuntimeException().printStackTrace();
         throw EspressoError.unimplemented();
     }
 
@@ -769,6 +774,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public int CallIntMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        new RuntimeException().printStackTrace();
         throw EspressoError.unimplemented();
     }
 
@@ -776,6 +782,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public float CallFloatMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        new RuntimeException().printStackTrace();
         throw EspressoError.unimplemented();
     }
 
@@ -783,6 +790,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public double CallDoubleMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        new RuntimeException().printStackTrace();
         throw EspressoError.unimplemented();
     }
 
@@ -790,6 +798,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public long CallLongMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        new RuntimeException().printStackTrace();
         throw EspressoError.unimplemented();
     }
 
@@ -797,6 +806,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public void CallVoidMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        new RuntimeException().printStackTrace();
         throw EspressoError.unimplemented();
     }
 
@@ -807,6 +817,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Object.class) StaticObject CallNonvirtualObjectMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
         return (StaticObject) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
@@ -814,72 +825,82 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public boolean CallNonvirtualBooleanMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (boolean) method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (boolean) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public char CallNonvirtualCharMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (char) method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (char) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public byte CallNonvirtualByteMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (byte) method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (byte) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public short CallNonvirtualShortMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (short) method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (short) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public int CallNonvirtualIntMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (int) method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (int) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public float CallNonvirtualFloatMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (float) method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (float) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public double CallNonvirtualDoubleMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (double) method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (double) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public long CallNonvirtualLongMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (long) method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (long) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public void CallNonvirtualVoidMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public @Host(Object.class) StaticObject CallNonvirtualtualObjectMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle,
                     long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert !method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (StaticObject) method.invoke(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (StaticObject) method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     // endregion CallNonvirtual*Method
@@ -889,71 +910,81 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public Object CallStaticObjectMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature()));
+        return method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public boolean CallStaticBooleanMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (boolean) method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (boolean) method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public char CallStaticCharMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (char) method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (char) method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public byte CallStaticByteMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (byte) method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (byte) method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public short CallStaticShortMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (short) method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (short) method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public int CallStaticIntMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (int) method.asStatic().invoke(popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (int) method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public float CallStaticFloatMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (float) method.asStatic().invoke(popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (float) method.invokeDirect(null, null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public double CallStaticDoubleMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (double) method.asStatic().invoke(popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (double) method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public long CallStaticLongMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        return (long) method.asStatic().invoke(popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (long) method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
     public void CallStaticVoidMethodVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
+        assert method.isStatic();
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringKlass();
-        method.asStatic().invoke(popVarArgs(varargsPtr, method.getParsedSignature()));
+        method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     // endregion CallStatic*Method
@@ -1207,19 +1238,20 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public Object NewObjectVarargs(StaticObjectClass clazz, long methodHandle, long varargsPtr) {
+    public Object NewObjectVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
+        Klass klass = ((StaticObjectClass) clazz).getMirror();
         Method method = methodIds.getObject(methodHandle);
-        StaticObject instance = meta(clazz.getMirror()).allocateInstance();
         assert method.isConstructor();
+        StaticObject instance = klass.allocateInstance();
         method.invokeDirect(instance, popVarArgs(varargsPtr, method.getParsedSignature()));
         return instance;
     }
 
     @JniImpl
-    public StaticObject NewStringUTF(String str) {
+    public StaticObject NewStringUTF(String hostString) {
         // FIXME(peterssen): This relies on TruffleNFI implicit char* -> String conversion that
         // uses host NewStringUTF.
-        return getMeta().toGuest(str);
+        return getMeta().toGuest(hostString);
     }
 
     /**
@@ -1265,9 +1297,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public StaticObject FindClass(String name) {
-        Meta meta = getMeta();
-        StaticObject internalName = meta.toGuest(MetaUtil.toInternalName(name));
-        return (StaticObject) meta.knownKlass(Class.class).staticMethod("forName", Class.class, String.class).invokeDirect(internalName);
+        StaticObject internalName = getMeta().toGuest(MetaUtil.toInternalName(name));
+        // TODO(peterssen): No need to re-resolve the static method every time.
+        Method forName = getMeta().knownKlass(Class.class).lookupDeclaredMethod(ByteString.fromJavaString("forName"), getSignatures().makeRaw(Class.class, String.class));
+        assert forName.isStatic();
+        return (StaticObject) forName.invokeDirect(null, internalName);
     }
 
     /**
@@ -1330,7 +1364,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
-        final StaticObjectArray stringChars = (StaticObjectArray) meta(str).declaredField("value").get();
+        final StaticObjectArray stringChars = (StaticObjectArray) getMeta().String_value.get(str);
         int len = stringChars.length();
         ByteBuffer criticalRegion = allocateDirect(len, JavaKind.Char); // direct byte buffer
         // (non-relocatable)
@@ -1396,7 +1430,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public int Throw(@Host(Throwable.class) StaticObject obj) {
-        assert getMeta().THROWABLE.isAssignableFrom(obj.getKlass());
+        assert getMeta().Throwable.isAssignableFrom(obj.getKlass());
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
         throw new EspressoException(obj);
@@ -1418,7 +1452,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public int ThrowNew(@Host(Class.class) StaticObject clazz, String message) {
-        StaticObject ex = Meta.initEx(meta(((StaticObjectClass) clazz).getMirror()), message);
+        StaticObject ex = Meta.initEx(((StaticObjectClass) clazz).getMirror(), message);
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
         throw new EspressoException(ex);
@@ -1475,15 +1509,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public StaticObject NewString(long unicodePtr, int len) {
         StaticObject value = StaticObjectArray.wrap(new char[len]);
         SetCharArrayRegion(value, 0, len, unicodePtr);
-        return getMeta() //
-                        .STRING.metaNew() //
-                                        .fields(Meta.Field.set("value", value)) //
-                                        .getInstance();
+        StaticObject guestString = getMeta().String.allocateInstance();
+        getMeta().String_value.set(guestString, value);
+        return guestString;
     }
 
     @JniImpl
     public void GetStringRegion(@Host(String.class) StaticObject str, int start, int len, long bufPtr) {
-        StaticObjectArray chars = (StaticObjectArray) meta(str).declaredField("value").get();
+        StaticObjectArray chars = (StaticObjectArray) getMeta().String_value.get(str);
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.put(chars.<char[]> unwrap(), start, len);
     }
@@ -1517,10 +1550,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public int RegisterNative(@Host(Class.class) StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
-        String className = meta(((StaticObjectClass) clazz).getMirror()).getInternalName();
+        ByteString<Type> classType = ((StaticObjectClass) clazz).getMirror().getType();
         TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(signature, true));
-        RootNode nativeNode = new VmNativeNode(getEspressoLanguage(), boundNative, true, null);
-        getInterpreterToVM().registerSubstitution(className, name, signature, nativeNode, false);
+        RootNode nativeNode = new VmNativeNode(boundNative, true, null);
+        getInterpreterToVM().registerSubstitution(classType, name, signature, nativeNode, false);
         return JNI_OK;
     }
 

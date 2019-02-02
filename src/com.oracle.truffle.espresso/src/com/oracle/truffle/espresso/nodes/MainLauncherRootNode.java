@@ -45,13 +45,14 @@ public class MainLauncherRootNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         assert frame.getArguments().length == 0;
         EspressoContext context = main.getContext();
+        main.getDeclaringKlass().initialize();
         // No var-args here, pull parameters from the context.
         return main.getCallTarget().call((Object) toGuestArguments(context, context.getMainArguments()));
     }
 
     private static StaticObject toGuestArguments(EspressoContext context, String... args) {
         Meta meta = context.getMeta();
-        return (StaticObject) meta.STRING.allocateArray(args.length, new IntFunction<StaticObject>() {
+        return (StaticObject) meta.String.allocateArray(args.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return meta.toGuest(args[i]);

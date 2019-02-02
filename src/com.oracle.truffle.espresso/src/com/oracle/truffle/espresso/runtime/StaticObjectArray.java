@@ -95,7 +95,7 @@ public final class StaticObjectArray extends StaticObject {
 
     public static StaticObjectArray wrap(StaticObject[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.OBJECT.array().rawKlass(), array);
+        return new StaticObjectArray(meta.Object.array().rawKlass(), array);
     }
 
     public static StaticObjectArray wrap(byte[] array) {

@@ -39,7 +39,10 @@ public final class CodeAttribute extends Attribute {
     @CompilationFinal(dimensions = 1) //
     private final byte[] code;
 
+    @CompilationFinal(dimensions = 1) //
     private final ExceptionHandler[] exceptionHandlerEntries;
+
+    @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
     public CodeAttribute(ByteString<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes) {

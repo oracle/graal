@@ -45,6 +45,7 @@ public class StaticObjectImpl extends StaticObject {
         this.fields = fields;
     }
 
+    // FIXME(peterssen): Klass does not need to be initialized, just prepared?.
     public boolean isStatic() {
         return this == getKlass().tryInitializeAndGetStatics();
     }
@@ -71,10 +72,16 @@ public class StaticObjectImpl extends StaticObject {
     }
 
     public final Object getField(Field field) {
-        // TODO(peterssen): Klass check
+        // TODO(peterssen): Klass check.
         Object result = fields[field.getSlot()];
         assert result != null;
         return result;
+    }
+
+
+    public final void setField(Field field, Object value) {
+        // TODO(peterssen): Klass check
+        fields[field.getSlot()] = value;
     }
 
     @TruffleBoundary
@@ -87,10 +94,6 @@ public class StaticObjectImpl extends StaticObject {
         return getKlass().getType().toString();
     }
 
-    public final void setField(Field field, Object value) {
-        // TODO(peterssen): Klass check
-        fields[field.getSlot()] = value;
-    }
 
     @TruffleBoundary
     public void setHiddenField(String name, Object value) {

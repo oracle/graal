@@ -46,7 +46,7 @@ public final class Target_java_lang_Thread {
                             Meta.Field.set("name", meta.toGuest("mainThread")),
                             Meta.Field.set("priority", 5),
                             // Lock object used by NIO.
-                            Meta.Field.set("blockerLock", meta.OBJECT.allocateInstance())).getInstance();
+                            Meta.Field.set("blockerLock", meta.Object.allocateInstance())).getInstance();
 
             context.setMainThread(mainThread);
         }

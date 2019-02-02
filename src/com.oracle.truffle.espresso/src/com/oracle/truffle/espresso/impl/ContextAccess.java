@@ -39,4 +39,8 @@ public interface ContextAccess {
     default StringTable getStrings() {
         return getContext().getStrings();
     }
+
+    default ClassRegistries getRegistries() {
+        return getContext().getRegistries();
+    }
 }

@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -47,10 +46,16 @@ public final class GuestClassRegistry extends ClassRegistry {
      */
     private final StaticObject classLoader;
 
+    // The virtual method can be cached because the receiver (classLoader) is constant.
+    private final Method ClassLoader_loadClass;
+    private final Method ClassLoader_addClass;
+
     public GuestClassRegistry(EspressoContext context, @Host(ClassLoader.class) StaticObject classLoader) {
         this.context = context;
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
+        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(ByteString.fromJavaString("loadClass"), context.getSignatures().makeRaw(Class.class, String.class, boolean.class));
+        this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(ByteString.fromJavaString("addClass"), context.getSignatures().makeRaw(void.class, Class.class));
     }
 
     @Override
@@ -63,13 +68,12 @@ public final class GuestClassRegistry extends ClassRegistry {
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
         assert StaticObject.notNull(classLoader);
-
-        StaticObjectClass guestClass = (StaticObjectClass) Meta.meta(classLoader).method("loadClass", Class.class, String.class, boolean.class).invokeDirect(
-                        context.getMeta().toGuest(type.toJavaName()), false);
-
+        StaticObjectClass guestClass = (StaticObjectClass) ClassLoader_loadClass.invokeDirect(classLoader, context.getMeta().toGuest(type.toString()), false);
         Klass klass = guestClass.getMirror();
 
-        meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(guestClass);
+        // TODO(peterssen): Should the class be added back to the guest CL, or defineKlass will be
+        // eventually called.
+        // ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
 
         Klass previuos = classes.put(type, klass);
         EspressoError.guarantee(previuos == null, "Klass " + type + " defined twice");
@@ -85,7 +89,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     public ObjectKlass defineKlass(EspressoContext context, ByteString<Type> type, final byte[] bytes) {
         ObjectKlass klass = super.defineKlass(context, type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
-        meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(klass.mirror());
+        ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
         return klass;
     }
 }

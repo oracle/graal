@@ -30,8 +30,14 @@ import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -44,77 +50,129 @@ import com.oracle.truffle.espresso.substitutions.Host;
  * Introspection API to access the guest world from the host. Provides seamless conversions from
  * host to guest classes for a well known subset (e.g. common types and exceptions).
  */
-public final class Meta {
+public final class Meta implements ContextAccess {
 
     private final EspressoContext context;
 
     public Meta(EspressoContext context) {
         this.context = context;
-        OBJECT = knownKlass(Object.class);
-        STRING = knownKlass(String.class);
-        CLASS = knownKlass(Class.class);
-        BOOLEAN = knownPrimitive(boolean.class);
-        BYTE = knownPrimitive(byte.class);
-        CHAR = knownPrimitive(char.class);
-        SHORT = knownPrimitive(short.class);
-        FLOAT = knownPrimitive(float.class);
-        INT = knownPrimitive(int.class);
-        DOUBLE = knownPrimitive(double.class);
-        LONG = knownPrimitive(long.class);
-        VOID = knownPrimitive(void.class);
 
-        BOXED_BOOLEAN = knownKlass(Boolean.class);
-        BOXED_BYTE = knownKlass(Byte.class);
-        BOXED_CHAR = knownKlass(Character.class);
-        BOXED_SHORT = knownKlass(Short.class);
-        BOXED_FLOAT = knownKlass(Float.class);
-        BOXED_INT = knownKlass(Integer.class);
-        BOXED_DOUBLE = knownKlass(Double.class);
-        BOXED_LONG = knownKlass(Long.class);
-        BOXED_VOID = knownKlass(Void.class);
+        // Core types.
+        Object = knownKlass(Object.class);
+        String = knownKlass(String.class);
+        Class = knownKlass(Class.class);
 
-        THROWABLE = knownKlass(Throwable.class);
-        STACK_OVERFLOW_ERROR = knownKlass(StackOverflowError.class);
-        OUT_OF_MEMORY_ERROR = knownKlass(OutOfMemoryError.class);
+        // Primitives.
+        _boolean = knownPrimitive(boolean.class);
+        _byte = knownPrimitive(byte.class);
+        _char = knownPrimitive(char.class);
+        _short = knownPrimitive(short.class);
+        _float = knownPrimitive(float.class);
+        _int = knownPrimitive(int.class);
+        _double = knownPrimitive(double.class);
+        _long = knownPrimitive(long.class);
+        _void = knownPrimitive(void.class);
 
-        CLONEABLE = knownKlass(Cloneable.class);
-        SERIALIZABLE = knownKlass(Serializable.class);
+        // Boxed types.
+        Boolean = knownKlass(Boolean.class);
+        Byte = knownKlass(Byte.class);
+        Char = knownKlass(Character.class);
+        Short = knownKlass(Short.class);
+        Float = knownKlass(Float.class);
+        Int = knownKlass(Integer.class);
+        Double = knownKlass(Double.class);
+        Long = knownKlass(Long.class);
+        Void = knownKlass(Void.class);
 
-        ARRAY_SUPERINTERFACES = new ObjectKlass[]{CLONEABLE, SERIALIZABLE};
+        ByteString<Name> valueOf = ByteString.fromJavaString("valueOf");
+
+        Boolean_valueOf = Boolean.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Boolean.class, boolean.class));
+        Byte_valueOf = Byte.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Byte.class, byte.class));
+        Char_valueOf = Char.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Character.class, char.class));
+        Short_valueOf = Short.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Short.class, short.class));
+        Float_valueOf = Float.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Float.class, float.class));
+        Int_valueOf = Int.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Integer.class, int.class));
+        Double_valueOf = Double.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Double.class, double.class));
+        Long_valueOf = Long.lookupDeclaredMethod(valueOf, context.getSignatures().makeRaw(Long.class, long.class));
+
+        String_value = String.lookupDeclaredField(ByteString.fromJavaString("value"), Types.fromClass(byte[].class));
+        String_hash = String.lookupDeclaredField(ByteString.fromJavaString("hash"), Types.fromClass(int.class));
+        String_hashCode = String.lookupDeclaredMethod(ByteString.fromJavaString("hashCode"), context.getSignatures().makeRaw(int.class));
+        String_length = String.lookupDeclaredMethod(ByteString.fromJavaString("length"), context.getSignatures().makeRaw(int.class));
+
+        Throwable = knownKlass(Throwable.class);
+        StackOverflowError = knownKlass(StackOverflowError.class);
+        OutOfMemoryError = knownKlass(OutOfMemoryError.class);
+
+        Cloneable = knownKlass(Cloneable.class);
+        Serializable = knownKlass(Serializable.class);
+
+        ClassLoader = knownKlass(Throwable.class);
+        ClassLoader_findNative = Class.lookupDeclaredMethod(ByteString.fromJavaString("findNative"), context.getSignatures().makeRaw(long.class, ClassLoader.class, String.class));
+
+        Constructor = knownKlass(Constructor.class);
+        Constructor_clazz = Constructor.lookupDeclaredField(ByteString.fromJavaString("clazz"), Class.getType());
+        Constructor_root = Constructor.lookupDeclaredField(ByteString.fromJavaString("root"), Constructor.getType());
+
+        ARRAY_SUPERINTERFACES = new ObjectKlass[]{Cloneable, Serializable};
     }
 
-    public final ObjectKlass OBJECT;
-    public final ObjectKlass STRING;
-    public final ObjectKlass CLASS;
+    public final ObjectKlass Object;
+    public final ObjectKlass String;
+    public final ObjectKlass Class;
 
-    // Primitives
-    public final PrimitiveKlass BOOLEAN;
-    public final PrimitiveKlass BYTE;
-    public final PrimitiveKlass CHAR;
-    public final PrimitiveKlass SHORT;
-    public final PrimitiveKlass FLOAT;
-    public final PrimitiveKlass INT;
-    public final PrimitiveKlass DOUBLE;
-    public final PrimitiveKlass LONG;
-    public final PrimitiveKlass VOID;
+    // Primitives.
+    public final PrimitiveKlass _boolean;
+    public final PrimitiveKlass _byte;
+    public final PrimitiveKlass _char;
+    public final PrimitiveKlass _short;
+    public final PrimitiveKlass _float;
+    public final PrimitiveKlass _int;
+    public final PrimitiveKlass _double;
+    public final PrimitiveKlass _long;
+    public final PrimitiveKlass _void;
 
-    // Boxed
-    public final ObjectKlass BOXED_BOOLEAN;
-    public final ObjectKlass BOXED_BYTE;
-    public final ObjectKlass BOXED_CHAR;
-    public final ObjectKlass BOXED_SHORT;
-    public final ObjectKlass BOXED_FLOAT;
-    public final ObjectKlass BOXED_INT;
-    public final ObjectKlass BOXED_DOUBLE;
-    public final ObjectKlass BOXED_LONG;
-    public final ObjectKlass BOXED_VOID;
+    // Boxed primitives.
+    public final ObjectKlass Boolean;
+    public final ObjectKlass Byte;
+    public final ObjectKlass Char;
+    public final ObjectKlass Short;
+    public final ObjectKlass Float;
+    public final ObjectKlass Int;
+    public final ObjectKlass Double;
+    public final ObjectKlass Long;
+    public final ObjectKlass Void;
 
-    public final ObjectKlass STACK_OVERFLOW_ERROR;
-    public final ObjectKlass OUT_OF_MEMORY_ERROR;
-    public final ObjectKlass THROWABLE;
+    // Boxing conversions.
+    public final Method Boolean_valueOf;
+    public final Method Byte_valueOf;
+    public final Method Char_valueOf;
+    public final Method Short_valueOf;
+    public final Method Float_valueOf;
+    public final Method Int_valueOf;
+    public final Method Double_valueOf;
+    public final Method Long_valueOf;
 
-    public final ObjectKlass CLONEABLE;
-    public final ObjectKlass SERIALIZABLE;
+    // Guest String.
+    public final Field String_value;
+    public final Field String_hash;
+    public final Method String_hashCode;
+    public final Method String_length;
+
+    public final ObjectKlass ClassLoader;
+    public final Method ClassLoader_findNative;
+
+    public final ObjectKlass Constructor;
+    public final Field Constructor_clazz;
+    public final Field Constructor_root;
+
+    public final ObjectKlass StackOverflowError;
+    public final ObjectKlass OutOfMemoryError;
+    public final ObjectKlass Throwable;
+
+    // Array support.
+    public final ObjectKlass Cloneable;
+    public final ObjectKlass Serializable;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
@@ -125,8 +183,8 @@ public final class Meta {
     }
 
     public StaticObject initEx(java.lang.Class<?> clazz) {
-        StaticObject ex = context.getInterpreterToVM().newObject(throwableKlass(clazz));
-        meta(ex).method("<init>", void.class).invokeDirect();
+        StaticObject ex = getInterpreterToVM().newObject(throwableKlass(clazz));
+        ex.getKlass().lookupDeclaredMethod(Method.INIT, getSignatures().makeRaw(void.class)).invokeDirect(ex);
         return ex;
     }
 
@@ -142,7 +200,7 @@ public final class Meta {
         return ex;
     }
 
-    public StaticObject initEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
+    public StaticObject initEx(java.lang.Class<?> clazz, @com.oracle.truffle.espresso.substitutions.Host(Throwable.class) StaticObject cause) {
         StaticObject ex = throwableKlass(clazz).allocateInstance();
         meta(ex).method("<init>", void.class, Throwable.class).invoke(cause);
         return ex;
@@ -156,7 +214,7 @@ public final class Meta {
         throw new EspressoException(initEx(clazz, message));
     }
 
-    public EspressoException throwEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
+    public EspressoException throwEx(java.lang.Class<?> clazz, @com.oracle.truffle.espresso.substitutions.Host(Throwable.class) StaticObject cause) {
         throw new EspressoException(initEx(clazz, cause));
     }
 
@@ -167,25 +225,23 @@ public final class Meta {
         return knownKlass(exceptionClass);
     }
 
-    @TruffleBoundary
     public ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
-        // Resolve classes using BCL.
-        return context.getRegistries().resolveWithBootClassLoader(context.getTypes().make(MetaUtil.toInternalName(hostClass.getName())));
+        // Resolve non-primitive classes using BCL.
+        return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(Types.fromClass(hostClass));
+    }
+
+    public PrimitiveKlass knownPrimitive(java.lang.Class<?> primitiveClass) {
+        // assert isKnownClass(hostClass);
+        assert primitiveClass.isPrimitive();
+        // Resolve primitive classes using BCL.
+        return (PrimitiveKlass) getRegistries().loadKlassWithBootClassLoader(Types.fromClass(primitiveClass));
     }
 
     @TruffleBoundary
-    public PrimitiveKlass knownPrimitive(java.lang.Class<?> hostClass) {
-        assert isKnownClass(hostClass);
-        assert hostClass.isPrimitive();
-        // Resolve classes using BCL.
-        return context.getRegistries().resolveWithBootClassLoader(context.getTypes().make(MetaUtil.toInternalName(hostClass.getName())));
-    }
-
-    @TruffleBoundary
-    public Klass loadKlass(String className, StaticObject classLoader) {
+    public Klass loadKlass(ByteString<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
-        return context.getRegistries().resolve(context.getTypes().make(MetaUtil.toInternalName(className)), classLoader));
+        return context.getRegistries().loadKlass(type, classLoader);
     }
 
     @TruffleBoundary
@@ -193,40 +249,24 @@ public final class Meta {
         if (StaticObject.isNull(str)) {
             return null;
         }
-        char[] value = ((StaticObjectArray) meta(str).declaredField("value").get()).unwrap();
-        return createString(value);
+        Meta meta = str.getKlass().getMeta();
+        char[] value = ((StaticObjectArray) meta.String_value.get(str)).unwrap();
+        return HostJava.createString(value);
     }
 
     @TruffleBoundary
-    public StaticObject toGuest(String str) {
-        return toGuest(this, str);
-    }
-
-    @TruffleBoundary
-    public static StaticObject toGuest(Meta meta, String str) {
-        if (str == null) {
+    public StaticObject toGuest(String hostString) {
+        if (hostString == null) {
             return StaticObject.NULL;
         }
-
-        final char[] value = getStringValue(str);
-        final int hash = getStringHash(str);
-
-        StaticObject result = meta.STRING.metaNew().fields(
-                        Field.set("value", StaticObjectArray.wrap(value)),
-                        Field.set("hash", hash)).getInstance();
-
+        final char[] value = HostJava.getStringValue(hostString);
+        final int hash = HostJava.getStringHash(hostString);
+        StaticObject guestString = String.allocateInstance();
+        String_value.set(guestString, StaticObjectArray.wrap(value));
+        String_hash.set(guestString, hash);
         // String.hashCode must be equivalent for host and guest.
-        assert str.hashCode() == (int) meta(result).method("hashCode", int.class).invokeDirect();
-
-        return result;
-    }
-
-    private static String createString(char[] value) {
-        try {
-            return STRING_CONSTRUCTOR.newInstance(value, true);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
+        assert hostString.hashCode() == (int) String_hashCode.invokeDirect(guestString);
+        return guestString;
     }
 
     public Object toGuestBoxed(Object hostObject) {
@@ -280,44 +320,61 @@ public final class Meta {
             if (guestObject instanceof StaticObjectArray) {
                 return ((StaticObjectArray) guestObject).unwrap();
             }
-            if (guestObject.getKlass() == STRING) {
+            if (guestObject.getKlass() == String) {
                 return toHostString(guestObject);
             }
         }
         return object;
     }
+
+    @Override
+    public EspressoContext getContext() {
+        return context;
+    }
+
     // region Low level host String access
 
-    private static java.lang.reflect.Field STRING_VALUE;
-    private static java.lang.reflect.Field STRING_HASH;
-    private static Constructor<String> STRING_CONSTRUCTOR;
+    private static class HostJava {
 
-    static {
-        try {
-            STRING_VALUE = String.class.getDeclaredField("value");
-            STRING_VALUE.setAccessible(true);
-            STRING_HASH = String.class.getDeclaredField("hash");
-            STRING_HASH.setAccessible(true);
-            STRING_CONSTRUCTOR = String.class.getDeclaredConstructor(char[].class, boolean.class);
-            STRING_CONSTRUCTOR.setAccessible(true);
-        } catch (NoSuchMethodException | NoSuchFieldException e) {
-            throw EspressoError.shouldNotReachHere(e);
+        private final static java.lang.reflect.Field String_value;
+        private final static java.lang.reflect.Field String_hash;
+        private final static Constructor<String> String_init;
+
+        static {
+            try {
+                String_value = String.class.getDeclaredField("value");
+                String_value.setAccessible(true);
+                String_hash = String.class.getDeclaredField("hash");
+                String_hash.setAccessible(true);
+                String_init = String.class.getDeclaredConstructor(char[].class, boolean.class);
+                String_init.setAccessible(true);
+            } catch (NoSuchMethodException | NoSuchFieldException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
         }
-    }
 
-    private static char[] getStringValue(String s) {
-        try {
-            return (char[]) STRING_VALUE.get(s);
-        } catch (IllegalAccessException e) {
-            throw EspressoError.shouldNotReachHere(e);
+        private static char[] getStringValue(String s) {
+            try {
+                return (char[]) String_value.get(s);
+            } catch (IllegalAccessException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
         }
-    }
 
-    private static int getStringHash(String s) {
-        try {
-            return (int) STRING_HASH.get(s);
-        } catch (IllegalAccessException e) {
-            throw EspressoError.shouldNotReachHere(e);
+        private static int getStringHash(String s) {
+            try {
+                return (int) String_hash.get(s);
+            } catch (IllegalAccessException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
+        private static String createString(final char[] value) {
+            try {
+                return HostJava.String_init.newInstance(value, true);
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
         }
     }
 

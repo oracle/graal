@@ -22,28 +22,26 @@
  */
 package com.oracle.truffle.espresso;
 
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.SymbolTable;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Types;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
-
-import java.net.URL;
-import java.net.URLClassLoader;
+import com.oracle.truffle.espresso.runtime.SymbolTable;
 
 @Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
@@ -108,7 +106,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected CallTarget parse(final ParsingRequest request) throws Exception {
         final Source source = request.getSource();
-        final EspressoContext context = findContext();
+        final EspressoContext context = getCurrentContext();
 
         assert context.isInitialized();
 
@@ -119,15 +117,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         EspressoError.guarantee(mainClass != null, "Error: Could not find or load main class %s", className);
 
-        Method mainMethod = Meta.meta(mainClass).method("main", void.class, String[].class);
+        Method mainMethod = mainClass.lookupDeclaredMethod(ByteString.fromJavaString("main"), getSignatures().makeRaw(void.class, String[].class));
 
-        EspressoError.guarantee(mainMethod != null,
+        EspressoError.guarantee(mainMethod != null && mainMethod.isStatic(),
                         "Error: Main method not found in class %s, please define the main method as:\n" +
                                         "            public static void main(String[] args)\n",
                         className);
 
         assert mainMethod != null && mainMethod.isPublic() && mainMethod.isStatic();
-        mainClass.initialize();
         return Truffle.getRuntime().createCallTarget(new MainLauncherRootNode(this, mainMethod));
     }
 
@@ -138,32 +135,36 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private static StaticObjectClass loadMainClass(EspressoContext context, LaunchMode mode, String name) {
         assert context.isInitialized();
         Meta meta = context.getMeta();
-        Klass launcherHelperKlass = meta.loadKlass("sun.launcher.LauncherHelper", StaticObject.NULL);
-        return (StaticObjectClass) launcherHelperKlass.staticMethod("checkAndLoadMain", Class.class, boolean.class, int.class, String.class).invokeDirect(true, mode.ordinal(), meta.toGuest(name));
+        Klass launcherHelperKlass = meta.loadKlass(Types.fromClass(sun.launcher.LauncherHelper.class), StaticObject.NULL);
+
+        Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(ByteString.fromJavaString("checkAndLoadMain"),
+                context.getSignatures().makeRaw(Class.class, boolean.class, int.class, String.class));
+
+        return (StaticObjectClass) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuest(name));
     }
 
     @Override
     protected boolean isObjectOfLanguage(final Object object) {
         return false;
     }
-
-    public EspressoContext findContext() {
-        CompilerAsserts.neverPartOfCompilation();
-        return super.getContextReference().get();
-    }
-
-    @SuppressWarnings("unused")
-    private static String getClasspathString() {
-        final ClassLoader cl = ClassLoader.getSystemClassLoader();
-        final URL[] urls = ((URLClassLoader) cl).getURLs();
-        final StringBuilder b = new StringBuilder();
-
-        for (final URL url : urls) {
-            b.append(url.getFile()).append('\n');
-        }
-
-        return b.toString();
-    }
+//
+// public EspressoContext findContext() {
+// CompilerAsserts.neverPartOfCompilation();
+// return super.getContextReference().get();
+// }
+//
+// @SuppressWarnings("unused")
+// private static String getClasspathString() {
+// final ClassLoader cl = ClassLoader.getSystemClassLoader();
+// final URL[] urls = ((URLClassLoader) cl).getURLs();
+// final StringBuilder b = new StringBuilder();
+//
+// for (final URL url : urls) {
+// b.append(url.getFile()).append('\n');
+// }
+//
+// return b.toString();
+// }
 
     public SymbolTable getSymbolTable() {
         return symbols;

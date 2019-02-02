@@ -18,7 +18,7 @@ public final class LinkedMethod {
         return pool;
     }
 
-    protected ByteString<Signature> getSignature() {
+    protected ByteString<Signature> getRawSignature() {
         return getConstantPool().utf8At(parserMethod.getSignatureIndex(), "signature");
     }
 

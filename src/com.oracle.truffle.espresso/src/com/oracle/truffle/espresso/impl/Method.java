@@ -10,6 +10,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.espresso.Utils;
+import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -52,14 +53,10 @@ public final class Method implements ModifiersProvider, ContextAccess {
     @CompilationFinal(dimensions = 1) //
     private final ByteString<Type>[] parsedSignature;
 
-    @CompilationFinal(dimensions = 1) private final byte[] code;
-
-    private final int maxStackSize;
-    private final int maxLocals;
-    private final ExceptionHandler[] exceptionHandlers;
     private final LineNumberTable lineNumberTable;
     private final LocalVariableTable localVariableTable;
     private final ExceptionsAttribute exceptionsAttribute;
+    private final CodeAttribute codeAttribute;
 
     @CompilationFinal //
     private CallTarget callTarget;
@@ -92,7 +89,8 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return parsedSignature;
     }
 
-    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, byte[] code, int maxStackSize, int maxLocals,
+    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod,
+                    CodeAttribute codeAttribute,
                     ExceptionHandler[] exceptionHandlers,
                     LineNumberTable lineNumberTable,
                     LocalVariableTable localVariableTable,
@@ -104,13 +102,10 @@ public final class Method implements ModifiersProvider, ContextAccess {
         this.pool = declaringKlass.getConstantPool();
 
         this.name = linkedMethod.getName();
-        this.rawSignature = linkedMethod.getSignature();
-        this.parsedSignature = declaringKlass.getSignatures().make(linkedMethod.getSignature());
+        this.rawSignature = linkedMethod.getRawSignature();
+        this.parsedSignature = declaringKlass.getSignatures().make(linkedMethod.getRawSignature());
         this.linkedMethod = linkedMethod;
-        this.code = code;
-        this.maxStackSize = maxStackSize;
-        this.maxLocals = maxLocals;
-        this.exceptionHandlers = exceptionHandlers;
+        this.codeAttribute = codeAttribute;
         this.lineNumberTable = lineNumberTable;
         this.localVariableTable = localVariableTable;
         this.exceptionsAttribute = exceptionsAttribute;
@@ -122,23 +117,23 @@ public final class Method implements ModifiersProvider, ContextAccess {
     }
 
     public byte[] getCode() {
-        return code;
+        return codeAttribute.getCode();
     }
 
     public int getCodeSize() {
-        return code != null ? code.length : 0;
+        return getCode() != null ? getCode().length : 0;
     }
 
     public int getMaxLocals() {
-        return maxLocals;
+        return codeAttribute.getMaxLocals();
     }
 
     public int getMaxStackSize() {
-        return maxStackSize;
+        return codeAttribute.getMaxStack();
     }
 
     public ExceptionHandler[] getExceptionHandlers() {
-        return exceptionHandlers;
+        return codeAttribute.getExceptionHandlers();
     }
 
     private static String buildJniNativeSignature(Method method) {
@@ -188,14 +183,14 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
                     // If the loader is null we have a system class, so we attempt a lookup in
                     // the native Java library.
-                    if (StaticObject.isNull(getDeclaringKlass().getClassLoader())) {
+                    if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
                         // Look in libjava
                         for (boolean withSignature : new boolean[]{false, true}) {
                             String mangledName = Mangle.mangleMethod(this, withSignature);
 
                             try {
                                 TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
-                                callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getEspressoLanguage(), nativeMethod, this));
+                                callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(nativeMethod, this));
                                 return callTarget;
                             } catch (UnknownIdentifierException e) {
                                 // native method not found in libjava, safe to ignore
@@ -203,7 +198,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
                         }
                     }
 
-                    Method findNative = getMeta().knownKlass(ClassLoader.class).staticMethod("findNative", long.class, ClassLoader.class, String.class);
+                    Method findNative = getMeta().ClassLoader_findNative;
 
                     // Lookup the short name first, otherwise lookup the long name (with signature).
                     callTarget = lookupJniCallTarget(findNative, false);
@@ -219,7 +214,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
                         throw getMeta().throwEx(UnsatisfiedLinkError.class);
                     }
                 } else {
-                    callTarget = Truffle.getRuntime().createCallTarget(new BytecodeNode(getEspressoLanguage(), this, getInterpreterToVM()));
+                    callTarget = Truffle.getRuntime().createCallTarget(new BytecodeNode(getContext(), this));
                 }
             }
         }
@@ -229,13 +224,13 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     private CallTarget lookupJniCallTarget(Method findNative, boolean fullSignature) {
         String mangledName = Mangle.mangleMethod(this, fullSignature);
-        long handle = (long) findNative.invoke(getDeclaringKlass().getClassLoader(), mangledName);
+        long handle = (long) findNative.invokeWithConversions(getDeclaringKlass().getDefiningClassLoader(), mangledName);
         if (handle == 0) { // not found
             return null;
         }
         TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol, this);
-        return Truffle.getRuntime().createCallTarget(new JniNativeNode(getEspressoLanguage(), nativeMethod, this));
+        return Truffle.getRuntime().createCallTarget(new JniNativeNode(nativeMethod, this));
     }
 
     public boolean isConstructor() {
@@ -253,7 +248,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return ((getModifiers() & mask) == Modifier.PUBLIC) && getDeclaringKlass().isInterface();
     }
 
-    public Klass[] getCheckedExceptions() {
+    public ObjectKlass[] getCheckedExceptions() {
         if (checkedExceptions == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (exceptionsAttribute == null) {
@@ -324,7 +319,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
      * widening nor narrowing.
      */
     @TruffleBoundary
-    public Object invoke(Object self, Object... args) {
+    public Object invokeWithConversions(Object self, Object... args) {
         assert args.length == Signatures.parameterCount(getParsedSignature(), false);
         assert !isStatic() || ((StaticObjectImpl) self).isStatic();
 

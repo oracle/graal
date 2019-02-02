@@ -66,7 +66,7 @@ public final class Target_sun_misc_Perf {
     @Substitution(hasReceiver = true)
     public static @Host(ByteBuffer.class) StaticObject createLong(Object self, @Host(String.class) StaticObject var1, int var2, int var3, long var4) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
-        MethodInfo wrap = context.getRegistries().resolveWithBootClassLoader(context.getTypes().make("Ljava/nio/ByteBuffer;")).findDeclaredMethod("wrap", ByteBuffer.class, byte[].class);
+        MethodInfo wrap = context.getRegistries().loadKlassWithBootClassLoader(context.getTypes().make("Ljava/nio/ByteBuffer;")).findDeclaredMethod("wrap", ByteBuffer.class, byte[].class);
         return (StaticObject) wrap.getCallTarget().call(StaticObjectArray.wrap(ByteUtils.longToBytes(var4)));
     }
 

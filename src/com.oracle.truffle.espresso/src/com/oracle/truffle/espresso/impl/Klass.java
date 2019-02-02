@@ -38,6 +38,7 @@ import java.util.stream.Stream;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
@@ -73,22 +74,21 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     @CompilationFinal(dimensions = 1) //
     private final ObjectKlass[] superInterfaces;
 
-// @CompilationFinal(dimensions = 1) //
-// private final Field[] declaredFields;
-//
-// @CompilationFinal(dimensions = 1) //
-// private final Method[] declaredMethods;
 
-    // Read-only version.
-// public ConstantPool getConstantPool() {
-// return linkedKlass.getConstantPool();
-// }
+    @CompilationFinal //
+    private StaticObject statics;
 
-    public Klass getSuperKlass() {
+    @CompilationFinal //
+    private ArrayKlass arrayClass;
+
+    @CompilationFinal //
+    private StaticObjectClass mirrorCache;
+
+    public final Klass getSuperKlass() {
         return superKlass;
     }
 
-    public Klass[] getSuperInterfaces() {
+    public final Klass[] getSuperInterfaces() {
         return superInterfaces;
     }
 
@@ -102,14 +102,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
 
-    @CompilationFinal //
-    private StaticObject statics;
-
-    @CompilationFinal //
-    private ArrayKlass arrayClass;
-
-    @CompilationFinal //
-    private StaticObjectClass mirrorCache;
+    public abstract ConstantPool getConstantPool();
 
     public final JavaKind getJavaKind() {
         return kind;
@@ -122,8 +115,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     public StaticObject mirror() {
         if (mirrorCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            mirrorCache = new StaticObjectClass(getMeta().CLASS);
-            mirrorCache.setMirror(this);
+            mirrorCache = new StaticObjectClass(getMeta().Class, this);
         }
         return mirrorCache;
     }
@@ -324,14 +316,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      */
     // public abstract Klass findLeastCommonAncestor(Klass otherType);
 
-    public final Klass getElementalType() {
-        // TODO(peterssen): Push implementation down-the-hierarchy as virtual methods.
-        Klass elemental = this;
-        while (elemental.isArray()) {
-            elemental = elemental.getComponentType();
-        }
-        return elemental;
-    }
+    public abstract Klass getElementalType();
 
     /**
      * Resolves the method implementation for virtual dispatches on objects of this dynamic type.
@@ -429,31 +414,32 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public Method getClassInitializer() {
-        for (int i = 0; i < declaredMethods; ++i) {
-            if (Method.CLINIT.equals(linkedmMethods[i].getName())) {
-                return spawnMethod(i);
+        for (Method m : getDeclaredMethods()) {
+            if (Method.CLINIT.equals(m.getName())) {
+                assert !m.isStatic();
+                return m;
             }
         }
         return null;
     }
 
-    public Method findDeclaredConcreteMethod(ByteString<Name> methodName, ByteString<String> signature) {
+    public Method findDeclaredConcreteMethod(ByteString<Name> name, ByteString<String> signature) {
         for (Method method : getDeclaredMethods()) {
-            if (!method.isAbstract() && methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
+            if (!method.isAbstract() && name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
                 return method;
             }
         }
         return null;
     }
 
-    public Method findMethod(ByteString<Name> methodName, ByteString<Signature> signature) {
+    public Method findMethod(ByteString<Name> name, ByteString<Signature> signature) {
         for (Method method : getDeclaredMethods()) {
-            if (methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
+            if (name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
                 return method;
             }
         }
         if (getSuperclass() != null) {
-            Method m = getSuperclass().findMethod(methodName, signature);
+            Method m = getSuperclass().findMethod(name, signature);
             if (m != null) {
                 return m;
             }
@@ -462,8 +448,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         // No concrete method found, look interface methods.
         if (isAbstract()) {
             // Look
-            for (Klass i : getInterfaces()) {
-                Method m = i.findMethod(methodName, signature);
+            for (ObjectKlass i : getInterfaces()) {
+                Method m = i.findMethod(name, signature);
                 if (m != null) {
                     return m;
                 }
@@ -530,13 +516,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     public final Klass getSupertype() {
         if (isArray()) {
             Klass component = getComponentType();
-            if (this == getMeta().OBJECT.array() || component.isPrimitive()) {
-                return getMeta().OBJECT;
+            if (this == getMeta().Object.array() || component.isPrimitive()) {
+                return getMeta().Object;
             }
             return component.getSupertype().array();
         }
         if (isInterface()) {
-            return getMeta().OBJECT;
+            return getMeta().Object;
         }
         return getSuperclass();
     }
@@ -636,25 +622,44 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return found == null ? null : new Method(found);
     }
 
-    public Field declaredField(String name) {
+    // region Lookup
+
+    public Field lookupDeclaredField(ByteString<Name> name, ByteString<Type> type) {
         // TODO(peterssen): Improve lookup performance.
-        for (Field f : getDeclaredFields()) {
-            if (name.equals(f.getName())) {
-                return new Field(f);
+        for (Field field : getDeclaredFields()) {
+            if (name.equals(field.getName()) && type.equals(field.getType())) {
+                return field;
             }
         }
         return null;
     }
 
-    public Field field(ByteString<Name> name) {
+    public Field lookupField(ByteString<Name> name, ByteString<Type> type) {
         // TODO(peterssen): Improve lookup performance.
-        Field f = declaredField(name);
-        if (f == null) {
-            if (getSuperclass() != null) {
-                return getSuperclass().field(name);
+        Field field = lookupDeclaredField(name, type);
+        if (field == null && getSuperclass() != null) {
+            return getSuperclass().lookupField(name, type);
+        }
+        return field;
+    }
+
+    public Method lookupDeclaredMethod(ByteString<Name> name, ByteString<Signature> signature) {
+        // TODO(peterssen): Improve lookup performance.
+        for (Method method : getDeclaredMethods()) {
+            if (name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
+                return method;
             }
         }
-        return f;
+        return null;
+    }
+
+    public Method lookupMethod(ByteString<Name> name, ByteString<Signature> signature) {
+        // TODO(peterssen): Improve lookup performance.
+        Method method = lookupDeclaredMethod(name, signature);
+        if (method == null && getSuperclass() != null) {
+            return getSuperclass().lookupMethod(name, signature);
+        }
+        return method;
     }
 
     @Override
@@ -663,4 +668,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     protected abstract int getFlags();
+
+    public final StaticObject allocateInstance() {
+        return getInterpreterToVM().newObject(this);
+    }
 }

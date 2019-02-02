@@ -25,13 +25,16 @@ package com.oracle.truffle.espresso.meta;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 /**
  * Describes the {@link Local}s for a Java method.
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.13"
  */
-public class LocalVariableTable {
+public final class LocalVariableTable {
 
+    @CompilationFinal(dimensions = 1) //
     private final Local[] locals;
 
     /**

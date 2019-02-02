@@ -216,7 +216,7 @@ public final class EspressoContext {
     }
 
     private void initializeClass(String name) {
-        Klass klass = getRegistries().resolve(getTypes().make(name), StaticObject.NULL);
+        Klass klass = getRegistries().loadKlass(getTypes().make(name), StaticObject.NULL);
         klass.initialize();
     }
 

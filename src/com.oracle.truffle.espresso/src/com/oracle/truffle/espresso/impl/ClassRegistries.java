@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 public final class ClassRegistries {
 
@@ -44,8 +45,10 @@ public final class ClassRegistries {
         this.bootClassRegistry = new BootClassRegistry(context);
     }
 
-    public Klass findLoadedClass(ByteString<Type> type, StaticObject classLoader) {
-        assert classLoader != null;
+    @TruffleBoundary
+    public Klass findLoadedClass(ByteString<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+        assert classLoader != null : "use StaticObject.NULL for BCL";
+
         if (Types.isArray(type)) {
             Klass elemental = findLoadedClass(Types.getElementalType(type), classLoader);
             if (elemental == null) {
@@ -67,45 +70,49 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass resolveWithBootClassLoader(ByteString<Type> type) {
-        return resolve(type, StaticObject.NULL);
+    public Klass loadKlassWithBootClassLoader(ByteString<Type> type) {
+        return loadKlass(type, StaticObject.NULL);
     }
 
     @TruffleBoundary
-    public Klass resolve(ByteString<Type> type, StaticObject classLoader) {
-        assert classLoader != null;
-        Klass k = findLoadedClass(type, classLoader);
-        if (k != null) {
-            return k;
+    public Klass loadKlass(ByteString<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+        assert classLoader != null : "use StaticObject.NULL for BCL";
+
+        if (Types.isArray(type)) {
+            Klass elemental = findLoadedClass(Types.getElementalType(type), classLoader);
+            if (elemental == null) {
+                return null;
+            }
+            return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
-        if (StaticObject.isNull(classLoader)) {
-            return bootClassRegistry.resolve(type);
-        } else {
-            ClassRegistry registry = registries.computeIfAbsent(classLoader, new Function<StaticObject, ClassRegistry>() {
-                @Override
-                public ClassRegistry apply(StaticObject cl) {
-                    return new GuestClassRegistry(context, cl);
-                }
-            });
-            return registry.resolve(type);
-        }
+
+        ClassRegistry registry = StaticObject.isNull(classLoader)
+                        ? bootClassRegistry
+                        : registries.computeIfAbsent(classLoader, new Function<StaticObject, ClassRegistry>() {
+                            @Override
+                            public ClassRegistry apply(StaticObject cl) {
+                                return new GuestClassRegistry(context, cl);
+                            }
+                        });
+
+        return registry.loadKlass(type);
+
     }
 
+    @TruffleBoundary
     public Klass defineKlass(ByteString<Type> type, byte[] bytes, StaticObject classLoader) {
         assert classLoader != null;
-        if (StaticObject.isNull(classLoader)) {
-            return bootClassRegistry.defineKlass(type, bytes);
-        } else {
-            ClassRegistry registry = registries.computeIfAbsent(classLoader, new Function<StaticObject, ClassRegistry>() {
-                @Override
-                public ClassRegistry apply(StaticObject cl) {
-                    return new GuestClassRegistry(context, cl);
-                }
-            });
-            return registry.defineKlass(type, bytes);
-        }
+
+        ClassRegistry registry = StaticObject.isNull(classLoader)
+                        ? bootClassRegistry
+                        : registries.computeIfAbsent(classLoader, new Function<StaticObject, ClassRegistry>() {
+                            @Override
+                            public ClassRegistry apply(StaticObject cl) {
+                                return new GuestClassRegistry(context, cl);
+                            }
+                        });
+
+        return registry.defineKlass(context, type, bytes);
     }
-
-
 
 }

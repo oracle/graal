@@ -52,6 +52,10 @@ public final class Signatures extends DescriptorCache<ByteString<Signature>, Byt
         this.typeDescriptors = typeDescriptors;
     }
 
+    public static ByteString<Signature> fromJavaString(String signatureString) {
+        throw EspressoError.unimplemented();
+    }
+
     public Types getTypeDescriptors() {
         return typeDescriptors;
     }

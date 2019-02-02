@@ -65,6 +65,14 @@ public final class LinkedKlass {
     @CompilationFinal(dimensions = 1) //
     private final LinkedField[] fields; // Field slots already computed.
 
+    protected LinkedMethod[] getLinkedMethods() {
+        return methods;
+    }
+
+    protected LinkedField[] getLinkedFields() {
+        return fields;
+    }
+
     protected final int instanceFieldCount;
     protected final int staticFieldCount;
 
