@@ -40,12 +40,14 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
@@ -530,11 +532,19 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         ValueNode[] argsWithoutReceiver = Arrays.copyOfRange(args, 1, args.length);
         assert argsWithoutReceiver.length == parameterTypes.length;
 
+        JavaKind returnKind = method.getSignature().getReturnKind();
         Stamp returnStamp;
         if (wordTypes.isWord(b.getInvokeReturnType())) {
             returnStamp = wordTypes.getWordStamp((ResolvedJavaType) b.getInvokeReturnType());
         } else {
-            returnStamp = b.getInvokeReturnStamp(null).getTrustedStamp();
+            if (callType == SubstrateCallingConventionType.NativeCall && returnKind.isNumericInteger()) {
+                // C commonly returns subword integers with garbage in the other bits so treat
+                // the return value as an int and then narrow and widen it back into the format
+                // expected by Java.
+                returnStamp = StampFactory.forKind(returnKind.getStackKind());
+            } else {
+                returnStamp = b.getInvokeReturnStamp(null).getTrustedStamp();
+            }
         }
 
         CallTargetNode indirectCallTargetNode = b.add(new IndirectCallTargetNode(methodAddress, argsWithoutReceiver,
@@ -545,8 +555,16 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         } else if (callType == SubstrateCallingConventionType.NativeCall) {
             // Native code cannot throw exceptions, omit exception edge
             InvokeNode invokeNode = new InvokeNode(indirectCallTargetNode, b.bci());
-            if (pushKind(method) != JavaKind.Void) {
-                b.addPush(pushKind(method), invokeNode);
+            JavaKind pushKind = pushKind(method);
+            if (pushKind != JavaKind.Void) {
+                b.addPush(pushKind, invokeNode);
+                if (returnKind.isNumericInteger() && pushKind != returnKind) {
+                    // The invoke needs to have a value FrameState on it but it contains the wrong
+                    // return value, so pop it off and push the properly converted return value.
+                    b.pop(pushKind);
+                    ValueNode returnValue = IntegerConvertNode.convert(invokeNode, returnStamp, NodeView.DEFAULT);
+                    b.addPush(pushKind, returnValue);
+                }
             } else {
                 b.add(invokeNode);
             }
