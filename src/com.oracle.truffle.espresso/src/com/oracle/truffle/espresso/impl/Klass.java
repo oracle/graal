@@ -128,10 +128,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     public final ArrayKlass getArrayClass() {
-        // TODO(peterssen): Make thread-safe.
-        if (arrayClass == null) {
+        ArrayKlass ak = arrayClass;
+        if (ak == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            arrayClass = createArrayKlass();
+            synchronized (this) {
+                ak = arrayClass;
+                if (ak == null) {
+                    ak = createArrayKlass();
+                    arrayClass = ak;
+                }
+            }
         }
         return arrayClass;
     }
@@ -156,8 +162,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     protected ArrayKlass createArrayKlass() {
-        throw EspressoError.unimplemented("Make thread-safe");
-        // return new ArrayKlass(this);
+        return new ArrayKlass(this);
     }
 
     @Override

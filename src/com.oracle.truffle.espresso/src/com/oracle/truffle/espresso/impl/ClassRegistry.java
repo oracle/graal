@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -83,8 +84,8 @@ public abstract class ClassRegistry {
 
         final ByteString<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
-        LinkedKlass[] linkedInterfaces = new LinkedKlass[superInterfacesTypes.length];
-        ObjectKlass[] superInterfaces = new ObjectKlass[superInterfacesTypes.length];
+        LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0 ? LinkedKlass.EMPTY_ARRAY : new LinkedKlass[superInterfacesTypes.length];
+        ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0 ? ObjectKlass.EMPTY_ARRAY : new ObjectKlass[superInterfacesTypes.length];
 
         // TODO(peterssen): Superinterfaces must be interfaces.
         for (int i = 0; i < superInterfacesTypes.length; ++i) {
@@ -94,10 +95,11 @@ public abstract class ClassRegistry {
         }
 
         // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-        LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass.getLinkedKlass(), linkedInterfaces);
+        LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
 
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
-        classes.put(type, klass);
+        Klass previous = classes.put(type, klass);
+        EspressoError.guarantee(previous == null, "Klass " + previous + " loaded twice");
         return klass;
     }
 }

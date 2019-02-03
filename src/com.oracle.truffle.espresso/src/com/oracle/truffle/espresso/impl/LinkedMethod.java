@@ -8,7 +8,6 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 public final class LinkedMethod {
     private final ParserMethod parserMethod;
     private final LinkedKlass declaringLinkedKlass;
-    private final ConstantPool pool;
 
     // int vtableSlot; // not all methods have vtable entry
     protected int getFlags() {
@@ -16,7 +15,7 @@ public final class LinkedMethod {
     }
 
     ConstantPool getConstantPool() {
-        return pool;
+        return declaringLinkedKlass.getConstantPool();
     }
 
     protected ByteString<Signature> getRawSignature() {
@@ -32,13 +31,8 @@ public final class LinkedMethod {
     }
 
     LinkedMethod(ParserMethod parserMethod, LinkedKlass declaringLinkedKlass) {
-        this(parserMethod, declaringLinkedKlass, declaringLinkedKlass.getConstantPool());
-    }
-
-    LinkedMethod(ParserMethod parserMethod, LinkedKlass declaringLinkedKlass, ConstantPool pool) {
         this.parserMethod = parserMethod;
         this.declaringLinkedKlass = declaringLinkedKlass;
-        this.pool = pool;
     }
 
     public Attribute getAttribute(ByteString<Name> name) {

@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 
@@ -57,7 +58,7 @@ public interface ClassConstant extends PoolConstant {
 
         @Override
         public ByteString<Type> getType(ConstantPool pool) {
-            return pool.utf8At(classNameIndex);
+            return Types.fromConstantPoolName(pool.utf8At(classNameIndex));
         }
     }
 }

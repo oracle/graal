@@ -275,4 +275,8 @@ public final class EspressoContext {
     public Substitutions getSubstitutions() {
         return substitutions;
     }
+
+    public void setBootstrapMeta(Meta meta) {
+        this.meta = meta;
+    }
 }

@@ -70,8 +70,6 @@ public final class BootClassRegistry extends ClassRegistry {
         }
 
         Klass hostClass = null;
-        String className = type.toString(); // TypeDescriptor.slashified(type.toJavaName());
-
         EspressoError.guarantee(!Types.isPrimitive(type), "Primitives must be in the registry");
 
         ClasspathFile classpathFile = context.getBootClasspath().readClassFile(type);
@@ -81,11 +79,7 @@ public final class BootClassRegistry extends ClassRegistry {
 
         // Defining a class also loads the superclass and the superinterfaces which excludes the
         // use of computeIfAbsent to insert the class since the map is modified.
-        klass = defineKlass(context, type, classpathFile.contents);
-        Klass previous = classes.put(type, klass);
-        EspressoError.guarantee(previous == null, "Klass " + previous + " loaded twice");
-
-        return klass;
+        return defineKlass(context, type, classpathFile.contents);
     }
 
     @Override

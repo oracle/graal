@@ -54,7 +54,9 @@ public final class Signatures extends DescriptorCache<ByteString<Signature>, Byt
 
     @Deprecated
     public static ByteString<Signature> fromJavaString(String signatureString) {
-        throw EspressoError.unimplemented();
+        ByteString<Signature> signature = ByteString.fromJavaString(signatureString);
+        assert isValid(signature);
+        return signature;
     }
 
     public Types getTypeDescriptors() {
@@ -215,12 +217,47 @@ public final class Signatures extends DescriptorCache<ByteString<Signature>, Byt
         throw EspressoError.unimplemented();
     }
 
-    public ByteString<Signature> makeRaw(Class<?> returnType, Class<?>... parameterTypes) {
-        throw EspressoError.unimplemented();
+    @SuppressWarnings("unchecked")
+    public ByteString<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
+        ByteString<Type>[] parameterTypes = new ByteString[parameterClasses.length];
+        for (int i = 0; i < parameterClasses.length; ++i) {
+            parameterTypes[i] = Types.fromClass(parameterClasses[i]);
+        }
+        return makeRaw(Types.fromClass(returnClass), parameterTypes);
     }
 
     @SuppressWarnings("unchecked")
     public ByteString<Signature> makeRaw(ByteString<Type> returnType, ByteString<Type>... parameterTypes) {
-        throw EspressoError.unimplemented();
+        if (parameterTypes == null || parameterTypes.length == 0) {
+            byte[] bytes = new byte[2 + returnType.length()];
+            ByteString.copyBytes(returnType, 0, bytes, 2, returnType.length());
+            bytes[0] = '(';
+            bytes[1] = ')';
+            ByteString<Signature> raw = new ByteString<>(bytes);
+            // FIXME(peterssen): Signatures are not symbols.
+            make(raw);
+            return raw;
+        }
+
+        int totalLength = returnType.length();
+        for (ByteString<Type> param : parameterTypes) {
+            totalLength += param.length();
+        }
+
+        byte[] bytes = new byte[totalLength + 2]; // + ()
+
+        int pos = 0;
+        bytes[pos++] = '(';
+        for (ByteString<Type> param : parameterTypes) {
+            ByteString.copyBytes(param, 0, bytes, pos, param.length());
+            pos += param.length();
+        }
+        bytes[pos++] = ')';
+        ByteString.copyBytes(returnType, 0, bytes, pos, returnType.length());
+        pos += returnType.length();
+        assert pos == totalLength + 2;
+        ByteString<Signature> signature = new ByteString(bytes);
+        make(signature);
+        return signature;
     }
 }

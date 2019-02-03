@@ -43,6 +43,14 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         return type;
     }
 
+    public static ByteString<Type> fromConstantPoolName(ByteString<?> cpName) {
+        byte[] bytes = new byte[cpName.length() + 2];
+        ByteString.copyBytes(cpName, 0, bytes, 1, cpName.length());
+        bytes[0] = 'L';
+        bytes[bytes.length - 1] = ';';
+        return new ByteString<>(bytes);
+    }
+
     @Override
     protected ByteString<Type> create(ByteString<Type> key) {
         return key;

@@ -27,6 +27,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Types;
@@ -57,10 +58,16 @@ public final class Meta implements ContextAccess {
 
     @SuppressWarnings("unchecked")
     public Meta(EspressoContext context) {
+        CompilerAsserts.neverPartOfCompilation();
         this.context = context;
+        context.setBootstrapMeta(this);
 
         // Core types.
         Object = knownKlass(Type.Object);
+        Cloneable = knownKlass(Type.Cloneable);
+        Serializable = knownKlass(Type.Serializable);
+        ARRAY_SUPERINTERFACES = new ObjectKlass[]{Cloneable, Serializable};
+
         Object_array = Object.array();
 
         String = knownKlass(Type.String);
@@ -125,8 +132,6 @@ public final class Meta implements ContextAccess {
         PrivilegedActionException = knownKlass(Type.PrivilegedActionException);
         PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void, Type.Exception));
 
-        Cloneable = knownKlass(Type.Cloneable);
-        Serializable = knownKlass(Type.Serializable);
 
         ClassLoader = knownKlass(Type.Throwable);
         ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, context.getSignatures().makeRaw(Type._long, Type.ClassLoader, Type.String));
@@ -156,8 +161,6 @@ public final class Meta implements ContextAccess {
 
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, context.getSignatures().makeRaw(Type._void));
-
-        ARRAY_SUPERINTERFACES = new ObjectKlass[]{Cloneable, Serializable};
     }
 
     public final ObjectKlass Object;

@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 
@@ -36,7 +37,7 @@ public interface FieldRefConstant extends MemberRefConstant {
     @SuppressWarnings("uncheked")
     default ByteString<Type> getType(ConstantPool pool) {
         // TODO(peterssen): Validate type descriptor.
-        return (ByteString<Type>) getDescriptor(pool);
+        return Types.fromConstantPoolName(getDescriptor(pool));
     }
 
     final class Indexes extends MemberRefConstant.Indexes implements FieldRefConstant {
