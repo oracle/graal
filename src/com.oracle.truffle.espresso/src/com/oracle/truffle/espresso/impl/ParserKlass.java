@@ -1,7 +1,9 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.Attributes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
@@ -25,8 +27,7 @@ public final class ParserKlass {
     @CompilationFinal(dimensions = 1) //
     private final ParserField[] fields; // name + type + attributes
 
-    @CompilationFinal(dimensions = 1) //
-    private final Attribute[] attributes;
+    private final Attributes attributes;
 
     public int getFlags() {
         return flags;
@@ -76,6 +77,10 @@ public final class ParserKlass {
         this.superInterfaces = superInterfaces;
         this.methods = methods;
         this.fields = fields;
-        this.attributes = attributes;
+        this.attributes = new Attributes(attributes);
+    }
+
+    Attribute getAttribute(ByteString<Name> name) {
+        return attributes.get(name);
     }
 }

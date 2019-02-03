@@ -86,6 +86,7 @@ public final class ByteString<T> {
         public static final ByteString<Name> InnerClasses = ByteString.fromJavaString("InnerClasses");
         public static final ByteString<Name> loadClass = ByteString.fromJavaString("loadClass");
         public static final ByteString<Name> addClass = ByteString.fromJavaString("addClass");
+        public static final ByteString<Name> RuntimeVisibleAnnotations = ByteString.fromJavaString("RuntimeVisibleAnnotations");
     }
 
     public static class Symbol extends ModifiedUTF8 {

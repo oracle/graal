@@ -22,12 +22,11 @@ import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.LineNumberTable;
-import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.JniNativeNode;
+import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
@@ -51,8 +50,9 @@ public final class Method implements ModifiersProvider, ContextAccess {
     @CompilationFinal(dimensions = 1) //
     private final ByteString<Type>[] parsedSignature;
 
-    private final LineNumberTable lineNumberTable;
-    private final LocalVariableTable localVariableTable;
+    // private final LineNumberTable lineNumberTable;
+    // private final LocalVariableTable localVariableTable;
+
     private final ExceptionsAttribute exceptionsAttribute;
     private final CodeAttribute codeAttribute;
 
@@ -87,12 +87,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return parsedSignature;
     }
 
-    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod,
-                    CodeAttribute codeAttribute,
-                    ExceptionHandler[] exceptionHandlers,
-                    LineNumberTable lineNumberTable,
-                    LocalVariableTable localVariableTable,
-                    ExceptionsAttribute exceptionsAttribute) {
+    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod) {
 
         this.declaringKlass = declaringKlass;
 
@@ -103,10 +98,15 @@ public final class Method implements ModifiersProvider, ContextAccess {
         this.rawSignature = linkedMethod.getRawSignature();
         this.parsedSignature = declaringKlass.getSignatures().make(linkedMethod.getRawSignature());
         this.linkedMethod = linkedMethod;
-        this.codeAttribute = codeAttribute;
-        this.lineNumberTable = lineNumberTable;
-        this.localVariableTable = localVariableTable;
-        this.exceptionsAttribute = exceptionsAttribute;
+
+        this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);
+        // this.lineNumberTable = (LineNumberTable) lineNumberTable;
+        // this.localVariableTable = localVariableTable;
+        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
+    }
+
+    private final Attribute getAttribute(ByteString<Name> name) {
+        return linkedMethod.getAttribute(name);
     }
 
     @Override
@@ -273,17 +273,17 @@ public final class Method implements ModifiersProvider, ContextAccess {
      * Returns the LineNumberTable of this method or null if this method does not have a line
      * numbers table.
      */
-    public LineNumberTable getLineNumberTable() {
-        return lineNumberTable;
-    }
+// public LineNumberTable getLineNumberTable() {
+// return lineNumberTable;
+// }
 
     /**
      * Returns the local variable table of this method or null if this method does not have a local
      * variable table.
      */
-    public LocalVariableTable getLocalVariableTable() {
-        return localVariableTable;
-    }
+// public LocalVariableTable getLocalVariableTable() {
+// return localVariableTable;
+// }
 
     /**
      * Checks whether the method has bytecodes associated with it. Methods without bytecodes are

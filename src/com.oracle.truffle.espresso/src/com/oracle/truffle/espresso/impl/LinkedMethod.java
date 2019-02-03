@@ -3,6 +3,7 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class LinkedMethod {
     private final ParserMethod parserMethod;
@@ -38,5 +39,9 @@ public final class LinkedMethod {
         this.parserMethod = parserMethod;
         this.declaringLinkedKlass = declaringLinkedKlass;
         this.pool = pool;
+    }
+
+    public Attribute getAttribute(ByteString<Name> name) {
+        return parserMethod.getAttribute(name);
     }
 }

@@ -5,9 +5,11 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
 // Structural shareable klass (superklass in superinterfaces resolved and linked)
 // contains shape, field locations.
@@ -92,6 +94,10 @@ public final class LinkedKlass {
 
     ConstantPool getConstantPool() {
         return parserKlass.getConstantPool();
+    }
+
+    public Attribute getAttribute(ByteString<Name> name) {
+        return parserKlass.getAttribute(name);
     }
 
     ByteString<Type> getType() {

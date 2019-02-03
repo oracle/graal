@@ -1,7 +1,9 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.Attributes;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 // Unresolved unlinked.
@@ -12,18 +14,12 @@ public final class ParserMethod {
     private final int flags;
     private final int nameIndex;
     private final int signatureIndex;
-    private final CodeAttribute code;
 
     public int getFlags() {
         return flags;
     }
 
-    public CodeAttribute getCode() {
-        return code;
-    }
-
-    @CompilationFinal(dimensions = 1) //
-    private final Attribute[] attributes;
+    private final Attributes attributes;
 
     // Shared quickening recipes.
     // Stores BC + arguments in compact form.
@@ -42,8 +38,8 @@ public final class ParserMethod {
         return signatureIndex;
     }
 
-    public Attribute[] getAttributes() {
-        return attributes;
+    public Attribute getAttribute(ByteString<Name> name) {
+        return attributes.get(name);
     }
 
     public long[] getRecipes() {
@@ -54,14 +50,6 @@ public final class ParserMethod {
         this.flags = flags;
         this.nameIndex = nameIndex;
         this.signatureIndex = signatureIndex;
-        this.attributes = attributes;
-
-        for (Attribute attr : attributes) {
-            if (CodeAttribute.NAME.equals(attr.getName())) {
-                this.code = (CodeAttribute) attr;
-                return;
-            }
-        }
-        this.code = null; // none
+        this.attributes = new Attributes(attributes);
     }
 }

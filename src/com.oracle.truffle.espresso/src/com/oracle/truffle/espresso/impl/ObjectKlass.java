@@ -25,9 +25,12 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -68,18 +71,21 @@ public final class ObjectKlass extends Klass {
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
 
+    private final Attribute getAttribute(ByteString<Name> name) {
+        return linkedKlass.getAttribute(name);
+    }
+
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces,
-                    StaticObject classLoader,
-                    EnclosingMethodAttribute enclosingMethod,
-                    InnerClassesAttribute innerClasses,
-                    Attribute runtimeVisibleAnnotations) {
+                    StaticObject classLoader) {
         super(context, linkedKlass.getType(), superKlass, superInterfaces);
 
-        this.enclosingMethod = enclosingMethod;
         this.linkedKlass = linkedKlass;
 
-        this.innerClasses = innerClasses;
-        this.runtimeVisibleAnnotations = runtimeVisibleAnnotations;
+        this.enclosingMethod = (EnclosingMethodAttribute) getAttribute(EnclosingMethodAttribute.NAME);
+        this.innerClasses = (InnerClassesAttribute) getAttribute(InnerClassesAttribute.NAME);
+
+        // Move attribute name to better location.
+        this.runtimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
 
         // TODO(peterssen): Make writable copy.
         this.pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), classLoader);
@@ -93,7 +99,7 @@ public final class ObjectKlass extends Klass {
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
         for (int i = 0; i < methods.length; ++i) {
-            methods[i] = new Method(this, linkedMethods[i],null, linkedMethods[i],);
+            methods[i] = new Method(this, linkedMethods[i]);
         }
 
         this.declaredFields = fields;
@@ -102,11 +108,16 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public StaticObject tryInitializeAndGetStatics() {
+        initialize();
+        return getStatics();
+    }
+
+    @Override
+    public StaticObject getStatics() {
         if (statics == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             statics = new StaticObjectImpl(this, true);
         }
-        initialize();
         return statics;
     }
 
