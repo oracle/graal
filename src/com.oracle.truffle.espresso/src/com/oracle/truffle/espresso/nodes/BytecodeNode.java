@@ -1188,7 +1188,7 @@ public final class BytecodeNode extends EspressoRootNode {
 
     // TODO(peterssen): Re-implement resolution properly, update CP entry.
     private Method lookupInterfaceMethod(Klass declaringInterface, ByteString<Name> name, ByteString<Signature> signature) {
-        Method m = declaringInterface.findMethod(name, signature);
+        Method m = declaringInterface.lookupMethod(name, signature);
         if (m != null) {
             return m;
         }
@@ -1229,7 +1229,7 @@ public final class BytecodeNode extends EspressoRootNode {
         // assert declaringInterface.isInterface();
         ByteString<Name> name = methodRefConstant.getName(pool);
         ByteString<Signature> signature = methodRefConstant.getSignature(pool);
-        Method m = klass.findMethod(name, signature);
+        Method m = klass.lookupMethod(name, signature);
         return m;
     }
 

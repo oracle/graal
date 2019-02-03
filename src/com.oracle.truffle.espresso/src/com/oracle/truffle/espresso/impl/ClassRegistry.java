@@ -96,7 +96,7 @@ public abstract class ClassRegistry {
         // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
         LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass.getLinkedKlass(), linkedInterfaces);
 
-        ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), null, null, null);
+        ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
         classes.put(type, klass);
         return klass;
     }

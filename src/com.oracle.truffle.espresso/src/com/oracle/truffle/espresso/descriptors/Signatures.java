@@ -219,6 +219,7 @@ public final class Signatures extends DescriptorCache<ByteString<Signature>, Byt
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings("unchecked")
     public ByteString<Signature> makeRaw(ByteString<Type> returnType, ByteString<Type>... parameterTypes) {
         throw EspressoError.unimplemented();
     }

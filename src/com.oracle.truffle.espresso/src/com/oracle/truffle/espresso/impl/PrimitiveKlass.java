@@ -97,7 +97,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public StaticObject tryInitializeAndGetStatics() {
+    public StaticObject getStatics() {
         throw EspressoError.shouldNotReachHere("Primitives do not have static fields");
     }
 

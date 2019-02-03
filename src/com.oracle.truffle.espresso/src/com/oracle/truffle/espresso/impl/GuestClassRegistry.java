@@ -69,7 +69,7 @@ public final class GuestClassRegistry extends ClassRegistry {
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
         assert StaticObject.notNull(classLoader);
-        StaticObjectClass guestClass = (StaticObjectClass) ClassLoader_loadClass.invokeDirect(classLoader, context.getMeta().toGuest(type.toString()), false);
+        StaticObjectClass guestClass = (StaticObjectClass) ClassLoader_loadClass.invokeDirect(classLoader, context.getMeta().toGuestString(type.toString()), false);
         Klass klass = guestClass.getMirror();
 
         // TODO(peterssen): Should the class be added back to the guest CL, or defineKlass will be

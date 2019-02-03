@@ -107,12 +107,6 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public StaticObject tryInitializeAndGetStatics() {
-        initialize();
-        return getStatics();
-    }
-
-    @Override
     public StaticObject getStatics() {
         if (statics == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -307,5 +301,13 @@ public final class ObjectKlass extends Klass {
 
     public Attribute getRuntimeVisibleAnnotations() {
         return runtimeVisibleAnnotations;
+    }
+
+    public int getStaticFieldSlots() {
+        return linkedKlass.staticFieldCount;
+    }
+
+    public int getInstanceFieldSlots() {
+        return linkedKlass.instanceFieldCount;
     }
 }

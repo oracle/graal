@@ -69,7 +69,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
     static Method methodLookup(Method resolutionSeed, StaticObject receiver) {
         // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
         Klass clazz = receiver.getKlass();
-        return clazz.findConcreteMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
+        return clazz.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
     }
 
     @Override

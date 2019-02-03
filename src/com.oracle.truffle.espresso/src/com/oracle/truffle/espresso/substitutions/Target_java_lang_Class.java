@@ -30,12 +30,8 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.ClassConstant;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
-import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Field;
@@ -116,7 +112,7 @@ public final class Target_java_lang_Class {
     public static @Host(String.class) StaticObject getName0(@Host(Class.class) StaticObjectClass self) {
         String name = self.getMirror().getType().toString();
         // Conversion from internal form.
-        return EspressoLanguage.getCurrentContext().getMeta().toGuest(MetaUtil.internalNameToJava(name, true, true));
+        return EspressoLanguage.getCurrentContext().getMeta().toGuestString(MetaUtil.internalNameToJava(name, true, true));
     }
 
     @Substitution(hasReceiver = true)
@@ -168,7 +164,7 @@ public final class Target_java_lang_Class {
                                 /* type */ f.resolveTypeKlass(),
                                 /* modifiers */ f.getModifiers(),
                                 /* slot */ f.getSlot(),
-                                /* signature */ meta.toGuest(f.getType()),
+                                /* signature */ meta.toGuestString(f.getType()),
                                 // FIXME(peterssen): Fill annotations bytes.
                                 /* annotations */ StaticObject.NULL);
                 instance.setHiddenField(HIDDEN_FIELD_KEY, f);
@@ -239,7 +235,7 @@ public final class Target_java_lang_Class {
                                 /* checkedExceptions */ checkedExceptions,
                                 /* modifiers */ m.getModifiers(),
                                 /* slot */ i, // TODO(peterssen): Fill method slot.
-                                /* signature */ meta.toGuest(m.getRawSignature().toString()),
+                                /* signature */ meta.toGuestString(m.getRawSignature().toString()),
 
                                 // FIXME(peterssen): Fill annotations bytes.
                                 /* annotations */ StaticObject.NULL,
@@ -323,7 +319,7 @@ public final class Target_java_lang_Class {
                                 /* checkedExceptions */ checkedExceptions,
                                 /* modifiers */ m.getModifiers(),
                                 /* slot */ i, // TODO(peterssen): Fill method slot.
-                                /* signature */ meta.toGuest(m.getRawSignature().toString()),
+                                /* signature */ meta.toGuestString(m.getRawSignature().toString()),
 
                                 // FIXME(peterssen): Fill annotations bytes.
                                 /* annotations */ StaticObject.NULL,
@@ -397,32 +393,33 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(Object[].class) StaticObject getEnclosingMethod0(StaticObjectClass self) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
-        if (self.getMirror() instanceof ObjectKlass) {
-            EnclosingMethodAttribute enclosingMethodAttr = ((ObjectKlass) self.getMirror()).getEnclosingMethod();
-            if (enclosingMethodAttr == null) {
-                return StaticObject.NULL;
-            }
-            StaticObjectArray arr = (StaticObjectArray) meta.Object.allocateArray(3);
-
-            Klass enclosingKlass = self.getMirror().getConstantPool().classAt(enclosingMethodAttr.getClassIndex()).resolve(self.getMirror().getConstantPool(), enclosingMethodAttr.getClassIndex());
-
-            vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
-
-            if (enclosingMethodAttr.getMethodIndex() != 0) {
-
-                Method enclosingMethod = self.getMirror().getConstantPool().methodAt(enclosingMethodAttr.getMethodIndex()).resolve(self.getMirror().getConstantPool(),
-                                enclosingMethodAttr.getMethodIndex());
-
-                vm.setArrayObject(meta.toGuest(enclosingMethod.getName().toString()), 1, arr);
-                vm.setArrayObject(meta.toGuest(enclosingMethod.getRawSignature().toString()), 2, arr);
-            } else {
-                assert vm.getArrayObject(1, arr) == StaticObject.NULL;
-                assert vm.getArrayObject(2, arr) == StaticObject.NULL;
-            }
-        }
-        return StaticObject.NULL;
+        throw EspressoError.unimplemented();
+//        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+//        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
+//        if (self.getMirror() instanceof ObjectKlass) {
+//            EnclosingMethodAttribute enclosingMethodAttr = ((ObjectKlass) self.getMirror()).getEnclosingMethod();
+//            if (enclosingMethodAttr == null) {
+//                return StaticObject.NULL;
+//            }
+//            StaticObjectArray arr = (StaticObjectArray) meta.Object.allocateArray(3);
+//
+//            Klass enclosingKlass = self.getMirror().getConstantPool().classAt(enclosingMethodAttr.getClassIndex()).resolve(self.getMirror().getConstantPool(), enclosingMethodAttr.getClassIndex());
+//
+//            vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
+//
+//            if (enclosingMethodAttr.getMethodIndex() != 0) {
+//
+//                Method enclosingMethod = self.getMirror().getConstantPool().methodAt(enclosingMethodAttr.getMethodIndex()).resolve(self.getMirror().getConstantPool(),
+//                                enclosingMethodAttr.getMethodIndex());
+//
+//                vm.setArrayObject(meta.toGuestString(enclosingMethod.getName().toString()), 1, arr);
+//                vm.setArrayObject(meta.toGuestString(enclosingMethod.getRawSignature().toString()), 2, arr);
+//            } else {
+//                assert vm.getArrayObject(1, arr) == StaticObject.NULL;
+//                assert vm.getArrayObject(2, arr) == StaticObject.NULL;
+//            }
+//        }
+//        return StaticObject.NULL;
     }
 
     @Substitution(hasReceiver = true)
@@ -444,39 +441,41 @@ public final class Target_java_lang_Class {
      * inside methods).
      */
     private static Klass computeEnclosingClass(ObjectKlass klass) {
-        InnerClassesAttribute innerClasses = klass.getInnerClasses();
-        if (innerClasses == null) {
-            return null;
-        }
+        throw EspressoError.unimplemented();
 
-        ConstantPool pool = klass.getConstantPool();
-
-        boolean found = false;
-        Klass outerKlass = null;
-
-        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
-            if (entry.innerClassIndex != 0) {
-                ClassConstant innerClassConst = pool.classAt(entry.innerClassIndex);
-                ByteString<Type> innersDecriptor = innerClassConst.getType(pool);
-
-                // Check decriptors/names before resolving.
-                if (innersDecriptor.equals(klass.getType())) {
-                    Klass innerKlass = innerClassConst.resolve(pool, entry.innerClassIndex);
-                    found = (innerKlass == klass);
-                    if (found && entry.outerClassIndex != 0) {
-                        outerKlass = pool.classAt(entry.outerClassIndex).resolve(pool, entry.outerClassIndex);
-                    }
-                }
-            }
-            if (found)
-                break;
-        }
-
-        // TODO(peterssen): Follow HotSpot implementation described below.
-        // Throws an exception if outer klass has not declared k as an inner klass
-        // We need evidence that each klass knows about the other, or else
-        // the system could allow a spoof of an inner class to gain access rights.
-        return outerKlass;
+//        InnerClassesAttribute innerClasses = klass.getInnerClasses();
+//        if (innerClasses == null) {
+//            return null;
+//        }
+//
+//        ConstantPool pool = klass.getConstantPool();
+//
+//        boolean found = false;
+//        Klass outerKlass = null;
+//
+//        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+//            if (entry.innerClassIndex != 0) {
+//                ClassConstant innerClassConst = pool.classAt(entry.innerClassIndex);
+//                ByteString<Type> innersDecriptor = innerClassConst.getType(pool);
+//
+//                // Check decriptors/names before resolving.
+//                if (innersDecriptor.equals(klass.getType())) {
+//                    Klass innerKlass = innerClassConst.resolve(pool, entry.innerClassIndex);
+//                    found = (innerKlass == klass);
+//                    if (found && entry.outerClassIndex != 0) {
+//                        outerKlass = pool.classAt(entry.outerClassIndex).resolve(pool, entry.outerClassIndex);
+//                    }
+//                }
+//            }
+//            if (found)
+//                break;
+//        }
+//
+//        // TODO(peterssen): Follow HotSpot implementation described below.
+//        // Throws an exception if outer klass has not declared k as an inner klass
+//        // We need evidence that each klass knows about the other, or else
+//        // the system could allow a spoof of an inner class to gain access rights.
+//        return outerKlass;
     }
 
     /**

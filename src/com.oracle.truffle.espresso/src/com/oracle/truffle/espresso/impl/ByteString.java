@@ -24,7 +24,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  */
 public final class ByteString<T> {
 
-    public static final ByteString[] EMPTY_ARRAY = new ByteString[0];
+    @SuppressWarnings("rawtypes") public static final ByteString[] EMPTY_ARRAY = new ByteString[0];
 
     @SuppressWarnings("unchecked")
     public static <S> ByteString<S>[] emptyArray() {
@@ -87,6 +87,9 @@ public final class ByteString<T> {
         public static final ByteString<Name> loadClass = ByteString.fromJavaString("loadClass");
         public static final ByteString<Name> addClass = ByteString.fromJavaString("addClass");
         public static final ByteString<Name> RuntimeVisibleAnnotations = ByteString.fromJavaString("RuntimeVisibleAnnotations");
+        public static final ByteString<Name> run = ByteString.fromJavaString("run");
+        public static final ByteString<Name> getMessage = ByteString.fromJavaString("getMessage");
+        public static final ByteString<Name> getProperty = ByteString.fromJavaString("getProperty");
     }
 
     public static class Symbol extends ModifiedUTF8 {
@@ -170,6 +173,7 @@ public final class ByteString<T> {
 
         // Finalizer is not public.
         public static final ByteString<Type> java_lang_ref_Finalizer = Types.fromJavaString("Ljava/lang/ref/Finalizer;");
+        public static final ByteString<Type> StackTraceElement = Types.fromClass(StackTraceElement.class);
     }
 
     public static class Signature extends Descriptor {
@@ -193,6 +197,7 @@ public final class ByteString<T> {
         return h;
     }
 
+    @SuppressWarnings("rawtypes")
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {

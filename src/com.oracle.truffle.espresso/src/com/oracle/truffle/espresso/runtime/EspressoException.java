@@ -25,6 +25,9 @@ package com.oracle.truffle.espresso.runtime;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.meta.Meta;
 
@@ -41,7 +44,8 @@ public final class EspressoException extends RuntimeException implements Truffle
 
     @Override
     public String getMessage() {
-        return Meta.toHostString((StaticObject) Meta.meta(exception).method("getMessage", String.class).invokeDirect());
+        Meta meta = exception.getKlass().getMeta();
+        return Meta.toHostString((StaticObject) meta.Throwable.lookupMethod(Name.getMessage, meta.getSignatures().makeRaw(Type.String)).invokeDirect(exception));
     }
 
     public StaticObject getException() {

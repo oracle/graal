@@ -360,7 +360,7 @@ public final class InterpreterToVM implements ContextAccess {
         if (dimensions.length == 2) {
             assert dimensions[0] >= 0;
             if (componentType.getComponentType().isPrimitive()) {
-                return (StaticObject) meta(componentType).allocateArray(dimensions[0],
+                return (StaticObject) componentType.allocateArray(dimensions[0],
                                 new IntFunction<StaticObject>() {
                                     @Override
                                     public StaticObject apply(int i) {
@@ -368,7 +368,7 @@ public final class InterpreterToVM implements ContextAccess {
                                     }
                                 });
             }
-            return (StaticObject) meta(componentType).allocateArray(dimensions[0], new IntFunction<StaticObject>() {
+            return (StaticObject) componentType.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
                 @Override
                 public StaticObject apply(int i) {
                     return InterpreterToVM.this.newArray(componentType.getComponentType(), dimensions[1]);
@@ -376,7 +376,7 @@ public final class InterpreterToVM implements ContextAccess {
             });
         } else {
             int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
-            return (StaticObject) meta(componentType).allocateArray(dimensions[0], new IntFunction<StaticObject>() {
+            return (StaticObject) componentType.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
                 @Override
                 public StaticObject apply(int i) {
                     return InterpreterToVM.this.newMultiArray(componentType, newDimensions);

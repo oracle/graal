@@ -30,6 +30,7 @@ import java.util.function.Predicate;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
@@ -60,6 +61,8 @@ public final class Meta implements ContextAccess {
 
         // Core types.
         Object = knownKlass(Type.Object);
+        Object_array = Object.array();
+
         String = knownKlass(Type.String);
         Class = knownKlass(Type.Class);
         Class_forName_String = Class.lookupDeclaredMethod(Name.forName, getSignatures().makeRaw(Type.Class, Type.String));
@@ -74,6 +77,15 @@ public final class Meta implements ContextAccess {
         _double = knownPrimitive(Type._double);
         _long = knownPrimitive(Type._long);
         _void = knownPrimitive(Type._void);
+
+        _boolean_array = _boolean.array();
+        _byte_array = _byte.array();
+        _char_array = _char.array();
+        _short_array = _short.array();
+        _float_array = _float.array();
+        _int_array = _int.array();
+        _double_array = _double.array();
+        _long_array = _long.array();
 
         // Boxed types.
         Boolean = knownKlass(Type.Boolean);
@@ -102,6 +114,9 @@ public final class Meta implements ContextAccess {
 
         Throwable = knownKlass(Type.Throwable);
         Throwable_backtrace = Throwable.lookupField(Name.backtrace, Type.Object);
+
+        StackTraceElement = knownKlass(Type.StackTraceElement);
+        StackTraceElement_init = StackTraceElement.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void, Type.String, Type.String, Type.String, Type._int));
 
         ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
         StackOverflowError = knownKlass(Type.StackOverflowError);
@@ -146,6 +161,8 @@ public final class Meta implements ContextAccess {
     }
 
     public final ObjectKlass Object;
+    public final ArrayKlass Object_array;
+
     public final ObjectKlass String;
     public final ObjectKlass Class;
     public final Method Class_forName_String;
@@ -160,6 +177,15 @@ public final class Meta implements ContextAccess {
     public final PrimitiveKlass _double;
     public final PrimitiveKlass _long;
     public final PrimitiveKlass _void;
+
+    public final ArrayKlass _boolean_array;
+    public final ArrayKlass _byte_array;
+    public final ArrayKlass _char_array;
+    public final ArrayKlass _short_array;
+    public final ArrayKlass _float_array;
+    public final ArrayKlass _int_array;
+    public final ArrayKlass _double_array;
+    public final ArrayKlass _long_array;
 
     // Boxed primitives.
     public final ObjectKlass Boolean;
@@ -208,6 +234,8 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Throwable;
     public final Field Throwable_backtrace;
 
+    public final ObjectKlass StackTraceElement;
+    public final Method StackTraceElement_init;
 
     public final ObjectKlass PrivilegedActionException;
     public final Method PrivilegedActionException_init_Exception;
@@ -328,7 +356,7 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary
-    public StaticObject toGuest(String hostString) {
+    public StaticObject toGuestString(String hostString) {
         if (hostString == null) {
             return StaticObject.NULL;
         }
@@ -342,12 +370,20 @@ public final class Meta implements ContextAccess {
         return guestString;
     }
 
+    @TruffleBoundary
+    public StaticObject toGuestString(ByteString<?> hostString) {
+        if (hostString == null) {
+            return StaticObject.NULL;
+        }
+        return toGuestString(hostString.toString());
+    }
+
     public Object toGuestBoxed(Object hostObject) {
         if (hostObject == null) {
             return StaticObject.NULL;
         }
         if (hostObject instanceof String) {
-            return toGuest((String) hostObject);
+            return toGuestString((String) hostObject);
         }
         if (hostObject instanceof StaticObject || (hostObject.getClass().isArray() && hostObject.getClass().getComponentType().isPrimitive())) {
             return hostObject;
@@ -366,12 +402,12 @@ public final class Meta implements ContextAccess {
         throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
     }
 
-    public Object toGuest(Object hostObject) {
+    public Object toGuestString(Object hostObject) {
         if (hostObject == null) {
             return StaticObject.NULL;
         }
         if (hostObject instanceof String) {
-            return toGuest((String) hostObject);
+            return toGuestString((String) hostObject);
         }
         if (hostObject instanceof StaticObject || (hostObject.getClass().isArray() && hostObject.getClass().getComponentType().isPrimitive())) {
             return hostObject;

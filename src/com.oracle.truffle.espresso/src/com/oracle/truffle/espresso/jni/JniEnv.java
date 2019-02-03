@@ -1252,7 +1252,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public StaticObject NewStringUTF(String hostString) {
         // FIXME(peterssen): This relies on TruffleNFI implicit char* -> String conversion that
         // uses host NewStringUTF.
-        return getMeta().toGuest(hostString);
+        return getMeta().toGuestString(hostString);
     }
 
     /**
@@ -1298,7 +1298,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public StaticObject FindClass(String name) {
-        StaticObject internalName = getMeta().toGuest(MetaUtil.toInternalName(name));
+        StaticObject internalName = getMeta().toGuestString(MetaUtil.toInternalName(name));
         assert getMeta().Class_forName_String.isStatic();
         return (StaticObject) getMeta().Class_forName_String.invokeDirect(null, internalName);
     }

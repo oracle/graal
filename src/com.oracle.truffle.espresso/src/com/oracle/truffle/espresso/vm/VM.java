@@ -48,7 +48,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
@@ -291,7 +290,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return ((StaticObjectArray) self).copy();
         }
         Meta meta = getMeta();
-        if (!meta.knownKlass(Cloneable.class).isAssignableFrom(meta(self.getKlass()))) {
+        if (!meta.Cloneable.isAssignableFrom(self.getKlass())) {
             throw meta.throwEx(java.lang.CloneNotSupportedException.class);
         }
 
@@ -530,25 +529,20 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index) {
-        Meta meta = getMeta();
-        StaticObject ste = meta.knownKlass(StackTraceElement.class).allocateInstance();
-        StaticObject backtrace = (StaticObject) meta.Throwable_backtrace.get(self);
-
+        StaticObject ste = getMeta().StackTraceElement.allocateInstance();
+        StaticObject backtrace = (StaticObject) getMeta().Throwable_backtrace.get(self);
         FrameInstance[] frames = ((FrameInstance[]) ((StaticObjectImpl) backtrace).getHiddenField("$$frames"));
-
         FrameInstance frame = frames[index];
 
-        RootNode rootNode = ((RootCallTarget) frame.getCallTarget()).getRootNode();
-        Meta.Method.WithInstance init = meta(ste).method(Name.INIT, void.class, String.class, String.class, String.class, int.class);
-        if (rootNode instanceof LinkedNode) {
-            LinkedNode linkedNode = (LinkedNode) rootNode;
-            String className = linkedNode.getOriginalMethod().getDeclaringClass().getName();
-            init.invoke(className, linkedNode.getOriginalMethod().getName(), null, -1);
-        } else {
-            // TODO(peterssen): Get access to the original (intrinsified) method and report
-            // properly.
-            init.invoke("UnknownIntrinsic", "unknownIntrinsic", null, -1);
-        }
+        EspressoRootNode rootNode = (EspressoRootNode) ((RootCallTarget) frame.getCallTarget()).getRootNode();
+
+        getMeta().StackTraceElement_init.invokeDirect(
+                /* this */ ste,
+                /* declaringClass */ getMeta().toGuestString(rootNode.getMethod().getName()),
+                /* methodName */ getMeta().toGuestString(rootNode.getMethod().getName()),
+                /* fileName */ StaticObject.NULL,
+                /* lineNumber */ -1);
+
         return ste;
     }
 
@@ -561,7 +555,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool, int index) {
-        return getMeta().toGuest(jcpool.getMirror().getConstantPool().utf8At(index).toString());
+        return getMeta().toGuestString(jcpool.getMirror().getConstantPool().utf8At(index).toString());
     }
 
     @VmImpl
@@ -572,7 +566,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
         buf.get(bytes);
-        StaticObjectClass klass = (StaticObjectClass) getContext().getRegistries().defineKlass(name, bytes, loader).mirror();
+        StaticObjectClass klass = (StaticObjectClass) getContext().getRegistries().defineKlass(ByteString.fromJavaString(name), bytes, loader).mirror();
         return klass;
     }
 

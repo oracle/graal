@@ -40,7 +40,7 @@ public final class Target_java_lang_Thread {
             Meta meta = context.getMeta();
             StaticObject mainThread = meta.Thread.allocateInstance();
             meta.Thread_group.set(mainThread, meta.ThreadGroup.allocateInstance());
-            meta.Thread_name.set(mainThread, meta.toGuest("mainThread"));
+            meta.Thread_name.set(mainThread, meta.toGuestString("mainThread"));
             meta.Thread_priority.set(mainThread, 5);
 
             // Lock object used by NIO.

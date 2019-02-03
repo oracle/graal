@@ -177,7 +177,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 // return findDeclaredConcreteMethod(klassName, signature);
 // }
 
-    public abstract StaticObject tryInitializeAndGetStatics();
+    public final StaticObject tryInitializeAndGetStatics() {
+        initialize();
+        return getStatics();
+    }
 
     public abstract StaticObject getStatics();
 

@@ -28,6 +28,7 @@ import java.security.ProtectionDomain;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -113,14 +114,25 @@ public final class Target_sun_misc_Unsafe {
         if (!(0 <= slot && slot < (1 << 16))) {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
-        Klass klass = holder.getKlass();
+        if (holder.isStaticStorage()) {
+            // Lookup static field in current class.
+            for (Field f : holder.getKlass().getDeclaredFields()) {
+                if (f.isStatic() && f.getSlot() == slot) {
+                    return f;
+                }
+            }
+        } else {
+            // Lookup nstance field in current class and superclasses.
+            for (Klass k = holder.getKlass(); k != null; k = k.getSuperclass()) {
+                for (Field f : holder.getKlass().getDeclaredFields()) {
+                    if (!f.isStatic() && f.getSlot() == slot) {
+                        return f;
+                    }
+                }
+            }
+        }
 
-        Field field = (holder.isStaticStorage())
-                        ? klass.getStaticFields()[slot]
-                        : klass.getInstanceFields(true)[slot];
-
-        assert field.getSlot() == slot;
-        return field;
+        throw EspressoError.shouldNotReachHere("Field with slot " + slot + " not found");
     }
 
     @Substitution(hasReceiver = true)
@@ -144,7 +156,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Protection domain is ignored.
         byte[] buf = ((StaticObjectArray) guestBuf).unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        return EspressoLanguage.getCurrentContext().getRegistries().defineKlass(Meta.toHostString(name), bytes, loader).mirror();
+        return EspressoLanguage.getCurrentContext().getRegistries().defineKlass(Types.fromJavaString(Meta.toHostString(name)), bytes, loader).mirror();
     }
 
     @Substitution(hasReceiver = true)
