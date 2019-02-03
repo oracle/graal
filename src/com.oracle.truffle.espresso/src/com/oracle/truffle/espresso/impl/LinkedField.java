@@ -5,6 +5,10 @@ import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 
 public final class LinkedField {
+    ParserField getParserField() {
+        return parserField;
+    }
+
     private final ParserField parserField;
     private final LinkedKlass holderLinkedKlass;
 

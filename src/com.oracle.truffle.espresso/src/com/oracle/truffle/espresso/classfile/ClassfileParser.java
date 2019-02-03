@@ -356,7 +356,7 @@ public final class ClassfileParser {
         int nameIndex = stream.readU2();
         int typeIndex = stream.readU2();
         Attribute[] fieldAttributes = parseAttributes();
-        return new ParserField(flags, pool.utf8At(nameIndex), pool.utf8At(typeIndex), fieldAttributes);
+        return new ParserField(flags, pool.utf8At(nameIndex), pool.utf8At(typeIndex), typeIndex, fieldAttributes);
     }
 
     private ParserField[] parseFields() {

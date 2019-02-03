@@ -111,6 +111,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     public StaticObject mirror() {
+        // TODO(peterssen): Make thread-safe.
         if (mirrorCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             mirrorCache = new StaticObjectClass(this);

@@ -45,10 +45,20 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
 
     public static ByteString<Type> fromConstantPoolName(ByteString<?> cpName) {
         byte[] bytes = new byte[cpName.length() + 2];
+        if (cpName.byteAt(0) == '[') {
+            return (ByteString<Type>) cpName;
+        }
         ByteString.copyBytes(cpName, 0, bytes, 1, cpName.length());
         bytes[0] = 'L';
         bytes[bytes.length - 1] = ';';
         return new ByteString<>(bytes);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static ByteString<Type> fromDescriptor(ByteString<? extends Descriptor> descriptor) {
+        ByteString<Type> type = (ByteString<Type>) descriptor;
+        assert isValid(type);
+        return type;
     }
 
     @Override

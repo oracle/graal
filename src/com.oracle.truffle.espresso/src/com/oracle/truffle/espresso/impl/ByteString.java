@@ -90,6 +90,7 @@ public final class ByteString<T> {
         public static final ByteString<Name> run = ByteString.fromJavaString("run");
         public static final ByteString<Name> getMessage = ByteString.fromJavaString("getMessage");
         public static final ByteString<Name> getProperty = ByteString.fromJavaString("getProperty");
+        public static final ByteString<Name> setProperty = ByteString.fromJavaString("setProperty");
     }
 
     public static class Symbol extends ModifiedUTF8 {

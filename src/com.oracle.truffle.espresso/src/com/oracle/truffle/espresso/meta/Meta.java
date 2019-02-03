@@ -114,7 +114,7 @@ public final class Meta implements ContextAccess {
         Double_valueOf = Double.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Double, Type._double));
         Long_valueOf = Long.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Long, Type._long));
 
-        String_value = String.lookupDeclaredField(Name.value, Type._byte_array);
+        String_value = String.lookupDeclaredField(Name.value, Type._char_array);
         String_hash = String.lookupDeclaredField(Name.hash, Type._int);
         String_hashCode = String.lookupDeclaredMethod(Name.hashCode, context.getSignatures().makeRaw(Type._int));
         String_length = String.lookupDeclaredMethod(Name.length, context.getSignatures().makeRaw(Type._int));

@@ -82,14 +82,13 @@ public final class Target_java_lang_Class {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
 
-        String typeDesc = Meta.toHostString(name);
-        if (typeDesc.contains(".")) {
-            // Normalize
-            // Ljava/lang/InterruptedException;
-            // sun.nio.cs.UTF_8
-            throw EspressoError.unimplemented();
-            // typeDesc = TypeDescriptor.fromJavaName(typeDesc);
-        }
+        String typeDesc = "L" + Meta.toHostString(name).replace('.', '/') + ";";
+//        if (typeDesc.contains(".")) {
+//            // Normalize
+//            // Ljava/lang/InterruptedException;
+//            // sun.nio.cs.UTF_8
+//            typeDesc = .fromJavaName(typeDesc);
+//        }
 
         Klass klass = meta.getRegistries().loadKlass(context.getTypes().make(Types.fromJavaString(typeDesc)), loader);
 
@@ -161,7 +160,7 @@ public final class Target_java_lang_Class {
                                 /* this */ instance,
                                 /* declaringKlass */ f.getHolder().mirror(),
                                 /* name */ meta.getStrings().intern(f.getName()),
-                                /* type */ f.resolveTypeKlass(),
+                                /* type */ f.resolveTypeKlass().mirror(),
                                 /* modifiers */ f.getModifiers(),
                                 /* slot */ f.getSlot(),
                                 /* signature */ meta.toGuestString(f.getType()),

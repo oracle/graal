@@ -736,7 +736,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public Object CallObjectMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
         // FIXME(peterssen): This is virtual dispatch. Re-resolve the method.
-        return method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object[] args = popVarArgs(varargsPtr, method.getParsedSignature());
+        return method.invokeDirect(receiver, args);
     }
 
     @SuppressWarnings("unused")
@@ -1249,7 +1250,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public StaticObject NewStringUTF(String hostString) {
+    public @Host(String.class) StaticObject NewStringUTF(String hostString) {
         // FIXME(peterssen): This relies on TruffleNFI implicit char* -> String conversion that
         // uses host NewStringUTF.
         return getMeta().toGuestString(hostString);
@@ -1298,7 +1299,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public StaticObject FindClass(String name) {
-        StaticObject internalName = getMeta().toGuestString(MetaUtil.toInternalName(name));
+        StaticObject internalName = getMeta().toGuestString(name);
         assert getMeta().Class_forName_String.isStatic();
         return (StaticObject) getMeta().Class_forName_String.invokeDirect(null, internalName);
     }

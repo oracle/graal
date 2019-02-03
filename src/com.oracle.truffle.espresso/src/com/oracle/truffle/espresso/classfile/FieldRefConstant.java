@@ -37,7 +37,7 @@ public interface FieldRefConstant extends MemberRefConstant {
     @SuppressWarnings("uncheked")
     default ByteString<Type> getType(ConstantPool pool) {
         // TODO(peterssen): Validate type descriptor.
-        return Types.fromConstantPoolName(getDescriptor(pool));
+        return Types.fromDescriptor(getDescriptor(pool));
     }
 
     final class Indexes extends MemberRefConstant.Indexes implements FieldRefConstant {

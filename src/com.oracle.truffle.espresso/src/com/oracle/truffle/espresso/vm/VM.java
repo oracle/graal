@@ -48,6 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
@@ -707,8 +708,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Properties.class) StaticObject JVM_InitProperties(@Host(Properties.class) StaticObject properties) {
-        Method setProperty = properties.getKlass().lookupMethod(ByteString.fromJavaString("setProperty"),
-                getSignatures().makeRaw(Object.class, String.class, String.class));
+        Method setProperty = properties.getKlass().lookupMethod(Name.setProperty,
+                getSignatures().makeRaw(Type.Object, Type.String, Type.String));
 
         OptionValues options = getContext().getEnv().getOptions();
 

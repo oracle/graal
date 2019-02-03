@@ -112,16 +112,44 @@ public final class Field implements ModifiersProvider {
         return name;
     }
 
+//    public Field fieldRefConstant(RuntimeConstantPool pool, int index) {
+//        CompilerDirectives.transferToInterpreterAndInvalidate();
+//
+//        FieldRefConstant fieldRefConstant = pool.fieldAt(index);
+//
+//        ByteString<Type> declaringKlass = fieldRefConstant.getDeclaringClass(pool);
+//        Klass klass = getContext().getRegistries().loadKlass(declaringKlass, pool.getClassLoader());
+//
+//        // assert declaringInterface.isInterface();
+//        ByteString<Name> name = fieldRefConstant.getName(pool);
+//        ByteString<Type> type = fieldRefConstant.getType(pool);
+//
+//        Klass declaringClass = getContext().getRegistries().loadKlass(declaringKlass, pool.getClassLoader());
+//
+//        while (declaringClass != null) {
+//            for (Field fi : declaringClass.getDeclaredFields()) {
+//                if (fi.getName().equals(name) && type.equals(fi.getType())) {
+//                    return fi;
+//                }
+//            }
+//            declaringClass = declaringClass.getSuperclass();
+//        }
+//        throw EspressoError.shouldNotReachHere();
+//    }
+
     public final Klass resolveTypeKlass() {
         Klass tk = typeKlassCache;
         if (tk == null) {
             synchronized (this) {
                 tk = typeKlassCache;
                 if (tk == null) {
-                    throw EspressoError.unimplemented("Resolve field type in the holder CP");
+                    tk = holder.getConstantPool().resolveType(getType(), linkedField.getParserField().getTypeIndex());
+                    typeKlassCache = tk;
+                    // linkedField.getParserField().getTypeIndex()
+                    // throw EspressoError.unimplemented("Resolve field type in the holder CP");
                 }
             }
         }
-        return tk;
+        return typeKlassCache;
     }
 }
