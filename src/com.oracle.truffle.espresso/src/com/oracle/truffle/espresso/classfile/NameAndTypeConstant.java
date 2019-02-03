@@ -31,7 +31,20 @@ import com.oracle.truffle.espresso.impl.ByteString.Type;
 
 public interface NameAndTypeConstant extends PoolConstant {
 
+    /**
+     * Gets the name of this name+descriptor pair constant.
+     *
+     * @param pool the constant pool that maybe be required to convert a constant pool index to a
+     *            name
+     */
     ByteString<Name> getName(ConstantPool pool);
+
+    /**
+     * Gets the descriptor of this name+descriptor pair constant.
+     *
+     * @param pool the constant pool that maybe be required to convert a constant pool index to a
+     *            name
+     */
     ByteString<? extends Descriptor> getDescriptor(ConstantPool pool);
 
     @Override

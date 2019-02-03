@@ -19,15 +19,16 @@ public final class Field implements ModifiersProvider {
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
     private final LinkedField linkedField;
-    private final Klass holder;
+    private final ObjectKlass holder;
     private final ByteString<Type> type;
     private final ByteString<Name> name;
+    private volatile Klass typeKlassCache;
 
     public ByteString<Type> getType() {
         return type;
     }
 
-    public Field(LinkedField linkedField, Klass holder) {
+    public Field(LinkedField linkedField, ObjectKlass holder) {
         this.linkedField = linkedField;
         this.holder = holder;
         this.type = linkedField.getType();
@@ -35,7 +36,6 @@ public final class Field implements ModifiersProvider {
     }
 
     // private Attribute runtimeVisibleAnnotations;
-
 
     public JavaKind getKind() {
         return Types.getJavaKind(getType());
@@ -45,7 +45,7 @@ public final class Field implements ModifiersProvider {
         return linkedField.getFlags() & Modifier.fieldModifiers();
     }
 
-    public Klass getHolder() {
+    public ObjectKlass getHolder() {
         return holder;
     }
 
@@ -110,5 +110,18 @@ public final class Field implements ModifiersProvider {
 
     public ByteString<Name> getName() {
         return name;
+    }
+
+    public final Klass resolveTypeKlass() {
+        Klass tk = typeKlassCache;
+        if (tk == null) {
+            synchronized (this) {
+                tk = typeKlassCache;
+                if (tk == null) {
+                    throw EspressoError.unimplemented("Resolve field type in the holder CP");
+                }
+            }
+        }
+        return tk;
     }
 }

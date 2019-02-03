@@ -31,30 +31,6 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
         return Tag.METHOD_REF;
     }
 
-// static final class Resolved extends MethodRefConstant.Resolved implements ClassMethodRefConstant
-// {
-// public Resolved(MethodInfo method) {
-// super(method);
-// }
-// }
-
-// static final class Unresolved extends MethodRefConstant.Unresolved implements
-// ClassMethodRefConstant {
-//
-// public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
-// super(declaringClass, name, signature);
-// }
-//
-// public MethodInfo resolve(ConstantPool pool, int index) {
-// CompilerDirectives.transferToInterpreterAndInvalidate();
-// Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1),
-// pool.getClassLoader());
-// MethodInfo m = declaringClass.findMethod(getName(pool, -1), getSignature(pool, -1));
-// pool.updateAt(index, new ClassMethodRefConstant.Resolved(m));
-// return m;
-// }
-// }
-
     final class Indexes extends MethodRefConstant.Indexes implements ClassMethodRefConstant {
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);

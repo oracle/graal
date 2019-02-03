@@ -60,11 +60,6 @@ public final class PrimitiveKlass extends Klass {
         return null;
     }
 
-// @Override
-// public StaticObject getDefiningClassLoader() {
-// return StaticObject.NULL; // BCL
-// }
-
     @Override
     public boolean isInitialized() {
         return true;
@@ -82,18 +77,9 @@ public final class PrimitiveKlass extends Klass {
 
     @Override
     public Klass getElementalType() {
-        return null;
+        return this;
     }
 
-    @Override
-    public Field[] getInstanceFields(boolean includeSuperclasses) {
-        return Field.EMPTY_ARRAY;
-    }
-
-    @Override
-    public Field[] getStaticFields() {
-        return Field.EMPTY_ARRAY;
-    }
 
     @Override
     public void initialize() {

@@ -27,9 +27,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -78,7 +76,6 @@ public class StaticObjectImpl extends StaticObject {
         return result;
     }
 
-
     public final void setField(Field field, Object value) {
         // TODO(peterssen): Klass check
         fields[field.getSlot()] = value;
@@ -87,13 +84,11 @@ public class StaticObjectImpl extends StaticObject {
     @TruffleBoundary
     @Override
     public String toString() {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        if (getKlass() == meta.STRING) {
-            return Meta.toHostString((StaticObject) meta(this).method("toString", String.class).invokeDirect());
+        if (getKlass() == getKlass().getMeta().String) {
+            return Meta.toHostString(this);
         }
         return getKlass().getType().toString();
     }
-
 
     @TruffleBoundary
     public void setHiddenField(String name, Object value) {

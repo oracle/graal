@@ -21,7 +21,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Constant;
+import com.oracle.truffle.espresso.impl.ByteString.Symbol;
 
 public abstract class ConstantPool {
 
@@ -184,14 +184,14 @@ public abstract class ConstantPool {
         }
     }
 
-    public final ByteString<Constant> stringAt(int index) {
+    public final ByteString<Symbol> stringAt(int index) {
         return stringAt(index, null);
     }
 
-    public final ByteString<Constant> stringAt(int index, String description) {
+    public final ByteString<Symbol> stringAt(int index, String description) {
         try {
             final StringConstant constant = (StringConstant) at(index);
-            return constant.getConstant(this);
+            return constant.getSymbol(this);
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, description, STRING);
         }

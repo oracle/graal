@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Constant;
+import com.oracle.truffle.espresso.impl.ByteString.Symbol;
 
 public interface StringConstant extends PoolConstant {
 
@@ -35,16 +35,22 @@ public interface StringConstant extends PoolConstant {
 
     @Override
     default String toString(ConstantPool pool) {
-        return getConstant(pool).toString();
+        return getSymbol(pool).toString();
     }
 
-    ByteString<Constant> getConstant(ConstantPool pool);
+    /**
+     * Gets the name of this name+descriptor pair constant.
+     *
+     * @param pool the constant pool that maybe be required to convert a constant pool index to a
+     *            name
+     */
+    ByteString<Symbol> getSymbol(ConstantPool pool);
 
     final class Index implements StringConstant {
         private final int utf8Index;
 
         @Override
-        public ByteString<Constant> getConstant(ConstantPool pool) {
+        public ByteString<Symbol> getSymbol(ConstantPool pool) {
             return pool.utf8At(utf8Index);
         }
 

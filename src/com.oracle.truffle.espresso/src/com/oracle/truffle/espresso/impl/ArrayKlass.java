@@ -44,11 +44,6 @@ public final class ArrayKlass extends Klass {
         this.elementalType = componentType.getElementalType();
     }
 
-// @Override
-// public ConstantPool getConstantPool() {
-// return getElementalType().getConstantPool();
-// }
-
     @Override
     public StaticObject tryInitializeAndGetStatics() {
         throw EspressoError.shouldNotReachHere("Arrays do not have static fields");
@@ -88,54 +83,11 @@ public final class ArrayKlass extends Klass {
     public Klass getElementalType() {
         return null;
     }
-//
-// @Override
-// public Method resolveMethod(Method method, Klass callerType) {
-// return null;
-// }
-
-    @Override
-    public Field[] getInstanceFields(boolean includeSuperclasses) {
-        return new Field[0];
-    }
-
-    @Override
-    public Field[] getStaticFields() {
-        return new Field[0];
-    }
-
-//
-// @Override
-// public ObjectKlass[] getInterfaces() {
-// Klass cloneable = getMeta().Cloneable;
-// Klass serializable = getMeta().Serializable;
-// return new ObjectKlass[]{cloneable, serializable};
-// }
-
-// @Override
-// public Klass findLeastCommonAncestor(Klass otherType) {
-// throw EspressoError.unimplemented();
-// }
 
     @Override
     public Klass getComponentType() {
         return componentType;
     }
-
-//    @Override
-//    public StaticObject getClassLoader() {
-//        return getElementalType().getDefiningClassLoader();
-//    }
-
-// @Override
-// public Field[] getInstanceFields(boolean includeSuperclasses) {
-// return FieldInfo.EMPTY_ARRAY;
-// }
-//
-// @Override
-// public Field[] getStaticFields() {
-// return FieldInfo.EMPTY_ARRAY;
-// }
 
     @Override
     public boolean isLocal() {
@@ -174,21 +126,9 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public ConstantPool getConstantPool() {
-        return getElementalType().getConstantPool();
+        Klass elemental = getElementalType();
+        return elemental != null
+                        ? getElementalType().getConstantPool()
+                        : null;
     }
-
-    // @Override
-// public Method[] getDeclaredConstructors() {
-// return Method.EMPTY_ARRAY;
-// }
-//
-// @Override
-// public Method[] getDeclaredMethods() {
-// return Method.EMPTY_ARRAY;
-// }
-//
-// @Override
-// public Field[] getDeclaredFields() {
-// return Field.EMPTY_ARRAY;
-// }
 }

@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class CodeAttribute extends Attribute {
 
-    public static final ByteString<Name> NAME = ByteString.fromJavaString("Code");
+    public static final ByteString<Name> NAME = Name.Code;
 
     private final int maxStack;
     private final int maxLocals;

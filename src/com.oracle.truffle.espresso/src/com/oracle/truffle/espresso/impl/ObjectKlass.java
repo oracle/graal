@@ -36,18 +36,20 @@ import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
- * Represents resolved non-primitive, non-array types in Espresso.
+ * Resolved non-primitive, non-array types in Espresso.
  */
 public final class ObjectKlass extends Klass {
 
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
 
     private final EnclosingMethodAttribute enclosingMethod;
+
     private final RuntimeConstantPool pool;
 
     private final LinkedKlass linkedKlass;
 
-    @CompilationFinal private StaticObject statics;
+    @CompilationFinal //
+    private StaticObject statics;
 
     @CompilationFinal(dimensions = 1) //
     private Field[] declaredFields;
@@ -55,28 +57,13 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
 
-// @CompilationFinal(dimensions = 1) //
-// private Field[] declaredInstanceFields;
-
-// @CompilationFinal(dimensions = 1) //
-// private Field[] staticFieldsCache;
-
     private final InnerClassesAttribute innerClasses;
 
     private final Attribute runtimeVisibleAnnotations;
 
-// public int getInstanceFieldSlots() {
-// return instanceFieldSlots;
-// }
-//
-// public int getStaticFieldSlots() {
-// return getStaticFields().length;
-// }
-
-    // @CompilationFinal //
     private int initState = LINKED;
 
-    public static final int LOADED = 0; //
+    public static final int LOADED = 0;
     public static final int LINKED = 1;
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
@@ -106,22 +93,12 @@ public final class ObjectKlass extends Klass {
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
         for (int i = 0; i < methods.length; ++i) {
-            methods[i] = new Method(this, linkedMethods[i], null, linkedMethods[i].);
+            methods[i] = new Method(this, linkedMethods[i],null, linkedMethods[i],);
         }
 
         this.declaredFields = fields;
         this.declaredMethods = methods;
     }
-
-//    private static int countDeclaredInstanceFields(Field[] declaredFields) {
-//        int count = 0;
-//        for (Field fi : declaredFields) {
-//            if (!fi.isStatic()) {
-//                count++;
-//            }
-//        }
-//        return count;
-//    }
 
     @Override
     public StaticObject tryInitializeAndGetStatics() {

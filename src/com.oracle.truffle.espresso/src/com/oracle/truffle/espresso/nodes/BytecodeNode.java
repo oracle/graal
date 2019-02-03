@@ -1075,7 +1075,7 @@ public final class BytecodeNode extends EspressoRootNode {
         } else if (constant instanceof StringConstant) {
             assert opcode == LDC || opcode == LDC_W;
             // TODO(peterssen): Must be interned once, on creation.
-            putObject(frame, top, getStrings().intern(((StringConstant) constant).getConstant(pool)));
+            putObject(frame, top, getStrings().intern(((StringConstant) constant).getSymbol(pool)));
         } else if (constant instanceof ClassConstant) {
             assert opcode == LDC || opcode == LDC_W;
             ByteString<Type> type = ((ClassConstant) constant).getType(getConstantPool());

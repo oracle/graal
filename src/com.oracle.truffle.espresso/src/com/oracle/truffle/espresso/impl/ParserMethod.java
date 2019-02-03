@@ -1,6 +1,6 @@
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
@@ -22,12 +22,12 @@ public final class ParserMethod {
         return code;
     }
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
     // Shared quickening recipes.
     // Stores BC + arguments in compact form.
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private long[] recipes;
 
     public static ParserMethod create(int flags, int nameIndex, int signatureIndex, Attribute[] attributes) {
@@ -59,7 +59,7 @@ public final class ParserMethod {
         for (Attribute attr : attributes) {
             if (CodeAttribute.NAME.equals(attr.getName())) {
                 this.code = (CodeAttribute) attr;
-                return ;
+                return;
             }
         }
         this.code = null; // none

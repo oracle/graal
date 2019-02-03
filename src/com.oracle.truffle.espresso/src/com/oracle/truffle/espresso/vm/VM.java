@@ -858,7 +858,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private StaticObject guestBox(Object elem) {
         if (elem instanceof Integer) {
-            return (StaticObject) getMeta().Int_valueOf.invokeDirect(null, (int) elem);
+            return (StaticObject) getMeta().Integer_valueOf.invokeDirect(null, (int) elem);
         }
         if (elem instanceof Boolean) {
             return (StaticObject) getMeta().Boolean_valueOf.invokeDirect(null, (boolean) elem);
@@ -867,7 +867,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return (StaticObject) getMeta().Byte_valueOf.invokeDirect(null, (byte) elem);
         }
         if (elem instanceof Character) {
-            return (StaticObject) getMeta().Char_valueOf.invokeDirect(null, (char) elem);
+            return (StaticObject) getMeta().Character_valueOf.invokeDirect(null, (char) elem);
         }
         if (elem instanceof Short) {
             return (StaticObject) getMeta().Short_valueOf.invokeDirect(null, (short) elem);

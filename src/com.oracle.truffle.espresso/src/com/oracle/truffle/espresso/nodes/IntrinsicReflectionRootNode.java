@@ -36,8 +36,8 @@ public class IntrinsicReflectionRootNode extends EspressoRootNode {
 
     private final java.lang.reflect.Method reflectMethod;
 
-    public IntrinsicReflectionRootNode(EspressoLanguage language, java.lang.reflect.Method reflectMethod, Method method) {
-        super(language, method);
+    public IntrinsicReflectionRootNode(java.lang.reflect.Method reflectMethod, Method method) {
+        super(method);
         this.reflectMethod = reflectMethod;
     }
 

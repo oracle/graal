@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -54,8 +55,8 @@ public final class GuestClassRegistry extends ClassRegistry {
         this.context = context;
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
-        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(ByteString.fromJavaString("loadClass"), context.getSignatures().makeRaw(Class.class, String.class, boolean.class));
-        this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(ByteString.fromJavaString("addClass"), context.getSignatures().makeRaw(void.class, Class.class));
+        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, context.getSignatures().makeRaw(Type.Class, Type.String, Type._boolean));
+        this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, context.getSignatures().makeRaw(Type._void, Type.Class));
     }
 
     @Override

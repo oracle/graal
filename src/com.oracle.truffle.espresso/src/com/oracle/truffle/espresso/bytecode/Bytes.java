@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.bytecode;
 /**
  * A collection of utility methods for dealing with bytes, particularly in byte arrays.
  */
-public class Bytes {
+public final class Bytes {
 
     /**
      * Gets a signed 1-byte value.

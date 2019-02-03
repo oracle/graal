@@ -147,17 +147,17 @@ public interface ModifiersProvider {
         return !isAbstract();
     }
 
-    /**
-     * This is removed in JDK 9 and should not be used. It used to rely on use of reflection to read
-     * non-public values from {@link Modifier}. Such cross-module (i.e., {@code jdk.vm.ci} to
-     * {@code java.base}) reflection is disabled in 9 and will require a VM option such
-     * {@code --add-exports-private} to be enabled.
-     */
-    // @Deprecated
-    static int jvmFieldModifiers() {
-        // Reflection replaced with hard coded values (which will not change in JDK 8).
-        final int accEnum = 0x4000;
-        final int accSynthethic = 0x1000;
-        return PUBLIC | PRIVATE | PROTECTED | STATIC | FINAL | VOLATILE | TRANSIENT | accEnum | accSynthethic;
-    }
+//    /**
+//     * This is removed in JDK 9 and should not be used. It used to rely on use of reflection to read
+//     * non-public values from {@link Modifier}. Such cross-module (i.e., {@code jdk.vm.ci} to
+//     * {@code java.base}) reflection is disabled in 9 and will require a VM option such
+//     * {@code --add-exports-private} to be enabled.
+//     */
+//    // @Deprecated
+//    static int jvmFieldModifiers() {
+//        // Reflection replaced with hard coded values (which will not change in JDK 8).
+//        final int accEnum = 0x4000;
+//        final int accSynthethic = 0x1000;
+//        return PUBLIC | PRIVATE | PROTECTED | STATIC | FINAL | VOLATILE | TRANSIENT | accEnum | accSynthethic;
+//    }
 }

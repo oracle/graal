@@ -39,69 +39,6 @@ public interface FieldRefConstant extends MemberRefConstant {
         return (ByteString<Type>) getDescriptor(pool);
     }
 
-    // Field resolve(ConstantPool pool, int thisIndex);
-
-// public static final class Resolved implements FieldRefConstant {
-//
-// private final FieldInfo field;
-//
-// public FieldInfo field() {
-// return field;
-// }
-//
-// public Resolved(FieldInfo field) {
-// this.field = field;
-// }
-//
-// @Override
-// public FieldInfo resolve(ConstantPool pool, int index) {
-// return field;
-// }
-//
-// @Override
-// public TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex) {
-// return field.getDeclaringClass().getTypeDescriptor();
-// }
-//
-// public String getName(ConstantPool pool, int thisIndex) {
-// return field.getName();
-// }
-//
-// public TypeDescriptor getTypeDescriptor(ConstantPool pool, int thisIndex) {
-// return field.getTypeDescriptor();
-// }
-// }
-
-// static final class Unresolved extends MemberRefConstant.Unresolved implements FieldRefConstant {
-//
-// private final TypeDescriptor type;
-//
-// public Unresolved(TypeDescriptor declaringClass, String name, TypeDescriptor type) {
-// super(declaringClass, name);
-// this.type = type;
-// }
-//
-// public TypeDescriptor getTypeDescriptor(ConstantPool pool, int thisIndex) {
-// return type;
-// }
-//
-// @Override
-// public FieldInfo resolve(ConstantPool pool, int thisIndex) {
-// CompilerDirectives.transferToInterpreterAndInvalidate();
-// Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1),
-// pool.getClassLoader());
-// while (declaringClass != null) {
-// for (FieldInfo fi : declaringClass.getDeclaredFields()) {
-// if (fi.getName().equals(getName(pool, -1)) && type.equals(fi.getTypeDescriptor())) {
-// pool.updateAt(thisIndex, new FieldRefConstant.Resolved(fi));
-// return fi;
-// }
-// }
-// declaringClass = declaringClass.getSuperclass();
-// }
-// throw EspressoError.shouldNotReachHere();
-// }
-// }
     final class Indexes extends MemberRefConstant.Indexes implements FieldRefConstant {
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);

@@ -1,52 +1,11 @@
 package com.oracle.truffle.espresso.impl;
 
-import java.lang.reflect.Modifier;
-
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-// Straight out of the parser, loading.
-// superKlass and superInterfaces not resolved.
 public final class ParserKlass {
-
-//    public static final ParserKlass BOOLEAN = primitive(JavaKind.Boolean);
-//    public static final ParserKlass BYTE = primitive(JavaKind.Byte);
-//    public static final ParserKlass CHAR = primitive(JavaKind.Char);
-//    public static final ParserKlass SHORT = primitive(JavaKind.Short);
-//    public static final ParserKlass INT = primitive(JavaKind.Int);
-//    public static final ParserKlass FLOAT = primitive(JavaKind.Float);
-//    public static final ParserKlass DOUBLE = primitive(JavaKind.Double);
-//    public static final ParserKlass LONG = primitive(JavaKind.Long);
-//    public static final ParserKlass VOID = primitive(JavaKind.Void);
-//
-//    private static final int PRIMITIVE_FLAGS = Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
-//
-//    private static ParserKlass primitive(JavaKind kind) {
-//        assert kind.isPrimitive();
-//        return new ParserKlass(ConstantPool.EMPTY,
-//                        PRIMITIVE_FLAGS,
-//                        kind.getType(),
-//                        null,
-//                        ByteString.emptyArray(),
-//                        ParserMethod.EMPTY_ARRAY,
-//                        ParserField.EMPTY_ARRAY,
-//                        Attribute.EMPTY_ARRAY);
-//    }
-//
-//    private static ParserKlass primitive(JavaKind kind) {
-//        assert kind.isPrimitive();
-//        return new ParserKlass(ConstantPool.EMPTY,
-//                PRIMITIVE_FLAGS,
-//                kind.getType(),
-//                null,
-//                ByteString.emptyArray(),
-//                ParserMethod.EMPTY_ARRAY,
-//                ParserField.EMPTY_ARRAY,
-//                Attribute.EMPTY_ARRAY);
-//    }
 
     private final ByteString<Type> type;
     private final ByteString<Type> superKlass;
@@ -84,14 +43,6 @@ public final class ParserKlass {
     public ByteString<Type>[] getSuperInterfaces() {
         return superInterfaces;
     }
-//
-// public int getSuperKlassIndex() {
-// return superKlassIndex;
-// }
-
-// public int[] getSuperInterfacesIndices() {
-// return superInterfacesIndices;
-// }
 
     ParserMethod[] getMethods() {
         return methods;

@@ -33,6 +33,12 @@ public interface MethodTypeConstant extends PoolConstant {
         return Tag.METHODTYPE;
     }
 
+    /**
+     * Gets the signature of this method type constant.
+     *
+     * @param pool the constant pool that maybe be required to convert a constant pool index to a
+     *            name
+     */
     ByteString<Signature> getSignature(ConstantPool pool);
 
     @Override

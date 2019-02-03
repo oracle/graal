@@ -36,37 +36,7 @@ public interface MethodRefConstant extends MemberRefConstant {
         return (ByteString<Signature>) getDescriptor(pool);
     }
 
-    // Method resolve(ConstantPool pool, int thisIndex);
-
-// abstract class Resolved implements MethodRefConstant {
-// private final MethodInfo method;
-//
-// public final MethodInfo getMethod() {
-// return method;
-// }
-//
-// public final MethodInfo resolve(ConstantPool pool, int index) {
-// return method;
-// }
-//
-// public Resolved(MethodInfo method) {
-// this.method = method;
-// }
-//
-// public TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex) {
-// return method.getDeclaringClass().getTypeDescriptor();
-// }
-//
-// public String getName(ConstantPool pool, int thisIndex) {
-// return method.getName();
-// }
-//
-// public SignatureDescriptor getSignature(ConstantPool pool, int thisIndex) {
-// return method.getSignature();
-// }
-// }
-//
-    static abstract class Indexes extends MemberRefConstant.Indexes implements MethodRefConstant {
+    abstract class Indexes extends MemberRefConstant.Indexes implements MethodRefConstant {
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);
         }

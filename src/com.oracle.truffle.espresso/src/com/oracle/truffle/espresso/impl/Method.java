@@ -34,8 +34,6 @@ import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class Method implements ModifiersProvider, ContextAccess {
-
-
     // TODO(peterssen): Move signature constants to ByteString.Signature .
     private static final ByteString<Signature> CLINIT_SIGNATURE = ByteString.fromJavaString("()V");
 
@@ -261,7 +259,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
                 // getConstantPool().classAt(entries[i]).
                 // TODO(peterssen): Resolve and cache CP entries.
                 checkedExceptions[i] = (ObjectKlass) getRegistries().loadKlass(getConstantPool().classAt(entries[i]).getType(getConstantPool()),
-                        getDeclaringKlass().getDefiningClassLoader());
+                                getDeclaringKlass().getDefiningClassLoader());
             }
         }
         return checkedExceptions;
@@ -310,7 +308,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
      * Determines if this method is {@link java.lang.Object#Object()}.
      */
     public boolean isJavaLangObjectInit() {
-        return getDeclaringKlass().isJavaLangObject() && getName().equals("<init>");
+        return getDeclaringKlass().isJavaLangObject() && Name.INIT.equals(getName());
     }
 
     // region Meta.Method
@@ -380,5 +378,41 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public final JavaKind getReturnKind() {
         return Signatures.returnKind(getParsedSignature());
+    }
+
+    private Klass[] resolvedSignature;
+
+    private Klass[] getResolvedSignature() {
+        if (resolvedSignature == null) {
+            final ByteString<Type>[] signature = getParsedSignature();
+            Klass[] resolved = new Klass[signature.length];
+            for (int i = 0; i < signature.length; ++i) {
+                resolved[i] = getMeta().loadKlass(signature[i], getDeclaringKlass().getDefiningClassLoader());
+            }
+            resolvedSignature = resolved;
+        }
+        return resolvedSignature;
+    }
+
+    public Klass[] resolveParameterKlasses() {
+        // TODO(peterssen): Use resolved signature.
+        final ByteString<Type>[] signature = getParsedSignature();
+        int paramCount = Signatures.parameterCount(signature, false);
+        Klass[] paramsKlasses = new Klass[paramCount];
+        for (int i = 0; i < paramCount; ++i) {
+            ByteString<Type> paramType = Signatures.parameterType(signature, i);
+            paramsKlasses[i] = getMeta().loadKlass(paramType, getDeclaringKlass().getDefiningClassLoader());
+        }
+        return paramsKlasses;
+    }
+
+    public Klass resolveReturnKlass() {
+        // TODO(peterssen): Use resolved signature.
+        ByteString<Type> returnType = Signatures.returnType(getParsedSignature());
+        return getMeta().loadKlass(returnType, getDeclaringKlass().getDefiningClassLoader());
+    }
+
+    public int getParameterCount() {
+        return Signatures.parameterCount(getParsedSignature(), false);
     }
 }

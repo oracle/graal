@@ -22,6 +22,10 @@ public final class LinkedMethod {
         return getConstantPool().utf8At(parserMethod.getSignatureIndex(), "signature");
     }
 
+    ParserMethod getParserMethod() {
+        return parserMethod;
+    }
+
     protected ByteString<Name> getName() {
         return getConstantPool().utf8At(parserMethod.getNameIndex(), "name");
     }

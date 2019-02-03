@@ -22,28 +22,31 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
-
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.Method;
 
 public final class EspressoContext {
 
@@ -52,28 +55,36 @@ public final class EspressoContext {
     private final TruffleLanguage.Env env;
 
     // Must be initialized after the context instance creation.
+    @CompilationFinal //
     private InterpreterToVM interpreterToVM;
+
     private final StringTable strings;
     private final ClassRegistries registries;
+
     private boolean initialized = false;
+
     private Classpath bootClasspath;
     private String[] mainArguments;
     private Source mainSourceFile;
     private StaticObject appClassLoader;
-    private Meta meta;
     private StaticObject mainThread;
+
+    @CompilationFinal //
+    private Meta meta;
 
     @CompilationFinal //
     private JniEnv jniEnv;
 
     @CompilationFinal //
     private VM vm;
+    private Substitutions substitutions;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
         this.language = language;
         this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
+        this.substitutions = new Substitutions(this);
     }
 
     public ClassRegistries getRegistries() {
@@ -143,7 +154,7 @@ public final class EspressoContext {
 
     public void initializeContext() {
         assert !this.initialized;
-        createVm();
+        spawnVM();
         this.initialized = true;
     }
 
@@ -151,7 +162,7 @@ public final class EspressoContext {
         return meta;
     }
 
-    private void createVm() {
+    private void spawnVM() {
         // FIXME(peterssen): Contextualize the JniENv, even if shared libraries are isolated,
         // currently we assume a singleton context.
 
@@ -211,12 +222,8 @@ public final class EspressoContext {
         vmProperties = EspressoProperties.getDefault().processOptions(getEnv().getOptions());
     }
 
-    private void initializeClass(Class<?> clazz) {
-        initializeClass(MetaUtil.toInternalName(clazz.getName()));
-    }
-
-    private void initializeClass(String name) {
-        Klass klass = getRegistries().loadKlass(getTypes().make(name), StaticObject.NULL);
+    private void initializeKnownClass(ByteString<Type> type) {
+        Klass klass = getRegistries().loadKlassWithBootClassLoader(type);
         klass.initialize();
     }
 
@@ -263,5 +270,9 @@ public final class EspressoContext {
     public void disposeContext() {
         getVM().dispose();
         getJNI().dispose();
+    }
+
+    public Substitutions getSubstitutions() {
+        return substitutions;
     }
 }

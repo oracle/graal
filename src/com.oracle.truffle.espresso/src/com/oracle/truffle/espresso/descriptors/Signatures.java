@@ -22,20 +22,20 @@
  */
 package com.oracle.truffle.espresso.descriptors;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 /**
  * Represents a method signature provided by the runtime.
  *
- * Method signatures have two representations:
+ * Two representations for method signatures :
  * <ul>
  * <li>Raw: {@link ByteString}&lt;{@link Signature}&gt;
  * <li>Parsed: {@link ByteString}&lt;{@link Type}&gt;[] which includes the return type at the end.
@@ -52,6 +52,7 @@ public final class Signatures extends DescriptorCache<ByteString<Signature>, Byt
         this.typeDescriptors = typeDescriptors;
     }
 
+    @Deprecated
     public static ByteString<Signature> fromJavaString(String signatureString) {
         throw EspressoError.unimplemented();
     }
@@ -199,7 +200,7 @@ public final class Signatures extends DescriptorCache<ByteString<Signature>, Byt
     /**
      * Gets the type of the `paramIndex`-th parameter in this (parsed) signature object.
      */
-    public ByteString<Type> parameterType(final ByteString<Type>[] signature, int paramIndex) {
+    public static ByteString<Type> parameterType(final ByteString<Type>[] signature, int paramIndex) {
         assert paramIndex + 1 < signature.length;
         return signature[paramIndex];
     }

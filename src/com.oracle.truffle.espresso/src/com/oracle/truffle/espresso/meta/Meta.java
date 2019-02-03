@@ -22,11 +22,8 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.nio.ByteBuffer;
-import java.security.PrivilegedActionException;
 import java.util.Arrays;
 import java.util.function.Predicate;
 
@@ -53,6 +50,7 @@ import com.oracle.truffle.espresso.substitutions.Host;
  * host to guest classes for a well known subset (e.g. common types and exceptions).
  */
 public final class Meta implements ContextAccess {
+
 
     private final EspressoContext context;
 
@@ -105,6 +103,7 @@ public final class Meta implements ContextAccess {
         Throwable = knownKlass(Type.Throwable);
         Throwable_backtrace = Throwable.lookupField(Name.backtrace, Type.Object);
 
+        ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
         StackOverflowError = knownKlass(Type.StackOverflowError);
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
 
@@ -126,6 +125,9 @@ public final class Meta implements ContextAccess {
         Method = knownKlass(Type.Method);
         Method_root = Method.lookupDeclaredField(Name.root, Method.getType());
 
+        Field = knownKlass(Type.Field);
+        Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
+
         ByteBuffer = knownKlass(Type.ByteBuffer);
         ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, context.getSignatures().makeRaw(Type.ByteBuffer, Type._byte_array));
 
@@ -146,6 +148,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Object;
     public final ObjectKlass String;
     public final ObjectKlass Class;
+    public final Method Class_forName_String;
 
     // Primitives.
     public final PrimitiveKlass _boolean;
@@ -161,10 +164,10 @@ public final class Meta implements ContextAccess {
     // Boxed primitives.
     public final ObjectKlass Boolean;
     public final ObjectKlass Byte;
-    public final ObjectKlass Char;
+    public final ObjectKlass Character;
     public final ObjectKlass Short;
+    public final ObjectKlass Integer;
     public final ObjectKlass Float;
-    public final ObjectKlass Int;
     public final ObjectKlass Double;
     public final ObjectKlass Long;
     public final ObjectKlass Void;
@@ -172,10 +175,10 @@ public final class Meta implements ContextAccess {
     // Boxing conversions.
     public final Method Boolean_valueOf;
     public final Method Byte_valueOf;
-    public final Method Char_valueOf;
+    public final Method Character_valueOf;
     public final Method Short_valueOf;
     public final Method Float_valueOf;
-    public final Method Int_valueOf;
+    public final Method Integer_valueOf;
     public final Method Double_valueOf;
     public final Method Long_valueOf;
 
@@ -196,10 +199,15 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Method;
     public final Field Method_root;
 
+    public final ObjectKlass Field;
+    public final Field Field_root;
+
+    public final ObjectKlass ClassNotFoundException;
     public final ObjectKlass StackOverflowError;
     public final ObjectKlass OutOfMemoryError;
     public final ObjectKlass Throwable;
     public final Field Throwable_backtrace;
+
 
     public final ObjectKlass PrivilegedActionException;
     public final Method PrivilegedActionException_init_Exception;
@@ -233,14 +241,14 @@ public final class Meta implements ContextAccess {
         assert clazz.isAssignableFrom(Throwable.class);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = getInterpreterToVM().newObject(exKlass);
-        exKlass.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(void.class)).invokeDirect(ex);
+        exKlass.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(Type._void)).invokeDirect(ex);
         return ex;
     }
 
     public static StaticObject initEx(Klass klass, String message) {
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name.INIT, klass.getSignatures().makeRaw(void.class, String.class)).invokeDirect(ex, message);
+        klass.lookupDeclaredMethod(Name.INIT, klass.getSignatures().makeRaw(Type._void, Type.String)).invokeDirect(ex, message);
         return ex;
     }
 
@@ -248,7 +256,7 @@ public final class Meta implements ContextAccess {
         assert clazz.isAssignableFrom(Throwable.class);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = getInterpreterToVM().newObject(exKlass);
-        exKlass.lookupDeclaredMethod(Name.INIT, exKlass.getSignatures().makeRaw(void.class, String.class)).invokeDirect(ex, message);
+        exKlass.lookupDeclaredMethod(Name.INIT, exKlass.getSignatures().makeRaw(Type._void, Type.String)).invokeDirect(ex, message);
         return ex;
     }
 
@@ -256,7 +264,7 @@ public final class Meta implements ContextAccess {
         assert clazz.isAssignableFrom(Throwable.class);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = getInterpreterToVM().newObject(exKlass);
-        exKlass.lookupDeclaredMethod(Name.INIT, exKlass.getSignatures().makeRaw(void.class, Throwable.class)).invokeDirect(ex, cause);
+        exKlass.lookupDeclaredMethod(Name.INIT, exKlass.getSignatures().makeRaw(Type._void, Type.Throwable)).invokeDirect(ex, cause);
         return ex;
     }
 
@@ -279,17 +287,28 @@ public final class Meta implements ContextAccess {
         return knownKlass(exceptionClass);
     }
 
+    public ObjectKlass knownKlass(ByteString<Type> type) {
+        return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
+    }
+
     public ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
         // Resolve non-primitive classes using BCL.
-        return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(Types.fromClass(hostClass));
+        return knownKlass(Types.fromClass(hostClass));
+    }
+
+    public PrimitiveKlass knownPrimitive(ByteString<Type> primitiveType) {
+        // assert isKnownClass(hostClass);
+        assert Types.isPrimitive(primitiveType);
+        // Resolve primitive classes using BCL.
+        return (PrimitiveKlass) getRegistries().loadKlassWithBootClassLoader(primitiveType);
     }
 
     public PrimitiveKlass knownPrimitive(java.lang.Class<?> primitiveClass) {
         // assert isKnownClass(hostClass);
         assert primitiveClass.isPrimitive();
         // Resolve primitive classes using BCL.
-        return (PrimitiveKlass) getRegistries().loadKlassWithBootClassLoader(Types.fromClass(primitiveClass));
+        return knownPrimitive(Types.fromClass(primitiveClass));
     }
 
     @TruffleBoundary

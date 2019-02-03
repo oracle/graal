@@ -1,6 +1,6 @@
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -32,10 +32,10 @@ public final class ParserField {
         return attributes;
     }
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
-    public ParserField(int flags, ByteString<Name> name, ByteString<Type> type, Attribute[] attributes) {
+    public ParserField(int flags, ByteString<Name> name, ByteString<Type> type, final Attribute[] attributes) {
         this.flags = flags;
         this.name = name;
         this.type = type;

@@ -70,7 +70,7 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
      *            or {@code '.'}
      * @throws ClassFormatError if the type descriptor is not valid
      */
-    public ByteString<Type> parse(ByteString<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
+    ByteString<Type> parse(ByteString<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
         int endIndex = skipValidTypeDescriptor(descriptor, beginIndex, slashes);
         if (endIndex == beginIndex + 1) {
             return forPrimitive(JavaKind.fromPrimitiveOrVoidTypeChar((char) descriptor.byteAt(beginIndex)));
@@ -86,7 +86,7 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
      * @throws ClassFormatError if there is no valid type descriptor
      */
     @TruffleBoundary
-    public static int skipValidTypeDescriptor(ByteString<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
+    static int skipValidTypeDescriptor(ByteString<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
         if (beginIndex >= descriptor.length()) {
             throw new ClassFormatError("invalid type descriptor: " + descriptor);
         }
@@ -242,10 +242,6 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
                 return false;
         }
     }
-
-// public String toJavaName() {
-// return stringToJava(toString());
-// }
 
     /**
      * Gets the kind denoted by this type descriptor.

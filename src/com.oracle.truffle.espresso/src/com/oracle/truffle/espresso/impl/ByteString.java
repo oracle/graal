@@ -78,9 +78,17 @@ public final class ByteString<T> {
         public static final ByteString<Name> main = ByteString.fromJavaString("main");
         public static final ByteString<Name> checkAndLoadMain = ByteString.fromJavaString("checkAndLoadMain");
         public static final ByteString<Name> forName = ByteString.fromJavaString("forName");
+
+        // Attribute names
+        public static final ByteString<Name> Code = ByteString.fromJavaString("Code");
+        public static final ByteString<Name> EnclosingMethod = ByteString.fromJavaString("EnclosingMethod");
+        public static final ByteString<Name> Exceptions = ByteString.fromJavaString("Exceptions");
+        public static final ByteString<Name> InnerClasses = ByteString.fromJavaString("InnerClasses");
+        public static final ByteString<Name> loadClass = ByteString.fromJavaString("loadClass");
+        public static final ByteString<Name> addClass = ByteString.fromJavaString("addClass");
     }
 
-    public static class Constant extends ModifiedUTF8 {
+    public static class Symbol extends ModifiedUTF8 {
     }
 
     public static class Descriptor extends ModifiedUTF8 {
@@ -95,6 +103,8 @@ public final class ByteString<T> {
         public static final ByteString<Type> Object_array = Types.fromClass(Object[].class);
 
         public static final ByteString<Type> Class = Types.fromClass(Class.class);
+        public static final ByteString<Type> Class_array = Types.fromClass(Class[].class);
+
         public static final ByteString<Type> Throwable = Types.fromClass(Throwable.class);
         public static final ByteString<Type> Exception = Types.fromClass(Exception.class);
         public static final ByteString<Type> System = Types.fromClass(System.class);
@@ -142,10 +152,11 @@ public final class ByteString<T> {
         public static final ByteString<Type> ArithmeticException = Types.fromClass(ArithmeticException.class);
         public static final ByteString<Type> IllegalMonitorStateException = Types.fromClass(IllegalMonitorStateException.class);
         public static final ByteString<Type> IllegalArgumentException = Types.fromClass(IllegalArgumentException.class);
+        public static final ByteString<Type> ClassNotFoundException = Types.fromClass(ClassNotFoundException.class);
 
         public static final ByteString<Type> Thread = Types.fromClass(Thread.class);
         public static final ByteString<Type> ThreadGroup = Types.fromClass(ThreadGroup.class);
-        
+
         public static final ByteString<Type> Field = Types.fromClass(java.lang.reflect.Field.class);
         public static final ByteString<Type> Method = Types.fromClass(java.lang.reflect.Method.class);
         public static final ByteString<Type> Constructor = Types.fromClass(java.lang.reflect.Constructor.class);

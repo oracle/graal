@@ -48,7 +48,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
@@ -62,6 +61,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.VmNativeNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -70,6 +70,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
@@ -1298,10 +1299,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public StaticObject FindClass(String name) {
         StaticObject internalName = getMeta().toGuest(MetaUtil.toInternalName(name));
-        // TODO(peterssen): No need to re-resolve the static method every time.
-        Method forName = getMeta().knownKlass(Class.class).lookupDeclaredMethod(ByteString.fromJavaString("forName"), getSignatures().makeRaw(Class.class, String.class));
-        assert forName.isStatic();
-        return (StaticObject) forName.invokeDirect(null, internalName);
+        assert getMeta().Class_forName_String.isStatic();
+        return (StaticObject) getMeta().Class_forName_String.invokeDirect(null, internalName);
     }
 
     /**
@@ -1491,7 +1490,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public StaticObject NewObjectArray(int length, @Host(Class.class) StaticObjectClass elementClass, @Host(Object.class) StaticObject initialElement) {
         assert !elementClass.getMirror().isPrimitive();
-        StaticObjectArray arr = (StaticObjectArray) meta(elementClass.getMirror()).allocateArray(length);
+        StaticObjectArray arr = (StaticObjectArray) elementClass.getMirror().allocateArray(length);
         if (length > 0) {
             // Single store check
             getInterpreterToVM().setArrayObject(initialElement, 0, arr);
@@ -1521,9 +1520,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         buf.put(chars.<char[]> unwrap(), start, len);
     }
 
-    private static String nfiSignature(String signature, boolean isJni) {
-        SignatureDescriptor descriptor = getSignatures().make(signature);
-        int argCount = descriptor.parameterCount(false);
+    private static String nfiSignature(final ByteString<Type>[] signature, boolean isJni) {
+        // ByteString<Signature> descriptor = Signatures.fromJavaString(signature);
+
+        int argCount = Signatures.parameterCount(signature, false);
         StringBuilder sb = new StringBuilder("(");
 
         boolean first = true;
@@ -1535,7 +1535,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             first = false;
         }
         for (int i = 0; i < argCount; ++i) {
-            JavaKind kind = descriptor.parameterKind(i);
+            JavaKind kind = Signatures.parameterKind(signature, i);
             if (!first) {
                 sb.append(", ");
             } else {
@@ -1544,16 +1544,24 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             sb.append(Utils.kindToType(kind, false));
         }
 
-        sb.append("): ").append(Utils.kindToType(descriptor.resultKind(), false));
+        sb.append("): ").append(Utils.kindToType(Signatures.returnKind(signature), false));
         return sb.toString();
     }
 
     @JniImpl
     public int RegisterNative(@Host(Class.class) StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
         ByteString<Type> classType = ((StaticObjectClass) clazz).getMirror().getType();
-        TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(signature, true));
-        RootNode nativeNode = new VmNativeNode(boundNative, true, null);
-        getInterpreterToVM().registerSubstitution(classType, name, signature, nativeNode, false);
+
+        final TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(getSignatures().make(Signatures.fromJavaString(signature)), true));
+
+        Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
+            @Override
+            public EspressoRootNode spawnNode(Method method) {
+                return new VmNativeNode(boundNative, true, method);
+            }
+        };
+
+        getSubstitutions().registerRuntimeSubstitution(classType, ByteString.fromJavaString(name), Signatures.fromJavaString(signature), factory, true);
         return JNI_OK;
     }
 

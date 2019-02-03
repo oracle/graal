@@ -30,7 +30,7 @@ import java.util.Locale;
 /**
  * Indicates a condition in Espresso related code that should never occur during normal operation.
  */
-public class EspressoError extends Error {
+public final class EspressoError extends Error {
 
     private static final long serialVersionUID = 2625263796982958128L;
 

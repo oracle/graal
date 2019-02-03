@@ -27,6 +27,7 @@ import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.MetaUtil;
 
 /**
  * A utility for mangling Java method name and signatures into C function names. Support is also
@@ -82,7 +83,7 @@ public final class Mangle {
 
     /**
      * The delimiter in the string returned by
-     * {@link #mangleMethod(ByteString<Type>, String, ByteString<Signature>, boolean)} separating the
+     * mangleMethod(ByteString<Type>, String, ByteString<Signature>, boolean) separating the
      * short mangled form from the suffix to be added to obtain the long mangled form.
      */
     public static final char LONG_NAME_DELIMITER = ' ';
@@ -102,7 +103,7 @@ public final class Mangle {
      */
     public static String mangleMethod(ByteString<Type> declaringClass, String name, ByteString<Signature> signature, boolean splitSuffix) {
         final StringBuilder result = new StringBuilder(100);
-        final String declaringClassName = declaringClass.toJavaName();
+        final String declaringClassName = MetaUtil.internalNameToJava(declaringClass.toString(), true, false);
         result.append("Java_").append(mangle(declaringClassName)).append('_').append(mangle(name));
         if (signature != null) {
             if (splitSuffix) {

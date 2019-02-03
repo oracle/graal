@@ -15,42 +15,6 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 public final class LinkedKlass {
 
     public static final LinkedKlass[] EMPTY_ARRAY = new LinkedKlass[0];
-
-//    public static final LinkedKlass BOOLEAN = new LinkedKlass(ParserKlass.BOOLEAN, null, LinkedKlass.EMPTY_ARRAY);
-//    public static final LinkedKlass BYTE = new LinkedKlass(ParserKlass.BYTE, null, LinkedKlass.EMPTY_ARRAY);
-//    public static final LinkedKlass CHAR = new LinkedKlass(ParserKlass.CHAR, null, LinkedKlass.EMPTY_ARRAY);
-//    public static final LinkedKlass SHORT = new LinkedKlass(ParserKlass.SHORT, null, LinkedKlass.EMPTY_ARRAY);
-//    public static final LinkedKlass INT = new LinkedKlass(ParserKlass.INT, null, LinkedKlass.EMPTY_ARRAY);
-//    public static final LinkedKlass FLOAT = new LinkedKlass(ParserKlass.FLOAT, null, LinkedKlass.EMPTY_ARRAY);
-//    public static final LinkedKlass DOUBLE = new LinkedKlass(ParserKlass.DOUBLE, null, LinkedKlass.EMPTY_ARRAY);
-//    public static final LinkedKlass LONG = new LinkedKlass(ParserKlass.LONG, null, LinkedKlass.EMPTY_ARRAY);
-//    public static final LinkedKlass VOID = new LinkedKlass(ParserKlass.VOID, null, LinkedKlass.EMPTY_ARRAY);
-//
-//    private static LinkedKlass arrayOf(LinkedKlass base) {
-//        return new LinkedKlass(null, )
-//    }
-//
-//
-//    public static LinkedKlass primitive(JavaKind kind) {
-//        assert kind.isPrimitive() : "not a primitive kind";
-//        // @formatter:off
-//        // Checkstyle: stop
-//        switch (kind) {
-//            case Boolean : return BOOLEAN;
-//            case Byte    : return BYTE;
-//            case Short   : return SHORT;
-//            case Char    : return CHAR;
-//            case Int     : return INT;
-//            case Float   : return FLOAT;
-//            case Long    : return LONG;
-//            case Double  : return DOUBLE;
-//            case Void    : return VOID;
-//            default      : throw EspressoError.shouldNotReachHere("not a primitive kind");
-//        }
-//        // @formatter:on
-//        // Checkstyle: resume
-//    }
-
     private final ParserKlass parserKlass;
 
     // Linked structural references.

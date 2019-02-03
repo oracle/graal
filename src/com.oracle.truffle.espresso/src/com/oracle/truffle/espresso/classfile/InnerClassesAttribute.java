@@ -23,16 +23,18 @@
 
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.runtime.Attribute;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.runtime.Attribute;
+
 public final class InnerClassesAttribute extends Attribute {
 
-    public static final ByteString<Name> NAME = ByteString.fromJavaString("InnerClasses");
+    public static final ByteString<Name> NAME = Name.InnerClasses;
 
     public static class Entry {
         public final int innerClassIndex;
@@ -48,7 +50,7 @@ public final class InnerClassesAttribute extends Attribute {
         }
     }
 
-    private final Entry[] entries;
+    @CompilationFinal(dimensions = 1) private final Entry[] entries;
 
     public List<Entry> entries() {
         return Arrays.asList(entries);
@@ -56,6 +58,7 @@ public final class InnerClassesAttribute extends Attribute {
 
     public InnerClassesAttribute(ByteString<Name> name, Entry[] entries) {
         super(name, null);
+        assert NAME.equals(name);
         this.entries = entries;
     }
 }

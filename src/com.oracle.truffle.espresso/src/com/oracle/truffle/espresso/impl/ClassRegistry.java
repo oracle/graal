@@ -79,6 +79,8 @@ public abstract class ClassRegistry {
                         // not primitives nor arrays.
                         : null;
 
+        assert superKlass == null || !superKlass.isInterface();
+
         final ByteString<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
         LinkedKlass[] linkedInterfaces = new LinkedKlass[superInterfacesTypes.length];

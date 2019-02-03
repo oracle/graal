@@ -27,7 +27,6 @@ import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
 
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
@@ -74,7 +73,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     @CompilationFinal(dimensions = 1) //
     private final ObjectKlass[] superInterfaces;
 
-
     @CompilationFinal //
     private StaticObject statics;
 
@@ -115,7 +113,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     public StaticObject mirror() {
         if (mirrorCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            mirrorCache = new StaticObjectClass(getMeta().Class, this);
+            mirrorCache = new StaticObjectClass(this);
         }
         return mirrorCache;
     }
@@ -172,12 +170,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return context;
     }
 
-    public Method findDeclaredMethod(String klassName, Class<?> returnType, Class<?>... parameterTypes) {
-        ByteString<Signature> signature = getContext().getSignatures().makeRaw(returnType, parameterTypes);
-        return findDeclaredConcreteMethod(klassName, signature);
-    }
+// public Method findDeclaredMethod(String klassName, Class<?> returnType, Class<?>...
+// parameterTypes) {
+// ByteString<Signature> signature = getContext().getSignatures().makeRaw(returnType,
+// parameterTypes);
+// return findDeclaredConcreteMethod(klassName, signature);
+// }
 
     public abstract StaticObject tryInitializeAndGetStatics();
+
+    public abstract StaticObject getStatics();
 
     /**
      * Checks whether this type has a finalizer method.
@@ -339,13 +341,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * @return the concrete method that would be selected at runtime, or {@code null} if there is no
      *         concrete implementation of {@code method} in this type or any of its superclasses
      */
-    public Method resolveConcreteMethod(Method method, Klass callerType) {
-        Method resolvedMethod = resolveMethod(method, callerType);
-        if (resolvedMethod == null || resolvedMethod.isAbstract()) {
-            return null;
-        }
-        return resolvedMethod;
-    }
+// public Method resolveConcreteMethod(Method method, Klass callerType) {
+// Method resolvedMethod = resolveMethod(method, callerType);
+// if (resolvedMethod == null || resolvedMethod.isAbstract()) {
+// return null;
+// }
+// return resolvedMethod;
+// }
 
     /**
      * Returns the instance fields of this class, including {@linkplain Field#isInternal() internal}
@@ -414,60 +416,55 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public Method getClassInitializer() {
-        for (Method m : getDeclaredMethods()) {
-            if (Method.CLINIT.equals(m.getName())) {
-                assert !m.isStatic();
-                return m;
-            }
-        }
-        return null;
+        return lookupDeclaredMethod(Name.CLINIT, getSignatures().makeRaw(void.class));
     }
 
-    public Method findDeclaredConcreteMethod(ByteString<Name> name, ByteString<String> signature) {
-        for (Method method : getDeclaredMethods()) {
-            if (!method.isAbstract() && name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
-                return method;
-            }
-        }
-        return null;
-    }
-
-    public Method findMethod(ByteString<Name> name, ByteString<Signature> signature) {
-        for (Method method : getDeclaredMethods()) {
-            if (name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
-                return method;
-            }
-        }
-        if (getSuperclass() != null) {
-            Method m = getSuperclass().findMethod(name, signature);
-            if (m != null) {
-                return m;
-            }
-        }
-
-        // No concrete method found, look interface methods.
-        if (isAbstract()) {
-            // Look
-            for (ObjectKlass i : getInterfaces()) {
-                Method m = i.findMethod(name, signature);
-                if (m != null) {
-                    return m;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    public Method findConcreteMethod(ByteString<Name> methodName, ByteString<Signature> signature) {
-        for (Klass c = this; c != null; c = c.getSuperclass()) {
-            Method method = c.findDeclaredConcreteMethod(methodName, signature);
-            if (method != null && !method.isAbstract()) {
-                return method;
-            }
-        }
-        return null;
-    }
+// public Method findDeclaredConcreteMethod(ByteString<Name> name, ByteString<String> signature) {
+// for (Method method : getDeclaredMethods()) {
+// if (!method.isAbstract() && name.equals(method.getName()) &&
+// signature.equals(method.getRawSignature())) {
+// return method;
+// }
+// }
+// return null;
+//// }
+//
+// public Method findMethod(ByteString<Name> name, ByteString<Signature> signature) {
+// for (Method method : getDeclaredMethods()) {
+// if (name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
+// return method;
+// }
+// }
+// if (getSuperclass() != null) {
+// Method m = getSuperclass().findMethod(name, signature);
+// if (m != null) {
+// return m;
+// }
+// }
+//
+// // No concrete method found, look interface methods.
+// if (isAbstract()) {
+// // Look
+// for (ObjectKlass i : getInterfaces()) {
+// Method m = i.findMethod(name, signature);
+// if (m != null) {
+// return m;
+// }
+// }
+// }
+//
+// return null;
+// }
+//
+// public Method findConcreteMethod(ByteString<Name> methodName, ByteString<Signature> signature) {
+// for (Klass c = this; c != null; c = c.getSuperclass()) {
+// Method method = c.findDeclaredConcreteMethod(methodName, signature);
+// if (method != null && !method.isAbstract()) {
+// return method;
+// }
+// }
+// return null;
+// }
 
     public final ByteString<Type> getType() {
         return type;
@@ -489,29 +486,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     public abstract Klass getComponentType();
-
-// public Method[] methods(boolean includeInherited) {
-// return methodStream(includeInherited).toArray(new IntFunction<Method[]>() {
-// @Override
-// public Method[] apply(int value) {
-// return new Method[value];
-// }
-// });
-// }
-
-// private Stream<Method> methodStream(boolean includeInherited) {
-// Stream<Method> methods = Arrays.stream(klass.getDeclaredMethods()).map(new Function<Method,
-// Method>() {
-// @Override
-// public Method apply(Method method) {
-// return meta(method);
-// }
-// });
-// if (includeInherited && getSuperclass() != null) {
-// methods = Stream.concat(methods, getSuperclass().methodStream(includeInherited));
-// }
-// return methods;
-// }
 
     public final Klass getSupertype() {
         if (isArray()) {
@@ -574,20 +548,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         }));
     }
 
-// @TruffleBoundary
-// public StaticObject allocateInstance() {
-// assert !isArray();
-// return getContext().getInterpreterToVM().newObject(klass);
-// }
-
-// public String getName() {
-// return MetaUtil.internalNameToJava(getName(), true, true);
-// }
-
-// public String getInternalName() {
-// return getName();
-// }
-
     @TruffleBoundary
     public Object allocateArray(int length) {
         return getInterpreterToVM().newArray(this, length);
@@ -603,28 +563,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return new StaticObjectArray(getArrayClass(), array);
     }
 
-    @TruffleBoundary
-    public Method method(ByteString<Name> name, Class<?> returnType, Class<?>... parameterTypes) {
-        ByteString<Signature> target = getContext().getSignatures().makeRaw(returnType, parameterTypes);
-        // ByteString<Type>[] target = getContext().getSignatures().makeParsed(returnType,
-        // parameterTypes);
-        Method found = Arrays.stream(getDeclaredMethods()).filter(new Predicate<Method>() {
-            @Override
-            public boolean test(Method m) {
-                return name.equals(m.getName()) && target.equals(m.getRawSignature());
-            }
-        }).findFirst().orElse(null);
-        if (found == null) {
-            if (getSuperclass() != null) {
-                return getSuperclass().method(name, returnType, parameterTypes);
-            }
-        }
-        return found == null ? null : new Method(found);
-    }
-
     // region Lookup
 
-    public Field lookupDeclaredField(ByteString<Name> name, ByteString<Type> type) {
+    public final Field lookupDeclaredField(ByteString<Name> name, ByteString<Type> type) {
         // TODO(peterssen): Improve lookup performance.
         for (Field field : getDeclaredFields()) {
             if (name.equals(field.getName()) && type.equals(field.getType())) {
@@ -634,7 +575,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public Field lookupField(ByteString<Name> name, ByteString<Type> type) {
+    public final Field lookupField(ByteString<Name> name, ByteString<Type> type) {
         // TODO(peterssen): Improve lookup performance.
         Field field = lookupDeclaredField(name, type);
         if (field == null && getSuperclass() != null) {
@@ -643,7 +584,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return field;
     }
 
-    public Method lookupDeclaredMethod(ByteString<Name> name, ByteString<Signature> signature) {
+    public final Method lookupDeclaredMethod(ByteString<Name> name, ByteString<Signature> signature) {
         // TODO(peterssen): Improve lookup performance.
         for (Method method : getDeclaredMethods()) {
             if (name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
@@ -653,7 +594,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public Method lookupMethod(ByteString<Name> name, ByteString<Signature> signature) {
+    public final Method lookupMethod(ByteString<Name> name, ByteString<Signature> signature) {
         // TODO(peterssen): Improve lookup performance.
         Method method = lookupDeclaredMethod(name, signature);
         if (method == null && getSuperclass() != null) {
