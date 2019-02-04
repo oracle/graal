@@ -1,7 +1,7 @@
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class ExceptionsAttribute extends Attribute {

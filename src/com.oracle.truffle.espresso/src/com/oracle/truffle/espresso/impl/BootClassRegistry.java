@@ -23,8 +23,9 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.descriptors.ByteString;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
@@ -53,7 +54,7 @@ public final class BootClassRegistry extends ClassRegistry {
     @Override
     public Klass loadKlass(ByteString<Type> type) {
         if (Types.isArray(type)) {
-            ByteString<Type> elemental = Types.getElementalType(type);
+            ByteString<Type> elemental = context.getTypes().getElementalType(type);
             Klass elementalKlass = loadKlass(elemental);
             if (elementalKlass == null) {
                 return null;

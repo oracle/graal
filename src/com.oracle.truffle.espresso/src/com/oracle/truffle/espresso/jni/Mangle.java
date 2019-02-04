@@ -23,9 +23,9 @@
 
 package com.oracle.truffle.espresso.jni;
 
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 

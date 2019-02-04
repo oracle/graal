@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString;
 
 public final class Utf8Constant implements PoolConstant {
 

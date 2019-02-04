@@ -23,8 +23,8 @@
 package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
 
 public class Attribute {
 

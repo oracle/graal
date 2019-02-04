@@ -23,11 +23,9 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Descriptor;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Descriptor;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
 
 public interface NameAndTypeConstant extends PoolConstant {
 

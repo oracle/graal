@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.impl;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
 
-import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
@@ -39,10 +38,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.descriptors.ByteString;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
@@ -59,13 +59,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     private final ByteString<Type> type;
     private final JavaKind kind;
-
-    // All further resolutions will overwrite this copy.
-    // private final RuntimeConstantPool pool;
-
-    // (copy) Constant pool, it's a spawn-off ConstantPool with the superKlass and the
-    // superinterfaces resolved.
-
     private final EspressoContext context;
 
     // Espresso super
@@ -177,13 +170,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return context;
     }
 
-// public Method findDeclaredMethod(String klassName, Class<?> returnType, Class<?>...
-// parameterTypes) {
-// ByteString<Signature> signature = getContext().getSignatures().makeRaw(returnType,
-// parameterTypes);
-// return findDeclaredConcreteMethod(klassName, signature);
-// }
-
     public final StaticObject tryInitializeAndGetStatics() {
         initialize();
         return getStatics();
@@ -213,7 +199,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * @return {@code true} if this type is primitive
      */
     public final boolean isPrimitive() {
-        // TypeDescriptor.isPrimitive(getType());
         return kind.isPrimitive();
     }
 
@@ -426,55 +411,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public Method getClassInitializer() {
-        return lookupDeclaredMethod(Name.CLINIT, getSignatures().makeRaw(Type._void));
+        return lookupDeclaredMethod(Name.CLINIT, Signature._void);
     }
-
-// public Method findDeclaredConcreteMethod(ByteString<Name> name, ByteString<String> signature) {
-// for (Method method : getDeclaredMethods()) {
-// if (!method.isAbstract() && name.equals(method.getName()) &&
-// signature.equals(method.getRawSignature())) {
-// return method;
-// }
-// }
-// return null;
-//// }
-//
-// public Method findMethod(ByteString<Name> name, ByteString<Signature> signature) {
-// for (Method method : getDeclaredMethods()) {
-// if (name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
-// return method;
-// }
-// }
-// if (getSuperclass() != null) {
-// Method m = getSuperclass().findMethod(name, signature);
-// if (m != null) {
-// return m;
-// }
-// }
-//
-// // No concrete method found, look interface methods.
-// if (isAbstract()) {
-// // Look
-// for (ObjectKlass i : getInterfaces()) {
-// Method m = i.findMethod(name, signature);
-// if (m != null) {
-// return m;
-// }
-// }
-// }
-//
-// return null;
-// }
-//
-// public Method findConcreteMethod(ByteString<Name> methodName, ByteString<Signature> signature) {
-// for (Klass c = this; c != null; c = c.getSuperclass()) {
-// Method method = c.findDeclaredConcreteMethod(methodName, signature);
-// if (method != null && !method.isAbstract()) {
-// return method;
-// }
-// }
-// return null;
-// }
 
     public final ByteString<Type> getType() {
         return type;

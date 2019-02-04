@@ -32,11 +32,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jni.JniEnv;
@@ -197,7 +198,7 @@ public final class EspressoContext {
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
         // Call System.initializeSystemClass
-        meta.System.lookupDeclaredMethod(Name.initializeSystemClass, meta.getSignatures().makeRaw(Type._void)).invokeDirect(null);
+        meta.System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void).invokeDirect(null);
 
         // System exceptions.
         for (ByteString<Type> type : Arrays.asList(
@@ -211,9 +212,6 @@ public final class EspressoContext {
                         Type.IllegalArgumentException)) {
             initializeKnownClass(type);
         }
-
-        // Load system class loader.
-        // appClassLoader = (StaticObject) meta.ClassLoader_getSystemClassLoader.invokeDirect(null);
     }
 
     private EspressoProperties vmProperties;

@@ -30,11 +30,12 @@ import java.util.function.Predicate;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -55,7 +56,6 @@ public final class Meta implements ContextAccess {
 
     private final EspressoContext context;
 
-    @SuppressWarnings("unchecked")
     public Meta(EspressoContext context) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
@@ -71,7 +71,7 @@ public final class Meta implements ContextAccess {
 
         String = knownKlass(Type.String);
         Class = knownKlass(Type.Class);
-        Class_forName_String = Class.lookupDeclaredMethod(Name.forName, getSignatures().makeRaw(Type.Class, Type.String));
+        Class_forName_String = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
 
         // Primitives.
         _boolean = knownPrimitive(Type._boolean);
@@ -104,37 +104,37 @@ public final class Meta implements ContextAccess {
         Long = knownKlass(Type.Long);
         Void = knownKlass(Type.Void);
 
-        Boolean_valueOf = Boolean.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Boolean, Type._boolean));
-        Byte_valueOf = Byte.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Byte, Type._byte));
-        Character_valueOf = Character.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Character, Type._char));
-        Short_valueOf = Short.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Short, Type._short));
-        Float_valueOf = Float.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Float, Type._float));
-        Integer_valueOf = Integer.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Integer, Type._int));
-        Double_valueOf = Double.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Double, Type._double));
-        Long_valueOf = Long.lookupDeclaredMethod(Name.valueOf, context.getSignatures().makeRaw(Type.Long, Type._long));
+        Boolean_valueOf = Boolean.lookupDeclaredMethod(Name.valueOf, Signature.Boolean_boolean);
+        Byte_valueOf = Byte.lookupDeclaredMethod(Name.valueOf, Signature.Byte_byte);
+        Character_valueOf = Character.lookupDeclaredMethod(Name.valueOf, Signature.Character_char);
+        Short_valueOf = Short.lookupDeclaredMethod(Name.valueOf, Signature.Short_short);
+        Float_valueOf = Float.lookupDeclaredMethod(Name.valueOf, Signature.Float_float);
+        Integer_valueOf = Integer.lookupDeclaredMethod(Name.valueOf, Signature.Integer_int);
+        Double_valueOf = Double.lookupDeclaredMethod(Name.valueOf, Signature.Double_double);
+        Long_valueOf = Long.lookupDeclaredMethod(Name.valueOf, Signature.Long_long);
 
         String_value = String.lookupDeclaredField(Name.value, Type._char_array);
         String_hash = String.lookupDeclaredField(Name.hash, Type._int);
-        String_hashCode = String.lookupDeclaredMethod(Name.hashCode, context.getSignatures().makeRaw(Type._int));
-        String_length = String.lookupDeclaredMethod(Name.length, context.getSignatures().makeRaw(Type._int));
+        String_hashCode = String.lookupDeclaredMethod(Name.hashCode, Signature._int);
+        String_length = String.lookupDeclaredMethod(Name.length, Signature._int);
 
         Throwable = knownKlass(Type.Throwable);
         Throwable_backtrace = Throwable.lookupField(Name.backtrace, Type.Object);
 
         StackTraceElement = knownKlass(Type.StackTraceElement);
-        StackTraceElement_init = StackTraceElement.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void, Type.String, Type.String, Type.String, Type._int));
+        StackTraceElement_init = StackTraceElement.lookupDeclaredMethod(Name.INIT, Signature._void_String_String_String_int);
 
         ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
         StackOverflowError = knownKlass(Type.StackOverflowError);
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
 
         PrivilegedActionException = knownKlass(Type.PrivilegedActionException);
-        PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void, Type.Exception));
+        PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, Signature._void_Exception);
 
 
         ClassLoader = knownKlass(Type.ClassLoader);
-        ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, context.getSignatures().makeRaw(Type._long, Type.ClassLoader, Type.String));
-        ClassLoader_getSystemClassLoader = ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, context.getSignatures().makeRaw(Type.ClassLoader));
+        ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
+        ClassLoader_getSystemClassLoader = ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
 
         // Guest reflection.
         Constructor = knownKlass(Type.Constructor);
@@ -148,7 +148,7 @@ public final class Meta implements ContextAccess {
         Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
 
         ByteBuffer = knownKlass(Type.ByteBuffer);
-        ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, context.getSignatures().makeRaw(Type.ByteBuffer, Type._byte_array));
+        ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
 
         Thread = knownKlass(Type.Thread);
         ThreadGroup = knownKlass(Type.ThreadGroup);
@@ -159,7 +159,7 @@ public final class Meta implements ContextAccess {
         Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
 
         System = knownKlass(Type.System);
-        System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, context.getSignatures().makeRaw(Type._void));
+        System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
     }
 
     public final ObjectKlass Object;
@@ -271,14 +271,14 @@ public final class Meta implements ContextAccess {
         assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = getInterpreterToVM().newObject(exKlass);
-        exKlass.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(Type._void)).invokeDirect(ex);
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(ex);
         return ex;
     }
 
     public static StaticObject initEx(Klass klass, String message) {
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name.INIT, klass.getSignatures().makeRaw(Type._void, Type.String)).invokeDirect(ex, message);
+        klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, message);
         return ex;
     }
 
@@ -286,7 +286,7 @@ public final class Meta implements ContextAccess {
         assert clazz.isAssignableFrom(Throwable.class);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = getInterpreterToVM().newObject(exKlass);
-        exKlass.lookupDeclaredMethod(Name.INIT, exKlass.getSignatures().makeRaw(Type._void, Type.String)).invokeDirect(ex, message);
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, message);
         return ex;
     }
 
@@ -294,7 +294,7 @@ public final class Meta implements ContextAccess {
         assert clazz.isAssignableFrom(Throwable.class);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = getInterpreterToVM().newObject(exKlass);
-        exKlass.lookupDeclaredMethod(Name.INIT, exKlass.getSignatures().makeRaw(Type._void, Type.Throwable)).invokeDirect(ex, cause);
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
     }
 
@@ -324,11 +324,10 @@ public final class Meta implements ContextAccess {
     public ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
         // Resolve non-primitive classes using BCL.
-        return knownKlass(Types.fromClass(hostClass));
+        return knownKlass(getTypes().fromClass(hostClass));
     }
 
     public PrimitiveKlass knownPrimitive(ByteString<Type> primitiveType) {
-        // assert isKnownClass(hostClass);
         assert Types.isPrimitive(primitiveType);
         // Resolve primitive classes using BCL.
         return (PrimitiveKlass) getRegistries().loadKlassWithBootClassLoader(primitiveType);
@@ -338,13 +337,13 @@ public final class Meta implements ContextAccess {
         // assert isKnownClass(hostClass);
         assert primitiveClass.isPrimitive();
         // Resolve primitive classes using BCL.
-        return knownPrimitive(Types.fromClass(primitiveClass));
+        return knownPrimitive(getTypes().fromClass(primitiveClass));
     }
 
     @TruffleBoundary
     public Klass loadKlass(ByteString<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
-        return context.getRegistries().loadKlass(type, classLoader);
+        return getRegistries().loadKlass(type, classLoader);
     }
 
     @TruffleBoundary
@@ -403,20 +402,6 @@ public final class Meta implements ContextAccess {
 
         throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
     }
-
-//    public Object toGuestString(Object hostObject) {
-//        if (hostObject == null) {
-//            return StaticObject.NULL;
-//        }
-//        if (hostObject instanceof String) {
-//            return toGuestString((String) hostObject);
-//        }
-//        if (hostObject instanceof StaticObject || (hostObject.getClass().isArray() && hostObject.getClass().getComponentType().isPrimitive())) {
-//            return hostObject;
-//        }
-//
-//        throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
-//    }
 
     public Object toHostBoxed(Object object) {
         assert object != null;

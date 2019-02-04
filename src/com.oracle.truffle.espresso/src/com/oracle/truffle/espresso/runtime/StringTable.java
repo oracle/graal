@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.runtime;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Host;
 

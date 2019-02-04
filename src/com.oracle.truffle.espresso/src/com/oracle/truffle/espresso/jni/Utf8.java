@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.jni;
 import java.io.IOException;
 import java.io.UTFDataFormatException;
 
-import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString;
 
 /**
  * Modified UTF-8 conversions.

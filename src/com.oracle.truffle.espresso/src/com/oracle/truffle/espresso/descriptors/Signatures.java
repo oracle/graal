@@ -26,9 +26,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.impl.ByteSequence;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
@@ -207,10 +207,6 @@ public final class Signatures extends DescriptorCache<ByteString<Signature>, Byt
         return signature[paramIndex];
     }
 
-    public ByteString<Type>[] makeParsed(Class<?> returnType, Class<?>... parameterTypes) {
-        throw EspressoError.unimplemented();
-    }
-
     public ByteString<Type>[] makeParsed(ByteString<Type> returnType, ByteString<Type>... parameterTypes) {
         final ByteString<Type>[] signature = Arrays.copyOf(parameterTypes, parameterTypes.length + 1);
         signature[signature.length - 1] = returnType;
@@ -221,9 +217,9 @@ public final class Signatures extends DescriptorCache<ByteString<Signature>, Byt
     public ByteString<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
         ByteString<Type>[] parameterTypes = new ByteString[parameterClasses.length];
         for (int i = 0; i < parameterClasses.length; ++i) {
-            parameterTypes[i] = Types.fromClass(parameterClasses[i]);
+            parameterTypes[i] = getTypeDescriptors().fromClass(parameterClasses[i]);
         }
-        return makeRaw(Types.fromClass(returnClass), parameterTypes);
+        return makeRaw(getTypeDescriptors().fromClass(returnClass), parameterTypes);
     }
 
     @SuppressWarnings("unchecked")
@@ -260,4 +256,38 @@ public final class Signatures extends DescriptorCache<ByteString<Signature>, Byt
         make(signature);
         return signature;
     }
+
+    static ByteString<Signature> nonCachedMake(ByteString<Type> returnType, ByteString<Type>... parameterTypes) {
+        if (parameterTypes == null || parameterTypes.length == 0) {
+            byte[] bytes = new byte[2 + returnType.length()];
+            ByteString.copyBytes(returnType, 0, bytes, 2, returnType.length());
+            bytes[0] = '(';
+            bytes[1] = ')';
+            ByteString<Signature> raw = new ByteString<>(bytes);
+            // FIXME(peterssen): Signatures are not symbols.
+            return raw;
+        }
+
+        int totalLength = returnType.length();
+        for (ByteString<Type> param : parameterTypes) {
+            totalLength += param.length();
+        }
+
+        byte[] bytes = new byte[totalLength + 2]; // + ()
+
+        int pos = 0;
+        bytes[pos++] = '(';
+        for (ByteString<Type> param : parameterTypes) {
+            ByteString.copyBytes(param, 0, bytes, pos, param.length());
+            pos += param.length();
+        }
+        bytes[pos++] = ')';
+        ByteString.copyBytes(returnType, 0, bytes, pos, returnType.length());
+        pos += returnType.length();
+        assert pos == totalLength + 2;
+        ByteString<Signature> signature = new ByteString(bytes);
+        return signature;
+    }
+
+
 }

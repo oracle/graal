@@ -30,10 +30,11 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -49,7 +50,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Class {
@@ -82,21 +82,12 @@ public final class Target_java_lang_Class {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
 
-        String typeDesc = "L" + Meta.toHostString(name).replace('.', '/') + ";";
-//        if (typeDesc.contains(".")) {
-//            // Normalize
-//            // Ljava/lang/InterruptedException;
-//            // sun.nio.cs.UTF_8
-//            typeDesc = .fromJavaName(typeDesc);
-//        }
-
-        Klass klass = meta.getRegistries().loadKlass(context.getTypes().make(Types.fromJavaString(typeDesc)), loader);
+        // String typeDesc = "L" + Meta.toHostString(name).replace('.', '/') + ";";
+        Klass klass = meta.getRegistries().loadKlass(context.getTypes().fromClassGetName(Meta.toHostString(name)), loader);
 
         if (klass == null) {
-            // Klass classNotFoundExceptionKlass =
-            // context.getMeta().throwableKlass(ClassNotFoundException.class);
             StaticObject instance = meta.ClassNotFoundException.allocateInstance();
-            meta.ClassNotFoundException.lookupDeclaredMethod(Name.INIT, meta.getSignatures().makeRaw(Type._void)).invokeDirect(instance);
+            meta.ClassNotFoundException.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(instance);
             // TODO(peterssen): Add class name to exception message.
             throw new EspressoException(instance);
         }

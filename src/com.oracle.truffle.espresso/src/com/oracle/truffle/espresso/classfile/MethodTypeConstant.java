@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.impl.ByteString.Signature;
+import static com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString;
 
 public interface MethodTypeConstant extends PoolConstant {
 

@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso;
 
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -32,8 +34,8 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -117,7 +119,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         EspressoError.guarantee(mainClass != null, "Error: Could not find or load main class %s", className);
 
-        Method mainMethod = mainClass.lookupDeclaredMethod(Name.main, getSignatures().makeRaw(Type._void, Type.String_array));
+        Method mainMethod = mainClass.lookupDeclaredMethod(Name.main, Signature._void_String_array);
 
         EspressoError.guarantee(mainMethod != null && mainMethod.isStatic(),
                         "Error: Main method not found in class %s, please define the main method as:\n" +
@@ -136,10 +138,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         assert context.isInitialized();
         Meta meta = context.getMeta();
         Klass launcherHelperKlass = meta.loadKlass(Type.sun_launcher_LauncherHelper, StaticObject.NULL);
-
-        Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(Name.checkAndLoadMain,
-                        context.getSignatures().makeRaw(Type.Class, Type._boolean, Type._int, Type.String));
-
+        Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(Name.checkAndLoadMain, Signature.Class_boolean_int_String);
         return (StaticObjectClass) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuestString(name));
     }
 

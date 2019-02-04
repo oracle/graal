@@ -28,7 +28,7 @@ import java.io.EOFException;
 import java.io.IOException;
 
 import com.oracle.truffle.espresso.impl.ByteSequence;
-import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 
 /**

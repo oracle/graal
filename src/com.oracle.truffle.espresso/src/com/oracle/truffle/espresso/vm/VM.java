@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -61,12 +62,11 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -612,7 +612,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindLoadedClass(@Host(ClassLoader.class) StaticObject loader, @Host(String.class) StaticObject name) {
-        ByteString<Type> type = Types.fromJavaString(MetaUtil.toInternalName(Meta.toHostString(name)));
+        ByteString<Type> type = getTypes().fromClassGetName(Meta.toHostString(name));
         Klass klass = getContext().getRegistries().findLoadedClass(type, loader);
         if (klass == null) {
             return StaticObject.NULL;
@@ -711,8 +711,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Properties.class) StaticObject JVM_InitProperties(@Host(Properties.class) StaticObject properties) {
-        Method setProperty = properties.getKlass().lookupMethod(Name.setProperty,
-                        getSignatures().makeRaw(Type.Object, Type.String, Type.String));
+        Method setProperty = properties.getKlass().lookupMethod(Name.setProperty, Signature.Object_String_String);
 
         OptionValues options = getContext().getEnv().getOptions();
 
@@ -805,7 +804,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindClassFromBootLoader(String name) {
-        Klass klass = getRegistries().loadKlassWithBootClassLoader(Types.fromJavaString(MetaUtil.toInternalName(name)));
+        Klass klass = getRegistries().loadKlassWithBootClassLoader(getTypes().fromClassGetName(name));
         if (klass == null) {
             return StaticObject.NULL;
         }

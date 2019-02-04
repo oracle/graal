@@ -25,11 +25,10 @@ package com.oracle.truffle.espresso.runtime;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 public final class EspressoException extends RuntimeException implements TruffleException {
     private static final long serialVersionUID = -7667957575377419520L;
@@ -44,8 +43,7 @@ public final class EspressoException extends RuntimeException implements Truffle
 
     @Override
     public String getMessage() {
-        Meta meta = exception.getKlass().getMeta();
-        return Meta.toHostString((StaticObject) meta.Throwable.lookupMethod(Name.getMessage, meta.getSignatures().makeRaw(Type.String)).invokeDirect(exception));
+        return Meta.toHostString((StaticObject) exception.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(exception));
     }
 
     public StaticObject getException() {

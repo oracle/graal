@@ -25,8 +25,7 @@ package com.oracle.truffle.espresso.descriptors;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Descriptor;
+import com.oracle.truffle.espresso.descriptors.ByteString.Descriptor;
 
 public abstract class DescriptorCache<Key extends ByteString<? extends Descriptor>, Value> {
 

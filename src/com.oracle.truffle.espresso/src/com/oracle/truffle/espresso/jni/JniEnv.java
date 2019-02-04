@@ -51,8 +51,8 @@ import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -60,7 +60,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.VmNativeNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -503,7 +502,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public long GetFieldID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         Klass klass = ((StaticObjectClass) clazz).getMirror();
         klass.safeInitialize();
-        ByteString<Type> fieldType = Types.fromJavaString(signature);
+        ByteString<Type> fieldType = getTypes().fromClassGetName(signature);
         Field field = klass.lookupField(ByteString.fromJavaString(name), fieldType);
         if (field == null) {
             throw getMeta().throwEx(NoSuchFieldError.class, name);
@@ -536,7 +535,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public long GetStaticFieldID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         Klass klass = ((StaticObjectClass) clazz).getMirror();
         klass.safeInitialize();
-        ByteString<Type> fieldType = Types.fromJavaString(signature);
+        ByteString<Type> fieldType = getTypes().fromClassGetName(signature);
         Field field = klass.lookupDeclaredField(ByteString.fromJavaString(name), fieldType);
         if (field == null) {
             throw getMeta().throwEx(NoSuchFieldError.class, name);

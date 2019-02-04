@@ -23,9 +23,11 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -54,14 +56,14 @@ public final class GuestClassRegistry extends ClassRegistry {
         this.context = context;
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
-        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, context.getSignatures().makeRaw(Type.Class, Type.String, Type._boolean));
-        this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, context.getSignatures().makeRaw(Type._void, Type.Class));
+        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String_boolean);
+        this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
     }
 
     @Override
     public Klass loadKlass(ByteString<Type> type) {
         if (Types.isArray(type)) {
-            Klass elemental = loadKlass(Types.getElementalType(type));
+            Klass elemental = loadKlass(context.getTypes().getElementalType(type));
             if (elemental == null) {
                 return null;
             }

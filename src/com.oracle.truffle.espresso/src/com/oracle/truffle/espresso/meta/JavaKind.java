@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 
 import java.lang.reflect.Array;

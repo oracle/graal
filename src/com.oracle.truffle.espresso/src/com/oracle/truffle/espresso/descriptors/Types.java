@@ -23,12 +23,14 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Descriptor;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString.Descriptor;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Manages creation and parsing of type descriptors ("field descriptors" in the JVMS).
@@ -37,7 +39,9 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  */
 public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Type>> {
 
-    public static ByteString<Type> fromJavaString(String typeString) {
+    private static final EconomicSet<ByteString<Type>> STATIC_TYPES = EconomicSet.create(256);
+
+    private static ByteString<Type> fromJavaString(String typeString) {
         ByteString<Type> type = ByteString.fromJavaString(typeString);
         assert isValid(type);
         return type;
@@ -61,11 +65,11 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         return type;
     }
 
-    public static ByteString<Type> fromClassGetName(String className) {
+    public ByteString<Type> fromClassGetName(String className) {
         if (className.startsWith("[") || className.endsWith(";") || className.length() == 1) {
-            return Types.fromJavaString(className.replace('.', '/'));
+            return make(Types.fromJavaString(className.replace('.', '/')));
         }
-        return Types.fromJavaString("L" + className.replace('.', '/') + ";");
+        return make(Types.fromJavaString("L" + className.replace('.', '/') + ";"));
     }
 
     @Override
@@ -275,21 +279,21 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         return type.byteAt(0) == '[';
     }
 
-    public static ByteString<Type> getComponentType(ByteString<Type> type) {
+    public ByteString<Type> getComponentType(ByteString<Type> type) {
         if (isArray(type)) {
             return type.substring(1);
         }
         return null;
     }
 
-    public static ByteString<Type> getElementalType(ByteString<Type> type) {
+    public ByteString<Type> getElementalType(ByteString<Type> type) {
         if (isArray(type)) {
             return type.substring(getArrayDimensions(type));
         }
         return type;
     }
 
-    public static ByteString<Type> fromClass(Class<?> clazz) {
+    public ByteString<Type> fromClass(Class<?> clazz) {
         return ByteString.fromJavaString(fromCanonicalClassName(clazz.getCanonicalName()));
     }
 

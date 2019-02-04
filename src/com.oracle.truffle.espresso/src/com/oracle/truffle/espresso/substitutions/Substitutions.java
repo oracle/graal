@@ -9,10 +9,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -78,11 +78,6 @@ public final class Substitutions implements ContextAccess {
                         method.getRawSignature());
     }
 
-// public MethodKey getSubstitution(Method method) {
-// assert method != null;
-// return substitutions.get(getMethodKey(method));
-// }
-
     private static final class MethodKey {
         private final ByteString<Type> clazz;
         private final ByteString<Name> methodName;
@@ -120,43 +115,6 @@ public final class Substitutions implements ContextAccess {
             return "MethodKey<" + clazz + "." + methodName + " -> " + signature + ">";
         }
     }
-
-// public static String fixTypeName(String type) {
-// if ((type.startsWith("L") && type.endsWith(";"))) {
-// return type;
-// }
-//
-// if (type.startsWith("[")) {
-// return type.replace('.', '/');
-// }
-//
-// if (type.endsWith("[]")) {
-// return "[" + fixTypeName(type.substring(0, type.length() - 2));
-// }
-//
-// switch (type) {
-// case "boolean":
-// return "Z";
-// case "byte":
-// return "B";
-// case "char":
-// return "C";
-// case "double":
-// return "D";
-// case "float":
-// return "F";
-// case "int":
-// return "I";
-// case "long":
-// return "J";
-// case "short":
-// return "S";
-// case "void":
-// return "V";
-// default:
-// return "L" + type.replace('.', '/') + ";";
-// }
-// }
 
     private static void registerStaticSubstitutions(Class<?> clazz) {
         int registered = 0;

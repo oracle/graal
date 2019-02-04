@@ -28,8 +28,8 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class InnerClassesAttribute extends Attribute {

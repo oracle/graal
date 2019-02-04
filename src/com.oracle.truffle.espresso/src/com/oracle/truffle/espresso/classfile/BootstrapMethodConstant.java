@@ -23,9 +23,9 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 
 /**
  * Interface denoting a bootstrap method constant entry in a constant pool.
