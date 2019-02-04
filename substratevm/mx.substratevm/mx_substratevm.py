@@ -607,9 +607,11 @@ def build_libgraal(image_args):
     if not truffle_compiler_library:
         return 'libgraal dependency compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL is missing'
 
+    truffle_api = mx.dependency('truffle:TRUFFLE_API')
+
     libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', os.pathsep.join([graal_hotspot_library.classpath_repr(), truffle_compiler_library.classpath_repr()]),
         '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
-        '--tool:truffle',
+        '-J-Xbootclasspath/a:' + truffle_api.classpath_repr(),
         '-H:-UseServiceLoaderFeature',
         '-H:+AllowFoldMethods',
         '-Djdk.vm.ci.services.aot=true']

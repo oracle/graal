@@ -89,7 +89,6 @@ import org.graalvm.nativeimage.RuntimeReflection;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -295,9 +294,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     public static boolean useTruffleCompiler() {
-        // Libgraal includes support performing partial evaluation but doesn't include a working
-        // Truffle runtime
-        return Truffle.getRuntime() instanceof SubstrateTruffleRuntime && !SubstrateUtil.isBuildingLibgraal();
+        return Truffle.getRuntime() instanceof SubstrateTruffleRuntime;
     }
 
     @Override
