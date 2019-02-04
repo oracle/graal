@@ -214,7 +214,7 @@ final class ProviderUtil {
 
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity", onlyWith = JDK8OrEarlier.class)
+@TargetClass(className = "javax.crypto.JceSecurity")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
 
@@ -227,6 +227,7 @@ final class Target_javax_crypto_JceSecurity {
     static SecureRandom RANDOM;
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     static void verifyProviderJar(URL var0) {
         throw JceSecurityUtil.shouldNotReach("javax.crypto.JceSecurity.verifyProviderJar(URL)");
     }
