@@ -142,6 +142,11 @@ final class SVMToHotSpotUtil {
 
     private static final EnumMap<SVMToHotSpot.Id, JNIMethod> methods = new EnumMap<>(SVMToHotSpot.Id.class);
     private static final Map<String, JNIClass> classes = new ConcurrentHashMap<>();
+    /**
+     * Prevents recursion when an exception happens in {@link #getJNIClass} or {@link #getJNIMethod}
+     * called from {@link JNIExceptionWrapper#wrapAndThrowPendingJNIException}.
+     */
+    private static final ThreadLocal<Boolean> inExceptionHandler = new ThreadLocal<>();
 
     private static void traceCall(SVMToHotSpot.Id id) {
         trace(1, "SVM->HS: %s", id);
@@ -155,19 +160,30 @@ final class SVMToHotSpotUtil {
     }
 
     private static JNIClass getJNIClass(JNIEnv env, String className) {
-        return classes.computeIfAbsent(className, new Function<String, JNIClass>() {
-            @Override
-            public JNIClass apply(String name) {
-                try (CCharPointerHolder cName = toCString(getBinaryName(name))) {
-                    JClass clazz = FindClass(env, cName.get());
-                    wrapAndThrowPendingJNIException(env);
-                    if (clazz.isNull()) {
-                        throw new InternalError("Cannot load class: " + name);
+        try {
+            return classes.computeIfAbsent(className, new Function<String, JNIClass>() {
+                @Override
+                public JNIClass apply(String name) {
+                    try (CCharPointerHolder cName = toCString(getBinaryName(name))) {
+                        JClass clazz = FindClass(env, cName.get());
+                        if (clazz.isNull()) {
+                            throw new InternalError("Cannot load class: " + name);
+                        }
+                        return new JNIClass(name, NewGlobalRef(env, clazz, "Class<" + name + ">"));
                     }
-                    return new JNIClass(name, NewGlobalRef(env, clazz, "Class<" + name + ">"));
+                }
+            });
+        } catch (InternalError ie) {
+            if (inExceptionHandler.get() != Boolean.TRUE) {
+                inExceptionHandler.set(true);
+                try {
+                    wrapAndThrowPendingJNIException(env);
+                } finally {
+                    inExceptionHandler.remove();
                 }
             }
-        });
+            throw ie;
+        }
     }
 
     private static JNIClass hsvmPeer;
@@ -181,18 +197,32 @@ final class SVMToHotSpotUtil {
 
     private static JNIMethod getJNIMethod(JNIEnv env, SVMToHotSpot.Id hcId, Class<?> expectedReturnType) {
         assert hcId.getReturnType() == expectedReturnType || expectedReturnType.isAssignableFrom(hcId.getReturnType());
-        return methods.computeIfAbsent(hcId, new Function<SVMToHotSpot.Id, JNIMethod>() {
-            @Override
-            public JNIMethod apply(Id id) {
-                JNIClass c = peer(env);
-                String methodName = id.getMethodName();
-                try (CCharPointerHolder name = toCString(methodName); CCharPointerHolder sig = toCString(id.getSignature())) {
-                    JMethodID jniId = GetStaticMethodID(env, c.jclass, name.get(), sig.get());
+        try {
+            return methods.computeIfAbsent(hcId, new Function<SVMToHotSpot.Id, JNIMethod>() {
+                @Override
+                public JNIMethod apply(Id id) {
+                    JNIClass c = peer(env);
+                    String methodName = id.getMethodName();
+                    try (CCharPointerHolder name = toCString(methodName); CCharPointerHolder sig = toCString(id.getSignature())) {
+                        JMethodID jniId = GetStaticMethodID(env, c.jclass, name.get(), sig.get());
+                        if (jniId.isNull()) {
+                            throw new InternalError("No such method: " + methodName);
+                        }
+                        return new JNIMethod(id, jniId);
+                    }
+                }
+            });
+        } catch (InternalError ie) {
+            if (inExceptionHandler.get() != Boolean.TRUE) {
+                inExceptionHandler.set(true);
+                try {
                     wrapAndThrowPendingJNIException(env);
-                    return new JNIMethod(id, jniId);
+                } finally {
+                    inExceptionHandler.remove();
                 }
             }
-        });
+            throw ie;
+        }
     }
 
     /**
