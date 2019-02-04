@@ -128,4 +128,9 @@ public final class EspressoError extends Error {
         return String.format(Locale.ENGLISH, msg, args);
     }
 
+    public static void warnIf(boolean condition, String msg) {
+        if (condition) {
+            System.err.println(msg);
+        }
+    }
 }

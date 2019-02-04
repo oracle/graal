@@ -53,7 +53,6 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class Meta implements ContextAccess {
 
-
     private final EspressoContext context;
 
     @SuppressWarnings("unchecked")
@@ -448,9 +447,9 @@ public final class Meta implements ContextAccess {
 
     private static class HostJava {
 
-        private final static java.lang.reflect.Field String_value;
-        private final static java.lang.reflect.Field String_hash;
-        private final static Constructor<String> String_init;
+        private static final java.lang.reflect.Field String_value;
+        private static final java.lang.reflect.Field String_hash;
+        private static final Constructor<String> String_init;
 
         static {
             try {

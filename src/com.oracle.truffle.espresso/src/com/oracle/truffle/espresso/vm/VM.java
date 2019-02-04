@@ -567,7 +567,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
         buf.get(bytes);
-        StaticObjectClass klass = (StaticObjectClass) getContext().getRegistries().defineKlass(ByteString.fromJavaString(name), bytes, loader).mirror();
+
+        ByteString<Type> type = Types.fromConstantPoolName(ByteString.fromJavaString(name));
+
+        StaticObjectClass klass = (StaticObjectClass) getContext().getRegistries().defineKlass(type, bytes, loader).mirror();
         return klass;
     }
 
