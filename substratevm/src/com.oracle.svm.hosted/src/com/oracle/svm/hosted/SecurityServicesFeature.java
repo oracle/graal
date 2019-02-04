@@ -134,7 +134,7 @@ public class SecurityServicesFeature implements Feature {
     }
 
     /** Get the list of configured providers. The SUN provider is returned by default. */
-    private List<Provider> getProviders(boolean enableAllSecurityServices) {
+    private static List<Provider> getProviders(boolean enableAllSecurityServices) {
         if (enableAllSecurityServices) {
             /* Parse and instantiate all providers. */
             return Providers.getProviderList().providers();
@@ -143,7 +143,9 @@ public class SecurityServicesFeature implements Feature {
              * Get only the SUN provider. Avoids parsing the entire providers list and instantiating
              * unused providers.
              */
-            return Collections.singletonList(Providers.getSunProvider());
+            Provider sunProvider = Providers.getSunProvider();
+            assert isSunProvider(sunProvider);
+            return Collections.singletonList(sunProvider);
         }
     }
 
