@@ -213,6 +213,10 @@ public class ReflectionPlugins {
                 }
                 throwNoSuchFieldException(b, targetMethod, target);
             } catch (NoClassDefFoundError e) {
+                /*
+                 * If the declaring class of the field references missing classes a
+                 * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
+                 */
                 if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoClassDefFoundErrorMethod)) {
                     return false;
                 }
@@ -245,6 +249,10 @@ public class ReflectionPlugins {
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
                 } catch (NoClassDefFoundError e) {
+                    /*
+                     * If the declaring class of the method references missing classes a
+                     * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
+                     */
                     if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoClassDefFoundErrorMethod)) {
                         return false;
                     }
@@ -280,6 +288,10 @@ public class ReflectionPlugins {
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
                 } catch (NoClassDefFoundError e) {
+                    /*
+                     * If the declaring class of the constructor references missing classes a
+                     * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
+                     */
                     if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoClassDefFoundErrorMethod)) {
                         return false;
                     }
