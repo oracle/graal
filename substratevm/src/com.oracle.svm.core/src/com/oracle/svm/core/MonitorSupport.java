@@ -25,7 +25,6 @@
 package com.oracle.svm.core;
 
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.Condition;
@@ -75,7 +74,7 @@ public class MonitorSupport {
      *
      * Synchronized to prevent concurrent access and modification.
      */
-    private final Map<Object, ReentrantLock> additionalMonitors = new WeakHashMap<>();
+    private final Map<Object, ReentrantLock> additionalMonitors = new WeakIdentityHashMap<>();
     private final ReentrantLock additionalMonitorsLock = new ReentrantLock();
 
     /**
@@ -83,7 +82,7 @@ public class MonitorSupport {
      *
      * Synchronized to prevent concurrent access and modification.
      */
-    private final Map<Object, Condition> additionalConditions = new WeakHashMap<>();
+    private final Map<Object, Condition> additionalConditions = new WeakIdentityHashMap<>();
     private final ReentrantLock additionalConditionsLock = new ReentrantLock();
 
     /**
@@ -334,8 +333,12 @@ public class MonitorSupport {
             additionalMonitorsLock.lock();
             try {
                 final ReentrantLock existingEntry = additionalMonitors.get(obj);
-                if (existingEntry != null || !createIfNotExisting) {
+                if (existingEntry != null) {
                     return existingEntry;
+                }
+                /* Existing entry is null, meaning there is no entry. */
+                if (!createIfNotExisting) {
+                    return null;
                 }
                 final ReentrantLock newEntry = new ReentrantLock();
                 final ReentrantLock previousEntry = additionalMonitors.put(obj, newEntry);
@@ -360,8 +363,12 @@ public class MonitorSupport {
         additionalConditionsLock.lock();
         try {
             final Condition existingEntry = additionalConditions.get(obj);
-            if (existingEntry != null || !createIfNotExisting) {
+            if (existingEntry != null) {
                 return existingEntry;
+            }
+            /* Existing entry is null, meaning there is no entry. */
+            if (!createIfNotExisting) {
+                return null;
             }
             final Condition newEntry = lock.newCondition();
             final Condition previousEntry = additionalConditions.put(obj, newEntry);
