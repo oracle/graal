@@ -151,6 +151,10 @@ public interface FrameInstance {
     Node getCallNode();
 
     /**
+     * The {@link CallTarget} being invoked in this frame.
+     * <p>
+     * See {@link #getCallNode()} for the relation between call node and CallTarget.
+     *
      * @since 0.8 or earlier
      **/
     CallTarget getCallTarget();
