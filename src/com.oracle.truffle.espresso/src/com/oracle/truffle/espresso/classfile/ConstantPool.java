@@ -377,6 +377,7 @@ public abstract class ConstantPool {
                     break;
                 }
                 case UTF8: {
+                    // TODO(peterssen): Avoid copying.
                     entries[i] = language.getSymbolTable().make(stream.readUTF());
                     break;
                 }

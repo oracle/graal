@@ -55,6 +55,7 @@ public final class ByteString<T> implements ByteSequence {
     public static class Name extends ModifiedUTF8 {
         public static final ByteString<Name> INIT = ByteString.fromJavaString("<init>");
         public static final ByteString<Name> CLINIT = ByteString.fromJavaString("<clinit>");
+
         public static final ByteString<Name> backtrace = ByteString.fromJavaString("backtrace");
         public static final ByteString<Name> clazz = ByteString.fromJavaString("clazz");
         public static final ByteString<Name> root = ByteString.fromJavaString("root");
@@ -67,7 +68,6 @@ public final class ByteString<T> implements ByteSequence {
         public static final ByteString<Name> valueOf = ByteString.fromJavaString("valueOf");
         public static final ByteString<Name> wrap = ByteString.fromJavaString("wrap");
         public static final ByteString<Name> initializeSystemClass = ByteString.fromJavaString("initializeSystemClass");
-
         public static final ByteString<Name> group = ByteString.fromJavaString("group");
         public static final ByteString<Name> name = ByteString.fromJavaString("name");
         public static final ByteString<Name> priority = ByteString.fromJavaString("priority");
@@ -76,19 +76,20 @@ public final class ByteString<T> implements ByteSequence {
         public static final ByteString<Name> main = ByteString.fromJavaString("main");
         public static final ByteString<Name> checkAndLoadMain = ByteString.fromJavaString("checkAndLoadMain");
         public static final ByteString<Name> forName = ByteString.fromJavaString("forName");
+        public static final ByteString<Name> run = ByteString.fromJavaString("run");
+        public static final ByteString<Name> loadClass = ByteString.fromJavaString("loadClass");
+        public static final ByteString<Name> addClass = ByteString.fromJavaString("addClass");
+        public static final ByteString<Name> getMessage = ByteString.fromJavaString("getMessage");
+        public static final ByteString<Name> getProperty = ByteString.fromJavaString("getProperty");
+        public static final ByteString<Name> setProperty = ByteString.fromJavaString("setProperty");
 
         // Attribute names
         public static final ByteString<Name> Code = ByteString.fromJavaString("Code");
         public static final ByteString<Name> EnclosingMethod = ByteString.fromJavaString("EnclosingMethod");
         public static final ByteString<Name> Exceptions = ByteString.fromJavaString("Exceptions");
         public static final ByteString<Name> InnerClasses = ByteString.fromJavaString("InnerClasses");
-        public static final ByteString<Name> loadClass = ByteString.fromJavaString("loadClass");
-        public static final ByteString<Name> addClass = ByteString.fromJavaString("addClass");
         public static final ByteString<Name> RuntimeVisibleAnnotations = ByteString.fromJavaString("RuntimeVisibleAnnotations");
-        public static final ByteString<Name> run = ByteString.fromJavaString("run");
-        public static final ByteString<Name> getMessage = ByteString.fromJavaString("getMessage");
-        public static final ByteString<Name> getProperty = ByteString.fromJavaString("getProperty");
-        public static final ByteString<Name> setProperty = ByteString.fromJavaString("setProperty");
+        public static final ByteString<Name> BootstrapMethods = ByteString.fromJavaString("BootstrapMethods");
     }
 
     public static class Symbol extends ModifiedUTF8 {

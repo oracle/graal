@@ -1,7 +1,5 @@
 package com.oracle.truffle.espresso.impl;
 
-import java.lang.reflect.Modifier;
-
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
@@ -36,8 +34,6 @@ public final class Field implements ModifiersProvider {
         this.name = linkedField.getName();
     }
 
-    // private Attribute runtimeVisibleAnnotations;
-
     public JavaKind getKind() {
         return Types.getJavaKind(getType());
     }
@@ -64,11 +60,8 @@ public final class Field implements ModifiersProvider {
         return "EspressoField<" + getHolder() + "." + getName() + " -> " + getType() + ">";
     }
 
-// public Attribute getRuntimeVisibleAnnotations() {
-// return runtimeVisibleAnnotations;
-// }
-
     public Object get(StaticObject self) {
+        assert getHolder().isAssignableFrom(self.getKlass());
         InterpreterToVM vm = getHolder().getContext().getInterpreterToVM();
         // @formatter:off
         // Checkstyle: stop
@@ -90,6 +83,7 @@ public final class Field implements ModifiersProvider {
 
     public void set(StaticObject self, Object value) {
         assert value != null;
+        assert getHolder().isAssignableFrom(self.getKlass());
         InterpreterToVM vm = getHolder().getContext().getInterpreterToVM();
         // @formatter:off
         // Checkstyle: stop
@@ -113,31 +107,6 @@ public final class Field implements ModifiersProvider {
         return name;
     }
 
-//    public Field fieldRefConstant(RuntimeConstantPool pool, int index) {
-//        CompilerDirectives.transferToInterpreterAndInvalidate();
-//
-//        FieldRefConstant fieldRefConstant = pool.fieldAt(index);
-//
-//        ByteString<Type> declaringKlass = fieldRefConstant.getDeclaringClass(pool);
-//        Klass klass = getContext().getRegistries().loadKlass(declaringKlass, pool.getClassLoader());
-//
-//        // assert declaringInterface.isInterface();
-//        ByteString<Name> name = fieldRefConstant.getName(pool);
-//        ByteString<Type> type = fieldRefConstant.getType(pool);
-//
-//        Klass declaringClass = getContext().getRegistries().loadKlass(declaringKlass, pool.getClassLoader());
-//
-//        while (declaringClass != null) {
-//            for (Field fi : declaringClass.getDeclaredFields()) {
-//                if (fi.getName().equals(name) && type.equals(fi.getType())) {
-//                    return fi;
-//                }
-//            }
-//            declaringClass = declaringClass.getSuperclass();
-//        }
-//        throw EspressoError.shouldNotReachHere();
-//    }
-
     public final Klass resolveTypeKlass() {
         Klass tk = typeKlassCache;
         if (tk == null) {
@@ -146,8 +115,6 @@ public final class Field implements ModifiersProvider {
                 if (tk == null) {
                     tk = holder.getConstantPool().resolveType(getType(), linkedField.getParserField().getTypeIndex());
                     typeKlassCache = tk;
-                    // linkedField.getParserField().getTypeIndex()
-                    // throw EspressoError.unimplemented("Resolve field type in the holder CP");
                 }
             }
         }

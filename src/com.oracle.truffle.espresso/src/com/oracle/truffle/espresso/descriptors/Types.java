@@ -61,6 +61,13 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         return type;
     }
 
+    public static ByteString<Type> fromClassGetName(String className) {
+        if (className.startsWith("[") || className.endsWith(";") || className.length() == 1) {
+            return Types.fromJavaString(className.replace('.', '/'));
+        }
+        return Types.fromJavaString("L" + className.replace('.', '/') + ";");
+    }
+
     @Override
     protected ByteString<Type> create(ByteString<Type> key) {
         return key;
@@ -180,37 +187,6 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         }
         return index;
     }
-
-// public static String stringToJava(String string) {
-// switch (string.charAt(0)) {
-// // @formatter: off
-// case 'L':
-// return dottified(string.substring(1, string.length() - 1));
-// case '[':
-// return stringToJava(string.substring(1)) + "[]";
-// case 'B':
-// return "byte";
-// case 'C':
-// return "char";
-// case 'D':
-// return "double";
-// case 'F':
-// return "float";
-// case 'I':
-// return "int";
-// case 'J':
-// return "long";
-// case 'S':
-// return "short";
-// case 'V':
-// return "void";
-// case 'Z':
-// return "boolean";
-// default:
-// throw new InternalError("invalid type descriptor: " + "\"" + string + "\"");
-// // @formatter: on
-// }
-// }
 
     public static String fromCanonicalClassName(String javaName) {
         if (javaName.endsWith("[]")) {

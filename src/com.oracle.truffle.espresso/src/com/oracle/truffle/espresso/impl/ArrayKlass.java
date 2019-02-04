@@ -39,7 +39,7 @@ public final class ArrayKlass extends Klass {
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
-                        componentType.getContext().getTypes().arrayOf(componentType.getType()),
+                        componentType.getTypes().arrayOf(componentType.getType()),
                         componentType.getMeta().Object,
                         componentType.getMeta().ARRAY_SUPERINTERFACES);
         this.componentType = componentType;

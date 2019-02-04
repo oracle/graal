@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;

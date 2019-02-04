@@ -584,7 +584,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public Object JVM_NewInstanceFromConstructor(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0) {
+    public @Host(Object.class) StaticObject JVM_NewInstanceFromConstructor(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0) {
         Klass klass = ((StaticObjectClass) getMeta().Constructor_clazz.get(constructor)).getMirror();
         klass.initialize();
         if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
@@ -718,7 +718,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         // Set user-defined system properties.
         for (Map.Entry<String, String> entry : options.get(EspressoOptions.Properties).entrySet()) {
-            setProperty.invokeWithConversions(null, entry.getKey(), entry.getValue());
+            setProperty.invokeWithConversions(properties, entry.getKey(), entry.getValue());
         }
 
         // TODO(peterssen): Use EspressoProperties to store classpath.

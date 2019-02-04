@@ -30,7 +30,6 @@ import com.oracle.truffle.espresso.nodes.JniNativeNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class Method implements ModifiersProvider, ContextAccess {

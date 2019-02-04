@@ -268,7 +268,7 @@ public final class Meta implements ContextAccess {
     }
 
     public StaticObject initEx(java.lang.Class<?> clazz) {
-        assert clazz.isAssignableFrom(Throwable.class);
+        assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = getInterpreterToVM().newObject(exKlass);
         exKlass.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(Type._void)).invokeDirect(ex);
@@ -404,19 +404,19 @@ public final class Meta implements ContextAccess {
         throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
     }
 
-    public Object toGuestString(Object hostObject) {
-        if (hostObject == null) {
-            return StaticObject.NULL;
-        }
-        if (hostObject instanceof String) {
-            return toGuestString((String) hostObject);
-        }
-        if (hostObject instanceof StaticObject || (hostObject.getClass().isArray() && hostObject.getClass().getComponentType().isPrimitive())) {
-            return hostObject;
-        }
-
-        throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
-    }
+//    public Object toGuestString(Object hostObject) {
+//        if (hostObject == null) {
+//            return StaticObject.NULL;
+//        }
+//        if (hostObject instanceof String) {
+//            return toGuestString((String) hostObject);
+//        }
+//        if (hostObject instanceof StaticObject || (hostObject.getClass().isArray() && hostObject.getClass().getComponentType().isPrimitive())) {
+//            return hostObject;
+//        }
+//
+//        throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
+//    }
 
     public Object toHostBoxed(Object object) {
         assert object != null;

@@ -27,6 +27,7 @@ import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 
+import com.oracle.truffle.espresso.impl.ByteSequence;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 
@@ -36,10 +37,12 @@ import com.oracle.truffle.espresso.runtime.ClasspathFile;
  */
 public final class ClassfileStream {
 
+    private final int offset;
     private final int length;
     private final ByteArrayInputStream bstream;
     private final DataInputStream stream;
     private final ClasspathFile classfile;
+    private final byte[] bytes;
 
     public ClassfileStream(byte[] bytes, ClasspathFile classfile) {
         this(bytes, 0, bytes.length, classfile);
@@ -50,7 +53,9 @@ public final class ClassfileStream {
     }
 
     public ClassfileStream(byte[] bytes, int offset, int length, ClasspathFile classfile) {
+        this.offset = offset;
         this.length = length;
+        this.bytes = bytes;
         this.bstream = new ByteArrayInputStream(bytes, offset, length);
         this.stream = new DataInputStream(bstream);
         this.classfile = classfile;
@@ -164,6 +169,19 @@ public final class ClassfileStream {
             byte[] bytes = new byte[utflen];
             stream.readFully(bytes);
             return new ByteString(bytes);
+        } catch (EOFException eofException) {
+            throw eofError();
+        } catch (IOException ioException) {
+            throw ioError(ioException);
+        }
+    }
+
+    public ByteSequence readByteSequenceUTF() {
+        try {
+            int utflen = stream.readUnsignedShort();
+            int start = getPosition();
+            stream.skipBytes(utflen);
+            return ByteSequence.wrap(bytes, start + offset, getPosition() + offset);
         } catch (EOFException eofException) {
             throw eofError();
         } catch (IOException ioException) {

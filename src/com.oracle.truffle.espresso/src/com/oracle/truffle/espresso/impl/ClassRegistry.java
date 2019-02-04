@@ -67,8 +67,7 @@ public abstract class ClassRegistry {
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
     public ObjectKlass defineKlass(EspressoContext context, ByteString<Type> type, final byte[] bytes) {
-        // EspressoError.guarantee(!classes.containsKey(type), "Class " + type + " already defined
-        // in the BCL");
+        EspressoError.guarantee(!classes.containsKey(type), "Class " + type + " already defined in the BCL");
 
         ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), type.toString(), null, context);
 
