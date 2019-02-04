@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.library;
 
 import com.oracle.truffle.api.dsl.GeneratedBy;
+import com.oracle.truffle.api.library.LibraryFactory.ResolvedDispatch;
 
 /**
  * Base class for generated export classes. This class is not intended to be sub-classed or used
