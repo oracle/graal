@@ -265,6 +265,12 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         try {
             enclosingMethod = clazz.getEnclosingMethod();
             enclosingConstructor = clazz.getEnclosingConstructor();
+        } catch (NoClassDefFoundError e) {
+            /*
+             * If any of the methods or fields in the class of the enclosing method reference
+             * missing types in their signatures a NoClassDefFoundError is thrown. Skip the class.
+             */
+            return null;
         } catch (InternalError ex) {
             // Checkstyle: stop
             System.err.println("GR-7731: Could not find the enclosing method of class " + clazz.getTypeName() +

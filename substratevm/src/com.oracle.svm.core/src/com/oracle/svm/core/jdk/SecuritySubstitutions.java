@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -267,10 +268,12 @@ class JceSecurityAccessor {
 }
 
 final class JceSecurityUtil {
+    private static final String enableAllSecurityServices = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableAllSecurityServices, "+");
+
     static RuntimeException shouldNotReach(String method) {
         throw VMError.shouldNotReachHere(method + " is reached at runtime. " +
                         "This should not happen. The contents of JceSecurity.verificationResults " +
-                        "are computed and cached at image build time.");
+                        "are computed and cached at image build time. Try enabling all security services with " + enableAllSecurityServices + ".");
     }
 }
 
