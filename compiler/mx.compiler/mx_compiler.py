@@ -546,9 +546,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
 
 
-def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, libgraal=False):
-    prefix = 'libgraal ' if libgraal else ''
-
+def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # run selected DaCapo benchmarks
 
     # DaCapo benchmarks that can run with system assertions enabled but

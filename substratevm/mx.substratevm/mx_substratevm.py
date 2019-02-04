@@ -666,7 +666,7 @@ def libgraal_gate_body(args, tasks):
     if args.extra_vm_argument:
         extra_vm_argument += args.extra_vm_argument
 
-    mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
+    mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, prefix='libgraal')
 
     with Task('Test libgraal', tasks, tags=[GraalTags.libgraal]) as t:
         if t:
@@ -1027,12 +1027,11 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
             jvm_library=True,
             jar_distributions=['substratevm:GRAAL_HOTSPOT_LIBRARY'],
             build_args=[
-                "--tool:truffle",
-                "-H:JNIConfigurationResources=com/oracle/svm/graal/hotspot/libgraal/HotSpotGraalLibrary.json",
-                "-H:Features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature",
-                "-H:-UseServiceLoaderFeature",
-                "-H:+AllowFoldMethods",
-                "-J-Djdk.vm.ci.services.aot=true",
+                '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
+                '--tool:truffle',
+                '-H:-UseServiceLoaderFeature',
+                '-H:+AllowFoldMethods',
+                '-Djdk.vm.ci.services.aot=true'
             ],
         ),
     ],

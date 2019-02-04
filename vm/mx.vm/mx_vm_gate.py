@@ -32,7 +32,7 @@ import mx_subst
 import functools
 from mx_gate import Task
 
-from os.path import join, exists
+from os.path import join, exists, dirname
 from contextlib import contextmanager
 
 _suite = mx.suite('vm')
@@ -85,6 +85,22 @@ def gate_body(args, tasks):
     with Task('Vm: Graal.Python tests', tasks, tags=[VmGateTasks.graalpython]) as t:
         if t and mx_vm.has_component('Graal.Python', fatalIfMissing=True):
             pass
+
+    if mx_vm.has_component('LibGraal'):
+        libgraal_libs = mx_vm._get_library_configs(mx_vm.get_component('LibGraal'))
+        if not libgraal_libs:
+            mx.warn("Skipping libgraal tests: no library enabled in the LibGraal component")
+        else:
+            assert len(libgraal_libs) == 1
+            p = mx.project(mx_vm.GraalVmLibrary.project_name(libgraal_libs[0]))
+
+            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(p.output_file())]
+            if args.extra_vm_argument:
+                extra_vm_argument += args.extra_vm_argument
+            import mx_compiler
+            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, prefix='LibGraal: ')
+    else:
+        mx.warn("Skipping libgraal tests: component not enabled")
 
     gate_substratevm(tasks)
     gate_sulong(tasks)
