@@ -33,6 +33,8 @@ import java.security.Provider;
 import java.security.Provider.Service;
 import java.security.cert.CertificateException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -137,6 +139,20 @@ public class SecurityServicesFeature implements Feature {
         }
     }
 
+    /** Get the list of configured providers. The SUN provider is returned by default. */
+    private List<Provider> getProviders(boolean enableAllSecurityServices) {
+        if (enableAllSecurityServices) {
+            /* Parse and instantiate all providers. */
+            return Providers.getProviderList().providers();
+        } else {
+            /*
+             * Get only the SUN provider. Avoids parsing the entire providers list and instantiating
+             * unused providers.
+             */
+            return Collections.singletonList(Providers.getSunProvider());
+        }
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -146,15 +162,12 @@ public class SecurityServicesFeature implements Feature {
         Function<String, Class<?>> consParamClassAccessor = getConsParamClassAccessor(access);
 
         trace("Registering security services...");
-        for (Provider provider : Providers.getProviderList().providers()) {
-            if (enableAllSecurityServices || isSunProvider(provider)) {
-                /* The SUN provider class is registered by default. */
-                register(provider);
-                for (Service service : provider.getServices()) {
-                    if (enableAllSecurityServices || isMessageDigest(service) || isSecureRandom(service)) {
-                        /* SecureRandom and MessageDigest SUN services are registered by default. */
-                        register(access, service, consParamClassAccessor);
-                    }
+        for (Provider provider : getProviders(enableAllSecurityServices)) {
+            register(provider);
+            for (Service service : provider.getServices()) {
+                if (enableAllSecurityServices || isMessageDigest(service) || isSecureRandom(service)) {
+                    /* SecureRandom and MessageDigest SUN services are registered by default. */
+                    register(access, service, consParamClassAccessor);
                 }
             }
         }
