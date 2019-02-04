@@ -131,12 +131,6 @@ public class SecurityServicesFeature implements Feature {
          */
         // @formatter:on
         JNIRuntimeAccess.register(byte[].class);
-
-        try {
-            JNIRuntimeAccess.register(sun.security.ec.ECKeyPairGenerator.class.getDeclaredMethod("generateECKeyPair", int.class, byte[].class, byte[].class));
-        } catch (NoSuchMethodException e) {
-            VMError.shouldNotReachHere(e);
-        }
     }
 
     /** Get the list of configured providers. The SUN provider is returned by default. */
