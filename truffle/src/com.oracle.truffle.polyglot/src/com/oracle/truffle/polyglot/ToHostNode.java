@@ -53,7 +53,6 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -227,21 +226,12 @@ abstract class ToHostNode extends Node {
             } else if (priority < HOST_PROXY && HostObject.isInstance(tValue)) {
                 return false;
             } else {
-                if (TruffleOptions.AOT) {
-                    // support Function also with AOT
-                    if (priority >= FUNCTION_PROXY && targetType == Function.class) {
-                        return isExecutable(tValue) || isInstantiable(tValue);
-                    } else {
-                        return false;
-                    }
+                if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
+                    return true;
+                } else if (priority >= OBJECT_PROXY && targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
+                    return true;
                 } else {
-                    if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
-                        return true;
-                    } else if (priority >= OBJECT_PROXY && targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
-                        return true;
-                    } else {
-                        return false;
-                    }
+                    return false;
                 }
             }
         } else {
@@ -336,7 +326,7 @@ abstract class ToHostNode extends Node {
             TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);
             if (isExecutable(truffleObject) || isInstantiable(truffleObject)) {
                 obj = PolyglotFunction.create(languageContext, truffleObject, returnType.clazz, returnType.type);
-            } else if (!TruffleOptions.AOT && ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
+            } else if (ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
                 obj = HostInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must be executable or instantiable.");
@@ -347,7 +337,7 @@ abstract class ToHostNode extends Node {
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have array elements.");
             }
-        } else if (!TruffleOptions.AOT && targetType.isInterface()) {
+        } else if (targetType.isInterface()) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (isExecutable(truffleObject) || isInstantiable(truffleObject))) {
                 obj = HostInteropReflect.asJavaFunction(targetType, truffleObject, languageContext);
             } else if (ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
@@ -384,7 +374,7 @@ abstract class ToHostNode extends Node {
     }
 
     private static TypeAndClass<?> getGenericParameterType(Type genericType, int index) {
-        if (!TruffleOptions.AOT && genericType instanceof ParameterizedType) {
+        if (genericType instanceof ParameterizedType) {
             ParameterizedType parametrizedType = (ParameterizedType) genericType;
             final Type[] typeArguments = parametrizedType.getActualTypeArguments();
             Class<?> elementClass = Object.class;
@@ -404,7 +394,7 @@ abstract class ToHostNode extends Node {
 
     private static Type getGenericArrayComponentType(Type genericType) {
         Type genericComponentType = null;
-        if (!TruffleOptions.AOT && genericType instanceof GenericArrayType) {
+        if (genericType instanceof GenericArrayType) {
             GenericArrayType genericArrayType = (GenericArrayType) genericType;
             genericComponentType = genericArrayType.getGenericComponentType();
         }

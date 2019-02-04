@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,10 +49,18 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -62,8 +70,11 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -80,6 +91,7 @@ public final class LLVMContext {
     private final HashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new HashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
+    private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
 
     private DataLayout dataLayout;
 
@@ -131,7 +143,6 @@ public final class LLVMContext {
 
     private boolean initialized;
     private boolean cleanupNecessary;
-    private boolean defaultLibrariesLoaded;
 
     private final NodeFactory nodeFactory;
 
@@ -160,7 +171,6 @@ public final class LLVMContext {
         this.contextExtensions = activeConfiguration.createContextExtensions(this);
         this.initialized = false;
         this.cleanupNecessary = false;
-        this.defaultLibrariesLoaded = false;
 
         this.dataLayout = new DataLayout();
         this.destructorFunctions = new ArrayList<>();
@@ -189,32 +199,45 @@ public final class LLVMContext {
         }
     }
 
-    public void initialize() {
-        // we can't do the initialization in the LLVMContext constructor nor in
-        // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
-        // do it in a delayed way.
-        if (!initialized) {
-            assert !cleanupNecessary;
-            initialized = true;
-            cleanupNecessary = true;
+    private static final class InitializeContextNode extends LLVMStatementNode {
 
-            LLVMFunctionDescriptor initContextDescriptor = globalScope.getFunction("@__sulong_init_context");
+        private final ContextReference<LLVMContext> ctxRef;
+        private final FrameSlot stackPointer;
+
+        @Child DirectCallNode initContext;
+
+        InitializeContextNode(LLVMContext ctx, FrameDescriptor rootFrame) {
+            this.ctxRef = ctx.getLanguage().getContextReference();
+            this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
+
+            LLVMFunctionDescriptor initContextDescriptor = ctx.globalScope.getFunction("@__sulong_init_context");
             RootCallTarget initContextFunction = initContextDescriptor.getLLVMIRFunction();
-            try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
-                Object[] args = new Object[]{stackPointer, getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
-                initContextFunction.call(args);
+            this.initContext = DirectCallNode.create(initContextFunction);
+        }
+
+        @Override
+        public void execute(VirtualFrame frame) {
+            LLVMContext ctx = ctxRef.get();
+            if (!ctx.initialized) {
+                assert !ctx.cleanupNecessary;
+                ctx.initialized = true;
+                ctx.cleanupNecessary = true;
+                try (StackPointer sp = ((StackPointer) FrameUtil.getObjectSafe(frame, stackPointer)).newFrame()) {
+                    Object[] args = new Object[]{sp, ctx.getApplicationArguments(), ctx.getEnvironmentVariables(), ctx.getRandomValues()};
+                    initContext.call(args);
+                }
             }
         }
     }
 
-    public boolean areDefaultLibrariesLoaded() {
-        return defaultLibrariesLoaded;
+    public LLVMStatementNode createInitializeContextNode(FrameDescriptor rootFrame) {
+        // we can't do the initialization in the LLVMContext constructor nor in
+        // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
+        // do it in a delayed way.
+        return new InitializeContextNode(this, rootFrame);
     }
 
-    public void setDefaultLibrariesLoaded() {
-        defaultLibrariesLoaded = true;
-    }
-
+    @TruffleBoundary
     private LLVMManagedPointer getApplicationArguments() {
         String[] result;
         if (mainArguments == null) {
@@ -231,11 +254,13 @@ public final class LLVMContext {
         return toTruffleObjects(result);
     }
 
+    @TruffleBoundary
     private LLVMManagedPointer getEnvironmentVariables() {
         String[] result = environment.entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
         return toTruffleObjects(result);
     }
 
+    @TruffleBoundary
     private LLVMManagedPointer getRandomValues() {
         byte[] result = new byte[16];
         random().nextBytes(result);
@@ -283,14 +308,26 @@ public final class LLVMContext {
         threadingStack.freeMainStack(memory);
 
         // free the space allocated for non-pointer globals
-        LLVMIntrinsicProvider provider = getContextExtension(LLVMIntrinsicProvider.class);
-        RootCallTarget free = provider.generateIntrinsicTarget("@free", 2);
+        Truffle.getRuntime().createCallTarget(new RootNode(language) {
 
-        for (LLVMPointer store : globalsNonPointerStore) {
-            if (store != null) {
-                free.call(-1, store);
+            @Child LLVMMemoryOpNode freeRo = nodeFactory.createFreeGlobalsBlock(true);
+            @Child LLVMMemoryOpNode freeRw = nodeFactory.createFreeGlobalsBlock(false);
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                for (LLVMPointer store : globalsReadOnlyStore) {
+                    if (store != null) {
+                        freeRo.execute(store);
+                    }
+                }
+                for (LLVMPointer store : globalsNonPointerStore) {
+                    if (store != null) {
+                        freeRw.execute(store);
+                    }
+                }
+                return null;
             }
-        }
+        }).call();
 
         // free the space which might have been when putting pointer-type globals into native memory
         for (LLVMPointer pointer : globalsReverseMap.keySet()) {
@@ -572,8 +609,14 @@ public final class LLVMContext {
         destructorFunctions.add(destructor);
     }
 
-    public void registerScopes(LLVMScope[] scopes) {
-        dynamicLinkChain.addScopes(scopes);
+    @TruffleBoundary
+    public boolean isScopeLoaded(LLVMScope scope) {
+        return dynamicLinkChain.containsScope(scope);
+    }
+
+    @TruffleBoundary
+    public void registerScope(LLVMScope scope) {
+        dynamicLinkChain.addScope(scope);
     }
 
     public synchronized void registerThread(LLVMThread thread) {
@@ -626,9 +669,16 @@ public final class LLVMContext {
         return globalsReverseMap.get(pointer);
     }
 
-    public void registerGlobals(LLVMPointer nonPointerStore, HashMap<LLVMPointer, LLVMGlobal> reverseMap) {
+    public void registerReadOnlyGlobals(LLVMPointer nonPointerStore) {
+        globalsReadOnlyStore.add(nonPointerStore);
+    }
+
+    public void registerGlobals(LLVMPointer nonPointerStore) {
         globalsNonPointerStore.add(nonPointerStore);
-        globalsReverseMap.putAll(reverseMap);
+    }
+
+    public void registerGlobalReverseMap(LLVMGlobal global, LLVMPointer target) {
+        globalsReverseMap.put(target, global);
     }
 
     public void setCleanupNecessary(boolean value) {
@@ -755,15 +805,13 @@ public final class LLVMContext {
             this.scopes = new ArrayList<>();
         }
 
-        public void addScopes(LLVMScope[] newScopes) {
-            for (LLVMScope newScope : newScopes) {
-                addScope(newScope);
-            }
-        }
-
         private void addScope(LLVMScope newScope) {
             assert !scopes.contains(newScope);
             scopes.add(newScope);
+        }
+
+        private boolean containsScope(LLVMScope scope) {
+            return scopes.contains(scope);
         }
     }
 }

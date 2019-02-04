@@ -48,13 +48,22 @@ import com.oracle.truffle.api.source.SourceSection;
  * Represents an exception thrown during the execution of a guest language program. All exceptions
  * thrown in a guest language implementation that are not implementing {@link TruffleException} are
  * considered {@link #isInternalError() internal} errors.
- *
+ * <p>
  * {@link TruffleException} is most efficient if the {@link Throwable#getCause() cause} is left
  * uninitialized. Implementations of {@link TruffleException} also should not prevent initialization
  * of the exception cause, e.g., by overriding {@link Throwable#initCause(Throwable)}.
- *
+ * <p>
  * In order to be efficient, a {@link TruffleException} should override
- * {@link Throwable#fillInStackTrace()} so that it returns {@code null}.
+ * {@link Throwable#fillInStackTrace()} without the {@code synchronized} modifier, so that it
+ * returns {@code this}:
+ *
+ * <pre>
+ * &#64;SuppressWarnings("sync-override")
+ * &#64;Override
+ * public final Throwable fillInStackTrace() {
+ *     return this;
+ * }
+ * </pre>
  *
  * @since 0.27
  * @see TruffleStackTraceElement#getStackTrace(Throwable) To access the stack trace of an exception.

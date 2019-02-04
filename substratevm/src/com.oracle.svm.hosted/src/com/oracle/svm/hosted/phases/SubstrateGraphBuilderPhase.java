@@ -115,14 +115,14 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
         private boolean curDeoptimizeOnException;
 
         @Override
-        protected void createHandleExceptionTarget(FixedWithNextNode finishedDispatch, int bci, FrameStateBuilder dispatchState) {
+        protected void createHandleExceptionTarget(FixedWithNextNode afterExceptionLoaded, int bci, FrameStateBuilder dispatchState) {
             if (curDeoptimizeOnException) {
                 DeoptimizeNode deoptimize = graph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NotCompiledExceptionHandler));
-                VMError.guarantee(finishedDispatch.next() == null);
-                finishedDispatch.setNext(deoptimize);
+                VMError.guarantee(afterExceptionLoaded.next() == null);
+                afterExceptionLoaded.setNext(deoptimize);
 
             } else {
-                super.createHandleExceptionTarget(finishedDispatch, bci, dispatchState);
+                super.createHandleExceptionTarget(afterExceptionLoaded, bci, dispatchState);
             }
         }
 

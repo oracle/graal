@@ -25,6 +25,8 @@
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import static java.lang.String.format;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
 
 import java.lang.reflect.Constructor;
@@ -144,6 +146,9 @@ public class InvocationPlugins {
 
         OptionalLazySymbol(String name) {
             this.name = name;
+            if (IS_BUILDING_NATIVE_IMAGE) {
+                resolve();
+            }
         }
 
         @Override
@@ -156,7 +161,7 @@ public class InvocationPlugins {
          * resolution fails.
          */
         public Class<?> resolve() {
-            if (resolved == null) {
+            if (!IS_IN_NATIVE_IMAGE && resolved == null) {
                 Class<?> resolvedOrNull = resolveClass(name, true);
                 resolved = resolvedOrNull == null ? MASK_NULL : resolvedOrNull;
             }
@@ -466,8 +471,8 @@ public class InvocationPlugins {
             Binding binding = new Binding(plugin, isStatic, name, argumentTypes);
             bindings.add(binding);
 
-            assert Checks.check(this.plugins, declaringType, binding);
-            assert Checks.checkResolvable(false, declaringType, binding);
+            assert IS_IN_NATIVE_IMAGE || Checks.check(this.plugins, declaringType, binding);
+            assert IS_IN_NATIVE_IMAGE || Checks.checkResolvable(false, declaringType, binding);
         }
 
         @Override
@@ -974,8 +979,8 @@ public class InvocationPlugins {
             argumentTypes[0] = declaringClass;
         }
         Binding binding = put(plugin, isStatic, allowOverwrite, declaringClass, name, argumentTypes);
-        assert Checks.check(this, declaringClass, binding);
-        assert Checks.checkResolvable(isOptional, declaringClass, binding);
+        assert IS_IN_NATIVE_IMAGE || Checks.check(this, declaringClass, binding);
+        assert IS_IN_NATIVE_IMAGE || Checks.checkResolvable(isOptional, declaringClass, binding);
     }
 
     /**
@@ -1018,10 +1023,19 @@ public class InvocationPlugins {
         if (parent != null) {
             InvocationPlugin plugin = parent.lookupInvocation(method);
             if (plugin != null) {
+                if (IS_IN_NATIVE_IMAGE && plugin instanceof MethodSubstitutionPlugin) {
+                    // Disable method substitutions until GR-13607
+                    return null;
+                }
                 return plugin;
             }
         }
-        return get(method);
+        InvocationPlugin invocationPlugin = get(method);
+        if (IS_IN_NATIVE_IMAGE && invocationPlugin instanceof MethodSubstitutionPlugin) {
+            // Disable method substitutions until GR-13607
+            return null;
+        }
+        return invocationPlugin;
     }
 
     /**
@@ -1155,25 +1169,27 @@ public class InvocationPlugins {
         static final Class<?>[][] SIGS;
 
         static {
-            if (!Assertions.assertionsEnabled()) {
+            if (!Assertions.assertionsEnabled() && !IS_BUILDING_NATIVE_IMAGE) {
                 throw new GraalError("%s must only be used in assertions", Checks.class.getName());
             }
             ArrayList<Class<?>[]> sigs = new ArrayList<>(MAX_ARITY);
-            for (Method method : InvocationPlugin.class.getDeclaredMethods()) {
-                if (!Modifier.isStatic(method.getModifiers()) && method.getName().equals("apply")) {
-                    Class<?>[] sig = method.getParameterTypes();
-                    assert sig[0] == GraphBuilderContext.class;
-                    assert sig[1] == ResolvedJavaMethod.class;
-                    assert sig[2] == InvocationPlugin.Receiver.class;
-                    assert Arrays.asList(sig).subList(3, sig.length).stream().allMatch(c -> c == ValueNode.class);
-                    while (sigs.size() < sig.length - 2) {
-                        sigs.add(null);
+            if (!IS_IN_NATIVE_IMAGE) {
+                for (Method method : InvocationPlugin.class.getDeclaredMethods()) {
+                    if (!Modifier.isStatic(method.getModifiers()) && method.getName().equals("apply")) {
+                        Class<?>[] sig = method.getParameterTypes();
+                        assert sig[0] == GraphBuilderContext.class;
+                        assert sig[1] == ResolvedJavaMethod.class;
+                        assert sig[2] == InvocationPlugin.Receiver.class;
+                        assert Arrays.asList(sig).subList(3, sig.length).stream().allMatch(c -> c == ValueNode.class);
+                        while (sigs.size() < sig.length - 2) {
+                            sigs.add(null);
+                        }
+                        sigs.set(sig.length - 3, sig);
                     }
-                    sigs.set(sig.length - 3, sig);
                 }
+                assert sigs.indexOf(null) == -1 : format("need to add an apply() method to %s that takes %d %s arguments ", InvocationPlugin.class.getName(), sigs.indexOf(null),
+                                ValueNode.class.getSimpleName());
             }
-            assert sigs.indexOf(null) == -1 : format("need to add an apply() method to %s that takes %d %s arguments ", InvocationPlugin.class.getName(), sigs.indexOf(null),
-                            ValueNode.class.getSimpleName());
             SIGS = sigs.toArray(new Class<?>[sigs.size()][]);
         }
 
@@ -1289,6 +1305,9 @@ public class InvocationPlugins {
         }
         if (type instanceof OptionalLazySymbol) {
             return ((OptionalLazySymbol) type).resolve();
+        }
+        if (IS_IN_NATIVE_IMAGE) {
+            throw new GraalError("Unresolved type in native image image:" + type.getTypeName());
         }
         return resolveClass(type.getTypeName(), optional);
     }

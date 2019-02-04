@@ -113,7 +113,7 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return self.raw_config_name
 
     def post_process_command_line_args(self, args):
-        return self.extra_args + args
+        return [arg if not callable(arg) else arg() for arg in self.extra_args] + args
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         tag = mx.get_jdk_option().tag
@@ -147,8 +147,11 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
-def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0):
-    for prefix, args in [('', ['-XX:+UseJVMCICompiler']), ('hosted-', ['-XX:-UseJVMCICompiler'])]:
+def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0, hosted=True):
+    prefixes = [('', ['-XX:+UseJVMCICompiler'])]
+    if hosted:
+        prefixes.append(('hosted-', ['-XX:-UseJVMCICompiler']))
+    for prefix, args in prefixes:
         extended_raw_config_name = prefix + raw_config_name
         extended_extra_args = extra_args + args
         if include_default:
@@ -169,7 +172,6 @@ _graal_variants = [
     ('no-splitting', ['-Dgraal.TruffleSplitting=false'], 0),
     ('limit-truffle-inlining', ['-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
     ('no-splitting-limit-truffle-inlining', ['-Dgraal.TruffleSplitting=false', '-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
-    ('exp-splitting', ['-Dgraal.TruffleExperimentalSplitting=true', '-Dgraal.TruffleExperimentalSplittingAllowForcedSplits=false'], 0),
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 

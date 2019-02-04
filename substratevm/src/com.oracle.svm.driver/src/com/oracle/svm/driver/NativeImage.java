@@ -799,12 +799,12 @@ public class NativeImage {
                 }
             }
 
-            if (buildExecutable && !jarOptionMode) {
+            if (!jarOptionMode) {
                 /* Main-class from customImageBuilderArgs counts as explicitMainClass */
                 boolean explicitMainClass = customImageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHClass));
 
                 if (extraImageArgs.isEmpty()) {
-                    if (mainClass == null || mainClass.isEmpty()) {
+                    if (buildExecutable && (mainClass == null || mainClass.isEmpty())) {
                         showError("Please specify class containing the main entry point method. (see --help)");
                     }
                 } else {

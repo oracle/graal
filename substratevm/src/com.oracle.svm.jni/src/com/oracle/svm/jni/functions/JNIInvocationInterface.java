@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jni.functions;
 
-import static com.oracle.svm.core.option.RuntimeOptionParser.DEFAULT_OPTION_PREFIX;
-import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.PLUS_MINUS;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_1;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_2;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_4;
@@ -60,7 +58,6 @@ import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
-import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.jni.JNIJavaVMList;
@@ -85,7 +82,6 @@ import com.oracle.svm.jni.nativeapi.JNIVersion;
  * @see <a href="http://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html">
  *      Java Native Interface Specification: The Invocation API</a>
  */
-@SuppressWarnings("unused")
 final class JNIInvocationInterface {
 
     // Checkstyle: stop
@@ -108,6 +104,7 @@ final class JNIInvocationInterface {
          */
 
         static class JNICreateJavaVMPrologue {
+            @SuppressWarnings("unused")
             static void enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
                 if (!SubstrateOptions.SpawnIsolates.getValue()) {
                     int error = CEntryPointActions.enterIsolate((Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
@@ -139,9 +136,7 @@ final class JNIInvocationInterface {
                         options.add(CTypeConversion.toJavaString(option.getOptionString()));
                     }
                 }
-                String[] optionArray = options.toArray(new String[0]);
-                optionArray = RuntimeOptionParser.singleton().parse(optionArray, DEFAULT_OPTION_PREFIX, PLUS_MINUS, true);
-                RuntimePropertyParser.parse(optionArray);
+                RuntimeOptionParser.parseAndConsumeAllOptions(options.toArray(new String[0]));
             }
             JNIJavaVM javavm = JNIFunctionTables.singleton().getGlobalJavaVM();
             JNIJavaVMList.addJavaVM(javavm);
@@ -212,6 +207,7 @@ final class JNIInvocationInterface {
      */
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @SuppressWarnings("unused")
     static int DestroyJavaVM(JNIJavaVM vm) {
         JavaThreads.singleton().joinAllNonDaemons();
         return JNIErrors.JNI_OK();
@@ -222,6 +218,7 @@ final class JNIInvocationInterface {
      */
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIGetEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @SuppressWarnings("unused")
     static int GetEnv(JNIJavaVM vm, WordPointer env, int version) {
         env.write(JNIThreadLocalEnvironment.getAddress());
         return JNIErrors.JNI_OK();

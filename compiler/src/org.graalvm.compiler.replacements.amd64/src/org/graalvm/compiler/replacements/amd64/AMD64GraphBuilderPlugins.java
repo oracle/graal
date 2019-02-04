@@ -71,7 +71,7 @@ import sun.misc.Unsafe;
 
 public class AMD64GraphBuilderPlugins {
 
-    public static void register(Plugins plugins, BytecodeProvider replacementsBytecodeProvider, AMD64 arch, boolean arithmeticStubs, boolean explicitUnsafeNullChecks) {
+    public static void register(Plugins plugins, BytecodeProvider replacementsBytecodeProvider, AMD64 arch, boolean explicitUnsafeNullChecks) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
@@ -85,7 +85,7 @@ public class AMD64GraphBuilderPlugins {
                 registerStringPlugins(invocationPlugins, replacementsBytecodeProvider);
                 registerStringLatin1Plugins(invocationPlugins, replacementsBytecodeProvider);
                 registerStringUTF16Plugins(invocationPlugins, replacementsBytecodeProvider);
-                registerMathPlugins(invocationPlugins, arch, arithmeticStubs, replacementsBytecodeProvider);
+                registerMathPlugins(invocationPlugins, arch, replacementsBytecodeProvider);
                 registerArraysEqualsPlugins(invocationPlugins, replacementsBytecodeProvider);
             }
         });
@@ -155,21 +155,15 @@ public class AMD64GraphBuilderPlugins {
         }
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, AMD64 arch, boolean arithmeticStubs, BytecodeProvider bytecodeProvider) {
+    private static void registerMathPlugins(InvocationPlugins plugins, AMD64 arch, BytecodeProvider bytecodeProvider) {
         Registration r = new Registration(plugins, Math.class, bytecodeProvider);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
         registerUnaryMath(r, "exp", EXP);
         registerBinaryMath(r, "pow", POW);
-        if (arithmeticStubs) {
-            registerUnaryMath(r, "sin", SIN);
-            registerUnaryMath(r, "cos", COS);
-            registerUnaryMath(r, "tan", TAN);
-        } else {
-            r.registerMethodSubstitution(AMD64MathSubstitutions.class, "sin", double.class);
-            r.registerMethodSubstitution(AMD64MathSubstitutions.class, "cos", double.class);
-            r.registerMethodSubstitution(AMD64MathSubstitutions.class, "tan", double.class);
-        }
+        registerUnaryMath(r, "sin", SIN);
+        registerUnaryMath(r, "cos", COS);
+        registerUnaryMath(r, "tan", TAN);
 
         if (arch.getFeatures().contains(CPUFeature.SSE4_1)) {
             registerRound(r, "rint", RoundingMode.NEAREST);

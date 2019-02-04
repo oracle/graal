@@ -278,6 +278,60 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMMinnum extends LLVMBuiltin {
+
+        @Specialization
+        protected float doIntrinsic(float value1, float value2) {
+            if (Float.isNaN(value1)) {
+                return value2;
+            }
+            if (Float.isNaN(value2)) {
+                return value1;
+            }
+            return Math.min(value1, value2);
+        }
+
+        @Specialization
+        protected double doIntrinsic(double value1, double value2) {
+            if (Double.isNaN(value1)) {
+                return value2;
+            }
+            if (Double.isNaN(value2)) {
+                return value1;
+            }
+            return Math.min(value1, value2);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMMaxnum extends LLVMBuiltin {
+
+        @Specialization
+        protected float doIntrinsic(float value1, float value2) {
+            if (Float.isNaN(value1)) {
+                return value2;
+            }
+            if (Float.isNaN(value2)) {
+                return value1;
+            }
+            return Math.max(value1, value2);
+        }
+
+        @Specialization
+        protected double doIntrinsic(double value1, double value2) {
+            if (Double.isNaN(value1)) {
+                return value2;
+            }
+            if (Double.isNaN(value2)) {
+                return value1;
+            }
+            return Math.max(value1, value2);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMExp extends LLVMBuiltin {
 
         @Specialization

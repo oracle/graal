@@ -43,7 +43,6 @@ package com.oracle.truffle.polyglot;
 import java.lang.reflect.Proxy;
 import java.util.Objects;
 
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 interface HostWrapper {
@@ -57,7 +56,7 @@ interface HostWrapper {
     static boolean isInstance(Object v) {
         if (v == null) {
             return false;
-        } else if (!TruffleOptions.AOT && v instanceof Proxy) {
+        } else if (v instanceof Proxy) {
             return isHostProxy(v);
         } else {
             return v instanceof HostWrapper;
@@ -74,7 +73,7 @@ interface HostWrapper {
     }
 
     static HostWrapper asInstance(Object v) {
-        if (!TruffleOptions.AOT && v instanceof Proxy) {
+        if (v instanceof Proxy) {
             return getHostProxy(v);
         } else {
             return (HostWrapper) v;

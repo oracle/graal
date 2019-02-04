@@ -195,12 +195,25 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
              * Ensure all internal fields of the original Class.ReflectionData object are
              * initialized. Calling the public methods triggers lazy initialization of the fields.
              */
-            clazz.getDeclaredFields();
-            clazz.getFields();
-            clazz.getDeclaredMethods();
-            clazz.getMethods();
-            clazz.getDeclaredConstructors();
-            clazz.getConstructors();
+            try {
+                clazz.getDeclaredFields();
+                clazz.getFields();
+                clazz.getDeclaredMethods();
+                clazz.getMethods();
+                clazz.getDeclaredConstructors();
+                clazz.getConstructors();
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * If any of the methods or fields reference missing types in their signatures a
+                 * NoClassDefFoundError is thrown. Skip registering reflection metadata for this
+                 * class.
+                 */
+                // Checkstyle: stop
+                System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
+                                ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + ".");
+                // Checkstyle: resume
+                continue;
+            }
 
             try {
                 Object originalReflectionData = reflectionDataMethod.invoke(clazz);

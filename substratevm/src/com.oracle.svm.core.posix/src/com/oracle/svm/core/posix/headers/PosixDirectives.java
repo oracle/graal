@@ -82,6 +82,7 @@ public class PosixDirectives implements CContext.Directives {
                     "<CoreFoundation/CoreFoundation.h>",
                     "<sys/event.h>",
                     "<mach/mach.h>",
+                    "<sys/ucontext.h>",
                     "<mach/mach_time.h>",
                     "<mach-o/dyld.h>",
                     "<netinet6/in6_var.h>",

@@ -78,7 +78,7 @@ abstract class HostFieldDesc {
 
     static HostFieldDesc unreflect(Field reflectionField) {
         assert isAccessible(reflectionField);
-        if (TruffleOptions.AOT) {
+        if (TruffleOptions.AOT) { // use reflection instead of MethodHandle
             return new ReflectImpl(reflectionField);
         } else {
             return new MHImpl(reflectionField);

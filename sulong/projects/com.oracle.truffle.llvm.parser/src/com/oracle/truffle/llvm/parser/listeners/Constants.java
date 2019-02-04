@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,12 +45,37 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
-import com.oracle.truffle.llvm.parser.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class Constants implements ParserListener {
+
+    private static final int CONSTANT_SETTYPE = 1;
+    private static final int CONSTANT_NULL = 2;
+    private static final int CONSTANT_UNDEF = 3;
+    private static final int CONSTANT_INTEGER = 4;
+    private static final int CONSTANT_WIDE_INTEGER = 5;
+    private static final int CONSTANT_FLOAT = 6;
+    private static final int CONSTANT_AGGREGATE = 7;
+    private static final int CONSTANT_STRING = 8;
+    private static final int CONSTANT_CSTRING = 9;
+    private static final int CONSTANT_CE_BINOP = 10;
+    private static final int CONSTANT_CE_CAST = 11;
+    private static final int CONSTANT_CE_GEP = 12;
+    // private static final int CONSTANT_CE_SELECT = 13;
+    // private static final int CONSTANT_CE_EXTRACTELT = 14;
+    // private static final int CONSTANT_CE_INSERTELT = 15;
+    // private static final int CONSTANT_CE_SHUFFLEVEC = 16;
+    private static final int CONSTANT_CE_CMP = 17;
+    // private static final int CONSTANT_INLINEASM_OLD = 18;
+    // private static final int CONSTANT_CE_SHUFVEC_EX = 19;
+    private static final int CONSTANT_CE_INBOUNDS_GEP = 20;
+    private static final int CONSTANT_BLOCKADDRESS = 21;
+    private static final int CONSTANT_DATA = 22;
+    private static final int CONSTANT_INLINEASM = 23;
+    private static final int CONSTANT_CE_GEP_WITH_INRANGE_INDEX = 24;
 
     private static final BigInteger WIDE_INTEGER_MASK = BigInteger.ONE.shiftLeft(Long.SIZE).subtract(BigInteger.ONE);
 
@@ -67,14 +92,14 @@ public final class Constants implements ParserListener {
 
     @Override
     public void record(long id, long[] args) {
-        ConstantsRecord record = ConstantsRecord.decode(id);
+        final int opCode = (int) id;
 
-        switch (record) {
-            case SETTYPE:
+        switch (opCode) {
+            case CONSTANT_SETTYPE:
                 type = types.get(args[0]);
                 return;
 
-            case NULL:
+            case CONSTANT_NULL:
                 if (Type.isIntegerType(type)) {
                     scope.addSymbol(new NullConstant(type), Type.createConstantForType(type, 0));
                 } else {
@@ -82,16 +107,16 @@ public final class Constants implements ParserListener {
                 }
                 return;
 
-            case UNDEF:
+            case CONSTANT_UNDEF:
                 scope.addSymbol(new UndefinedConstant(type), type);
                 return;
 
-            case INTEGER: {
+            case CONSTANT_INTEGER: {
                 long value = Records.toSignedValue(args[0]);
                 scope.addSymbol(new IntegerConstant(type, value), Type.createConstantForType(type, value));
                 return;
             }
-            case WIDE_INTEGER: {
+            case CONSTANT_WIDE_INTEGER: {
                 BigInteger value = BigInteger.ZERO;
 
                 for (int i = 0; i < args.length; i++) {
@@ -103,38 +128,38 @@ public final class Constants implements ParserListener {
                 scope.addSymbol(new BigIntegerConstant(type, value), Type.createConstantForType(type, value));
                 return;
             }
-            case FLOAT:
+            case CONSTANT_FLOAT:
                 scope.addSymbol(FloatingPointConstant.create(type, args), type);
                 return;
 
-            case AGGREGATE: {
+            case CONSTANT_AGGREGATE: {
                 scope.addSymbol(Constant.createFromValues(type, scope.getSymbols(), Records.toIntegers(args)), type);
                 return;
             }
-            case STRING:
+            case CONSTANT_STRING:
                 scope.addSymbol(new StringConstant((ArrayType) type, Records.toString(args), false), type);
                 return;
 
-            case CSTRING:
+            case CONSTANT_CSTRING:
                 scope.addSymbol(new StringConstant((ArrayType) type, Records.toString(args), true), type);
                 return;
 
-            case CE_BINOP: {
-                int opCode = (int) args[0];
+            case CONSTANT_CE_BINOP: {
+                int op = (int) args[0];
                 int lhs = (int) args[1];
                 int rhs = (int) args[2];
-                scope.addSymbol(BinaryOperationConstant.fromSymbols(scope.getSymbols(), type, opCode, lhs, rhs), type);
+                scope.addSymbol(BinaryOperationConstant.fromSymbols(scope.getSymbols(), type, op, lhs, rhs), type);
                 return;
             }
 
-            case CE_CAST: {
-                int opCode = (int) args[0];
+            case CONSTANT_CE_CAST: {
+                int op = (int) args[0];
                 int value = (int) args[2];
-                scope.addSymbol(CastConstant.fromSymbols(scope.getSymbols(), type, opCode, value), type);
+                scope.addSymbol(CastConstant.fromSymbols(scope.getSymbols(), type, op, value), type);
                 return;
             }
 
-            case CE_CMP: {
+            case CONSTANT_CE_CMP: {
                 int i = 1;
                 int lhs = (int) args[i++];
                 int rhs = (int) args[i++];
@@ -144,44 +169,44 @@ public final class Constants implements ParserListener {
                 return;
             }
 
-            case BLOCKADDRESS: {
+            case CONSTANT_BLOCKADDRESS: {
                 int function = (int) args[1];
                 int block = (int) args[2];
                 scope.addSymbol(BlockAddressConstant.fromSymbols(scope.getSymbols(), type, function, block), type);
                 return;
             }
 
-            case DATA:
+            case CONSTANT_DATA:
                 scope.addSymbol(Constant.createFromData(type, args), type);
                 return;
 
-            case INLINEASM:
+            case CONSTANT_INLINEASM:
                 scope.addSymbol(InlineAsmConstant.generate(type, args), type);
                 return;
 
-            case CE_GEP:
-            case CE_INBOUNDS_GEP:
-            case CE_GEP_WITH_INRANGE_INDEX:
-                createGetElementPointerExpression(args, record);
+            case CONSTANT_CE_GEP:
+            case CONSTANT_CE_INBOUNDS_GEP:
+            case CONSTANT_CE_GEP_WITH_INRANGE_INDEX:
+                createGetElementPointerExpression(args, opCode);
                 return;
 
             default:
-                throw new UnsupportedOperationException("Unsupported Constant Record: " + record);
+                throw new LLVMParserException("Unsupported opCode in constant block: " + opCode);
         }
     }
 
-    private void createGetElementPointerExpression(long[] args, ConstantsRecord record) {
+    private void createGetElementPointerExpression(long[] args, int opCode) {
         int i = 0;
-        if (record == ConstantsRecord.CE_GEP_WITH_INRANGE_INDEX || args.length % 2 != 0) {
+        if (opCode == CONSTANT_CE_GEP_WITH_INRANGE_INDEX || args.length % 2 != 0) {
             i++; // type of pointee
         }
 
         boolean isInbounds;
-        if (record == ConstantsRecord.CE_GEP_WITH_INRANGE_INDEX) {
+        if (opCode == CONSTANT_CE_GEP_WITH_INRANGE_INDEX) {
             final long op = args[i++];
             isInbounds = (op & 0x1) != 0;
         } else {
-            isInbounds = record == ConstantsRecord.CE_INBOUNDS_GEP;
+            isInbounds = opCode == CONSTANT_CE_INBOUNDS_GEP;
         }
 
         i++; // type of pointer

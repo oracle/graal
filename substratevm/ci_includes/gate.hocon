@@ -1,0 +1,44 @@
+svm-common-gate: {
+  targets: [gate]
+  setup: [
+    ["cd", "./substratevm"]
+  ]
+}
+
+svm-common-linux-gate: ${svm-common-linux-amd64} ${svm-common-gate}
+svm-common-darwin-gate: ${svm-common-darwin} ${svm-common-gate}
+svm-common-windows-gate: ${svm-common-windows} ${svm-common-gate}
+
+svm-cmd-gate: ["mx", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--tags"]
+
+gate-svm-js: {
+  run: [
+    ${svm-common-clone-benchmarks}
+    ${svm-cmd-gate} ["build,js"]
+  ]
+}
+
+builds += [
+  ${labsjdk8} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
+    name: "gate-svm-js"
+    timelimit: "35:00"
+  }
+  ${labsjdk8} ${svm-common-darwin-gate} ${gate-svm-js} {
+    name: "gate-svm-darwin-js"
+  }
+  ${labsjdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
+    name: "gate-svm-style-fullbuild"
+    run: [
+      ${svm-cmd-gate} ["style,fullbuild,helloworld,test,maven"]
+    ]
+  }
+  ${labsjdk8} ${svm-common-windows-gate} {
+    name: "gate-svm-windows-basics"
+    environment: {
+      PATH : "$MVN_HOME;$PATH"  # workaround until GR-10735 is resolved
+    }
+    run: [
+      ${svm-cmd-gate} ["build,helloworld,maven"]
+    ]
+  }
+]

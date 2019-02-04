@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class BlockAddressConstant extends AbstractConstant {
@@ -65,14 +66,19 @@ public final class BlockAddressConstant extends AbstractConstant {
             if (replacement instanceof FunctionDefinition) {
                 function = (FunctionDefinition) replacement;
             } else {
-                throw new IllegalStateException("Expected FunctionDefinition!");
+                throw new LLVMParserException("Illegal symbol for function in BlockAddressConstant: " + replacement);
             }
         }
     }
 
     public static BlockAddressConstant fromSymbols(SymbolTable symbols, Type type, int function, int block) {
         final BlockAddressConstant constant = new BlockAddressConstant(type, block);
-        constant.function = (FunctionDefinition) symbols.getForwardReferenced(function, constant);
+        final SymbolImpl functionSymbol = symbols.getForwardReferenced(function, constant);
+        if (functionSymbol instanceof FunctionDefinition) {
+            constant.function = (FunctionDefinition) functionSymbol;
+        } else {
+            throw new LLVMParserException("Illegal symbol for function in BlockAddressConstant: " + functionSymbol);
+        }
         return constant;
     }
 }

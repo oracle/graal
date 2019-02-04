@@ -32,7 +32,7 @@ import com.oracle.truffle.tools.chromeinspector.commands.Result;
 
 public final class Event {
 
-    private final String jsonString;
+    private final JSONObject json;
 
     public Event(String method, Params params) {
         JSONObject event = new JSONObject();
@@ -40,17 +40,21 @@ public final class Event {
         if (params != null) {
             event.put(Command.PARAMS, params.getJSONObject());
         }
-        jsonString = event.toString();
+        json = event;
     }
 
     /**
      * Command result event.
      */
     public Event(long id, Result result) {
-        jsonString = result.toJSONString(id);
+        json = result.toJSON(id);
+    }
+
+    public JSONObject toJSON() {
+        return json;
     }
 
     public String toJSONString() {
-        return jsonString;
+        return json.toString();
     }
 }

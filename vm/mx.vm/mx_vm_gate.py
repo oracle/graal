@@ -86,6 +86,7 @@ def gate_body(args, tasks):
         if t and mx_vm.has_component('Graal.Python', fatalIfMissing=True):
             pass
 
+    gate_substratevm(tasks)
     gate_sulong(tasks)
     gate_ruby(tasks)
     gate_python(tasks)
@@ -103,6 +104,23 @@ def graalvm_svm():
         with svm.extensions.native_image_context(common_args, hosted_assertions, native_image_cmd=native_image_cmd) as native_image:
             yield native_image
     return native_image_context, svm.extensions
+
+def gate_substratevm(tasks):
+    with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.substratevm]) as t:
+        if t:
+            tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
+            truffle_no_compilation = ['--tool:truffle', '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', '-Dcom.oracle.truffle.aot=true']
+            truffle_dir = mx.suite('truffle').dir
+            args = ['--build-args'] + truffle_no_compilation + [
+                '-H:Features=com.oracle.truffle.api.test.polyglot.RegisterTestClassesForReflectionFeature',
+                '-H:ReflectionConfigurationFiles=' + truffle_dir + '/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/polyglot/reflection.json',
+                '-H:DynamicProxyConfigurationFiles=' + truffle_dir + '/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/polyglot/proxys.json',
+                '--'
+            ] + tests
+
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                svm._native_unittest(native_image, args)
 
 def gate_sulong(tasks):
     with Task('Run SulongSuite tests as native-image', tasks, tags=[VmGateTasks.sulong]) as t:

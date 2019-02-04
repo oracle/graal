@@ -823,7 +823,7 @@ final class JNIFunctions {
             Field obj = JNIObjectHandles.getObject(fieldHandle);
             if (obj != null) {
                 boolean isStatic = Modifier.isStatic(obj.getModifiers());
-                fieldId = JNIReflectionDictionary.singleton().getDeclaredFieldId(obj.getDeclaringClass(), obj.getName(), isStatic);
+                fieldId = JNIReflectionDictionary.singleton().getDeclaredFieldID(obj.getDeclaringClass(), obj.getName(), isStatic);
             }
         }
         return fieldId;
@@ -864,7 +864,7 @@ final class JNIFunctions {
             if (method != null) {
                 boolean isStatic = Modifier.isStatic(method.getModifiers());
                 JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-                methodId = JNIReflectionDictionary.singleton().getMethodID(method.getDeclaringClass(), descriptor, isStatic);
+                methodId = JNIReflectionDictionary.singleton().getDeclaredMethodID(method.getDeclaringClass(), descriptor, isStatic);
             }
         }
         return methodId;

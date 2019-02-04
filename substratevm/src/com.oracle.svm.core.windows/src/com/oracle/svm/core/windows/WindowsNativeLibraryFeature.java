@@ -37,9 +37,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-
-import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.Jvm;
+import com.oracle.svm.core.windows.headers.WinBase;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)
@@ -51,13 +50,6 @@ class WindowsNativeLibraryFeature implements Feature {
 }
 
 class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
-    static final String[] builtInLibraries = {
-                    "java",
-                    "nio",
-                    "net",
-                    "zip"
-    };
-
     static final String[] builtInPkgNatives = {
                     "Java_com_sun_demo_jvmti_hprof",
                     "Java_com_sun_java_util_jar_pack",
@@ -120,16 +112,6 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
             Pointer builtinHandle = WinBase.GetModuleHandleA(WordFactory.nullPointer());
             return WinBase.GetProcAddress(builtinHandle, symbol.get());
         }
-    }
-
-    @Override
-    public boolean isBuiltinLibrary(String name) {
-        for (String str : builtInLibraries) {
-            if (name.equals(str)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override

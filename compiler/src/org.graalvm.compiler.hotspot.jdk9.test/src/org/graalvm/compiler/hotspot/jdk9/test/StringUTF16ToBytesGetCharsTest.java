@@ -46,6 +46,7 @@ import org.junit.Test;
 public final class StringUTF16ToBytesGetCharsTest extends MethodSubstitutionTest {
 
     private static final int N = 1000;
+    private static final int N_OVERFLOW = 10;
 
     @Before
     public void checkAMD64() {
@@ -75,6 +76,12 @@ public final class StringUTF16ToBytesGetCharsTest extends MethodSubstitutionTest
                 assertDeepEquals(dst, dst2);
             }
         }
+        for (int srcOff = 0; srcOff < N_OVERFLOW; ++srcOff) {
+            for (int len = 0; len < N_OVERFLOW; ++len) {
+                char[] src = fillUTF16Chars(new char[N_OVERFLOW]);
+                test(caller, null, src, srcOff, len);
+            }
+        }
     }
 
     @Test
@@ -100,6 +107,15 @@ public final class StringUTF16ToBytesGetCharsTest extends MethodSubstitutionTest
                     char[] dst2 = new char[length];
                     executeVarargsSafe(code, src, srcDelta, srcDelta + copiedLength, dst2, dstDelta);
                     assertDeepEquals(dst, dst2);
+                }
+            }
+        }
+        for (int srcOff = 0; srcOff < N_OVERFLOW; ++srcOff) {
+            for (int dstOff = 0; dstOff < N_OVERFLOW; ++dstOff) {
+                for (int len = 0; len < N_OVERFLOW; ++len) {
+                    byte[] src = fillUTF16Bytes(new byte[N_OVERFLOW]);
+                    char[] dst = new char[N_OVERFLOW];
+                    test(caller, null, src, srcOff, len, dst, dstOff);
                 }
             }
         }

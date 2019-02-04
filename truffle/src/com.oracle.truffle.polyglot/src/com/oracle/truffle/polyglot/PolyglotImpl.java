@@ -434,8 +434,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             this.e = e;
         }
 
+        @SuppressWarnings("sync-override")
         @Override
-        public synchronized Throwable fillInStackTrace() {
+        public final Throwable fillInStackTrace() {
             return this;
         }
 
@@ -848,6 +849,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Throwable asHostException(Throwable exception) {
+            if (!(exception instanceof HostException)) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalArgumentException("Provided value not a host exception.");
+            }
             return ((HostException) exception).getOriginal();
         }
 
@@ -1022,9 +1027,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public boolean isHostFunction(Object obj) {
-            if (TruffleOptions.AOT) {
-                return false;
-            }
             return HostFunction.isInstance(obj);
         }
 

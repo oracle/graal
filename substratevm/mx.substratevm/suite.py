@@ -1,7 +1,7 @@
 suite = {
     "mxversion": "5.196.3",
     "name": "substratevm",
-    "version" : "1.0.0-rc12",
+    "version" : "1.0.0-rc13",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -200,13 +200,12 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-
         "com.oracle.svm.hosted": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
-                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
             ],
             "javaCompliance": "8+",
@@ -476,12 +475,13 @@ suite = {
                 "include/svm_libffi.h",
             ],
             "buildEnv": {
-                "LIBFFI_SRC": "<path:truffle:LIBFFI>",
+                "LIBFFI_DIST": "<path:truffle:LIBFFI_DIST>",
                 "TRUFFLE_NFI": "<path:truffle:TRUFFLE_NFI_NATIVE>",
                 "ARCH": "<arch>",
                 "OS": "<os>"
             },
             "buildDependencies": [
+                "truffle:LIBFFI_DIST",
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],
         },
@@ -576,6 +576,23 @@ suite = {
                 },
             },
         },
+
+        "com.oracle.svm.graal.hotspot.libgraal" : {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.jni",
+                "com.oracle.svm.graal",
+                "compiler:GRAAL"
+            ],
+            "checkstyle" : "com.oracle.svm.hosted",
+            "javaCompliance": "1.8",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+        },
     },
 
     "distributions": {
@@ -591,6 +608,7 @@ suite = {
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.core",
+                "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",
@@ -674,6 +692,19 @@ suite = {
             "description" : "SubstrateVM object file writing library",
             "dependencies": [
                 "com.oracle.objectfile"
+            ],
+        },
+
+        "GRAAL_HOTSPOT_LIBRARY": {
+            "description" : "SubstrateVM HotSpot Graal library support",
+            "dependencies": [
+                "com.oracle.svm.graal.hotspot.libgraal",
+            ],
+            "overlaps" : [
+                "LIBRARY_SUPPORT"
+            ],
+            "distDependencies": [
+                "SVM",
             ],
         },
 

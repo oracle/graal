@@ -51,7 +51,7 @@ gateTestAVX1 : ${gateTest} {
 
 gateTestCompileImmediately : ${gateTest} {
   environment : {
-    EXTRA_VM_ARGS : "-Dgraal.TruffleBackgroundCompilation=false -Dgraal.TruffleCompileImmediately=true"
+    EXTRA_VM_ARGS : "-Dgraal.TruffleBackgroundCompilation=false -Dgraal.TruffleCompileImmediately=true -Dtck.inlineVerifierInstrument=false"
   }
 }
 
@@ -148,6 +148,31 @@ gateJAOTC : {
   }
   run : [
     ${gateCmd} ["build,jaotc"]
+  ]
+}
+
+# This task listens to the hotspot math stubs changes. In case of failure, please check if the hotspot changes affect the
+# emitted stub code in C2, and update corresponding recasts in the org.graalvm.compiler.lir.amd64 package accordingly.
+gateMathStubsListener: ${linux-amd64} {
+  run: [
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_cos.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_exp.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_log10.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_log.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_pow.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_sin.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_tan.cpp]
+    [echo, -e, "f801a757f3d5473368dce85993618e04  macroAssembler_x86_cos.cpp", |, md5sum, -c]
+    [echo, -e, "c2b94938c05999e4985ed43b18e5ed9f  macroAssembler_x86_exp.cpp", |, md5sum, -c]
+    [echo, -e, "5ede616384ebf2d7eb26cb889aca6cf0  macroAssembler_x86_log10.cpp", |, md5sum, -c]
+    [echo, -e, "9887acd94bae05f305873621950a7707  macroAssembler_x86_log.cpp", |, md5sum, -c]
+    [echo, -e, "1ce7e5d9af42216767f1e73faff9f738  macroAssembler_x86_pow.cpp", |, md5sum, -c]
+    [echo, -e, "612e6870fff00bd5e44452123170b16d  macroAssembler_x86_sin.cpp", |, md5sum, -c]
+    [echo, -e, "41e14dedcaddfbcc7a3042f7b926d474  macroAssembler_x86_tan.cpp", |, md5sum, -c]
+  ]
+  targets: [daily]
+  notify_emails: [
+    "yudi.zheng@oracle.com"
   ]
 }
 

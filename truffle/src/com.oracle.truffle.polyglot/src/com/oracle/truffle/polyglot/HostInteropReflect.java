@@ -81,11 +81,13 @@ final class HostInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static Class<?> findInnerClass(Class<?> clazz, String name) {
-        if (Modifier.isPublic(clazz.getModifiers())) {
-            for (Class<?> t : clazz.getClasses()) {
-                // no support for non-static type members now
-                if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {
-                    return t;
+        if (!TruffleOptions.AOT) { // GR-13208: SVM does not support Class.getClasses() yet
+            if (Modifier.isPublic(clazz.getModifiers())) {
+                for (Class<?> t : clazz.getClasses()) {
+                    // no support for non-static type members now
+                    if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {
+                        return t;
+                    }
                 }
             }
         }
@@ -98,10 +100,6 @@ final class HostInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static HostMethodDesc findMethod(Class<?> clazz, String name, boolean onlyStatic) {
-        if (TruffleOptions.AOT) {
-            return null;
-        }
-
         HostClassDesc classDesc = HostClassDesc.forClass(clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod == null && isJNIName(name)) {
@@ -118,10 +116,6 @@ final class HostInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static int findKeyInfo(Class<?> clazz, String name, boolean onlyStatic) {
-        if (TruffleOptions.AOT) {
-            return 0;
-        }
-
         boolean readable = false;
         boolean writable = false;
         boolean invocable = false;
@@ -244,13 +238,15 @@ final class HostInteropReflect {
         names.addAll(classDesc.getMethodNames(onlyStatic, includeInternal));
         if (onlyStatic) {
             names.add("class");
-            if (Modifier.isPublic(clazz.getModifiers())) {
-                // no support for non-static member types now
-                for (Class<?> t : clazz.getClasses()) {
-                    if (!isStaticTypeOrInterface(t)) {
-                        continue;
+            if (!TruffleOptions.AOT) { // GR-13208: SVM does not support Class.getClasses() yet
+                if (Modifier.isPublic(clazz.getModifiers())) {
+                    // no support for non-static member types now
+                    for (Class<?> t : clazz.getClasses()) {
+                        if (!isStaticTypeOrInterface(t)) {
+                            continue;
+                        }
+                        names.add(t.getSimpleName());
                     }
-                    names.add(t.getSimpleName());
                 }
             }
         }
@@ -468,6 +464,11 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
                     throw new UnsupportedOperationException(method.getName());
             }
         }
+
+        if (TruffleOptions.AOT) {
+            throw new UnsupportedOperationException("calling default method " + method.getName() + " is not yet supported on SubstrateVM");
+        }
+
         // default method; requires Java 9 (JEP 274)
         Class<?> declaringClass = method.getDeclaringClass();
         assert declaringClass.isInterface() : declaringClass;

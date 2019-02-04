@@ -184,6 +184,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         Timer totalTimer = new Timer("[total]", false);
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
+        OptionValues parsedHostedOptions = null;
         try (StopTimer ignored = totalTimer.start()) {
             ImageClassLoader imageClassLoader;
             Timer classlistTimer = new Timer("classlist", false);
@@ -201,7 +202,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
              * We do not have the VMConfiguration and the HostedOptionValues set up yet, so we need
              * to pass the OptionValues explicitly when accessing options.
              */
-            OptionValues parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
+            parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
             DebugContext debug = DebugContext.create(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection()));
 
             String imageName = NativeImageOptions.Name.getValue(parsedHostedOptions);
@@ -220,26 +221,25 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             Method mainEntryPoint = null;
             JavaMainSupport javaMainSupport = null;
 
-            AbstractBootImage.NativeImageKind k = AbstractBootImage.NativeImageKind.valueOf(NativeImageOptions.Kind.getValue(parsedHostedOptions));
-            if (k.executable) {
-                String className = NativeImageOptions.Class.getValue(parsedHostedOptions);
-                if (className == null || className.length() == 0) {
-                    throw UserError.abort("Must specify main entry point class when building " + k + " native image. " +
-                                    "Use '" + SubstrateOptionsParser.commandArgument(NativeImageOptions.Class, "<fully-qualified-class-name>") + "'.");
-                }
+            AbstractBootImage.NativeImageKind imageKind = AbstractBootImage.NativeImageKind.valueOf(NativeImageOptions.Kind.getValue(parsedHostedOptions));
+            String className = NativeImageOptions.Class.getValue(parsedHostedOptions);
+            if (imageKind.executable && className.isEmpty()) {
+                throw UserError.abort("Must specify main entry point class when building " + imageKind + " native image. " +
+                                "Use '" + SubstrateOptionsParser.commandArgument(NativeImageOptions.Class, "<fully-qualified-class-name>") + "'.");
+            }
+
+            if (!className.isEmpty()) {
                 Class<?> mainClass;
                 try {
                     mainClass = Class.forName(className, false, classLoader);
                 } catch (ClassNotFoundException ex) {
                     throw UserError.abort("Main entry point class '" + className + "' not found.");
                 }
-
                 String mainEntryPointName = NativeImageOptions.Method.getValue(parsedHostedOptions);
-                if (mainEntryPointName == null || mainEntryPointName.length() == 0) {
-                    throw UserError.abort("Must specify main entry point method when building " + k + " native image. " +
+                if (mainEntryPointName.isEmpty()) {
+                    throw UserError.abort("Must specify main entry point method when building " + imageKind + " native image. " +
                                     "Use '" + SubstrateOptionsParser.commandArgument(NativeImageOptions.Method, "<method-name>") + "'.");
                 }
-
                 try {
                     /* First look for an main method with the C-level signature for arguments. */
                     mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
@@ -281,7 +281,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             analysisExecutor = Inflation.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
             compilationExecutor = Inflation.createExecutor(debug, maxConcurrentThreads);
             generator = new NativeImageGenerator(imageClassLoader, optionParser);
-            generator.run(entryPoints, mainEntryPoint, javaMainSupport, imageName, k, SubstitutionProcessor.IDENTITY,
+            generator.run(entryPoints, mainEntryPoint, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
                             analysisExecutor, compilationExecutor, optionParser.getRuntimeOptionNames());
         } catch (InterruptImageBuilding e) {
             if (analysisExecutor != null) {
@@ -293,19 +293,19 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             e.getReason().ifPresent(NativeImageGeneratorRunner::info);
             return 0;
         } catch (UserException e) {
-            reportUserError(e);
+            reportUserError(e, parsedHostedOptions);
             return -1;
         } catch (AnalysisError e) {
-            reportUserError(e);
+            reportUserError(e, parsedHostedOptions);
             return -1;
         } catch (ParallelExecutionException pee) {
             boolean hasUserError = false;
             for (Throwable exception : pee.getExceptions()) {
                 if (exception instanceof UserException) {
-                    reportUserError(exception);
+                    reportUserError(exception, parsedHostedOptions);
                     hasUserError = true;
                 } else if (exception instanceof AnalysisError) {
-                    reportUserError(exception);
+                    reportUserError(exception, parsedHostedOptions);
                     hasUserError = true;
                 }
             }
@@ -373,8 +373,9 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * Function for reporting all fatal errors in SVM.
      *
      * @param e error message that is printed.
+     * @param parsedHostedOptions
      */
-    public static void reportUserError(Throwable e) {
+    public static void reportUserError(Throwable e, OptionValues parsedHostedOptions) {
         if (e instanceof UserException) {
             UserException ue = (UserException) e;
             for (String message : ue.getMessages()) {
@@ -383,8 +384,11 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         } else {
             reportUserError(e.getMessage());
         }
-        if (NativeImageOptions.ReportExceptionStackTraces.getValue()) {
+        if (parsedHostedOptions != null && NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             e.printStackTrace();
+        } else {
+            reportUserError("Use " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportExceptionStackTraces, "+") +
+                            " to print stacktrace of underlying exception");
         }
     }
 

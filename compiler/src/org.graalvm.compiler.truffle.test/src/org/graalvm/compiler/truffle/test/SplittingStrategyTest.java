@@ -24,363 +24,369 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.ReflectionUtils;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.polyglot.Context;
-import org.junit.Assert;
-import org.junit.Test;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
 
-    private final FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
+    @Before
+    public void boostBudget() {
+        createDummyTargetsToBoostGrowingSplitLimit();
+    }
 
-    @Test
-    @SuppressWarnings("try")
-    public void testDefaultStrategyStabilises() {
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
-                        fallbackSplitInfo.getSplitLimit() + 1000)) {
-            createDummyTargetsToBoostGrowingSplitLimit();
-            class InnerRootNode extends SplittableRootNode {
-                OptimizedCallTarget target;
-                @Child private DirectCallNode callNode1;
+    // Root node for all nodes in this test
+    @ReportPolymorphism
+    abstract static class SplittingTestNode extends Node {
+        public abstract Object execute(VirtualFrame frame);
+    }
 
-                @Child private Node polymorphic = new Node() {
-                    @Override
-                    public NodeCost getCost() {
-                        return NodeCost.POLYMORPHIC;
-                    }
-                };
+    @NodeChild
+    abstract static class TurnsPolymorphicOnZeroNode extends SplittingTestNode {
+        @Specialization(guards = "value != 0")
+        static int do1(int value) {
+            return value;
+        }
 
-                protected InnerRootNode() {
-                    super();
-                }
+        @Specialization
+        static int do2(int value) {
+            return value;
+        }
 
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    if (callNode1 == null) {
-                        callNode1 = runtime.createDirectCallNode(target);
-                        adoptChildren();
-                    }
-                    if (frame.getArguments().length > 0) {
-                        if ((Integer) frame.getArguments()[0] < 100) {
-                            callNode1.call(frame.getArguments());
-                        }
-                    }
-                    return null;
-                }
-
-                @Override
-                public String toString() {
-                    return "INNER";
-                }
-            }
-            final InnerRootNode innerRootNode = new InnerRootNode();
-            final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(innerRootNode);
-
-            final OptimizedCallTarget mid = (OptimizedCallTarget) runtime.createCallTarget(new SplittableRootNode() {
-
-                @Child private DirectCallNode callNode = null;
-
-                @Child private Node polymorphic = new Node() {
-                    @Override
-                    public NodeCost getCost() {
-                        return NodeCost.POLYMORPHIC;
-                    }
-                };
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    if (callNode == null) {
-                        callNode = runtime.createDirectCallNode(inner);
-                        adoptChildren();
-                    }
-                    Object[] arguments = frame.getArguments();
-                    if ((Integer) arguments[0] < 100) {
-                        callNode.call(new Object[]{((Integer) arguments[0]) + 1});
-                    }
-                    return null;
-                }
-
-                @Override
-                public String toString() {
-                    return "MID";
-                }
-            });
-
-            OptimizedCallTarget outside = (OptimizedCallTarget) runtime.createCallTarget(new SplittableRootNode() {
-
-                @Child private DirectCallNode outsideCallNode = null; // runtime.createDirectCallNode(mid);
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    // Emulates builtin i.e. Split immediately
-                    if (outsideCallNode == null) {
-                        outsideCallNode = runtime.createDirectCallNode(mid);
-                        outsideCallNode.cloneCallTarget();
-                        adoptChildren();
-                    }
-                    return outsideCallNode.call(frame.getArguments());
-                }
-
-                @Override
-                public String toString() {
-                    return "OUTSIDE";
-                }
-            });
-            innerRootNode.target = outside;
-            createDummyTargetsToBoostGrowingSplitLimit();
-            final int baseSplitCount = listener.splitCount;
-            outside.call(1);
-
-            // Expected 14
-            // OUTSIDE MID
-            // MID <split> INNER
-            // INNER <split> OUTSIDE
-            // OUTSIDE <split> MID
-            // INNER OUTSIDE
-            // OUTSIDE <split> MID
-            // MID <split> INNER
-            // MID <split> INNER
-            // INNER <split> OUTSIDE
-            // OUTSIDE <split> MID
-            // INNER <split> OUTSIDE
-            // OUTSIDE <split> MID
-            // MID <split> INNER
-            Assert.assertEquals("Not the right number of splits.", baseSplitCount + 13, listener.splitCount);
+        @Fallback
+        static int do3(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") Object value) {
+            return 0;
         }
     }
 
-    static class CallsInnerAndSwapsCallNode extends RootNode {
+    @NodeChild
+    abstract static class TurnsPolymorphicOnZeroButSpecializationIsExcludedNode extends SplittingTestNode {
+        @Specialization(guards = "value != 0")
+        int do1(int value) {
+            return value;
+        }
 
-        private final RootCallTarget toCall;
+        @ReportPolymorphism.Exclude
+        @Specialization
+        int do2(int value) {
+            return value;
+        }
 
-        protected CallsInnerAndSwapsCallNode(RootCallTarget toCall) {
-            super(null);
-            this.toCall = toCall;
+        @Fallback
+        int do3(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") Object value) {
+            return 0;
+        }
+    }
+
+    @NodeChild
+    @ReportPolymorphism.Exclude
+    abstract static class TurnsPolymorphicOnZeroButClassIsExcludedNode extends SplittingTestNode {
+        @Specialization(guards = "value != 0")
+        int do1(int value) {
+            return value;
+        }
+
+        @Specialization
+        int do2(int value) {
+            return value;
+        }
+
+        @Fallback
+        int do3(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") Object value) {
+            return 0;
+        }
+    }
+
+    static class ReturnsArgumentNode extends SplittingTestNode {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return frame.getArguments()[0];
+        }
+    }
+
+    class SplittingTestRootNode extends SplittableRootNode {
+        @Child private SplittingTestNode bodyNode;
+
+        SplittingTestRootNode(SplittingTestNode bodyNode) {
+            super();
+            this.bodyNode = bodyNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return bodyNode.execute(frame);
+        }
+    }
+
+    @NodeChild
+    @ReportPolymorphism
+    abstract static class HasInlineCacheNode extends SplittingTestNode {
+
+        @Specialization(limit = "2", //
+                        guards = "target.getRootNode() == cachedNode")
+        protected static Object doDirect(RootCallTarget target, @Cached("target.getRootNode()") @SuppressWarnings("unused") RootNode cachedNode) {
+            return target.call(noArguments);
+        }
+
+        @Specialization(replaces = "doDirect")
+        protected static Object doIndirect(RootCallTarget target) {
+            return target.call(noArguments);
+        }
+    }
+
+    static class TwoDummiesAndAnotherNode extends SplittingTestNode {
+        int counter;
+        RootCallTarget dummy = runtime.createCallTarget(new DummyRootNode());
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (counter < 2) {
+                counter++;
+            } else {
+                counter = 0;
+                dummy = runtime.createCallTarget(new DummyRootNode());
+            }
+            return dummy;
+        }
+    }
+
+    private static Boolean getNeedsSplit(OptimizedCallTarget callTarget) {
+        try {
+            return (Boolean) reflectivelyGetField(callTarget, "needsSplit");
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            Assert.assertTrue("Cannot read \"needsSplit\" field from OptimizedCallTarget", false);
+            return false;
+        }
+    }
+
+    @Test
+    public void testSplitsDirectCalls() {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
+                        new SplittingTestRootNode(SplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsArgumentNode())));
+        Object[] first = new Object[]{runtime.createCallTarget(new DummyRootNode())};
+        Object[] second = new Object[]{runtime.createCallTarget(new DummyRootNode())};
+        testSplitsDirectCallsHelper(callTarget, first, second);
+
+        callTarget = (OptimizedCallTarget) runtime.createCallTarget(
+                        new SplittingTestRootNode(SplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsArgumentNode())));
+        // two callers for a target are needed
+        testSplitsDirectCallsHelper(callTarget, new Object[]{1}, new Object[]{0});
+    }
+
+    private static void testSplitsDirectCallsHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+        // two callers for a target are needed
+        runtime.createDirectCallNode(callTarget);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target needs split but not split", directCallNode.isCallTargetCloned());
+
+        // Test new dirrectCallNode will split
+        final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
+        newCallNode.call(firstArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
+    }
+
+    @Test
+    public void testDoesNotSplitsDirectCalls() {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
+                        new SplittingTestRootNode(SplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsArgumentNode())));
+        testDoesNotSplitDirectCallHelper(callTarget, new Object[]{1}, new Object[]{0});
+
+        callTarget = (OptimizedCallTarget) runtime.createCallTarget(new SplittingTestRootNode(
+                        SplittingStrategyTestFactory.TurnsPolymorphicOnZeroButClassIsExcludedNodeGen.create(new ReturnsArgumentNode())));
+        testDoesNotSplitDirectCallHelper(callTarget, new Object[]{1}, new Object[]{0});
+
+        callTarget = (OptimizedCallTarget) runtime.createCallTarget(new SplittingTestRootNode(
+                        SplittingStrategyTestFactory.TurnsPolymorphicOnZeroButClassIsExcludedNodeGen.create(new ReturnsArgumentNode())));
+        testDoesNotSplitDirectCallHelper(callTarget, new Object[]{1}, new Object[]{0});
+    }
+
+    private void testDoesNotSplitDirectCallHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+        final RootCallTarget outer = runtime.createCallTarget(new CallsInnerNode(callTarget));
+        outer.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        outer.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        outer.call(secondArgs);
+        Assert.assertFalse("Target needs split even though it has only one caller", getNeedsSplit(callTarget));
+
+        // Test new dirrectCallNode will NOT split
+        final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
+        newCallNode.call(secondArgs);
+        Assert.assertFalse("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
+    }
+
+    class CallsInnerNode extends SplittableRootNode {
+
+        CallsInnerNode(RootCallTarget toCall) {
+            this.callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(toCall);
         }
 
         @Child private OptimizedDirectCallNode callNode = null;
 
         @Override
         public Object execute(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (callNode == null || callNode.isCallTargetCloned() || callNode.getCallCount() > 2) {
-                callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(toCall);
-                adoptChildren();
-            }
-            return callNode.call(noArguments);
+            return callNode.call(frame.getArguments());
         }
     }
 
-    static class FallbackSplitInfo {
-        final Object fallbackEngineData;
+    @Test
+    public void testSplitPropagatesThrongSoleCallers() {
+        OptimizedCallTarget turnsPolymorphic = (OptimizedCallTarget) runtime.createCallTarget(
+                        new SplittingTestRootNode(SplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsArgumentNode())));
+        testPropagatesThroughSoleCallers(turnsPolymorphic, new Object[]{1}, new Object[]{0});
+        turnsPolymorphic = (OptimizedCallTarget) runtime.createCallTarget(
+                        new SplittingTestRootNode(SplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsArgumentNode())));
+        Object[] first = new Object[]{runtime.createCallTarget(new DummyRootNode())};
+        Object[] second = new Object[]{runtime.createCallTarget(new DummyRootNode())};
+        testPropagatesThroughSoleCallers(turnsPolymorphic, first, second);
+    }
 
-        FallbackSplitInfo() {
-            this.fallbackEngineData = reflectivelyGetSplittingLimitFromRuntime(runtime, new DummyRootNode());
-        }
+    private void testPropagatesThroughSoleCallers(OptimizedCallTarget turnsPolymorphic, Object[] firstArgs, Object[] secondArgs) {
+        final OptimizedCallTarget callsInner = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNode(turnsPolymorphic));
+        final OptimizedCallTarget callsCallsInner = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNode(callsInner));
+        // two callers for a target are needed
+        runtime.createDirectCallNode(callsCallsInner);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callsCallsInner);
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callsCallsInner));
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callsInner));
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(turnsPolymorphic));
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callsCallsInner));
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callsInner));
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(turnsPolymorphic));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callsCallsInner));
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callsInner));
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(turnsPolymorphic));
 
-        int getSplitCount() {
-            try {
-                return (int) reflectivelyGetField(fallbackEngineData, "splitCount");
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                Assert.assertTrue("Exception while reading from engine data", false);
-                return 0;
-            }
-        }
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target needs split but not split", directCallNode.isCallTargetCloned());
 
-        int getSplitLimit() {
-            try {
-                return (int) reflectivelyGetField(fallbackEngineData, "splitLimit");
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                Assert.assertTrue("Exception while reading from engine data", false);
-                return 0;
-            }
-        }
+        // Test new dirrectCallNode will split
+        DirectCallNode newCallNode = runtime.createDirectCallNode(callsCallsInner);
+        newCallNode.call(secondArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
 
-        void setLimitToCount() {
-            try {
-                reflectivelySetField(fallbackEngineData, "splitLimit", reflectivelyGetField(fallbackEngineData, "splitCount"));
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                Assert.assertTrue("Exception while reading from engine data", false);
-            }
-        }
+        newCallNode = runtime.createDirectCallNode(callsInner);
+        newCallNode.call(secondArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
 
-        private static Object reflectivelyGetSplittingLimitFromRuntime(GraalTruffleRuntime graalTruffleRuntime, RootNode rootNode) {
-            try {
-                final Object tvmci = reflectivelyGetField(graalTruffleRuntime, "tvmci");
-                final Method getEngineDataMethod = tvmci.getClass().getDeclaredMethod("getEngineData", new Class<?>[]{RootNode.class});
-                ReflectionUtils.setAccessible(getEngineDataMethod, true);
-                final Object fallbackEngineData = getEngineDataMethod.invoke(tvmci, rootNode);
-                return fallbackEngineData;
-            } catch (NoSuchFieldException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-                Assert.assertTrue("Exception while getting engine data", false);
+        newCallNode = runtime.createDirectCallNode(turnsPolymorphic);
+        newCallNode.call(secondArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
+    }
+
+    @Test
+    public void testNoSplitsDirectCallsBecauseFirstExecution() {
+        final OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(new SplittableRootNode() {
+            @Child private OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(runtime.createCallTarget(
+                            new SplittingTestRootNode(SplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsArgumentNode()))));
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                final Object[] first = {1};
+                callNode.call(first);
+                callNode.call(first);
+                // This call turns the node polymorphic
+                final Object[] second = {0};
+                callNode.call(second);
                 return null;
             }
-        }
+        });
+        // Multiple call nodes
+        runtime.createDirectCallNode(callTarget);
+        runtime.createDirectCallNode(callTarget);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
 
+        directCallNode.call(new Object[]{0});
+        Assert.assertFalse("Target needs split after first execution", getNeedsSplit(callTarget));
     }
 
     @Test
-    @SuppressWarnings("try")
-    public void testMaxLimitForTargetsOutsideEngine() {
-        final int expectedIncreaseInNodes = 10;
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
-                        fallbackSplitInfo.getSplitCount() + expectedIncreaseInNodes)) {
+    public void testIncreaseInPolymorphism() {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
+                        new SplittingTestRootNode(SplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsArgumentNode())));
+        final RootCallTarget outerTarget = runtime.createCallTarget(new CallsInnerNode(callTarget));
+        Object[] firstArgs = new Object[]{1};
+        outerTarget.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        outerTarget.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        Object[] secondArgs = new Object[]{0};
+        // Turns polymorphic
+        outerTarget.call(secondArgs);
+        Assert.assertFalse("Target needs split even though there is only 1 caller", getNeedsSplit(callTarget));
 
-            final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new DummyRootNode());
-            final OptimizedCallTarget outer = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerAndSwapsCallNode(inner));
+        // Add second caller
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        outerTarget.call(secondArgs);
+        Assert.assertFalse("Target needs split with no increase in polymorphism", getNeedsSplit(callTarget));
 
-            createDummyTargetsToBoostGrowingSplitLimit();
+        outerTarget.call(new Object[]{"foo"});
+        Assert.assertTrue("Target does not need split after increase in polymorphism", getNeedsSplit(callTarget));
 
-            SplitCountingListener localListener = new SplitCountingListener();
-            runtime.addListener(localListener);
+        // Test new dirrectCallNode will split
+        outerTarget.call(firstArgs);
+        directCallNode.call(firstArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", directCallNode.isCallTargetCloned());
+    }
 
-            for (int i = 0; i < 100; i++) {
-                outer.call();
-            }
-            Assert.assertEquals("Too many of too few splits.", expectedIncreaseInNodes, localListener.splitCount * DUMMYROOTNODECOUNT);
-            runtime.removeListener(localListener);
+    class ExposesReportPolymorphicSpecializeNode extends Node {
+        void report() {
+            reportPolymorphicSpecialize();
         }
     }
 
     @Test
-    @SuppressWarnings("try")
-    public void testGrowingLimitForTargetsOutsideEngine() {
-        final int expectedGrowingSplits = (int) (2 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit));
-        final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new DummyRootNode());
-        final OptimizedCallTarget outer = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerAndSwapsCallNode(inner));
-        fallbackSplitInfo.setLimitToCount();
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
-                        fallbackSplitInfo.getSplitCount() + 2 * expectedGrowingSplits)) {
-            // Create 2 targets to boost the growing limit
-            runtime.createCallTarget(new DummyRootNode());
-            runtime.createCallTarget(new DummyRootNode());
-
-            SplitCountingListener localListener = new SplitCountingListener();
-            runtime.addListener(localListener);
-
-            for (int i = 0; i < 100; i++) {
-                outer.call();
-            }
-
-            Assert.assertEquals("Too many of too few splits.", expectedGrowingSplits, localListener.splitCount);
-            runtime.removeListener(localListener);
-        }
+    public void testUnadopted() {
+        final ExposesReportPolymorphicSpecializeNode node = new ExposesReportPolymorphicSpecializeNode();
+        node.report();
     }
 
-    @TruffleLanguage.Registration(id = "SplitTestLanguage", name = "SplitTestLanguage")
-    public static class SplitTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
-        static final String ID = "SplitTestLanguage";
+    class ExposesReportPolymorphicSpecializeRootNode extends RootNode {
 
-        private final RootCallTarget callTarget = runtime.createCallTarget(new CallsInnerAndSwapsCallNode(runtime.createCallTarget(new DummyRootNode())));
+        @Child ExposesReportPolymorphicSpecializeNode node = new ExposesReportPolymorphicSpecializeNode();
 
-        @Override
-        protected Env createContext(Env env) {
-            return env;
+        protected ExposesReportPolymorphicSpecializeRootNode() {
+            super(null);
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
+        void report() {
+            node.report();
         }
 
         @Override
-        protected CallTarget parse(ParsingRequest request) throws Exception {
-            if (request.getSource().getCharacters().equals("exec")) {
-                return callTarget;
-            } else if (request.getSource().getCharacters().toString().startsWith("new")) {
-                return runtime.createCallTarget(new DummyRootNode());
-            } else {
-                throw new IllegalArgumentException();
-            }
+        public Object execute(VirtualFrame frame) {
+            return null;
         }
     }
 
     @Test
-    @SuppressWarnings("try")
-    public void testHardSplitLimitInContext() {
-        final int expectedSplittingIncrease = DUMMYROOTNODECOUNT * 2;
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
-                        expectedSplittingIncrease)) {
-            Context c = Context.create();
-            for (int i = 0; i < 100; i++) {
-                eval(c, "exec");
-            }
-            Assert.assertEquals("Wrong number of splits: ", expectedSplittingIncrease, listener.splitCount * DUMMYROOTNODECOUNT);
-        }
-    }
-
-    @Test
-    public void testGrowingSplitLimitInContext() {
-        Context c = Context.create();
-        // Eval a lot to fill out budget
-        useUpTheBudget(c);
-        final int baseSplitCount = listener.splitCount;
-        for (int i = 0; i < 10; i++) {
-            eval(c, "exec");
-        }
-        Assert.assertEquals("Split count growing without new call targets", baseSplitCount, listener.splitCount);
-
-        eval(c, "new");
-        for (int i = 0; i < 10; i++) {
-            eval(c, "exec");
-        }
-        Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit)),
-                        listener.splitCount);
-
-        eval(c, "new2");
-        for (int i = 0; i < 10; i++) {
-            eval(c, "exec");
-        }
-        Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + 2 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit)),
-                        listener.splitCount);
-    }
-
-    @Test
-    public void testSplitLimitIsContextSpecific() {
-        Context c1 = Context.create();
-        Context c2 = Context.create();
-        // Use up the c1 budget
-        useUpTheBudget(c1);
-        final int c1BaseSplitCount = listener.splitCount;
-        // Try to split some more in c1
-        for (int i = 0; i < 10; i++) {
-            eval(c1, "exec");
-        }
-        Assert.assertEquals("Splitting over budget!", c1BaseSplitCount, listener.splitCount);
-        // Try to split in c2
-        for (int i = 0; i < 10; i++) {
-            eval(c2, "exec");
-        }
-        Assert.assertTrue("No splitting in different context", c1BaseSplitCount < listener.splitCount);
-    }
-
-    private static void useUpTheBudget(Context context) {
-        for (int i = 0; i < 10_000; i++) {
-            eval(context, "exec");
-        }
-    }
-
-    private static void eval(Context context, String s) {
-        context.eval(SplitTestLanguage.ID, s);
+    public void testSoloTarget() {
+        final ExposesReportPolymorphicSpecializeRootNode rootNode = new ExposesReportPolymorphicSpecializeRootNode();
+        final RootCallTarget callTarget = runtime.createCallTarget(rootNode);
+        callTarget.call(noArguments);
+        rootNode.report();
     }
 }

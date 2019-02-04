@@ -27,7 +27,9 @@ package com.oracle.svm.hosted.c;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -50,7 +52,9 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.info.ElementInfo;
@@ -94,21 +98,21 @@ public final class NativeLibraries {
         this.snippetReflection = snippetReflection;
         this.target = target;
 
-        this.elementToInfo = new HashMap<>();
-        this.errors = new ArrayList<>();
-        this.compilationUnitToContext = new HashMap<>();
+        elementToInfo = new HashMap<>();
+        errors = new ArrayList<>();
+        compilationUnitToContext = new HashMap<>();
 
-        this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
-        this.signedType = metaAccess.lookupJavaType(SignedWord.class);
-        this.unsignedType = metaAccess.lookupJavaType(UnsignedWord.class);
-        this.pointerBaseType = metaAccess.lookupJavaType(PointerBase.class);
-        this.stringType = metaAccess.lookupJavaType(String.class);
-        this.byteArrayType = metaAccess.lookupJavaType(byte[].class);
-        this.enumType = metaAccess.lookupJavaType(Enum.class);
-        this.locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
+        wordBaseType = metaAccess.lookupJavaType(WordBase.class);
+        signedType = metaAccess.lookupJavaType(SignedWord.class);
+        unsignedType = metaAccess.lookupJavaType(UnsignedWord.class);
+        pointerBaseType = metaAccess.lookupJavaType(PointerBase.class);
+        stringType = metaAccess.lookupJavaType(String.class);
+        byteArrayType = metaAccess.lookupJavaType(byte[].class);
+        enumType = metaAccess.lookupJavaType(Enum.class);
+        locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
 
-        this.libraries = new ArrayList<>();
-        this.libraryPaths = new ArrayList<>();
+        libraries = new ArrayList<>();
+        libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();
     }
@@ -123,6 +127,50 @@ public final class NativeLibraries {
 
     public TargetDescription getTarget() {
         return target;
+    }
+
+    private static List<String> initCLibraryPath() {
+        List<String> libraryPaths = new ArrayList<>();
+
+        Path staticLibsDir = null;
+
+        /* Probe for static JDK libraries in JDK lib directory */
+        try {
+            Path jdkLibDir = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
+            if (Files.isDirectory(jdkLibDir)) {
+                if (Files.list(jdkLibDir).filter(path -> {
+                    if (Files.isDirectory(path)) {
+                        return false;
+                    }
+                    String libName = path.getFileName().toString();
+                    String libPrefix = OS.getCurrent() == OS.WINDOWS ? "" : "lib";
+                    String libSuffix = OS.getCurrent() == OS.WINDOWS ? ".lib" : ".a";
+                    if (!(libName.startsWith(libPrefix) && libName.endsWith(libSuffix))) {
+                        return false;
+                    }
+                    String lib = libName.substring(libPrefix.length(), libName.length() - libSuffix.length());
+                    return PlatformNativeLibrarySupport.defaultBuiltInLibraries.contains(lib);
+                }).count() == PlatformNativeLibrarySupport.defaultBuiltInLibraries.size()) {
+                    staticLibsDir = jdkLibDir;
+                }
+            }
+        } catch (Exception e) {
+            /* Fallthrough to next strategy */
+        }
+
+        if (staticLibsDir == null) {
+            /* TODO: Implement other strategies to get static JDK libraries (download + caching) */
+        }
+
+        if (staticLibsDir != null) {
+            libraryPaths.add(staticLibsDir.toString());
+        } else {
+            UserError.guarantee(OS.getCurrent() != OS.WINDOWS,
+                            "Building images for " + OS.getCurrent().className +
+                                            " requires static JDK libraries." +
+                                            "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases");
+        }
+        return libraryPaths;
     }
 
     public void addError(String msg, Object... context) {

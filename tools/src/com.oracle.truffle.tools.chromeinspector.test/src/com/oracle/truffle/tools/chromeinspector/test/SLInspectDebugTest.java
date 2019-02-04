@@ -1336,6 +1336,19 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.getPossibleBreakpoints\",\"params\":{\"start\":{\"scriptId\":\"1\",\"lineNumber\":11,\"columnNumber\":0},\"end\":{\"scriptId\":\"1\",\"lineNumber\":11,\"columnNumber\":37},\"restrictToFunction\":false}}");
         assertEquals("{\"result\":{\"locations\":[{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":11},{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":11},{\"scriptId\":\"1\",\"columnNumber\":24,\"lineNumber\":11}]},\"id\":6}", tester.getMessages(true).trim());
 
+        // When only start location is provided:
+        tester.sendMessage("{\"id\":3,\"method\":\"Debugger.getPossibleBreakpoints\",\"params\":{\"start\":{\"scriptId\":\"1\",\"lineNumber\":5,\"columnNumber\":0},\"restrictToFunction\":false}}");
+        assertEquals("{\"result\":{\"locations\":[{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":6}]},\"id\":3}", tester.getMessages(true).trim());
+        // Provides statement location when only beginning is included
+        tester.sendMessage("{\"id\":4,\"method\":\"Debugger.getPossibleBreakpoints\",\"params\":{\"start\":{\"scriptId\":\"1\",\"lineNumber\":8,\"columnNumber\":2},\"restrictToFunction\":false}}");
+        assertEquals("{\"result\":{\"locations\":[{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":8}]},\"id\":4}", tester.getMessages(true).trim());
+        // Provides statement location when only end is included
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.getPossibleBreakpoints\",\"params\":{\"start\":{\"scriptId\":\"1\",\"lineNumber\":9,\"columnNumber\":8},\"restrictToFunction\":false}}");
+        assertEquals("{\"result\":{\"locations\":[{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":8}]},\"id\":5}", tester.getMessages(true).trim());
+        // Provides all statement locations on a line
+        tester.sendMessage("{\"id\":6,\"method\":\"Debugger.getPossibleBreakpoints\",\"params\":{\"start\":{\"scriptId\":\"1\",\"lineNumber\":11,\"columnNumber\":0},\"restrictToFunction\":false}}");
+        assertEquals("{\"result\":{\"locations\":[{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":11},{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":11},{\"scriptId\":\"1\",\"columnNumber\":24,\"lineNumber\":11}]},\"id\":6}", tester.getMessages(true).trim());
+
         // Resume to finish:
         tester.sendMessage("{\"id\":20,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(

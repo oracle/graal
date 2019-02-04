@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -151,6 +151,16 @@ public final class Debugger {
         }
         session.install(alwaysHaltBreakpoint, true);
         return session;
+    }
+
+    /**
+     * Returns the number of active debugger sessions. This is useful, for instance, in deciding
+     * whether to open a new debugger session, depending on whether there is an existing one or not.
+     *
+     * @since 1.0
+     */
+    public synchronized int getSessionCount() {
+        return sessions.size();
     }
 
     void disposedSession(DebuggerSession session) {

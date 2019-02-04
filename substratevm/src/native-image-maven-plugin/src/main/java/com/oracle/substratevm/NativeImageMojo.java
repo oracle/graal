@@ -41,6 +41,7 @@ import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.OS;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.ConfigurationContainer;
 import org.apache.maven.model.Plugin;
@@ -151,7 +152,7 @@ public class NativeImageMojo extends AbstractMojo {
         addClasspath(project.getArtifact());
         String classpathStr = classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
 
-        Path nativeImageExecutable = getJavaHome().resolve("bin/native-image");
+        Path nativeImageExecutable = getJavaHome().resolve("bin").resolve(withExeSuffix("native-image"));
         if (Files.isExecutable(nativeImageExecutable)) {
             String nativeImageExecutableVersion = "Unknown";
             Process versionCheckProcess = null;
@@ -239,6 +240,13 @@ public class NativeImageMojo extends AbstractMojo {
                 throw new MojoExecutionException("Error creating native image:", e);
             }
         }
+    }
+
+    private String withExeSuffix(String basename) {
+        if (OS.getCurrent() == OS.WINDOWS) {
+            return basename + ".exe";
+        }
+        return basename;
     }
 
     private void addClasspath(Artifact artifact) throws MojoExecutionException {
@@ -369,7 +377,7 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public Path getJavaExecutable() {
-            return getJavaHome().resolve("bin/java");
+            return getJavaHome().resolve("bin").resolve(withExeSuffix("java"));
         }
 
         private List<Path> getSelectedArtifactPaths(String groupId, String... artifactIds) {

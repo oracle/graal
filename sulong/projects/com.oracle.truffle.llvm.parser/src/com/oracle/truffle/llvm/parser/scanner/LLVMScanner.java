@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -316,7 +316,7 @@ public final class LLVMScanner {
                         break;
 
                     default:
-                        throw new IllegalStateException("Unexpected Record Type Id: " + recordType);
+                        throw new LLVMParserException("Unknown ID in for record abbreviation: " + recordType);
                 }
             }
 

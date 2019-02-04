@@ -97,6 +97,7 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.amd64',
     'jdk.internal.vm.ci/jdk.vm.ci.meta',
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
+    'jdk.internal.vm.ci/jdk.vm.ci.services',
     'jdk.internal.vm.ci/jdk.vm.ci.common',
     'jdk.internal.vm.ci/jdk.vm.ci.code.site']
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
@@ -408,12 +409,6 @@ def layout_native_image_root(native_image_root):
     clibraries_dest = join(native_image_root, join(svm_subdir, 'clibraries'))
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, clibraries_dest)
-    lib_suffix = '.lib' if mx.get_os() == 'windows' else '.a'
-    jdk_lib_subdir = ['jre', 'lib'] if svm_java80() else ['lib']
-    jdk_lib_dir = join(jdk_config.home, *jdk_lib_subdir)
-    jdk_libs = [join(jdk_lib_dir, lib) for lib in os.listdir(jdk_lib_dir) if lib.endswith(lib_suffix)]
-    for src_lib in jdk_libs:
-        symlink_or_copy(src_lib, join(clibraries_dest, platform_name()))
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True):
     """
@@ -510,6 +505,9 @@ GraalTags = Tags([
     'test',
     'maven',
     'js',
+    'build',
+    'test',
+    'benchmarktest'
 ])
 
 @contextmanager
@@ -562,14 +560,17 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
 def svm_gate_body(args, tasks):
-    build_native_image_image()
+    with Task('Build native-image image', tasks, tags=[GraalTags.build, GraalTags.helloworld]) as t:
+        if t: build_native_image_image()
     with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
                 javac_image(['--output-path', svmbuild_dir()])
                 javac_command = ' '.join(javac_image_command(svmbuild_dir()))
                 helloworld(['--output-path', svmbuild_dir(), '--javac-command', javac_command])
-                cinterfacetutorial([])
+                if mx.get_os() != 'windows':  # building shared libs on Windows currently not working (GR-13594)
+                    helloworld(['--output-path', svmbuild_dir(), '--shared']) # Building and running helloworld as shared library
+                    cinterfacetutorial([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
@@ -586,6 +587,48 @@ def svm_gate_body(args, tasks):
             maven_plugin_install(["--deploy-dependencies"])
             maven_plugin_test([])
 
+
+@mx.command(suite.name, 'buildlibgraal')
+def build_libgraal_cli(args):
+    build_libgraal(args)
+
+
+def build_libgraal(image_args):
+    if mx.get_os() == 'windows':
+        return 'libgraal is unsupported on Windows'
+
+    graal_hotspot_library = mx.dependency('substratevm:GRAAL_HOTSPOT_LIBRARY', fatalIfMissing=False)
+    if not graal_hotspot_library:
+        return 'libgraal dependency substratevm:GRAAL_HOTSPOT_LIBRARY is missing'
+
+    libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', graal_hotspot_library.classpath_repr(),
+        '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
+        '--tool:truffle',
+        '-H:-UseServiceLoaderFeature',
+        '-H:+AllowFoldMethods',
+        '-Djdk.vm.ci.services.aot=true']
+
+    native_image_on_jvm(libgraal_args + image_args)
+
+    return None
+
+
+def libgraal_gate_body(args, tasks):
+    with Task('Build libgraal', tasks, tags=[GraalTags.build, GraalTags.benchmarktest, GraalTags.test]) as t:
+        if t:
+            # Build libgraal with assertions in the image builder and assertions in the image
+            msg = build_libgraal(['-J-esa', '-ea'])
+            if msg:
+                mx.logv('Skipping libgraal because: {}'.format(msg))
+                return
+
+            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
+            if args.extra_vm_argument:
+                extra_vm_argument += args.extra_vm_argument
+
+            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
+
+mx_gate.add_gate_runner(suite, libgraal_gate_body)
 
 def javac_image_command(javac_path):
     return [join(javac_path, 'javac'), "-proc:none", "-bootclasspath",
@@ -762,7 +805,27 @@ def _helloworld(native_image, javac_command, path, args):
         actual_output.append(x)
         mx.log(x)
 
-    mx.run([join(path, 'helloworld')], out=_collector)
+    if '--shared' in args:
+        # If helloword got built into a shared library we use python to load the shared library and call its `run_main`.  We are
+        # capturing the stdout during the call into an unnamed pipe so that we can use it in the actual vs. expected check below.
+        try:
+            import ctypes
+            so_name = mx.add_lib_suffix('helloworld')
+            lib = ctypes.CDLL(join(path, so_name))
+            stdout = os.dup(1) # save original stdout
+            pout, pin = os.pipe()
+            os.dup2(pin, 1) # connect stdout to pipe
+            lib.run_main(1, 'dummy') # call run_main of shared lib
+            call_stdout = os.read(pout, 120) # get pipe contents
+            actual_output.append(call_stdout)
+            os.dup2(stdout, 1) # restore original stdout
+            mx.log("Stdout from calling run_main in shared object " + so_name)
+            mx.log(call_stdout)
+        finally:
+            os.close(pin)
+            os.close(pout)
+    else:
+        mx.run([join(path, 'helloworld')], out=_collector)
 
     if actual_output != expected_output:
         raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
@@ -1060,7 +1123,7 @@ def maven_plugin_install(args):
         ]
     mx.log('\n'.join(success_message))
 
-
+@mx.command(suite.name, 'maven-plugin-test')
 def maven_plugin_test(args):
     # Create native-image-maven-plugin-test pom with correct version info from template
     proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin-test')

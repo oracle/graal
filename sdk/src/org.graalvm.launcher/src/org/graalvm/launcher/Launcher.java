@@ -189,7 +189,7 @@ public abstract class Launcher {
         @SuppressWarnings("sync-override")
         @Override
         public final Throwable fillInStackTrace() {
-            return null;
+            return this;
         }
     }
 
@@ -877,7 +877,8 @@ public abstract class Launcher {
     enum OS {
         Darwin,
         Linux,
-        Solaris;
+        Solaris,
+        Windows;
 
         private static OS findCurrent() {
             final String name = System.getProperty("os.name");
@@ -889,6 +890,9 @@ public abstract class Launcher {
             }
             if (name.equals("Mac OS X") || name.equals("Darwin")) {
                 return Darwin;
+            }
+            if (name.startsWith("Windows")) {
+                return Windows;
             }
             throw new IllegalArgumentException("unknown OS: " + name);
         }

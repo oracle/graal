@@ -89,4 +89,20 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Assert.assertEquals(expectedFile, absoluteFile);
         Assert.assertEquals(expectedFile.normalize(), absoluteFile.normalize());
     }
+
+    @Test
+    public void testGetName() {
+        TruffleFile file = languageEnv.getTruffleFile("/folder/filename");
+        Assert.assertEquals("filename", file.getName());
+        file = languageEnv.getTruffleFile("/filename");
+        Assert.assertEquals("filename", file.getName());
+        file = languageEnv.getTruffleFile("folder/filename");
+        Assert.assertEquals("filename", file.getName());
+        file = languageEnv.getTruffleFile("filename");
+        Assert.assertEquals("filename", file.getName());
+        file = languageEnv.getTruffleFile("");
+        Assert.assertEquals("", file.getName());
+        file = languageEnv.getTruffleFile("/");
+        Assert.assertNull(file.getName());
+    }
 }

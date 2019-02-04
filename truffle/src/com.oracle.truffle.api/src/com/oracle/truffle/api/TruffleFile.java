@@ -284,13 +284,15 @@ public final class TruffleFile {
     /**
      * Returns the name of this {@link TruffleFile}.
      *
-     * @return the name of file or directory denoted by this {@link TruffleFile}
+     * @return the name of file or directory denoted by this {@link TruffleFile}, or {@code null} if
+     *         the file is a root directory
      * @since 1.0
      */
     @TruffleBoundary
     public String getName() {
         try {
-            return path.getFileName().toString();
+            final Path fileName = path.getFileName();
+            return fileName == null ? null : fileName.toString();
         } catch (Throwable t) {
             throw wrapHostException(t);
         }

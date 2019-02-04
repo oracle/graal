@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.polyglot.PolyglotException;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -279,6 +281,11 @@ final class TruffleStackTrace extends Exception {
     static void addStackFrameInfo(Node callNode, Throwable t, RootCallTarget root, Frame currentFrame) {
         if (t instanceof ControlFlowException) {
             // control flow exceptions should never have to get a stack trace.
+            return;
+        }
+        if (t instanceof PolyglotException) {
+            // Normally, polyglot exceptions should not even end up here, with the exception of
+            // those thrown by Value call targets. In any case, we do not want to attach a cause.
             return;
         }
         if (!(t instanceof TruffleException) || ((TruffleException) t).isInternalError()) {

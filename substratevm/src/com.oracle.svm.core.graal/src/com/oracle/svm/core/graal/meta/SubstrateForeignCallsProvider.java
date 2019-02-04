@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,10 +37,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
 public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
@@ -87,7 +87,7 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
 
     @Override
     public LIRKind getValueKind(JavaKind javaKind) {
-        return LIRKind.fromJavaKind(ImageSingletons.lookup(TargetDescription.class).arch, javaKind);
+        return LIRKind.fromJavaKind(ImageSingletons.lookup(SubstrateTargetDescription.class).arch, javaKind);
     }
 
     @Override

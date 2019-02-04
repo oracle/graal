@@ -52,6 +52,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -69,7 +70,6 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.tiers.Suites;
@@ -87,6 +87,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -159,6 +160,18 @@ public final class GraalFeature implements Feature {
         @Override
         public boolean getAsBoolean() {
             return ImageSingletons.contains(GraalFeature.class);
+        }
+    }
+
+    /**
+     * This predicate is used to distinguish between building a Graal native image as a shared
+     * library for HotSpot (non-pure) or Graal as a compiler used only for a runtime in the same
+     * image (pure).
+     */
+    public static final class IsEnabledAndNotLibgraal implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return ImageSingletons.contains(GraalFeature.class) && !SubstrateUtil.isBuildingLibgraal();
         }
     }
 

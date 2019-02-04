@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +23,6 @@
  * questions.
  */
 package com.oracle.svm.core;
-
-import static com.oracle.svm.core.option.RuntimeOptionParser.DEFAULT_OPTION_PREFIX;
-import static com.oracle.svm.core.option.RuntimeOptionParser.GRAAL_OPTION_PREFIX;
-import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.NAME_VALUE;
-import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.PLUS_MINUS;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -59,14 +54,11 @@ import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologu
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
-import com.oracle.svm.core.option.XOptions;
-import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.TargetDescription;
 
 public class JavaMainWrapper {
 
@@ -134,15 +126,11 @@ public class JavaMainWrapper {
 
         JavaMainWrapper.argc = paramArgc;
         JavaMainWrapper.argv = paramArgv;
-        Architecture imageArchitecture = ImageSingletons.lookup(TargetDescription.class).arch;
+
+        Architecture imageArchitecture = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
         AMD64CPUFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
         String[] args = SubstrateUtil.getArgs(paramArgc, paramArgv);
-        if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
-            args = RuntimeOptionParser.singleton().parse(args, DEFAULT_OPTION_PREFIX, PLUS_MINUS, true);
-            args = RuntimeOptionParser.singleton().parse(args, GRAAL_OPTION_PREFIX, NAME_VALUE, true);
-            args = XOptions.singleton().parse(args);
-            args = RuntimePropertyParser.parse(args);
-        }
+        args = RuntimeOptionParser.parseAndConsumeAllOptions(args);
         mainArgs = args;
 
         int exitCode;

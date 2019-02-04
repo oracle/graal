@@ -133,7 +133,7 @@ public final class SnippetCounter implements Comparable<SnippetCounter> {
      * compile-time constant {@link SnippetCounter} object.
      */
     public void inc() {
-        if (group != null) {
+        if (getGroup() != null) {
             SnippetCounterNode.increment(this);
         }
     }
@@ -143,7 +143,7 @@ public final class SnippetCounter implements Comparable<SnippetCounter> {
      * compile-time constant {@link SnippetCounter} object.
      */
     public void add(int increment) {
-        if (group != null) {
+        if (getGroup() != null) {
             SnippetCounterNode.add(this, increment);
         }
     }
