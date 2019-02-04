@@ -166,7 +166,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             final CLongPointer offset = StackValue.get(CLongPointer.class);
             final CIntPointer dev = StackValue.get(CIntPointer.class);
             final CLongPointer inode = StackValue.get(CLongPointer.class);
-            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get().rawValue(), startAddr, offset, dev, inode, true);
+            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, dev, inode, true);
             close(mapfd);
             if (!found) {
                 free(buffer);
