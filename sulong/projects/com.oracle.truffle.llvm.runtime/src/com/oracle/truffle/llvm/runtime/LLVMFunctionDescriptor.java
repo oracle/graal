@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -273,9 +273,11 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
     private void setFunction(Function newFunction) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        functionAssumption.invalidate();
-        this.function = newFunction;
-        this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
+        synchronized (this) {
+            functionAssumption.invalidate();
+            this.function = newFunction;
+            this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
+        }
     }
 
     public Function getFunction() {
