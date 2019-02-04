@@ -2,6 +2,7 @@ package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
 
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
@@ -42,7 +43,7 @@ public final class Field implements ModifiersProvider {
     }
 
     public int getModifiers() {
-        return linkedField.getFlags() & Modifier.fieldModifiers();
+        return linkedField.getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS;
     }
 
     public ObjectKlass getHolder() {

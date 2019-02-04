@@ -254,6 +254,7 @@ import com.oracle.truffle.espresso.classfile.IntegerConstant;
 import com.oracle.truffle.espresso.classfile.LongConstant;
 import com.oracle.truffle.espresso.classfile.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.PoolConstant;
+import com.oracle.truffle.espresso.classfile.Resolvable;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.StringConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
@@ -1074,7 +1075,8 @@ public final class BytecodeNode extends EspressoRootNode {
             putFloat(frame, top, ((FloatConstant) constant).value());
         } else if (constant instanceof StringConstant) {
             assert opcode == LDC || opcode == LDC_W;
-            // TODO(peterssen): Must be interned once, on creation.
+            // TODO(peterssen): Must be interned once, on creation.\
+            // ((Resolvable.ResolvedConstant<StaticObject>) getConstantPool().resolvedAt(cpi, "")).value();
             putObject(frame, top, getStrings().intern(((StringConstant) constant).getSymbol(pool)));
         } else if (constant instanceof ClassConstant) {
             assert opcode == LDC || opcode == LDC_W;

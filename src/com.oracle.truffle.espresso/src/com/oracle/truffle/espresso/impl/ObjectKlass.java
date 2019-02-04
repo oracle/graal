@@ -23,13 +23,14 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -151,15 +152,15 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 //
-//    @Override
-//    public Field[] getInstanceFields(boolean includeSuperclasses) {
-//        return new Field[0];
-//    }
+// @Override
+// public Field[] getInstanceFields(boolean includeSuperclasses) {
+// return new Field[0];
+// }
 
-//    @Override
-//    public Field[] getStaticFields() {
-//        return new Field[0];
-//    }
+// @Override
+// public Field[] getStaticFields() {
+// return new Field[0];
+// }
 
 // @Override
 // public Method resolveMethod(Method method, Klass callerType) {
@@ -254,23 +255,14 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Method[] getDeclaredConstructors() {
-        return new Method[0];
+        List<Method> constructors = new ArrayList<>();
+        for (Method m : getDeclaredMethods()) {
+            if (Name.INIT.equals(m.getName())) {
+                constructors.add(m);
+            }
+        }
+        return constructors.toArray(new Method[constructors.size()]);
     }
-
-// @Override
-// public Method[] getDeclaredConstructors() {
-// return Arrays.stream(declaredMethods).filter(new Predicate<Method>() {
-// @Override
-// public boolean test(Method m) {
-// return Method.INIT.equals(m.getName());
-// }
-// }).toArray(new IntFunction<Method[]>() {
-// @Override
-// public Method[] apply(int value) {
-// return new Method[value];
-// }
-// });
-// }
 
     @Override
     public Method[] getDeclaredMethods() {

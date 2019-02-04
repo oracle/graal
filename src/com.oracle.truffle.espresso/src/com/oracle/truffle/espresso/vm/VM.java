@@ -46,13 +46,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
-import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -70,7 +63,13 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
@@ -81,6 +80,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -538,11 +538,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         EspressoRootNode rootNode = (EspressoRootNode) ((RootCallTarget) frame.getCallTarget()).getRootNode();
 
         getMeta().StackTraceElement_init.invokeDirect(
-                /* this */ ste,
-                /* declaringClass */ getMeta().toGuestString(rootNode.getMethod().getName()),
-                /* methodName */ getMeta().toGuestString(rootNode.getMethod().getName()),
-                /* fileName */ StaticObject.NULL,
-                /* lineNumber */ -1);
+                        /* this */ ste,
+                        /* declaringClass */ getMeta().toGuestString(rootNode.getMethod().getName()),
+                        /* methodName */ getMeta().toGuestString(rootNode.getMethod().getName()),
+                        /* fileName */ StaticObject.NULL,
+                        /* lineNumber */ -1);
 
         return ste;
     }
@@ -709,25 +709,25 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Properties.class) StaticObject JVM_InitProperties(@Host(Properties.class) StaticObject properties) {
         Method setProperty = properties.getKlass().lookupMethod(Name.setProperty,
-                getSignatures().makeRaw(Type.Object, Type.String, Type.String));
+                        getSignatures().makeRaw(Type.Object, Type.String, Type.String));
 
         OptionValues options = getContext().getEnv().getOptions();
 
         // Set user-defined system properties.
         for (Map.Entry<String, String> entry : options.get(EspressoOptions.Properties).entrySet()) {
-            setProperty.invokeWithConversions(entry.getKey(), entry.getValue());
+            setProperty.invokeWithConversions(null, entry.getKey(), entry.getValue());
         }
 
         // TODO(peterssen): Use EspressoProperties to store classpath.
         EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "Classpath must be defined.");
-        setProperty.invokeWithConversions("java.class.path", options.get(EspressoOptions.Classpath));
+        setProperty.invokeWithConversions(properties,"java.class.path", options.get(EspressoOptions.Classpath));
 
         EspressoProperties props = getContext().getVmProperties();
-        setProperty.invokeWithConversions("java.home", props.getJavaHome());
-        setProperty.invokeWithConversions("sun.boot.class.path", props.getBootClasspath());
-        setProperty.invokeWithConversions("java.library.path", props.getJavaLibraryPath());
-        setProperty.invokeWithConversions("sun.boot.library.path", props.getBootLibraryPath());
-        setProperty.invokeWithConversions("java.ext.dirs", props.getExtDirs());
+        setProperty.invokeWithConversions(properties, "java.home", props.getJavaHome());
+        setProperty.invokeWithConversions(properties, "sun.boot.class.path", props.getBootClasspath());
+        setProperty.invokeWithConversions(properties, "java.library.path", props.getJavaLibraryPath());
+        setProperty.invokeWithConversions(properties, "sun.boot.library.path", props.getBootLibraryPath());
+        setProperty.invokeWithConversions(properties, "java.ext.dirs", props.getExtDirs());
 
         return properties;
     }
@@ -802,8 +802,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindClassFromBootLoader(String name) {
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        Klass klass = context.getRegistries().loadKlassWithBootClassLoader(Types.fromJavaString(MetaUtil.toInternalName(name)));
+        Klass klass = getRegistries().loadKlassWithBootClassLoader(Types.fromJavaString(MetaUtil.toInternalName(name)));
         if (klass == null) {
             return StaticObject.NULL;
         }

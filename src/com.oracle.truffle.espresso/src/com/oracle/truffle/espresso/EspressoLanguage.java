@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso;
 
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Type;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -34,6 +32,8 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -112,7 +112,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         assert context.isInitialized();
 
         String className = source.getName();
-        assert context.getAppClassLoader() != null && StaticObject.notNull(context.getAppClassLoader());
 
         Klass mainClass = loadMainClass(context, LaunchMode.LM_CLASS, className).getMirror();
 
@@ -139,7 +138,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         Klass launcherHelperKlass = meta.loadKlass(Type.sun_launcher_LauncherHelper, StaticObject.NULL);
 
         Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(Name.checkAndLoadMain,
-                context.getSignatures().makeRaw(Type.Class, Type._boolean, Type._int, Type.String));
+                        context.getSignatures().makeRaw(Type.Class, Type._boolean, Type._int, Type.String));
 
         return (StaticObjectClass) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuestString(name));
     }
@@ -148,24 +147,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected boolean isObjectOfLanguage(final Object object) {
         return false;
     }
-//
-// public EspressoContext findContext() {
-// CompilerAsserts.neverPartOfCompilation();
-// return super.getContextReference().get();
-// }
-//
-// @SuppressWarnings("unused")
-// private static String getClasspathString() {
-// final ClassLoader cl = ClassLoader.getSystemClassLoader();
-// final URL[] urls = ((URLClassLoader) cl).getURLs();
-// final StringBuilder b = new StringBuilder();
-//
-// for (final URL url : urls) {
-// b.append(url.getFile()).append('\n');
-// }
-//
-// return b.toString();
-// }
 
     public SymbolTable getSymbolTable() {
         return symbols;

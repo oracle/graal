@@ -68,16 +68,21 @@ public final class GuestClassRegistry extends ClassRegistry {
             }
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
+
+        Klass klass = classes.get(type);
+        if (klass != null) {
+            return klass;
+        }
+
         assert StaticObject.notNull(classLoader);
-        StaticObjectClass guestClass = (StaticObjectClass) ClassLoader_loadClass.invokeDirect(classLoader, context.getMeta().toGuestString(type.toString()), false);
-        Klass klass = guestClass.getMirror();
+        StaticObjectClass guestClass = (StaticObjectClass) ClassLoader_loadClass.invokeDirect(classLoader, context.getMeta().toGuestString(Types.binaryName(type)), false);
+        klass = guestClass.getMirror();
 
         // TODO(peterssen): Should the class be added back to the guest CL, or defineKlass will be
         // eventually called.
         // ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
-
-        Klass previuos = classes.put(type, klass);
-        EspressoError.guarantee(previuos == null, "Klass " + type + " defined twice");
+        Klass previous = classes.put(type, klass);
+        EspressoError.guarantee(previous == null, "Klass " + type + " defined twice");
         return klass;
     }
 
@@ -91,6 +96,9 @@ public final class GuestClassRegistry extends ClassRegistry {
         ObjectKlass klass = super.defineKlass(context, type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
         ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
+
+        System.err.println("GuestCL define " + type);
+
         return klass;
     }
 }

@@ -26,6 +26,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.impl.Klass;
 
 /**
  * Interface denoting a class entry in a constant pool.
@@ -49,7 +50,7 @@ public interface ClassConstant extends PoolConstant {
         return getType(pool).toString();
     }
 
-    final class Index implements ClassConstant {
+    final class Index implements ClassConstant /*, Resolvable<ClassConstant>*/ {
         private final char classNameIndex;
 
         Index(int classNameIndex) {
@@ -60,5 +61,28 @@ public interface ClassConstant extends PoolConstant {
         public ByteString<Type> getType(ConstantPool pool) {
             return Types.fromConstantPoolName(pool.utf8At(classNameIndex));
         }
+//
+//        @Override
+//        public Resolved resolve(RuntimeConstantPool pool, int thisIndex) {
+//            return new Resolved(resolved);
+//        }
     }
+//
+//    public final class Resolved implements ClassConstant, Resolvable.ResolvedConstant<Klass> {
+//        private final Klass resolved;
+//
+//        public Resolved(Klass resolved) {
+//            this.resolved = resolved;
+//        }
+//
+//        @Override
+//        public ByteString<Type> getType(ConstantPool pool) {
+//            return null;
+//        }
+//
+//        @Override
+//        public Klass value() {
+//            return resolved;
+//        }
+//    }
 }

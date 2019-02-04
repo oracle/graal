@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.jni.Utf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -22,7 +23,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  *
  * @param <T> generic tag for extra type-safety at the Java level.
  */
-public final class ByteString<T> {
+public final class ByteString<T> implements ByteSequence {
 
     @SuppressWarnings("rawtypes") public static final ByteString[] EMPTY_ARRAY = new ByteString[0];
 
@@ -49,9 +50,6 @@ public final class ByteString<T> {
     }
 
     public static class ModifiedUTF8 {
-    }
-
-    public static interface Interned {
     }
 
     public static class Name extends ModifiedUTF8 {
@@ -113,7 +111,7 @@ public final class ByteString<T> {
         public static final ByteString<Type> Throwable = Types.fromClass(Throwable.class);
         public static final ByteString<Type> Exception = Types.fromClass(Exception.class);
         public static final ByteString<Type> System = Types.fromClass(System.class);
-        public static final ByteString<Type> ClassLoader = Types.fromClass(ClassLoader.class);
+        public static final ByteString<Type> ClassLoader = Types.fromClass(java.lang.ClassLoader.class);
 
         // Primitive types. Use JavaKind.getType()?
         public static final ByteString<Type> _boolean = Types.fromClass(boolean.class);
@@ -178,10 +176,17 @@ public final class ByteString<T> {
     }
 
     public static class Signature extends Descriptor {
+        // public static ByteString<Signature> _void = Signatures.makeRaw(Type._void);
     }
 
+    @Override
     public byte byteAt(int index) {
         return value[index];
+    }
+
+    @Override
+    public ByteSequence subSequence(int start, int end) {
+        throw EspressoError.unimplemented();
     }
 
     public ByteString(byte[] value) {
@@ -189,7 +194,7 @@ public final class ByteString<T> {
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         int h = hash;
         if (h == 0 && value.length > 0) {
             h = Arrays.hashCode(value);
@@ -220,7 +225,8 @@ public final class ByteString<T> {
         }
     }
 
-    public int length() {
+    @Override
+    public final int length() {
         return value.length;
     }
 
@@ -235,5 +241,4 @@ public final class ByteString<T> {
     public static <T> ByteString<T> fromJavaString(String string) {
         return Utf8.fromJavaString(string);
     }
-
 }

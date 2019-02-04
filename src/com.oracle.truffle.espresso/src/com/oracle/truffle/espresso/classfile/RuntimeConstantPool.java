@@ -2,6 +2,7 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.Resolvable.ResolvedConstant;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Field;
@@ -10,14 +11,26 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import java.io.BufferedReader;
+
 public final class RuntimeConstantPool extends ConstantPool {
+    private static volatile int fence;
+
     private final ConstantPool pool;
     private final StaticObject classLoader;
 
+//    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+//    private final ResolvedConstant[] constants;
+
     public RuntimeConstantPool(ConstantPool pool, StaticObject classLoader) {
         this.pool = pool;
+        // constants = copyResolvedConstant(pool); // utf8, int, floats..., others->null
         this.classLoader = classLoader;
     }
+//
+//    private ResolvedConstant[] copyResolvedConstant(ConstantPool pool) {
+//        //
+//    }
 
     @Override
     public int length() {
@@ -28,6 +41,27 @@ public final class RuntimeConstantPool extends ConstantPool {
     public PoolConstant at(int index, String description) {
         return pool.at(index, description);
     }
+//
+//    public ResolvedConstant resolvedAt(int index, String description) {
+//        ResolvedConstant c = constants[index];
+//        if (c == null) {
+//            CompilerDirectives.transferToInterpreterAndInvalidate();
+//            synchronized (this) {
+//                fence += 1;
+//                c = constants[index];
+//                if (c == null) {
+//                    constants[index] = c = ((Resolvable) pool.at(index, description)).resolve(this, index);
+//                }
+//            }
+//        }
+//        return c;
+//    }
+//
+//    @SuppressWarnings("unchecked")
+//    public StaticObject resolvedStringAt(int index) {
+//        ResolvedConstant resolved = resolvedAt(index, "");
+//        return (StaticObject) resolved.value();
+//    }
 
     public StaticObject getClassLoader() {
         return classLoader;

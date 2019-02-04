@@ -66,7 +66,7 @@ public final class EspressoContext {
     private Classpath bootClasspath;
     private String[] mainArguments;
     private Source mainSourceFile;
-    private StaticObject appClassLoader;
+    // private StaticObject appClassLoader;
     private StaticObject mainThread;
 
     @CompilationFinal //
@@ -213,7 +213,7 @@ public final class EspressoContext {
         }
 
         // Load system class loader.
-        appClassLoader = (StaticObject) meta.ClassLoader_getSystemClassLoader.invokeDirect(null);
+        // appClassLoader = (StaticObject) meta.ClassLoader_getSystemClassLoader.invokeDirect(null);
     }
 
     private EspressoProperties vmProperties;
@@ -254,10 +254,10 @@ public final class EspressoContext {
     public Signatures getSignatures() {
         return getLanguage().getSignatures();
     }
-
-    public @Host(ClassLoader.class) StaticObject getAppClassLoader() {
-        return appClassLoader;
-    }
+//
+//    public @Host(ClassLoader.class) StaticObject getAppClassLoader() {
+//        return appClassLoader;
+//    }
 
     public JniEnv getJNI() {
         if (jniEnv == null) {

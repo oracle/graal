@@ -38,6 +38,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.impl.ByteString.Signature;
@@ -425,7 +426,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public Method getClassInitializer() {
-        return lookupDeclaredMethod(Name.CLINIT, getSignatures().makeRaw(void.class));
+        return lookupDeclaredMethod(Name.CLINIT, getSignatures().makeRaw(Type._void));
     }
 
 // public Method findDeclaredConcreteMethod(ByteString<Name> name, ByteString<String> signature) {
@@ -614,7 +615,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     @Override
     public final int getModifiers() {
-        return getFlags() & Modifier.classModifiers();
+        return getFlags() & Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
     }
 
     protected abstract int getFlags();

@@ -12,6 +12,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Signatures;
@@ -222,7 +223,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     private CallTarget lookupJniCallTarget(Method findNative, boolean fullSignature) {
         String mangledName = Mangle.mangleMethod(this, fullSignature);
-        long handle = (long) findNative.invokeWithConversions(getDeclaringKlass().getDefiningClassLoader(), mangledName);
+        long handle = (long) findNative.invokeWithConversions(null, getDeclaringKlass().getDefiningClassLoader(), mangledName);
         if (handle == 0) { // not found
             return null;
         }
@@ -322,7 +323,8 @@ public final class Method implements ModifiersProvider, ContextAccess {
     @TruffleBoundary
     public Object invokeWithConversions(Object self, Object... args) {
         assert args.length == Signatures.parameterCount(getParsedSignature(), false);
-        assert !isStatic() || ((StaticObjectImpl) self).isStatic();
+        // assert !isStatic() || ((StaticObjectImpl) self).isStatic();
+        getDeclaringKlass().safeInitialize();
 
         final Object[] filteredArgs;
         if (isStatic()) {
@@ -341,13 +343,16 @@ public final class Method implements ModifiersProvider, ContextAccess {
     }
 
     /**
-     * Invoke a guest method without parameter/return type conversion. There's no parameter casting
-     * based on the method's signature, widening nor narrowing.
+     * Invokes a guest method without parameter/return type conversions. There's no parameter
+     * casting, widening nor narrowing based on the method signature.
+     *
+     * e.g. Host (boxed) Integer represents int, guest Integer doesn't.
      */
     @TruffleBoundary
     public Object invokeDirect(Object self, Object... args) {
         if (isStatic()) {
             assert args.length == Signatures.parameterCount(getParsedSignature(), false);
+            getDeclaringKlass().safeInitialize();
             return getCallTarget().call(args);
         } else {
             assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
@@ -368,7 +373,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     @Override
     public int getModifiers() {
-        return linkedMethod.getFlags() & Modifier.methodModifiers();
+        return linkedMethod.getFlags() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
     }
 
     @Override

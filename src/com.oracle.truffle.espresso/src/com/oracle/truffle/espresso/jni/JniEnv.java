@@ -366,7 +366,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
                             "(env, sint64): void");
 
-            // Vararg()ds
+            // Varargs native bindings.
             popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_boolean", "(sint64): uint8");
             popByte = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_byte", "(sint64): uint8");
             popChar = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_char", "(sint64): uint16");

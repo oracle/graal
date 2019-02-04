@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.classfile;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Symbol;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface StringConstant extends PoolConstant {
 
@@ -58,5 +59,18 @@ public interface StringConstant extends PoolConstant {
             this.utf8Index = utf8Index;
         }
 
+    }
+
+    final class Resolved implements StringConstant, Resolvable.ResolvedConstant {
+
+        @Override
+        public StaticObject value() {
+            return null;
+        }
+
+        @Override
+        public ByteString<Symbol> getSymbol(ConstantPool pool) {
+            return null;
+        }
     }
 }

@@ -250,7 +250,7 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(Method[].class) StaticObject getDeclaredMethods0(StaticObjectClass self, boolean publicOnly) {
+    public static @Host(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@Host(Class.class) StaticObjectClass self, boolean publicOnly) {
         final Method[] methods = Arrays.stream(self.getMirror().getDeclaredMethods()).filter(new Predicate<Method>() {
             @Override
             public boolean test(Method m) {

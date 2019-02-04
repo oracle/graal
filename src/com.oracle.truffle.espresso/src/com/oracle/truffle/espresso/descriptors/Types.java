@@ -316,4 +316,14 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
     public static ByteString<Type> fromClass(Class<?> clazz) {
         return ByteString.fromJavaString(fromCanonicalClassName(clazz.getCanonicalName()));
     }
+
+    public static String binaryName(ByteString<Type> type) {
+        if (isArray(type)) {
+            return type.toString();
+        }
+        if (isPrimitive(type)) {
+            return getJavaKind(type).getJavaName();
+        }
+        return type.substring(1, type.length() - 1).toString().replace('/', '.');
+    }
 }

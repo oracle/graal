@@ -23,8 +23,9 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 /**
  * Substitutions/intrinsics for Espresso.
  *
- * Some substitutions are statically defined, others are runtime-dependent. The current model is
- * There are two main requirements for substitutions,
+ * Some substitutions are statically defined, others runtime-dependent. The static-ones are
+ * initialized in the static initializer; which allows using MethodHandles instead of reflection in
+ * SVM.
  */
 public final class Substitutions implements ContextAccess {
 
@@ -65,13 +66,6 @@ public final class Substitutions implements ContextAccess {
             registerStaticSubstitutions(clazz);
         }
     }
-
-// private Substitutions(EspressoContext context, List<Class<?>> substitutions) {
-// this.context = context;
-// for (Class<?> clazz : substitutions) {
-// registerSubstitutions(clazz);
-// }
-// }
 
     public Substitutions(EspressoContext context) {
         this.context = context;
@@ -127,42 +121,42 @@ public final class Substitutions implements ContextAccess {
         }
     }
 
-//    public static String fixTypeName(String type) {
-//        if ((type.startsWith("L") && type.endsWith(";"))) {
-//            return type;
-//        }
+// public static String fixTypeName(String type) {
+// if ((type.startsWith("L") && type.endsWith(";"))) {
+// return type;
+// }
 //
-//        if (type.startsWith("[")) {
-//            return type.replace('.', '/');
-//        }
+// if (type.startsWith("[")) {
+// return type.replace('.', '/');
+// }
 //
-//        if (type.endsWith("[]")) {
-//            return "[" + fixTypeName(type.substring(0, type.length() - 2));
-//        }
+// if (type.endsWith("[]")) {
+// return "[" + fixTypeName(type.substring(0, type.length() - 2));
+// }
 //
-//        switch (type) {
-//            case "boolean":
-//                return "Z";
-//            case "byte":
-//                return "B";
-//            case "char":
-//                return "C";
-//            case "double":
-//                return "D";
-//            case "float":
-//                return "F";
-//            case "int":
-//                return "I";
-//            case "long":
-//                return "J";
-//            case "short":
-//                return "S";
-//            case "void":
-//                return "V";
-//            default:
-//                return "L" + type.replace('.', '/') + ";";
-//        }
-//    }
+// switch (type) {
+// case "boolean":
+// return "Z";
+// case "byte":
+// return "B";
+// case "char":
+// return "C";
+// case "double":
+// return "D";
+// case "float":
+// return "F";
+// case "int":
+// return "I";
+// case "long":
+// return "J";
+// case "short":
+// return "S";
+// case "void":
+// return "V";
+// default:
+// return "L" + type.replace('.', '/') + ";";
+// }
+// }
 
     private static void registerStaticSubstitutions(Class<?> clazz) {
         int registered = 0;
@@ -229,20 +223,6 @@ public final class Substitutions implements ContextAccess {
         }
         assert registered > 0 : "No substitutions found in " + clazz;
     }
-
-// private static EspressoRootNode createRootNodeForMethod(java.lang.reflect.Method method) {
-// if (!EspressoOptions.RUNNING_ON_SVM &&
-// context.getEnv().getOptions().get(EspressoOptions.IntrinsicsViaMethodHandles)) {
-// MethodHandle handle;
-// try {
-// handle = MethodHandles.publicLookup().unreflect(method);
-// } catch (IllegalAccessException e) {
-// throw new RuntimeException(e);
-// }
-// return new IntrinsicRootNode(language, handle);
-// } else {
-// return new IntrinsicReflectionRootNode(language, method);
-// }
 
     private static void registerStaticSubstitution(ByteString<Type> type, ByteString<Name> methodName, ByteString<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
         MethodKey key = new MethodKey(type, methodName, signature);

@@ -24,6 +24,8 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -106,17 +108,17 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public Method[] getDeclaredConstructors() {
-        return new Method[0];
+        return Method.EMPTY_ARRAY;
     }
 
     @Override
     public Method[] getDeclaredMethods() {
-        return new Method[0];
+        return Method.EMPTY_ARRAY;
     }
 
     @Override
     public Field[] getDeclaredFields() {
-        return new Field[0];
+        return Field.EMPTY_ARRAY;
     }
 
     @Override

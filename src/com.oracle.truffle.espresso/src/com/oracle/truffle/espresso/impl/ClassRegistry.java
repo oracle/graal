@@ -35,8 +35,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
- * A {@link ClassRegistry} maps type names to resolved {@link Klass} instances. Each class
- * loader is associated with a {@link ClassRegistry} and vice versa.
+ * A {@link ClassRegistry} maps type names to resolved {@link Klass} instances. Each class loader is
+ * associated with a {@link ClassRegistry} and vice versa.
  *
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
@@ -84,8 +84,13 @@ public abstract class ClassRegistry {
 
         final ByteString<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
-        LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0 ? LinkedKlass.EMPTY_ARRAY : new LinkedKlass[superInterfacesTypes.length];
-        ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0 ? ObjectKlass.EMPTY_ARRAY : new ObjectKlass[superInterfacesTypes.length];
+        LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
+                        ? LinkedKlass.EMPTY_ARRAY
+                        : new LinkedKlass[superInterfacesTypes.length];
+
+        ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0
+                        ? ObjectKlass.EMPTY_ARRAY
+                        : new ObjectKlass[superInterfacesTypes.length];
 
         // TODO(peterssen): Superinterfaces must be interfaces.
         for (int i = 0; i < superInterfacesTypes.length; ++i) {
@@ -99,6 +104,7 @@ public abstract class ClassRegistry {
 
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
         Klass previous = classes.put(type, klass);
+
         EspressoError.guarantee(previous == null, "Klass " + previous + " loaded twice");
         return klass;
     }

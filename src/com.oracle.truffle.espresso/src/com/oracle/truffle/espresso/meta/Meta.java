@@ -133,7 +133,7 @@ public final class Meta implements ContextAccess {
         PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void, Type.Exception));
 
 
-        ClassLoader = knownKlass(Type.Throwable);
+        ClassLoader = knownKlass(Type.ClassLoader);
         ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, context.getSignatures().makeRaw(Type._long, Type.ClassLoader, Type.String));
         ClassLoader_getSystemClassLoader = ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, context.getSignatures().makeRaw(Type.ClassLoader));
 
