@@ -569,9 +569,8 @@ def svm_gate_body(args, tasks):
                 javac_image(['--output-path', svmbuild_dir()])
                 javac_command = ' '.join(javac_image_command(svmbuild_dir()))
                 helloworld(['--output-path', svmbuild_dir(), '--javac-command', javac_command])
-                if mx.get_os() != 'windows':  # building shared libs on Windows currently not working (GR-13594)
-                    helloworld(['--output-path', svmbuild_dir(), '--shared']) # Building and running helloworld as shared library
-                    cinterfacetutorial([])
+                helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
+                cinterfacetutorial([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
@@ -780,32 +779,38 @@ def test_run(cmds, expected_stdout, timeout=10):
 
 mx_gate.add_gate_runner(suite, svm_gate_body)
 
+
 def _cinterfacetutorial(native_image, args=None):
     """Build and run the tutorial for the C interface"""
 
     args = [] if args is None else args
     tutorial_proj = mx.dependency('com.oracle.svm.tutorial')
-    cSourceDir = join(tutorial_proj.dir, 'native')
-    buildDir = join(svmbuild_dir(), tutorial_proj.name, 'build')
+    c_source_dir = join(tutorial_proj.dir, 'native')
+    build_dir = join(svmbuild_dir(), tutorial_proj.name, 'build')
 
     # clean / create output directory
-    if exists(buildDir):
-        remove_tree(buildDir)
-    mkpath(buildDir)
+    if exists(build_dir):
+        remove_tree(build_dir)
+    mkpath(build_dir)
 
     # Build the shared library from Java code
-    native_image(['--shared', '-H:Path=' + buildDir, '-H:Name=libcinterfacetutorial',
+    native_image(['--shared', '-H:Path=' + build_dir, '-H:Name=libcinterfacetutorial',
                   '-H:CLibraryPath=' + tutorial_proj.dir, '-cp', tutorial_proj.output_dir()] + args)
 
     # Build the C executable
-    mx.run(['cc', '-g', join(cSourceDir, 'cinterfacetutorial.c'),
-            '-I' + buildDir,
-            '-L' + buildDir, '-lcinterfacetutorial',
-            '-ldl', '-Wl,-rpath,' + buildDir,
-            '-o', join(buildDir, 'cinterfacetutorial')])
+    if mx.get_os() != 'windows':
+        mx.run(['cc', '-g', join(c_source_dir, 'cinterfacetutorial.c'),
+                '-I.', '-L.', '-lcinterfacetutorial',
+                '-ldl', '-Wl,-rpath,' + build_dir,
+                '-o', 'cinterfacetutorial'],
+               cwd=build_dir)
+    else:
+        mx.run(['cl', '-MD', join(c_source_dir, 'cinterfacetutorial.c'),
+                '-I.', 'libcinterfacetutorial.lib'],
+               cwd=build_dir)
 
     # Start the C executable
-    mx.run([buildDir + '/cinterfacetutorial'])
+    mx.run([join(build_dir, 'cinterfacetutorial')])
 
 
 def _helloworld(native_image, javac_command, path, args):
