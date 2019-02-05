@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -73,6 +73,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final LazyFunctionParser parser;
     private final DebugInfoFunctionProcessor diProcessor;
 
+    private RootCallTarget resolved;
+
     LazyToTruffleConverterImpl(LLVMParserRuntime runtime, FunctionDefinition method, Source source, LazyFunctionParser parser,
                     DebugInfoFunctionProcessor diProcessor) {
         this.runtime = runtime;
@@ -80,12 +82,22 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         this.source = source;
         this.parser = parser;
         this.diProcessor = diProcessor;
+        this.resolved = null;
     }
 
     @Override
     public RootCallTarget convert() {
         CompilerAsserts.neverPartOfCompilation();
 
+        synchronized (this) {
+            if (resolved == null) {
+                resolved = generateCallTarget();
+            }
+            return resolved;
+        }
+    }
+
+    private RootCallTarget generateCallTarget() {
         // parse the function block
         parser.parse(diProcessor, source, runtime);
 
@@ -127,6 +139,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
     @Override
     public LLVMSourceFunctionType getSourceType() {
+        convert();
         return method.getSourceFunction().getSourceType();
     }
 
