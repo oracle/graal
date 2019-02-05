@@ -629,31 +629,22 @@ def build_libgraal(image_args):
 
 
 def libgraal_gate_body(args, tasks):
+    if check_libgraal_dependencies():
+        mx.logv('Skipping libgraal because: {}'.format(msg))
+        return
+
     with Task('Build libgraal', tasks, tags=[GraalTags.build, GraalTags.benchmarktest, GraalTags.test, GraalTags.libgraal]) as t:
-        if t:
-            # Build libgraal with assertions in the image builder and assertions in the image
-            msg = build_libgraal(['-J-esa', '-ea'])
-            if msg:
-                mx.logv('Skipping libgraal because: {}'.format(msg))
-                return
+        # Build libgraal with assertions in the image builder and assertions in the image
+        if t: build_libgraal(['-J-esa', '-ea'])
 
-            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
-            if args.extra_vm_argument:
-                extra_vm_argument += args.extra_vm_argument
+    extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
+    if args.extra_vm_argument:
+        extra_vm_argument += args.extra_vm_argument
 
-            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
+    mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
 
     with Task('Test libgraal', tasks, tags=[GraalTags.libgraal]) as t:
         if t:
-            # Build libgraal with assertions in the image builder and assertions in the image
-            msg = check_libgraal_dependencies()
-            if msg:
-                mx.logv('Skipping test libgraal because: {}'.format(msg))
-                return
-
-            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
-            if args.extra_vm_argument:
-                extra_vm_argument += args.extra_vm_argument
             mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false"])
 
 mx_gate.add_gate_runner(suite, libgraal_gate_body)
