@@ -175,7 +175,9 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
                 Response response = NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK,
                                 "application/json; charset=UTF-8",
                                 responseJson);
-                response.addHeader("Cache-Control", "no-cache");
+                response.addHeader("Cache-Control", "no-cache,no-store,must-revalidate");
+                response.addHeader("Pragma", "no-cache");
+                response.addHeader("X-Content-Type-Options", "nosniff");
                 return response;
             }
         }
