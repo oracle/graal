@@ -54,12 +54,13 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class Meta implements ContextAccess {
 
-
     private final EspressoContext context;
 
     public Meta(EspressoContext context) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
+
+        // Give access to the partially-built Meta instance.
         context.setBootstrapMeta(this);
 
         // Core types.
@@ -273,7 +274,7 @@ public final class Meta implements ContextAccess {
     public StaticObject initEx(java.lang.Class<?> clazz) {
         assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = getInterpreterToVM().newObject(exKlass);
+        StaticObject ex = exKlass.allocateInstance();
         exKlass.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(ex);
         return ex;
     }
@@ -281,22 +282,22 @@ public final class Meta implements ContextAccess {
     public static StaticObject initEx(Klass klass, String message) {
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, message);
+        klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, ex.getKlass().getMeta().toGuestString(message));
         return ex;
     }
 
     public StaticObject initEx(java.lang.Class<?> clazz, String message) {
-        assert clazz.isAssignableFrom(Throwable.class);
+        assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = getInterpreterToVM().newObject(exKlass);
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, message);
+        StaticObject ex = exKlass.allocateInstance();
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, toGuestString(message));
         return ex;
     }
 
     public StaticObject initEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
-        assert clazz.isAssignableFrom(Throwable.class);
+        assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = getInterpreterToVM().newObject(exKlass);
+        StaticObject ex = exKlass.allocateInstance();
         exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
     }
@@ -310,6 +311,7 @@ public final class Meta implements ContextAccess {
     }
 
     public EspressoException throwEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
+        assert Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initEx(clazz, cause));
     }
 

@@ -67,7 +67,6 @@ public final class EspressoContext {
     private Classpath bootClasspath;
     private String[] mainArguments;
     private Source mainSourceFile;
-    // private StaticObject appClassLoader;
     private StaticObject mainThread;
 
     @CompilationFinal //
@@ -241,7 +240,7 @@ public final class EspressoContext {
         return mainThread;
     }
 
-    public void setMainThread(StaticObject mainThread) {
+    public void setMainThread(@Host(Thread.class) StaticObject mainThread) {
         this.mainThread = mainThread;
     }
 
@@ -252,10 +251,6 @@ public final class EspressoContext {
     public Signatures getSignatures() {
         return getLanguage().getSignatures();
     }
-//
-//    public @Host(ClassLoader.class) StaticObject getAppClassLoader() {
-//        return appClassLoader;
-//    }
 
     public JniEnv getJNI() {
         if (jniEnv == null) {

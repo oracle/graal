@@ -507,7 +507,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
             @Override
             public Object visitFrame(FrameInstance frameInstance) {
-                frames.add(frameInstance);
+                CallTarget callTarget = frameInstance.getCallTarget();
+                if (callTarget instanceof RootCallTarget) {
+                    RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
+                    if (rootNode instanceof EspressoRootNode) {
+                        frames.add(frameInstance);
+                    }
+                }
                 return null;
             }
         });
@@ -539,7 +545,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         getMeta().StackTraceElement_init.invokeDirect(
                         /* this */ ste,
-                        /* declaringClass */ getMeta().toGuestString(rootNode.getMethod().getName()),
+                        /* declaringClass */ getMeta().toGuestString(MetaUtil.internalNameToJava(rootNode.getMethod().getDeclaringKlass().getType().toString(), true, true)),
                         /* methodName */ getMeta().toGuestString(rootNode.getMethod().getName()),
                         /* fileName */ StaticObject.NULL,
                         /* lineNumber */ -1);

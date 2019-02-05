@@ -113,7 +113,7 @@ public final class ClassRegistries {
                             }
                         });
 
-        System.err.println("ClassRegistries define " + type + " with " + classLoader);
+        // System.err.println("ClassRegistries define " + type + " with " + classLoader);
 
         return registry.defineKlass(type, bytes);
     }

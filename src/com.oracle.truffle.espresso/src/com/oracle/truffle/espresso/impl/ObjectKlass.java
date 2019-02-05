@@ -150,23 +150,8 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Klass getElementalType() {
-        return null;
+        return this;
     }
-//
-// @Override
-// public Field[] getInstanceFields(boolean includeSuperclasses) {
-// return new Field[0];
-// }
-
-// @Override
-// public Field[] getStaticFields() {
-// return new Field[0];
-// }
-
-// @Override
-// public Method resolveMethod(Method method, Klass callerType) {
-// return null;
-// }
 
     @Override
     public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
@@ -177,67 +162,6 @@ public final class ObjectKlass extends Klass {
     public RuntimeConstantPool getConstantPool() {
         return pool;
     }
-//
-// @Override
-// public Field[] getInstanceFields(boolean includeSuperclasses) {
-// if (!includeSuperclasses) {
-// if (declaredInstanceFieldsCache == null) {
-// CompilerDirectives.transferToInterpreterAndInvalidate();
-// declaredInstanceFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<Field>() {
-// @Override
-// public boolean test(Field f) {
-// return !f.isStatic();
-// }
-// }).toArray(new IntFunction<Field[]>() {
-// @Override
-// public Field[] apply(int value) {
-// return new Field[value];
-// }
-// });
-// }
-// return declaredInstanceFieldsCache;
-// }
-// if (instanceFieldsCache == null) {
-// CompilerDirectives.transferToInterpreterAndInvalidate();
-// Stream<Field> fields = Arrays.stream(declaredFields).filter(new Predicate<Field>() {
-// @Override
-// public boolean test(Field f) {
-// return !f.isStatic();
-// }
-// });
-// if (includeSuperclasses && getSuperclass() != null) {
-// fields = Stream.concat(Arrays.stream(getSuperclass().getInstanceFields(includeSuperclasses)),
-// fields);
-// }
-// instanceFieldsCache = fields.toArray(new IntFunction<Field[]>() {
-// @Override
-// public Field[] apply(int value) {
-// return new Field[value];
-// }
-// });
-// }
-// return instanceFieldsCache;
-// }
-//
-// @Override
-// public Field[] getStaticFields() {
-// // TODO(peterssen): Cache static fields.
-// if (staticFieldsCache == null) {
-// CompilerDirectives.transferToInterpreterAndInvalidate();
-// staticFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<Field>() {
-// @Override
-// public boolean test(Field fieldInfo) {
-// return fieldInfo.isStatic();
-// }
-// }).toArray(new IntFunction<Field[]>() {
-// @Override
-// public Field[] apply(int value) {
-// return new Field[value];
-// }
-// });
-// }
-// return staticFieldsCache;
-// }
 
     @Override
     public boolean isLocal() {

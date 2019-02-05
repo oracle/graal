@@ -83,7 +83,7 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public Klass getElementalType() {
-        return null;
+        return elementalType;
     }
 
     @Override

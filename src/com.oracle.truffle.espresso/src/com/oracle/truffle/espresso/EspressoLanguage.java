@@ -102,9 +102,15 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     @Override
+    protected void finalizeContext(EspressoContext context) {
+        context.getMeta().System_exit.invokeDirect(null, 0);
+    }
+
+    @Override
     protected void disposeContext(final EspressoContext context) {
         context.disposeContext();
     }
+
 
     @Override
     protected CallTarget parse(final ParsingRequest request) throws Exception {

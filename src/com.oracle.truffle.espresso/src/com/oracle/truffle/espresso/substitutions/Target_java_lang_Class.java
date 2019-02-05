@@ -30,6 +30,10 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.ClassConstant;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.ByteString;
 import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
 import com.oracle.truffle.espresso.descriptors.Types;
@@ -82,8 +86,7 @@ public final class Target_java_lang_Class {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
 
-        // String typeDesc = "L" + Meta.toHostString(name).replace('.', '/') + ";";
-        Klass klass = meta.getRegistries().loadKlass(context.getTypes().fromClassGetName(Meta.toHostString(name)), loader);
+        Klass klass = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(Meta.toHostString(name)), loader);
 
         if (klass == null) {
             StaticObject instance = meta.ClassNotFoundException.allocateInstance();
@@ -128,12 +131,13 @@ public final class Target_java_lang_Class {
             }
         });
 
-        Meta meta = self.getKlass().getMeta();
+        EspressoContext context = self.getKlass().getContext();
+        Meta meta = context.getMeta();
 
         // TODO(peterssen): Cache guest j.l.reflect.Field constructor.
         // Calling the constructor is just for validation, manually setting the fields would be
         // faster.
-        Method fieldInit = meta.Field.lookupDeclaredMethod(Name.INIT, meta.getSignatures().makeRaw(Type._void,
+        Method fieldInit = meta.Field.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void,
                         /* declaringClass */ Type.Class,
                         /* name */ Type.String,
                         /* type */ Type.Class,
@@ -150,7 +154,7 @@ public final class Target_java_lang_Class {
                 fieldInit.invokeDirect(
                                 /* this */ instance,
                                 /* declaringKlass */ f.getHolder().mirror(),
-                                /* name */ meta.getStrings().intern(f.getName()),
+                                /* name */ context.getStrings().intern(f.getName()),
                                 /* type */ f.resolveTypeKlass().mirror(),
                                 /* modifiers */ f.getModifiers(),
                                 /* slot */ f.getSlot(),
@@ -179,12 +183,13 @@ public final class Target_java_lang_Class {
             }
         });
 
-        Meta meta = self.getKlass().getMeta();
+        EspressoContext context = self.getKlass().getContext();
+        Meta meta = context.getMeta();
 
         // TODO(peterssen): Cache guest j.l.reflect.Constructor constructor.
         // Calling the constructor is just for validation, manually setting the fields would be
         // faster.
-        Method constructorInit = meta.Constructor.lookupDeclaredMethod(Name.INIT, meta.getSignatures().makeRaw(Type._void,
+        Method constructorInit = meta.Constructor.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void,
                         /* declaringClass */ Type.Class,
                         /* parameterTypes */ Type.Class_array,
                         /* checkedExceptions */ Type.Class_array,
@@ -255,13 +260,13 @@ public final class Target_java_lang_Class {
                             }
                         });
 
-        EspressoContext context = EspressoLanguage.getCurrentContext();
+        EspressoContext context = self.getKlass().getContext();
         Meta meta = context.getMeta();
 
         // TODO(peterssen): Cache guest j.l.reflect.Method constructor.
         // Calling the constructor is just for validation, manually setting the fields would
         // be faster.
-        Method methodInit = meta.Method.lookupDeclaredMethod(Name.INIT, meta.getSignatures().makeRaw(Type._void,
+        Method methodInit = meta.Method.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void,
                         /* declaringClass */ Type.Class,
                         /* name */ Type.String,
                         /* parameterTypes */ Type.Class_array,
@@ -303,7 +308,7 @@ public final class Target_java_lang_Class {
                 methodInit.invokeDirect(
                                 /* this */ instance,
                                 /* declaringClass */ m.getDeclaringKlass().mirror(),
-                                /* name */ meta.getStrings().intern(m.getName()),
+                                /* name */ context.getStrings().intern(m.getName()),
                                 /* parameterTypes */ parameterTypes,
                                 /* returnType */ m.resolveReturnKlass().mirror(),
                                 /* checkedExceptions */ checkedExceptions,
@@ -432,13 +437,12 @@ public final class Target_java_lang_Class {
      */
     private static Klass computeEnclosingClass(ObjectKlass klass) {
         throw EspressoError.unimplemented();
-
 //        InnerClassesAttribute innerClasses = klass.getInnerClasses();
 //        if (innerClasses == null) {
 //            return null;
 //        }
 //
-//        ConstantPool pool = klass.getConstantPool();
+//        RuntimeConstantPool pool = klass.getConstantPool();
 //
 //        boolean found = false;
 //        Klass outerKlass = null;

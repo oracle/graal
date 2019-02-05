@@ -16,11 +16,6 @@ public final class ParserKlass {
     private final ByteString<Type>[] superInterfaces;
 
     private final int flags;
-    // private final int thisKlassIndex; // ClassConstant
-// private final int superKlassIndex; // unresolved
-//
-// @CompilationFinal(dimensions = 1) //
-// private final int[] superInterfacesIndices; // unresolved
 
     @CompilationFinal(dimensions = 1) //
     private final ParserMethod[] methods; // name + signature + attributes
