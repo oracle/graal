@@ -34,6 +34,7 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.Truff
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIterativePartialEscape;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TrufflePENodeLimit;
 
 import java.io.Closeable;
 import java.net.URI;
@@ -298,14 +299,21 @@ public abstract class PartialEvaluator {
     private class PEInlineInvokePlugin implements InlineInvokePlugin {
 
         private final Deque<TruffleInliningPlan> inlining;
+        private final int nodeLimit;
+        private final StructuredGraph graph;
 
-        PEInlineInvokePlugin(TruffleInliningPlan inlining) {
+        PEInlineInvokePlugin(TruffleInliningPlan inlining, StructuredGraph graph, int nodeLimit) {
             this.inlining = new ArrayDeque<>();
             this.inlining.push(inlining);
+            this.graph = graph;
+            this.nodeLimit = nodeLimit;
         }
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
+            if (graph.getNodeCount() > nodeLimit) {
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            }
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
             InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
             if (!inlineInfo.allowsInlining()) {
@@ -465,7 +473,7 @@ public abstract class PartialEvaluator {
 
         ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
         InlineInvokePlugin[] inlineInvokePlugins;
-        InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(inliningDecision);
+        InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(inliningDecision, graph, TruffleCompilerOptions.getValue(TrufflePENodeLimit));
 
         HistogramInlineInvokePlugin histogramPlugin = null;
         Boolean printTruffleExpansionHistogram = TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram);
