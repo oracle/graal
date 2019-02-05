@@ -38,6 +38,7 @@ import java.util.Map;
  *
  * @param <G> the type of graph this instance handles
  * @param <M> the type of methods this instance handles
+ * @since 1.0 a {@link WritableByteChannel} is implemented
  */
 public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
     private final GraphProtocol<G, ?, ?, ?, ?, M, ?, ?, ?, ?> printer;

@@ -730,7 +730,7 @@ final class HotSpotToSVMEntryPoints {
     public static long getDumpChannel(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long debugContextHandle) {
         try (HotSpotToSVMScope s = new HotSpotToSVMScope(GetDumpChannel, env)) {
             TruffleDebugContextImpl debugContext = SVMObjectHandles.resolve(debugContextHandle, TruffleDebugContextImpl.class);
-            GraphOutput<Void, ?> graphOutput = debugContext.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0).embedded(true));
+            GraphOutput<Void, ?> graphOutput = debugContext.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0));
             return SVMObjectHandles.create(graphOutput);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
