@@ -629,7 +629,8 @@ def build_libgraal(image_args):
 
 
 def libgraal_gate_body(args, tasks):
-    if check_libgraal_dependencies():
+    msg = check_libgraal_dependencies()
+    if msg:
         mx.logv('Skipping libgraal because: {}'.format(msg))
         return
 
