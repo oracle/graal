@@ -43,7 +43,6 @@ package com.oracle.truffle.api.test.polyglot;
 import com.oracle.truffle.api.Truffle;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import org.graalvm.polyglot.Engine;
 import org.junit.After;
@@ -64,17 +63,10 @@ public class SeparatedClassLoadersTest {
     public void sdkAndTruffleAPIInSeparateClassLoaders() throws Exception {
         final ProtectionDomain sdkDomain = Engine.class.getProtectionDomain();
         Assume.assumeNotNull(sdkDomain);
-        final CodeSource sdkSource = sdkDomain.getCodeSource();
-        Assume.assumeNotNull(sdkSource);
-        URL sdkURL = sdkSource.getLocation();
+        URL sdkURL = sdkDomain.getCodeSource().getLocation();
         Assume.assumeNotNull(sdkURL);
 
-        ProtectionDomain truffleDomain = Truffle.class.getProtectionDomain();
-        Assume.assumeNotNull(truffleDomain);
-        CodeSource truffleSource = truffleDomain.getCodeSource();
-        Assume.assumeNotNull(truffleSource);
-
-        URL truffleURL = truffleSource.getLocation();
+        URL truffleURL = Truffle.class.getProtectionDomain().getCodeSource().getLocation();
         Assume.assumeNotNull(truffleURL);
 
         ClassLoader parent = Engine.class.getClassLoader().getParent();
