@@ -29,7 +29,11 @@ import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -117,5 +121,11 @@ public class NodeLimitTest extends PartialEvaluationTest {
             RootCallTarget target = runtime.createCallTarget(createRootNodeFillerAndTest());
             partialEval((OptimizedCallTarget) target, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
         }
+    }
+
+    @BeforeClass
+    public static void before() {
+        // Cannot run with compile immediately because overriding TrufflePENodeLimit does not work.
+        Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
     }
 }
