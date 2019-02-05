@@ -87,14 +87,11 @@ def gate_body(args, tasks):
             pass
 
     if mx_vm.has_component('LibGraal'):
-        libgraal_libs = mx_vm._get_library_configs(mx_vm.get_component('LibGraal'))
-        if not libgraal_libs:
+        libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
+        if libgraal_location is None:
             mx.warn("Skipping libgraal tests: no library enabled in the LibGraal component")
         else:
-            assert len(libgraal_libs) == 1
-            p = mx.project(mx_vm.GraalVmLibrary.project_name(libgraal_libs[0]))
-
-            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(p.output_file())]
+            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)]
             if args.extra_vm_argument:
                 extra_vm_argument += args.extra_vm_argument
             import mx_compiler

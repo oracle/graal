@@ -110,6 +110,12 @@ class AbstractNativeImageConfig(object):
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, list)
 
+    def __str__(self):
+        return self.destination
+
+    def __repr__(self):
+        return str(self)
+
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, links=None, is_main_launcher=True):

@@ -1618,6 +1618,15 @@ def has_svm_polyglot_lib():
     return _get_svm_support().is_supported() and _with_polyglot_lib_project()
 
 
+def get_native_image_locations(name, image_name):
+    libgraal_libs = [l for l in _get_library_configs(get_component(name)) if image_name in basename(l.destination)]
+    if libgraal_libs:
+        assert len(libgraal_libs) == 1, "Ambiguous image name '{}' matches '{}'".format(image_name, libgraal_libs)
+        p = mx.project(GraalVmLibrary.project_name(libgraal_libs[0]))
+        return p.output_file()
+    return None
+
+
 def get_component(name, fatalIfMissing=False):
     """
     :type name: str
