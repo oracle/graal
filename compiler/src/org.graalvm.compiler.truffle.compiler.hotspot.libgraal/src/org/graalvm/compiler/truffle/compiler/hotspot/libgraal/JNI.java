@@ -259,7 +259,7 @@ final class JNI {
 
     interface CallStaticBooleanMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
-        boolean call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
+        byte call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
     interface CallStaticVoidMethodA extends CFunctionPointer {
@@ -299,7 +299,7 @@ final class JNI {
 
     interface ExceptionCheck extends CFunctionPointer {
         @InvokeCFunctionPointer
-        boolean call(JNIEnv env);
+        byte call(JNIEnv env);
     }
 
     interface ExceptionClear extends CFunctionPointer {
@@ -384,7 +384,7 @@ final class JNI {
 
     interface IsSameObject extends CFunctionPointer {
         @InvokeCFunctionPointer
-        boolean call(JNIEnv env, JObject ref1, JObject ref2);
+        byte call(JNIEnv env, JObject ref1, JObject ref2);
     }
 
     interface NewByteArray extends CFunctionPointer {

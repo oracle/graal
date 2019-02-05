@@ -107,7 +107,7 @@ final class SVMToHotSpotUtil {
     static boolean callBoolean(JNIEnv env, SVMToHotSpot.Id id, JValue args) {
         JNIMethod method = getJNIMethod(env, id, boolean.class);
         traceCall(id);
-        boolean res = env.getFunctions().getCallStaticBooleanMethodA().call(env, peer(env).jclass, method.jniId, args);
+        boolean res = (env.getFunctions().getCallStaticBooleanMethodA().call(env, peer(env).jclass, method.jniId, args) & 0xff) != 0;
         wrapAndThrowPendingJNIException(env);
         return res;
     }
