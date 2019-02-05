@@ -398,7 +398,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                         throw new PortUnreachableException("ICMP Port Unreachable");
                     } else {
                         //   473                      NET_ThrowByNameWithLastError(env, "java/io/IOException", "sendto failed");
-                        throw new IOException(PosixUtils.lastErrorString("sendto failed"));
+                        throw PosixUtils.newIOExceptionWithLastError("sendto failed");
                     }
                     //   477              case JVM_IO_INTR:
                 } else if (ret == Target_jvm.JVM_IO_INTR()) {
@@ -5785,7 +5785,7 @@ final class Target_sun_net_sdp_SdpSupport {
             if (res < 0) {
                 /* FIXME: Not implementing JNU_ThrowIOExceptionWithLastError. */
                 // 120             JNU_ThrowIOExceptionWithLastError(env, "dup2");
-                throw new IOException("dup2");
+                throw PosixUtils.newIOExceptionWithLastError("dup2");
             }
             // 121         RESTARTABLE(close(s), res);
             do {
@@ -5861,7 +5861,7 @@ final class Util_sun_net_sdp_SdpSupport {
         if (s < 0) {
             /* FIXME: Not implementing JNU_ThrowIOExceptionWithLastError. */
             // 081         JNU_ThrowIOExceptionWithLastError(env, "socket");
-            throw new IOException("socket");
+            throw PosixUtils.newIOExceptionWithLastError("socket");
         }
         // 082     return s;
         return s;
