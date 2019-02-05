@@ -86,7 +86,7 @@ public abstract class SectionName {
     };
     public static final SectionName TEXT = new ProgbitsSectionName("text");
     public static final SectionName BSS = new NobitsSectionName("bss");
-    public static final SectionName SVM_HEAP = new ProgbitsSectionName("svmheap");
+    public static final SectionName SVM_HEAP = new ProgbitsSectionName("svm_heap");
     // proprietary
     public static final SectionName APPLE_NAMES = new ProgbitsSectionName("apple_names");
     public static final SectionName APPLE_TYPES = new ProgbitsSectionName("apple_types");
