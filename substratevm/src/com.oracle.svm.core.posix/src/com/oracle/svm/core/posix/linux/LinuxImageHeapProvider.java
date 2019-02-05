@@ -51,7 +51,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.ComparableWord;
@@ -164,7 +163,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             final CCharPointer buffer = malloc(WordFactory.unsigned(MAX_PATHLEN));
             final CLongPointer startAddr = StackValue.get(CLongPointer.class);
             final CLongPointer offset = StackValue.get(CLongPointer.class);
-            final CIntPointer dev = StackValue.get(CIntPointer.class);
+            final CLongPointer dev = StackValue.get(CLongPointer.class);
             final CLongPointer inode = StackValue.get(CLongPointer.class);
             boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, dev, inode, true);
             close(mapfd);
