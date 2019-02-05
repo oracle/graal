@@ -86,7 +86,7 @@ public abstract class SectionName {
     };
     public static final SectionName TEXT = new ProgbitsSectionName("text");
     public static final SectionName BSS = new NobitsSectionName("bss");
-    public static final SectionName SVM_HEAP = new ProgbitsSectionName("svm_heap");
+    public static final SectionName SVM_HEAP = new ProgbitsSectionName("svmheap");
     // proprietary
     public static final SectionName APPLE_NAMES = new ProgbitsSectionName("apple_names");
     public static final SectionName APPLE_TYPES = new ProgbitsSectionName("apple_types");
@@ -104,9 +104,8 @@ public abstract class SectionName {
     private static String getFormatPrefix(ObjectFile.Format f) {
         switch (f) {
             case ELF:
-                return ".";
             case PECOFF:
-                return "";
+                return ".";
             case MACH_O:
                 return "__";
             default:

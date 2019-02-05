@@ -28,6 +28,7 @@ package com.oracle.objectfile.pecoff;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
 
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_SYMBOL;
 
@@ -135,7 +136,7 @@ final class PECoffSymtabStruct {
 
     // Return the string table array
     byte[] getStrtabArray() {
-        byte[] strs = strTabContent.toString().getBytes();
+        byte[] strs = strTabContent.toString().getBytes(StandardCharsets.UTF_8);
 
         // Update the size of the string table
         ByteBuffer buff = ByteBuffer.wrap(strs);
@@ -150,6 +151,6 @@ final class PECoffSymtabStruct {
     }
 
     byte[] getDirectiveArray() {
-        return (directives.toString().getBytes());
+        return (directives.toString().getBytes(StandardCharsets.UTF_8));
     }
 }

@@ -388,7 +388,7 @@ public class PECoffObjectFile extends ObjectFile {
         READ(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_READ),
         WRITE(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_WRITE),
         EXECUTE(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_EXECUTE),
-        LINKER(IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_INFO | IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_REMOVE );
+        LINKER(IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_INFO | IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_REMOVE);
 
         private final int value;
 
@@ -598,7 +598,7 @@ public class PECoffObjectFile extends ObjectFile {
 
         @Override
         public ElementImpl getImpl() {
-            return this;
+            return directives;
         }
 
         @Override
