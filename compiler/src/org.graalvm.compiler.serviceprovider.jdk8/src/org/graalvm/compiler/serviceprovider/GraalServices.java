@@ -28,11 +28,13 @@ import static java.lang.Thread.currentThread;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.concurrent.atomic.AtomicLong;
 
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
 
@@ -114,6 +116,45 @@ public final class GraalServices {
     public static boolean isToStringTrusted(Class<?> c) {
         ClassLoader cl = c.getClassLoader();
         return cl == null || cl == JVMCI_LOADER || cl == JVMCI_PARENT_LOADER;
+    }
+
+    /**
+     * An implementation of {@link SpeculationReason} based on direct, unencoded values.
+     */
+    static final class DirectSpeculationReason implements SpeculationReason {
+        final int groupId;
+        final Object[] context;
+
+        DirectSpeculationReason(int groupId, Object[] context) {
+            if (context == null || context.length == 0) {
+                throw new IllegalArgumentException("A speculation reason requires non-empty context");
+            }
+            this.groupId = groupId;
+            this.context = context;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof DirectSpeculationReason) {
+                DirectSpeculationReason that = (DirectSpeculationReason) obj;
+                return this.groupId == that.groupId && Arrays.equals(this.context, that.context);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return groupId + Arrays.hashCode(this.context);
+        }
+
+        @Override
+        public String toString() {
+            return groupId + ":" + Arrays.toString(context);
+        }
+    }
+
+    static SpeculationReason createSpeculationReason(int groupId, Object[] context) {
+        return new DirectSpeculationReason(groupId, context);
     }
 
     /**

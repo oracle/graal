@@ -193,4 +193,13 @@ public abstract class Stamp {
     public SymbolicJVMCIReference<? extends Stamp> makeSymbolic() {
         return null;
     }
+
+    /**
+     * Gets a string value for this stamp that captures all the properties of this stamp and does
+     * not coincide with the string value of another stamp with different properties. That is, the
+     * following must hold for two stamps {@code a} and {@code b}:
+     * {@code a.equals(b) == a.toString().equals(b.toString())}.
+     */
+    @Override
+    public abstract String toString();
 }

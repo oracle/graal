@@ -52,6 +52,7 @@ import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
@@ -88,24 +89,6 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
 
     private final SpeculationReason intrinsifyAccessorsSpeculation;
 
-    static final class IntrinsifyFrameAccessorsSpeculationReason implements SpeculationReason {
-        private final JavaConstant frameDescriptor;
-
-        IntrinsifyFrameAccessorsSpeculationReason(JavaConstant frameDescriptor) {
-            this.frameDescriptor = frameDescriptor;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof IntrinsifyFrameAccessorsSpeculationReason && ((IntrinsifyFrameAccessorsSpeculationReason) obj).frameDescriptor.equals(this.frameDescriptor);
-        }
-
-        @Override
-        public int hashCode() {
-            return frameDescriptor.hashCode();
-        }
-    }
-
     private static JavaKind asJavaKind(JavaConstant frameSlotTag) {
         int tagValue = frameSlotTag.asInt();
         JavaKind rawKind = TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(tagValue);
@@ -124,6 +107,8 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         }
         throw new IllegalStateException("Unexpected frame slot kind tag: " + tagValue);
     }
+
+    private static final SpeculationReasonGroup INTRINSIFY_FRAME_ACCESSORS_SPECULATIONS = new SpeculationReasonGroup();
 
     public NewFrameNode(GraphBuilderContext b, ValueNode frameDescriptorNode, ValueNode arguments, KnownTruffleTypes types) {
         super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(types.classFrameClass)));
@@ -152,8 +137,12 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
          * data arrays, which means that set-methods need a FrameState. Most of the benefit of
          * accessor method intrinsification is avoiding the FrameState creation during partial
          * evaluation.
+         *
+         * The frame descriptor of a call target does not change and since a SpeculationLog is
+         * already associated with a specific call target we only need a single speculation object
+         * representing a speculation on a NewFrameNode.
          */
-        this.intrinsifyAccessorsSpeculation = new IntrinsifyFrameAccessorsSpeculationReason(frameDescriptor);
+        this.intrinsifyAccessorsSpeculation = INTRINSIFY_FRAME_ACCESSORS_SPECULATIONS.createSpeculationReason();
 
         boolean intrinsify = false;
         if (!constantReflection.readFieldValue(types.fieldFrameDescriptorMaterializeCalled, frameDescriptor).asBoolean()) {

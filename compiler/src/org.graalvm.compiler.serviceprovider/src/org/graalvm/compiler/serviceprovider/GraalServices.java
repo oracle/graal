@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.services.JVMCIPermission;
 
 /**
@@ -86,6 +87,16 @@ public final class GraalServices {
      * @param c
      */
     public static boolean isToStringTrusted(Class<?> c) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Creates an encoding of the context objects representing a speculation reason.
+     *
+     * @param groupId
+     * @param context the objects forming a key for the speculation
+     */
+    static SpeculationReason createSpeculationReason(int groupId, Object... context) {
         throw shouldNotReachHere();
     }
 
