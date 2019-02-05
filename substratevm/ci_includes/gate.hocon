@@ -20,7 +20,7 @@ gate-svm-js: {
 
 gate-svm-truffle-libgraal: {
   run: [
-    ${svm-cmd-gate} ["build,testlibgraal"]
+    ${svm-cmd-gate} ["build,libgraal"]
   ]
 }
 

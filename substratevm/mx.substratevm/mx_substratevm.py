@@ -508,7 +508,7 @@ GraalTags = Tags([
     'build',
     'test',
     'benchmarktest',
-    "testlibgraal"
+    'libgraal'
 ])
 
 @contextmanager
@@ -593,20 +593,27 @@ def svm_gate_body(args, tasks):
 def build_libgraal_cli(args):
     build_libgraal(args)
 
-
-def build_libgraal(image_args):
+def check_libgraal_dependencies():
     if mx.get_os() == 'windows':
         return 'libgraal is unsupported on Windows'
 
     graal_hotspot_library = mx.dependency('substratevm:GRAAL_HOTSPOT_LIBRARY', fatalIfMissing=False)
-    truffle_compiler_library = mx.dependency('compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL', fatalIfMissing=False)
-
     if not graal_hotspot_library:
         return 'libgraal dependency substratevm:GRAAL_HOTSPOT_LIBRARY is missing'
 
+    truffle_compiler_library = mx.dependency('compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL', fatalIfMissing=False)
     if not truffle_compiler_library:
         return 'libgraal dependency compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL is missing'
 
+    return None
+
+def build_libgraal(image_args):
+    msg = check_libgraal_dependencies()
+    if msg:
+        return msg
+
+    graal_hotspot_library = mx.dependency('substratevm:GRAAL_HOTSPOT_LIBRARY')
+    truffle_compiler_library = mx.dependency('compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL')
     truffle_api = mx.dependency('truffle:TRUFFLE_API')
 
     libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', os.pathsep.join([graal_hotspot_library.classpath_repr(), truffle_compiler_library.classpath_repr()]),
@@ -622,7 +629,7 @@ def build_libgraal(image_args):
 
 
 def libgraal_gate_body(args, tasks):
-    with Task('Build libgraal', tasks, tags=[GraalTags.build, GraalTags.benchmarktest, GraalTags.test]) as t:
+    with Task('Build libgraal', tasks, tags=[GraalTags.build, GraalTags.benchmarktest, GraalTags.test, GraalTags.libgraal]) as t:
         if t:
             # Build libgraal with assertions in the image builder and assertions in the image
             msg = build_libgraal(['-J-esa', '-ea'])
@@ -636,12 +643,12 @@ def libgraal_gate_body(args, tasks):
 
             mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
 
-    with Task('Test libgraal', tasks, tags=[GraalTags.testlibgraal]) as t:
+    with Task('Test libgraal', tasks, tags=[GraalTags.libgraal]) as t:
         if t:
             # Build libgraal with assertions in the image builder and assertions in the image
-            msg = build_libgraal(['-J-esa', '-ea'])
+            msg = check_libgraal_dependencies()
             if msg:
-                mx.logv('Skipping libgraal because: {}'.format(msg))
+                mx.logv('Skipping test libgraal because: {}'.format(msg))
                 return
 
             extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
