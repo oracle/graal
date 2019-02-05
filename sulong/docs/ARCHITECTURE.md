@@ -5,7 +5,7 @@ An Architecture Haiku is ["a one-page, quick-to-build, uber-terse design descrip
 ## Solution description
 
 Sulong is an LLVM bitcode interpreter that allows you to run C, Fortran,
-and other native languages on the Graal VM.
+and other native languages on the GraalVM.
 Use LLVM frontends to compile languages to LLVM bitcode.
 Sulong execute LLVM bitcode using a Truffle language implementation.
 Sulong uses the Graal compiler to compile frequently executed functions
@@ -17,7 +17,7 @@ Sulong must run on 64-bit Mac and Linux systems supported by both LLVM and Graal
 
 ## Functional Requirements
 
-Sulong should be able to execute all LLVM bitcode on Graal VM.
+Sulong should be able to execute all LLVM bitcode on GraalVM.
 The current focus is on single-threaded C and Fortran programs.
 Other languages are not fully supported, and, e.g., C++ exception handling
 is not yet implemented.

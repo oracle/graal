@@ -4,8 +4,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 1.0.0 RC13
 * Added [Debugger.getSessionCount()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getSessionCount--) to return the number of active debugger sessions.
+* The [TruffleFile.getName()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getName--) returns `null` for root directory.
 
 * Enabled the [experimental monomorphization heuristic](https://github.com/oracle/graal/blob/master/truffle/docs/splitting/) as default. Old heuristic still available as legacy, but will be removed soon.
+* Added [TypeDescriptor.instantiable(instanceType, vararg, parameterTypes)](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/TypeDescriptor.html#instantiable-org.graalvm.polyglot.tck.TypeDescriptor-boolean-org.graalvm.polyglot.tck.TypeDescriptor...-) into TCK to support instantiable types.
 
 ## Version 1.0.0 RC12
 * Fixed: [Env.asHostException()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#asHostException-java.lang.Throwable-) should throw an `IllegalArgumentException` if the provided value is not a host exception.

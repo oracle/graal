@@ -85,12 +85,14 @@ public class ReflectionPlugins {
     }
 
     private static final Method throwClassNotFoundExceptionMethod;
+    private static final Method throwNoClassDefFoundErrorMethod;
     private static final Method throwNoSuchFieldExceptionMethod;
     private static final Method throwNoSuchMethodExceptionMethod;
 
     static {
         try {
             throwClassNotFoundExceptionMethod = ReflectionPluginExceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class);
+            throwNoClassDefFoundErrorMethod = ReflectionPluginExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class);
             throwNoSuchFieldExceptionMethod = ReflectionPluginExceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class);
             throwNoSuchMethodExceptionMethod = ReflectionPluginExceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class);
         } catch (NoSuchMethodException ex) {
@@ -210,6 +212,15 @@ public class ReflectionPlugins {
                     return false;
                 }
                 throwNoSuchFieldException(b, targetMethod, target);
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * If the declaring class of the field references missing classes a
+                 * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
+                 */
+                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoClassDefFoundErrorMethod)) {
+                    return false;
+                }
+                throwNoClassDefFoundError(b, targetMethod, e.getMessage());
             }
             return true;
         }
@@ -237,6 +248,15 @@ public class ReflectionPlugins {
                         return false;
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
+                } catch (NoClassDefFoundError e) {
+                    /*
+                     * If the declaring class of the method references missing classes a
+                     * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
+                     */
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoClassDefFoundErrorMethod)) {
+                        return false;
+                    }
+                    throwNoClassDefFoundError(b, targetMethod, e.getMessage());
                 }
 
                 return true;
@@ -267,6 +287,15 @@ public class ReflectionPlugins {
                         return false;
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
+                } catch (NoClassDefFoundError e) {
+                    /*
+                     * If the declaring class of the constructor references missing classes a
+                     * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
+                     */
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoClassDefFoundErrorMethod)) {
+                        return false;
+                    }
+                    throwNoClassDefFoundError(b, targetMethod, e.getMessage());
                 }
 
                 return true;
@@ -311,6 +340,13 @@ public class ReflectionPlugins {
                         " with a constant class name argument.";
         throwException(b, message, throwClassNotFoundExceptionMethod);
         traceException(b.getMethod(), reflectionMethod, targetClass, throwClassNotFoundExceptionMethod);
+    }
+
+    private static void throwNoClassDefFoundError(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, String targetClass) {
+        String message = targetClass + ". This exception was synthesized during native image building from a call to " + reflectionMethod.format("%H.%n(%p)") +
+                        " with constant arguments.";
+        throwException(b, message, throwNoClassDefFoundErrorMethod);
+        traceException(b.getMethod(), reflectionMethod, targetClass, throwNoClassDefFoundErrorMethod);
     }
 
     private static void throwNoSuchFieldException(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, String targetField) {

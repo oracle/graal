@@ -38,16 +38,19 @@ import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.nativeimage.Feature.CompilationAccess;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.Replaced;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
@@ -67,6 +70,11 @@ import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
+import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -124,6 +132,8 @@ public class GraalObjectReplacer implements Function<Object, Object> {
 
         if (source instanceof MetaAccessProvider) {
             dest = sMetaAccess;
+        } else if (source instanceof HotSpotJVMCIRuntime) {
+            throw VMError.shouldNotReachHere("HotSpotJVMCIRuntime should not appear in the image: " + source);
         } else if (source instanceof GraalRuntime) {
             dest = sGraalRuntime;
         } else if (source instanceof AnalysisConstantReflectionProvider) {
@@ -141,7 +151,15 @@ public class GraalObjectReplacer implements Function<Object, Object> {
              * BigBang.finish(), which is multi-threaded.
              */
             synchronized (this) {
-                if (source instanceof ResolvedJavaMethod) {
+                if (source instanceof HotSpotResolvedJavaMethod) {
+                    throw new UnsupportedFeatureException(source.toString());
+                } else if (source instanceof HotSpotResolvedJavaField) {
+                    throw new UnsupportedFeatureException(source.toString());
+                } else if (source instanceof HotSpotResolvedJavaType) {
+                    throw new UnsupportedFeatureException(source.toString());
+                } else if (source instanceof HotSpotSignature) {
+                    throw new UnsupportedFeatureException(source.toString());
+                } else if (source instanceof ResolvedJavaMethod) {
                     dest = createMethod((ResolvedJavaMethod) source);
                 } else if (source instanceof ResolvedJavaField) {
                     dest = createField((ResolvedJavaField) source);
@@ -162,9 +180,10 @@ public class GraalObjectReplacer implements Function<Object, Object> {
 
         assert dest != null;
         String className = dest.getClass().getName();
-        assert !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
+        assert SubstrateUtil.isBuildingLibgraal() || !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
         assert !className.contains(".analysis.meta.") : "Analysis meta object in image " + className;
         assert !className.contains(".hosted.meta.") : "Hosted meta object in image " + className;
+        assert !SubstrateUtil.isBuildingLibgraal() || !className.contains(".svm.hosted.snippets.") : "Hosted snippet object in image " + className;
 
         return dest;
     }

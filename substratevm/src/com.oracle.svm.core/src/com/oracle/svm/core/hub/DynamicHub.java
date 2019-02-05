@@ -60,6 +60,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
@@ -69,6 +70,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
@@ -77,7 +79,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
-import sun.reflect.ReflectionFactory;
 import sun.security.util.SecurityConstants;
 
 @Hybrid
@@ -920,11 +921,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    private static ReflectionFactory getReflectionFactory() {
-        return reflectionFactory;
+    private static Target_jdk_internal_reflect_ReflectionFactory getReflectionFactory() {
+        return Target_jdk_internal_reflect_ReflectionFactory.getReflectionFactory();
     }
-
-    private static final ReflectionFactory reflectionFactory = ReflectionFactory.getReflectionFactory();
 
     @KeepOriginal
     private static native Field searchFields(Field[] fields, String name);
@@ -1122,4 +1121,16 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 /** FIXME: How to handle java.lang.Class.ReflectionData? */
 @TargetClass(className = "java.lang.Class", innerClass = "ReflectionData")
 final class Target_java_lang_Class_ReflectionData<T> {
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ReflectionFactory")
+final class Target_jdk_internal_reflect_ReflectionFactory {
+
+    @Alias //
+    private static Target_jdk_internal_reflect_ReflectionFactory soleInstance;
+
+    @Substitute
+    public static Target_jdk_internal_reflect_ReflectionFactory getReflectionFactory() {
+        return soleInstance;
+    }
 }

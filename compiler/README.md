@@ -55,7 +55,6 @@ If you omit `EXTRA_JAVA_HOMES` in the above examples, versioned projects dependi
 Note that `JAVA_HOME` defines the *primary* JDK for development. For instance, when running `mx vm`, this is the JDK that will be used so if you want to run on JDK 11, swap JDK 8 and JDK 11 in `JAVA_HOME` and `EXTRA_JAVA_HOMES`.
 
 Now change to the `graal/compiler` directory:
-
 ```
 cd graal/compiler
 ```
@@ -103,6 +102,48 @@ If you added `-XX:+UseJVMCICompiler` as described above, you will see IR for com
 The former are those with a prefix in the UI denoting the compiler thread and id of the compilation (e.g., `JVMCI CompilerThread0:390`).
 
 Further information can be found on the [Debugging](docs/Debugging.md) page.
+
+## libgraal
+
+Building Graal as described above enables it to be used in HotSpot as Java code
+called from the VM. In this mode, Graal is executed in the same way as any
+other Java code in the VM; it allocates in the HotSpot heap and it starts execution
+in the interpreter with hot parts being subsequently JIT compiled.
+The advantage of this mode is that Graal can be debugged with a Java debugger.
+
+However, it has some disadvantages. Firstly, since Graal uses the object heap, it can
+reduce application object locality and increase GC pause times. Additionally, it can
+complicate fine tuning options such as `-Xmx` and `Xms` which now need to take the
+heap usage of Graal needs to be taken into account. Secondly, Graal will initially be executed
+in the interpreter and only get faster over time as its hot methods are JIT
+compiled. This is mitigated to some degree by forcing Graal (and JVMCI)
+to only be compiled by C1 but this comes at the cost of lower peak performance for Graal.
+
+To address these issues, Graal can be deployed as a native shared library. The shared
+library is produced using [SubstrateVM](../substratevm/README.md) to ahead-of-time compile Graal. In this mode,
+Graal uses memory separate from the HotSpot heap and it runs compiled
+from the start. That is, it has execution properties similar to other native HotSpot
+compilers such as C1 and C2.
+
+To build libgraal, you need to use the `native-image` tool in the `substratevm` suite.
+
+```
+cd graal/substratevm
+mx build
+mx buildlibgraal
+```
+
+This will produce a shared library in the current working directory whose name is
+compliant with the shared library naming conventions for the platform;
+`libjvmcicompiler.dylib` (macOS), `libjvmcicompiler.so` (Linux, Solaris, etc), `graal.dll` (Windows).
+
+To use this library, copy it to the same directory as `libjava.dylib`/`libjava.so`/`java.dll`
+in your JVMCI JDK8 installation and use the options `-XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary`. Alternatively,
+you can directly specify the path to the library as the value to `-XX:JVMCILibPath=`.
+For example:
+```
+mx vm -XX:JVMCILibPath=/path/to/libjvmcicompiler.dylib -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+```
 
 ## Publications and Presentations
 

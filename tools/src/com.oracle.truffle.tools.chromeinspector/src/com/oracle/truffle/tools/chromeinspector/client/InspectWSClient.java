@@ -226,6 +226,11 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
     }
 
     @Override
+    public void consoleAPICall(String wsspath, String type, Object text) {
+        iss.consoleAPICall(type, text);
+    }
+
+    @Override
     public void close(String wsspath) {
         close();
     }

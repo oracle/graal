@@ -43,6 +43,7 @@ package com.oracle.truffle.api;
 import java.util.List;
 
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -64,8 +65,14 @@ public final class TruffleStackTraceElement {
     }
 
     /**
-     * Returns a node representing the callsite on the stack. Returns <code>null</code> if no
-     * detailed callsite information is available.
+     * Returns a node representing the callsite on the stack.
+     * <p>
+     * Returns <code>null</code> if no detailed callsite information is available. This is the case
+     * when {@link CallTarget#call(Object...)} is used or for the top-of-the-stack element if
+     * {@link TruffleException#getLocation()} returned <code>null</code> or the exception wasn't a
+     * {@link TruffleException}.
+     * <p>
+     * See {@link FrameInstance#getCallNode()} for the relation between callsite and CallTarget.
      *
      * @since 0.27
      **/
@@ -74,7 +81,9 @@ public final class TruffleStackTraceElement {
     }
 
     /**
-     * Returns the call target on the stack. Returns never <code>null</code>.
+     * Returns the call target on the stack. Never returns <code>null</code>.
+     * <p>
+     * See {@link FrameInstance#getCallNode()} for the relation between callsite and CallTarget.
      *
      * @since 0.27
      **/

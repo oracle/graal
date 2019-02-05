@@ -51,7 +51,6 @@ final class Target_java_lang_reflect_Proxy {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     public static boolean isProxyClass(Class<?> cl) {
         return Proxy.class.isAssignableFrom(cl) && ImageSingletons.lookup(DynamicProxyRegistry.class).isProxyClass(cl);
     }

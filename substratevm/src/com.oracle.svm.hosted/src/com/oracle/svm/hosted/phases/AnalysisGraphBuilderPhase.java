@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -83,6 +86,11 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 return ExceptionEdgeAction.OMIT;
             }
             return super.getActionForInvokeExceptionEdge(lastInlineInfo);
+        }
+
+        @Override
+        public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
+            return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(Node.NodeIntrinsic.class);
         }
     }
 }

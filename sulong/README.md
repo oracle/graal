@@ -7,26 +7,26 @@ Sulong is written in Java and uses the Truffle language implementation
 framework and Graal as a dynamic compiler.
 
 With Sulong you can execute C/C++, Fortran, and other programming languages
-that can be transformed to LLVM bitcode on Graal VM. To execute a program,
+that can be transformed to LLVM bitcode on GraalVM. To execute a program,
 you have to compile the program to LLVM bitcode by a LLVM front end such
 as `clang`.
 
-Graal VM
---------
+GraalVM
+-------
 
-Sulong is part of the [Graal VM](http://www.graalvm.org).
-Graal VM supports Linux or Mac OS X on x86 64-bit systems.
+Sulong is part of the [GraalVM](http://www.graalvm.org).
+GraalVM supports Linux or Mac OS X on x86 64-bit systems.
 
-1. Download the [Graal VM](http://www.graalvm.org/downloads/) binaries.
+1. Download the [GraalVM](http://www.graalvm.org/downloads/) binaries.
 2. Extract the archive to your file system.
-3. Add the Graal VM `/bin` folder to your `PATH` environment variable.
+3. Add the GraalVM `/bin` folder to your `PATH` environment variable.
 
-To run programs in LLVM bitcode format on Graal VM, use:
+To run programs in LLVM bitcode format on GraalVM, use:
 
-    lli [LLI Options] [Graal VM Options] [Polyglot Options] file.bc [program args]
+    lli [LLI Options] [GraalVM Options] [Polyglot Options] file.bc [program args]
 
 Where `file.bc` is a single program source file in LLVM bitcode format.
-Graal VM executes the LLVM bitcode using Sulong as an interpreter.
+GraalVM executes the LLVM bitcode using Sulong as an interpreter.
 Note: LLVM bitcode is platform dependent. The program must be compiled to
 bitcode for the appropriate platform.
 
@@ -41,12 +41,12 @@ or bitcode files. You can specify `--lib` multiple times. *Note:* You must speci
 the library `example` with `--lib /path/to/libexample.so` as opposed to common linker
 `-l` options.
 
-#### Graal VM Options
+#### GraalVM Options
 
 - `--jvm` executes the application in JVM mode instead of executing the
-Graal VM native image.
+GraalVM native image.
 
-- `--jvm.<option>` passes JVM options to Graal VM.
+- `--jvm.<option>` passes JVM options to GraalVM.
 List available JVM options with `--jvm.help`.
 
 - `--graal.<property>=<value>` passes settings to the Graal compiler.
@@ -62,7 +62,7 @@ through the Graal Polyglot SDK.
 
 #### Compiling to LLVM bitcode format
 
-Graal VM can execute C/C++, Fortran, and other programs that can be compiled to
+GraalVM can execute C/C++, Fortran, and other programs that can be compiled to
 LLVM bitcode. As a first step, you have to compile the program to LLVM bitcode
 using an LLVM frontend such as `clang`. C/C++ code can be compiled to LLVM
 bitcode using `clang` with the `-emit-llvm` option.
@@ -82,7 +82,7 @@ to an LLVM bitcode file `test.bc`.
 
     clang -O1 -c -emit-llvm -o test.bc test.c
 
-You can then run `test.bc` on Graal VM as follows:
+You can then run `test.bc` on GraalVM as follows:
 
     lli test.bc
 
@@ -182,7 +182,7 @@ multiple arguments separated by `:`.
 
 #### Running with the Graal compiler
 
-In contrast to Graal VM, `mx lli` will by default  *not* optimize your program.
+In contrast to GraalVM, `mx lli` will by default  *not* optimize your program.
 If you are interested in high performance, you might want to import the Graal
 compiler. To do so, first ensure that the compiler is built:
 
