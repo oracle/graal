@@ -48,7 +48,7 @@ typedef enum {
 
 typedef struct header_struct {
 	unsigned char type;
-	char typename[3]; // "d1", "d2"
+	char name[3]; // "d1", "d2"
 } h_t;
 
 typedef struct {

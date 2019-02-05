@@ -79,9 +79,9 @@ du_t* makeUnion(unsigned char type) {
 		break;
 	}
 	result->h.type = type;
-	result->h.typename[0] = 'd';
-	result->h.typename[0] = '0' + type;
-	result->h.typename[2] = '\0';
+	result->h.name[0] = 'd';
+	result->h.name[0] = '0' + type;
+	result->h.name[2] = '\0';
 	return result;
 }
 
@@ -122,9 +122,9 @@ int main(void) {
    */
   subdata_t *subdata = (subdata_t *) malloc(sizeof(subdata_t));
   subdata->header.type = 7;
-  subdata->header.typename[0] = 's';
-  subdata->header.typename[1] = '1';
-  subdata->header.typename[2] = 0;
+  subdata->header.name[0] = 's';
+  subdata->header.name[1] = '1';
+  subdata->header.name[2] = 0;
   subdata->f1 = 0x800000f;
   java_entry_point2(thread, subdata, subdata);
   free(subdata);

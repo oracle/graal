@@ -263,8 +263,8 @@ public class CInterfaceTutorial {
         @CField
         byte type();
 
-        @CFieldAddress("typename")
-        CCharPointer typename();
+        @CFieldAddress("name")
+        CCharPointer name();
 
         @CFieldAddress("type")
         CCharPointer typePtr();
