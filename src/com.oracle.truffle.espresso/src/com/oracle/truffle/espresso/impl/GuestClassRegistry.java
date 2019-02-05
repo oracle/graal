@@ -41,8 +41,6 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class GuestClassRegistry extends ClassRegistry {
 
-    private final EspressoContext context;
-
     /**
      * The class loader associated with this registry.
      */
@@ -53,7 +51,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     private final Method ClassLoader_addClass;
 
     public GuestClassRegistry(EspressoContext context, @Host(ClassLoader.class) StaticObject classLoader) {
-        this.context = context;
+        super(context);
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
         this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String_boolean);
@@ -63,7 +61,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     @Override
     public Klass loadKlass(ByteString<Type> type) {
         if (Types.isArray(type)) {
-            Klass elemental = loadKlass(context.getTypes().getElementalType(type));
+            Klass elemental = loadKlass(getTypes().getElementalType(type));
             if (elemental == null) {
                 return null;
             }
@@ -74,7 +72,7 @@ public final class GuestClassRegistry extends ClassRegistry {
             return klass;
         }
         assert StaticObject.notNull(classLoader);
-        StaticObjectClass guestClass = (StaticObjectClass) ClassLoader_loadClass.invokeDirect(classLoader, context.getMeta().toGuestString(Types.binaryName(type)), false);
+        StaticObjectClass guestClass = (StaticObjectClass) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)), false);
         klass = guestClass.getMirror();
         return klass;
     }
@@ -85,8 +83,8 @@ public final class GuestClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public ObjectKlass defineKlass(EspressoContext context, ByteString<Type> type, final byte[] bytes) {
-        ObjectKlass klass = super.defineKlass(context, type, bytes);
+    public ObjectKlass defineKlass(ByteString<Type> type, final byte[] bytes) {
+        ObjectKlass klass = super.defineKlass(type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
         ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
         return klass;

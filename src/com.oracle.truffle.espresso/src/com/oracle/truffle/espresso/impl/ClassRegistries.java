@@ -51,7 +51,7 @@ public final class ClassRegistries {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
-            Klass elemental = findLoadedClass(Types.getElementalType(type), classLoader);
+            Klass elemental = findLoadedClass(context.getTypes().getElementalType(type), classLoader);
             if (elemental == null) {
                 return null;
             }
@@ -80,7 +80,7 @@ public final class ClassRegistries {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
-            Klass elemental = loadKlass(Types.getElementalType(type), classLoader);
+            Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader);
             if (elemental == null) {
                 return null;
             }
@@ -115,7 +115,7 @@ public final class ClassRegistries {
 
         System.err.println("ClassRegistries define " + type + " with " + classLoader);
 
-        return registry.defineKlass(context, type, bytes);
+        return registry.defineKlass(type, bytes);
     }
 
 }

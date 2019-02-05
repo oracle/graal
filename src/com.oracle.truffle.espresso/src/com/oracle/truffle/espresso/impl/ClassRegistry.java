@@ -41,7 +41,9 @@ import com.oracle.truffle.espresso.substitutions.Host;
  *
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
-public abstract class ClassRegistry {
+public abstract class ClassRegistry implements ContextAccess {
+
+    private final EspressoContext context;
 
     /**
      * The map from symbol to classes for the classes defined by the class loader associated with
@@ -51,11 +53,20 @@ public abstract class ClassRegistry {
      */
     protected final ConcurrentHashMap<ByteString<Type>, Klass> classes = new ConcurrentHashMap<>();
 
+    @Override
+    public final EspressoContext getContext() {
+        return context;
+    }
+
+    protected ClassRegistry(EspressoContext context) {
+        this.context = context;
+    }
+
     public abstract Klass loadKlass(ByteString<Type> type);
 
     public Klass findLoadedKlass(ByteString<Type> type) {
         if (Types.isArray(type)) {
-            ByteString<Type> elemental = Types.getElementalType(type);
+            ByteString<Type> elemental = context.getTypes().getElementalType(type);
             Klass elementalKlass = findLoadedKlass(elemental);
             if (elementalKlass == null) {
                 return null;
@@ -67,7 +78,10 @@ public abstract class ClassRegistry {
 
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
-    public ObjectKlass defineKlass(EspressoContext context, ByteString<Type> type, final byte[] bytes) {
+    public ObjectKlass defineKlass(ByteString<Type> type, final byte[] bytes) {
+
+        System.err.println("ClassRegistry define " + type);
+
         EspressoError.guarantee(!classes.containsKey(type), "Class " + type + " already defined in the BCL");
 
         ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), type.toString(), null, context);

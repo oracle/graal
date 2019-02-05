@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class Meta implements ContextAccess {
 
+
     private final EspressoContext context;
 
     public Meta(EspressoContext context) {
@@ -160,6 +161,7 @@ public final class Meta implements ContextAccess {
 
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
+        System_exit = System.lookupDeclaredMethod(Name.exit, Signature._void_int);
     }
 
     public final ObjectKlass Object;
@@ -258,6 +260,7 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass System;
     public final Method System_initializeSystemClass;
+    public final Method System_exit;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;

@@ -403,7 +403,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         // TODO(peterssen): Use resolved signature.
         final ByteString<Type>[] signature = getParsedSignature();
         int paramCount = Signatures.parameterCount(signature, false);
-        Klass[] paramsKlasses = new Klass[paramCount];
+        Klass[] paramsKlasses = paramCount > 0 ? new Klass[paramCount] : Klass.EMPTY_ARRAY;
         for (int i = 0; i < paramCount; ++i) {
             ByteString<Type> paramType = Signatures.parameterType(signature, i);
             paramsKlasses[i] = getMeta().loadKlass(paramType, getDeclaringKlass().getDefiningClassLoader());

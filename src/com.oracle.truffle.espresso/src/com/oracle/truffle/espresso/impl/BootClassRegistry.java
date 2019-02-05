@@ -39,10 +39,8 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class BootClassRegistry extends ClassRegistry {
 
-    private final EspressoContext context;
-
     public BootClassRegistry(EspressoContext context) {
-        this.context = context;
+        super(context);
         // Primitive classes do not have a .class definition, inject them directly in the BCL.
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive()) {
@@ -54,7 +52,7 @@ public final class BootClassRegistry extends ClassRegistry {
     @Override
     public Klass loadKlass(ByteString<Type> type) {
         if (Types.isArray(type)) {
-            ByteString<Type> elemental = context.getTypes().getElementalType(type);
+            ByteString<Type> elemental = getTypes().getElementalType(type);
             Klass elementalKlass = loadKlass(elemental);
             if (elementalKlass == null) {
                 return null;
@@ -62,25 +60,21 @@ public final class BootClassRegistry extends ClassRegistry {
             return elementalKlass.getArrayClass(Types.getArrayDimensions(type));
         }
 
-        // TODO(peterssen): Make boot class registry thread-safe. Class loading is not a
-        // trivial operation, it loads super classes as well, which discards computeIfAbsent.
-
         Klass klass = classes.get(type);
         if (klass != null) {
             return klass;
         }
 
-        Klass hostClass = null;
         EspressoError.guarantee(!Types.isPrimitive(type), "Primitives must be in the registry");
 
-        ClasspathFile classpathFile = context.getBootClasspath().readClassFile(type);
+        ClasspathFile classpathFile = getContext().getBootClasspath().readClassFile(type);
         if (classpathFile == null) {
             return null;
         }
 
         // Defining a class also loads the superclass and the superinterfaces which excludes the
         // use of computeIfAbsent to insert the class since the map is modified.
-        return defineKlass(context, type, classpathFile.contents);
+        return defineKlass(type, classpathFile.contents);
     }
 
     @Override

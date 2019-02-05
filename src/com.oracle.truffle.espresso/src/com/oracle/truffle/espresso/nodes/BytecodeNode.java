@@ -293,14 +293,6 @@ public final class BytecodeNode extends EspressoRootNode {
 
     private final BytecodeStream bs;
 
-    @Override
-    public String getName() {
-        // TODO(peterssen): Set proper location.
-        return getMethod().getDeclaringKlass().getType() +
-                        "." + getMethod().getName() +
-                        " " + getMethod().getRawSignature();
-    }
-
     @TruffleBoundary
     public BytecodeNode(EspressoContext context, Method method) {
         super(method, initFrameDescriptor(method.getMaxLocals() + method.getMaxStackSize()));

@@ -150,13 +150,13 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") Object self, @Host(String.class) StaticObject name,
+    public static @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") StaticObject self, @Host(String.class) StaticObject name,
                     @Host(byte[].class) StaticObject guestBuf, int offset, int len, @Host(ClassLoader.class) StaticObject loader,
                     @SuppressWarnings("unused") @Host(ProtectionDomain.class) StaticObject pd) {
         // TODO(peterssen): Protection domain is ignored.
         byte[] buf = ((StaticObjectArray) guestBuf).unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        return EspressoLanguage.getCurrentContext().getRegistries().defineKlass(Types.fromJavaString(Meta.toHostString(name)), bytes, loader).mirror();
+        return EspressoLanguage.getCurrentContext().getRegistries().defineKlass(self.getKlass().getTypes().fromClassGetName(Meta.toHostString(name)), bytes, loader).mirror();
     }
 
     @Substitution(hasReceiver = true)

@@ -39,12 +39,18 @@ import org.graalvm.collections.EconomicSet;
  */
 public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Type>> {
 
-    private static final EconomicSet<ByteString<Type>> STATIC_TYPES = EconomicSet.create(256);
-
     private static ByteString<Type> fromJavaString(String typeString) {
         ByteString<Type> type = ByteString.fromJavaString(typeString);
         assert isValid(type);
         return type;
+    }
+
+    public static ByteString<Type> makeGlobalType(String name) {
+        return ByteString.makeGlobalType(name);
+    }
+
+    public static ByteString<Type> makeGlobalType(Class<?> clazz) {
+        return ByteString.makeGlobalType(clazz);
     }
 
     public static ByteString<Type> fromConstantPoolName(ByteString<?> cpName) {
@@ -69,6 +75,19 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         if (className.startsWith("[") || className.endsWith(";") || className.length() == 1) {
             return make(Types.fromJavaString(className.replace('.', '/')));
         }
+        switch (className) {
+            case "boolean": return JavaKind.Boolean.getType();
+            case "byte": return JavaKind.Byte.getType();
+            case "char": return JavaKind.Char.getType();
+            case "short": return JavaKind.Short.getType();
+            case "int": return JavaKind.Int.getType();
+            case "float": return JavaKind.Float.getType();
+            case "double": return JavaKind.Double.getType();
+            case "long": return JavaKind.Long.getType();
+            case "void": return JavaKind.Void.getType();
+        }
+
+        // Reference type.
         return make(Types.fromJavaString("L" + className.replace('.', '/') + ";"));
     }
 
