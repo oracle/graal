@@ -455,9 +455,9 @@ public class PECoffObjectFile extends ObjectFile {
              * here and ensure that the Sections don't change order. This is needed since the symbol
              * table entries refer to Section indexes.
              *
-             * Note: Only Data, Code and Directives are contained in "Sections". Everything else such
-             * as the symbol table, string table, relocation table and even this Section Header Table
-             * are "Elements" and not "Sections".
+             * Note: Only Data, Code and Directives are contained in "Sections". Everything else
+             * such as the symbol table, string table, relocation table and even this Section Header
+             * Table are "Elements" and not "Sections".
              *
              */
             HashSet<BuildDependency> deps = ObjectFile.defaultDependencies(decisions, this);
