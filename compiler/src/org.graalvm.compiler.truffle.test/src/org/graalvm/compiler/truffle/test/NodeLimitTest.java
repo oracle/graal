@@ -117,7 +117,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @SuppressWarnings("try")
     private void peRootNodeWithFillerAndTest(int nodeLimit) {
-        try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TrufflePENodeLimit, nodeLimit)) {
+        try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleMaximumGraalNodeCount, nodeLimit)) {
             RootCallTarget target = runtime.createCallTarget(createRootNodeFillerAndTest());
             partialEval((OptimizedCallTarget) target, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
         }
