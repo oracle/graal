@@ -480,7 +480,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Map<String, PolyglotLanguage> polyglotLanguages = new LinkedHashMap<>();
         Map<String, LanguageCache> cachedLanguages = new HashMap<>();
         List<LanguageCache> sortedLanguages = new ArrayList<>();
-        for (LanguageCache lang : LanguageCache.languages(contextClassLoader).values()) {
+        for (LanguageCache lang : LanguageCache.languages().values()) {
             String id = lang.getId();
             if (!cachedLanguages.containsKey(id)) {
                 sortedLanguages.add(lang);
