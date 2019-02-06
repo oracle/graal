@@ -77,9 +77,6 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         while (optionValues.advance()) {
             final OptionKey<?> key = optionValues.getKey();
             Object value = optionValues.getValue();
-            if (value == null) {
-                value = key.getDefaultValue();
-            }
             res.put(key.getName(), value);
         }
         return res;

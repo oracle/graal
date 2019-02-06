@@ -507,7 +507,8 @@ GraalTags = Tags([
     'js',
     'build',
     'test',
-    'benchmarktest'
+    'benchmarktest',
+    'libgraal'
 ])
 
 @contextmanager
@@ -592,8 +593,7 @@ def svm_gate_body(args, tasks):
 def build_libgraal_cli(args):
     build_libgraal(args)
 
-
-def build_libgraal(image_args):
+def check_libgraal_dependencies():
     if mx.get_os() == 'windows':
         return 'libgraal is unsupported on Windows'
 
@@ -601,9 +601,24 @@ def build_libgraal(image_args):
     if not graal_hotspot_library:
         return 'libgraal dependency substratevm:GRAAL_HOTSPOT_LIBRARY is missing'
 
-    libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', graal_hotspot_library.classpath_repr(),
+    truffle_compiler_library = mx.dependency('compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL', fatalIfMissing=False)
+    if not truffle_compiler_library:
+        return 'libgraal dependency compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL is missing'
+
+    return None
+
+def build_libgraal(image_args):
+    msg = check_libgraal_dependencies()
+    if msg:
+        return msg
+
+    graal_hotspot_library = mx.dependency('substratevm:GRAAL_HOTSPOT_LIBRARY')
+    truffle_compiler_library = mx.dependency('compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL')
+    truffle_api = mx.dependency('truffle:TRUFFLE_API')
+
+    libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', os.pathsep.join([graal_hotspot_library.classpath_repr(), truffle_compiler_library.classpath_repr()]),
         '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
-        '--tool:truffle',
+        '-J-Xbootclasspath/a:' + truffle_api.classpath_repr(),
         '-H:-UseServiceLoaderFeature',
         '-H:+AllowFoldMethods',
         '-Djdk.vm.ci.services.aot=true']
@@ -614,19 +629,24 @@ def build_libgraal(image_args):
 
 
 def libgraal_gate_body(args, tasks):
-    with Task('Build libgraal', tasks, tags=[GraalTags.build, GraalTags.benchmarktest, GraalTags.test]) as t:
+    msg = check_libgraal_dependencies()
+    if msg:
+        mx.logv('Skipping libgraal because: {}'.format(msg))
+        return
+
+    with Task('Build libgraal', tasks, tags=[GraalTags.build, GraalTags.benchmarktest, GraalTags.test, GraalTags.libgraal]) as t:
+        # Build libgraal with assertions in the image builder and assertions in the image
+        if t: build_libgraal(['-J-esa', '-ea'])
+
+    extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
+    if args.extra_vm_argument:
+        extra_vm_argument += args.extra_vm_argument
+
+    mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
+
+    with Task('Test libgraal', tasks, tags=[GraalTags.libgraal]) as t:
         if t:
-            # Build libgraal with assertions in the image builder and assertions in the image
-            msg = build_libgraal(['-J-esa', '-ea'])
-            if msg:
-                mx.logv('Skipping libgraal because: {}'.format(msg))
-                return
-
-            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
-            if args.extra_vm_argument:
-                extra_vm_argument += args.extra_vm_argument
-
-            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
+            mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false"])
 
 mx_gate.add_gate_runner(suite, libgraal_gate_body)
 

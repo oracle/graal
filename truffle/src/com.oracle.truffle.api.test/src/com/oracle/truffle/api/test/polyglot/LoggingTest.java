@@ -74,6 +74,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.GCUtils;
 import org.graalvm.polyglot.Engine;
 
 public class LoggingTest {
@@ -449,7 +450,7 @@ public class LoggingTest {
         Assert.assertEquals(expected, handler.getLog());
         Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
         gcedContext = null;
-        assertGc("Cannot free context.", gcedContextRef);
+        GCUtils.assertGc("Cannot free context.", gcedContextRef);
         handler = new TestHandler();
         Context newContext = Context.newBuilder().logHandler(handler).build();
         newContext.eval(LoggingLanguageFirst.ID, "");
@@ -474,7 +475,7 @@ public class LoggingTest {
         Assert.assertEquals(expected, contextHandler.getLog());
         Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
         gcedContext = null;
-        assertGc("Cannot free context.", gcedContextRef);
+        GCUtils.assertGc("Cannot free context.", gcedContextRef);
         contextHandler.clear();
         context.eval(LoggingLanguageFirst.ID, "");
         expected = new ArrayList<>();
@@ -784,38 +785,6 @@ public class LoggingTest {
             node.level = loggerLevel;
         }
         return root;
-    }
-
-    private static void assertGc(final String message, final Reference<?> ref) {
-        int blockSize = 100_000;
-        final List<byte[]> blocks = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
-            if (ref.get() == null) {
-                return;
-            }
-            try {
-                System.gc();
-            } catch (OutOfMemoryError oom) {
-            }
-            try {
-                System.runFinalization();
-            } catch (OutOfMemoryError oom) {
-            }
-            try {
-                blocks.add(new byte[blockSize]);
-                blockSize = (int) (blockSize * 1.3);
-            } catch (OutOfMemoryError oom) {
-                blockSize >>>= 1;
-            }
-            if (i % 10 == 0) {
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException ie) {
-                    break;
-                }
-            }
-        }
-        Assert.fail(message);
     }
 
     public static final class LoggingContext {
