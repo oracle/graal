@@ -600,14 +600,7 @@ public final class Engine implements AutoCloseable {
                     // As of JDK9, the JVMCI Services class should only be used for service
                     // types
                     // defined by JVMCI. Other services types should use ServiceLoader directly.
-                    Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
-                    if (providers.hasNext()) {
-                        engine = providers.next();
-                        if (providers.hasNext()) {
-
-                            throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
-                        }
-                    }
+                    engine = searchServiceLoader();
                 }
 
                 if (engine == null) {
@@ -623,6 +616,11 @@ public final class Engine implements AutoCloseable {
                 }
 
                 if (engine == null) {
+                    // try service loader as last attempt to support
+                    // environments like OSGi and NetBeans Runtime Container
+                    engine = searchServiceLoader();
+                }
+                if (engine == null) {
                     engine = createInvalidPolyglotImpl();
                 }
 
@@ -630,6 +628,18 @@ public final class Engine implements AutoCloseable {
                     engine.setConstructors(new APIAccessImpl());
                 }
                 return engine;
+            }
+
+            private AbstractPolyglotImpl searchServiceLoader() throws InternalError {
+                Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+                if (providers.hasNext()) {
+                    AbstractPolyglotImpl found = providers.next();
+                    if (providers.hasNext()) {
+                        throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
+                    }
+                    return found;
+                }
+                return null;
             }
         });
     }
