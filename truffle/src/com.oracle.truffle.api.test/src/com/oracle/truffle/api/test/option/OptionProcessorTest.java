@@ -73,6 +73,7 @@ public class OptionProcessorTest {
         OptionDescriptor descriptor;
         OptionDescriptor descriptor1;
         OptionDescriptor descriptor2;
+        OptionDescriptor descriptor3;
 
         descriptor1 = descriptor = descriptors.get("optiontestlang1.StringOption1");
         assertNotNull(descriptor);
@@ -88,11 +89,20 @@ public class OptionProcessorTest {
         assertSame(OptionCategory.EXPERT, descriptor.getCategory());
         assertSame(OptionTestLang1.StringOption2, descriptor.getKey());
 
+        descriptor3 = descriptor = descriptors.get("optiontestlang1.lowerCaseOption");
+        assertNotNull(descriptor);
+        assertEquals("Help for lowerCaseOption", descriptor.getHelp());
+        assertTrue(descriptor.isDeprecated());
+        assertSame(OptionCategory.DEBUG, descriptor.getCategory());
+        assertSame(OptionTestLang1.LOWER_CASE_OPTION, descriptor.getKey());
+
         Iterator<OptionDescriptor> iterator = descriptors.iterator();
         assertTrue(iterator.hasNext());
         assertEquals(descriptor1, iterator.next());
         assertTrue(iterator.hasNext());
         assertEquals(descriptor2, iterator.next());
+        assertTrue(iterator.hasNext());
+        assertEquals(descriptor3, iterator.next());
         assertFalse(iterator.hasNext());
 
         assertNull(descriptors.get("optiontestlang1.StringOption3"));
@@ -191,10 +201,6 @@ public class OptionProcessorTest {
         @Option(help = "a", deprecated = true, category = OptionCategory.USER) //
         static final OptionKey<String> Error5 = new OptionKey<>("defaultValue");
 
-        @ExpectError("Option names must start with capital letter") //
-        @Option(help = "A", name = "e", deprecated = true, category = OptionCategory.USER) //
-        static final OptionKey<String> Error6 = new OptionKey<>("defaultValue");
-
         @ExpectError("Two options with duplicated resolved descriptor name 'foobar.Duplicate' found.") //
         @Option(help = "A", name = "Duplicate", deprecated = true, category = OptionCategory.USER) //
         static final OptionKey<String> Error7 = new OptionKey<>("defaultValue");
@@ -216,6 +222,10 @@ public class OptionProcessorTest {
 
         @Option(help = "StringOption2 help", deprecated = false, category = OptionCategory.EXPERT) //
         static final OptionKey<String> StringOption2 = new OptionKey<>("defaultValue");
+
+        // The variable name differs from the option name on purpose, to test they can be different
+        @Option(help = "Help for lowerCaseOption", name = "lowerCaseOption", deprecated = true, category = OptionCategory.DEBUG) //
+        static final OptionKey<String> LOWER_CASE_OPTION = new OptionKey<>("defaultValue");
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {
