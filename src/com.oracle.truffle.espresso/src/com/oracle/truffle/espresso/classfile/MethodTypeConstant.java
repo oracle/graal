@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import static com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 
 public interface MethodTypeConstant extends PoolConstant {
 
@@ -39,7 +39,7 @@ public interface MethodTypeConstant extends PoolConstant {
      * @param pool the constant pool that maybe be required to convert a constant pool index to a
      *            name
      */
-    ByteString<Signature> getSignature(ConstantPool pool);
+    Symbol<Signature> getSignature(ConstantPool pool);
 
     @Override
     default String toString(ConstantPool pool) {
@@ -54,7 +54,7 @@ public interface MethodTypeConstant extends PoolConstant {
         }
 
         @Override
-        public ByteString<Signature> getSignature(ConstantPool pool) {
+        public Symbol<Signature> getSignature(ConstantPool pool) {
             // TODO(peterssen): Assert valid signature.
             return pool.utf8At(descriptorIndex);
         }

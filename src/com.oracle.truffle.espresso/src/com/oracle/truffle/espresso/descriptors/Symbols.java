@@ -22,25 +22,28 @@
  */
 package com.oracle.truffle.espresso.descriptors;
 
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.descriptors.ByteString.Descriptor;
+public final class Symbols {
+    // Set generous initial capacity, this one is going to be hit a lot.
+    private final ConcurrentHashMap<SymbolKey, Symbol<?>> symbols = new ConcurrentHashMap<>();
 
-public abstract class DescriptorCache<Key extends ByteString<? extends Descriptor>, Value> {
-
-    protected final ConcurrentHashMap<Key, Value> cache = new ConcurrentHashMap<>();
-
-    public Value lookup(Key key) {
-        CompilerAsserts.neverPartOfCompilation();
-        return cache.get(key);
+    private Symbol<?> lookup(ByteSequence sequence) {
+        return symbols.get(new SymbolKey(sequence));
     }
 
-    public Value make(Key key) {
-        CompilerAsserts.neverPartOfCompilation();
-        // TODO(peterssen): Purge lambda.
-        return cache.computeIfAbsent(key, DescriptorCache.this::create);
+    private Symbol<?> symbolify(final ByteSequence sequence) {
+        final SymbolKey key = new SymbolKey(sequence);
+        return symbols.computeIfAbsent(key, __ -> {
+            // Create Symbol<?>
+            final byte[] bytes = Arrays.copyOfRange(sequence.getUnderlyingBytes(),
+                            sequence.offset(),
+                            sequence.offset() + sequence.length());
+            Symbol<?> computed = new Symbol(bytes, sequence.hashCode());
+            // Swap byte sequence (possibly holding large byte array) by fresh symbol.
+            key.seq = computed;
+            return computed;
+        });
     }
-
-    protected abstract Value create(Key key);
 }

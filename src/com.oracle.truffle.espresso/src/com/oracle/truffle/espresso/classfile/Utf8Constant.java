@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 
 public final class Utf8Constant implements PoolConstant {
 
@@ -32,16 +32,16 @@ public final class Utf8Constant implements PoolConstant {
         return Tag.UTF8;
     }
 
-    private final ByteString<?> value;
+    private final Symbol<?> value;
 
-    public Utf8Constant(ByteString<?> value) {
+    public Utf8Constant(Symbol<?> value) {
         this.value = value;
     }
 
     @SuppressWarnings("unchecked")
-    public <T> ByteString<T> value() {
+    public <T> Symbol<T> value() {
         // TODO(peterssen): Maybe assert signature/type is valid.
-        return (ByteString<T>) value;
+        return (Symbol<T>) value;
     }
 
     @Override

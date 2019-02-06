@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
 public interface MethodRefConstant extends MemberRefConstant {
     /**
@@ -32,8 +32,8 @@ public interface MethodRefConstant extends MemberRefConstant {
      * @param pool container of this constant
      */
     @SuppressWarnings("unchecked")
-    default ByteString<Signature> getSignature(ConstantPool pool) {
-        return (ByteString<Signature>) getDescriptor(pool);
+    default Symbol<Signature> getSignature(ConstantPool pool) {
+        return (Symbol<Signature>) getDescriptor(pool);
     }
 
     abstract class Indexes extends MemberRefConstant.Indexes implements MethodRefConstant {

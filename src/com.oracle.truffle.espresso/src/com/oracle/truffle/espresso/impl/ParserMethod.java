@@ -2,8 +2,8 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.Attributes;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 // Unresolved unlinked.
@@ -38,7 +38,7 @@ public final class ParserMethod {
         return signatureIndex;
     }
 
-    public Attribute getAttribute(ByteString<Name> name) {
+    public Attribute getAttribute(Symbol<Name> name) {
         return attributes.get(name);
     }
 

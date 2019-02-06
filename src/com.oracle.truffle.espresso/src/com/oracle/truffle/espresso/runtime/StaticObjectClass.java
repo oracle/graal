@@ -29,7 +29,7 @@ public final class StaticObjectClass extends StaticObjectImpl {
     @CompilationFinal //
     private final Klass mirror;
 
-    public final Klass getMirror() {
+    public final Klass getMirrorKlass() {
         assert this.mirror != null;
         return this.mirror;
     }

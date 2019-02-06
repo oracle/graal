@@ -46,7 +46,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -63,10 +63,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -556,13 +555,13 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool) {
-        return jcpool.getMirror().getConstantPool().length();
+        return jcpool.getMirrorKlass().getConstantPool().length();
     }
 
     @VmImpl
     @JniImpl
     public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool, int index) {
-        return getMeta().toGuestString(jcpool.getMirror().getConstantPool().utf8At(index).toString());
+        return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().utf8At(index).toString());
     }
 
     @VmImpl
@@ -574,7 +573,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         final byte[] bytes = new byte[len];
         buf.get(bytes);
 
-        ByteString<Type> type = Types.fromConstantPoolName(ByteString.fromJavaString(name));
+        // TODO(peterssen): Name is in binary form, but separator can be either / or . .
+        Symbol<Type> type = getTypes().fromClassGetName(name);
 
         StaticObjectClass klass = (StaticObjectClass) getContext().getRegistries().defineKlass(type, bytes, loader).mirror();
         return klass;
@@ -591,7 +591,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Object.class) StaticObject JVM_NewInstanceFromConstructor(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0) {
-        Klass klass = ((StaticObjectClass) getMeta().Constructor_clazz.get(constructor)).getMirror();
+        Klass klass = ((StaticObjectClass) getMeta().Constructor_clazz.get(constructor)).getMirrorKlass();
         klass.initialize();
         if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
             throw klass.getMeta().throwEx(InstantiationException.class);
@@ -618,7 +618,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindLoadedClass(@Host(ClassLoader.class) StaticObject loader, @Host(String.class) StaticObject name) {
-        ByteString<Type> type = getTypes().fromClassGetName(Meta.toHostString(name));
+        Symbol<Type> type = getTypes().fromClassGetName(Meta.toHostString(name));
         Klass klass = getContext().getRegistries().findLoadedClass(type, loader);
         if (klass == null) {
             return StaticObject.NULL;
@@ -803,7 +803,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public int JVM_GetClassAccessFlags(@Host(Class.class) StaticObject clazz) {
-        Klass klass = ((StaticObjectClass) clazz).getMirror();
+        Klass klass = ((StaticObjectClass) clazz).getMirrorKlass();
         return klass.getModifiers();
     }
 

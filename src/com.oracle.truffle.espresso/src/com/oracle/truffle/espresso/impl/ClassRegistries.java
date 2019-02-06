@@ -27,9 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -47,7 +47,7 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass findLoadedClass(ByteString<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+    public Klass findLoadedClass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
@@ -71,12 +71,12 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass loadKlassWithBootClassLoader(ByteString<Type> type) {
+    public Klass loadKlassWithBootClassLoader(Symbol<Type> type) {
         return loadKlass(type, StaticObject.NULL);
     }
 
     @TruffleBoundary
-    public Klass loadKlass(ByteString<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+    public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
         if (Types.isArray(type)) {
@@ -101,7 +101,7 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass defineKlass(ByteString<Type> type, byte[] bytes, StaticObject classLoader) {
+    public Klass defineKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader) {
         assert classLoader != null;
 
         ClassRegistry registry = StaticObject.isNull(classLoader)
@@ -112,8 +112,6 @@ public final class ClassRegistries {
                                 return new GuestClassRegistry(context, cl);
                             }
                         });
-
-        // System.err.println("ClassRegistries define " + type + " with " + classLoader);
 
         return registry.defineKlass(type, bytes);
     }

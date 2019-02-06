@@ -26,24 +26,24 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.classfile.Utf8Constant;
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 
 /**
  * Symbol cache.
  */
 public final class SymbolTable {
     /**
-     * Searching and adding entries to this map is only performed by {@linkplain #make(ByteString)
+     * Searching and adding entries to this map is only performed by {@linkplain #make(Symbol)
      * one method} which is ~~synchronized~~ thread-safe.
      */
-    private final ConcurrentHashMap<ByteString<?>, Utf8Constant> symbols = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> symbols = new ConcurrentHashMap<>();
 
-    public Utf8Constant lookup(ByteString<?> key) {
+    public Utf8Constant lookup(Symbol<?> key) {
         CompilerAsserts.neverPartOfCompilation();
         return symbols.get(key);
     }
 
-    public Utf8Constant make(ByteString<?> symbol) {
+    public Utf8Constant make(Symbol<?> symbol) {
         CompilerAsserts.neverPartOfCompilation();
         // TODO(peterssen): Purge lambda.
         return symbols.computeIfAbsent(symbol, Utf8Constant::new);

@@ -5,9 +5,9 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 // Structural shareable klass (superklass in superinterfaces resolved and linked)
@@ -95,11 +95,15 @@ public final class LinkedKlass {
         return parserKlass.getConstantPool();
     }
 
-    public Attribute getAttribute(ByteString<Name> name) {
+    public Attribute getAttribute(Symbol<Name> name) {
         return parserKlass.getAttribute(name);
     }
 
-    ByteString<Type> getType() {
+    Symbol<Type> getType() {
         return parserKlass.getType();
+    }
+
+    public Symbol<Name> getName() {
+        return parserKlass.getName();
     }
 }

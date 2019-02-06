@@ -24,8 +24,8 @@ package com.oracle.truffle.espresso.meta;
 
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 /**
  * Represents an exception handler within the bytecodes.
@@ -36,7 +36,7 @@ public final class ExceptionHandler {
     private final int endBCI;
     private final int handlerBCI;
     private final int catchTypeCPI;
-    private final ByteString<Type> catchType;
+    private final Symbol<Type> catchType;
 
     /**
      * Creates a new exception handler with the specified ranges.
@@ -47,7 +47,7 @@ public final class ExceptionHandler {
      * @param catchTypeCPI the index of the throwable class in the constant pool
      * @param catchType the type caught by this exception handler
      */
-    public ExceptionHandler(int startBCI, int endBCI, int catchBCI, int catchTypeCPI, ByteString<Type> catchType) {
+    public ExceptionHandler(int startBCI, int endBCI, int catchBCI, int catchTypeCPI, Symbol<Type> catchType) {
         this.startBCI = startBCI;
         this.endBCI = endBCI;
         this.handlerBCI = catchBCI;
@@ -96,7 +96,7 @@ public final class ExceptionHandler {
     /**
      * Returns the type of exception caught by this exception handler.
      */
-    public ByteString<Type> getCatchType() {
+    public Symbol<Type> getCatchType() {
         return catchType;
     }
 

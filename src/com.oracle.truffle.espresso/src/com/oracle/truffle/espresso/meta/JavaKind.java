@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
-import com.oracle.truffle.espresso.impl.Klass;
-
 import java.lang.reflect.Array;
+
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.Klass;
 
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types, for example,
@@ -77,7 +78,8 @@ public enum JavaKind {
     private final Class<?> boxedJavaClass;
     private final int slotCount;
     private final int basicType;
-    private final ByteString<Type> type;
+    private final Symbol<Type> type;
+    private final Symbol<Name> name;
 
     JavaKind(char typeChar, int basicType, String javaName, int slotCount, boolean isStackInt, Class<?> primitiveJavaClass, Class<?> boxedJavaClass) {
         this.typeChar = typeChar;
@@ -87,7 +89,8 @@ public enum JavaKind {
         this.primitiveJavaClass = primitiveJavaClass;
         this.boxedJavaClass = boxedJavaClass;
         this.basicType = basicType;
-        this.type = ByteString.singleASCII(typeChar);
+        this.type = Symbol.makeGlobalType("" + typeChar);
+        this.name = Symbol.makeGlobalName(javaName);
         assert primitiveJavaClass == null || javaName.equals(primitiveJavaClass.getName());
     }
 
@@ -229,15 +232,24 @@ public enum JavaKind {
      */
     public static JavaKind fromPrimitiveOrVoidTypeChar(char ch) {
         switch (ch) {
-            case 'Z': return Boolean;
-            case 'C': return Char;
-            case 'F': return Float;
-            case 'D': return Double;
-            case 'B': return Byte;
-            case 'S': return Short;
-            case 'I': return Int;
-            case 'J': return Long;
-            case 'V': return Void;
+            case 'Z':
+                return Boolean;
+            case 'C':
+                return Char;
+            case 'F':
+                return Float;
+            case 'D':
+                return Double;
+            case 'B':
+                return Byte;
+            case 'S':
+                return Short;
+            case 'I':
+                return Int;
+            case 'J':
+                return Long;
+            case 'V':
+                return Void;
             default:
                 throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
         }
@@ -400,8 +412,13 @@ public enum JavaKind {
      *
      * @return the Espresso type (symbol) of this kind
      */
-    public ByteString<Type> getType() {
+    public Symbol<Type> getType() {
         return type;
+    }
+
+    public Symbol<Name> getPrimitiveBinaryName() {
+        EspressoError.guarantee(isPrimitive(), "not a primitive");
+        return name;
     }
 
     /**

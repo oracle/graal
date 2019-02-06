@@ -30,15 +30,10 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.ClassConstant;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -103,14 +98,14 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getName0(@Host(Class.class) StaticObjectClass self) {
-        String name = self.getMirror().getType().toString();
+        String name = self.getMirrorKlass().getType().toString();
         // Conversion from internal form.
         return EspressoLanguage.getCurrentContext().getMeta().toGuestString(MetaUtil.internalNameToJava(name, true, true));
     }
 
     @Substitution(hasReceiver = true)
     public static @Host(ClassLoader.class) StaticObject getClassLoader0(@Host(Class.class) StaticObjectClass self) {
-        return self.getMirror().getDefiningClassLoader();
+        return self.getMirrorKlass().getDefiningClassLoader();
     }
 
     @Substitution(hasReceiver = true)
@@ -119,7 +114,7 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): From Hostpot: 4496456 We need to filter out
         // java.lang.Throwable.backtrace.
 
-        final Field[] fields = Arrays.stream(self.getMirror().getDeclaredFields()).filter(new Predicate<Field>() {
+        final Field[] fields = Arrays.stream(self.getMirrorKlass().getDeclaredFields()).filter(new Predicate<Field>() {
             @Override
             public boolean test(Field f) {
                 return (!publicOnly || f.isPublic());
@@ -153,7 +148,7 @@ public final class Target_java_lang_Class {
                 StaticObjectImpl instance = (StaticObjectImpl) meta.Field.allocateInstance();
                 fieldInit.invokeDirect(
                                 /* this */ instance,
-                                /* declaringKlass */ f.getHolder().mirror(),
+                                /* declaringKlass */ f.getDeclaringKlass().mirror(),
                                 /* name */ context.getStrings().intern(f.getName()),
                                 /* type */ f.resolveTypeKlass().mirror(),
                                 /* modifiers */ f.getModifiers(),
@@ -171,7 +166,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(Constructor[].class) StaticObject getDeclaredConstructors0(@Host(Class.class) StaticObjectClass self, boolean publicOnly) {
-        final Method[] constructors = Arrays.stream(self.getMirror().getDeclaredConstructors()).filter(new Predicate<Method>() {
+        final Method[] constructors = Arrays.stream(self.getMirrorKlass().getDeclaredConstructors()).filter(new Predicate<Method>() {
             @Override
             public boolean test(Method m) {
                 return Name.INIT.equals(m.getName()) && (!publicOnly || m.isPublic());
@@ -247,7 +242,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@Host(Class.class) StaticObjectClass self, boolean publicOnly) {
-        final Method[] methods = Arrays.stream(self.getMirror().getDeclaredMethods()).filter(new Predicate<Method>() {
+        final Method[] methods = Arrays.stream(self.getMirrorKlass().getDeclaredMethods()).filter(new Predicate<Method>() {
             @Override
             public boolean test(Method m) {
                 return !publicOnly || m.isPublic();
@@ -332,7 +327,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(Class[].class) StaticObject getInterfaces0(StaticObjectClass self) {
-        final Klass[] superInterfaces = self.getMirror().getInterfaces();
+        final Klass[] superInterfaces = self.getMirrorKlass().getInterfaces();
 
         Meta meta = self.getKlass().getMeta();
         StaticObject instance = (StaticObject) meta.Class.allocateArray(superInterfaces.length, new IntFunction<StaticObject>() {
@@ -347,25 +342,25 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static boolean isPrimitive(@Host(Class.class) StaticObjectClass self) {
-        return self.getMirror().isPrimitive();
+        return self.getMirrorKlass().isPrimitive();
     }
 
     @Substitution(hasReceiver = true)
     public static boolean isInterface(@Host(Class.class) StaticObjectClass self) {
-        return self.getMirror().isInterface();
+        return self.getMirrorKlass().isInterface();
     }
 
     @Substitution(hasReceiver = true)
     public static int getModifiers(@Host(Class.class) StaticObjectClass self) {
-        return self.getMirror().getModifiers();
+        return self.getMirrorKlass().getModifiers();
     }
 
     @Substitution(hasReceiver = true)
     public static @Host(Class.class) StaticObject getSuperclass(@Host(Class.class) StaticObjectClass self) {
-        if (self.getMirror().isInterface()) {
+        if (self.getMirrorKlass().isInterface()) {
             return StaticObject.NULL;
         }
-        Klass superclass = self.getMirror().getSuperclass();
+        Klass superclass = self.getMirrorKlass().getSuperKlass();
         if (superclass == null) {
             return StaticObject.NULL;
         }
@@ -374,12 +369,12 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static boolean isArray(@Host(Class.class) StaticObjectClass self) {
-        return self.getMirror().isArray();
+        return self.getMirrorKlass().isArray();
     }
 
     @Substitution(hasReceiver = true)
     public static @Host(Class.class) StaticObject getComponentType(@Host(Class.class) StaticObjectClass self) {
-        Klass comp = self.getMirror().getComponentType();
+        Klass comp = self.getMirrorKlass().getComponentType();
         if (comp == null) {
             return StaticObject.NULL;
         }
@@ -420,10 +415,10 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     public static @Host(Class.class) StaticObject getDeclaringClass0(StaticObjectClass self) {
         // Primitives and arrays are not "enclosed".
-        if (!(self.getMirror() instanceof ObjectKlass)) {
+        if (!(self.getMirrorKlass() instanceof ObjectKlass)) {
             return StaticObject.NULL;
         }
-        ObjectKlass k = (ObjectKlass) self.getMirror();
+        ObjectKlass k = (ObjectKlass) self.getMirrorKlass();
         Klass outerKlass = computeEnclosingClass(k);
         if (outerKlass == null) {
             return StaticObject.NULL;
@@ -498,7 +493,7 @@ public final class Target_java_lang_Class {
      */
     @Substitution(hasReceiver = true)
     public static boolean isInstance(StaticObjectClass self, StaticObject obj) {
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM().instanceOf(obj, self.getMirror());
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().instanceOf(obj, self.getMirrorKlass());
     }
 
     @Substitution
@@ -513,7 +508,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(byte[].class) StaticObject getRawAnnotations(StaticObjectClass self) {
-        Klass klass = self.getMirror();
+        Klass klass = self.getMirrorKlass();
         if (klass instanceof ObjectKlass) {
             Attribute annotations = ((ObjectKlass) klass).getRuntimeVisibleAnnotations();
             if (annotations != null) {
@@ -525,7 +520,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(sun.reflect.ConstantPool.class) StaticObject getConstantPool(@Host(Class.class) StaticObject self) {
-        Klass klass = ((StaticObjectClass) self).getMirror();
+        Klass klass = ((StaticObjectClass) self).getMirrorKlass();
         if (klass instanceof ObjectKlass) {
             Klass cpKlass = klass.getMeta().knownKlass(sun.reflect.ConstantPool.class);
             Field constantPoolOop = cpKlass.lookupDeclaredField(Name.constantPoolOop, Type.Object);

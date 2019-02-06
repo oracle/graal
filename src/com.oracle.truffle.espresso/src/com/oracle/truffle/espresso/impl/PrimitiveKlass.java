@@ -43,7 +43,7 @@ public final class PrimitiveKlass extends Klass {
      * @param kind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind kind) {
-        super(context, kind.getType(), null, ObjectKlass.EMPTY_ARRAY);
+        super(context, kind.getPrimitiveBinaryName(), kind.getType(), null, ObjectKlass.EMPTY_ARRAY);
         assert kind.isPrimitive() : kind + " not a primitive kind";
     }
 
@@ -93,7 +93,7 @@ public final class PrimitiveKlass extends Klass {
 
     @Override
     public ConstantPool getConstantPool() {
-        return ConstantPool.EMPTY;
+        return null;
     }
 
     @Override

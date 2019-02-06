@@ -23,18 +23,18 @@
 
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class EnclosingMethodAttribute extends Attribute {
 
-    public static final ByteString<Name> NAME = Name.EnclosingMethod;
+    public static final Symbol<Name> NAME = Name.EnclosingMethod;
 
     private final int classIndex;
     private final int methodIndex;
 
-    public EnclosingMethodAttribute(ByteString<Name> name, int classIndex, int methodIndex) {
+    public EnclosingMethodAttribute(Symbol<Name> name, int classIndex, int methodIndex) {
         super(name, null);
         this.classIndex = classIndex;
         this.methodIndex = methodIndex;

@@ -1,11 +1,11 @@
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
 public class BootstrapMethodsAttribute extends Attribute {
 
-    public static final ByteString<Name> NAME = Name.BootstrapMethods;
+    public static final Symbol<Name> NAME = Name.BootstrapMethods;
 
     public Entry[] getEntries() {
         return entries;
@@ -27,7 +27,7 @@ public class BootstrapMethodsAttribute extends Attribute {
 
     private final Entry[] entries;
 
-    public BootstrapMethodsAttribute(ByteString<Name> name, Entry[] entries) {
+    public BootstrapMethodsAttribute(Symbol<Name> name, Entry[] entries) {
         super(name, null);
         this.entries = entries;
     }

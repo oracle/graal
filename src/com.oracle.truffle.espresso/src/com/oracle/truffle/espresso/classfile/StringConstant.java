@@ -23,8 +23,10 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface StringConstant extends PoolConstant {
@@ -45,13 +47,13 @@ public interface StringConstant extends PoolConstant {
      * @param pool the constant pool that maybe be required to convert a constant pool index to a
      *            name
      */
-    ByteString<Symbol> getSymbol(ConstantPool pool);
+    Symbol<Constant> getSymbol(ConstantPool pool);
 
-    final class Index implements StringConstant {
+    final class Index implements StringConstant, Resolvable {
         private final int utf8Index;
 
         @Override
-        public ByteString<Symbol> getSymbol(ConstantPool pool) {
+        public Symbol<Constant> getSymbol(ConstantPool pool) {
             return pool.utf8At(utf8Index);
         }
 
@@ -59,18 +61,28 @@ public interface StringConstant extends PoolConstant {
             this.utf8Index = utf8Index;
         }
 
+        @Override
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+            return new Resolved(pool.getContext().getStrings().intern(getSymbol(pool)));
+        }
     }
 
     final class Resolved implements StringConstant, Resolvable.ResolvedConstant {
 
-        @Override
-        public StaticObject value() {
-            return null;
+        private final StaticObject resolved;
+
+        Resolved(StaticObject resolved) {
+            this.resolved = resolved;
         }
 
         @Override
-        public ByteString<Symbol> getSymbol(ConstantPool pool) {
-            return null;
+        public StaticObject value() {
+            return resolved;
+        }
+
+        @Override
+        public Symbol<Constant> getSymbol(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere("String already resolved");
         }
     }
 }

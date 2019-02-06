@@ -58,7 +58,7 @@ public final class InterpreterToVM implements ContextAccess {
         return context;
     }
 
-    private static Unsafe hostUnsafe;
+    private static final Unsafe hostUnsafe;
 
     static {
         try {

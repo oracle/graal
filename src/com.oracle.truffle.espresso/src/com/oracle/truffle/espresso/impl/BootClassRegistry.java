@@ -23,21 +23,25 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.object.DebugCounter;
 
 /**
  * A {@link BootClassRegistry} maps type names to resolved {@link Klass} instances loaded by the
  * boot class loader.
  */
 public final class BootClassRegistry extends ClassRegistry {
+
+    static final DebugCounter loadKlassCount = DebugCounter.create("BCL loadKlassCount");
+    static final DebugCounter loadKlassCacheHits = DebugCounter.create("BCL loadKlassCacheHits");
 
     public BootClassRegistry(EspressoContext context) {
         super(context);
@@ -50,9 +54,9 @@ public final class BootClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public Klass loadKlass(ByteString<Type> type) {
+    public Klass loadKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
-            ByteString<Type> elemental = getTypes().getElementalType(type);
+            Symbol<Type> elemental = getTypes().getElementalType(type);
             Klass elementalKlass = loadKlass(elemental);
             if (elementalKlass == null) {
                 return null;
@@ -60,8 +64,11 @@ public final class BootClassRegistry extends ClassRegistry {
             return elementalKlass.getArrayClass(Types.getArrayDimensions(type));
         }
 
+        loadKlassCount.inc();
+
         Klass klass = classes.get(type);
         if (klass != null) {
+            loadKlassCacheHits.inc();
             return klass;
         }
 

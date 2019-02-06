@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -412,7 +412,7 @@ public class Classpath {
      *         {@code className.replace('.', '/')}. If no such file is available on this class path
      *         or if reading the file produces an IO exception, then null is returned.
      */
-    public ClasspathFile readClassFile(ByteString<Type> type) {
+    public ClasspathFile readClassFile(Symbol<Type> type) {
         String rawType = type.toString();
         rawType = rawType.substring(1, rawType.length() - 1);
         return readFile(rawType, ".class");

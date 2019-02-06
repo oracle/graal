@@ -39,6 +39,8 @@ public final class ArrayKlass extends Klass {
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
+                        asdsad,
+
                         componentType.getTypes().arrayOf(componentType.getType()),
                         componentType.getMeta().Object,
                         componentType.getMeta().ARRAY_SUPERINTERFACES);
@@ -129,6 +131,7 @@ public final class ArrayKlass extends Klass {
     @Override
     public ConstantPool getConstantPool() {
         Klass elemental = getElementalType();
+        // TODO(peterssen): Array's elemental type cannot be null.
         return elemental != null
                         ? getElementalType().getConstantPool()
                         : null;

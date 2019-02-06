@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 import java.util.Objects;
 
@@ -33,13 +33,13 @@ import java.util.Objects;
  */
 public final class Local {
 
-    private final ByteString<Name> name;
-    private final ByteString<Type> type;
+    private final Symbol<Name> name;
+    private final Symbol<Type> type;
     private final int startBci;
     private final int endBci;
     private final int slot;
 
-    public Local(ByteString<Name> name, ByteString<Type> type, int startBci, int endBci, int slot) {
+    public Local(Symbol<Name> name, Symbol<Type> type, int startBci, int endBci, int slot) {
         this.name = name;
         this.startBci = startBci;
         this.endBci = endBci;
@@ -55,11 +55,11 @@ public final class Local {
         return endBci;
     }
 
-    public ByteString<Name> getName() {
+    public Symbol<Name> getName() {
         return name;
     }
 
-    public ByteString<Type> getType() {
+    public Symbol<Type> getType() {
         return type;
     }
 

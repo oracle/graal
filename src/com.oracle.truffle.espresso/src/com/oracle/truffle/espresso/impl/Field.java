@@ -1,10 +1,10 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
@@ -20,11 +20,11 @@ public final class Field implements ModifiersProvider {
 
     private final LinkedField linkedField;
     private final ObjectKlass holder;
-    private final ByteString<Type> type;
-    private final ByteString<Name> name;
+    private final Symbol<Type> type;
+    private final Symbol<Name> name;
     private volatile Klass typeKlassCache;
 
-    public ByteString<Type> getType() {
+    public Symbol<Type> getType() {
         return type;
     }
 
@@ -43,7 +43,7 @@ public final class Field implements ModifiersProvider {
         return linkedField.getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS;
     }
 
-    public ObjectKlass getHolder() {
+    public ObjectKlass getDeclaringKlass() {
         return holder;
     }
 
@@ -58,12 +58,12 @@ public final class Field implements ModifiersProvider {
 
     @Override
     public String toString() {
-        return "EspressoField<" + getHolder() + "." + getName() + " -> " + getType() + ">";
+        return "EspressoField<" + getDeclaringKlass() + "." + getName() + " -> " + getType() + ">";
     }
 
     public Object get(StaticObject self) {
-        assert getHolder().isAssignableFrom(self.getKlass());
-        InterpreterToVM vm = getHolder().getContext().getInterpreterToVM();
+        assert getDeclaringKlass().isAssignableFrom(self.getKlass());
+        InterpreterToVM vm = getDeclaringKlass().getContext().getInterpreterToVM();
         // @formatter:off
         // Checkstyle: stop
         switch (getKind()) {
@@ -84,8 +84,8 @@ public final class Field implements ModifiersProvider {
 
     public void set(StaticObject self, Object value) {
         assert value != null;
-        assert getHolder().isAssignableFrom(self.getKlass());
-        InterpreterToVM vm = getHolder().getContext().getInterpreterToVM();
+        assert getDeclaringKlass().isAssignableFrom(self.getKlass());
+        InterpreterToVM vm = getDeclaringKlass().getContext().getInterpreterToVM();
         // @formatter:off
         // Checkstyle: stop
         switch (getKind()) {
@@ -104,7 +104,7 @@ public final class Field implements ModifiersProvider {
         // Checkstyle: resume
     }
 
-    public ByteString<Name> getName() {
+    public Symbol<Name> getName() {
         return name;
     }
 
@@ -114,7 +114,8 @@ public final class Field implements ModifiersProvider {
             synchronized (this) {
                 tk = typeKlassCache;
                 if (tk == null) {
-                    tk = holder.getConstantPool().resolveType(getType(), linkedField.getParserField().getTypeIndex());
+                    tk = getDeclaringKlass().getRegistries().loadKlass(getType(), getDeclaringKlass().getDefiningClassLoader());
+                    //tk = // holder.getConstantPool().resolvedKlassAt(linkedField.getParserField().getTypeIndex());
                     typeKlassCache = tk;
                 }
             }

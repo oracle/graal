@@ -32,18 +32,19 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -163,6 +164,11 @@ public final class EspressoContext {
     }
 
     private void spawnVM() {
+
+        System.err.println("Before spawnVM: " + BytecodeNode.bcCount.get());
+
+        long ticks = System.currentTimeMillis();
+
         // FIXME(peterssen): Contextualize the JniENv, even if shared libraries are isolated,
         // currently we assume a singleton context.
 
@@ -183,7 +189,7 @@ public final class EspressoContext {
             }
         }
 
-        for (ByteString<Type> type : Arrays.asList(
+        for (Symbol<Type> type : Arrays.asList(
                         Type.String,
                         Type.System,
                         Type.ThreadGroup,
@@ -200,7 +206,7 @@ public final class EspressoContext {
         meta.System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void).invokeDirect(null);
 
         // System exceptions.
-        for (ByteString<Type> type : Arrays.asList(
+        for (Symbol<Type> type : Arrays.asList(
                         Type.OutOfMemoryError,
                         Type.NullPointerException,
                         Type.ClassCastException,
@@ -211,6 +217,9 @@ public final class EspressoContext {
                         Type.IllegalArgumentException)) {
             initializeKnownClass(type);
         }
+
+
+        System.err.println("After spawnVM: " + (System.currentTimeMillis() - ticks) + " ms " + BytecodeNode.bcCount.get());
     }
 
     private EspressoProperties vmProperties;
@@ -219,7 +228,7 @@ public final class EspressoContext {
         vmProperties = EspressoProperties.getDefault().processOptions(getEnv().getOptions());
     }
 
-    private void initializeKnownClass(ByteString<Type> type) {
+    private void initializeKnownClass(Symbol<Type> type) {
         Klass klass = getRegistries().loadKlassWithBootClassLoader(type);
         klass.initialize();
     }

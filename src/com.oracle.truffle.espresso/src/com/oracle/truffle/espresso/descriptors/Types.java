@@ -23,68 +23,68 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.descriptors.ByteString.Descriptor;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import org.graalvm.collections.EconomicSet;
 
 /**
  * Manages creation and parsing of type descriptors ("field descriptors" in the JVMS).
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se10/html/jvms-4.html#jvms-4.3.2"
  */
-public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Type>> {
+public final class Types {
 
-    private static ByteString<Type> fromJavaString(String typeString) {
-        ByteString<Type> type = ByteString.fromJavaString(typeString);
+    private static Symbol<Type> fromJavaString(String typeString) {
+        Symbol<Type> type = Symbol.fromJavaString(typeString);
         assert isValid(type);
         return type;
     }
 
-    public static ByteString<Type> makeGlobalType(String name) {
-        return ByteString.makeGlobalType(name);
-    }
-
-    public static ByteString<Type> makeGlobalType(Class<?> clazz) {
-        return ByteString.makeGlobalType(clazz);
-    }
-
-    public static ByteString<Type> fromConstantPoolName(ByteString<?> cpName) {
+    private Symbol<Type> fromConstantPoolName(Symbol<?> cpName) {
         byte[] bytes = new byte[cpName.length() + 2];
         if (cpName.byteAt(0) == '[') {
-            return (ByteString<Type>) cpName;
+            return (Symbol<Type>) cpName;
         }
-        ByteString.copyBytes(cpName, 0, bytes, 1, cpName.length());
+        Symbol.copyBytes(cpName, 0, bytes, 1, cpName.length());
         bytes[0] = 'L';
         bytes[bytes.length - 1] = ';';
-        return new ByteString<>(bytes);
+        return make(new Symbol<>(bytes));
     }
 
     @SuppressWarnings("unchecked")
-    public static ByteString<Type> fromDescriptor(ByteString<? extends Descriptor> descriptor) {
-        ByteString<Type> type = (ByteString<Type>) descriptor;
+    public static Symbol<Type> fromDescriptor(Symbol<? extends Descriptor> descriptor) {
+        Symbol<Type> type = (Symbol<Type>) descriptor;
         assert isValid(type);
         return type;
     }
 
-    public ByteString<Type> fromClassGetName(String className) {
+    public Symbol<Type> fromClassGetName(String className) {
         if (className.startsWith("[") || className.endsWith(";") || className.length() == 1) {
             return make(Types.fromJavaString(className.replace('.', '/')));
         }
         switch (className) {
-            case "boolean": return JavaKind.Boolean.getType();
-            case "byte": return JavaKind.Byte.getType();
-            case "char": return JavaKind.Char.getType();
-            case "short": return JavaKind.Short.getType();
-            case "int": return JavaKind.Int.getType();
-            case "float": return JavaKind.Float.getType();
-            case "double": return JavaKind.Double.getType();
-            case "long": return JavaKind.Long.getType();
-            case "void": return JavaKind.Void.getType();
+            case "boolean":
+                return JavaKind.Boolean.getType();
+            case "byte":
+                return JavaKind.Byte.getType();
+            case "char":
+                return JavaKind.Char.getType();
+            case "short":
+                return JavaKind.Short.getType();
+            case "int":
+                return JavaKind.Int.getType();
+            case "float":
+                return JavaKind.Float.getType();
+            case "double":
+                return JavaKind.Double.getType();
+            case "long":
+                return JavaKind.Long.getType();
+            case "void":
+                return JavaKind.Void.getType();
         }
 
         // Reference type.
@@ -92,19 +92,19 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
     }
 
     @Override
-    protected ByteString<Type> create(ByteString<Type> key) {
+    protected Symbol<Type> create(Symbol<Type> key) {
         return key;
     }
 
     @Override
-    public ByteString<Type> lookup(ByteString<Type> type) {
+    public Symbol<Type> lookup(Symbol<Type> type) {
         if (Types.isPrimitive(type)) {
             return Types.getJavaKind(type).getType();
         }
         return super.lookup(type);
     }
 
-    public static ByteString<Type> forPrimitive(JavaKind kind) {
+    public static Symbol<Type> forPrimitive(JavaKind kind) {
         assert kind.isPrimitive();
         return kind.getType();
     }
@@ -118,12 +118,12 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
      *            or {@code '.'}
      * @throws ClassFormatError if the type descriptor is not valid
      */
-    ByteString<Type> parse(ByteString<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
+    Symbol<Type> parse(Symbol<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
         int endIndex = skipValidTypeDescriptor(descriptor, beginIndex, slashes);
         if (endIndex == beginIndex + 1) {
             return forPrimitive(JavaKind.fromPrimitiveOrVoidTypeChar((char) descriptor.byteAt(beginIndex)));
         }
-        return make((ByteString<Type>) descriptor.substring(beginIndex, endIndex));
+        return make((Symbol<Type>) descriptor.substring(beginIndex, endIndex));
     }
 
     /**
@@ -134,7 +134,7 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
      * @throws ClassFormatError if there is no valid type descriptor
      */
     @TruffleBoundary
-    static int skipValidTypeDescriptor(ByteString<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
+    static int skipValidTypeDescriptor(Symbol<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
         if (beginIndex >= descriptor.length()) {
             throw new ClassFormatError("invalid type descriptor: " + descriptor);
         }
@@ -176,7 +176,7 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
      * @param dimensions the number of array dimensions
      * @return the canonical type descriptor for the specified component type and dimensions
      */
-    public ByteString<Type> arrayOf(ByteString<Type> type, int dimensions) {
+    public Symbol<Type> arrayOf(Symbol<Type> type, int dimensions) {
         assert dimensions > 0;
         if (Types.getArrayDimensions(type) + dimensions > 255) {
             throw new ClassFormatError("Array type with more than 255 dimensions");
@@ -184,15 +184,15 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         // Prepend #dimensions '[' to type descriptor.
         byte[] bytes = new byte[type.length() + dimensions];
         Arrays.fill(bytes, 0, dimensions, (byte) '[');
-        ByteString.copyBytes(type, 0, bytes, dimensions, type.length());
-        return make(new ByteString<>(bytes));
+        Symbol.copyBytes(type, 0, bytes, dimensions, type.length());
+        return make(new Symbol<>(bytes));
     }
 
-    public ByteString<Type> arrayOf(ByteString<Type> type) {
+    public Symbol<Type> arrayOf(Symbol<Type> type) {
         return arrayOf(type, 1);
     }
 
-    private static int skipClassName(ByteString<? extends Descriptor> descriptor, int from, final char separator) throws ClassFormatError {
+    private static int skipClassName(Symbol<? extends Descriptor> descriptor, int from, final char separator) throws ClassFormatError {
         assert separator == '.' || separator == '/';
         int index = from;
         final int length = descriptor.length();
@@ -240,7 +240,7 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         }
     }
 
-    public static boolean isPrimitive(ByteString<Type> type) {
+    public static boolean isPrimitive(Symbol<Type> type) {
         if (type.length() != 1) {
             return false;
         }
@@ -265,7 +265,7 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
      *
      * @return the kind denoted by this type descriptor
      */
-    public static JavaKind getJavaKind(ByteString<Type> type) {
+    public static JavaKind getJavaKind(Symbol<Type> type) {
         if (type.length() == 1) {
             return JavaKind.fromPrimitiveOrVoidTypeChar((char) type.byteAt(0));
         }
@@ -275,7 +275,7 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
     /**
      * Gets the number of array dimensions in this type descriptor.
      */
-    public static int getArrayDimensions(ByteString<Type> type) {
+    public static int getArrayDimensions(Symbol<Type> type) {
         int dims = 0;
         while (dims < type.length() && type.byteAt(dims) == '[') {
             dims++;
@@ -283,40 +283,40 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
         return dims;
     }
 
-    public static void verify(ByteString<Type> type) throws ClassFormatError {
+    public static void verify(Symbol<Type> type) throws ClassFormatError {
         if (!isValid(type)) {
             throw new ClassFormatError("Invalid type descriptor " + type);
         }
     }
 
-    private static boolean isValid(ByteString<Type> type) {
+    private static boolean isValid(Symbol<Type> type) {
         int endIndex = Types.skipValidTypeDescriptor(type, 0, true);
         return endIndex == type.length();
     }
 
-    public static boolean isArray(ByteString<Type> type) {
+    public static boolean isArray(Symbol<Type> type) {
         return type.byteAt(0) == '[';
     }
 
-    public ByteString<Type> getComponentType(ByteString<Type> type) {
+    public Symbol<Type> getComponentType(Symbol<Type> type) {
         if (isArray(type)) {
             return type.substring(1);
         }
         return null;
     }
 
-    public ByteString<Type> getElementalType(ByteString<Type> type) {
+    public Symbol<Type> getElementalType(Symbol<Type> type) {
         if (isArray(type)) {
             return type.substring(getArrayDimensions(type));
         }
         return type;
     }
 
-    public ByteString<Type> fromClass(Class<?> clazz) {
-        return ByteString.fromJavaString(fromCanonicalClassName(clazz.getCanonicalName()));
+    public Symbol<Type> fromClass(Class<?> clazz) {
+        return make(Symbol.fromJavaString(fromCanonicalClassName(clazz.getCanonicalName())));
     }
 
-    public static String binaryName(ByteString<Type> type) {
+    public static String binaryName(Symbol<Type> type) {
         if (isArray(type)) {
             return type.toString();
         }
@@ -324,5 +324,13 @@ public final class Types extends DescriptorCache<ByteString<Type>, ByteString<Ty
             return getJavaKind(type).getJavaName();
         }
         return type.substring(1, type.length() - 1).toString().replace('/', '.');
+    }
+
+    public Symbol<Type> fromName(Symbol<Name> name) {
+        return fromConstantPoolName(name);
+    }
+
+    public Symbol<Name> primitiveName(Symbol<Type> primitiveType) {
+        throw EspressoError.unimplemented();
     }
 }

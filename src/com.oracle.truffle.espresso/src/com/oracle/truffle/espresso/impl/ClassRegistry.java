@@ -27,9 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -51,7 +51,7 @@ public abstract class ClassRegistry implements ContextAccess {
      * supporting fast, non-blocking lookup. There's no need for deletion as class unloading removes
      * a whole class registry and all its contained classes.
      */
-    protected final ConcurrentHashMap<ByteString<Type>, Klass> classes = new ConcurrentHashMap<>();
+    protected final ConcurrentHashMap<Symbol<Type>, Klass> classes = new ConcurrentHashMap<>();
 
     @Override
     public final EspressoContext getContext() {
@@ -62,11 +62,11 @@ public abstract class ClassRegistry implements ContextAccess {
         this.context = context;
     }
 
-    public abstract Klass loadKlass(ByteString<Type> type);
+    public abstract Klass loadKlass(Symbol<Type> type);
 
-    public Klass findLoadedKlass(ByteString<Type> type) {
+    public Klass findLoadedKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
-            ByteString<Type> elemental = context.getTypes().getElementalType(type);
+            Symbol<Type> elemental = context.getTypes().getElementalType(type);
             Klass elementalKlass = findLoadedKlass(elemental);
             if (elementalKlass == null) {
                 return null;
@@ -78,7 +78,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
-    public ObjectKlass defineKlass(ByteString<Type> type, final byte[] bytes) {
+    public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
 
         // System.err.println("ClassRegistry define " + type);
 
@@ -86,7 +86,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), type.toString(), null, context);
 
-        ByteString<Type> superKlassType = parserKlass.getSuperKlass();
+        Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
         // TODO(peterssen): Superclass must be a class, and non-final.
         ObjectKlass superKlass = superKlassType != null
@@ -96,7 +96,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         assert superKlass == null || !superKlass.isInterface();
 
-        final ByteString<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
+        final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
         LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
                         ? LinkedKlass.EMPTY_ARRAY

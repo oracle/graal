@@ -28,7 +28,6 @@ import java.security.ProtectionDomain;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -60,9 +59,9 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true)
     public static int arrayBaseOffset(@SuppressWarnings("unused") Object self, @Host(Class.class) StaticObjectClass clazz) {
-        assert clazz.getMirror().isArray();
-        if (clazz.getMirror().getComponentType().isPrimitive()) {
-            Class<?> hostPrimitive = clazz.getMirror().getComponentType().getJavaKind().toJavaClass();
+        assert clazz.getMirrorKlass().isArray();
+        if (clazz.getMirrorKlass().getComponentType().isPrimitive()) {
+            Class<?> hostPrimitive = clazz.getMirrorKlass().getComponentType().getJavaKind().toJavaClass();
             return U.arrayBaseOffset(Array.newInstance(hostPrimitive, 0).getClass());
         } else {
             // Just a reference type.
@@ -72,9 +71,9 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true)
     public static int arrayIndexScale(@SuppressWarnings("unused") Object self, @Host(Class.class) StaticObjectClass clazz) {
-        assert clazz.getMirror().isArray();
-        if (clazz.getMirror().getComponentType().isPrimitive()) {
-            Class<?> hostPrimitive = clazz.getMirror().getComponentType().getJavaKind().toJavaClass();
+        assert clazz.getMirrorKlass().isArray();
+        if (clazz.getMirrorKlass().getComponentType().isPrimitive()) {
+            Class<?> hostPrimitive = clazz.getMirrorKlass().getComponentType().getJavaKind().toJavaClass();
             return U.arrayIndexScale(Array.newInstance(hostPrimitive, 0).getClass());
         } else {
             // Just a reference type.
@@ -123,7 +122,7 @@ public final class Target_sun_misc_Unsafe {
             }
         } else {
             // Lookup nstance field in current class and superclasses.
-            for (Klass k = holder.getKlass(); k != null; k = k.getSuperclass()) {
+            for (Klass k = holder.getKlass(); k != null; k = k.getSuperKlass()) {
                 for (Field f : holder.getKlass().getDeclaredFields()) {
                     if (!f.isStatic() && f.getSlot() == slot) {
                         return f;
@@ -263,7 +262,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true)
     public static void ensureClassInitialized(@SuppressWarnings("unused") Object self, @Host(Class.class) StaticObject clazz) {
-        ((StaticObjectClass) clazz).getMirror().safeInitialize();
+        ((StaticObjectClass) clazz).getMirrorKlass().safeInitialize();
     }
 
     @Substitution(hasReceiver = true)
@@ -288,8 +287,8 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static Object allocateInstance(@SuppressWarnings("unused") Object self, @Host(Class.class) StaticObject clazz) { // throws
         // InstantiationException;
-        assert !((StaticObjectClass) clazz).getMirror().isAbstract();
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM().newObject(((StaticObjectClass) clazz).getMirror());
+        assert !((StaticObjectClass) clazz).getMirrorKlass().isAbstract();
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().newObject(((StaticObjectClass) clazz).getMirrorKlass());
     }
 
     @Substitution(hasReceiver = true)
@@ -323,6 +322,6 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
         Field target = getReflectiveFieldRoot(field);
-        return target.getHolder().tryInitializeAndGetStatics();
+        return target.getDeclaringKlass().tryInitializeAndGetStatics();
     }
 }

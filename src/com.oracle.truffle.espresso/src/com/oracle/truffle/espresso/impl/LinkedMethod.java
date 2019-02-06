@@ -1,9 +1,9 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class LinkedMethod {
@@ -19,7 +19,7 @@ public final class LinkedMethod {
         return declaringLinkedKlass.getConstantPool();
     }
 
-    protected ByteString<Signature> getRawSignature() {
+    protected Symbol<Signature> getRawSignature() {
         return getConstantPool().utf8At(parserMethod.getSignatureIndex(), "signature");
     }
 
@@ -27,7 +27,7 @@ public final class LinkedMethod {
         return parserMethod;
     }
 
-    protected ByteString<Name> getName() {
+    protected Symbol<Name> getName() {
         return getConstantPool().utf8At(parserMethod.getNameIndex(), "name");
     }
 
@@ -36,7 +36,7 @@ public final class LinkedMethod {
         this.declaringLinkedKlass = declaringLinkedKlass;
     }
 
-    public Attribute getAttribute(ByteString<Name> name) {
+    public Attribute getAttribute(Symbol<Name> name) {
         return parserMethod.getAttribute(name);
     }
 }

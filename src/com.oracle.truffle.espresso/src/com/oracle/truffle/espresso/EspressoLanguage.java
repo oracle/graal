@@ -22,8 +22,7 @@
  */
 package com.oracle.truffle.espresso;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -34,8 +33,8 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -121,7 +120,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         String className = source.getName();
 
-        Klass mainClass = loadMainClass(context, LaunchMode.LM_CLASS, className).getMirror();
+        Klass mainClass = loadMainClass(context, LaunchMode.LM_CLASS, className).getMirrorKlass();
 
         EspressoError.guarantee(mainClass != null, "Error: Could not find or load main class %s", className);
 

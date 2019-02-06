@@ -38,11 +38,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
@@ -52,23 +52,25 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.object.DebugCounter;
 
 public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     public static final Klass[] EMPTY_ARRAY = new Klass[0];
 
-    private final ByteString<Type> type;
+    static final DebugCounter methodLookupCount = DebugCounter.create("methodLookupCount");
+    static final DebugCounter fieldLookupCount = DebugCounter.create("fieldLookupCount");
+    static final DebugCounter declaredMethodLookupCount = DebugCounter.create("declaredMethodLookupCount");
+    static final DebugCounter declaredFieldLookupCount = DebugCounter.create("declaredFieldLookupCount");
+
+    private final Symbol<Name> name;
+    private final Symbol<Type> type;
     private final JavaKind kind;
     private final EspressoContext context;
-
-    // Espresso super
     private final ObjectKlass superKlass;
 
     @CompilationFinal(dimensions = 1) //
     private final ObjectKlass[] superInterfaces;
-
-    @CompilationFinal //
-    private StaticObject statics;
 
     @CompilationFinal //
     private ArrayKlass arrayClass;
@@ -76,16 +78,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     @CompilationFinal //
     private StaticObjectClass mirrorCache;
 
-    public final Klass getSuperKlass() {
-        return superKlass;
-    }
 
-    public final Klass[] getSuperInterfaces() {
+    public final ObjectKlass[] getSuperInterfaces() {
         return superInterfaces;
     }
 
-    public Klass(EspressoContext context, ByteString<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
+    public Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
         this.context = context;
+        this.name = name;
         this.type = type;
         this.kind = Types.getJavaKind(type);
         this.superKlass = superKlass;
@@ -283,7 +283,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      */
     public boolean isJavaLangObject() {
         // Removed assertion due to https://bugs.eclipse.org/bugs/show_bug.cgi?id=434442
-        return getSuperclass() == null && !isInterface() && getJavaKind() == JavaKind.Object;
+        return getSuperKlass() == null && !isInterface() && getJavaKind() == JavaKind.Object;
     }
 
     /**
@@ -291,7 +291,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * an interface, a primitive type, or void, then null is returned. If this object represents an
      * array class then the type object representing the {@code Object} class is returned.
      */
-    public final ObjectKlass getSuperclass() {
+    public final ObjectKlass getSuperKlass() {
         return superKlass;
     }
 
@@ -414,7 +414,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return lookupDeclaredMethod(Name.CLINIT, Signature._void);
     }
 
-    public final ByteString<Type> getType() {
+    public final Symbol<Type> getType() {
         return type;
     }
 
@@ -446,7 +446,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         if (isInterface()) {
             return getMeta().Object;
         }
-        return getSuperclass();
+        return getSuperKlass();
     }
 
     private final boolean isPrimaryType() {
@@ -472,7 +472,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     @TruffleBoundary
     protected Stream<ObjectKlass> getInterfacesStream(boolean includeInherited) {
         Stream<ObjectKlass> interfaces = Stream.of(getInterfaces());
-        ObjectKlass superclass = getSuperclass();
+        ObjectKlass superclass = getSuperKlass();
         if (includeInherited && superclass != null) {
             interfaces = Stream.concat(interfaces, superclass.getInterfacesStream(includeInherited));
         }
@@ -513,7 +513,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     // region Lookup
 
-    public final Field lookupDeclaredField(ByteString<Name> name, ByteString<Type> type) {
+    public final Field lookupDeclaredField(Symbol<Name> name, Symbol<Type> type) {
+        declaredFieldLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
         for (Field field : getDeclaredFields()) {
             if (name.equals(field.getName()) && type.equals(field.getType())) {
@@ -523,16 +524,18 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public final Field lookupField(ByteString<Name> name, ByteString<Type> type) {
+    public final Field lookupField(Symbol<Name> name, Symbol<Type> type) {
+        fieldLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
         Field field = lookupDeclaredField(name, type);
-        if (field == null && getSuperclass() != null) {
-            return getSuperclass().lookupField(name, type);
+        if (field == null && getSuperKlass() != null) {
+            return getSuperKlass().lookupField(name, type);
         }
         return field;
     }
 
-    public final Method lookupDeclaredMethod(ByteString<Name> name, ByteString<Signature> signature) {
+    public final Method lookupDeclaredMethod(Symbol<Name> name, Symbol<Signature> signature) {
+        declaredMethodLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
         for (Method method : getDeclaredMethods()) {
             if (name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
@@ -542,11 +545,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public final Method lookupMethod(ByteString<Name> name, ByteString<Signature> signature) {
+    public final Method lookupMethod(Symbol<Name> name, Symbol<Signature> signature) {
+        methodLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
         Method method = lookupDeclaredMethod(name, signature);
-        if (method == null && getSuperclass() != null) {
-            return getSuperclass().lookupMethod(name, signature);
+        if (method == null && getSuperKlass() != null) {
+            return getSuperKlass().lookupMethod(name, signature);
         }
         return method;
     }
@@ -560,5 +564,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     public final StaticObject allocateInstance() {
         return getInterpreterToVM().newObject(this);
+    }
+
+    public String getRuntimePackage() {
+        throw EspressoError.unimplemented();
+    }
+
+    public Symbol<Name> getName() {
+        return name;
     }
 }

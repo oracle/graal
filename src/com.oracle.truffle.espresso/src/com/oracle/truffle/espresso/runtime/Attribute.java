@@ -23,19 +23,19 @@
 package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
 public class Attribute {
 
     public static final Attribute[] EMPTY_ARRAY = new Attribute[0];
 
-    private final ByteString<Name> name;
+    private final Symbol<Name> name;
 
     @CompilationFinal(dimensions = 1) //
     private final byte[] data;
 
-    public final ByteString<Name> getName() {
+    public final Symbol<Name> getName() {
         return name;
     }
 
@@ -43,7 +43,7 @@ public class Attribute {
         return data;
     }
 
-    public Attribute(ByteString<Name> name, final byte[] data) {
+    public Attribute(Symbol<Name> name, final byte[] data) {
         this.name = name;
         this.data = data;
     }

@@ -20,12 +20,13 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
 
 public abstract class ConstantPool {
 
-    public static final ConstantPool EMPTY = new ConstantPoolImpl(new PoolConstant[]{InvalidConstant.VALUE});
+    // public static final ConstantPool EMPTY = new ConstantPoolImpl(new
+    // PoolConstant[]{InvalidConstant.VALUE});
 
     public enum Tag {
         INVALID(0),
@@ -170,25 +171,25 @@ public abstract class ConstantPool {
         }
     }
 
-    public final <T> ByteString<T> utf8At(int index) {
+    public final <T> Symbol<T> utf8At(int index) {
         return utf8At(index, null);
     }
 
     @SuppressWarnings("unchecked")
-    public final <T> ByteString<T> utf8At(int index, String description) {
+    public final <T> Symbol<T> utf8At(int index, String description) {
         try {
             final Utf8Constant constant = (Utf8Constant) at(index);
-            return (ByteString<T>) constant.value();
+            return (Symbol<T>) constant.value();
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, description, UTF8);
         }
     }
 
-    public final ByteString<Symbol> stringAt(int index) {
+    public final Symbol<Constant> stringAt(int index) {
         return stringAt(index, null);
     }
 
-    public final ByteString<Symbol> stringAt(int index, String description) {
+    public final Symbol<Constant> stringAt(int index, String description) {
         try {
             final StringConstant constant = (StringConstant) at(index);
             return constant.getSymbol(this);

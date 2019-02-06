@@ -23,15 +23,16 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.object.DebugCounter;
 
 /**
  * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
@@ -40,6 +41,9 @@ import com.oracle.truffle.espresso.substitutions.Host;
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
 public final class GuestClassRegistry extends ClassRegistry {
+
+    static final DebugCounter loadKlassCount = DebugCounter.create("Guest loadKlassCount");
+    static final DebugCounter loadKlassCacheHits = DebugCounter.create("Guest loadKlassCacheHits");
 
     /**
      * The class loader associated with this registry.
@@ -59,7 +63,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public Klass loadKlass(ByteString<Type> type) {
+    public Klass loadKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(getTypes().getElementalType(type));
             if (elemental == null) {
@@ -67,13 +71,19 @@ public final class GuestClassRegistry extends ClassRegistry {
             }
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
+
+        loadKlassCount.inc();
         Klass klass = classes.get(type);
         if (klass != null) {
+            loadKlassCacheHits.inc();
             return klass;
         }
         assert StaticObject.notNull(classLoader);
         StaticObjectClass guestClass = (StaticObjectClass) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)), false);
-        klass = guestClass.getMirror();
+        klass = guestClass.getMirrorKlass();
+
+        classes.putIfAbsent(type, klass);
+
         return klass;
     }
 
@@ -83,7 +93,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public ObjectKlass defineKlass(ByteString<Type> type, final byte[] bytes) {
+    public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
         ObjectKlass klass = super.defineKlass(type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
         ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());

@@ -36,19 +36,19 @@ public final class Target_java_lang_reflect_Array {
 
     @Substitution
     public static Object newArray(@Host(Class.class) StaticObjectClass componentType, int length) {
-        if (componentType.getMirror().isPrimitive()) {
-            byte jvmPrimitiveType = (byte) componentType.getMirror().getJavaKind().getBasicType();
+        if (componentType.getMirrorKlass().isPrimitive()) {
+            byte jvmPrimitiveType = (byte) componentType.getMirrorKlass().getJavaKind().getBasicType();
             return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length);
         }
         InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
-        return vm.newArray(componentType.getMirror(), length);
+        return vm.newArray(componentType.getMirrorKlass(), length);
     }
 
     @Substitution
     public static Object multiNewArray(@Host(Class.class) StaticObject componentType,
                     @Host(int[].class) StaticObject guestDimensions) {
         int[] dimensions = ((StaticObjectArray) guestDimensions).unwrap();
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM().newMultiArray(((StaticObjectClass) componentType).getMirror(), dimensions);
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().newMultiArray(((StaticObjectClass) componentType).getMirrorKlass(), dimensions);
     }
 
     @Substitution

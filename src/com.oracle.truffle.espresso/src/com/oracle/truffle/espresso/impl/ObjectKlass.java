@@ -31,8 +31,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -73,13 +73,13 @@ public final class ObjectKlass extends Klass {
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
 
-    private final Attribute getAttribute(ByteString<Name> name) {
+    private final Attribute getAttribute(Symbol<Name> name) {
         return linkedKlass.getAttribute(name);
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces,
                     StaticObject classLoader) {
-        super(context, linkedKlass.getType(), superKlass, superInterfaces);
+        super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces);
 
         this.linkedKlass = linkedKlass;
 
@@ -90,7 +90,7 @@ public final class ObjectKlass extends Klass {
         this.runtimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
 
         // TODO(peterssen): Make writable copy.
-        this.pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), classLoader);
+        this.pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
 
         LinkedField[] linkedFields = linkedKlass.getLinkedFields();
         Field[] fields = new Field[linkedFields.length];
@@ -136,8 +136,8 @@ public final class ObjectKlass extends Klass {
     public void initialize() {
         if (!isInitialized()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (getSuperclass() != null) {
-                getSuperclass().initialize();
+            if (getSuperKlass() != null) {
+                getSuperKlass().initialize();
             }
             initState = INITIALIZED;
             Method clinit = getClassInitializer();

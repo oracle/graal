@@ -30,12 +30,12 @@ import java.util.function.Predicate;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -53,6 +53,8 @@ import com.oracle.truffle.espresso.substitutions.Host;
  * host to guest classes for a well known subset (e.g. common types and exceptions).
  */
 public final class Meta implements ContextAccess {
+
+
 
     private final EspressoContext context;
 
@@ -129,6 +131,11 @@ public final class Meta implements ContextAccess {
         ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
         StackOverflowError = knownKlass(Type.StackOverflowError);
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
+
+        NoSuchFieldError = knownKlass(Type.NoSuchFieldError);
+        NoSuchMethodError = knownKlass(Type.NoSuchMethodError);
+        IllegalAccessError = knownKlass(Type.IllegalAccessError);
+        IncompatibleClassChangeError = knownKlass(Type.IncompatibleClassChangeError);
 
         PrivilegedActionException = knownKlass(Type.PrivilegedActionException);
         PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, Signature._void_Exception);
@@ -239,6 +246,11 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Throwable;
     public final Field Throwable_backtrace;
 
+    public final ObjectKlass NoSuchFieldError;
+    public final ObjectKlass NoSuchMethodError;
+    public final ObjectKlass IllegalAccessError;
+    public final ObjectKlass IncompatibleClassChangeError;
+
     public final ObjectKlass StackTraceElement;
     public final Method StackTraceElement_init;
 
@@ -279,10 +291,17 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
-    public static StaticObject initEx(Klass klass, String message) {
+    public static StaticObject initEx(ObjectKlass klass, String message) {
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
         klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, ex.getKlass().getMeta().toGuestString(message));
+        return ex;
+    }
+
+    public static StaticObject initEx(ObjectKlass klass, @Host(String.class) StaticObject message) {
+        StaticObject ex = klass.allocateInstance();
+        // Call constructor.
+        klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, message);
         return ex;
     }
 
@@ -310,9 +329,15 @@ public final class Meta implements ContextAccess {
         throw new EspressoException(initEx(clazz, message));
     }
 
+
     public EspressoException throwEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initEx(clazz, cause));
+    }
+
+    public EspressoException throwEx(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
+        assert Throwable.isAssignableFrom(exKlass);
+        throw new EspressoException(initEx(exKlass, message));
     }
 
     @TruffleBoundary
@@ -322,7 +347,7 @@ public final class Meta implements ContextAccess {
         return knownKlass(exceptionClass);
     }
 
-    public ObjectKlass knownKlass(ByteString<Type> type) {
+    public ObjectKlass knownKlass(Symbol<Type> type) {
         return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
     }
 
@@ -332,7 +357,7 @@ public final class Meta implements ContextAccess {
         return knownKlass(getTypes().fromClass(hostClass));
     }
 
-    public PrimitiveKlass knownPrimitive(ByteString<Type> primitiveType) {
+    public PrimitiveKlass knownPrimitive(Symbol<Type> primitiveType) {
         assert Types.isPrimitive(primitiveType);
         // Resolve primitive classes using BCL.
         return (PrimitiveKlass) getRegistries().loadKlassWithBootClassLoader(primitiveType);
@@ -346,7 +371,7 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary
-    public Klass loadKlass(ByteString<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+    public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
         return getRegistries().loadKlass(type, classLoader);
     }
@@ -377,7 +402,7 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary
-    public StaticObject toGuestString(ByteString<?> hostString) {
+    public StaticObject toGuestString(Symbol<?> hostString) {
         if (hostString == null) {
             return StaticObject.NULL;
         }

@@ -27,8 +27,8 @@ import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 
-import com.oracle.truffle.espresso.impl.ByteSequence;
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 
 /**
@@ -163,12 +163,12 @@ public final class ClassfileStream {
         }
     }
 
-    public ByteString readUTF() {
+    public Symbol readUTF() {
         try {
             int utflen = stream.readUnsignedShort();
             byte[] bytes = new byte[utflen];
             stream.readFully(bytes);
-            return new ByteString(bytes);
+            return new Symbol(bytes);
         } catch (EOFException eofException) {
             throw eofError();
         } catch (IOException ioException) {

@@ -28,13 +28,13 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class InnerClassesAttribute extends Attribute {
 
-    public static final ByteString<Name> NAME = Name.InnerClasses;
+    public static final Symbol<Name> NAME = Name.InnerClasses;
 
     public static class Entry {
         public final int innerClassIndex;
@@ -56,7 +56,7 @@ public final class InnerClassesAttribute extends Attribute {
         return Arrays.asList(entries);
     }
 
-    public InnerClassesAttribute(ByteString<Name> name, Entry[] entries) {
+    public InnerClassesAttribute(Symbol<Name> name, Entry[] entries) {
         super(name, null);
         assert NAME.equals(name);
         this.entries = entries;

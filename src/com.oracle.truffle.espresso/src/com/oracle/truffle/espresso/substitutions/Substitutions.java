@@ -1,5 +1,6 @@
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -8,10 +9,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
@@ -82,12 +83,12 @@ public final class Substitutions implements ContextAccess {
     }
 
     private static final class MethodRef {
-        private final ByteString<Type> clazz;
-        private final ByteString<Name> methodName;
-        private final ByteString<Signature> signature;
+        private final Symbol<Type> clazz;
+        private final Symbol<Name> methodName;
+        private final Symbol<Signature> signature;
         private final int hash;
 
-        public MethodRef(ByteString<Type> clazz, ByteString<Name> methodName, ByteString<Signature> signature) {
+        public MethodRef(Symbol<Type> clazz, Symbol<Name> methodName, Symbol<Signature> signature) {
             this.clazz = clazz;
             this.methodName = methodName;
             this.signature = signature;
@@ -122,7 +123,7 @@ public final class Substitutions implements ContextAccess {
     private static void registerStaticSubstitutions(Class<?> clazz) {
         int registered = 0;
 
-        ByteString<Type> classType;
+        Symbol<Type> classType;
         Class<?> annotatedClass = clazz.getAnnotation(EspressoSubstitutions.class).value();
         if (annotatedClass == EspressoSubstitutions.class) {
             // Target class is derived from class name by simple substitution
@@ -146,29 +147,29 @@ public final class Substitutions implements ContextAccess {
                 }
             };
 
-            StringBuilder signature = new StringBuilder("(");
             java.lang.reflect.Parameter[] parameters = method.getParameters();
+
+            List<Symbol<Type>> parameterTypes = new ArrayList<>();
+
             for (int i = substitution.hasReceiver() ? 1 : 0; i < parameters.length; i++) {
                 java.lang.reflect.Parameter parameter = parameters[i];
-                ByteString<Type> parameterType;
+                Symbol<Type> parameterType;
                 Host annotatedType = parameter.getAnnotatedType().getAnnotation(Host.class);
                 if (annotatedType != null) {
                     parameterType = Types.makeGlobalType(annotatedType.value());
                 } else {
                     parameterType = Types.makeGlobalType(parameter.getType());
                 }
-                signature.append(parameterType);
+                parameterTypes.add(parameterType);
             }
-            signature.append(')');
 
             Host annotatedReturnType = method.getAnnotatedReturnType().getAnnotation(Host.class);
-            ByteString<Type> returnType;
+            Symbol<Type> returnType;
             if (annotatedReturnType != null) {
                 returnType = Types.makeGlobalType(annotatedReturnType.value());
             } else {
                 returnType = Types.makeGlobalType(method.getReturnType());
             }
-            signature.append(returnType);
 
             String methodName = substitution.methodName();
             if (methodName.length() == 0) {
@@ -177,15 +178,15 @@ public final class Substitutions implements ContextAccess {
 
             ++registered;
             registerStaticSubstitution(classType,
-                            ByteString.fromJavaString(methodName),
-                            ByteString.fromJavaString(signature.toString()),
+                            Symbol.makeGlobalName(methodName),
+                            Symbol.makeGlobalSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY)),
                             factory,
                             true);
         }
         assert registered > 0 : "No substitutions found in " + clazz;
     }
 
-    private static void registerStaticSubstitution(ByteString<Type> type, ByteString<Name> methodName, ByteString<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
+    private static void registerStaticSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
         MethodRef key = new MethodRef(type, methodName, signature);
         if (throwIfPresent && STATIC_SUBSTITUTIONS.containsKey(key)) {
             throw EspressoError.shouldNotReachHere("substitution already registered" + key);
@@ -193,7 +194,7 @@ public final class Substitutions implements ContextAccess {
         STATIC_SUBSTITUTIONS.put(key, factory);
     }
 
-    public void registerRuntimeSubstitution(ByteString<Type> type, ByteString<Name> methodName, ByteString<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
+    public void registerRuntimeSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
         MethodRef key = new MethodRef(type, methodName, signature);
 
         EspressoError.warnIf(STATIC_SUBSTITUTIONS.containsKey(key), "Runtime substitution shadowed by static one " + key);

@@ -23,9 +23,9 @@
 
 package com.oracle.truffle.espresso.jni;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 
@@ -101,7 +101,7 @@ public final class Mangle {
      *            above
      * @return the symbol for the C function as described above
      */
-    public static String mangleMethod(ByteString<Type> declaringClass, String name, ByteString<Signature> signature, boolean splitSuffix) {
+    public static String mangleMethod(Symbol<Type> declaringClass, String name, Symbol<Signature> signature, boolean splitSuffix) {
         final StringBuilder result = new StringBuilder(100);
         final String declaringClassName = MetaUtil.internalNameToJava(declaringClass.toString(), true, false);
         result.append("Java_").append(mangle(declaringClassName)).append('_').append(mangle(name));

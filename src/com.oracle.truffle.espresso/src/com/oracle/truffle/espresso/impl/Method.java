@@ -15,11 +15,11 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Signature;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
@@ -34,9 +34,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class Method implements ModifiersProvider, ContextAccess {
-    // TODO(peterssen): Move signature constants to ByteString.Signature .
-    private static final ByteString<Signature> CLINIT_SIGNATURE = ByteString.fromJavaString("()V");
-
     public static final Method[] EMPTY_ARRAY = new Method[0];
 
     private final LinkedMethod linkedMethod;
@@ -44,12 +41,12 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     private final ObjectKlass declaringKlass;
 
-    private final ByteString<Name> name;
+    private final Symbol<Name> name;
 
-    private final ByteString<Signature> rawSignature;
+    private final Symbol<Signature> rawSignature;
 
     @CompilationFinal(dimensions = 1) //
-    private final ByteString<Type>[] parsedSignature;
+    private final Symbol<Type>[] parsedSignature;
 
     // private final LineNumberTable lineNumberTable;
     // private final LocalVariableTable localVariableTable;
@@ -76,15 +73,15 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return declaringKlass;
     }
 
-    public ByteString<Name> getName() {
+    public Symbol<Name> getName() {
         return name;
     }
 
-    public ByteString<Signature> getRawSignature() {
+    public Symbol<Signature> getRawSignature() {
         return rawSignature;
     }
 
-    public ByteString<Type>[] getParsedSignature() {
+    public Symbol<Type>[] getParsedSignature() {
         return parsedSignature;
     }
 
@@ -106,7 +103,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
     }
 
-    private final Attribute getAttribute(ByteString<Name> name) {
+    private final Attribute getAttribute(Symbol<Name> name) {
         return linkedMethod.getAttribute(name);
     }
 
@@ -138,7 +135,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     private static String buildJniNativeSignature(Method method) {
         // Prepend JNIEnv*.
         StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.SINT64);
-        final ByteString<Type>[] signature = method.getParsedSignature();
+        final Symbol<Type>[] signature = method.getParsedSignature();
 
         // Receiver for instance methods, class for static methods.
         sb.append(", ").append(NativeSimpleType.NULLABLE);
@@ -259,8 +256,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
             for (int i = 0; i < entries.length; ++i) {
                 // getConstantPool().classAt(entries[i]).
                 // TODO(peterssen): Resolve and cache CP entries.
-                checkedExceptions[i] = (ObjectKlass) getRegistries().loadKlass(getConstantPool().classAt(entries[i]).getType(getConstantPool()),
-                                getDeclaringKlass().getDefiningClassLoader());
+                checkedExceptions[i] = (ObjectKlass) ((RuntimeConstantPool) getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
             }
         }
         return checkedExceptions;
@@ -367,7 +363,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         assert Signatures.resultKind(getParsedSignature()) == JavaKind.Void;
         assert isStatic();
         assert Signatures.parameterCount(getParsedSignature(), false) == 0;
-        assert !Name.CLINIT.equals(getName()) || CLINIT_SIGNATURE.equals(getRawSignature());
+        assert !Name.CLINIT.equals(getName()) || Signature._void.equals(getRawSignature());
         return Name.CLINIT.equals(getName());
     }
 
@@ -389,7 +385,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     private Klass[] getResolvedSignature() {
         if (resolvedSignature == null) {
-            final ByteString<Type>[] signature = getParsedSignature();
+            final Symbol<Type>[] signature = getParsedSignature();
             Klass[] resolved = new Klass[signature.length];
             for (int i = 0; i < signature.length; ++i) {
                 resolved[i] = getMeta().loadKlass(signature[i], getDeclaringKlass().getDefiningClassLoader());
@@ -401,11 +397,11 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public Klass[] resolveParameterKlasses() {
         // TODO(peterssen): Use resolved signature.
-        final ByteString<Type>[] signature = getParsedSignature();
+        final Symbol<Type>[] signature = getParsedSignature();
         int paramCount = Signatures.parameterCount(signature, false);
         Klass[] paramsKlasses = paramCount > 0 ? new Klass[paramCount] : Klass.EMPTY_ARRAY;
         for (int i = 0; i < paramCount; ++i) {
-            ByteString<Type> paramType = Signatures.parameterType(signature, i);
+            Symbol<Type> paramType = Signatures.parameterType(signature, i);
             paramsKlasses[i] = getMeta().loadKlass(paramType, getDeclaringKlass().getDefiningClassLoader());
         }
         return paramsKlasses;
@@ -413,7 +409,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public Klass resolveReturnKlass() {
         // TODO(peterssen): Use resolved signature.
-        ByteString<Type> returnType = Signatures.returnType(getParsedSignature());
+        Symbol<Type> returnType = Signatures.returnType(getParsedSignature());
         return getMeta().loadKlass(returnType, getDeclaringKlass().getDefiningClassLoader());
     }
 

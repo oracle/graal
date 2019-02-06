@@ -1,9 +1,9 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 public final class LinkedField {
     ParserField getParserField() {
@@ -25,11 +25,11 @@ public final class LinkedField {
         this.slot = slot;
     }
 
-    public ByteString<Type> getType() {
+    public Symbol<Type> getType() {
         return parserField.getType();
     }
 
-    public ByteString<Name> getName() {
+    public Symbol<Name> getName() {
         return parserField.getName();
     }
 

@@ -23,9 +23,9 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Descriptor;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
 public interface NameAndTypeConstant extends PoolConstant {
 
@@ -35,7 +35,7 @@ public interface NameAndTypeConstant extends PoolConstant {
      * @param pool the constant pool that maybe be required to convert a constant pool index to a
      *            name
      */
-    ByteString<Name> getName(ConstantPool pool);
+    Symbol<Name> getName(ConstantPool pool);
 
     /**
      * Gets the descriptor of this name+descriptor pair constant.
@@ -43,7 +43,7 @@ public interface NameAndTypeConstant extends PoolConstant {
      * @param pool the constant pool that maybe be required to convert a constant pool index to a
      *            name
      */
-    ByteString<? extends Descriptor> getDescriptor(ConstantPool pool);
+    Symbol<? extends Descriptor> getDescriptor(ConstantPool pool);
 
     @Override
     default Tag tag() {
@@ -65,12 +65,12 @@ public interface NameAndTypeConstant extends PoolConstant {
         }
 
         @Override
-        public ByteString<Name> getName(ConstantPool pool) {
+        public Symbol<Name> getName(ConstantPool pool) {
             return pool.utf8At(nameIndex);
         }
 
         @Override
-        public ByteString<? extends Descriptor> getDescriptor(ConstantPool pool) {
+        public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
             return pool.utf8At(typeIndex);
         }
     }

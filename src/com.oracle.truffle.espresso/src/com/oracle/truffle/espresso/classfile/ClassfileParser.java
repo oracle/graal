@@ -30,9 +30,9 @@ import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLA
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.descriptors.ByteString;
-import com.oracle.truffle.espresso.descriptors.ByteString.Name;
-import com.oracle.truffle.espresso.descriptors.ByteString.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
@@ -87,7 +87,7 @@ public final class ClassfileParser {
 // */
 // private final Klass hostClass;
 
-    private ByteString<Type> typeDescriptor;
+    private Symbol<Type> typeDescriptor;
 
     private ClassfileParser(ClasspathFile classpathFile, String requestedClassName, Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
@@ -187,7 +187,7 @@ public final class ClassfileParser {
         // This class and superclass
         int thisClassIndex = stream.readU2();
 
-        this.typeDescriptor = pool.classAt(thisClassIndex).getType(pool);
+        // this.typeDescriptor = pool.classAt(thisClassIndex).getName(pool);
 
         // Update className which could be null previously
         // to reflect the name in the constant pool
@@ -205,15 +205,19 @@ public final class ClassfileParser {
 // fixAnonymousClassName();
 // }
 
-        ByteString<Type> thisKlass = pool.classAt(thisClassIndex).getType(pool);
-        ByteString<Type> superKlass = parseSuperKlass();
-        ByteString<Type>[] superInterfaces = parseInterfaces();
+
+
+        Symbol<Name> thisKlassName = pool.classAt(thisClassIndex).getName(pool);
+        Symbol<Type> thisKlassType = context.getTypes().fromName(thisKlassName);
+
+        Symbol<Type> superKlass = parseSuperKlass();
+        Symbol<Type>[] superInterfaces = parseInterfaces();
 
         ParserField[] fields = parseFields();
         ParserMethod[] methods = parseMethods();
         Attribute[] attributes = parseAttributes();
 
-        return new ParserKlass(pool, accessFlags, thisKlass, superKlass, superInterfaces, methods, fields, attributes);
+        return new ParserKlass(pool, accessFlags, thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes);
     }
 
     private ParserMethod[] parseMethods() {
@@ -250,7 +254,7 @@ public final class ClassfileParser {
 
     private Attribute parseAttribute() {
         int nameIndex = stream.readU2();
-        ByteString<Name> name = pool.utf8At(nameIndex);
+        Symbol<Name> name = pool.utf8At(nameIndex);
         if (CodeAttribute.NAME.equals(name)) {
             return parseCodeAttribute(name);
         }
@@ -271,7 +275,7 @@ public final class ClassfileParser {
         return new Attribute(name, data);
     }
 
-    private ExceptionsAttribute parseExceptions(ByteString<Name> name) {
+    private ExceptionsAttribute parseExceptions(Symbol<Name> name) {
         /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         int[] entries = new int[entryCount];
@@ -282,7 +286,7 @@ public final class ClassfileParser {
         return new ExceptionsAttribute(name, entries);
     }
 
-    private BootstrapMethodsAttribute parseBootstrapMethods(ByteString<Name> name) {
+    private BootstrapMethodsAttribute parseBootstrapMethods(Symbol<Name> name) {
         /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         BootstrapMethodsAttribute.Entry[] entries = new BootstrapMethodsAttribute.Entry[entryCount];
@@ -298,7 +302,7 @@ public final class ClassfileParser {
         return new BootstrapMethodsAttribute(name, entries);
     }
 
-    private InnerClassesAttribute parseInnerClasses(ByteString<Name> name) {
+    private InnerClassesAttribute parseInnerClasses(Symbol<Name> name) {
         /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         InnerClassesAttribute.Entry[] entries = new InnerClassesAttribute.Entry[entryCount];
@@ -316,14 +320,14 @@ public final class ClassfileParser {
         return new InnerClassesAttribute.Entry(innerClassIndex, outerClassIndex, innerNameIndex, innerClassAccessFlags);
     }
 
-    private EnclosingMethodAttribute parseEnclosingMethodAttribute(ByteString<Name> name) {
+    private EnclosingMethodAttribute parseEnclosingMethodAttribute(Symbol<Name> name) {
         /* int length = */ stream.readS4();
         int classIndex = stream.readU2();
         int methodIndex = stream.readU2();
         return new EnclosingMethodAttribute(name, classIndex, methodIndex);
     }
 
-    private CodeAttribute parseCodeAttribute(ByteString<Name> name) {
+    private CodeAttribute parseCodeAttribute(Symbol<Name> name) {
         /* int length = */ stream.readS4();
         int maxStack = stream.readU2();
         int maxLocals = stream.readU2();
@@ -342,9 +346,9 @@ public final class ClassfileParser {
             int endPc = stream.readU2();
             int handlerPc = stream.readU2();
             int catchTypeIndex = stream.readU2();
-            ByteString<Type> catchType = null;
+            Symbol<Type> catchType = null;
             if (catchTypeIndex != 0) {
-                catchType = pool.classAt(catchTypeIndex).getType(pool);
+                catchType = context.getTypes().fromName(pool.classAt(catchTypeIndex).getName(pool));
             }
             entries[i] = new ExceptionHandler(startPc, endPc, handlerPc, catchTypeIndex, catchType);
         }
@@ -376,7 +380,7 @@ public final class ClassfileParser {
      * parsing the current class file so that resolution is only attempted if there are no format
      * errors in the current class file.
      */
-    private ByteString<Type> parseSuperKlass() {
+    private Symbol<Type> parseSuperKlass() {
         int index = stream.readU2();
         if (index == 0) {
             if (!className.equals("Ljava/lang/Object;")) {
@@ -384,19 +388,19 @@ public final class ClassfileParser {
             }
             return null;
         }
-        return pool.classAt(index).getType(pool);
+        return context.getTypes().fromName(pool.classAt(index).getName(pool));
     }
 
     @SuppressWarnings("unchecked")
-    private ByteString<Type>[] parseInterfaces() {
+    private Symbol<Type>[] parseInterfaces() {
         int interfaceCount = stream.readU2();
         if (interfaceCount == 0) {
-            return ByteString.emptyArray();
+            return Symbol.emptyArray();
         }
-        ByteString<Type>[] interfaces = new ByteString[interfaceCount];
+        Symbol<Type>[] interfaces = new Symbol[interfaceCount];
         for (int i = 0; i < interfaceCount; i++) {
             int interfaceIndex = stream.readU2();
-            interfaces[i] = pool.classAt(interfaceIndex).getType(pool);
+            interfaces[i] = context.getTypes().fromName(pool.classAt(interfaceIndex).getName(pool));
         }
         return interfaces;
     }

@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.runtime;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.espresso.descriptors.ByteString;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Host;
 
@@ -35,14 +35,14 @@ public final class StringTable { // ByteString<Constant> => StaticObject
 
     private final EspressoContext context; // per context
 
-    private final ConcurrentHashMap<ByteString<?>, String> cache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Symbol<?>, String> cache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, StaticObject> interned = new ConcurrentHashMap<>();
 
     public StringTable(EspressoContext context) {
         this.context = context;
     }
 
-    public StaticObject intern(ByteString<?> value) {
+    public StaticObject intern(Symbol<?> value) {
         // Weak values?
         return interned.computeIfAbsent(
                         cache.computeIfAbsent(value, StringTable::createStringFromByteString),
@@ -53,7 +53,7 @@ public final class StringTable { // ByteString<Constant> => StaticObject
         return context.getMeta().toGuestString(value);
     }
 
-    private static String createStringFromByteString(ByteString<?> value) {
+    private static String createStringFromByteString(Symbol<?> value) {
         return value.toString();
     }
 
