@@ -24,7 +24,9 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef _WIN64
 #include <dlfcn.h>
+#endif
 #include <stdbool.h>
 #include "mydata.h"
 #include "libcinterfacetutorial.h"
@@ -89,10 +91,6 @@ long long getUB1(sudata_t *sudata) {
 	return sudata->f_ub1;
 }
 
-#ifndef RTLD_DEFAULT
-#define RTLD_DEFAULT 0
-#endif
-
 int main(void) {
   graal_isolatethread_t *thread = NULL;
   if (graal_create_isolate(NULL, NULL, &thread) != 0) {
@@ -109,8 +107,13 @@ int main(void) {
   dump(thread, &data);
 
   /* Call a Java function indirectly by looking it up dynamically. */
+#ifndef _WIN64
+#ifndef RTLD_DEFAULT
+#define RTLD_DEFAULT 0
+#endif
   void (*java_release_data)(void *thread, my_data* data) = dlsym(RTLD_DEFAULT, "java_release_data");
   java_release_data(thread, &data);
+#endif
 
   /* Enum demo */
   day_of_the_week_t day = SUNDAY;
