@@ -165,7 +165,8 @@ class OptionSnippets {
     // @formatter:off
 
     // BEGIN: OptionSnippets.MyLanguage
-    @TruffleLanguage.Registration(id = "mylang", name = "My Language", version = "1.0")
+    @TruffleLanguage.Registration(id = "mylang", name = "My Language",
+                                  version = "1.0")
     abstract static class MyLanguage extends TruffleLanguage<Context> {
 
         // the descriptor name for MyOption1 is 'mylang.MyOption1'
@@ -173,7 +174,8 @@ class OptionSnippets {
         static final OptionKey<String>  MyOption1 = new OptionKey<>("");
 
         // the descriptor name for SecondOption is 'mylang.secondOption'
-        @Option(help = "Help Text.", name = "secondOption", category = OptionCategory.EXPERT)
+        @Option(help = "Help Text.", name = "secondOption",
+                category = OptionCategory.EXPERT)
         static final OptionKey<Boolean> SecondOption = new OptionKey<>(false);
 
         @Override
