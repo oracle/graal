@@ -168,7 +168,6 @@ final class Linker {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
 
         String link = "\\VC\\bin\\amd64\\link.exe";
 
@@ -211,7 +210,7 @@ final class Linker {
         }
 
         ProcessBuilder processBuilder = new ProcessBuilder(vswhere.toString(), "-requires",
-                "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath", "-latest");
+                        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath", "-latest");
         processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
         processBuilder.redirectError(ProcessBuilder.Redirect.PIPE);
         Process process = processBuilder.start();
