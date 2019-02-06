@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.Stable;
+import com.oracle.truffle.espresso.jni.Utf8;
 
 /**
  * A <tt>ByteSequence</tt> is a readable sequence of <code>byte</code> values. This interface
@@ -16,12 +17,12 @@ abstract class ByteSequence {
     @Stable @CompilationFinal(dimensions = 1) //
     protected final byte[] value;
 
-    public ByteSequence(byte[] underlyingBytes, int hashCode) {
+    ByteSequence(final byte[] underlyingBytes, int hashCode) {
         this.value = Objects.requireNonNull(underlyingBytes);
         this.hashCode = hashCode;
     }
 
-    static int hashOfRange(byte[] bytes, int offset, int length) {
+    static int hashOfRange(final byte[] bytes, int offset, int length) {
         int h = 0;
         if (length > 0) {
             h = 1;
@@ -32,7 +33,11 @@ abstract class ByteSequence {
         return h;
     }
 
-    public static ByteSequence wrap(byte[] underlyingBytes, int offset, int length) {
+    public static ByteSequence wrap(final byte[] underlyingBytes) {
+        return wrap(underlyingBytes, 0, underlyingBytes.length);
+    }
+
+    public static ByteSequence wrap(final byte[] underlyingBytes, int offset, int length) {
         return new ByteSequence(underlyingBytes, hashOfRange(underlyingBytes, offset, length)) {
             @Override
             public final int length() {
@@ -46,9 +51,14 @@ abstract class ByteSequence {
         };
     }
 
+    public static ByteSequence create(String str) {
+        final byte[] bytes = Utf8.fromJavaString(str);
+        return ByteSequence.wrap(bytes, 0, bytes.length);
+    }
+
     /**
-     * Returns the length of this character sequence. The length is the number of <code>byte</code>s
-     * in the sequence.
+     * Returns the length of this byte sequence. The length is the number of <code>byte</code>s in
+     * the sequence.
      *
      * @return the number of <code>byte</code>s in this sequence
      */

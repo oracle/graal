@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
  * <a href= "http://java.sun.com/docs/books/jvms/second_edition/html/VMSpecTOC.doc.html"> Java
  * Virtual Machine Specification</a>.
  */
-public class Bytecodes {
+public final class Bytecodes {
 
     // @formatter:off
     public static final int NOP                  =   0; // 0x00

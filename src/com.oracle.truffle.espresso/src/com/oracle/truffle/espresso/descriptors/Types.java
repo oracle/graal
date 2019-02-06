@@ -38,6 +38,8 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  */
 public final class Types {
 
+    Symbols symbols;
+
     private static Symbol<Type> fromJavaString(String typeString) {
         Symbol<Type> type = Symbol.fromJavaString(typeString);
         assert isValid(type);
@@ -52,14 +54,14 @@ public final class Types {
         Symbol.copyBytes(cpName, 0, bytes, 1, cpName.length());
         bytes[0] = 'L';
         bytes[bytes.length - 1] = ';';
-        return make(new Symbol<>(bytes));
+        return symbols.symbolify(checkType(ByteSequence.wrap(bytes)));
     }
 
     @SuppressWarnings("unchecked")
     public static Symbol<Type> fromDescriptor(Symbol<? extends Descriptor> descriptor) {
         Symbol<Type> type = (Symbol<Type>) descriptor;
         assert isValid(type);
-        return type;
+        return checkType(type);
     }
 
     public Symbol<Type> fromClassGetName(String className) {
@@ -89,19 +91,6 @@ public final class Types {
 
         // Reference type.
         return make(Types.fromJavaString("L" + className.replace('.', '/') + ";"));
-    }
-
-    @Override
-    protected Symbol<Type> create(Symbol<Type> key) {
-        return key;
-    }
-
-    @Override
-    public Symbol<Type> lookup(Symbol<Type> type) {
-        if (Types.isPrimitive(type)) {
-            return Types.getJavaKind(type).getType();
-        }
-        return super.lookup(type);
     }
 
     public static Symbol<Type> forPrimitive(JavaKind kind) {
@@ -185,7 +174,7 @@ public final class Types {
         byte[] bytes = new byte[type.length() + dimensions];
         Arrays.fill(bytes, 0, dimensions, (byte) '[');
         Symbol.copyBytes(type, 0, bytes, dimensions, type.length());
-        return make(new Symbol<>(bytes));
+        return symbols.symbolify(ByteSequence.wrap(bytes));
     }
 
     public Symbol<Type> arrayOf(Symbol<Type> type) {
@@ -295,30 +284,36 @@ public final class Types {
     }
 
     public static boolean isArray(Symbol<Type> type) {
-        return type.byteAt(0) == '[';
+        assert type.length() > 0 : "empty symbol";
+        return type.length() > 0 && type.byteAt(0) == '[';
     }
 
     public Symbol<Type> getComponentType(Symbol<Type> type) {
         if (isArray(type)) {
-            return type.substring(1);
+            return symbols.symbolify(type.substring(1));
         }
         return null;
     }
 
     public Symbol<Type> getElementalType(Symbol<Type> type) {
         if (isArray(type)) {
-            return type.substring(getArrayDimensions(type));
+            return symbols.symbolify(type.substring(getArrayDimensions(type)));
         }
-        return type;
+        return type; // null?
     }
 
     public Symbol<Type> fromClass(Class<?> clazz) {
-        return make(Symbol.fromJavaString(fromCanonicalClassName(clazz.getCanonicalName())));
+        // TODO(peterssen): checkType is not needed here, just testing Class to Symbol<Type> conversion.
+        return symbols.symbolify(checkType(Symbol.fromJavaString(fromCanonicalClassName(clazz.getCanonicalName()))));
+    }
+
+    public static Symbol<Type> checkType(ByteSequence sequence) {
+        throw EspressoError.unimplemented();
     }
 
     public static String binaryName(Symbol<Type> type) {
         if (isArray(type)) {
-            return type.toString();
+            return type.toString().replace('/', '.');
         }
         if (isPrimitive(type)) {
             return getJavaKind(type).getJavaName();
@@ -328,9 +323,5 @@ public final class Types {
 
     public Symbol<Type> fromName(Symbol<Name> name) {
         return fromConstantPoolName(name);
-    }
-
-    public Symbol<Name> primitiveName(Symbol<Type> primitiveType) {
-        throw EspressoError.unimplemented();
     }
 }

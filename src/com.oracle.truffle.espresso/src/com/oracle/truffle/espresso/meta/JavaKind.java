@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.meta;
 
 import java.lang.reflect.Array;
 
+import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -89,8 +90,8 @@ public enum JavaKind {
         this.primitiveJavaClass = primitiveJavaClass;
         this.boxedJavaClass = boxedJavaClass;
         this.basicType = basicType;
-        this.type = Symbol.makeGlobalType("" + typeChar);
-        this.name = Symbol.makeGlobalName(javaName);
+        this.type = StaticSymbols.putType("" + typeChar);
+        this.name = StaticSymbols.putName(javaName);
         assert primitiveJavaClass == null || javaName.equals(primitiveJavaClass.getName());
     }
 

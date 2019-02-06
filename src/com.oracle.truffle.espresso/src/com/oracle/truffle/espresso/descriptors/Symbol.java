@@ -14,10 +14,12 @@ import com.oracle.truffle.object.DebugCounter;
  * An improvement over j.l.String for internal symbols:
  * <ul>
  * <li>Compact representation
+ * <li>Cheap equality comparison
+ * <li>Uniqueness and data de-duplication (symbols are unique for it's lifetime)
  * <li>Hard/clear separation between guest/host symbols
  * <li>0-cost tagging for added type-safety
  * <li>Lazy decoding
- * <li>Optional 0-copy symbolification....
+ * <li>Optional no-copy symbolification...
  * <li>Effectively partial-evaluation constant {@link CompilationFinal}
  * </ul>
  *
@@ -69,7 +71,7 @@ public final class Symbol<T> extends ByteSequence {
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         try {
             return Utf8.toJavaString(value);
         } catch (IOException e) {
@@ -77,6 +79,7 @@ public final class Symbol<T> extends ByteSequence {
         }
     }
 
+    @Override
     public final int length() {
         return value.length;
     }

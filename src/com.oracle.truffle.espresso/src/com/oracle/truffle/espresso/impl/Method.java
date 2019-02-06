@@ -360,7 +360,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     }
 
     public final boolean isClassInitializer() {
-        assert Signatures.resultKind(getParsedSignature()) == JavaKind.Void;
+        assert Signatures.returnKind(getParsedSignature()) == JavaKind.Void;
         assert isStatic();
         assert Signatures.parameterCount(getParsedSignature(), false) == 0;
         assert !Name.CLINIT.equals(getName()) || Signature._void.equals(getRawSignature());

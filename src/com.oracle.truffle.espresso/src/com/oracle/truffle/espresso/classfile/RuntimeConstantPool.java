@@ -24,7 +24,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         this.classLoader = classLoader;
     }
 
-    private Resolvable.ResolvedConstant[] copyResolvedConstant(ConstantPool pool) {
+    private static Resolvable.ResolvedConstant[] copyResolvedConstant(ConstantPool pool) {
         return new Resolvable.ResolvedConstant[pool.length()];
     }
 

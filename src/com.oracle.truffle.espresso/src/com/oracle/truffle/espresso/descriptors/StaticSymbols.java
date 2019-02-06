@@ -21,8 +21,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  */
 public final class StaticSymbols {
 
-    private Map<SymbolKey, Symbol<?>> symbols = new ConcurrentHashMap<>();
-    private static boolean frozen = false;
+    private static volatile Map<SymbolKey, Symbol<?>> symbols = new ConcurrentHashMap<>();
 
     public static Symbol<Symbol.Name> putName(String name) {
         EspressoError.guarantee(!isFrozen(), "static symbols are frozen");
@@ -46,10 +45,10 @@ public final class StaticSymbols {
     }
 
     public static boolean isFrozen() {
-        return frozen;
+        return symbols instanceof ;
     }
 
     public HashMap<SymbolKey, Symbol<?>> freeze() {
-        symbols = Collections.unmodifiableMap(symbols);
+        return symbols = Collections.unmodifiableMap(symbols);
     }
 }

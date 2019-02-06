@@ -61,7 +61,7 @@ public final class Target_java_lang_Class {
                     @Host(String.class) StaticObject name) {
 
         String hostName = MetaUtil.toInternalName(Meta.toHostString(name));
-        return EspressoLanguage.getCurrentContext().getRegistries().loadKlassWithBootClassLoader(Types.forPrimitive(JavaKind.fromTypeString(hostName))).mirror();
+        return EspressoLanguage.getCurrentContext().getRegistries().loadKlassWithBootClassLoader(JavaKind.fromTypeString(hostName).getType()).mirror();
     }
 
     @Substitution(hasReceiver = true)

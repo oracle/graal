@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.bytecode;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
@@ -32,7 +33,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  */
 public final class BytecodeStream {
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final byte[] code;
+    @CompilationFinal(dimensions = 1) //
+    private final byte[] code;
 
     private final BytecodeLookupSwitch bytecodeLookupSwitch;
     private final BytecodeTableSwitch bytecodeTableSwitch;

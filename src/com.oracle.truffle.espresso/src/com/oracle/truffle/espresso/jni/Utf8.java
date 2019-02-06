@@ -176,7 +176,7 @@ public final class Utf8 {
         return new String(chararr, 0, chararrCount);
     }
 
-    public static <T> Symbol<T> fromJavaString(String string) {
+    public static byte[] fromJavaString(String string) {
         int strlen = string.length();
         int utflen = UTFLength(string);
         int c, count = 0;
@@ -206,6 +206,6 @@ public final class Utf8 {
             }
         }
 
-        return new Symbol<>(bytearr);
+        return bytearr;
     }
 }

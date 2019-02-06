@@ -49,9 +49,11 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.espresso.Utils;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -491,7 +493,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *
      * @param clazz a Java class object.
      * @param name the field name in a 0-terminated modified UTF-8 string.
-     * @param signature the field signature in a 0-terminated modified UTF-8 string.
+     * @param type the field signature in a 0-terminated modified UTF-8 string.
      * @return a field ID, or NULL if the operation fails.
      *
      * @throws NoSuchFieldError: if the specified field cannot be found.
@@ -499,17 +501,23 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @throws OutOfMemoryError: if the system runs out of memory.
      */
     @JniImpl
-    public long GetFieldID(@Host(Class.class) StaticObject clazz, String name, String signature) {
+    public long GetFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
         Klass klass = ((StaticObjectClass) clazz).getMirrorKlass();
         klass.safeInitialize();
-        Symbol<Type> fieldType = getTypes().fromClassGetName(signature);
-        Field field = klass.lookupField(getTypes().fromJavaString(name), fieldType);
-
+        Field field = null;
+        Symbol<Name> fieldName = getNames().lookup(name);
+        if (name != null) {
+            Symbol<Type> fieldType = getTypes().lookup(type);
+            if (fieldType != null) {
+                // Lookup only if name and type are known symbols.
+                field = klass.lookupField(fieldName, fieldType);
+                assert field.getType().equals(fieldType);
+            }
+        }
         if (field == null) {
-            throw getMeta().throwEx(NoSuchFieldError.class, name);
+            throw getMeta().throwEx(getMeta().NoSuchFieldError, getMeta().toGuestString(name));
         }
         assert !field.isStatic();
-        assert field.getType().equals(fieldType);
         return fieldIds.handlify(field);
     }
 
@@ -525,7 +533,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * 
      * @param clazz a Java class object.
      * @param name the static field name in a 0-terminated modified UTF-8 string.
-     * @param signature the field signature in a 0-terminated modified UTF-8 string.
+     * @param type the field signature in a 0-terminated modified UTF-8 string.
      *
      * @return a field ID, or NULL if the specified static field cannot be found.
      * @throws NoSuchFieldError if the specified static field cannot be found.
@@ -533,16 +541,22 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public long GetStaticFieldID(@Host(Class.class) StaticObject clazz, String name, String signature) {
+    public long GetStaticFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
         Klass klass = ((StaticObjectClass) clazz).getMirrorKlass();
         klass.safeInitialize();
-        Symbol<Type> fieldType = getTypes().fromClassGetName(signature);
-        Field field = klass.lookupDeclaredField(Symbol.fromJavaString(name), fieldType);
-        if (field == null) {
-            throw getMeta().throwEx(NoSuchFieldError.class, name);
+        Field field = null;
+        Symbol<Name> fieldName = getNames().lookup(name);
+        if (fieldName != null) {
+            Symbol<Type> fieldType = getTypes().lookup(type);
+            if (fieldType != null) {
+                // Lookup only if name and type are known symbols.
+                field = klass.lookupDeclaredField(fieldName, fieldType);
+                assert field.getType().equals(fieldType);
+            }
         }
-        assert field.isStatic();
-        assert field.getType().equals(fieldType);
+        if (field == null || !field.isStatic()) {
+           throw getMeta().throwEx(getMeta().NoSuchFieldError, getMeta().toGuestString(name));
+        }
         return fieldIds.handlify(field);
     }
 
@@ -573,11 +587,18 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public long GetMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         Klass klass = ((StaticObjectClass) clazz).getMirrorKlass();
         klass.safeInitialize();
-        Method method = klass.lookupMethod(Symbol.fromJavaString(name), Signatures.fromJavaString(signature));
-        if (method == null) {
-            throw getMeta().throwEx(NoSuchMethodError.class, name + signature);
+        Method method = null;
+        Symbol<Name> methodName = getNames().lookup(name);
+        if (methodName != null) {
+            Symbol<Signature> methodSignature = getSignatures().lookup(name);
+            if (methodSignature != null) {
+                // Lookup only if name and type are known symbols.
+                method = klass.lookupMethod(methodName, methodSignature);
+            }
         }
-        assert !method.isStatic();
+        if (method == null || method.isStatic()) {
+            throw getMeta().throwEx(getMeta().NoSuchMethodError, getMeta().toGuestString(name));
+        }
         return methodIds.handlify(method);
     }
 
@@ -604,11 +625,18 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public long GetStaticMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         Klass klass = ((StaticObjectClass) clazz).getMirrorKlass();
         klass.safeInitialize();
-        Method method = klass.lookupDeclaredMethod(Symbol.fromJavaString(name), Signatures.fromJavaString(signature));
-        if (method == null) {
-            throw getMeta().throwEx(NoSuchMethodError.class, name + signature);
+        Method method = null;
+        Symbol<Name> methodName = getNames().lookup(name);
+        if (methodName != null) {
+            Symbol<Signature> methodSignature = getSignatures().lookup(name);
+            if (methodSignature != null) {
+                // Lookup only if name and type are known symbols.
+                method = klass.lookupMethod(methodName, methodSignature);
+            }
         }
-        assert method.isStatic();
+        if (method == null || !method.isStatic()) {
+            throw getMeta().throwEx(getMeta().NoSuchMethodError, getMeta().toGuestString(name));
+        }
         return methodIds.handlify(method);
     }
 

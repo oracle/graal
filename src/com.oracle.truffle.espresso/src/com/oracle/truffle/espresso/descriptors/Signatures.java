@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.descriptors;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -44,14 +45,15 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  *      Descriptors</a>
  */
 public final class Signatures {
+    private final Symbols symbols;
+    private final Types types;
 
-    private final Symbols runtimeSymbols;
+    private final ConcurrentHashMap<Symbol<Signature>, Symbol<Type>[]> parsedSignatures = new ConcurrentHashMap<>();
 
-//     private final Types typeDescriptors;
-
-//    public Signatures(Types typeDescriptors) {
-//        this.typeDescriptors = typeDescriptors;
-//    }
+    public Signatures(Symbols symbols, Types types) {
+        this.symbols = symbols;
+        this.types = types;
+    }
 
     @Deprecated
     public static Symbol<Signature> fromJavaString(String signatureString) {
@@ -60,14 +62,9 @@ public final class Signatures {
         return signature;
     }
 
-//    public Types getTypeDescriptors() {
-//        return typeDescriptors;
-//    }
-
-//    @Override
-//    protected Symbol<Type>[] create(Symbol<Signature> key) {
-//        return Signatures.parse(getTypeDescriptors(), key, 0);
-//    }
+    public final Types getTypes() {
+        return types;
+    }
 
     /**
      * Parses a signature descriptor string into its parameter and return type components.
@@ -125,10 +122,6 @@ public final class Signatures {
     public static Symbol<Signature> check(Symbol<? extends Symbol.Descriptor> descriptor) {
         assert isValid((Symbol<Signature>) descriptor);
         return (Symbol<Signature>) descriptor;
-    }
-
-    public static JavaKind resultKind(final Symbol<Type>[] signature) {
-        return Types.getJavaKind(returnType(signature));
     }
 
     /**
@@ -214,26 +207,23 @@ public final class Signatures {
         throw EspressoError.unimplemented();
     }
 
-    @SuppressWarnings("unchecked")
-    public Symbol<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
+    @SafeVarargs
+    public final Symbol<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
         Symbol<Type>[] parameterTypes = new Symbol[parameterClasses.length];
         for (int i = 0; i < parameterClasses.length; ++i) {
-            parameterTypes[i] = getTypeDescriptors().fromClass(parameterClasses[i]);
+            parameterTypes[i] = getTypes().fromClass(parameterClasses[i]);
         }
-        return makeRaw(getTypeDescriptors().fromClass(returnClass), parameterTypes);
+        return makeRaw(getTypes().fromClass(returnClass), parameterTypes);
     }
 
-    @SuppressWarnings("unchecked")
-    public Symbol<Signature> makeRaw(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
+    @SafeVarargs
+    public final Symbol<Signature> makeRaw(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         if (parameterTypes == null || parameterTypes.length == 0) {
-            byte[] bytes = new byte[2 + returnType.length()];
+            final byte[] bytes = new byte[2 + returnType.length()];
             Symbol.copyBytes(returnType, 0, bytes, 2, returnType.length());
             bytes[0] = '(';
             bytes[1] = ')';
-            Symbol<Signature> raw = new Symbol<>(bytes);
-            // FIXME(peterssen): Signatures are not symbols.
-            make(raw);
-            return raw;
+            return symbols.symbolify(ByteSequence.wrap(bytes));
         }
 
         int totalLength = returnType.length();
@@ -241,7 +231,7 @@ public final class Signatures {
             totalLength += param.length();
         }
 
-        byte[] bytes = new byte[totalLength + 2]; // + ()
+        final byte[] bytes = new byte[totalLength + 2]; // + ()
 
         int pos = 0;
         bytes[pos++] = '(';
@@ -253,42 +243,38 @@ public final class Signatures {
         Symbol.copyBytes(returnType, 0, bytes, pos, returnType.length());
         pos += returnType.length();
         assert pos == totalLength + 2;
-        Symbol<Signature> signature = new Symbol(bytes);
-        make(signature);
-        return signature;
+        return symbols.symbolify(ByteSequence.wrap(bytes));
     }
 
-    static Symbol<Signature> nonCachedMake(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
-        if (parameterTypes == null || parameterTypes.length == 0) {
-            byte[] bytes = new byte[2 + returnType.length()];
-            Symbol.copyBytes(returnType, 0, bytes, 2, returnType.length());
-            bytes[0] = '(';
-            bytes[1] = ')';
-            Symbol<Signature> raw = new Symbol<>(bytes);
-            // FIXME(peterssen): Signatures are not symbols.
-            return raw;
-        }
-
-        int totalLength = returnType.length();
-        for (Symbol<Type> param : parameterTypes) {
-            totalLength += param.length();
-        }
-
-        byte[] bytes = new byte[totalLength + 2]; // + ()
-
-        int pos = 0;
-        bytes[pos++] = '(';
-        for (Symbol<Type> param : parameterTypes) {
-            Symbol.copyBytes(param, 0, bytes, pos, param.length());
-            pos += param.length();
-        }
-        bytes[pos++] = ')';
-        Symbol.copyBytes(returnType, 0, bytes, pos, returnType.length());
-        pos += returnType.length();
-        assert pos == totalLength + 2;
-        Symbol<Signature> signature = new Symbol(bytes);
-        return signature;
-    }
-
-
+// static Symbol<Signature> nonCachedMake(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
+// if (parameterTypes == null || parameterTypes.length == 0) {
+// byte[] bytes = new byte[2 + returnType.length()];
+// Symbol.copyBytes(returnType, 0, bytes, 2, returnType.length());
+// bytes[0] = '(';
+// bytes[1] = ')';
+// Symbol<Signature> raw = new Symbol<>(bytes);
+// // FIXME(peterssen): Signatures are not symbols.
+// return raw;
+// }
+//
+// int totalLength = returnType.length();
+// for (Symbol<Type> param : parameterTypes) {
+// totalLength += param.length();
+// }
+//
+// byte[] bytes = new byte[totalLength + 2]; // + ()
+//
+// int pos = 0;
+// bytes[pos++] = '(';
+// for (Symbol<Type> param : parameterTypes) {
+// Symbol.copyBytes(param, 0, bytes, pos, param.length());
+// pos += param.length();
+// }
+// bytes[pos++] = ')';
+// Symbol.copyBytes(returnType, 0, bytes, pos, returnType.length());
+// pos += returnType.length();
+// assert pos == totalLength + 2;
+// Symbol<Signature> signature = new Symbol(bytes);
+// return signature;
+// }
 }
