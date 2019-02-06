@@ -65,8 +65,8 @@ typedef struct d1_struct {
 
 typedef struct d2_struct {
 	h_t h;
-	long long_value;
-	long* long_pointer;
+	long long long_value;
+	long long* long_pointer;
 } d2_t;
 
 
