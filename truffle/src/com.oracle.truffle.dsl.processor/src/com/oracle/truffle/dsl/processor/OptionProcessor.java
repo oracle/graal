@@ -272,11 +272,6 @@ public class OptionProcessor extends AbstractProcessor {
             optionName = annotation.name();
         }
 
-        if (!optionName.isEmpty() && !Character.isUpperCase(optionName.charAt(0))) {
-            error(element, elementAnnotation, "Option names must start with capital letter");
-            return false;
-        }
-
         boolean deprecated = annotation.deprecated();
 
         OptionCategory category = annotation.category();
