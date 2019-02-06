@@ -550,33 +550,32 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, libgraal=False)
     prefix = 'libgraal ' if libgraal else ''
 
     # run selected DaCapo benchmarks
-    # DaCapo benchmarks that can run with system assertions enabled
-    dacapos_with_sa = {
+
+    # DaCapo benchmarks that can run with system assertions enabled but
+    # java.util.Logging assertions disabled because the the DaCapo harness
+    # misuses the API.
+    dacapos = {
         'avrora':     1,
         'h2':         1,
         'jython':     2,
         'luindex':    1,
         'lusearch':   4,
         'xalan':      1,
-    }
-    for name, iterations in sorted(dacapos_with_sa.iteritems()):
-        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
-
-    # DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
-    dacapos_without_sa = {
         'batik':      1,
         'fop':        8,
         'pmd':        1,
         'sunflow':    2,
     }
-    for name, iterations in sorted(dacapos_without_sa.iteritems()):
+    for name, iterations in sorted(dacapos.iteritems()):
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
+            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
+                               ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
 
     # run selected Scala DaCapo benchmarks
-    # Scala DaCapo benchmarks that can run with system assertions enabled
-    scala_dacapos_with_sa = {
+    # Scala DaCapo benchmarks that can run with system assertions enabled but
+    # java.util.Logging assertions disabled because the the DaCapo harness
+    # misuses the API.
+    scala_dacapos = {
         'apparat':    1,
         'factorie':   1,
         'kiama':      4,
@@ -586,23 +585,17 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, libgraal=False)
         'scalariform':1,
         'scalatest':  1,
         'scalaxb':    1,
-        'tmt':        1
-    }
-    for name, iterations in sorted(scala_dacapos_with_sa.iteritems()):
-        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
-
-    # Scala DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
-    scala_dacapos_without_sa = {
+        'tmt':        1,
         'actors':     1,
     }
     if not jdk_includes_corba(jdk):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
-        del scala_dacapos_without_sa['actors']
+        del scala_dacapos['actors']
 
-    for name, iterations in sorted(scala_dacapos_without_sa.iteritems()):
+    for name, iterations in sorted(scala_dacapos.iteritems()):
         with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
+            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
+                                     ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
 
     # ensure -Xbatch still works
     with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
