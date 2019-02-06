@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,10 +68,11 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
                     "Java_javax_net",
                     "Java_javax_script",
                     "Java_javax_security",
-                    "Java_jdk",
+                    "Java_jdk_internal_org",
+                    "Java_jdk_internal_util",
+                    "Java_jdk_net",
                     "Java_sun_invoke",
                     "Java_sun_launcher",
-                    "Java_sun_misc",
                     "Java_sun_net",
                     "Java_sun_nio",
                     "Java_sun_reflect",

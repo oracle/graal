@@ -389,7 +389,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBytes());
                 final String heapSectionName = SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat());
                 heapSection = objectFile.newProgbitsSection(heapSectionName, objectFile.getPageSize(), writable, false, heapSectionImpl);
-                objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, true);
+                objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
                 heap.setReadOnlySection(heapSection.getName(), 0);
                 long writableSectionOffset = heap.getReadOnlySectionSize();
