@@ -58,6 +58,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -141,6 +142,19 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
             stackBoundaryTL.set(stackBoundaryTL.get().subtract(Options.StackYellowZoneSize.getValue()));
         }
         yellowZoneStateTL.set(state + 1);
+
+        /*
+         * Check that after enabling the yellow zone there is actually stack space available again.
+         * Otherwise we would immediately throw a StackOverflowError when reaching the first
+         * non-Uninterruptible callee, and then we would recursively end up here again.
+         */
+        UnsignedWord stackBoundary = StackOverflowCheckImpl.stackBoundaryTL.get();
+        if (KnownIntrinsics.readStackPointer().belowOrEqual(stackBoundary)) {
+            throw VMError.shouldNotReachHere("StackOverflowError: Enabling the yellow zone of the stack did not make any stack space available. Possible reasons for that: " +
+                            "1) A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread; " +
+                            "2) Frames of native code filled the stack, and now there is not even enough stack space left to throw a regular StackOverflowError; " +
+                            "3) An internal VM error occurred.");
+        }
     }
 
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
@@ -167,6 +181,22 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
         }
 
         return Options.StackYellowZoneSize.getValue() + Options.StackRedZoneSize.getValue();
+    }
+
+    @Uninterruptible(reason = "Called by fatal error handling that is uninterruptible.")
+    @Override
+    public void disableStackOverflowChecksForFatalError() {
+        /*
+         * Setting the boundary to a low value effectively disables the check. We are not using 0 so
+         * that we can distinguish the value set here from an uninitialized value.
+         */
+        stackBoundaryTL.set(WordFactory.unsigned(1));
+        /*
+         * A random marker value. The actual value does not matter, but having a high value also
+         * ensures that any future calls to protectYellowZone() do not modify the stack boundary
+         * again.
+         */
+        yellowZoneStateTL.set(0xfefefefe);
     }
 }
 

@@ -64,6 +64,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -87,6 +88,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Snippets for calling from C to Java. See {@link CEntryPointActions} and
@@ -107,9 +109,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static final SubstrateForeignCallDescriptor TEAR_DOWN_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "tearDownIsolate", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor IS_ATTACHED_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "isAttachedMT", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor FAIL_FATALLY = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "failFatally", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor VERIFY_ISOLATE_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "verifyIsolateThread", false, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = {CREATE_ISOLATE, INITIALIZE_ISOLATE, ATTACH_THREAD, ENTER_ISOLATE_MT,
-                    DETACH_THREAD_MT, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED_MT, FAIL_FATALLY};
+                    DETACH_THREAD_MT, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED_MT, FAIL_FATALLY, VERIFY_ISOLATE_THREAD};
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters, int vmThreadSize);
@@ -345,6 +348,32 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
         if (MultiThreaded.getValue()) {
             Safepoint.transitionNativeToJava();
+            if (runtimeAssertionsEnabled()) {
+                runtimeCall(VERIFY_ISOLATE_THREAD, thread);
+            }
+        }
+
+        return CEntryPointErrors.NO_ERROR;
+    }
+
+    @Fold
+    static boolean runtimeAssertionsEnabled() {
+        return SubstrateOptions.getRuntimeAssertionsForClass(CEntryPointSnippets.class.getName());
+    }
+
+    /**
+     * Verify that the {@link IsolateThread} provided by the user is correct, i.e., the same
+     * {@link IsolateThread} that would be used by a C entry point providing only the
+     * {@link Isolate}. This is a slow check and therefore only done when assertions are enabled.
+     */
+    @Uninterruptible(reason = "Thread state not set up yet")
+    @SubstrateForeignCallTarget
+    private static int verifyIsolateThread(IsolateThread thread) {
+        IsolateThread threadFromOS = VMThreads.singleton().findIsolateThreadforCurrentOSThread();
+
+        if (!thread.equal(threadFromOS)) {
+            throw VMError.shouldNotReachHere("A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread. " +
+                            "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
         }
         return CEntryPointErrors.NO_ERROR;
     }

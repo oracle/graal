@@ -120,4 +120,12 @@ public interface StackOverflowCheck {
      * Returns the combined size of the yellow and red zone.
      */
     int yellowAndRedZoneSize();
+
+    /**
+     * Disables all stack overflow checks for this thread. This operation is not reversible, i.e.,
+     * it must only be called in the case of a fatal error where the VM is going to exit soon and
+     * does not execute user code anymore that relies on proper stack overflow checking.
+     */
+    @Uninterruptible(reason = "Called by fatal error handling that is uninterruptible.")
+    void disableStackOverflowChecksForFatalError();
 }
