@@ -683,4 +683,40 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         }
     }
 
+    /*
+     * Test that a library with a message called execute works. This can easily trigger the code
+     * generator as it often looks for methods with the execute prefix.
+     */
+    @GenerateLibrary
+    @SuppressWarnings("unused")
+    public abstract static class LibraryWithExecute extends Library {
+
+        public String execute(Object receiver) {
+            return "default";
+        }
+
+    }
+
+    @ExportLibrary(LibraryWithExecute.class)
+    public abstract static class LibraryThatUsesExecuteMethod {
+
+        @ExportMessage(limit = "5")
+        public String execute(@CachedLibrary("this") SomethingLibrary somethings) {
+            return somethings.call(this);
+        }
+    }
+
+    @ExportLibrary(LibraryWithExecute.class)
+    public abstract static class LibraryThatUsesExecuteNode {
+
+        @ExportMessage(limit = "5")
+        static class Execute {
+
+            @Specialization(limit = "5")
+            static String doDefault(LibraryThatUsesExecuteNode receiver, @CachedLibrary("receiver") SomethingLibrary somethings) {
+                return somethings.call(receiver);
+            }
+        }
+
+    }
 }

@@ -304,22 +304,22 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 ExecutableElement exportMethod = (ExecutableElement) methodExport.getMessageElement();
                 cachedExecute = cacheClass.add(createDirectCall(cachedReceiverAccess, message, exportMethod));
             } else {
-                CodeTypeElement dummyClass = sharedNodes.get(cachedSpecializedNode);
+                CodeTypeElement dummyNodeClass = sharedNodes.get(cachedSpecializedNode);
                 boolean shared = true;
-                if (dummyClass == null) {
+                if (dummyNodeClass == null) {
                     FlatNodeGenFactory factory = new FlatNodeGenFactory(context, cachedSpecializedNode, cachedSharedNodes, libraryExports.getSharedExpressions(), libraryConstants);
-                    dummyClass = createClass(libraryExports, null, modifiers(), "Dummy", context.getType(Node.class));
-                    factory.create(dummyClass);
-                    sharedNodes.put(cachedSpecializedNode, dummyClass);
+                    dummyNodeClass = createClass(libraryExports, null, modifiers(), "Dummy", context.getType(Node.class));
+                    factory.create(dummyNodeClass);
+                    sharedNodes.put(cachedSpecializedNode, dummyNodeClass);
                     shared = false;
                 }
 
-                for (Element element : dummyClass.getEnclosedElements()) {
+                for (Element element : dummyNodeClass.getEnclosedElements()) {
                     String simpleName = element.getSimpleName().toString();
                     if (element.getKind() == ElementKind.METHOD) {
                         if (simpleName.endsWith("AndSpecialize")) {
                             // nothing to do for specialize method
-                        } else if (simpleName.startsWith("execute")) {
+                        } else if (simpleName.startsWith(ExportsParser.EXECUTE_PREFIX) && simpleName.endsWith(ExportsParser.EXECUTE_SUFFIX)) {
                             CodeExecutableElement executable = (CodeExecutableElement) element;
                             executable.setVarArgs(message.getExecutable().isVarArgs());
                             cachedExecute = CodeExecutableElement.clone(executable);
