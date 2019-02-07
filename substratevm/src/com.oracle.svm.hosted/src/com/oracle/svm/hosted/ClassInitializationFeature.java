@@ -24,14 +24,18 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.reflect.Modifier;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Feature;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -40,6 +44,11 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.MethodPointer;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticFeature
 public class ClassInitializationFeature implements Feature {
@@ -78,8 +87,19 @@ public class ClassInitializationFeature implements Feature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-        classInitializationSupport.setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
-        access.registerObjectReplacer(classInitializationSupport::checkImageHeapInstance);
+        ((ClassInitializationSupportImpl) classInitializationSupport).setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
+        access.registerObjectReplacer(this::checkImageHeapInstance);
+    }
+
+    private Object checkImageHeapInstance(Object obj) {
+        /*
+         * Note that computeInitKind also memoizes the class as InitKind.EAGER, which means that the
+         * user cannot later manually register it as RERUN or DELAY.
+         */
+        if (obj != null && classInitializationSupport.shouldInitializeAtRuntime(obj.getClass())) {
+            throw new UnsupportedFeatureException("No instances are allowed in the image heap for a class that is initialized or reinitialized at image runtime: " + obj.getClass().getTypeName());
+        }
+        return obj;
     }
 
     @Override
@@ -97,7 +117,7 @@ public class ClassInitializationFeature implements Feature {
             if (type.isInTypeCheck() || type.isInstantiated()) {
                 DynamicHub hub = access.getHostVM().dynamicHub(type);
                 if (hub.getClassInitializationInfo() == null) {
-                    classInitializationSupport.buildClassInitializationInfo(access, type, hub);
+                    buildClassInitializationInfo(access, type, hub);
                     access.requireAnalysisIteration();
                 }
             }
@@ -106,7 +126,7 @@ public class ClassInitializationFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        classInitializationSupport.setUnsupportedFeatures(null);
+        ((ClassInitializationSupportImpl) classInitializationSupport).setUnsupportedFeatures(null);
     }
 
     @Override
@@ -116,6 +136,66 @@ public class ClassInitializationFeature implements Feature {
          * image building got initialized.
          */
         classInitializationSupport.checkDelayedInitialization();
+    }
+
+    private void buildClassInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
+        ClassInitializationInfo info;
+        if (classInitializationSupport.shouldInitializeAtRuntime(type)) {
+            AnalysisMethod classInitializer = type.getClassInitializer();
+            /*
+             * If classInitializer.getCode() returns null then the type failed to initialize due to
+             * verification issues triggered by missing types.
+             */
+            if (classInitializer != null && classInitializer.getCode() != null) {
+                access.registerAsCompiled(classInitializer);
+            }
+            info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
+
+        } else {
+            info = ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
+        }
+
+        hub.setClassInitializationInfo(info, hasDefaultMethods(type), declaresDefaultMethods(type));
+    }
+
+    private static boolean hasDefaultMethods(ResolvedJavaType type) {
+        if (!type.isInterface() && type.getSuperclass() != null && hasDefaultMethods(type.getSuperclass())) {
+            return true;
+        }
+        for (ResolvedJavaType iface : type.getInterfaces()) {
+            if (hasDefaultMethods(iface)) {
+                return true;
+            }
+        }
+        return declaresDefaultMethods(type);
+    }
+
+    static boolean declaresDefaultMethods(ResolvedJavaType type) {
+        if (!type.isInterface()) {
+            /* Only interfaces can declare default methods. */
+            return false;
+        }
+        /*
+         * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
+         * AnalysisType because it resolves all the methods in the AnalysisUniverse.
+         */
+        for (ResolvedJavaMethod method : toWrappedType(type).getDeclaredMethods()) {
+            if (method.isDefault()) {
+                assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
+        if (type instanceof AnalysisType) {
+            return ((AnalysisType) type).getWrappedWithoutResolve();
+        } else if (type instanceof HostedType) {
+            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
+        } else {
+            return type;
+        }
     }
 
 }

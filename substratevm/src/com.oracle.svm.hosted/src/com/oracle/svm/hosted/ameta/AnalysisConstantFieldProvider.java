@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.ameta;
 
-import com.oracle.svm.hosted.ClassInitializationSupport;
 import org.graalvm.compiler.core.common.spi.JavaConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -32,6 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.meta.ReadableJavaField;
+import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -42,14 +42,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
     private final AnalysisUniverse universe;
     private final AnalysisConstantReflectionProvider constantReflection;
-    private final ClassInitializationSupport classInitializationFeature;
+    private final ClassInitializationSupport classInitializationSupport;
 
     public AnalysisConstantFieldProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider constantReflection,
-                    ClassInitializationSupport classInitializationFeature) {
+                    ClassInitializationSupport classInitializationSupport) {
         super(metaAccess);
         this.universe = universe;
         this.constantReflection = constantReflection;
-        this.classInitializationFeature = classInitializationFeature;
+        this.classInitializationSupport = classInitializationSupport;
     }
 
     @Override
@@ -74,7 +74,7 @@ public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
 
     @Override
     protected boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        if (classInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+        if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
             return false;
         }
         return super.isFinalField(field, tool);

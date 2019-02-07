@@ -50,23 +50,28 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 
 public class HostedConfiguration {
 
+    private ClassInitializationSupport classInitializationSupport;
+
+    public HostedConfiguration(ClassInitializationSupport classInitializationSupport) {
+        this.classInitializationSupport = classInitializationSupport;
+    }
+
     public static HostedConfiguration instance() {
         return ImageSingletons.lookup(HostedConfiguration.class);
     }
 
     static void setDefaultIfEmpty(FeatureImpl.AfterRegistrationAccessImpl access) {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
-            ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration());
+            ClassInitializationSupport classInitializationSupport = new ClassInitializationSupportImpl(access.getMetaAccess());
+            ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
+            ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration(classInitializationSupport));
+            ClassInitializationFeature.processClassInitializationOptions(access, classInitializationSupport);
 
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
             ObjectLayout objectLayout = new ObjectLayout(ConfigurationValues.getTarget());
             ImageSingletons.add(ObjectLayout.class, objectLayout);
-
-            ClassInitializationSupport initializationSupport = new ClassInitializationSupport(access.getMetaAccess());
-            ImageSingletons.add(RuntimeClassInitializationSupport.class, initializationSupport);
-            ClassInitializationFeature.processClassInitializationOptions(access, initializationSupport);
         }
     }
 
@@ -104,5 +109,9 @@ public class HostedConfiguration {
 
     public boolean isUsingAOTProfiles() {
         return false;
+    }
+
+    public ClassInitializationSupport getClassInitializationSupport() {
+        return classInitializationSupport;
     }
 }

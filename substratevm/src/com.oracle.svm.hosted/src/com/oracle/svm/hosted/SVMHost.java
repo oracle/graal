@@ -280,4 +280,8 @@ public final class SVMHost implements HostVM {
     public ClassInitializationSupport getClassInitializationSupport() {
         return classInitializationSupport;
     }
+
+    public UnsafeAutomaticSubstitutionProcessor getAutomaticSubstitutionProcessor() {
+        return automaticSubstitutions;
+    }
 }

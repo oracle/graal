@@ -139,13 +139,13 @@ class Options {
 }
 
 public class SubstrateGraphBuilderPlugins {
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
+    public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
                     SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, BytecodeProvider bytecodeProvider, boolean analysis) {
 
         // register the substratevm plugins
         registerSystemPlugins(metaAccess, plugins);
         registerImageInfoPlugins(metaAccess, plugins);
-        registerProxyPlugins(snippetReflection, plugins, analysis);
+        registerProxyPlugins(snippetReflection, annotationSubstitutions, plugins, analysis);
         registerAtomicUpdaterPlugins(metaAccess, snippetReflection, plugins, analysis);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(plugins);
@@ -204,13 +204,13 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean analysis) {
+    private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, boolean analysis) {
         if (analysis) {
             Registration proxyRegistration = new Registration(plugins, Proxy.class);
             proxyRegistration.register2("getProxyClass", ClassLoader.class, Class[].class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode) {
-                    interceptProxyInterfaces(b, targetMethod, snippetReflection, interfacesNode);
+                    interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
                     return false;
                 }
             });
@@ -218,7 +218,7 @@ public class SubstrateGraphBuilderPlugins {
             proxyRegistration.register3("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode, ValueNode invocationHandlerNode) {
-                    interceptProxyInterfaces(b, targetMethod, snippetReflection, interfacesNode);
+                    interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
                     return false;
                 }
             });
@@ -229,8 +229,9 @@ public class SubstrateGraphBuilderPlugins {
      * Try to intercept proxy interfaces passed in as literal constants, and register the interfaces
      * in the {@link DynamicProxyRegistry}.
      */
-    private static void interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection, ValueNode interfacesNode) {
-        Class<?>[] interfaces = extractClassArray(snippetReflection, interfacesNode);
+    private static void interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
+                    AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode interfacesNode) {
+        Class<?>[] interfaces = extractClassArray(snippetReflection, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
             /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
             ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(interfaces);
@@ -250,8 +251,8 @@ public class SubstrateGraphBuilderPlugins {
      * Try to extract a Class array from a ValueNode. It does not guarantee that the array content
      * will not change.
      */
-    static Class<?>[] extractClassArray(SnippetReflectionProvider snippetReflection, ValueNode arrayNode) {
-        return extractClassArray(snippetReflection, arrayNode, false);
+    static Class<?>[] extractClassArray(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode arrayNode) {
+        return extractClassArray(annotationSubstitutions, snippetReflection, arrayNode, false);
     }
 
     /**
@@ -265,7 +266,7 @@ public class SubstrateGraphBuilderPlugins {
      * constants and there is no control flow split. If the content of the array cannot be determine
      * a null value is returned.
      */
-    static Class<?>[] extractClassArray(SnippetReflectionProvider snippetReflection, ValueNode arrayNode, boolean exact) {
+    static Class<?>[] extractClassArray(AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection, ValueNode arrayNode, boolean exact) {
         if (arrayNode.isConstant() && !exact) {
             /*
              * The array is a constant, however that doesn't make the array immutable, i.e., its
@@ -314,7 +315,7 @@ public class SubstrateGraphBuilderPlugins {
                      * DynamicHub returned for a Class.class constant. Get the target class of the
                      * substitution class.
                      */
-                    classList.add(ImageSingletons.lookup(AnnotationSubstitutionProcessor.class).getTargetClass(clazz));
+                    classList.add(annotationSubstitutions.getTargetClass(clazz));
                 } else {
                     /* If not all classes are non-null constants we bail out. */
                     classList = null;

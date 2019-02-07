@@ -79,6 +79,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -126,7 +127,6 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -265,6 +265,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NativeImageGenerator {
 
@@ -513,7 +514,8 @@ public class NativeImageGenerator {
                 runtime = new HostedRuntimeConfigurationBuilder(options, bigbang.getHostVM(), hUniverse, hMetaAccess, bigbang.getProviders()).build();
                 registerGraphBuilderPlugins(featureHandler, runtime.getRuntimeConfig(), (HostedProviders) runtime.getRuntimeConfig().getProviders(), bigbang.getMetaAccess(), aUniverse,
                                 hMetaAccess, hUniverse,
-                                nativeLibraries, loader, false, true);
+                                nativeLibraries, loader, false, true, bigbang.getAnnotationSubstitutionProcessor(), new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()),
+                                bigbang.getHostVM().getClassInitializationSupport());
 
                 if (NativeImageOptions.PrintUniverse.getValue()) {
                     printTypes();
@@ -787,83 +789,90 @@ public class NativeImageGenerator {
                 HostedConfiguration.setDefaultIfEmpty(access);
                 GraalConfiguration.setDefaultIfEmpty();
 
-                ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.instance();
+                ClassInitializationSupport classInitializaitonSupport = HostedConfiguration.instance().getClassInitializationSupport();
 
-                /* Setup substitutions. */
-                AnnotationSubstitutionProcessor annotationSubstitutions = setupDeclarativeSubstitutionProcessor(originalMetaAccess);
-                UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = setupAutomaticUnsafeSubstitutions(originalSnippetReflection, originalMetaAccess, annotationSubstitutions);
+                AnnotationSubstitutionProcessor annotationSubstitutions = createDeclarativeSubstitutionProcessor(originalMetaAccess, loader, classInitializaitonSupport);
                 CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
-                SubstitutionProcessor substitutions = setupSubstitutionProcessor(originalMetaAccess, harnessSubstitutions, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
-                                annotationSubstitutions);
-
-                SVMHost svmHost = new SVMHost(options, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions);
-                aUniverse = setupAnalysisUniverse(options, svmHost, target, platform, originalSnippetReflection, originalMetaAccess, substitutions);
+                aUniverse = createAnalysisUniverse(options, platform, target, loader, originalMetaAccess, originalSnippetReflection, annotationSubstitutions, cEnumProcessor,
+                                classInitializaitonSupport, Collections.singletonList(harnessSubstitutions));
 
                 AnalysisMetaAccess aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
-                AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(aUniverse, originalProviders.getConstantReflection(), classInitializationSupport);
+                AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(aUniverse, originalProviders.getConstantReflection(), classInitializaitonSupport);
                 WordTypes aWordTypes = new WordTypes(aMetaAccess, FrameAccess.getWordKind());
-                HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(svmHost, aWordTypes);
+                HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider((SVMHost) aUniverse.hostVM(), aWordTypes);
 
-                nativeLibraries = setupNativeLibraries(imageName, aConstantReflection, aMetaAccess, aSnippetReflection, cEnumProcessor);
+                nativeLibraries = setupNativeLibraries(imageName, aConstantReflection, aMetaAccess, aSnippetReflection, cEnumProcessor, classInitializaitonSupport);
 
-                bigbang = setupBigBang(target, options, analysisExecutor, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection, classInitializationSupport);
+                ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider();
+                bigbang = createBigBang(options, target, aUniverse, nativeLibraries, analysisExecutor, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
+                                annotationSubstitutions, aForeignCalls, classInitializaitonSupport);
 
                 try (Indent ignored2 = debug.logAndIndent("process startup initializers")) {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bigbang, debug);
                     featureHandler.forEachFeature(feature -> feature.duringSetup(config));
                 }
 
-                initializeBigBang(options, debug, entryPoints, aMetaAccess, substitutions, annotationSubstitutions);
+                initializeBigBang(bigbang, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
+                                new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()));
+                entryPoints.forEach((method, entryPointData) -> CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> entryPointData));
             }
         }
     }
 
-    private AnnotationSubstitutionProcessor setupDeclarativeSubstitutionProcessor(MetaAccessProvider originalMetaAccess) {
-        AnnotationSubstitutionProcessor annotationSubstitutions = new DeclarativeSubstitutionProcessor(loader, originalMetaAccess);
-        ImageSingletons.add(AnnotationSubstitutionProcessor.class, annotationSubstitutions);
+    public static AnalysisUniverse createAnalysisUniverse(OptionValues options, Platform platform, TargetDescription target, ImageClassLoader loader, MetaAccessProvider originalMetaAccess,
+                    SnippetReflectionProvider originalSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, SubstitutionProcessor cEnumProcessor,
+                    ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions) {
+        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = createAutomaticUnsafeSubstitutions(originalSnippetReflection, originalMetaAccess, annotationSubstitutions, loader);
+        SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
+                        annotationSubstitutions, additionalSubstitutions);
+
+        SVMHost hostVM = new SVMHost(options, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions);
+        AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new AllocationSiteSensitiveAnalysisPolicy(options)
+                        : new ContextInsensitiveAnalysisPolicy(options);
+        return new AnalysisUniverse(hostVM, target.wordJavaKind, platform, analysisPolicy, aSubstitutions, originalMetaAccess, originalSnippetReflection,
+                        new SubstrateSnippetReflectionProvider(new WordTypes(originalMetaAccess, FrameAccess.getWordKind())));
+    }
+
+    public static AnnotationSubstitutionProcessor createDeclarativeSubstitutionProcessor(MetaAccessProvider originalMetaAccess, ImageClassLoader loader,
+                    ClassInitializationSupport classInitializationSupport) {
+        AnnotationSubstitutionProcessor annotationSubstitutions = new DeclarativeSubstitutionProcessor(loader, originalMetaAccess, classInitializationSupport);
         annotationSubstitutions.init();
         return annotationSubstitutions;
     }
 
-    private UnsafeAutomaticSubstitutionProcessor setupAutomaticUnsafeSubstitutions(SnippetReflectionProvider originalSnippetReflection, MetaAccessProvider originalMetaAccess,
-                    AnnotationSubstitutionProcessor annotationSubstitutions) {
+    public static UnsafeAutomaticSubstitutionProcessor createAutomaticUnsafeSubstitutions(SnippetReflectionProvider originalSnippetReflection, MetaAccessProvider originalMetaAccess,
+                    AnnotationSubstitutionProcessor annotationSubstitutions, ImageClassLoader loader) {
         UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = new UnsafeAutomaticSubstitutionProcessor(annotationSubstitutions, originalSnippetReflection);
-        ImageSingletons.add(UnsafeAutomaticSubstitutionProcessor.class, automaticSubstitutions);
         automaticSubstitutions.init(loader, originalMetaAccess);
         return automaticSubstitutions;
     }
 
-    private static SubstitutionProcessor setupSubstitutionProcessor(MetaAccessProvider originalMetaAccess, SubstitutionProcessor harnessSubstitutions,
-                    SnippetReflectionProvider originalSnippetReflection,
-                    SubstitutionProcessor cEnumProcessor, SubstitutionProcessor automaticSubstitutions, SubstitutionProcessor annotationSubstitutions) {
-        CFunctionSubstitutionProcessor cfunctionSubstitutions = new CFunctionSubstitutionProcessor();
-        return SubstitutionProcessor.chainUpInOrder(harnessSubstitutions, new AnnotationSupport(originalMetaAccess, originalSnippetReflection),
-                        annotationSubstitutions, cfunctionSubstitutions, automaticSubstitutions, cEnumProcessor);
-
-    }
-
-    private static AnalysisUniverse setupAnalysisUniverse(OptionValues options, HostVM hostVM, TargetDescription target, Platform platform, SnippetReflectionProvider originalSnippetReflection,
-                    MetaAccessProvider originalMetaAccess, SubstitutionProcessor substitutions) {
-        AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new AllocationSiteSensitiveAnalysisPolicy(options)
-                        : new ContextInsensitiveAnalysisPolicy(options);
-        return new AnalysisUniverse(hostVM, target.wordJavaKind, platform, analysisPolicy, substitutions, originalMetaAccess, originalSnippetReflection,
-                        new SubstrateSnippetReflectionProvider(new WordTypes(originalMetaAccess, FrameAccess.getWordKind())));
+    public static SubstitutionProcessor createAnalysisSubstitutionProcessor(MetaAccessProvider originalMetaAccess, SnippetReflectionProvider originalSnippetReflection,
+                    SubstitutionProcessor cEnumProcessor, SubstitutionProcessor automaticSubstitutions, SubstitutionProcessor annotationSubstitutions,
+                    List<SubstitutionProcessor> additionalSubstitutionProcessors) {
+        List<SubstitutionProcessor> allProcessors = new ArrayList<>();
+        SubstitutionProcessor cFunctionSubstitutions = new CFunctionSubstitutionProcessor();
+        allProcessors.addAll(Arrays.asList(new AnnotationSupport(originalMetaAccess, originalSnippetReflection),
+                        annotationSubstitutions, cFunctionSubstitutions, automaticSubstitutions, cEnumProcessor));
+        allProcessors.addAll(additionalSubstitutionProcessors);
+        return SubstitutionProcessor.chainUpInOrder(allProcessors.toArray(new SubstitutionProcessor[0]));
     }
 
     @SuppressWarnings("try")
-    private void initializeBigBang(OptionValues options, DebugContext debug, Map<Method, CEntryPointData> entryPoints,
-                    AnalysisMetaAccess aMetaAccess, SubstitutionProcessor substitutions,
-                    AnnotationSubstitutionProcessor annotationSubstitutions) {
+    public static void initializeBigBang(Inflation bigbang, OptionValues options, FeatureHandler featureHandler, NativeLibraries nativeLibraries, DebugContext debug,
+                    AnalysisMetaAccess aMetaAccess, SubstitutionProcessor substitutions, ImageClassLoader loader, boolean initForeignCalls, ClassInitializationPlugin classInitializationPlugin) {
         SubstrateReplacements aReplacements = bigbang.getReplacements();
         HostedProviders aProviders = bigbang.getProviders();
+        AnalysisUniverse aUniverse = bigbang.getUniverse();
 
         /*
          * Eagerly register all target fields of recomputed value fields as unsafe accessed.
          */
-        annotationSubstitutions.processComputedValueFields(bigbang);
+        bigbang.getAnnotationSubstitutionProcessor().processComputedValueFields(bigbang);
 
-        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, true, true);
-        registerReplacements(debug, featureHandler, null, aProviders, aProviders.getSnippetReflection(), true);
+        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, true, true,
+                        bigbang.getAnnotationSubstitutionProcessor(), classInitializationPlugin, bigbang.getHostVM().getClassInitializationSupport());
+        registerReplacements(debug, featureHandler, null, aProviders, aProviders.getSnippetReflection(), true, initForeignCalls);
 
         /*
          * Install feature supported substitutions.
@@ -910,7 +919,6 @@ public class NativeImageGenerator {
 
             try {
                 bigbang.addRootMethod(ArraycopySnippets.class.getDeclaredMethod("doArraycopy", Object.class, int.class, Object.class, int.class, int.class));
-
                 bigbang.addRootMethod(Object.class.getDeclaredMethod("getClass"));
             } catch (NoSuchMethodException ex) {
                 throw VMError.shouldNotReachHere(ex);
@@ -925,17 +933,16 @@ public class NativeImageGenerator {
                 }
             }
 
-            entryPoints.forEach((method, entryPointData) -> CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> entryPointData));
-
             for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options))) {
                 new SVMMethodTypeFlowBuilder(bigbang, graph).registerUsedElements();
             }
         }
     }
 
-    private Inflation setupBigBang(TargetDescription target, OptionValues options, ForkJoinPool analysisExecutor, AnalysisMetaAccess aMetaAccess,
+    public static Inflation createBigBang(OptionValues options, TargetDescription target, AnalysisUniverse aUniverse, NativeLibraries nativeLibraries, ForkJoinPool analysisExecutor,
+                    AnalysisMetaAccess aMetaAccess,
                     AnalysisConstantReflectionProvider aConstantReflection, WordTypes aWordTypes, SnippetReflectionProvider aSnippetReflection,
-                    ClassInitializationSupport classInitializationSupport) {
+                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForeignCallsProvider aForeignCalls, ClassInitializationSupport classInitializationSupport) {
         assert aUniverse != null : "Analysis universe must be initialized.";
         assert nativeLibraries != null : "Native libraries must be set.";
         AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess, aConstantReflection, classInitializationSupport);
@@ -943,7 +950,6 @@ public class NativeImageGenerator {
          * Install all snippets so that the types, methods, and fields used in the snippets get
          * added to the universe.
          */
-        ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider();
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.create(aMetaAccess, null);
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
@@ -954,16 +960,16 @@ public class NativeImageGenerator {
                         aSnippetReflection,
                         aWordTypes);
 
-        return new Inflation(options, aUniverse, aProviders, analysisExecutor);
+        return new Inflation(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor);
     }
 
     @SuppressWarnings("try")
     private NativeLibraries setupNativeLibraries(String imageName, ConstantReflectionProvider aConstantReflection, MetaAccessProvider aMetaAccess,
-                    SnippetReflectionProvider aSnippetReflection, CEnumCallWrapperSubstitutionProcessor cEnumProcessor) {
+                    SnippetReflectionProvider aSnippetReflection, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport) {
         try (StopTimer ignored = new Timer(imageName, "(cap)").start()) {
             NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget());
             cEnumProcessor.setNativeLibraries(nativeLibs);
-            processNativeLibraryImports(nativeLibs, aMetaAccess);
+            processNativeLibraryImports(nativeLibs, aMetaAccess, classInitializationSupport);
 
             ImageSingletons.add(SizeOfSupport.class, new SizeOfSupportImpl(nativeLibs, aMetaAccess));
             ImageSingletons.add(CConstantValueSupport.class, new CConstantValueSupportImpl(nativeLibs, aMetaAccess));
@@ -1031,11 +1037,17 @@ public class NativeImageGenerator {
 
     static class SubstitutionInvocationPlugins extends InvocationPlugins {
 
+        private AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
+
+        SubstitutionInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
+            this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
+        }
+
         @Override
         protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
             Type targetClass;
             if (declaringClass instanceof Class) {
-                targetClass = ImageSingletons.lookup(AnnotationSubstitutionProcessor.class).getTargetClass((Class<?>) declaringClass);
+                targetClass = annotationSubstitutionProcessor.getTargetClass((Class<?>) declaringClass);
             } else {
                 targetClass = declaringClass;
             }
@@ -1044,9 +1056,10 @@ public class NativeImageGenerator {
     }
 
     public static void registerGraphBuilderPlugins(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, HostedProviders providers, AnalysisMetaAccess aMetaAccess,
-                    AnalysisUniverse aUniverse, HostedMetaAccess hMetaAccess, HostedUniverse hUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, boolean analysis, boolean hosted) {
+                    AnalysisUniverse aUniverse, HostedMetaAccess hMetaAccess, HostedUniverse hUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, boolean analysis, boolean hosted,
+                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ClassInitializationPlugin classInitializationPlugin, ClassInitializationSupport classInitializationSupport) {
         assert !analysis || hosted : "analysis must always be hosted";
-        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins());
+        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
 
         WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(providers.getSnippetReflection(), providers.getWordTypes());
 
@@ -1056,7 +1069,7 @@ public class NativeImageGenerator {
         plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(providers, aUniverse, hUniverse));
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
-        plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin());
+        plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(classInitializationSupport));
         plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), providers.getWordTypes(), nativeLibs));
         plugins.appendNodePlugin(new LocalizationFeature.CharsetNodePlugin());
 
@@ -1066,7 +1079,7 @@ public class NativeImageGenerator {
         plugins.appendNodePlugin(wordOperationPlugin);
         plugins.appendNodePlugin(new ImplicitExceptionsPlugin(providers.getMetaAccess(), providers.getForeignCalls()));
 
-        plugins.setClassInitializationPlugin(new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()));
+        plugins.setClassInitializationPlugin(classInitializationPlugin);
 
         featureHandler.forEachGraalFeature(feature -> feature.registerNodePlugins(analysis ? aMetaAccess : hMetaAccess, plugins, analysis, hosted));
 
@@ -1116,7 +1129,8 @@ public class NativeImageGenerator {
          */
         MetaAccessProvider pluginsMetaAccess = hosted && !analysis ? hMetaAccess : aMetaAccess;
         assert pluginsMetaAccess != null;
-        SubstrateGraphBuilderPlugins.registerInvocationPlugins(pluginsMetaAccess, providers.getConstantReflection(), hostedSnippetReflection, plugins.getInvocationPlugins(),
+        SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor, pluginsMetaAccess, providers.getConstantReflection(), hostedSnippetReflection,
+                        plugins.getInvocationPlugins(),
                         replacementBytecodeProvider, analysis);
 
         featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins.getInvocationPlugins(), analysis, hosted));
@@ -1133,16 +1147,17 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("try")
     public static void registerReplacements(DebugContext debug, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, Providers providers,
-                    SnippetReflectionProvider snippetReflection, boolean hosted) {
+                    SnippetReflectionProvider snippetReflection, boolean hosted, boolean initForeignCalls) {
         OptionValues options = hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton();
 
         Providers runtimeCallProviders = runtimeConfig != null ? runtimeConfig.getBackendForNormalMethod().getProviders() : providers;
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) providers.getForeignCalls();
-        for (SubstrateForeignCallDescriptor descriptor : SnippetRuntime.getRuntimeCalls()) {
-            foreignCallsProvider.getForeignCalls().put(descriptor, new SubstrateForeignCallLinkage(runtimeCallProviders, descriptor));
+        if (initForeignCalls) {
+            for (SubstrateForeignCallDescriptor descriptor : SnippetRuntime.getRuntimeCalls()) {
+                foreignCallsProvider.getForeignCalls().put(descriptor, new SubstrateForeignCallLinkage(runtimeCallProviders, descriptor));
+            }
         }
         featureHandler.forEachGraalFeature(feature -> feature.registerForeignCalls(runtimeConfig, runtimeCallProviders, snippetReflection, foreignCallsProvider.getForeignCalls(), hosted));
-
         try (DebugContext.Scope s = debug.scope("RegisterLowerings", new DebugDumpScope("RegisterLowerings"))) {
             SubstrateLoweringProvider lowerer = (SubstrateLoweringProvider) providers.getLowerer();
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
@@ -1418,7 +1433,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private void processNativeLibraryImports(NativeLibraries nativeLibs, MetaAccessProvider metaAccess) {
+    private void processNativeLibraryImports(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
         for (Method method : loader.findAnnotatedMethods(CConstant.class)) {
             nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
         }
@@ -1432,7 +1447,9 @@ public class NativeImageGenerator {
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CEnum.class)) {
-            nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
+            ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
+            classInitializationSupport.forceInitializeHosted(type);
+            nativeLibs.loadJavaType(type);
         }
 
         for (CLibrary library : loader.findAnnotations(CLibrary.class)) {
