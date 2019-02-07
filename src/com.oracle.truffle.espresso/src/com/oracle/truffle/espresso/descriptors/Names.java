@@ -20,9 +20,4 @@ public final class Names {
     public final Symbol<Name> getOrCreate(String name) {
         return symbols.symbolify(ByteSequence.create(name));
     }
-
-//    public final Symbol<Name> symbolify(ByteSequence bytes) {
-//        return symbols.symbolify(bytes);
-//    }
-
 }

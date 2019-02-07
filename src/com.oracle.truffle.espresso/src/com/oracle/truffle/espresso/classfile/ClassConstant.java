@@ -32,6 +32,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
+import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveKlassCount;
+
 /**
  * Interface denoting a class entry in a constant pool.
  */
@@ -95,6 +97,7 @@ public interface ClassConstant extends PoolConstant {
 
         @Override
         public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+            resolveKlassCount.inc();
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Symbol<Name> name = getName(pool);
             try {

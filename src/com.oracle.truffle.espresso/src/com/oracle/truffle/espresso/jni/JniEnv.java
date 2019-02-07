@@ -511,7 +511,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             if (fieldType != null) {
                 // Lookup only if name and type are known symbols.
                 field = klass.lookupField(fieldName, fieldType);
-                assert field.getType().equals(fieldType);
+                assert field == null || field.getType().equals(fieldType);
             }
         }
         if (field == null) {

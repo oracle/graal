@@ -123,7 +123,7 @@ public final class Target_sun_misc_Unsafe {
         } else {
             // Lookup nstance field in current class and superclasses.
             for (Klass k = holder.getKlass(); k != null; k = k.getSuperKlass()) {
-                for (Field f : holder.getKlass().getDeclaredFields()) {
+                for (Field f : k.getDeclaredFields()) {
                     if (!f.isStatic() && f.getSlot() == slot) {
                         return f;
                     }

@@ -192,35 +192,6 @@ public final class Types {
         return index;
     }
 
-// public static String fromCanonicalClassName(String javaName) {
-// if (javaName.endsWith("[]")) {
-// return "[" + fromCanonicalClassName(javaName.substring(0, javaName.length() - 2));
-// }
-// switch (javaName) {
-// case "byte":
-// return "B";
-// case "char":
-// return "C";
-// case "double":
-// return "D";
-// case "float":
-// return "F";
-// case "int":
-// return "I";
-// case "long":
-// return "J";
-// case "short":
-// return "S";
-// case "void":
-// return "V";
-// case "boolean":
-// return "Z";
-// default:
-// // Reference descriptor.
-// return "L" + javaName.replace(".", "/") + ";";
-// }
-// }
-
     public static boolean isPrimitive(Symbol<Type> type) {
         if (type.length() != 1) {
             return false;

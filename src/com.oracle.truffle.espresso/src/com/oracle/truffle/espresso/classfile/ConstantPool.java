@@ -22,8 +22,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
+import com.oracle.truffle.object.DebugCounter;
 
 public abstract class ConstantPool {
+
+
+    static final DebugCounter utf8EntryCount = DebugCounter.create("utf8EntryCount");
+
 
     // public static final ConstantPool EMPTY = new ConstantPoolImpl(new
     // PoolConstant[]{InvalidConstant.VALUE});
@@ -380,6 +385,7 @@ public abstract class ConstantPool {
                 case UTF8: {
                     // Copy-less UTF8 constant.
                     // A new symbol is spawned (copy) only if doesn't already exists.
+                    utf8EntryCount.inc();
                     entries[i] = language.getUtf8ConstantTable().getOrCreate(stream.readByteSequenceUTF());
                     break;
                 }

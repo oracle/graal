@@ -30,15 +30,17 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -49,6 +51,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Class {
@@ -383,33 +386,29 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(Object[].class) StaticObject getEnclosingMethod0(StaticObjectClass self) {
-        throw EspressoError.unimplemented();
-//        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-//        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
-//        if (self.getMirror() instanceof ObjectKlass) {
-//            EnclosingMethodAttribute enclosingMethodAttr = ((ObjectKlass) self.getMirror()).getEnclosingMethod();
-//            if (enclosingMethodAttr == null) {
-//                return StaticObject.NULL;
-//            }
-//            StaticObjectArray arr = (StaticObjectArray) meta.Object.allocateArray(3);
-//
-//            Klass enclosingKlass = self.getMirror().getConstantPool().classAt(enclosingMethodAttr.getClassIndex()).resolve(self.getMirror().getConstantPool(), enclosingMethodAttr.getClassIndex());
-//
-//            vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
-//
-//            if (enclosingMethodAttr.getMethodIndex() != 0) {
-//
-//                Method enclosingMethod = self.getMirror().getConstantPool().methodAt(enclosingMethodAttr.getMethodIndex()).resolve(self.getMirror().getConstantPool(),
-//                                enclosingMethodAttr.getMethodIndex());
-//
-//                vm.setArrayObject(meta.toGuestString(enclosingMethod.getName().toString()), 1, arr);
-//                vm.setArrayObject(meta.toGuestString(enclosingMethod.getRawSignature().toString()), 2, arr);
-//            } else {
-//                assert vm.getArrayObject(1, arr) == StaticObject.NULL;
-//                assert vm.getArrayObject(2, arr) == StaticObject.NULL;
-//            }
-//        }
-//        return StaticObject.NULL;
+
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        InterpreterToVM vm = meta.getInterpreterToVM();
+        if (self.getMirrorKlass() instanceof ObjectKlass) {
+            EnclosingMethodAttribute enclosingMethodAttr = ((ObjectKlass) self.getMirrorKlass()).getEnclosingMethod();
+            if (enclosingMethodAttr == null) {
+                return StaticObject.NULL;
+            }
+            StaticObjectArray arr = (StaticObjectArray) meta.Object.allocateArray(3);
+            Klass enclosingKlass = ((ObjectKlass) self.getMirrorKlass()).getConstantPool().resolvedKlassAt(self.getMirrorKlass(), enclosingMethodAttr.getClassIndex());
+
+            vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
+
+            if (enclosingMethodAttr.getMethodIndex() != 0) {
+                Method enclosingMethod = ((ObjectKlass) self.getMirrorKlass()).getConstantPool().resolvedMethodAt(self.getMirrorKlass(), enclosingMethodAttr.getMethodIndex());
+                vm.setArrayObject(meta.toGuestString(enclosingMethod.getName().toString()), 1, arr);
+                vm.setArrayObject(meta.toGuestString(enclosingMethod.getRawSignature().toString()), 2, arr);
+            } else {
+                assert vm.getArrayObject(1, arr) == StaticObject.NULL;
+                assert vm.getArrayObject(2, arr) == StaticObject.NULL;
+            }
+        }
+        return StaticObject.NULL;
     }
 
     @Substitution(hasReceiver = true)
@@ -431,40 +430,38 @@ public final class Target_java_lang_Class {
      * inside methods).
      */
     private static Klass computeEnclosingClass(ObjectKlass klass) {
-        throw EspressoError.unimplemented();
-//        InnerClassesAttribute innerClasses = klass.getInnerClasses();
-//        if (innerClasses == null) {
-//            return null;
-//        }
-//
-//        RuntimeConstantPool pool = klass.getConstantPool();
-//
-//        boolean found = false;
-//        Klass outerKlass = null;
-//
-//        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
-//            if (entry.innerClassIndex != 0) {
-//                ClassConstant innerClassConst = pool.classAt(entry.innerClassIndex);
-//                ByteString<Type> innersDecriptor = innerClassConst.getType(pool);
-//
-//                // Check decriptors/names before resolving.
-//                if (innersDecriptor.equals(klass.getType())) {
-//                    Klass innerKlass = innerClassConst.resolve(pool, entry.innerClassIndex);
-//                    found = (innerKlass == klass);
-//                    if (found && entry.outerClassIndex != 0) {
-//                        outerKlass = pool.classAt(entry.outerClassIndex).resolve(pool, entry.outerClassIndex);
-//                    }
-//                }
-//            }
-//            if (found)
-//                break;
-//        }
-//
-//        // TODO(peterssen): Follow HotSpot implementation described below.
-//        // Throws an exception if outer klass has not declared k as an inner klass
-//        // We need evidence that each klass knows about the other, or else
-//        // the system could allow a spoof of an inner class to gain access rights.
-//        return outerKlass;
+        InnerClassesAttribute innerClasses = (InnerClassesAttribute) klass.getAttribute(InnerClassesAttribute.NAME);
+        if (innerClasses == null) {
+            return null;
+        }
+
+        RuntimeConstantPool pool = klass.getConstantPool();
+
+        boolean found = false;
+        Klass outerKlass = null;
+
+        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+            if (entry.innerClassIndex != 0) {
+                Symbol<Name> innerDescriptor = pool.classAt(entry.innerClassIndex).getName(pool);
+
+                // Check decriptors/names before resolving.
+                if (innerDescriptor.equals(klass.getName())) {
+                    Klass innerKlass = pool.resolvedKlassAt(klass, entry.innerClassIndex);
+                    found = (innerKlass == klass);
+                    if (found && entry.outerClassIndex != 0) {
+                        outerKlass = pool.resolvedKlassAt(klass, entry.outerClassIndex);
+                    }
+                }
+            }
+            if (found)
+                break;
+        }
+
+        // TODO(peterssen): Follow HotSpot implementation described below.
+        // Throws an exception if outer klass has not declared k as an inner klass
+        // We need evidence that each klass knows about the other, or else
+        // the system could allow a spoof of an inner class to gain access rights.
+        return outerKlass;
     }
 
     /**
@@ -510,7 +507,7 @@ public final class Target_java_lang_Class {
     public static @Host(byte[].class) StaticObject getRawAnnotations(StaticObjectClass self) {
         Klass klass = self.getMirrorKlass();
         if (klass instanceof ObjectKlass) {
-            Attribute annotations = ((ObjectKlass) klass).getRuntimeVisibleAnnotations();
+            Attribute annotations = ((ObjectKlass) klass).getAttribute(Name.RuntimeVisibleAnnotations);
             if (annotations != null) {
                 return StaticObjectArray.wrap(annotations.getData());
             }

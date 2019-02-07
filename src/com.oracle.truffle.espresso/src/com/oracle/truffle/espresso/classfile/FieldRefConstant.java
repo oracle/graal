@@ -35,6 +35,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 
+import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveFieldCount;
+
 public interface FieldRefConstant extends MemberRefConstant {
 
     @Override
@@ -105,6 +107,7 @@ public interface FieldRefConstant extends MemberRefConstant {
 
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+            resolveFieldCount.inc();
             Klass holderKlass = pool.resolvedKlassAt(accessingKlass, classIndex);
             Symbol<Name> name = getName(pool);
             Symbol<Type> type = getType(pool);

@@ -284,9 +284,9 @@ public final class BytecodeNode extends EspressoRootNode {
 
     static final DebugCounter injectAndCallCount = DebugCounter.create("injectAndCallCount");
 
-    static final DebugCounter resolveFieldCount = DebugCounter.create("resolveFieldCount");
-    static final DebugCounter resolveKlassCount = DebugCounter.create("resolveKlassCount");
-    static final DebugCounter resolveMethodCount = DebugCounter.create("resolveMethodCount");
+    public static final DebugCounter resolveFieldCount = DebugCounter.create("resolveFieldCount");
+    public static final DebugCounter resolveKlassCount = DebugCounter.create("resolveKlassCount");
+    public static final DebugCounter resolveMethodCount = DebugCounter.create("resolveMethodCount");
 
     @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
 
@@ -1159,18 +1159,17 @@ public final class BytecodeNode extends EspressoRootNode {
 
     private Klass resolveType(@SuppressWarnings("unused") int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
-        resolveKlassCount.inc();
+        // resolveKlassCount.inc();
         return getConstantPool().resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
     }
 
     private Method resolveMethod(int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
-        resolveMethodCount.inc();
+        // resolveMethodCount.inc();
         return getConstantPool().resolvedMethodAt(getMethod().getDeclaringKlass(), cpi);
     }
 
     private Field resolveField(@SuppressWarnings("unused") int opcode, char cpi) {
-        resolveFieldCount.inc();
         // TODO(peterssen): Check opcode.
         return getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
     }

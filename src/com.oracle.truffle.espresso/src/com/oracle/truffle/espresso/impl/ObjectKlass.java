@@ -73,7 +73,7 @@ public final class ObjectKlass extends Klass {
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
 
-    private final Attribute getAttribute(Symbol<Name> name) {
+    public final Attribute getAttribute(Symbol<Name> name) {
         return linkedKlass.getAttribute(name);
     }
 
