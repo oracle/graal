@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
@@ -229,8 +230,8 @@ class SubstrateSegfaultHandler {
     }
 
     public static class Options {
-        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace")//
-        static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(true);
+        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library.")//
+        static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
     }
 
     private static volatile boolean dispatchInProgress = false;
@@ -287,7 +288,8 @@ class SubstrateSegfaultHandler {
                     ucontext_t.class);
 
     static void install() {
-        if (Options.InstallSegfaultHandler.getValue()) {
+        Boolean optionValue = Options.InstallSegfaultHandler.getValue();
+        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
             int structSigActionSize = SizeOf.get(sigaction.class);
             sigaction structSigAction = StackValue.get(structSigActionSize);
             LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));

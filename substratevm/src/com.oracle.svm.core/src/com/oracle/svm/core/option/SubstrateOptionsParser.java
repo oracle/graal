@@ -402,10 +402,12 @@ public class SubstrateOptionsParser {
                 if (helpLen != 0) {
                     helpMsg += ' ';
                 }
-                if (val == null || !((boolean) val)) {
-                    helpMsg += "Default: - (disabled).";
-                } else {
-                    helpMsg += "Default: + (enabled).";
+                if (val != null) {
+                    if (val) {
+                        helpMsg += "Default: + (enabled).";
+                    } else {
+                        helpMsg += "Default: - (disabled).";
+                    }
                 }
                 printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg);
             } else {
