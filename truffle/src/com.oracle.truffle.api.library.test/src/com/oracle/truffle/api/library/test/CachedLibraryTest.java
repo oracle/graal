@@ -603,9 +603,10 @@ public class CachedLibraryTest extends AbstractLibraryTest {
 
         abstract String execute(Object receiver);
 
-        @Specialization(limit = "2")
+        @Specialization
         public static String s1(Object receiver,
-                        @ExpectError("The limit and value attribute cannot be specified at the same time. They are mutually exclusive.") @CachedLibrary(value = "receiver", limit = "2") SomethingLibrary lib2) {
+                        @ExpectError("The limit and specialized value expression cannot be specified at the same time. They are mutually exclusive.") //
+                        @CachedLibrary(value = "receiver", limit = "2") SomethingLibrary lib2) {
             return lib2.call(receiver);
         }
     }
