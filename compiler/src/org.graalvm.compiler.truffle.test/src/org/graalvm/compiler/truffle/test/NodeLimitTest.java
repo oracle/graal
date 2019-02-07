@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.function.Function;
+
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -42,6 +44,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class NodeLimitTest extends PartialEvaluationTest {
@@ -64,6 +67,44 @@ public class NodeLimitTest extends PartialEvaluationTest {
     @Test
     public void testWithTruffleInlining() {
         fullTest(createRootNodeWithCall(createRootNodeFillerOnly()), createRootNodeWithCall(createRootNodeFillerAndTest()));
+    }
+
+    @Test
+    public void testDefaultLimit() {
+        // NOTE: the following code is intentionally written to explode during partial evaluation!
+        // It is wrong in almost every way possible.
+        final RootNode rootNode = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                recurse();
+                assertNotInCompilation();
+                return null;
+            }
+
+            @ExplodeLoop
+            private void recurse() {
+                for (int i = 0; i < 100; i++) {
+                    getF().apply(0);
+                }
+            }
+
+            private Function<Integer, Integer> getF() {
+                return new Function<Integer, Integer>() {
+                    @Override
+                    public Integer apply(Integer integer) {
+                        return integer < 500 ? getF().apply(integer + 1) : 0;
+                    }
+                };
+            }
+
+            private void assertNotInCompilation() {
+                for (int i = 0; i < 100_000; i++) {
+                    global++;
+                }
+                CompilerAsserts.neverPartOfCompilation();
+            }
+        };
+        partialEval((OptimizedCallTarget) runtime.createCallTarget(rootNode), new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
     }
 
     private static TruffleRuntime runtime;
