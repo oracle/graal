@@ -31,18 +31,27 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class Symbols {
     // Set generous initial capacity, this one is going to be hit a lot.
-    private final ConcurrentHashMap<SymbolKey, Symbol<?>> symbols = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<SymbolKey, Symbol<?>> symbols = new ConcurrentHashMap<>();
 
-    Symbol<?> lookup(ByteSequence sequence) {
-        return symbols.get(new SymbolKey(sequence));
+    public Symbols() {
+        /* nop */
     }
 
-    Symbol<?> lookup(String str) {
+    public Symbols(Symbols seed) {
+        this.symbols.putAll(seed.symbols);
+    }
+
+    @SuppressWarnings("unchecked")
+    <T> Symbol<T> lookup(ByteSequence sequence) {
+        return (Symbol<T>) symbols.get(new SymbolKey(sequence));
+    }
+
+    <T> Symbol<T> lookup(String str) {
         return lookup(ByteSequence.create(str));
     }
 
     @SuppressWarnings("unchecked")
-    <T> Symbol<T> symbolify(final ByteSequence sequence) {
+    public <T> Symbol<T> symbolify(final ByteSequence sequence) {
         final SymbolKey key = new SymbolKey(sequence);
         return (Symbol<T>) symbols.computeIfAbsent(key, __ -> {
             // Create Symbol<?>
@@ -50,14 +59,15 @@ public final class Symbols {
                             sequence.offset(),
                             sequence.offset() + sequence.length());
             Symbol<?> computed = new Symbol(bytes, sequence.hashCode());
-            // Swap the byte sequence, which is possibly holding a large byte array by fresh symbol.
+            // Swap the byte sequence, which could be holding a large underlying byte array, by
+            // a fresh symbol.
             //
             // ConcurrentHashMap provides no guarantees about how many times the mapping function
-            // can be called. In the worst case it's possible to end up with a key.seq != computed
-            // e.g. two different copies of the ByteString.
-            // This could waste space but remains correct since key.seq never leaks out of the
+            // could be called. In the worst case it's possible to end up with a key.seq != computed
+            // e.g. two different copies of the symbol.
+            // This wastes space but remains correct since key.seq never leaks out of the
             // symbol map and it's byte-equals to the computed value.
-            // It doesn't keep the underlying arrays (which can be large e.g. .class file
+            // It doesn't keep the underlying byte array (which can be large e.g. .class file
             // contents) from being collected.
             if (key.seq == null) {
                 key.seq = computed;

@@ -15,11 +15,11 @@ import com.oracle.truffle.object.DebugCounter;
  * <ul>
  * <li>Compact representation
  * <li>Cheap equality comparison
- * <li>Uniqueness and data de-duplication (symbols are unique for it's lifetime)
+ * <li>Uniqueness and data de-duplication (symbols are unique during it's lifetime)
  * <li>Hard/clear separation between guest/host symbols
  * <li>0-cost tagging for added type-safety
  * <li>Lazy decoding
- * <li>Optional no-copy symbolification...
+ * <li>Copy-less symbolification...
  * <li>Effectively partial-evaluation constant {@link CompilationFinal}
  * </ul>
  *
@@ -50,6 +50,7 @@ public final class Symbol<T> extends ByteSequence {
     }
 
     public final ByteSequence substring(int from, int to) {
+        assert 0 <= from && from <= to && to <= length();
         if (from == 0 && to == length()) {
             return this;
         }
@@ -58,11 +59,6 @@ public final class Symbol<T> extends ByteSequence {
 
     public static void copyBytes(Symbol<?> src, int srcPos, byte[] dest, int destPos, int length) {
         System.arraycopy(src.value, srcPos, dest, destPos, length);
-    }
-
-    @Deprecated
-    public static <T> Symbol<T> fromJavaString(String string) {
-        return Utf8.fromJavaString(string);
     }
 
     @Override

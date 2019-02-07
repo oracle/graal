@@ -1,6 +1,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -15,6 +16,10 @@ public interface ContextAccess {
 
     default EspressoLanguage getEspressoLanguage() {
         return getContext().getLanguage();
+    }
+
+    default Names getNames() {
+        return getContext().getNames();
     }
 
     default Types getTypes() {

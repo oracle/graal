@@ -555,7 +555,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         }
         if (field == null || !field.isStatic()) {
-           throw getMeta().throwEx(getMeta().NoSuchFieldError, getMeta().toGuestString(name));
+            throw getMeta().throwEx(getMeta().NoSuchFieldError, getMeta().toGuestString(name));
         }
         return fieldIds.handlify(field);
     }
@@ -590,7 +590,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
         if (methodName != null) {
-            Symbol<Signature> methodSignature = getSignatures().lookup(name);
+            Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(name);
             if (methodSignature != null) {
                 // Lookup only if name and type are known symbols.
                 method = klass.lookupMethod(methodName, methodSignature);
@@ -628,7 +628,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
         if (methodName != null) {
-            Symbol<Signature> methodSignature = getSignatures().lookup(name);
+            Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(name);
             if (methodSignature != null) {
                 // Lookup only if name and type are known symbols.
                 method = klass.lookupMethod(methodName, methodSignature);
@@ -1563,7 +1563,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public int RegisterNative(@Host(Class.class) StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
         Symbol<Type> classType = ((StaticObjectClass) clazz).getMirrorKlass().getType();
 
-        final TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(getSignatures().make(Signatures.fromJavaString(signature)), true));
+        Symbol<Signature> sig = getSignatures().getOrCreateValidSignature(signature);
+        final TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(getSignatures().parsed(sig), true));
 
         Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
             @Override
@@ -1572,7 +1573,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         };
 
-        getSubstitutions().registerRuntimeSubstitution(classType, Symbol.fromJavaString(name), Signatures.fromJavaString(signature), factory, true);
+        getSubstitutions().registerRuntimeSubstitution(classType, getNames().getOrCreate(name), getSignatures().getOrCreateValidSignature(signature), factory, true);
         return JNI_OK;
     }
 

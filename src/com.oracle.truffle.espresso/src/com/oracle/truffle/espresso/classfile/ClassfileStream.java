@@ -163,25 +163,26 @@ public final class ClassfileStream {
         }
     }
 
-    public Symbol readUTF() {
-        try {
-            int utflen = stream.readUnsignedShort();
-            byte[] bytes = new byte[utflen];
-            stream.readFully(bytes);
-            return new Symbol(bytes);
-        } catch (EOFException eofException) {
-            throw eofError();
-        } catch (IOException ioException) {
-            throw ioError(ioException);
-        }
-    }
+//    public Symbol readUTF() {
+//        try {
+//            int utflen = stream.readUnsignedShort();
+//            byte[] bytes = new byte[utflen];
+//            stream.readFully(bytes);
+//            return new Symbol(bytes);
+//        } catch (EOFException eofException) {
+//            throw eofError();
+//        } catch (IOException ioException) {
+//            throw ioError(ioException);
+//        }
+//    }
 
     public ByteSequence readByteSequenceUTF() {
         try {
             int utflen = stream.readUnsignedShort();
             int start = getPosition();
+            // TODO(peterssen): .skipBytes is NOT O(1).
             stream.skipBytes(utflen);
-            return ByteSequence.wrap(bytes, start + offset, getPosition() + offset);
+            return ByteSequence.wrap(bytes, start + offset, utflen);
         } catch (EOFException eofException) {
             throw eofError();
         } catch (IOException ioException) {

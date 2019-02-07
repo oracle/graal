@@ -378,8 +378,9 @@ public abstract class ConstantPool {
                     break;
                 }
                 case UTF8: {
-                    // TODO(peterssen): Avoid copying.
-                    entries[i] = language.getSymbolTable().make(stream.readUTF());
+                    // Copy-less UTF8 constant.
+                    // A new symbol is spawned (copy) only if doesn't already exists.
+                    entries[i] = language.getUtf8ConstantTable().getOrCreate(stream.readByteSequenceUTF());
                     break;
                 }
                 case METHODHANDLE: {

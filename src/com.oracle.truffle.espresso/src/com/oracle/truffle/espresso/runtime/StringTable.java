@@ -23,18 +23,28 @@
 package com.oracle.truffle.espresso.runtime;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
- * Used to implement String interning.
+ * Used to implement guest String interning.
+ *
+ * <p>
+ * <b>Security note:</b> Sharing strings between contexts is dangerous, the underlying char[] is
+ * shared between the guest and host implementations to avoid copying conversions. If one context
+ * modifies one string (e.g. via reflection, Unsafe...), other contexts are also affected.
+ *
+ * Interned guest strings and Espresso symbols are very similar but the Espresso symbol isolation is
+ * strict; internals are never accessible to the guest language.
  */
-public final class StringTable { // ByteString<Constant> => StaticObject
+public final class StringTable {
 
     private final EspressoContext context; // per context
 
+    // TODO(peterssen): Set generous initial capacity, this will be HIT.
     private final ConcurrentHashMap<Symbol<?>, String> cache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, StaticObject> interned = new ConcurrentHashMap<>();
 
@@ -42,23 +52,39 @@ public final class StringTable { // ByteString<Constant> => StaticObject
         this.context = context;
     }
 
-    public StaticObject intern(Symbol<?> value) {
-        // Weak values?
+    public final StaticObject intern(Symbol<?> value) {
+        // Weak values? Too expensive?
         return interned.computeIfAbsent(
-                        cache.computeIfAbsent(value, StringTable::createStringFromByteString),
-                        this::createStringObjectFromString);
+                        cache.computeIfAbsent(value, new Function<Symbol<?>, String>() {
+                            @Override
+                            public String apply(Symbol<?> value1) {
+                                return createStringFromSymbol(value1);
+                            }
+                        }),
+                        new Function<String, StaticObject>() {
+                            @Override
+                            public StaticObject apply(String value1) {
+                                return StringTable.this.createStringObjectFromString(value1);
+                            }
+                        });
     }
 
     private StaticObject createStringObjectFromString(String value) {
         return context.getMeta().toGuestString(value);
     }
 
-    private static String createStringFromByteString(Symbol<?> value) {
+    private static String createStringFromSymbol(Symbol<?> value) {
         return value.toString();
     }
 
-    public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject stringObject) {
-        String hostString = Meta.toHostString(stringObject);
-        return interned.computeIfAbsent(hostString, k -> stringObject);
+    public final @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
+        assert StaticObject.notNull(guestString);
+        String hostString = Meta.toHostString(guestString);
+        return interned.computeIfAbsent(hostString, new Function<String, StaticObject>() {
+            @Override
+            public StaticObject apply(String k) {
+                return guestString;
+            }
+        });
     }
 }

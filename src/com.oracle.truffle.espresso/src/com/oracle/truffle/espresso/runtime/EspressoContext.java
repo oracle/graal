@@ -32,6 +32,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
@@ -280,5 +281,9 @@ public final class EspressoContext {
 
     public void setBootstrapMeta(Meta meta) {
         this.meta = meta;
+    }
+
+    public final Names getNames() {
+        return getLanguage().getNames();
     }
 }

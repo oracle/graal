@@ -10,7 +10,8 @@ import com.oracle.truffle.espresso.jni.Utf8;
  * A <tt>ByteSequence</tt> is a readable sequence of <code>byte</code> values. This interface
  * provides uniform, read-only access to different kinds of <code>byte</code> sequences.
  */
-abstract class ByteSequence {
+// TODO(peterssen): Should not be public.
+public abstract class ByteSequence {
 
     protected final int hashCode;
 

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -45,8 +46,8 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  *      Descriptors</a>
  */
 public final class Signatures {
-    private final Symbols symbols;
     private final Types types;
+    private final Symbols symbols;
 
     private final ConcurrentHashMap<Symbol<Signature>, Symbol<Type>[]> parsedSignatures = new ConcurrentHashMap<>();
 
@@ -55,11 +56,11 @@ public final class Signatures {
         this.types = types;
     }
 
-    @Deprecated
-    public static Symbol<Signature> fromJavaString(String signatureString) {
-        Symbol<Signature> signature = Symbol.fromJavaString(signatureString);
-        assert isValid(signature);
-        return signature;
+    public Symbol<Signature> lookupValidSignature(String signatureString) {
+        if (!isValid(signatureString)) {
+            return null;
+        }
+        return symbols.symbolify(ByteSequence.create(signatureString));
     }
 
     public final Types getTypes() {
@@ -178,6 +179,10 @@ public final class Signatures {
         return endIndex == signature.length();
     }
 
+    public static boolean isValid(String signatureString) {
+        throw EspressoError.unimplemented();
+    }
+
     public static Symbol<Signature> verify(Symbol<Signature> signature) {
         int endIndex = skipValidSignature(signature, 0);
         if (endIndex != signature.length()) {
@@ -207,7 +212,6 @@ public final class Signatures {
         throw EspressoError.unimplemented();
     }
 
-    @SafeVarargs
     public final Symbol<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
         Symbol<Type>[] parameterTypes = new Symbol[parameterClasses.length];
         for (int i = 0; i < parameterClasses.length; ++i) {
@@ -246,35 +250,46 @@ public final class Signatures {
         return symbols.symbolify(ByteSequence.wrap(bytes));
     }
 
-// static Symbol<Signature> nonCachedMake(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
-// if (parameterTypes == null || parameterTypes.length == 0) {
-// byte[] bytes = new byte[2 + returnType.length()];
-// Symbol.copyBytes(returnType, 0, bytes, 2, returnType.length());
-// bytes[0] = '(';
-// bytes[1] = ')';
-// Symbol<Signature> raw = new Symbol<>(bytes);
-// // FIXME(peterssen): Signatures are not symbols.
-// return raw;
-// }
-//
-// int totalLength = returnType.length();
-// for (Symbol<Type> param : parameterTypes) {
-// totalLength += param.length();
-// }
-//
-// byte[] bytes = new byte[totalLength + 2]; // + ()
-//
-// int pos = 0;
-// bytes[pos++] = '(';
-// for (Symbol<Type> param : parameterTypes) {
-// Symbol.copyBytes(param, 0, bytes, pos, param.length());
-// pos += param.length();
-// }
-// bytes[pos++] = ')';
-// Symbol.copyBytes(returnType, 0, bytes, pos, returnType.length());
-// pos += returnType.length();
-// assert pos == totalLength + 2;
-// Symbol<Signature> signature = new Symbol(bytes);
-// return signature;
-// }
+    public Symbol<Signature> getOrCreateValidSignature(String signatureString) {
+        throw EspressoError.unimplemented();
+    }
+
+    static byte[] buildSignatureBytes(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
+        if (parameterTypes == null || parameterTypes.length == 0) {
+            byte[] bytes = new byte[/* () */ 2 + returnType.length()];
+            bytes[0] = '(';
+            bytes[1] = ')';
+            Symbol.copyBytes(returnType, 0, bytes, 2, returnType.length());
+            return bytes;
+        }
+
+        int totalLength = returnType.length();
+        for (Symbol<Type> param : parameterTypes) {
+            totalLength += param.length();
+        }
+
+        byte[] bytes = new byte[totalLength + 2]; // + ()
+
+        int pos = 0;
+        bytes[pos++] = '(';
+        for (Symbol<Type> param : parameterTypes) {
+            Symbol.copyBytes(param, 0, bytes, pos, param.length());
+            pos += param.length();
+        }
+        bytes[pos++] = ')';
+        Symbol.copyBytes(returnType, 0, bytes, pos, returnType.length());
+        pos += returnType.length();
+        assert pos == totalLength + 2;
+        return bytes;
+    }
+
+    public Symbol<Type>[] parsed(Symbol<Signature> signature) {
+        // TODO(peterssen): Cache parsed signatures.
+        return parsedSignatures.computeIfAbsent(signature, new Function<Symbol<Signature>, Symbol<Type>[]>() {
+            @Override
+            public Symbol<Type>[] apply(Symbol<Signature> key) {
+                return parse(Signatures.this.getTypes(), signature, 0);
+            }
+        });
+    }
 }

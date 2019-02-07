@@ -20,32 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.descriptors;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.classfile.Utf8Constant;
-import com.oracle.truffle.espresso.descriptors.Symbol;
 
 /**
- * Symbol cache.
+ * Global Utf8Constant table.
  */
-public final class SymbolTable {
-    /**
-     * Searching and adding entries to this map is only performed by {@linkplain #make(Symbol)
-     * one method} which is ~~synchronized~~ thread-safe.
-     */
-    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> symbols = new ConcurrentHashMap<>();
+public final class Utf8ConstantTable {
+    private final Symbols symbols;
 
-    public Utf8Constant lookup(Symbol<?> key) {
-        CompilerAsserts.neverPartOfCompilation();
-        return symbols.get(key);
+    // TODO(peterssen): Set generous initial capacity.
+    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> cache = new ConcurrentHashMap<>();
+
+    public Utf8ConstantTable(Symbols symbols) {
+        this.symbols = symbols;
     }
 
-    public Utf8Constant make(Symbol<?> symbol) {
+    public Utf8Constant getOrCreate(ByteSequence bytes) {
         CompilerAsserts.neverPartOfCompilation();
-        // TODO(peterssen): Purge lambda.
-        return symbols.computeIfAbsent(symbol, Utf8Constant::new);
+        return cache.computeIfAbsent(symbols.symbolify(bytes), new Function<Symbol<?>, Utf8Constant>() {
+            @Override
+            public Utf8Constant apply(Symbol<?> value) {
+                return new Utf8Constant(value);
+            }
+        });
     }
 }

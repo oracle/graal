@@ -38,59 +38,51 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  */
 public final class Types {
 
-    Symbols symbols;
+    private final Symbols symbols;
 
-    private static Symbol<Type> fromJavaString(String typeString) {
-        Symbol<Type> type = Symbol.fromJavaString(typeString);
-        assert isValid(type);
-        return type;
-    }
-
-    private Symbol<Type> fromConstantPoolName(Symbol<?> cpName) {
-        byte[] bytes = new byte[cpName.length() + 2];
-        if (cpName.byteAt(0) == '[') {
-            return (Symbol<Type>) cpName;
-        }
-        Symbol.copyBytes(cpName, 0, bytes, 1, cpName.length());
-        bytes[0] = 'L';
-        bytes[bytes.length - 1] = ';';
-        return symbols.symbolify(checkType(ByteSequence.wrap(bytes)));
+    public Types(Symbols symbols) {
+        this.symbols = symbols;
     }
 
     @SuppressWarnings("unchecked")
     public static Symbol<Type> fromDescriptor(Symbol<? extends Descriptor> descriptor) {
         Symbol<Type> type = (Symbol<Type>) descriptor;
-        assert isValid(type);
-        return checkType(type);
+        // TODO(peterssen): Turn check into assert, maybe?
+        EspressoError.guarantee(isValid(type), "descriptor is not a valid type");
+        return type;
+    }
+
+    public static String internalFromClassName(String className) {
+        if (className.startsWith("[") || className.endsWith(";") || className.length() == 1) {
+            return className.replace('.', '/');
+        }
+        // FIXME(peterssen): Remove "" string concat.
+        switch (className) {
+            case "boolean":
+                return JavaKind.Boolean.getTypeChar() + "";
+            case "byte":
+                return JavaKind.Byte.getTypeChar() + "";
+            case "char":
+                return JavaKind.Char.getTypeChar() + "";
+            case "short":
+                return JavaKind.Short.getTypeChar() + "";
+            case "int":
+                return JavaKind.Int.getTypeChar() + "";
+            case "float":
+                return JavaKind.Float.getTypeChar() + "";
+            case "double":
+                return JavaKind.Double.getTypeChar() + "";
+            case "long":
+                return JavaKind.Long.getTypeChar() + "";
+            case "void":
+                return JavaKind.Void.getTypeChar() + "";
+        }
+        // Reference type.
+        return "L" + className.replace('.', '/') + ";";
     }
 
     public Symbol<Type> fromClassGetName(String className) {
-        if (className.startsWith("[") || className.endsWith(";") || className.length() == 1) {
-            return make(Types.fromJavaString(className.replace('.', '/')));
-        }
-        switch (className) {
-            case "boolean":
-                return JavaKind.Boolean.getType();
-            case "byte":
-                return JavaKind.Byte.getType();
-            case "char":
-                return JavaKind.Char.getType();
-            case "short":
-                return JavaKind.Short.getType();
-            case "int":
-                return JavaKind.Int.getType();
-            case "float":
-                return JavaKind.Float.getType();
-            case "double":
-                return JavaKind.Double.getType();
-            case "long":
-                return JavaKind.Long.getType();
-            case "void":
-                return JavaKind.Void.getType();
-        }
-
-        // Reference type.
-        return make(Types.fromJavaString("L" + className.replace('.', '/') + ";"));
+        return symbols.symbolify(ByteSequence.create(checkType(internalFromClassName(className))));
     }
 
     public static Symbol<Type> forPrimitive(JavaKind kind) {
@@ -112,7 +104,7 @@ public final class Types {
         if (endIndex == beginIndex + 1) {
             return forPrimitive(JavaKind.fromPrimitiveOrVoidTypeChar((char) descriptor.byteAt(beginIndex)));
         }
-        return make((Symbol<Type>) descriptor.substring(beginIndex, endIndex));
+        return symbols.symbolify(descriptor.substring(beginIndex, endIndex));
     }
 
     /**
@@ -200,34 +192,34 @@ public final class Types {
         return index;
     }
 
-    public static String fromCanonicalClassName(String javaName) {
-        if (javaName.endsWith("[]")) {
-            return "[" + fromCanonicalClassName(javaName.substring(0, javaName.length() - 2));
-        }
-        switch (javaName) {
-            case "byte":
-                return "B";
-            case "char":
-                return "C";
-            case "double":
-                return "D";
-            case "float":
-                return "F";
-            case "int":
-                return "I";
-            case "long":
-                return "J";
-            case "short":
-                return "S";
-            case "void":
-                return "V";
-            case "boolean":
-                return "Z";
-            default:
-                // Reference descriptor.
-                return "L" + javaName.replace(".", "/") + ";";
-        }
-    }
+// public static String fromCanonicalClassName(String javaName) {
+// if (javaName.endsWith("[]")) {
+// return "[" + fromCanonicalClassName(javaName.substring(0, javaName.length() - 2));
+// }
+// switch (javaName) {
+// case "byte":
+// return "B";
+// case "char":
+// return "C";
+// case "double":
+// return "D";
+// case "float":
+// return "F";
+// case "int":
+// return "I";
+// case "long":
+// return "J";
+// case "short":
+// return "S";
+// case "void":
+// return "V";
+// case "boolean":
+// return "Z";
+// default:
+// // Reference descriptor.
+// return "L" + javaName.replace(".", "/") + ";";
+// }
+// }
 
     public static boolean isPrimitive(Symbol<Type> type) {
         if (type.length() != 1) {
@@ -303,11 +295,16 @@ public final class Types {
     }
 
     public Symbol<Type> fromClass(Class<?> clazz) {
-        // TODO(peterssen): checkType is not needed here, just testing Class to Symbol<Type> conversion.
-        return symbols.symbolify(checkType(Symbol.fromJavaString(fromCanonicalClassName(clazz.getCanonicalName()))));
+        // TODO(peterssen): checkType is not needed here, just testing Class to Symbol<Type>
+        // conversion.
+        return symbols.symbolify(ByteSequence.create(checkType(internalFromClassName(clazz.getCanonicalName()))));
     }
 
-    public static Symbol<Type> checkType(ByteSequence sequence) {
+    static ByteSequence checkType(ByteSequence sequence) {
+        throw EspressoError.unimplemented();
+    }
+
+    public static String checkType(String name) {
         throw EspressoError.unimplemented();
     }
 
@@ -321,7 +318,25 @@ public final class Types {
         return type.substring(1, type.length() - 1).toString().replace('/', '.');
     }
 
-    public Symbol<Type> fromName(Symbol<Name> name) {
-        return fromConstantPoolName(name);
+    public static Symbol<Type> fromSymbol(Symbol<?> symbol) {
+        Symbol<Type> type = (Symbol<Type>) symbol;
+        // TODO(peterssen): Turn check into assert, maybe?
+        EspressoError.guarantee(isValid(type), "descriptor is not a valid type");
+        return type;
+    }
+
+    public final Symbol<Type> fromName(Symbol<Name> name) {
+        if (name.byteAt(0) == '[') {
+            return fromSymbol(name);
+        }
+        byte[] bytes = new byte[name.length() + 2]; // + L;
+        Symbol.copyBytes(name, 0, bytes, 1, name.length());
+        bytes[0] = 'L';
+        bytes[bytes.length - 1] = ';';
+        return symbols.symbolify(checkType(ByteSequence.wrap(bytes)));
+    }
+
+    public final Symbol<Type> lookup(String type) {
+        return symbols.lookup(checkType(type));
     }
 }
