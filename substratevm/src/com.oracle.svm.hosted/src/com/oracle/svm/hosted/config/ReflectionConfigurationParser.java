@@ -131,6 +131,14 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
                     if (asBoolean(value, "allPublicFields")) {
                         registry.register(false, clazz.getFields());
                     }
+                } else if (name.equals("allDeclaredClasses")) {
+                    if (asBoolean(value, "allDeclaredClasses")) {
+                        registry.register(clazz.getDeclaredClasses());
+                    }
+                } else if (name.equals("allPublicClasses")) {
+                    if (asBoolean(value, "allPublicClasses")) {
+                        registry.register(clazz.getClasses());
+                    }
                 } else if (name.equals("methods")) {
                     parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
                 } else if (name.equals("fields")) {
