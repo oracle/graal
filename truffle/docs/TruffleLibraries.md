@@ -378,5 +378,8 @@ TODO
 
 All libraries are accessible to other languages and tools via the `ReflectionLibrary`. It is recommended that the language implementation documentation specifies which libraries and messages are intended for external use, and which ones may be subject to breaking changes. 
 
+### What happens when a new method is added to a library but a dynamically loaded implementation hasn't been updated for it?
+
+If the library method was specified `abstract` then an `AbstractMethodError` will be thrown. Otherwise the default implementation specified by the library method body will be called. This allows to customize the error in case an abstract method is used. For example, for Truffle interoperability we often throw an `UnsupportedMessageException` instead of an `AbstractMethodError`.
 
 
