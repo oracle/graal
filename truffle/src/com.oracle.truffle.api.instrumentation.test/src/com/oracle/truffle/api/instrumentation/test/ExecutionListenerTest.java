@@ -65,11 +65,18 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
 import org.junit.After;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 public class ExecutionListenerTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void beforeClass() {
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+    }
 
     final Deque<ExecutionEvent> events = new ArrayDeque<>();
 
