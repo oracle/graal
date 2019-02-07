@@ -831,20 +831,22 @@ def _helloworld(native_image, javac_command, path, args):
         mx.log(x)
 
     if '--shared' in args:
-        # If helloword got built into a shared library we use python to load the shared library and call its `run_main`.  We are
-        # capturing the stdout during the call into an unnamed pipe so that we can use it in the actual vs. expected check below.
+        # If helloword got built into a shared library we use python to load the shared library
+        # and call its `run_main`. We are capturing the stdout during the call into an unnamed
+        # pipe so that we can use it in the actual vs. expected check below.
         try:
             import ctypes
             so_name = mx.add_lib_suffix('helloworld')
             lib = ctypes.CDLL(join(path, so_name))
-            stdout = os.dup(1) # save original stdout
+            stdout = os.dup(1)  # save original stdout
             pout, pin = os.pipe()
-            os.dup2(pin, 1) # connect stdout to pipe
-            lib.run_main(1, 'dummy') # call run_main of shared lib
-            call_stdout = os.read(pout, 120) # get pipe contents
+            os.dup2(pin, 1)  # connect stdout to pipe
+            run_main = 'run_main' if mx.get_os() != 'windows' else 'main'
+            getattr(lib, run_main)(1, 'dummy')  # call run_main of shared lib
+            call_stdout = os.read(pout, 120)  # get pipe contents
             actual_output.append(call_stdout)
-            os.dup2(stdout, 1) # restore original stdout
-            mx.log("Stdout from calling run_main in shared object " + so_name)
+            os.dup2(stdout, 1)  # restore original stdout
+            mx.log("Stdout from calling {} in shared object {}:".format(run_main, so_name))
             mx.log(call_stdout)
         finally:
             os.close(pin)
