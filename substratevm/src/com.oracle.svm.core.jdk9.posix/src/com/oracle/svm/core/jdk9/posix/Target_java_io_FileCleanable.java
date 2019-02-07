@@ -47,7 +47,7 @@ final class Target_java_io_FileCleanable {
             // 87          if (close(fd) == -1) {
             if (Unistd.close(fd) == -1) {
                 // 88              JNU_ThrowIOExceptionWithLastError(env, "close failed");
-                throw new IOException(PosixUtils.lastErrorString("close failed"));
+                throw PosixUtils.newIOExceptionWithLastError("close failed");
             }
         }
     }

@@ -232,10 +232,6 @@ public final class PosixJavaNIOSubstitutions {
 
     // Checkstyle: resume
 
-    protected static IOException throwIOExceptionWithLastError(String defaultMsg) throws IOException {
-        throw new IOException(PosixUtils.lastErrorString(defaultMsg));
-    }
-
     protected static int handle(int rv, String msg) throws IOException {
         if (rv >= 0) {
             return rv;
@@ -243,7 +239,7 @@ public final class PosixJavaNIOSubstitutions {
         if (errno() == EINTR()) {
             return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
         }
-        throw throwIOExceptionWithLastError(msg);
+        throw PosixUtils.newIOExceptionWithLastError(msg);
     }
 
     protected static long handle(long rv, String msg) throws IOException {
@@ -253,7 +249,7 @@ public final class PosixJavaNIOSubstitutions {
         if (errno() == EINTR()) {
             return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
         }
-        throw throwIOExceptionWithLastError(msg);
+        throw PosixUtils.newIOExceptionWithLastError(msg);
     }
 
     protected static int convertReturnVal(WordBase n, boolean reading) throws IOException {
@@ -276,8 +272,7 @@ public final class PosixJavaNIOSubstitutions {
             return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
         } else {
             String msg = reading ? "Read failed" : "Write failed";
-            throwIOExceptionWithLastError(msg);
-            return Target_sun_nio_ch_IOStatus.IOS_THROWN;
+            throw PosixUtils.newIOExceptionWithLastError(msg);
         }
     }
 
@@ -301,8 +296,7 @@ public final class PosixJavaNIOSubstitutions {
             return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
         } else {
             String msg = reading ? "Read failed" : "Write failed";
-            throwIOExceptionWithLastError(msg);
-            return Target_sun_nio_ch_IOStatus.IOS_THROWN;
+            throw PosixUtils.newIOExceptionWithLastError(msg);
         }
     }
 
@@ -366,7 +360,7 @@ public final class PosixJavaNIOSubstitutions {
                 // 096     if (ret != 0)
                 if (ret != 0) {
                     // 097         JNU_ThrowIOExceptionWithLastError(env, "Thread signal failed");
-                    throw new IOException("Thread signal failed");
+                    throw PosixUtils.newIOExceptionWithLastError("Thread signal failed");
                 }
             }
         }
@@ -447,7 +441,7 @@ public final class PosixJavaNIOSubstitutions {
                 // 073     if (sigaction(INTERRUPT_SIGNAL, &sa, &osa) < 0)
                 if (Signal.sigaction(INTERRUPT_SIGNAL, saPointer, osaPointer) < 0) {
                     // 074         JNU_ThrowIOExceptionWithLastError(env, "sigaction");
-                    throw new IOException("sigaction");
+                    throw PosixUtils.newIOExceptionWithLastError("sigaction");
                 }
                 /* } Do not re-format commented code: @formatter:on */
                 initialized = true;
@@ -482,7 +476,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void configureBlocking(FileDescriptor fdo, boolean blocking) throws IOException {
             if (Util_sun_nio_ch_IOUtil.configureBlocking(fdval(fdo), blocking) < 0) {
-                throwIOExceptionWithLastError("Configure blocking failed");
+                throw PosixUtils.newIOExceptionWithLastError("Configure blocking failed");
             }
         }
 
@@ -495,15 +489,17 @@ public final class PosixJavaNIOSubstitutions {
             CIntPointer fd = StackValue.get(2, CIntPointer.class);
 
             if (pipe(fd) < 0) {
-                throwIOExceptionWithLastError("Pipe failed");
-                return 0;
+                throw PosixUtils.newIOExceptionWithLastError("Pipe failed");
             }
             if (blocking == false) {
                 if ((Util_sun_nio_ch_IOUtil.configureBlocking(fd.read(0), false) < 0) || (Util_sun_nio_ch_IOUtil.configureBlocking(fd.read(1), false) < 0)) {
-                    throwIOExceptionWithLastError("Configure blocking failed");
-                    close(fd.read(0));
-                    close(fd.read(1));
-                    return 0;
+                    try {
+                        /* Capture last error before closing files, which will clear errno. */
+                        throw PosixUtils.newIOExceptionWithLastError("Configure blocking failed");
+                    } finally {
+                        close(fd.read(0));
+                        close(fd.read(1));
+                    }
                 }
             }
             return ((long) fd.read(0) << 32) | fd.read(1);
@@ -519,7 +515,7 @@ public final class PosixJavaNIOSubstitutions {
                 int n = (int) read(fd, buf, WordFactory.unsigned(bufsize)).rawValue();
                 tn += n;
                 if ((n < 0) && (errno() != EAGAIN())) {
-                    throwIOExceptionWithLastError("Drain");
+                    throw PosixUtils.newIOExceptionWithLastError("Drain");
                 }
                 if (n == bufsize) {
                     continue;
@@ -555,7 +551,7 @@ public final class PosixJavaNIOSubstitutions {
                     // 143 } else {
                 } else {
                     // 144 JNU_ThrowIOExceptionWithLastError(env, "read");
-                    throw throwIOExceptionWithLastError("read");
+                    throw PosixUtils.newIOExceptionWithLastError("read");
                     // 145 return IOS_THROWN;
                     /* Unreachable! */
                 }
@@ -577,7 +573,7 @@ public final class PosixJavaNIOSubstitutions {
         private static int fdLimit() throws IOException {
             rlimit rlp = StackValue.get(rlimit.class);
             if (getrlimit(RLIMIT_NOFILE(), rlp) < 0) {
-                throw throwIOExceptionWithLastError("getrlimit failed");
+                throw PosixUtils.newIOExceptionWithLastError("getrlimit failed");
             }
             if (rlp.rlim_max() < 0 || rlp.rlim_max() > Integer.MAX_VALUE) {
                 return Integer.MAX_VALUE;
@@ -1258,7 +1254,7 @@ public final class PosixJavaNIOSubstitutions {
                 }
                 //        106         JNU_ThrowIOExceptionWithLastError(env, "Accept failed");
                 //        107         return IOS_THROWN;
-                throw new IOException("Accept failed");
+                throw PosixUtils.newIOExceptionWithLastError("Accept failed");
             }
             //        109
             //        110     (*env)->SetIntField(env, newfdo, fd_fdID, newfd);
@@ -1499,7 +1495,7 @@ public final class PosixJavaNIOSubstitutions {
                 if (errno() == EINTR()) {
                     return Target_sun_nio_ch_FileDispatcher.FD_INTERRUPTED;
                 }
-                throwIOExceptionWithLastError("Lock failed");
+                throw PosixUtils.newIOExceptionWithLastError("Lock failed");
             }
             return 0;
         }
@@ -1521,7 +1517,7 @@ public final class PosixJavaNIOSubstitutions {
             fl.set_l_type(F_UNLCK());
             lockResult = fcntl(fd, cmd, fl);
             if (lockResult < 0) {
-                throw throwIOExceptionWithLastError("Release failed");
+                throw PosixUtils.newIOExceptionWithLastError("Release failed");
             }
         }
 
@@ -1540,7 +1536,7 @@ public final class PosixJavaNIOSubstitutions {
             int fd = fdval(fdo);
             if (Util_sun_nio_ch_FileDispatcherImpl.preCloseFD >= 0) {
                 if (dup2(Util_sun_nio_ch_FileDispatcherImpl.preCloseFD, fd) < 0) {
-                    throwIOExceptionWithLastError("dup2 failed");
+                    throw PosixUtils.newIOExceptionWithLastError("dup2 failed");
                 }
             }
         }
@@ -1576,7 +1572,7 @@ public final class PosixJavaNIOSubstitutions {
             if (fd != -1) {
                 int result = close(fd);
                 if (result < 0) {
-                    throwIOExceptionWithLastError("Close failed");
+                    throw PosixUtils.newIOExceptionWithLastError("Close failed");
                 }
             }
         }
@@ -2949,7 +2945,7 @@ public final class PosixJavaNIOSubstitutions {
                 if (errno() == EINTR()) {
                     return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
                 }
-                throw throwIOExceptionWithLastError("Transfer failed");
+                throw PosixUtils.newIOExceptionWithLastError("Transfer failed");
             }
             return n.rawValue();
         }
@@ -2981,7 +2977,7 @@ public final class PosixJavaNIOSubstitutions {
                 if (errno() == EINTR()) {
                     return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
                 }
-                throw throwIOExceptionWithLastError("Transfer failed");
+                throw PosixUtils.newIOExceptionWithLastError("Transfer failed");
             }
 
             return result;
@@ -3016,7 +3012,7 @@ public final class PosixJavaNIOSubstitutions {
             } while ((res == -1) && (errno() == EINTR()));
 
             if (res < 0) {
-                throw throwIOExceptionWithLastError("fstat64 failed");
+                throw PosixUtils.newIOExceptionWithLastError("fstat64 failed");
             } else {
                 st_dev = fbuf.st_dev();
                 st_ino = fbuf.st_ino();
@@ -3189,7 +3185,7 @@ public final class PosixJavaNIOSubstitutions {
                 // 065 if (result < 0) {
                 if (result < 0) {
                     // 066 JNU_ThrowIOExceptionWithLastError(env, "Poll failed");
-                    throw new IOException("Poll failed");
+                    throw PosixUtils.newIOExceptionWithLastError("Poll failed");
                     // 067 return IOS_THROWN;
                     /* unreachable! */
                 }
@@ -3268,7 +3264,7 @@ public final class PosixJavaNIOSubstitutions {
                     return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
                 } else {
                     // 67             JNU_ThrowIOExceptionWithLastError(env, "poll failed");
-                    throw throwIOExceptionWithLastError("poll failed");
+                    throw PosixUtils.newIOExceptionWithLastError("poll failed");
                     // 68             return IOS_THROWN;
                     /* unreachable! */
                 }
@@ -3334,7 +3330,7 @@ public final class PosixJavaNIOSubstitutions {
             // 047     if (result < 0) {
             if (result < 0) {
                 // 048         JNU_ThrowIOExceptionWithLastError(env, "getsockopt");
-                PosixJavaNIOSubstitutions.throwIOExceptionWithLastError("getsockopt");
+                throw PosixUtils.newIOExceptionWithLastError("getsockopt");
             } else {
                 // 050         if (error)
                 if (CTypeConversion.toBoolean(errorPointer.read())) {

@@ -92,7 +92,7 @@ public final class PosixSunNioSubstitutions {
             // 087     if (err < 0) {
             if (err < 0) {
                 // 088         JNU_ThrowIOExceptionWithLastError(env, "Poll failed");
-                throw new IOException("Poll failed");
+                throw PosixUtils.newIOExceptionWithLastError("Poll failed");
             }
             // 090     return (jint)err;
             return err;
@@ -111,7 +111,7 @@ public final class PosixSunNioSubstitutions {
             if (Unistd.write(fd, fakebuf, WordFactory.unsigned(1)).lessThan(0)) {
                 // 099          JNU_ThrowIOExceptionWithLastError(env,
                 // 100                                           "Write to interrupt fd failed");
-                throw new IOException("Write to interrupt fd failed");
+                throw PosixUtils.newIOExceptionWithLastError("Write to interrupt fd failed");
             }
         }
     }
