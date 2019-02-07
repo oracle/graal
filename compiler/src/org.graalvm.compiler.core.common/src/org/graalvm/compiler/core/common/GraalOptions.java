@@ -84,7 +84,7 @@ public final class GraalOptions {
     public static final OptionKey<String> EscapeAnalyzeOnly = new OptionKey<>(null);
 
     @Option(help = "", type = OptionType.Expert)
-    public static final OptionKey<Integer> MaximumEscapeAnalysisArrayLength = new OptionKey<>(32);
+    public static final OptionKey<Integer> MaximumEscapeAnalysisArrayLength = new OptionKey<>(128);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> PEAInliningHints = new OptionKey<>(false);
