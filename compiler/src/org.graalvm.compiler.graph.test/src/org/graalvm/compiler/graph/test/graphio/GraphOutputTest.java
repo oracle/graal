@@ -37,6 +37,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 import org.junit.Test;
@@ -101,12 +102,16 @@ public final class GraphOutputTest {
             graphOutput.print(new MockGraph(), properties, 2, "Graph 1");
         }
         ByteArrayOutputStream embedded = new ByteArrayOutputStream();
-        WritableByteChannel embeddChannel = Channels.newChannel(embedded);
-        try (GraphOutput<MockGraph, ?> baseOutput = GraphOutput.newBuilder(new MockGraphStructure()).protocolVersion(6, 0).build(embeddChannel)) {
-            try (GraphOutput<MockGraph, ?> embeddedOutput = GraphOutput.newBuilder(new MockGraphStructure()).protocolVersion(6, 0).embedded(true).build((WritableByteChannel) baseOutput)) {
-                embeddedOutput.print(new MockGraph(), properties, 1, "Graph 1");
-                baseOutput.print(new MockGraph(), properties, 2, "Graph 1");
+        SharedWritableByteChannel embeddChannel = new SharedWritableByteChannel(Channels.newChannel(embedded));
+        try {
+            try (GraphOutput<MockGraph, ?> baseOutput = GraphOutput.newBuilder(new MockGraphStructure()).protocolVersion(6, 0).build(embeddChannel)) {
+                try (GraphOutput<MockGraph, ?> embeddedOutput = GraphOutput.newBuilder(new MockGraphStructure()).protocolVersion(6, 0).embedded(true).build((WritableByteChannel) baseOutput)) {
+                    embeddedOutput.print(new MockGraph(), properties, 1, "Graph 1");
+                    baseOutput.print(new MockGraph(), properties, 2, "Graph 1");
+                }
             }
+        } finally {
+            embeddChannel.realClose();
         }
         assertArrayEquals(expected.toByteArray(), embedded.toByteArray());
     }
@@ -118,6 +123,34 @@ public final class GraphOutputTest {
         }
         buffer.limit(size);
         return buffer;
+    }
+
+    private static final class SharedWritableByteChannel implements WritableByteChannel {
+
+        private final WritableByteChannel delegate;
+
+        SharedWritableByteChannel(WritableByteChannel delegate) {
+            Objects.requireNonNull(delegate, "Delegate must be non null.");
+            this.delegate = delegate;
+        }
+
+        @Override
+        public int write(ByteBuffer bb) throws IOException {
+            return delegate.write(bb);
+        }
+
+        @Override
+        public boolean isOpen() {
+            return delegate.isOpen();
+        }
+
+        @Override
+        public void close() throws IOException {
+        }
+
+        void realClose() throws IOException {
+            delegate.close();
+        }
     }
 
     private static final class MockGraphStructure implements GraphStructure<MockGraph, Void, Void, Void> {
