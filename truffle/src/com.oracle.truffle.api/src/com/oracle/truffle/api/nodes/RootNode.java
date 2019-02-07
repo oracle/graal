@@ -334,15 +334,6 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link LoopNode#reportLoopCount(Node,int)} instead
-     */
-    @Deprecated
-    public final void reportLoopCount(int iterations) {
-        LoopNode.reportLoopCount(this, iterations);
-    }
-
-    /**
      * Executes this function using the specified frame and returns the result value.
      *
      * @param frame the frame of the currently executing guest language method
