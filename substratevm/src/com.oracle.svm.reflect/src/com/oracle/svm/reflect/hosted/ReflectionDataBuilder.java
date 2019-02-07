@@ -88,6 +88,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                         null,
                         new Field[0],
                         new Method[0],
+                        new Class<?>[0],
+                        new Class<?>[0],
                         null);
     }
 
@@ -202,6 +204,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                 clazz.getMethods();
                 clazz.getDeclaredConstructors();
                 clazz.getConstructors();
+                clazz.getDeclaredClasses();
+                clazz.getClasses();
             } catch (NoClassDefFoundError e) {
                 /*
                  * If any of the methods or fields reference missing types in their signatures a
@@ -233,6 +237,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                                     nullaryConstructor(declaredConstructorsField.get(originalReflectionData), reflectionMethods),
                                     filterFields(declaredPublicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
                                     filterMethods(declaredPublicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    filterClasses(clazz.getDeclaredClasses(), reflectionClasses, access.getMetaAccess()),
+                                    filterClasses(clazz.getClasses(), reflectionClasses, access.getMetaAccess()),
                                     enclosingMethodOrConstructor(clazz));
                 }
 
@@ -321,6 +327,16 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             }
         }
         return result.toArray(prototypeArray);
+    }
+
+    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, AnalysisMetaAccess metaAccess) {
+        List<Class<?>> result = new ArrayList<>();
+        for (Class<?> clazz : (Class<?>[]) classes) {
+            if (filter.contains(clazz) && !metaAccess.lookupJavaType(clazz).isAnnotationPresent(Delete.class)) {
+                result.add(clazz);
+            }
+        }
+        return result.toArray(new Class<?>[0]);
     }
 
     private static Method findMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {

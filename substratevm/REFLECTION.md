@@ -60,7 +60,9 @@ where `reflectconfig` is a JSON file in the following format (use `--expert-opti
 	    "allDeclaredConstructors" : true,
 	    "allPublicConstructors" : true,
 	    "allDeclaredMethods" : true,
-	    "allPublicMethods" : true
+	    "allPublicMethods" : true,
+	    "allDeclaredClasses" : true,
+	    "allPublicClasses" : true
 	  },
 	  {
 	    "name" : "java.lang.String",
@@ -83,7 +85,7 @@ where `reflectconfig` is a JSON file in the following format (use `--expert-opti
       }
 	]
 
-The image build generates reflection metadata for all classes, methods and fields referenced in that file. The `allPublicConstructors`, `allPublicMethods`, `allPublicFields`, `allDeclaredConstructors`, `allDeclaredMethods` and `allDeclaredFields` attributes can be used to automatically include an entire set of members of a class. In order to write a field that is declared `final`, the `allowWrite` attribute must be specified for that field (but is not required for non-final fields). However, code accessing final fields might not observe changes of final field values in the same way as for non-final fields because of optimizations.
+The image build generates reflection metadata for all classes, methods and fields referenced in that file. The `allPublicConstructors`, `allDeclaredConstructors`, `allPublicMethods`, `allDeclaredMethods`, `allPublicFields`, `allDeclaredFields`, `allPublicClasses` and `allDeclaredClasses` attributes can be used to automatically include an entire set of members of a class. However, `allPublicClasses` and `allDeclaredClasses` don't automatically register the inner classes for reflective access. They just make them available via `Class.getClasses()` and `Class.getDeclaredClasses()` when called on the declaring class. In order to write a field that is declared `final`, the `allowWrite` attribute must be specified for that field (but is not required for non-final fields). However, code accessing final fields might not observe changes of final field values in the same way as for non-final fields because of optimizations.
 
 More than one configuration can be used by specifying multiple paths for `ReflectionConfigurationFiles` and separating them with `,`. Also, `-H:ReflectionConfigurationResources` can be specified to load one or several configuration files from the native image build's class path, such as from a JAR file.
 

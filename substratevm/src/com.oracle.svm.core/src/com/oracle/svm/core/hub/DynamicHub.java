@@ -796,6 +796,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         final Constructor<?> nullaryConstructor;
         final Field[] declaredPublicFields;
         final Method[] declaredPublicMethods;
+        final Class<?>[] declaredClasses;
+        final Class<?>[] publicClasses;
 
         /**
          * The result of {@link Class#getEnclosingMethod()} or
@@ -804,7 +806,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         final Executable enclosingMethodOrConstructor;
 
         public ReflectionData(Field[] declaredFields, Field[] publicFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
-                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Executable enclosingMethodOrConstructor) {
+                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods,
+                        Class<?>[] declaredClasses, Class<?>[] publicClasses,
+                        Executable enclosingMethodOrConstructor) {
             this.declaredFields = declaredFields;
             this.publicFields = publicFields;
             this.declaredMethods = declaredMethods;
@@ -814,6 +818,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             this.nullaryConstructor = nullaryConstructor;
             this.declaredPublicFields = declaredPublicFields;
             this.declaredPublicMethods = declaredPublicMethods;
+            this.declaredClasses = declaredClasses;
+            this.publicClasses = publicClasses;
             this.enclosingMethodOrConstructor = enclosingMethodOrConstructor;
         }
     }
@@ -823,7 +829,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     private static final ReflectionData NO_REFLECTION_DATA = new ReflectionData(new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0], null,
-                    new Field[0], new Method[0], null);
+                    new Field[0], new Method[0], new Class<?>[0], new Class<?>[0], null);
 
     private ReflectionData rd = NO_REFLECTION_DATA;
 
@@ -850,11 +856,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private native Constructor<?> getConstructor(Class<?>... parameterTypes);
 
-    @KeepOriginal
-    private native Class<?>[] getDeclaredClasses();
+    @Substitute
+    private Class<?>[] getDeclaredClasses() {
+        return rd.declaredClasses;
+    }
 
-    @KeepOriginal
-    public native Class<?>[] getClasses();
+    @Substitute
+    private Class<?>[] getClasses() {
+        return rd.publicClasses;
+    }
 
     @KeepOriginal
     private native Field[] getDeclaredFields();
