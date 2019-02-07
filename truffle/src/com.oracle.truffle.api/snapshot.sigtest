@@ -634,8 +634,6 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.ExplodeL
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 innr public final static !enum LoopExplosionKind
 intf java.lang.annotation.Annotation
-meth public abstract !hasdefault boolean merge()
- anno 0 java.lang.Deprecated()
 meth public abstract !hasdefault com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind kind()
 
 CLSS public final static !enum com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind

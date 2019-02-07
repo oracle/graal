@@ -106,11 +106,4 @@ public @interface ExplodeLoop {
      */
     LoopExplosionKind kind() default LoopExplosionKind.FULL_UNROLL;
 
-    /**
-     * @deprecated Use {@link #kind} = {@link LoopExplosionKind#MERGE_EXPLODE} instead of setting
-     *             this property to true.
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    boolean merge() default false;
 }

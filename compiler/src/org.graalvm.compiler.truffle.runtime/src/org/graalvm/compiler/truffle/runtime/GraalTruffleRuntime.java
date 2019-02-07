@@ -323,12 +323,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             return LoopExplosionKind.NONE;
         }
 
-        // Support for the deprecated Truffle property until it is removed in a future Truffle
-        // release.
-        if (explodeLoop.merge()) {
-            return LoopExplosionKind.MERGE_EXPLODE;
-        }
-
         switch (explodeLoop.kind()) {
             case FULL_UNROLL:
                 return LoopExplosionKind.FULL_UNROLL;
