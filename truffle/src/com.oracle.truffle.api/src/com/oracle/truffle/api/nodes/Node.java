@@ -578,23 +578,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a lock object that can be used to synchronize modifications to the AST. Only use it
-     * as part of a synchronized block, do not call {@link Object#wait()} or {@link Object#notify()}
-     * manually.
-     *
-     * @since 0.17
-     * @deprecated replaced with {@link #getLock()}
-     */
-    @Deprecated
-    protected final Object getAtomicLock() {
-        // Major Assumption: parent is never null after a node got adopted
-        // it is never reset to null, and thus, rootNode is always reachable.
-        // GIL: used for nodes that are replace in ASTs that are not yet adopted
-        RootNode root = getRootNode();
-        return root == null ? GIL : root;
-    }
-
-    /**
      * Returns a lock object that can be used to synchronize modifications to the AST. Don't lock if
      * you call into foreign code with potential recursions to avoid deadlocks. Use responsibly.
      *
@@ -653,7 +636,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         return "";
     }
 
-    private static final Object GIL = new Object();
     private static final ReentrantLock GIL_LOCK = new ReentrantLock(false);
 
     private boolean inAtomicBlock() {
