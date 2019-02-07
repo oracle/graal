@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class Symbols {
     // Set generous initial capacity, this one is going to be hit a lot.
-    final ConcurrentHashMap<SymbolKey, Symbol<?>> symbols = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<SymbolKey, Symbol<?>> symbols = new ConcurrentHashMap<>();
 
     public Symbols() {
         /* nop */
@@ -51,14 +51,14 @@ public final class Symbols {
     }
 
     @SuppressWarnings("unchecked")
-    public <T> Symbol<T> symbolify(final ByteSequence sequence) {
+    <T> Symbol<T> symbolify(final ByteSequence sequence) {
         final SymbolKey key = new SymbolKey(sequence);
         return (Symbol<T>) symbols.computeIfAbsent(key, __ -> {
             // Create Symbol<?>
             final byte[] bytes = Arrays.copyOfRange(sequence.getUnderlyingBytes(),
                             sequence.offset(),
                             sequence.offset() + sequence.length());
-            Symbol<?> computed = new Symbol(bytes, sequence.hashCode());
+            Symbol<?> computed = new Symbol<>(bytes, sequence.hashCode());
             // Swap the byte sequence, which could be holding a large underlying byte array, by
             // a fresh symbol.
             //

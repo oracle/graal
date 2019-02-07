@@ -1,10 +1,13 @@
 package com.oracle.truffle.espresso.descriptors;
 
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.Stable;
 import com.oracle.truffle.espresso.jni.Utf8;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * A <tt>ByteSequence</tt> is a readable sequence of <code>byte</code> values. This interface
@@ -97,5 +100,14 @@ public abstract class ByteSequence {
             return this;
         }
         return wrap(getUnderlyingBytes(), offset() + offset, length);
+    }
+
+    @Override
+    public String toString() {
+        try {
+            return Utf8.toJavaString(getUnderlyingBytes(), offset(), length());
+        } catch (IOException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
     }
 }

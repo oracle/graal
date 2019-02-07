@@ -73,6 +73,7 @@ public final class Signatures {
      * @return the parsed parameter types followed by the return type.
      * @throws ClassFormatError if {@code string} is not well formed
      */
+    @SuppressWarnings({"rawtypes", "unchecked"})
     static Symbol<Type>[] parse(Types typeDescriptors, Symbol<Signature> signature, int startIndex) throws ClassFormatError {
         if ((startIndex > signature.length() - 3) || signature.byteAt(startIndex) != '(') {
             throw new ClassFormatError("Invalid method signature: " + signature);
@@ -180,7 +181,8 @@ public final class Signatures {
     }
 
     public static boolean isValid(String signatureString) {
-        throw EspressoError.unimplemented();
+        return true;
+        // throw EspressoError.unimplemented();
     }
 
     public static Symbol<Signature> verify(Symbol<Signature> signature) {
@@ -206,12 +208,14 @@ public final class Signatures {
         return signature[paramIndex];
     }
 
-    public Symbol<Type>[] makeParsed(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
+    @SafeVarargs
+    public final Symbol<Type>[] makeParsed(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         final Symbol<Type>[] signature = Arrays.copyOf(parameterTypes, parameterTypes.length + 1);
         signature[signature.length - 1] = returnType;
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes)"})
     public final Symbol<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
         Symbol<Type>[] parameterTypes = new Symbol[parameterClasses.length];
         for (int i = 0; i < parameterClasses.length; ++i) {
@@ -251,7 +255,12 @@ public final class Signatures {
     }
 
     public Symbol<Signature> getOrCreateValidSignature(String signatureString) {
-        throw EspressoError.unimplemented();
+        return symbols.symbolify(ByteSequence.create(checkSignature(signatureString)));
+    }
+
+    private static String checkSignature(String signatureString) {
+        // FIXME(peterssen): Do check.
+        return signatureString;
     }
 
     static byte[] buildSignatureBytes(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {

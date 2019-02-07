@@ -24,8 +24,6 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -39,8 +37,7 @@ public final class ArrayKlass extends Klass {
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
-                        asdsad,
-
+                        null, // TODO(peterssen): Internal, , or / name?
                         componentType.getTypes().arrayOf(componentType.getType()),
                         componentType.getMeta().Object,
                         componentType.getMeta().ARRAY_SUPERINTERFACES);

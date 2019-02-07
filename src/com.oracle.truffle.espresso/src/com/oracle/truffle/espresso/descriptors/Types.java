@@ -301,11 +301,15 @@ public final class Types {
     }
 
     static ByteSequence checkType(ByteSequence sequence) {
-        throw EspressoError.unimplemented();
+        // FIXME(peterssen): Do check.
+        return sequence;
+        // throw EspressoError.unimplemented();
     }
 
-    public static String checkType(String name) {
-        throw EspressoError.unimplemented();
+    public static String checkType(String type) {
+        // FIXME(peterssen): Do check.
+        return type;
+        // throw EspressoError.unimplemented();
     }
 
     public static String binaryName(Symbol<Type> type) {
@@ -318,6 +322,7 @@ public final class Types {
         return type.substring(1, type.length() - 1).toString().replace('/', '.');
     }
 
+    @SuppressWarnings("unchecked")
     public static Symbol<Type> fromSymbol(Symbol<?> symbol) {
         Symbol<Type> type = (Symbol<Type>) symbol;
         // TODO(peterssen): Turn check into assert, maybe?
@@ -327,6 +332,7 @@ public final class Types {
 
     public final Symbol<Type> fromName(Symbol<Name> name) {
         if (name.byteAt(0) == '[') {
+            // TODO(peterssen): Verify . or / separators.
             return fromSymbol(name);
         }
         byte[] bytes = new byte[name.length() + 2]; // + L;

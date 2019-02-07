@@ -109,9 +109,13 @@ public interface MemberRefConstant extends PoolConstant {
         }
         if (f.isProtected()) {
             if (!f.isStatic()) {
-                return f.getDeclaringKlass().isAssignableFrom(accessingKlass);
+                if (f.getDeclaringKlass().isAssignableFrom(accessingKlass)) {
+                    return true;
+                }
             } else {
-                return holderKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(holderKlass);
+                if (holderKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(holderKlass)) {
+                    return true;
+                }
             }
         }
         if (f.isProtected() || f.isPackagePrivate()) {
@@ -130,9 +134,13 @@ public interface MemberRefConstant extends PoolConstant {
         }
         if (m.isProtected()) {
             if (!m.isStatic()) {
-                return m.getDeclaringKlass().isAssignableFrom(accessingKlass);
+                if (m.getDeclaringKlass().isAssignableFrom(accessingKlass)) {
+                    return true;
+                }
             } else {
-                return holderKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(holderKlass);
+                if (holderKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(holderKlass)) {
+                    return true;
+                }
             }
         }
         if (m.isProtected() || m.isPackagePrivate()) {

@@ -96,6 +96,10 @@ public final class Symbol<T> extends ByteSequence {
 
     public static final class Name extends ModifiedUTF8 {
 
+        public static void init() {
+            /* nop */
+        }
+
         public static final Symbol<Name> INIT = StaticSymbols.putName("<init>");
         public static final Symbol<Name> CLINIT = StaticSymbols.putName("<clinit>");
 
@@ -137,6 +141,10 @@ public final class Symbol<T> extends ByteSequence {
     }
 
     public static final class Type extends Descriptor {
+
+        public static void init() {
+            /* nop */
+        }
 
         // Core types.
         public static final Symbol<Type> String = StaticSymbols.putType(String.class);
@@ -220,6 +228,11 @@ public final class Symbol<T> extends ByteSequence {
     }
 
     public static final class Signature extends Descriptor {
+
+        public static void init() {
+            /* nop */
+        }
+
         public static final Symbol<Signature> _int = StaticSymbols.putSignature(Type._int);
         public static final Symbol<Signature> _void = StaticSymbols.putSignature(Type._void);
         public static final Symbol<Signature> Object = StaticSymbols.putSignature(Type.Object);

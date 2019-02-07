@@ -391,7 +391,7 @@ public final class ClassfileParser {
         return context.getTypes().fromName(pool.classAt(index).getName(pool));
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private Symbol<Type>[] parseInterfaces() {
         int interfaceCount = stream.readU2();
         if (interfaceCount == 0) {

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -29,6 +30,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * SVM.
  */
 public final class Substitutions implements ContextAccess {
+
+    public static void init() {}
 
     private final EspressoContext context;
 
@@ -129,7 +132,7 @@ public final class Substitutions implements ContextAccess {
             // Target class is derived from class name by simple substitution
             // e.g. Target_java_lang_System becomes java.lang.System
             assert clazz.getSimpleName().startsWith("Target_");
-            classType = Types.makeGlobalType("L" + clazz.getSimpleName().substring("Target_".length()).replace('_', '/') + ";");
+            classType = StaticSymbols.putType("L" + clazz.getSimpleName().substring("Target_".length()).replace('_', '/') + ";");
         } else {
             throw EspressoError.shouldNotReachHere("Substitutions class must be decorated with @" + EspressoSubstitutions.class.getName());
         }
@@ -156,9 +159,9 @@ public final class Substitutions implements ContextAccess {
                 Symbol<Type> parameterType;
                 Host annotatedType = parameter.getAnnotatedType().getAnnotation(Host.class);
                 if (annotatedType != null) {
-                    parameterType = Types.makeGlobalType(annotatedType.value());
+                    parameterType = StaticSymbols.putType(annotatedType.value());
                 } else {
-                    parameterType = Types.makeGlobalType(parameter.getType());
+                    parameterType = StaticSymbols.putType(parameter.getType());
                 }
                 parameterTypes.add(parameterType);
             }
@@ -166,9 +169,9 @@ public final class Substitutions implements ContextAccess {
             Host annotatedReturnType = method.getAnnotatedReturnType().getAnnotation(Host.class);
             Symbol<Type> returnType;
             if (annotatedReturnType != null) {
-                returnType = Types.makeGlobalType(annotatedReturnType.value());
+                returnType = StaticSymbols.putType(annotatedReturnType.value());
             } else {
-                returnType = Types.makeGlobalType(method.getReturnType());
+                returnType = StaticSymbols.putType(method.getReturnType());
             }
 
             String methodName = substitution.methodName();
@@ -178,8 +181,8 @@ public final class Substitutions implements ContextAccess {
 
             ++registered;
             registerStaticSubstitution(classType,
-                            Symbol.makeGlobalName(methodName),
-                            Symbol.makeGlobalSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY)),
+                            StaticSymbols.putName(methodName),
+                            StaticSymbols.putSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY)),
                             factory,
                             true);
         }

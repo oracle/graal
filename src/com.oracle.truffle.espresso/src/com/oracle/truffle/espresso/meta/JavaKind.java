@@ -90,7 +90,7 @@ public enum JavaKind {
         this.primitiveJavaClass = primitiveJavaClass;
         this.boxedJavaClass = boxedJavaClass;
         this.basicType = basicType;
-        this.type = StaticSymbols.putType("" + typeChar);
+        this.type = (primitiveJavaClass != null) ? StaticSymbols.putType("" + typeChar) : null;
         this.name = StaticSymbols.putName(javaName);
         assert primitiveJavaClass == null || javaName.equals(primitiveJavaClass.getName());
     }

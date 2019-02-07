@@ -94,7 +94,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
         this.name = linkedMethod.getName();
         this.rawSignature = linkedMethod.getRawSignature();
-        this.parsedSignature = declaringKlass.getSignatures().make(linkedMethod.getRawSignature());
+        this.parsedSignature = declaringKlass.getSignatures().parsed(this.rawSignature);
         this.linkedMethod = linkedMethod;
 
         this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);

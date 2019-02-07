@@ -567,7 +567,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     public String getRuntimePackage() {
-        throw EspressoError.unimplemented();
+        String typeString = getType().toString();
+        int lastDot = typeString.lastIndexOf('.');
+        if (lastDot < 0) return "";
+        String pkg = typeString.substring(lastDot + 1);
+        if (pkg.endsWith(";")) {
+            return pkg.substring(0, pkg.length() - 1);
+        }
+        return pkg;
     }
 
     public Symbol<Name> getName() {

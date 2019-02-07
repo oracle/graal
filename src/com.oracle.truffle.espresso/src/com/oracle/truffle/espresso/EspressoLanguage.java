@@ -47,6 +47,7 @@ import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
@@ -60,11 +61,23 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
 
-    private final Symbols symbols = new Symbols(StaticSymbols.freeze());
-    private final Utf8ConstantTable utf8Constants = new Utf8ConstantTable(symbols);
-    private final Names names = new Names(symbols);
-    private final Types types = new Types(symbols);
-    private final Signatures signatures = new Signatures(symbols, types);
+    private final Symbols symbols;
+    private final Utf8ConstantTable utf8Constants;
+    private final Names names;
+    private final Types types;
+    private final Signatures signatures;
+
+    public EspressoLanguage() {
+        Name.init();
+        Type.init();
+        Signature.init();
+        Substitutions.init();
+        this.symbols = new Symbols(StaticSymbols.freeze());
+        this.utf8Constants = new Utf8ConstantTable(this.symbols);
+        this.names = new Names(this.symbols);
+        this.types = new Types(this.symbols);
+        this.signatures = new Signatures(this.symbols, types);
+    }
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {

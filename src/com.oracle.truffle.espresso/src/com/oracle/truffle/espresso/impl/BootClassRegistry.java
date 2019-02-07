@@ -48,7 +48,7 @@ public final class BootClassRegistry extends ClassRegistry {
         // Primitive classes do not have a .class definition, inject them directly in the BCL.
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive()) {
-                classes.put(context.getTypes().make(kind.getType()), new PrimitiveKlass(context, kind));
+                classes.put(kind.getType(), new PrimitiveKlass(context, kind));
             }
         }
     }

@@ -590,7 +590,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
         if (methodName != null) {
-            Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(name);
+            Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(signature);
             if (methodSignature != null) {
                 // Lookup only if name and type are known symbols.
                 method = klass.lookupMethod(methodName, methodSignature);
@@ -628,7 +628,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
         if (methodName != null) {
-            Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(name);
+            Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(signature);
             if (methodSignature != null) {
                 // Lookup only if name and type are known symbols.
                 method = klass.lookupMethod(methodName, methodSignature);

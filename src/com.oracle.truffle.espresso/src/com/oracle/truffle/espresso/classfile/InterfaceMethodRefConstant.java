@@ -138,7 +138,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
             Method method = holderInterface.lookupDeclaredMethod(name, signature);
             if (method == null) {
                 Method m = meta.Object.lookupDeclaredMethod(name, signature);
-                if (m.isPublic() && !m.isStatic()) {
+                if (m != null && m.isPublic() && !m.isStatic()) {
                     method = m;
                 }
             }
