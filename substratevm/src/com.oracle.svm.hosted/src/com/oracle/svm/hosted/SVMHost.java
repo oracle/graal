@@ -78,15 +78,15 @@ public final class SVMHost implements HostVM {
 
     private final OptionValues options;
     private final ClassLoader classLoader;
-    private final ClassInitializationFeature classInitializationFeature;
+    private final ClassInitializationSupport classInitializationSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
     private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
 
-    public SVMHost(OptionValues options, ClassLoader classLoader, UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
+    public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport, UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
         this.options = options;
         this.classLoader = classLoader;
-        this.classInitializationFeature = ClassInitializationFeature.singleton();
+        this.classInitializationSupport = classInitializationSupport;
         this.stringTable = HostedStringDeduplication.singleton();
         this.classReachabilityListeners = new ArrayList<>();
         this.forbiddenTypes = setupForbiddenTypes(options);
@@ -176,7 +176,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public void registerType(AnalysisType analysisType) {
-        classInitializationFeature.maybeInitializeHosted(analysisType);
+        classInitializationSupport.maybeInitializeHosted(analysisType);
 
         DynamicHub hub = createHub(analysisType);
         Object existing = typeToHub.put(analysisType, hub);
@@ -190,7 +190,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public boolean isInitialized(AnalysisType type) {
-        boolean shouldInitializeAtRuntime = classInitializationFeature.shouldInitializeAtRuntime(type);
+        boolean shouldInitializeAtRuntime = classInitializationSupport.shouldInitializeAtRuntime(type);
         assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized";
 
         return !shouldInitializeAtRuntime;
@@ -277,4 +277,7 @@ public final class SVMHost implements HostVM {
         }
     }
 
+    public ClassInitializationSupport getClassInitializationSupport() {
+        return classInitializationSupport;
+    }
 }

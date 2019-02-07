@@ -340,7 +340,7 @@ public final class GraalFeature implements Feature {
 
         Providers originalProviders = GraalAccess.getOriginalProviders();
         runtimeConfigBuilder = new SubstrateRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
-                        originalProviders.getConstantReflection(), backendProvider).build();
+                        originalProviders.getConstantReflection(), backendProvider, config.getHostVM().getClassInitializationSupport()).build();
         RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
 
         Providers runtimeProviders = runtimeConfig.getProviders();

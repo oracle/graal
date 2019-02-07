@@ -32,6 +32,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -53,7 +54,7 @@ public class HostedConfiguration {
         return ImageSingletons.lookup(HostedConfiguration.class);
     }
 
-    public static void setDefaultIfEmpty() {
+    static void setDefaultIfEmpty(FeatureImpl.AfterRegistrationAccessImpl access) {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
             ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration());
 
@@ -62,6 +63,10 @@ public class HostedConfiguration {
 
             ObjectLayout objectLayout = new ObjectLayout(ConfigurationValues.getTarget());
             ImageSingletons.add(ObjectLayout.class, objectLayout);
+
+            ClassInitializationSupport initializationSupport = new ClassInitializationSupport(access.getMetaAccess());
+            ImageSingletons.add(RuntimeClassInitializationSupport.class, initializationSupport);
+            ClassInitializationFeature.processClassInitializationOptions(access, initializationSupport);
         }
     }
 

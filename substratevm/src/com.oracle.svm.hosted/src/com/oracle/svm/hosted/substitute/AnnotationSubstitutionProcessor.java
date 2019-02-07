@@ -67,7 +67,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ClassInitializationFeature;
+import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -257,7 +257,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
          * The annotatedClass is never used directly, i.e., never wrapped in an AnalysisType. So we
          * need to ensure manually here that its static initializer runs.
          */
-        ClassInitializationFeature.singleton().forceInitializeHosted(annotatedClass);
+        ClassInitializationSupport.instance().forceInitializeHosted(annotatedClass);
 
         Delete deleteAnnotation = lookupAnnotation(annotatedClass, Delete.class);
         Substitute substituteAnnotation = lookupAnnotation(annotatedClass, Substitute.class);
