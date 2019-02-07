@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
 
 final class JNI {
@@ -250,6 +251,9 @@ final class JNI {
 
         @CField("GetObjectRefType")
         GetObjectRefType getGetObjectRefType();
+
+        @CField("GetDirectBufferAddress")
+        GetDirectBufferAddress getGetDirectBufferAddress();
     }
 
     interface CallStaticIntMethodA extends CFunctionPointer {
@@ -445,6 +449,11 @@ final class JNI {
     interface Throw extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, JThrowable throwable);
+    }
+
+    interface GetDirectBufferAddress extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        VoidPointer call(JNIEnv env, JObject buf);
     }
 
     static class JNIHeaderDirectives implements CContext.Directives {
