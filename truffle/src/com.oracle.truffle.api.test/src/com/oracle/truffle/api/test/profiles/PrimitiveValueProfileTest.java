@@ -393,7 +393,7 @@ public class PrimitiveValueProfileTest {
         assertEquals(result0, value0, FLOAT_DELTA);
         assertEquals(result1, value1, FLOAT_DELTA);
 
-        if (PrimitiveValueProfile.exactCompare(value0, value1)) {
+        if (exactCompare(value0, value1)) {
             assertTrue(getCachedValue(profile) instanceof Float);
             assertEquals((float) getCachedValue(profile), value0, FLOAT_DELTA);
             assertThat(isGeneric(profile), is(false));
@@ -414,7 +414,7 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1, FLOAT_DELTA);
         assertEquals(result2, value2, FLOAT_DELTA);
 
-        if (PrimitiveValueProfile.exactCompare(value0, value1) && PrimitiveValueProfile.exactCompare(value1, value2)) {
+        if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
             assertTrue(getCachedValue(profile) instanceof Float);
             assertEquals((float) getCachedValue(profile), value0, FLOAT_DELTA);
             assertThat(isGeneric(profile), is(false));
@@ -443,7 +443,7 @@ public class PrimitiveValueProfileTest {
         assertEquals(result0, value0, DOUBLE_DELTA);
         assertEquals(result1, value1, DOUBLE_DELTA);
 
-        if (PrimitiveValueProfile.exactCompare(value0, value1)) {
+        if (exactCompare(value0, value1)) {
             assertTrue(getCachedValue(profile) instanceof Double);
             assertEquals((double) getCachedValue(profile), value0, DOUBLE_DELTA);
             assertThat(isGeneric(profile), is(false));
@@ -464,7 +464,7 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1, DOUBLE_DELTA);
         assertEquals(result2, value2, DOUBLE_DELTA);
 
-        if (PrimitiveValueProfile.exactCompare(value0, value1) && PrimitiveValueProfile.exactCompare(value1, value2)) {
+        if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
             assertTrue(getCachedValue(profile) instanceof Double);
             assertEquals((double) getCachedValue(profile), value0, DOUBLE_DELTA);
             assertThat(isGeneric(profile), is(false));
@@ -729,9 +729,9 @@ public class PrimitiveValueProfileTest {
         Object result1 = profile.profile((Object) value);
 
         assertTrue(result0 instanceof Float);
-        assertTrue(PrimitiveValueProfile.exactCompare((float) result0, value));
+        assertTrue(exactCompare((float) result0, value));
         assertTrue(result1 instanceof Float);
-        assertTrue(PrimitiveValueProfile.exactCompare((float) result1, value));
+        assertTrue(exactCompare((float) result1, value));
         assertFalse(isUninitialized(profile));
         assertFalse(isGeneric(profile));
     }
@@ -741,9 +741,9 @@ public class PrimitiveValueProfileTest {
         float result0 = profile.profile(value);
         Object result1 = profile.profile((Object) value);
 
-        assertTrue(PrimitiveValueProfile.exactCompare(result0, value));
+        assertTrue(exactCompare(result0, value));
         assertTrue(result1 instanceof Float);
-        assertTrue(PrimitiveValueProfile.exactCompare((float) result1, value));
+        assertTrue(exactCompare((float) result1, value));
         assertFalse(isUninitialized(profile));
         assertFalse(isGeneric(profile));
     }
@@ -754,8 +754,8 @@ public class PrimitiveValueProfileTest {
         float result1 = profile.profile(value);
 
         assertTrue(result0 instanceof Float);
-        assertTrue(PrimitiveValueProfile.exactCompare((float) result0, value));
-        assertTrue(PrimitiveValueProfile.exactCompare(result1, value));
+        assertTrue(exactCompare((float) result0, value));
+        assertTrue(exactCompare(result1, value));
         assertFalse(isUninitialized(profile));
         assertFalse(isGeneric(profile));
     }
@@ -766,9 +766,9 @@ public class PrimitiveValueProfileTest {
         Object result1 = profile.profile((Object) value);
 
         assertTrue(result0 instanceof Double);
-        assertTrue(PrimitiveValueProfile.exactCompare((double) result0, value));
+        assertTrue(exactCompare((double) result0, value));
         assertTrue(result1 instanceof Double);
-        assertTrue(PrimitiveValueProfile.exactCompare((double) result1, value));
+        assertTrue(exactCompare((double) result1, value));
         assertFalse(isUninitialized(profile));
         assertFalse(isGeneric(profile));
     }
@@ -778,9 +778,9 @@ public class PrimitiveValueProfileTest {
         double result0 = profile.profile(value);
         Object result1 = profile.profile((Object) value);
 
-        assertTrue(PrimitiveValueProfile.exactCompare(result0, value));
+        assertTrue(exactCompare(result0, value));
         assertTrue(result1 instanceof Double);
-        assertTrue(PrimitiveValueProfile.exactCompare((double) result1, value));
+        assertTrue(exactCompare((double) result1, value));
         assertFalse(isUninitialized(profile));
         assertFalse(isGeneric(profile));
     }
@@ -791,8 +791,8 @@ public class PrimitiveValueProfileTest {
         double result1 = profile.profile(value);
 
         assertTrue(result0 instanceof Double);
-        assertTrue(PrimitiveValueProfile.exactCompare((double) result0, value));
-        assertTrue(PrimitiveValueProfile.exactCompare(result1, value));
+        assertTrue(exactCompare((double) result0, value));
+        assertTrue(exactCompare(result1, value));
         assertFalse(isUninitialized(profile));
         assertFalse(isGeneric(profile));
     }
@@ -930,7 +930,7 @@ public class PrimitiveValueProfileTest {
         float result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
-        assertTrue(PrimitiveValueProfile.exactCompare(result0, value0));
+        assertTrue(exactCompare(result0, value0));
         assertSame(result1, value1);
         assertFalse(isUninitialized(profile));
         assertTrue(isGeneric(profile));
@@ -943,7 +943,7 @@ public class PrimitiveValueProfileTest {
         double result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
-        assertTrue(PrimitiveValueProfile.exactCompare(result0, value0));
+        assertTrue(exactCompare(result0, value0));
         assertSame(result1, value1);
         assertFalse(isUninitialized(profile));
         assertTrue(isGeneric(profile));
@@ -1002,6 +1002,22 @@ public class PrimitiveValueProfileTest {
         assertThat(p.profile(T1), is(T1));
         assertThat(p.profile(C1), is(C1));
         p.toString(); // test that it is not crashing
+    }
+
+    static boolean exactCompare(float a, float b) {
+        /*
+         * -0.0 == 0.0, but you can tell the difference through other means, so we need to
+         * differentiate.
+         */
+        return Float.floatToRawIntBits(a) == Float.floatToRawIntBits(b);
+    }
+
+    static boolean exactCompare(double a, double b) {
+        /*
+         * -0.0 == 0.0, but you can tell the difference through other means, so we need to
+         * differentiate.
+         */
+        return Double.doubleToRawLongBits(a) == Double.doubleToRawLongBits(b);
     }
 
 }
