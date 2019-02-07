@@ -68,10 +68,6 @@ public abstract class DynamicDispatchLibrary extends Library {
         return null;
     }
 
-    public static LibraryFactory<DynamicDispatchLibrary> getFactory() {
-        return Lazy.FACTORY;
-    }
-
     /**
      * Cast the object receiver type to the dispatched type. This is not supposed to be implemented
      * by dynamic dispatch implementer but is automatically implemented when implementing dynamic
@@ -81,38 +77,35 @@ public abstract class DynamicDispatchLibrary extends Library {
      * @return
      */
     /*
-     * This message is known by the annotation processor directly.
+     * Implementation Note: This message is known by the annotation processor directly. No need to
+     * export it as a library message. It is also not allowed to be implemented directly by the
+     * dynamic dispatch implementer.
      */
     public abstract Object cast(Object receiver);
 
-    /*
-     * This indirection is needed to avoid cyclic class initialization. The enclosing class needs to
-     * be loaded before Dispatch.resolve can be used.
-     */
-    static final class Lazy {
+    static final LibraryFactory<DynamicDispatchLibrary> FACTORY = LibraryFactory.resolve(DynamicDispatchLibrary.class);
 
-        private Lazy() {
-            /* No instances */
-        }
-
-        static final LibraryFactory<DynamicDispatchLibrary> FACTORY = LibraryFactory.resolve(DynamicDispatchLibrary.class);
-
+    public static LibraryFactory<DynamicDispatchLibrary> getFactory() {
+        return FACTORY;
     }
+
 }
 
 // CheckStyle: start generated
 @GeneratedBy(DynamicDispatchLibrary.class)
 final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibrary> {
 
+    private static final Class<DynamicDispatchLibrary> LIBRARY_CLASS = DynamicDispatchLibraryGen.lazyLibraryClass();
+    private static final Message DISPATCH = new MessageImpl("dispatch", 0, Class.class, Object.class);
     private static final DynamicDispatchLibraryGen INSTANCE = new DynamicDispatchLibraryGen();
 
     static {
-        LibraryFactory.register(DynamicDispatchLibrary.class, INSTANCE);
-        LibraryExport.register(DynamicDispatchLibrary.class, new Default());
+        LibraryExport.register(DynamicDispatchLibraryGen.LIBRARY_CLASS, new Default());
+        LibraryFactory.register(DynamicDispatchLibraryGen.LIBRARY_CLASS, INSTANCE);
     }
 
     private DynamicDispatchLibraryGen() {
-        super(DynamicDispatchLibrary.class, Collections.unmodifiableList(Arrays.asList(Proxy.DISPATCH)), new UncachedDispatch());
+        super(DynamicDispatchLibraryGen.LIBRARY_CLASS, Collections.unmodifiableList(Arrays.asList(DynamicDispatchLibraryGen.DISPATCH)));
     }
 
     @Override
@@ -144,6 +137,20 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
     @Override
     protected DynamicDispatchLibrary createDispatchImpl(int limit) {
         return new CachedDispatchFirst(null, null, limit);
+    }
+
+    @Override
+    protected DynamicDispatchLibrary createUncachedDispatch() {
+        return new UncachedDispatch();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Class<DynamicDispatchLibrary> lazyLibraryClass() {
+        try {
+            return (Class<DynamicDispatchLibrary>) Class.forName("com.oracle.truffle.api.library.DynamicDispatchLibrary", false, DynamicDispatchLibraryGen.class.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @GeneratedBy(DynamicDispatchLibrary.class)
@@ -240,7 +247,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
         final int index;
 
         MessageImpl(String name, int index, Class<?> returnType, Class<?>... parameters) {
-            super(DynamicDispatchLibrary.class, name, returnType, parameters);
+            super(DynamicDispatchLibraryGen.LIBRARY_CLASS, name, returnType, parameters);
             this.index = index;
         }
 
@@ -248,8 +255,6 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
 
     @GeneratedBy(DynamicDispatchLibrary.class)
     private static final class Proxy extends DynamicDispatchLibrary {
-
-        private static final Message DISPATCH = new MessageImpl("dispatch", 0, Class.class, Object.class);
 
         @Child private ReflectionLibrary lib;
 
@@ -266,7 +271,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
         @Override
         public Class<?> dispatch(Object receiver_) {
             try {
-                return (Class<?>) lib.send(receiver_, Proxy.DISPATCH);
+                return (Class<?>) lib.send(receiver_, DynamicDispatchLibraryGen.DISPATCH);
             } catch (RuntimeException e_) {
                 throw e_;
             } catch (Exception e_) {

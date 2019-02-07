@@ -173,7 +173,7 @@ public abstract class Message {
         return libraryClass;
     }
 
-    final LibraryFactory<?> getFactory() {
+    public final LibraryFactory<?> getFactory() {
         return library;
     }
 

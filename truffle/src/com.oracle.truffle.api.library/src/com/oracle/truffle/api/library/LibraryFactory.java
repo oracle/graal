@@ -48,6 +48,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GeneratedBy;
@@ -74,12 +75,12 @@ public abstract class LibraryFactory<T extends Library> {
     private final ConcurrentHashMap<Class<?>, T> cachedCache = new ConcurrentHashMap<>();
     private final ProxyExports proxyExports = new ProxyExports();
     final Map<String, Message> nameToMessages;
-    private final T uncachedDispatch;
+    @CompilationFinal private T uncachedDispatch;
 
     final DynamicDispatchLibrary dispatchLibrary;
 
     @SuppressWarnings("unchecked")
-    protected LibraryFactory(Class<T> libraryClass, List<Message> messages, T uncachedDispatch) {
+    protected LibraryFactory(Class<T> libraryClass, List<Message> messages) {
         assert this.getClass().getName().endsWith(LibraryExport.GENERATED_CLASS_SUFFIX);
         assert this.getClass().getAnnotation(GeneratedBy.class) != null;
         assert this.getClass().getAnnotation(GeneratedBy.class).value() == libraryClass;
@@ -92,12 +93,16 @@ public abstract class LibraryFactory<T extends Library> {
             messagesMap.put(message.getSimpleName(), message);
         }
         this.nameToMessages = messagesMap;
-        this.uncachedDispatch = uncachedDispatch;
-
         if (libraryClass == DynamicDispatchLibrary.class) {
             this.dispatchLibrary = null;
         } else {
             this.dispatchLibrary = LibraryFactory.resolve(DynamicDispatchLibrary.class).getUncached();
+        }
+    }
+
+    final void ensureInitialized() {
+        if (this.uncachedDispatch == null) {
+            this.uncachedDispatch = createUncachedDispatch();
         }
     }
 
@@ -212,6 +217,8 @@ public abstract class LibraryFactory<T extends Library> {
      * @since 1.0
      */
     protected abstract T createDispatchImpl(int limit);
+
+    protected abstract T createUncachedDispatch();
 
     /**
      * Creates a proxy version of this library. An implementation for this method is generated, do
@@ -332,6 +339,8 @@ public abstract class LibraryFactory<T extends Library> {
                 if (isLibrary) {
                     throw new AssertionError("Recursive initialization detected. Library cannot use itself in a static initializer.");
                 }
+            } else {
+                lib.ensureInitialized();
             }
             return lib;
         }

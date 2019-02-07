@@ -52,7 +52,7 @@ import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
-import com.oracle.truffle.api.library.ReflectionLibraryDefault.SendNode;
+import com.oracle.truffle.api.library.ReflectionLibraryDefault.Send;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
@@ -69,22 +69,14 @@ public abstract class ReflectionLibrary extends Library {
     @Abstract
     public abstract Object send(Object receiver, Message message, Object... args) throws Exception;
 
+    static final LibraryFactory<ReflectionLibrary> FACTORY = LibraryFactory.resolve(ReflectionLibrary.class);
+
     public static LibraryFactory<ReflectionLibrary> getFactory() {
-        return Lazy.RESOLVED_LIBRARY;
+        return FACTORY;
     }
 
-    /*
-     * This indirection is needed to avoid cyclic class initialization. The enclosing class needs to
-     * be loaded before ResolvedLibrary.resolve can be used.
-     */
-    static final class Lazy {
-
-        private Lazy() {
-            /* No instances */
-        }
-
-        static final LibraryFactory<ReflectionLibrary> RESOLVED_LIBRARY = LibraryFactory.resolve(ReflectionLibrary.class);
-
+    public static ReflectionLibrary getUncached() {
+        return FACTORY.getUncached();
     }
 
 }
@@ -95,12 +87,12 @@ final class ReflectionLibraryDefault {
     static final int LIMIT = 8;
 
     @ExportMessage
-    static class SendNode extends Node {
+    static class Send {
 
         @Specialization(guards = {"message == cachedMessage", "cachedLibrary.accepts(receiver)"}, limit = "LIMIT")
         static Object doSendCached(Object receiver, Message message, Object[] args,
                         @Cached("message") Message cachedMessage,
-                        @Cached("message.getResolvedLibrary().createCached(receiver)") Library cachedLibrary) throws Exception {
+                        @Cached("message.getFactory().create(receiver)") Library cachedLibrary) throws Exception {
             return message.getFactory().genericDispatch(cachedLibrary, receiver, cachedMessage, args, 0);
         }
 
@@ -113,8 +105,8 @@ final class ReflectionLibraryDefault {
     }
 
 }
-// CheckStyle: start generated
 
+// CheckStyle: start generated
 @GeneratedBy(ReflectionLibraryDefault.class)
 final class ReflectionLibraryDefaultGen {
 
@@ -177,13 +169,13 @@ final class ReflectionLibraryDefaultGen {
                         SendCachedData s1_ = this.sendCached_cache;
                         while (s1_ != null) {
                             if ((arg1Value == s1_.cachedMessage_) && (s1_.cachedLibrary_.accepts(arg0Value))) {
-                                return SendNode.doSendCached(arg0Value, arg1Value, arg2Value, s1_.cachedMessage_, s1_.cachedLibrary_);
+                                return Send.doSendCached(arg0Value, arg1Value, arg2Value, s1_.cachedMessage_, s1_.cachedLibrary_);
                             }
                             s1_ = s1_.next_;
                         }
                     }
                     if ((state & 0b10) != 0 /* is-active doSendGeneric(Object, Message, Object[]) */) {
-                        return SendNode.doSendGeneric(arg0Value, arg1Value, arg2Value);
+                        return Send.doSendGeneric(arg0Value, arg1Value, arg2Value);
                     }
                 }
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -233,7 +225,7 @@ final class ReflectionLibraryDefaultGen {
                         if (s1_ != null) {
                             lock.unlock();
                             hasLock = false;
-                            return SendNode.doSendCached(arg0Value, arg1Value, arg2Value, s1_.cachedMessage_, s1_.cachedLibrary_);
+                            return Send.doSendCached(arg0Value, arg1Value, arg2Value, s1_.cachedMessage_, s1_.cachedLibrary_);
                         }
                     }
                     this.exclude_ = exclude = exclude | 0b1 /*
@@ -251,7 +243,7 @@ final class ReflectionLibraryDefaultGen {
                                                         */;
                     lock.unlock();
                     hasLock = false;
-                    return SendNode.doSendGeneric(arg0Value, arg1Value, arg2Value);
+                    return Send.doSendGeneric(arg0Value, arg1Value, arg2Value);
                 } finally {
                     if (hasLock) {
                         lock.unlock();
@@ -319,7 +311,7 @@ final class ReflectionLibraryDefaultGen {
             @TruffleBoundary
             @Override
             public Object send(Object arg0Value, Message arg1Value, Object... arg2Value) throws Exception {
-                return SendNode.doSendGeneric(arg0Value, arg1Value, arg2Value);
+                return Send.doSendGeneric(arg0Value, arg1Value, arg2Value);
             }
 
         }
@@ -329,14 +321,16 @@ final class ReflectionLibraryDefaultGen {
 @GeneratedBy(ReflectionLibrary.class)
 final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
 
+    private static final Class<ReflectionLibrary> LIBRARY_CLASS = ReflectionLibraryGen.lazyLibraryClass();
+    private static final Message SEND = new MessageImpl("send", 0, Object.class, Object.class, Message.class, Object[].class);
     private static final ReflectionLibraryGen INSTANCE = new ReflectionLibraryGen();
 
     static {
-        LibraryFactory.register(ReflectionLibrary.class, INSTANCE);
+        LibraryFactory.register(ReflectionLibraryGen.LIBRARY_CLASS, INSTANCE);
     }
 
     private ReflectionLibraryGen() {
-        super(ReflectionLibrary.class, Collections.unmodifiableList(Arrays.asList(Proxy.SEND)), new UncachedDispatch());
+        super(ReflectionLibraryGen.LIBRARY_CLASS, Collections.unmodifiableList(Arrays.asList(ReflectionLibraryGen.SEND)));
     }
 
     @Override
@@ -370,13 +364,28 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
         return new CachedDispatchFirst(null, null, limit);
     }
 
+    @Override
+    protected ReflectionLibrary createUncachedDispatch() {
+        return new UncachedDispatch();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Class<ReflectionLibrary> lazyLibraryClass() {
+        try {
+            return (Class<ReflectionLibrary>) Class.forName("com.oracle.truffle.api.library.ReflectionLibrary", false,
+                            ReflectionLibraryGen.class.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     @GeneratedBy(ReflectionLibrary.class)
     private static class MessageImpl extends Message {
 
         final int index;
 
         MessageImpl(String name, int index, Class<?> returnType, Class<?>... parameters) {
-            super(ReflectionLibrary.class, name, returnType, parameters);
+            super(ReflectionLibraryGen.LIBRARY_CLASS, name, returnType, parameters);
             this.index = index;
         }
 
@@ -384,8 +393,6 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
 
     @GeneratedBy(ReflectionLibrary.class)
     private static final class Proxy extends ReflectionLibrary {
-
-        private static final Message SEND = new MessageImpl("send", 0, Object.class, Object.class, Message.class, Object[].class);
 
         @Child private ReflectionLibrary lib;
 
@@ -396,7 +403,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
         @Override
         public Object send(Object receiver_, Message message, Object... args) throws Exception {
             try {
-                return lib.send(receiver_, Proxy.SEND, message, args);
+                return lib.send(receiver_, ReflectionLibraryGen.SEND, message, args);
             } catch (Exception e_) {
                 throw e_;
             }

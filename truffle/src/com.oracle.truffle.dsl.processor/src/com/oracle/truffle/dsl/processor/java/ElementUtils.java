@@ -610,6 +610,32 @@ public class ElementUtils {
         return name;
     }
 
+    public static String getClassQualifiedName(TypeElement e) {
+        StringBuilder b = new StringBuilder();
+        buildClassQualifiedNameImpl(e, b);
+        return b.toString();
+    }
+
+    private static void buildClassQualifiedNameImpl(Element e, StringBuilder classNames) {
+        if (e == null) {
+            return;
+        } else if (e.getKind() == ElementKind.PACKAGE) {
+            String packageName = getPackageName(e);
+            if (packageName != null) {
+                classNames.append(packageName);
+            }
+        } else {
+            Element enclosingElement = e.getEnclosingElement();
+            buildClassQualifiedNameImpl(enclosingElement, classNames);
+            if (enclosingElement.getKind().isClass()) {
+                classNames.append("$");
+            } else {
+                classNames.append(".");
+            }
+            classNames.append(e.getSimpleName().toString());
+        }
+    }
+
     public static String getQualifiedName(TypeElement element) {
         String qualifiedName = element.getQualifiedName().toString();
         if (qualifiedName.contains("$")) {
