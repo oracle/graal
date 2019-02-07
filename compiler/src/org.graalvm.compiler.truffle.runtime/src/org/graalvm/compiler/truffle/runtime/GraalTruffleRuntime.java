@@ -42,7 +42,6 @@ import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
@@ -825,11 +824,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
         }
 
-    }
-
-    @Deprecated
-    public Collection<OptimizedCallTarget> getQueuedCallTargets() {
-        return Collections.emptyList();
     }
 
     public int getCompilationQueueSize() {
