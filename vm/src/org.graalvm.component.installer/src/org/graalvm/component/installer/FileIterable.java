@@ -114,6 +114,11 @@ public class FileIterable implements ComponentIterable {
         }
 
         @Override
+        public MetadataLoader completeMetadata() throws IOException {
+            return createMetaLoader();
+        }
+
+        @Override
         public void close() throws IOException {
             if (loader != null) {
                 loader.close();

@@ -399,16 +399,6 @@ public class TestBase implements Feedback {
         return new WB(clazz);
     }
 
-    @Override
-    public String translateFilename(Path f) {
-        return f.toString();
-    }
-
-    @Override
-    public void bindFilename(Path file, String label) {
-
-    }
-
     class WB implements Feedback {
         ResourceBundle localBundle;
 
@@ -481,16 +471,6 @@ public class TestBase implements Feedback {
         }
 
         @Override
-        public String translateFilename(Path f) {
-            return TestBase.this.translateFilename(f);
-        }
-
-        @Override
-        public void bindFilename(Path file, String label) {
-            TestBase.this.bindFilename(file, label);
-        }
-
-        @Override
         public String acceptLine(boolean autoYes) {
             return TestBase.this.acceptLine(autoYes);
         }
@@ -498,6 +478,16 @@ public class TestBase implements Feedback {
         @Override
         public String acceptPassword() {
             return TestBase.this.acceptPassword();
+        }
+
+        @Override
+        public void addLocalFileCache(URL location, Path local) {
+            TestBase.this.addLocalFileCache(location, local);
+        }
+
+        @Override
+        public Path getLocalCache(URL location) {
+            return TestBase.this.getLocalCache(location);
         }
     }
 
@@ -560,15 +550,6 @@ public class TestBase implements Feedback {
             return verbose;
         }
 
-        @Override
-        public String translateFilename(Path f) {
-            return f.toString();
-        }
-
-        @Override
-        public void bindFilename(Path file, String label) {
-        }
-
         protected String reallyl10n(String k, Object... params) {
             return TestBase.this.reallyl10n(getBundle(), k, params);
         }
@@ -596,6 +577,17 @@ public class TestBase implements Feedback {
         public String acceptPassword() {
             return TestBase.this.doAcceptPassword();
         }
+
+        @Override
+        public void addLocalFileCache(URL location, Path local) {
+            TestBase.this.addLocalFileCache(location, local);
+        }
+
+        @Override
+        public Path getLocalCache(URL location) {
+            return TestBase.this.getLocalCache(location);
+        }
+
     }
 
     public static boolean isWindows() {
@@ -638,5 +630,15 @@ public class TestBase implements Feedback {
 
     String doAcceptPassword() {
         return password;
+    }
+
+    @Override
+    public void addLocalFileCache(URL location, Path local) {
+
+    }
+
+    @Override
+    public Path getLocalCache(URL location) {
+        return null;
     }
 }

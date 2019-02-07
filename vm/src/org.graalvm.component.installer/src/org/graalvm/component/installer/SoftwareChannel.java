@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
+import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
@@ -66,6 +67,16 @@ public interface SoftwareChannel {
     ComponentRegistry getRegistry();
 
     /**
+     * Creates a MetadataLoader with full metadata. This may require download of the actual
+     * component
+     * 
+     * @param info ComponentInfo to complete
+     * @param ldr metadata loader for the component
+     * @return MetadataLoader that provides full component info.
+     */
+    MetadataLoader completeMetadata(MetadataLoader ldr, ComponentInfo info) throws IOException;
+
+    /**
      * Configures the downloader with specific options. The downloader may be even replaced with a
      * different instance.
      * 
@@ -80,7 +91,7 @@ public interface SoftwareChannel {
      * @param localFile the local file.
      * @return
      */
-    MetadataLoader createLocalFileLoader(Path localFile) throws IOException;
+    MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException;
 
     /**
      * Adds options to the set of global options. Global options allow to accept specific options

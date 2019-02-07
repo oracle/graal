@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer;
 
+import java.net.URL;
 import java.nio.file.Path;
 
 /**
@@ -134,10 +135,6 @@ public interface Feedback {
 
     boolean backspace(int chars, boolean beVerbose);
 
-    String translateFilename(Path f);
-
-    void bindFilename(Path file, String label);
-
     /**
      * Waits for user input confirmed by ENTER.
      * 
@@ -152,4 +149,22 @@ public interface Feedback {
      * @return password
      */
     String acceptPassword();
+
+    /**
+     * Provides a cache for remote files. The URL contents should be downloaded and stored to the
+     * `local` file. The file should be marked with {@link java.io.File#deleteOnExit()}.
+     * 
+     * @param location remote location
+     * @param local locally cached content
+     */
+    void addLocalFileCache(URL location, Path local);
+
+    /**
+     * Returns a local cache for the location. Returns {@code null}, if the content is not locally
+     * available.
+     * 
+     * @param location the remote location
+     * @return locally stored content or {@code null}.
+     */
+    Path getLocalCache(URL location);
 }

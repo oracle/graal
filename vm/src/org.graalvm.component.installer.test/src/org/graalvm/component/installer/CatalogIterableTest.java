@@ -303,8 +303,8 @@ public class CatalogIterableTest extends CommandTestBase implements SoftwareChan
     }
 
     @Override
-    public MetadataLoader createLocalFileLoader(Path localFile) throws IOException {
-        return new JarMetaLoader(new JarFile(localFile.toFile()), this);
+    public MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException {
+        return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
     }
 
     @Override

@@ -142,7 +142,13 @@ public class CatalogIterable implements ComponentIterable {
 
         @Override
         protected MetadataLoader metadataFromLocal(Path localFile) throws IOException {
-            return channel.createLocalFileLoader(localFile);
+            return channel.createLocalFileLoader(localFile, isVerifyJars());
+        }
+
+        @Override
+        public MetadataLoader completeMetadata() throws IOException {
+            MetadataLoader ldr = createMetaLoader();
+            return channel.completeMetadata(ldr, ldr.getComponentInfo());
         }
     }
 }

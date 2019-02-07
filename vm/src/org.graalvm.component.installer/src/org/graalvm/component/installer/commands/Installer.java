@@ -30,6 +30,7 @@ import java.nio.channels.ByteChannel;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
@@ -114,6 +115,9 @@ public class Installer extends AbstractInstaller {
         Path rel;
         if (BundleConstants.PATH_LICENSE.equals(n)) {
             rel = getLicenseRelativePath();
+            if (rel == null) {
+                rel = Paths.get(n);
+            }
         } else {
             rel = SystemUtils.fromCommonString(n);
         }

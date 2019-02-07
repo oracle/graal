@@ -26,19 +26,13 @@ package org.graalvm.component.installer.remote;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.ConnectException;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -47,12 +41,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.URLConnectionFactory;
 
 /**
  * Downloads file to local, optionally checks its integrity using digest.
@@ -80,6 +71,8 @@ public final class FileDownloader {
     private int connectDelay = DEFAULT_CONNECT_DELAY;
     long sizeThreshold = MIN_PROGRESS_THRESHOLD;
     private Map<String, String> requestHeaders = new HashMap<>();
+    private Consumer<SeekableByteChannel> dataInterceptor;
+    private URLConnectionFactory connectionFactory;
 
     /**
      * Algorithm to compute file digest. By default SHA-256 is used.
@@ -256,103 +249,15 @@ public final class FileDownloader {
         }
     }
 
-    private URLConnection openConnectionWithProxies(URL url) throws IOException {
-        final URLConnection[] conn = {null};
-        final CountDownLatch connected = new CountDownLatch(1);
-        ExecutorService connectors = Executors.newFixedThreadPool(3);
-        AtomicReference<IOException> ex3 = new AtomicReference<>();
-        AtomicReference<IOException> ex2 = new AtomicReference<>();
-        String httpProxy;
-        String httpsProxy;
-
-        synchronized (this) {
-            httpProxy = envHttpProxy;
-            httpsProxy = envHttpsProxy;
+    protected void dataDownloaded(SeekableByteChannel ch) {
+        if (dataInterceptor != null) {
+            dataInterceptor.accept(ch);
         }
+    }
 
-        class Connector implements Runnable {
-            private final String proxySpec;
-            private final boolean directConnect;
-
-            Connector() {
-                directConnect = true;
-                proxySpec = null;
-            }
-
-            Connector(String proxySpec) {
-                this.proxySpec = proxySpec;
-                this.directConnect = false;
-            }
-
-            @Override
-            public void run() {
-                final Proxy proxy;
-                if (directConnect) {
-                    proxy = null;
-                } else {
-                    if (proxySpec == null || proxySpec.isEmpty()) {
-                        return;
-                    }
-                    try {
-                        URI uri = new URI(httpsProxy);
-                        InetSocketAddress address = InetSocketAddress.createUnresolved(uri.getHost(), uri.getPort());
-                        proxy = new Proxy(Proxy.Type.HTTP, address);
-                    } catch (URISyntaxException ex) {
-                        return;
-                    }
-                }
-                try {
-                    URLConnection test = directConnect ? url.openConnection() : url.openConnection(proxy);
-                    configureHeaders(test);
-                    test.connect();
-                    if (test instanceof HttpURLConnection) {
-                        HttpURLConnection htest = (HttpURLConnection) test;
-                        int rcode = htest.getResponseCode();
-                        if (rcode >= 400) {
-                            // force the exception, should fail with IOException
-                            InputStream stm = test.getInputStream();
-                            try {
-                                stm.close();
-                            } catch (IOException ex) {
-                                // swallow, we want to report just proxy failed.
-                            }
-                            throw new IOException(feedback.l10n("EXC_ProxyFailed", rcode));
-                        }
-                    }
-                    conn[0] = test;
-                    connected.countDown();
-                } catch (IOException ex) {
-                    if (directConnect) {
-                        ex3.set(ex);
-                    } else {
-                        ex2.set(ex);
-                    }
-                }
-            }
-
-        }
-        connectors.submit(new Connector(httpProxy));
-        connectors.submit(new Connector(httpsProxy));
-        connectors.submit(new Connector());
-        try {
-            if (!connected.await(connectDelay, TimeUnit.SECONDS)) {
-                if (ex3.get() != null) {
-                    throw ex3.get();
-                }
-                throw new ConnectException(feedback.l10n("EXC_TimeoutConnectTo", url));
-            }
-            if (conn[0] == null) {
-                if (ex3.get() != null) {
-                    throw ex3.get();
-                } else if (ex2.get() != null) {
-                    throw ex2.get();
-                }
-                throw new ConnectException(feedback.l10n("EXC_CannotConnectTo", url));
-            }
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-        }
-        return conn[0];
+    public FileDownloader setDataInterceptor(Consumer<SeekableByteChannel> interceptor) {
+        this.dataInterceptor = interceptor;
+        return this;
     }
 
     public void download() throws IOException {
@@ -363,7 +268,14 @@ public final class FileDownloader {
         } else {
             feedback.output("MSG_DownloadingFrom", getSourceURL());
         }
-        URLConnection conn = openConnectionWithProxies(sourceURL);
+
+        Path localCache = feedback.getLocalCache(sourceURL);
+        if (localCache != null) {
+            localFile = localCache.toFile();
+            return;
+        }
+
+        URLConnection conn = getConnectionFactory().createConnection(sourceURL, this::configureHeaders);
         size = conn.getContentLengthLong();
         verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
         if (verbose) {
@@ -376,14 +288,11 @@ public final class FileDownloader {
         setupProgress();
         ByteBuffer bb = ByteBuffer.allocate(TRANSFER_LENGTH);
         localFile = deleteOnExit(File.createTempFile("download", "", createTempDir())); // NOI18N
-        if (fileDescription != null) {
-            feedback.bindFilename(localFile.toPath(), fileDescription);
-        }
         boolean first = displayProgress;
         boolean success = false;
         try (
                         ReadableByteChannel rbc = Channels.newChannel(conn.getInputStream());
-                        WritableByteChannel wbc = Files.newByteChannel(localFile.toPath(),
+                        SeekableByteChannel wbc = Files.newByteChannel(localFile.toPath(),
                                         StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
             int read;
             while ((read = rbc.read(bb)) >= 0) {
@@ -393,6 +302,9 @@ public final class FileDownloader {
                 bb.flip();
                 while (bb.hasRemaining()) {
                     wbc.write(bb);
+                    long pos = wbc.position();
+                    dataDownloaded(wbc);
+                    wbc.position(pos);
                 }
                 bb.flip();
                 updateFileDigest(bb);
@@ -401,6 +313,8 @@ public final class FileDownloader {
                 first = false;
             }
             success = true;
+        } catch (UncheckedIOException ex) {
+            throw ex.getCause();
         } catch (IOException ex) {
             // f.delete();
             throw ex;
@@ -408,5 +322,17 @@ public final class FileDownloader {
             stopProgress(success);
         }
         verifyDigest();
+        feedback.addLocalFileCache(sourceURL, localFile.toPath());
+    }
+
+    public void setConnectionFactory(URLConnectionFactory connFactory) {
+        this.connectionFactory = connFactory;
+    }
+
+    URLConnectionFactory getConnectionFactory() {
+        if (connectionFactory == null) {
+            connectionFactory = new ProxyConnectionFactory(feedback, sourceURL);
+        }
+        return connectionFactory;
     }
 }

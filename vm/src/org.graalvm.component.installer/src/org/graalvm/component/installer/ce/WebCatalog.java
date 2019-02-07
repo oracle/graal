@@ -48,6 +48,7 @@ import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
  *
@@ -152,8 +153,8 @@ public class WebCatalog implements SoftwareChannel {
     }
 
     @Override
-    public MetadataLoader createLocalFileLoader(Path localFile) throws IOException {
-        return new JarMetaLoader(new JarFile(localFile.toFile(), false), feedback);
+    public MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException {
+        return new JarMetaLoader(new JarFile(localFile.toFile(), verify), feedback);
     }
 
     @Override
@@ -161,4 +162,8 @@ public class WebCatalog implements SoftwareChannel {
         return dn;
     }
 
+    @Override
+    public MetadataLoader completeMetadata(MetadataLoader ldr, ComponentInfo info) {
+        return ldr;
+    }
 }

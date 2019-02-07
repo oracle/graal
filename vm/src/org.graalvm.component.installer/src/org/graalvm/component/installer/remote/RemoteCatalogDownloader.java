@@ -33,6 +33,7 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.model.ComponentInfo;
 
 public class RemoteCatalogDownloader implements SoftwareChannel {
     private final CommandInput input;
@@ -108,12 +109,17 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     }
 
     @Override
-    public MetadataLoader createLocalFileLoader(Path localFile) throws IOException {
-        return delegate.createLocalFileLoader(localFile);
+    public MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException {
+        return delegate.createLocalFileLoader(localFile, verify);
     }
 
     @Override
     public FileDownloader configureDownloader(FileDownloader dn) {
         return delegate.configureDownloader(dn);
+    }
+
+    @Override
+    public MetadataLoader completeMetadata(MetadataLoader ldr, ComponentInfo info) throws IOException {
+        return delegate.completeMetadata(ldr, info);
     }
 }

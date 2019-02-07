@@ -208,7 +208,12 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     }
 
     @Override
-    public MetadataLoader createLocalFileLoader(Path localFile) throws IOException {
-        return new JarMetaLoader(new JarFile(localFile.toFile()), this);
+    public MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException {
+        return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
+    }
+
+    @Override
+    public MetadataLoader completeMetadata(MetadataLoader ldr, ComponentInfo info) {
+        return ldr;
     }
 }

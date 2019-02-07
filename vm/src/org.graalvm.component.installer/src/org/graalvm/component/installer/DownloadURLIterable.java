@@ -89,6 +89,11 @@ public class DownloadURLIterable implements ComponentIterable {
             FileComponent fc = new FileComponent(localFile.toFile(), isVerifyJars(), getFeedback());
             return fc.createFileLoader();
         }
+
+        @Override
+        public MetadataLoader completeMetadata() throws IOException {
+            return createFileLoader();
+        }
     }
 
 }

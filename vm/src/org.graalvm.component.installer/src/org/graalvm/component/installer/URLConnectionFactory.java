@@ -23,8 +23,9 @@
  * questions.
  */
 
-package org.graalvm.component.installer.remote;
+package org.graalvm.component.installer;
 
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.function.Consumer;
@@ -34,5 +35,5 @@ import java.util.function.Consumer;
  * @author sdedic
  */
 public interface URLConnectionFactory {
-    URLConnection createConnection(URL u, Consumer<URLConnection> configCallback);
+    URLConnection createConnection(URL u, Consumer<URLConnection> configCallback) throws IOException;
 }

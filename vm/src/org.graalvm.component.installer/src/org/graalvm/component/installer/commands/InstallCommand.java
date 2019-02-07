@@ -142,7 +142,7 @@ public class InstallCommand implements InstallerCommand {
     void prepareInstallation() throws IOException {
         for (ComponentParam p : input.existingFiles()) {
 
-            feedback.output("INSTALL_VerboseProcessingArchive", /* feedback.translateFilename( */p.getDisplayName());
+            feedback.output("INSTALL_VerboseProcessingArchive", p.getDisplayName());
             current = p.getSpecification();
             MetadataLoader ldr = validateDownload ? p.createFileLoader() : p.createMetaLoader();
             Installer inst = createInstaller(p, ldr);
@@ -375,7 +375,7 @@ public class InstallCommand implements InstallerCommand {
         ComponentInfo partialInfo;
         partialInfo = ldr.getComponentInfo();
         feedback.verboseOutput("INSTALL_PrepareToInstall",
-                        /* feedback.translateFilename( */ p.getDisplayName(),
+                        p.getDisplayName(),
                         partialInfo.getId(),
                         partialInfo.getVersionString(),
                         partialInfo.getName());

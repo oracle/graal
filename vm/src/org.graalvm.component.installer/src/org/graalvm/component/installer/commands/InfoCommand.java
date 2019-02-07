@@ -138,7 +138,6 @@ public class InfoCommand extends QueryCommandBase {
                 } catch (ZipException ex) {
                     if (ignoreOpenErrors) {
                         feedback.error("INFO_ErrorOpeningBundle", ex,
-                                        // feedback.translateFilename(f.toPath()),
                                         cp.getDisplayName(),
                                         ex.getLocalizedMessage());
                     } else {
@@ -147,7 +146,6 @@ public class InfoCommand extends QueryCommandBase {
                 } catch (MetadataException ex) {
                     if (ignoreOpenErrors) {
                         feedback.error("INFO_CorruptedBundleMetadata", ex,
-                                        // feedback.translateFilename(f.toPath()),
                                         cp.getDisplayName(),
                                         ex.getOffendingHeader(),
                                         ex.getLocalizedMessage());
@@ -157,7 +155,6 @@ public class InfoCommand extends QueryCommandBase {
                 } catch (IOException ex) {
                     if (ignoreOpenErrors) {
                         feedback.error("INFO_ErrorReadingBundle", ex,
-                                        // feedback.translateFilename(f.toPath()),
                                         cp.getDisplayName(),
                                         ex.getLocalizedMessage());
                     } else {

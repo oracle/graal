@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.io.PrintStream;
+import java.net.URL;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.HashMap;
@@ -57,7 +58,7 @@ public final class Environment implements Feedback, CommandInput {
     private ComponentRegistry localRegistry;
     private boolean stacktraces;
     private Iterable<ComponentParam> fileIterable;
-    private Map<Path, String> fileMap = new HashMap<>();
+    private Map<URL, Path> fileMap = new HashMap<>();
     private boolean allOutputToErr;
 
     private Path graalHome;
@@ -306,16 +307,6 @@ public final class Environment implements Feedback, CommandInput {
             }
 
             @Override
-            public String translateFilename(Path f) {
-                return Environment.this.translateFilename(f);
-            }
-
-            @Override
-            public void bindFilename(Path file, String label) {
-                Environment.this.bindFilename(file, label);
-            }
-
-            @Override
             public String acceptLine(boolean autoYes) {
                 return Environment.this.acceptLine(autoYes);
             }
@@ -324,6 +315,17 @@ public final class Environment implements Feedback, CommandInput {
             public String acceptPassword() {
                 return Environment.this.acceptPassword();
             }
+
+            @Override
+            public void addLocalFileCache(URL location, Path local) {
+                Environment.this.addLocalFileCache(location, local);
+            }
+
+            @Override
+            public Path getLocalCache(URL location) {
+                return Environment.this.getLocalCache(location);
+            }
+
         };
     }
 
@@ -407,16 +409,6 @@ public final class Environment implements Feedback, CommandInput {
         return optValue(optName) != null;
     }
 
-    @Override
-    public String translateFilename(Path f) {
-        return fileMap.getOrDefault(f, f.toString());
-    }
-
-    @Override
-    public void bindFilename(Path file, String label) {
-        fileMap.put(file, label);
-    }
-
     public char acceptCharacter() {
         try {
             int input = in.read();
@@ -450,4 +442,15 @@ public final class Environment implements Feedback, CommandInput {
         System.console().flush();
         return String.copyValueOf(System.console().readPassword());
     }
+
+    @Override
+    public void addLocalFileCache(URL location, Path local) {
+        fileMap.put(location, local);
+    }
+
+    @Override
+    public Path getLocalCache(URL location) {
+        return fileMap.get(location);
+    }
+
 }
