@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #ifndef _WIN64
 #include <dlfcn.h>
+#else
+#include <windows.h>
 #endif
 #include "mydata.h"
 #include "libcinterfacetutorial.h"
@@ -90,8 +92,11 @@ long long getUB1(sudata_t *sudata) {
 	return sudata->f_ub1;
 }
 
+typedef void (*java_release_data_fn_t)(void *thread, my_data* data);
+
 int main(void) {
   my_data data;
+  java_release_data_fn_t java_release_data;
   day_of_the_week_t day;
   subdata_t *subdata;
   du_t *du1, *du2;
@@ -116,9 +121,11 @@ int main(void) {
 #ifndef RTLD_DEFAULT
 #define RTLD_DEFAULT 0
 #endif
-  void (*java_release_data)(void *thread, my_data* data) = dlsym(RTLD_DEFAULT, "java_release_data");
-  java_release_data(thread, &data);
+  java_release_data = dlsym(RTLD_DEFAULT, "java_release_data");
+#else
+  java_release_data = (java_release_data_fn_t) GetProcAddress(GetModuleHandleA("libcinterfacetutorial"), "java_release_data");
 #endif
+  java_release_data(thread, &data);
 
   /* Enum demo */
   day = SUNDAY;
