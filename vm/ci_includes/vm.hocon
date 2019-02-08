@@ -1,7 +1,8 @@
-vm_subdir: "vm"
-vm_env: "ce"
+vm_subdir: vm
+vm_env: ce
 vm_java: ${openjdk8}
-svm_suite: "/substratevm"
+svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr"
+libgraal_env: libgraal
 custom_vm_linux: {}
 custom_vm_darwin: {}
