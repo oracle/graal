@@ -1340,7 +1340,7 @@ public final class BytecodeNode extends EspressoRootNode {
             return value;
         }
         CompilerDirectives.transferToInterpreter();
-        throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArithmeticException.class, "/ by zero");
+        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArithmeticException.class, "/ by zero");
     }
 
     private static long checkNonZero(long value) {
@@ -1348,7 +1348,7 @@ public final class BytecodeNode extends EspressoRootNode {
             return value;
         }
         CompilerDirectives.transferToInterpreter();
-        throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArithmeticException.class, "/ by zero");
+        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArithmeticException.class, "/ by zero");
     }
 
     // endregion Misc. checks

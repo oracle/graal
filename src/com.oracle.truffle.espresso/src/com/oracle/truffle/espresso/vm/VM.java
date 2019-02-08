@@ -278,7 +278,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 System.arraycopy(src, srcPos, dest, destPos, length);
             }
         } catch (Exception e) {
-            throw getMeta().throwEx(e.getClass(), e.getMessage());
+            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -387,7 +387,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             MetaUtil.unwrap(self).notifyAll();
         } catch (IllegalMonitorStateException e) {
-            throw getMeta().throwEx(e.getClass(), e.getMessage());
+            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -401,7 +401,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             MetaUtil.unwrap(self).notify();
         } catch (IllegalMonitorStateException e) {
-            throw getMeta().throwEx(e.getClass(), e.getMessage());
+            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -415,7 +415,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             MetaUtil.unwrap(self).wait(timeout);
         } catch (InterruptedException | IllegalMonitorStateException | IllegalArgumentException e) {
-            throw getMeta().throwEx(e.getClass(), e.getMessage());
+            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -746,7 +746,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             return Array.getLength(MetaUtil.unwrap(array));
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw getMeta().throwEx(e.getClass(), e.getMessage());
+            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -848,11 +848,11 @@ public final class VM extends NativeEnv implements ContextAccess {
             return getInterpreterToVM().getArrayObject(index, array);
         }
         if (!array.getClass().isArray()) {
-            throw getMeta().throwEx(IllegalArgumentException.class, "Argument is not an array");
+            throw getMeta().throwExWithMessage(IllegalArgumentException.class, "Argument is not an array");
         }
         assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
         if (index < 0 || index >= JVM_GetArrayLength(array)) {
-            throw getMeta().throwEx(ArrayIndexOutOfBoundsException.class, "index");
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, "index");
         }
         Object elem = Array.get(array, index);
         return guestBox(elem);

@@ -54,7 +54,6 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class Meta implements ContextAccess {
 
-
     private final EspressoContext context;
 
     public Meta(EspressoContext context) {
@@ -136,6 +135,7 @@ public final class Meta implements ContextAccess {
         StackTraceElement = knownKlass(Type.StackTraceElement);
         StackTraceElement_init = StackTraceElement.lookupDeclaredMethod(Name.INIT, Signature._void_String_String_String_int);
 
+        InvocationTargetException = knownKlass(Type.InvocationTargetException);
         NegativeArraySizeException = knownKlass(Type.NegativeArraySizeException);
         IllegalArgumentException = knownKlass(Type.IllegalArgumentException);
         NullPointerException = knownKlass(Type.NullPointerException);
@@ -259,6 +259,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Field;
     public final Field Field_root;
 
+    public final ObjectKlass InvocationTargetException;
     public final ObjectKlass NegativeArraySizeException;
     public final ObjectKlass IllegalArgumentException;
     public final ObjectKlass NullPointerException;
@@ -313,14 +314,17 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
-    public static StaticObject initEx(ObjectKlass klass, String message) {
+    public static StaticObject initExWithMessage(ObjectKlass klass, String message) {
+        assert klass.getMeta().Throwable.isAssignableFrom(klass);
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
         klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, ex.getKlass().getMeta().toGuestString(message));
         return ex;
     }
 
-    public static StaticObject initEx(ObjectKlass klass, @Host(String.class) StaticObject message) {
+    public static StaticObject initExWithMessage(ObjectKlass klass, @Host(String.class) StaticObject message) {
+        assert klass.getMeta().Throwable.isAssignableFrom(klass);
+        assert klass.getMeta().String.isAssignableFrom(message.getKlass());
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
         klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, message);
@@ -328,13 +332,14 @@ public final class Meta implements ContextAccess {
     }
 
     public static StaticObject initEx(ObjectKlass klass) {
+        assert klass.getMeta().Throwable.isAssignableFrom(klass);
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
         klass.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(ex);
         return ex;
     }
 
-    public StaticObject initEx(java.lang.Class<?> clazz, String message) {
+    public StaticObject initExWithMessage(java.lang.Class<?> clazz, String message) {
         assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
@@ -342,34 +347,44 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
-    public StaticObject initEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
+    public StaticObject initExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.class.isAssignableFrom(clazz);
+        assert Throwable.isAssignableFrom(cause.getKlass());
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
         exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
     }
 
+    public EspressoException throwEx(ObjectKlass exKlass) {
+        assert Throwable.isAssignableFrom(exKlass);
+        throw new EspressoException(initEx(exKlass));
+    }
+
     public EspressoException throwEx(java.lang.Class<?> clazz) {
+        assert Throwable.class.isAssignableFrom(clazz);
         throw new EspressoException(initEx(clazz));
     }
 
-    public EspressoException throwEx(java.lang.Class<?> clazz, String message) {
-        throw new EspressoException(initEx(clazz, message));
+    public EspressoException throwExWithMessage(java.lang.Class<?> clazz, String message) {
+        throw new EspressoException(initExWithMessage(clazz, message));
     }
 
-    public EspressoException throwEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
+    public EspressoException throwExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
+        assert Throwable.class.isAssignableFrom(clazz);
         assert Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initEx(clazz, cause));
+        throw new EspressoException(initExWithCause(clazz, cause));
     }
 
-    public EspressoException throwEx(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
+    public EspressoException throwExWithMessage(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
         assert Throwable.isAssignableFrom(exKlass);
-        throw new EspressoException(initEx(exKlass, message));
+        assert String.isAssignableFrom(message.getKlass());
+        throw new EspressoException(initExWithMessage(exKlass, message));
     }
 
-    public EspressoException throwEx(ObjectKlass exKlass) {
+    public EspressoException throwExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.isAssignableFrom(exKlass);
+        assert Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initEx(exKlass));
     }
 

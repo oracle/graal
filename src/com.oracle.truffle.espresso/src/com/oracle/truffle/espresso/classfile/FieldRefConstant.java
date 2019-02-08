@@ -115,12 +115,12 @@ public interface FieldRefConstant extends MemberRefConstant {
             Field field = lookupField(holderKlass, name, type);
             if (field == null) {
                 Meta meta = pool.getContext().getMeta();
-                throw meta.throwEx(meta.NoSuchFieldError, meta.toGuestString(name));
+                throw meta.throwExWithMessage(meta.NoSuchFieldError, meta.toGuestString(name));
             }
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, field)) {
                 Meta meta = pool.getContext().getMeta();
-                throw meta.throwEx(meta.IllegalAccessError, meta.toGuestString(name));
+                throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(name));
             }
 
             return new Resolved(field);

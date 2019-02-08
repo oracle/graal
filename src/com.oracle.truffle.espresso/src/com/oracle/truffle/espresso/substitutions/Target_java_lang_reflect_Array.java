@@ -141,7 +141,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getBoolean(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -153,7 +153,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getByte(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -165,7 +165,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getChar(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -177,7 +177,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getShort(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -189,7 +189,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getInt(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -201,7 +201,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getFloat(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -213,7 +213,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getDouble(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -225,7 +225,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getLong(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -234,7 +234,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setBoolean(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -243,7 +243,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setByte(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -252,7 +252,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setChar(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -261,7 +261,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setShort(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -270,7 +270,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setInt(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -279,7 +279,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setFloat(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -288,7 +288,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setDouble(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -297,7 +297,7 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setLong(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 

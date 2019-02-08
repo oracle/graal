@@ -53,7 +53,7 @@ public final class Target_java_lang_System {
                 System.arraycopy(src, srcPos, dest, destPos, length);
             }
         } catch (Exception e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 }

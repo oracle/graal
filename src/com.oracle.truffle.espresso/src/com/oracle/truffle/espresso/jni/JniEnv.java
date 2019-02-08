@@ -515,7 +515,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         }
         if (field == null) {
-            throw getMeta().throwEx(getMeta().NoSuchFieldError, getMeta().toGuestString(name));
+            throw getMeta().throwExWithMessage(getMeta().NoSuchFieldError, getMeta().toGuestString(name));
         }
         assert !field.isStatic();
         return fieldIds.handlify(field);
@@ -555,7 +555,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         }
         if (field == null || !field.isStatic()) {
-            throw getMeta().throwEx(getMeta().NoSuchFieldError, getMeta().toGuestString(name));
+            throw getMeta().throwExWithMessage(getMeta().NoSuchFieldError, getMeta().toGuestString(name));
         }
         return fieldIds.handlify(field);
     }
@@ -597,7 +597,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         }
         if (method == null || method.isStatic()) {
-            throw getMeta().throwEx(getMeta().NoSuchMethodError, getMeta().toGuestString(name));
+            throw getMeta().throwExWithMessage(getMeta().NoSuchMethodError, getMeta().toGuestString(name));
         }
         return methodIds.handlify(method);
     }
@@ -635,7 +635,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             }
         }
         if (method == null || !method.isStatic()) {
-            throw getMeta().throwEx(getMeta().NoSuchMethodError, getMeta().toGuestString(name));
+            throw getMeta().throwExWithMessage(getMeta().NoSuchMethodError, getMeta().toGuestString(name));
         }
         return methodIds.handlify(method);
     }
@@ -1466,7 +1466,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public int ThrowNew(@Host(Class.class) StaticObject clazz, String message) {
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
-        throw getMeta().throwEx((ObjectKlass) ((StaticObjectClass) clazz).getMirrorKlass(), getMeta().toGuestString(message));
+        throw getMeta().throwExWithMessage((ObjectKlass) ((StaticObjectClass) clazz).getMirrorKlass(), getMeta().toGuestString(message));
     }
 
     /**

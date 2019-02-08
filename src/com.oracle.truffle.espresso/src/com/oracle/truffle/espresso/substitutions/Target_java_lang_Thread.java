@@ -100,7 +100,7 @@ public final class Target_java_lang_Thread {
             Thread.sleep(millis);
         } catch (InterruptedException | IllegalArgumentException e) {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwEx(e.getClass(), e.getMessage());
+            throw meta.throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 }

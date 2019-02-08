@@ -133,7 +133,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
             Meta meta = context.getMeta();
             if (!holderInterface.isInterface()) {
-                throw meta.throwEx(meta.IncompatibleClassChangeError, meta.toGuestString(name));
+                throw meta.throwExWithMessage(meta.IncompatibleClassChangeError, meta.toGuestString(name));
             }
 
             Symbol<Signature> signature = getSignature(pool);
@@ -152,11 +152,11 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
             }
 
             if (method == null) {
-                throw meta.throwEx(meta.NoSuchMethodError, meta.toGuestString(name));
+                throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString(name));
             }
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderInterface, method)) {
-                throw meta.throwEx(meta.IllegalAccessError, meta.toGuestString(name));
+                throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(name));
             }
 
             return new Resolved(method);

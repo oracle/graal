@@ -213,7 +213,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Meta meta = context.getMeta();
             if (holderKlass.isInterface()) {
-                throw meta.throwEx(meta.IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
+                throw meta.throwExWithMessage(meta.IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
             }
 
             Symbol<Name> name = getName(pool);
@@ -221,11 +221,11 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Method method = lookupMethod(holderKlass, name, signature);
             if (method == null) {
-                throw meta.throwEx(meta.NoSuchMethodError, meta.toGuestString(getName(pool)));
+                throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString(getName(pool)));
             }
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
-                throw meta.throwEx(meta.IllegalAccessError, meta.toGuestString(getName(pool)));
+                throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(getName(pool)));
             }
 
             return new Resolved(method);

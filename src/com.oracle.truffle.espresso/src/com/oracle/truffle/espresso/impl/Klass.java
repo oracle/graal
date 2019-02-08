@@ -423,7 +423,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         try {
             initialize();
         } catch (EspressoException e) {
-            throw getMeta().throwEx(ExceptionInInitializerError.class, e.getException());
+            throw getMeta().throwExWithCause(ExceptionInInitializerError.class, e.getException());
         }
     }
 

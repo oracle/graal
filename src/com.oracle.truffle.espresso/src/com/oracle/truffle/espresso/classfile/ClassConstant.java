@@ -107,7 +107,7 @@ public interface ClassConstant extends PoolConstant {
 
                 if (!checkAccess(klass, accessingKlass)) {
                     Meta meta = context.getMeta();
-                    throw meta.throwEx(meta.IllegalAccessError, meta.toGuestString(name));
+                    throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(name));
                 }
 
                 return new Resolved(klass);
