@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jni.hosted;
+package com.oracle.svm.hosted.code;
 
 import java.util.List;
 
@@ -33,19 +33,21 @@ import jdk.vm.ci.meta.Signature;
 /**
  * A straightforward implementation of {@link Signature}.
  */
-class JNISignature implements Signature {
-
+public class SimpleSignature implements Signature {
     private final JavaType[] parameterTypes;
     private final JavaType returnType;
 
-    JNISignature(List<JavaType> parameterTypes, JavaType returnType) {
-        this.parameterTypes = parameterTypes.toArray(new JavaType[0]);
+    public SimpleSignature(JavaType[] parameterTypes, JavaType returnType) {
+        this.parameterTypes = parameterTypes;
         this.returnType = returnType;
+    }
+
+    public SimpleSignature(List<JavaType> parameterTypes, JavaType returnType) {
+        this(parameterTypes.toArray(new JavaType[0]), returnType);
     }
 
     @Override
     public int getParameterCount(boolean receiver) {
-        // NOTE: JNI signatures always include the receiver, or a class object for static methods
         return parameterTypes.length;
     }
 

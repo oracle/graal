@@ -53,6 +53,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
+import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
@@ -123,7 +124,7 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         return sb.toString();
     }
 
-    private JNISignature createSignature(MetaAccessProvider metaAccess) {
+    private SimpleSignature createSignature(MetaAccessProvider metaAccess) {
         ResolvedJavaType objectHandleType = metaAccess.lookupJavaType(JNIObjectHandle.class);
         ResolvedJavaType intType = metaAccess.lookupJavaType(int.class);
         ResolvedJavaType returnType;
@@ -150,7 +151,7 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
                 throw VMError.shouldNotReachHere();
             }
         }
-        return new JNISignature(args, returnType);
+        return new SimpleSignature(args, returnType);
     }
 
     @Override

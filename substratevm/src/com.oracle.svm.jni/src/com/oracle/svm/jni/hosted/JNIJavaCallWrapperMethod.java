@@ -78,6 +78,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
+import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.access.JNINativeLinkage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -139,7 +140,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         this.signature = createSignature(metaAccess);
     }
 
-    private JNISignature createSignature(MetaAccessProvider metaAccess) {
+    private SimpleSignature createSignature(MetaAccessProvider metaAccess) {
         ResolvedJavaType objectHandle = metaAccess.lookupJavaType(JNIObjectHandle.class);
         List<JavaType> args = new ArrayList<>();
         args.add(metaAccess.lookupJavaType(JNIEnvironment.class));
@@ -172,7 +173,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             // Constructor: returns `this` to implement NewObject
             returnType = objectHandle;
         }
-        return new JNISignature(args, returnType);
+        return new SimpleSignature(args, returnType);
     }
 
     @Override
