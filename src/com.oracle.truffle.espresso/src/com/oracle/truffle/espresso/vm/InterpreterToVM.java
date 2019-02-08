@@ -25,11 +25,11 @@ package com.oracle.truffle.espresso.vm;
 
 import java.util.Arrays;
 import java.util.function.IntFunction;
-import java.util.function.IntPredicate;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -343,46 +343,51 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     @TruffleBoundary
-    public StaticObject newMultiArray(Klass klass, int... dimensions) {
-        assert dimensions.length > 1;
+    public StaticObject newMultiArray(Klass component, int... dimensions) {
+        Meta meta = getMeta();
 
-        if (Arrays.stream(dimensions).anyMatch(new IntPredicate() {
+        // TODO(peterssen):
+
+        if (component == meta._void) {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+        int finalDimensions = dimensions == null ? 0 : dimensions.length;
+        if (component.isArray()) {
+            finalDimensions += Types.getArrayDimensions(component.getType());
+        }
+        if (finalDimensions > 255) {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+        for (int d : dimensions) {
+            if (d < 0) {
+                throw meta.throwEx(meta.NegativeArraySizeException);
+            }
+        }
+        return newMultiArrayWithoutChecks(component, dimensions);
+    }
+
+    @TruffleBoundary
+    private StaticObject newMultiArrayWithoutChecks(Klass component, int... dimensions) {
+        assert dimensions != null && dimensions.length > 0;
+        if (dimensions.length == 1) {
+            if (component.isPrimitive()) {
+                return allocatePrimitiveArray((byte) component.getJavaKind().getBasicType(), dimensions[0]);
+            } else {
+                return component.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
+                    @Override
+                    public StaticObject apply(int value) {
+                        return StaticObject.NULL;
+                    }
+                });
+            }
+        }
+        int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
+        return component.getArrayClass(dimensions.length - 1).allocateArray(dimensions[0], new IntFunction<StaticObject>() {
             @Override
-            public boolean test(int i) {
-                return i < 0;
+            public StaticObject apply(int i) {
+                return newMultiArrayWithoutChecks(component, newDimensions);
             }
-        })) {
-            throw klass.getMeta().throwEx(NegativeArraySizeException.class);
-        }
-
-        Klass componentType = klass.getComponentType();
-
-        if (dimensions.length == 2) {
-            assert dimensions[0] >= 0;
-            if (componentType.getComponentType().isPrimitive()) {
-                return (StaticObject) componentType.allocateArray(dimensions[0],
-                                new IntFunction<StaticObject>() {
-                                    @Override
-                                    public StaticObject apply(int i) {
-                                        return allocatePrimitiveArray((byte) componentType.getComponentType().getJavaKind().getBasicType(), dimensions[1]);
-                                    }
-                                });
-            }
-            return (StaticObject) componentType.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
-                @Override
-                public StaticObject apply(int i) {
-                    return InterpreterToVM.this.newArray(componentType.getComponentType(), dimensions[1]);
-                }
-            });
-        } else {
-            int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
-            return (StaticObject) componentType.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
-                @Override
-                public StaticObject apply(int i) {
-                    return InterpreterToVM.this.newMultiArray(componentType, newDimensions);
-                }
-            });
-        }
+        });
     }
 
     public static StaticObjectArray allocatePrimitiveArray(byte jvmPrimitiveType, int length) {
@@ -433,6 +438,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public StaticObject newObject(Klass klass) {
+        // TODO(peterssen): Accept only ObjectKlass.
         assert klass != null && !klass.isArray() && !klass.isPrimitive() && !klass.isAbstract();
         klass.safeInitialize();
         return new StaticObjectImpl((ObjectKlass) klass);

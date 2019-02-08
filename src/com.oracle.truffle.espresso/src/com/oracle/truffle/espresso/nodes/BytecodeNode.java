@@ -1193,7 +1193,7 @@ public final class BytecodeNode extends EspressoRootNode {
         for (int i = 0; i < allocatedDimensions; ++i) {
             dimensions[i] = peekInt(frame, top - allocatedDimensions + i);
         }
-        putObject(frame, top - allocatedDimensions, getInterpreterToVM().newMultiArray(klass, dimensions));
+        putObject(frame, top - allocatedDimensions, getInterpreterToVM().newMultiArray(klass.getComponentType(), dimensions));
         return -allocatedDimensions; // Does not include the created (pushed) array.
     }
 
