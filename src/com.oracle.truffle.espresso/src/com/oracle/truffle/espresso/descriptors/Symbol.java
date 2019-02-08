@@ -205,6 +205,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> IllegalMonitorStateException = StaticSymbols.putType(IllegalMonitorStateException.class);
         public static final Symbol<Type> IllegalArgumentException = StaticSymbols.putType(IllegalArgumentException.class);
         public static final Symbol<Type> ClassNotFoundException = StaticSymbols.putType(ClassNotFoundException.class);
+        public static final Symbol<Type> NegativeArraySizeException = StaticSymbols.putType(NegativeArraySizeException.class);
 
         public static final Symbol<Type> Thread = StaticSymbols.putType(Thread.class);
         public static final Symbol<Type> ThreadGroup = StaticSymbols.putType(ThreadGroup.class);
