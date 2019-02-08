@@ -48,6 +48,7 @@ import mx_sdk
 import mx_subst
 import mx_vm_gate
 import mx_vm_benchmark
+from mx import StringIO
 
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
@@ -152,6 +153,33 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                         src.append(src_src_dict)
             _layout.setdefault(dest, []).extend(src)
 
+        def _patch_darwin_jdk():
+            """
+            :rtype: list[str], list[str]
+            """
+            orig_info_plist = join(_jdk_dir, 'Contents', 'Info.plist')
+            if exists(orig_info_plist):
+                from mx import etreeParse
+                root = etreeParse(orig_info_plist)
+                found_el = False
+                for el in root.iter():
+                    if el.tag == 'key' and el.text == 'CFBundleName':
+                        found_el = True
+                    elif found_el:
+                        assert el.tag == 'string'
+                        graalvm_bundle_name = '{} {}'.format(self.base_name, self.vm_config_name.upper()) if self.vm_config_name is not None else name.lower()
+                        graalvm_bundle_name += ' ' + graalvm_version()
+                        el.text = graalvm_bundle_name
+                        sio = StringIO()
+                        root.write(sio)
+                        plist_src = {
+                            'source_type': 'string',
+                            'value': sio.getvalue(),
+                            'ignore_value_subst': True
+                        }
+                        return [(base_dir + '/Contents/Info.plist', plist_src)], [orig_info_plist]
+            return [], []
+
         if is_graalvm:
             if stage1:
                 # 1. we do not want a GraalVM to be used as base-JDK
@@ -160,16 +188,21 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
             # Add base JDK
             exclude_base = _jdk_dir
+            exclusion_list = []
             if _src_jdk_base != '.':
                 exclude_base = join(exclude_base, _src_jdk_base)
             if mx.get_os() == 'darwin':
                 hsdis = '/jre/lib/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
+                incl_list, excl_list = _patch_darwin_jdk()
+                for d, s in incl_list:
+                    _add(layout, d, s)
+                exclusion_list += excl_list
             else:
                 hsdis = '/jre/lib/' + mx.get_arch() + '/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
             _add(layout, base_dir, {
                 'source_type': 'file',
                 'path': _jdk_dir,
-                'exclude': [
+                'exclude': exclusion_list + [
                     exclude_base + '/COPYRIGHT',
                     exclude_base + '/LICENSE',
                     exclude_base + '/release',
@@ -337,6 +370,7 @@ GRAALVM_VERSION={version}""".format(
 
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistribution):  # pylint: disable=R0901
     def __init__(self, base_name, base_layout, theLicense=None, stage1=False, **kw_args):
+        self.base_name = base_name
         components = mx_sdk.graalvm_components()
         components_set = set([c.short_name for c in components])
 
@@ -361,16 +395,16 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
                         components_set.add('b' + basename(launcher_config.destination))
 
         # Use custom distribution name and base dir for registered vm configurations
-        vm_config_name = None
+        self.vm_config_name = None
         vm_config_additional_components = sorted(components_set)
         for config_name, config_components in _vm_configs.items():
             config_components_set = set(config_components)
             config_additional_components = sorted(components_set - config_components_set)
             if config_components_set <= components_set and len(config_additional_components) <= len(vm_config_additional_components):
-                vm_config_name = config_name.replace('-', '_')
+                self.vm_config_name = config_name.replace('-', '_')
                 vm_config_additional_components = config_additional_components
 
-        name = (base_name + (('_' + vm_config_name) if vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
+        name = (self.base_name + (('_' + self.vm_config_name) if self.vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
         base_dir = name.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
 
         layout = deepcopy(base_layout)
@@ -1295,7 +1329,7 @@ def get_stage1_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
     global _stage1_graalvm_distribution
     if _stage1_graalvm_distribution == 'uninitialized':
-        _stage1_graalvm_distribution = GraalVmLayoutDistribution("graalvm", _base_graalvm_layout, stage1=True)
+        _stage1_graalvm_distribution = GraalVmLayoutDistribution("GraalVM", _base_graalvm_layout, stage1=True)
         _stage1_graalvm_distribution.description = "GraalVM distribution (stage1)"
         _stage1_graalvm_distribution.maven = False
     return _stage1_graalvm_distribution
@@ -1305,7 +1339,7 @@ def get_final_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
     global _final_graalvm_distribution
     if _final_graalvm_distribution == 'uninitialized':
-        _final_graalvm_distribution = GraalVmLayoutDistribution("graalvm", _base_graalvm_layout)
+        _final_graalvm_distribution = GraalVmLayoutDistribution("GraalVM", _base_graalvm_layout)
         _final_graalvm_distribution.description = "GraalVM distribution"
         _final_graalvm_distribution.maven = True
     return _final_graalvm_distribution
