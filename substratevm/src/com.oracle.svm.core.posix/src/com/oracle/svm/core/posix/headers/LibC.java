@@ -197,4 +197,8 @@ public class LibC {
     /** Convert the of the string to an integer, according to the specified radix. */
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native long strtol(CCharPointer nptr, CCharPointerPointer endptr, int base);
+
+    /** Finds the first matching substring in a string. */
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native CCharPointer strstr(CCharPointer str, CCharPointer substr);
 }

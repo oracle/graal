@@ -24,16 +24,12 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import static com.oracle.svm.core.posix.headers.Errno.errno;
-import static com.oracle.svm.core.posix.headers.Unistd.NoTransitions.read;
-
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.PosixUtils;
 
 class ProcFSSupport {
     private static final int ST_ADDR_START = 1;
@@ -95,12 +91,9 @@ class ProcFSSupport {
         long inode = 0;
         OUT: for (;;) {
             while (position == endOffset) { // fill buffer
-                int readBytes;
-                do {
-                    readBytes = (int) read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
-                } while (readBytes == -1 && errno() == Errno.EINTR());
-                if (readBytes == -1 || readBytes == 0) {
-                    return false; // read failure or EOF == not matched
+                int readBytes = PosixUtils.readBytes(fd, buffer, bufferLen, readOffset);
+                if (readBytes <= 0) {
+                    return false; // read failure or 0 == EOF -> not matched
                 }
                 position = readOffset;
                 endOffset = readOffset + readBytes;
