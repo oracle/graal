@@ -31,7 +31,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import jdk.vm.ci.meta.Value;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
@@ -73,7 +72,6 @@ public class MatchContext {
      */
     static final class ConsumedNodes implements Iterable<Node> {
         private ArrayList<ConsumedNode> nodes;
-
 
         private final class ConsumedNodesIterator implements Iterator<Node> {
             final Iterator<ConsumedNode> iterator;
@@ -145,8 +143,8 @@ public class MatchContext {
     private int endIndex;
 
     /**
-     * Index in the block at which the match should be emitted.
-     * Differs from endIndex for (ZeroExtend Read=access) for instance: match should be emitted where the Read is.
+     * Index in the block at which the match should be emitted. Differs from endIndex for
+     * (ZeroExtend Read=access) for instance: match should be emitted where the Read is.
      */
     private int emitIndex;
 
@@ -194,6 +192,38 @@ public class MatchContext {
     }
 
     public Result validate() {
+        Result oldResult = oldValidate();
+        Result newResult = newValidate();
+        if (newResult.code != oldResult.code) {
+            root.getDebug().log("Differing results old %s new %s", oldResult.code, newResult.code);
+        }
+        return oldResult;
+    }
+
+    public Result oldValidate() {
+        // Ensure that there's no unsafe work in between these operations.
+        for (int i = startIndex; i <= endIndex; i++) {
+            Node node = nodes.get(i);
+            if (node instanceof VirtualObjectNode || node instanceof FloatingNode) {
+                // The order of evaluation of these nodes controlled by data dependence so they
+                // don't interfere with this match.
+                continue;
+            } else if ((consumed == null || !consumed.contains(node)) && node != root) {
+                if (LogVerbose.getValue(root.getOptions())) {
+                    DebugContext debug = root.getDebug();
+                    debug.log("unexpected node %s", node);
+                    for (int j = startIndex; j <= endIndex; j++) {
+                        Node theNode = nodes.get(j);
+                        debug.log("%s(%s) %1s", (consumed != null && consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.getUsageCount(), theNode);
+                    }
+                }
+                return Result.notSafe(node, rule.getPattern());
+            }
+        }
+        return Result.OK;
+    }
+
+    public Result newValidate() {
         // Ensure that there's no unsafe work in between these operations.
         Node sideEffect = null;
         boolean consumedSideEffect = false;
@@ -209,7 +239,8 @@ public class MatchContext {
                     sideEffect = node;
                 } else if (!cn.ignoresSideEffects) {
                     emitIndex = i;
-                    // There should be no side effects between 2 nodes that are affected by side effects.
+                    // There should be no side effects between 2 nodes that are affected by side
+                    // effects.
                     if (consumedSideEffect && sideEffect != null) {
                         logFailedMatch("unexpected node %s", sideEffect);
                         return Result.notSafe(node, rule.getPattern());
@@ -219,8 +250,9 @@ public class MatchContext {
             }
         }
         assert emitIndex == endIndex || consumed.find(root).ignoresSideEffects;
-        // We are going to emit the match at emitIndex. We need to make sure nodes of the match between emitIndex and
-        // endIndex don't have inputs after position emitIndex that would make emitIndex an illegal position.
+        // We are going to emit the match at emitIndex. We need to make sure nodes of the match
+        // between emitIndex and endIndex don't have inputs after position emitIndex that would make
+        // emitIndex an illegal position.
         for (int i = emitIndex + 1; i <= endIndex; i++) {
             Node node = nodes.get(i);
             ConsumedNode cn = consumed.find(node);
@@ -231,7 +263,7 @@ public class MatchContext {
                         for (int j = emitIndex + 1; j < i; j++) {
                             if (nodes.get(j) == in) {
                                 logFailedMatch("Earliest position in block is too late %s", in);
-                                return Result.notSafe(node, rule.getPattern());
+                                return Result.tooLate(node, rule.getPattern());
                             }
                         }
                     }
@@ -263,7 +295,7 @@ public class MatchContext {
         Node emitNode = nodes.get(emitIndex);
         DebugContext debug = root.getDebug();
         if (debug.isLogEnabled()) {
-            debug.log("matched %s %s", rule.getName(), rule.getPattern());
+            debug.log("matched %s %s%s", rule.getName(), rule.getPattern(), emitIndex != endIndex ? " skipping side effects" : "");
             debug.log("with nodes %s", rule.formatMatch(root));
         }
         for (Node node : consumed) {
@@ -277,8 +309,9 @@ public class MatchContext {
         }
         builder.setMatchResult(emitNode, value);
         if (root != emitNode) {
-            // Match is not emitted at the position of root in the block but the uses of root needs the result of the
-            // match so add a ComplexMatchValue that will simply return the result of the actual match above.
+            // Match is not emitted at the position of root in the block but the uses of root needs
+            // the result of the match so add a ComplexMatchValue that will simply return the result
+            // of the actual match above.
             builder.setMatchResult(root, new ComplexMatchValue(gen -> gen.operand(emitNode)));
         }
     }
