@@ -8,6 +8,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -121,5 +122,9 @@ public final class Field implements ModifiersProvider {
             }
         }
         return typeKlassCache;
+    }
+
+    public Attribute getAttribute(Symbol<Name> name) {
+        return linkedField.getAttribute(name);
     }
 }

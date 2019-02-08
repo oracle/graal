@@ -129,6 +129,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getMessage = StaticSymbols.putName("getMessage");
         public static final Symbol<Name> getProperty = StaticSymbols.putName("getProperty");
         public static final Symbol<Name> setProperty = StaticSymbols.putName("setProperty");
+        public static final Symbol<Name> exit = StaticSymbols.putName("exit");
 
         // Attribute names
         public static final Symbol<Name> Code = StaticSymbols.putName("Code");
@@ -137,7 +138,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> InnerClasses = StaticSymbols.putName("InnerClasses");
         public static final Symbol<Name> RuntimeVisibleAnnotations = StaticSymbols.putName("RuntimeVisibleAnnotations");
         public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
-        public static final Symbol<Name> exit = StaticSymbols.putName("exit");
+        public static final Symbol<Name> ConstantValue = StaticSymbols.putName("ConstantValue");
     }
 
     public static final class Type extends Descriptor {

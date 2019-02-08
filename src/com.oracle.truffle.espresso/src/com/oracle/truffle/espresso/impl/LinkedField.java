@@ -4,6 +4,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class LinkedField {
     ParserField getParserField() {
@@ -39,5 +40,14 @@ public final class LinkedField {
 
     public int getFlags() {
         return parserField.getFlags();
+    }
+
+    public Attribute getAttribute(Symbol<Name> name) {
+        for (Attribute a : parserField.getAttributes()) {
+            if (name.equals(a.getName())) {
+                return a;
+            }
+        }
+        return null;
     }
 }

@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.object.DebugCounter;
+import com.sun.org.apache.bcel.internal.classfile.ConstantValue;
 
 public final class ClassfileParser {
 
@@ -271,9 +272,18 @@ public final class ClassfileParser {
         if (BootstrapMethodsAttribute.NAME.equals(name)) {
             return parseBootstrapMethods(name);
         }
+        if (ConstantValueAttribute.NAME.equals(name)) {
+            return parseConstantValue(name);
+        }
         int length = stream.readS4();
         byte[] data = stream.readByteArray(length);
         return new Attribute(name, data);
+    }
+
+    private Attribute parseConstantValue(Symbol<Name> name) {
+        /* int length = */ stream.readS4();
+        int constantValueIndex = stream.readU2();
+        return new ConstantValueAttribute(constantValueIndex);
     }
 
     private ExceptionsAttribute parseExceptions(Symbol<Name> name) {
