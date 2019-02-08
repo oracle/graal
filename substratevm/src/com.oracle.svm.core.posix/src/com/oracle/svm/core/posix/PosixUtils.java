@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import static com.oracle.svm.core.posix.headers.Errno.errno;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_WRONLY;
 import static com.oracle.svm.core.posix.headers.Fcntl.open;
 import static com.oracle.svm.core.posix.headers.Unistd.close;
@@ -468,5 +469,32 @@ public class PosixUtils {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void checkStatusIs0(int status, String message) {
         VMError.guarantee(status == 0, message);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static boolean readEntirely(int fd, CCharPointer buffer, int bufferLen) {
+        int bufferOffset = 0;
+        for (;;) {
+            int readBytes = readBytes(fd, buffer, bufferLen - 1, bufferOffset);
+            if (readBytes < 0) { // NOTE: also when file does not fit in buffer
+                return false;
+            }
+            bufferOffset += readBytes;
+            if (readBytes == 0) { // EOF, terminate string
+                buffer.write(bufferOffset, (byte) 0);
+                return true;
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static int readBytes(int fd, CCharPointer buffer, int bufferLen, int readOffset) {
+        int readBytes = -1;
+        if (readOffset < bufferLen) {
+            do {
+                readBytes = (int) Unistd.NoTransitions.read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
+            } while (readBytes == -1 && errno() == Errno.EINTR());
+        }
+        return readBytes;
     }
 }
