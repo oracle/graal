@@ -30,10 +30,12 @@ import org.graalvm.compiler.core.test.MatchRuleTest;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer.MemoryConstOp;
+import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.junit.Before;
 import org.junit.Test;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
 
 public class AMD64MatchRuleTest extends MatchRuleTest {
     @Before
@@ -76,5 +78,27 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
             super();
             this.x = x;
         }
+    }
+
+    static volatile short shortValue;
+
+    public static long testVolatileExtensionSnippet() {
+        return shortValue;
+    }
+
+    @Test
+    public void testVolatileExtension() {
+        compile(getResolvedJavaMethod("testVolatileExtensionSnippet"), null);
+        LIR lir = getLIR();
+        boolean found = false;
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+            if (ins instanceof AMD64Unary.MemoryOp) {
+                AMD64Unary.MemoryOp op = (AMD64Unary.MemoryOp) ins;
+                ins.visitEachOutput((value, mode, flags) -> assertTrue(value.getPlatformKind().toString(), value.getPlatformKind().equals(AMD64Kind.QWORD)));
+                assertFalse("MemoryOp expected only once in first block", found);
+                found = true;
+            }
+        }
+        assertTrue("sign extending load must be in the LIR", found);
     }
 }
