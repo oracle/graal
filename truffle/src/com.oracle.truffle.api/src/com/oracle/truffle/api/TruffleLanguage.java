@@ -1888,8 +1888,8 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
 
-            Env otherEnv = AccessAPI.engineAccess().getLanguageEnv(this, language);
-            return otherEnv.getSpi().lookup(type);
+            Env otherEnv = AccessAPI.engineAccess().getLanguageEnv(vmObject, language);
+            return otherEnv == null ? null : otherEnv.getSpi().lookup(type);
         }
 
         /**
