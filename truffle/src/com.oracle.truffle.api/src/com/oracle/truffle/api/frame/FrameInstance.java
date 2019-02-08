@@ -95,25 +95,12 @@ public interface FrameInstance {
     }
 
     /**
-     *
-     * @since 0.8 or earlier
-     * @deprecated use {@link #getFrame(FrameAccess)} instead. It is equivalent to
-     *             <code>FrameInstance.getFrame(access, true)</code>.
-     */
-    @Deprecated
-    default Frame getFrame(FrameAccess access, @SuppressWarnings("unused") boolean slowPath) {
-        return getFrame(access);
-    }
-
-    /**
      * Accesses the underlying frame using a specified {@link FrameAccess access mode}.
      *
      * @see FrameAccess
      * @since 0.23
      */
-    default Frame getFrame(FrameAccess access) {
-        return getFrame(access, true);
-    }
+    Frame getFrame(FrameAccess access);
 
     /** @since 0.8 or earlier */
     boolean isVirtualFrame();
