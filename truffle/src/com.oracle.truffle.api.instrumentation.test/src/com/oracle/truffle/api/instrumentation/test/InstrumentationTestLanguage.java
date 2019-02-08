@@ -882,7 +882,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
-            final boolean isMemberInvokable(@SuppressWarnings("unused") String member) {
+            final boolean isMemberInvocable(@SuppressWarnings("unused") String member) {
                 return "catches".equals(member);
             }
 

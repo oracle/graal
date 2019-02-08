@@ -293,7 +293,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class IsMemberInvokable {
+    static class IsMemberInvocable {
 
         @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
         static boolean doCached(HostObject receiver, String name,

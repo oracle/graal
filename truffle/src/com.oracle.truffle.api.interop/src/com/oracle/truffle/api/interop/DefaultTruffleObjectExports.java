@@ -157,7 +157,7 @@ class DefaultTruffleObjectExports {
     }
 
     @ExportMessage
-    static boolean isMemberInvokable(TruffleObject receiver, String member,
+    static boolean isMemberInvocable(TruffleObject receiver, String member,
                     @Shared("keyInfo") @Cached(parameters = "KEY_INFO") InteropAccessNode keyInfo) {
         return KeyInfo.isInvocable(LibraryToLegacy.sendKeyInfo(keyInfo, receiver, member));
     }

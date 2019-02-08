@@ -257,14 +257,14 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertTrue(INTEROP.isMemberModifiable(proxyInner, "a"));
         assertTrue(INTEROP.isMemberRemovable(proxyInner, "a"));
         assertFalse(INTEROP.isMemberInsertable(proxyInner, "a"));
-        assertFalse(INTEROP.isMemberInvokable(proxyInner, "a"));
+        assertFalse(INTEROP.isMemberInvocable(proxyInner, "a"));
         assertFalse(INTEROP.isMemberInternal(proxyInner, "a"));
 
         assertFalse(INTEROP.isMemberReadable(proxyInner, ""));
         assertFalse(INTEROP.isMemberModifiable(proxyInner, ""));
         assertFalse(INTEROP.isMemberRemovable(proxyInner, ""));
         assertTrue(INTEROP.isMemberInsertable(proxyInner, ""));
-        assertFalse(INTEROP.isMemberInvokable(proxyInner, ""));
+        assertFalse(INTEROP.isMemberInvocable(proxyInner, ""));
         assertFalse(INTEROP.isMemberInternal(proxyInner, ""));
 
         INTEROP.removeMember(proxyInner, "a");
@@ -517,7 +517,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertHostError(() -> INTEROP.isMemberModifiable(proxyInner, ""));
         assertHostError(() -> INTEROP.isMemberInsertable(proxyInner, ""));
         assertHostError(() -> INTEROP.isMemberRemovable(proxyInner, ""));
-        assertHostError(() -> INTEROP.isMemberInvokable(proxyInner, ""));
+        assertHostError(() -> INTEROP.isMemberInvocable(proxyInner, ""));
         assertFalse(INTEROP.isMemberInternal(proxyInner, ""));
 
         assertHostError(() -> INTEROP.isArrayElementReadable(proxyInner, 0L));

@@ -389,9 +389,9 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertFalse(library.isMemberModifiable(v, ""));
 
         v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INVOCABLE;
-        assertTrue(library.isMemberInvokable(v, ""));
+        assertTrue(library.isMemberInvocable(v, ""));
         v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
-        assertFalse(library.isMemberInvokable(v, ""));
+        assertFalse(library.isMemberInvocable(v, ""));
 
         v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
         assertTrue(library.isMemberRemovable(v, ""));

@@ -70,10 +70,10 @@
  * receivers that dynamically dispatch to exported message implementations.
  * </ul>
  *
- * @see com.oracle.truffle.api.library.GenerateLibrary to specify libraries
- * @see com.oracle.truffle.api.library.ExportLibrary to export libraries
- * @see com.oracle.truffle.api.library.CachedLibrary to dispatch libraries from nodes
- * @see com.oracle.truffle.api.library.LibraryFactory to manually dispatch messages
+ * @see com.oracle.truffle.api.library.GenerateLibrary To specify libraries
+ * @see com.oracle.truffle.api.library.ExportLibrary To export libraries
+ * @see com.oracle.truffle.api.library.CachedLibrary To dispatch libraries from nodes
+ * @see com.oracle.truffle.api.library.LibraryFactory To manually dispatch messages
  * @since 1.0
  */
 package com.oracle.truffle.api.library;

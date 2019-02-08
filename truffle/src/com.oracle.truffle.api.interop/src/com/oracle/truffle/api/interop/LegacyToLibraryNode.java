@@ -291,7 +291,7 @@ final class LegacyToLibraryNode extends Node {
             if (interop.isMemberRemovable(receiver, identifier)) {
                 keyInfo |= KeyInfo.REMOVABLE;
             }
-            if (interop.isMemberInvokable(receiver, identifier)) {
+            if (interop.isMemberInvocable(receiver, identifier)) {
                 keyInfo |= KeyInfo.INVOCABLE;
             }
             if (interop.isMemberInternal(receiver, identifier)) {

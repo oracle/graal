@@ -142,7 +142,7 @@ public abstract class InteropLibraryBaseTest {
         assertFalse(lib.isMemberModifiable(value, "foo"));
         assertFalse(lib.isMemberInsertable(value, "foo"));
         assertFalse(lib.isMemberRemovable(value, "foo"));
-        assertFalse(lib.isMemberInvokable(value, "foo"));
+        assertFalse(lib.isMemberInvocable(value, "foo"));
         assertFalse(lib.isMemberInternal(value, "foo"));
         assertUnsupported(() -> lib.getMembers(value));
         assertUnsupported(() -> lib.readMember(value, "foo"));

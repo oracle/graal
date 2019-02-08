@@ -243,7 +243,7 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         TruffleObject o = (TruffleObject) receiver;
 
         assertTrue(INTEROP.isMemberReadable(receiver, method));
-        assertTrue(INTEROP.isMemberInvokable(receiver, method));
+        assertTrue(INTEROP.isMemberInvocable(receiver, method));
         assertFalse(INTEROP.isMemberWritable(receiver, method));
         assertFalse(INTEROP.isMemberInsertable(receiver, method));
         assertFalse(INTEROP.isMemberInternal(receiver, method));
@@ -321,13 +321,13 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertTrue(INTEROP.isMemberExisting(d, "aField"));
         assertTrue(INTEROP.isMemberReadable(d, "aField"));
         assertTrue(INTEROP.isMemberWritable(d, "aField"));
-        assertFalse(INTEROP.isMemberInvokable(d, "aField"));
+        assertFalse(INTEROP.isMemberInvocable(d, "aField"));
         assertFalse(INTEROP.isMemberRemovable(d, "aField"));
 
         assertTrue(INTEROP.isMemberExisting(d, "toString"));
         assertTrue(INTEROP.isMemberReadable(d, "toString"));
         assertFalse(INTEROP.isMemberWritable(d, "toString"));
-        assertTrue(INTEROP.isMemberInvokable(d, "toString"));
+        assertTrue(INTEROP.isMemberInvocable(d, "toString"));
         assertFalse(INTEROP.isMemberRemovable(d, "toString"));
     }
 

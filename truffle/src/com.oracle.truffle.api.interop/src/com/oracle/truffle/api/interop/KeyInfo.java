@@ -104,7 +104,7 @@ public final class KeyInfo {
      * Single bit that is set if {@link Message#INVOKE invoking} an existing key is supported.
      *
      * @since 0.33
-     * @deprecated see {@link ObjectLibrary#isMemberInvokable(Object, String) instead.
+     * @deprecated see {@link ObjectLibrary#isMemberInvocable(Object, String) instead.
      */
     @Deprecated public static final int INVOCABLE = 1 << 3;
 
@@ -225,7 +225,7 @@ public final class KeyInfo {
      * Test if {@link Message#INVOKE invoking} an existing key is supported.
      *
      * @since 0.26
-     * @deprecated use {@link ObjectLibrary#isMemberInvokable(Object, String)} instead.
+     * @deprecated use {@link ObjectLibrary#isMemberInvocable(Object, String)} instead.
      */
     @Deprecated
     public static boolean isInvocable(int infoBits) {

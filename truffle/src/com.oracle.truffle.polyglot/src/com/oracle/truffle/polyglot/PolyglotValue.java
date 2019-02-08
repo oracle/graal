@@ -1250,7 +1250,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 String key = (String) args[ARGUMENT_OFFSET];
-                return objects.isMemberInvokable(receiver, key);
+                return objects.isMemberInvocable(receiver, key);
             }
 
         }

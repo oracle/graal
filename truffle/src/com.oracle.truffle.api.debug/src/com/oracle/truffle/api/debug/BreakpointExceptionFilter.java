@@ -136,7 +136,7 @@ final class BreakpointExceptionFilter {
                 if (nodeObject != null && exceptionObject != null) {
                     InteropLibrary library = InteropLibrary.getFactory().getUncached(nodeObject);
                     TruffleObject object = (TruffleObject) nodeObject;
-                    if (library.isMemberInvokable(nodeObject, "catches")) {
+                    if (library.isMemberInvocable(nodeObject, "catches")) {
                         Object catches;
                         try {
                             catches = library.invokeMember(nodeObject, "catches", exceptionObject);

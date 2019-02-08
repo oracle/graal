@@ -608,7 +608,7 @@ abstract class ProxyInvokeNode extends Node {
                 }
             }
             if (localInvokeFailed) {
-                if (invokeProfile.profile(receivers.isMemberInvokable(receiver, member))) {
+                if (invokeProfile.profile(receivers.isMemberInvocable(receiver, member))) {
                     return receivers.invokeMember(receiver, member, arguments);
                 } else if (receivers.isMemberReadable(receiver, member)) {
                     Object readMember = receivers.readMember(receiver, member);

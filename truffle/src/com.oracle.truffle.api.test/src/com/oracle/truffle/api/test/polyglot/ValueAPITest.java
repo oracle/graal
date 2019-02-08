@@ -827,7 +827,7 @@ public class ValueAPITest {
         }
 
         @ExportMessage
-        boolean isMemberInvokable(String member) {
+        boolean isMemberInvocable(String member) {
             return invokeMember.equals(member);
         }
 

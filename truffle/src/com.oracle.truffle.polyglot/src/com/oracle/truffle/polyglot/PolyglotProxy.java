@@ -462,7 +462,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean isMemberInvokable(String member, @CachedLibrary("this") InteropLibrary library,
+    boolean isMemberInvocable(String member, @CachedLibrary("this") InteropLibrary library,
                     @Shared("executables") @CachedLibrary(limit = "LIMIT") InteropLibrary executables) {
         if (proxy instanceof ProxyObject) {
             if (isMemberExisting(member, library)) {
