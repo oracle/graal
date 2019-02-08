@@ -28,6 +28,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -140,6 +141,65 @@ public final class ObjectKlass extends Klass {
                 getSuperKlass().initialize();
             }
             initState = INITIALIZED;
+
+            for (Field f : declaredFields) {
+                if (f.isStatic()) {
+                    ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
+                    if (a == null) {
+                        break;
+                    }
+                    switch (f.getKind()) {
+                        case Boolean: {
+                            boolean c = getConstantPool().intAt(a.getConstantvalueIndex()) != 0;
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Byte: {
+                            byte c = (byte) getConstantPool().intAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Short:{
+                            short c = (short) getConstantPool().intAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Char:{
+                            char c = (char) getConstantPool().intAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Int:{
+                            int c = getConstantPool().intAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Float: {
+                            float c = getConstantPool().floatAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Long:{
+                            long c = getConstantPool().longAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Double:{
+                            double c = getConstantPool().doubleAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Object: {
+                            StaticObject c = getConstantPool().resolvedStringAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        default:
+                            EspressoError.shouldNotReachHere("invalid constant field kind");
+                    }
+                }
+            }
+
             Method clinit = getClassInitializer();
             if (clinit != null) {
                 clinit.getCallTarget().call();
