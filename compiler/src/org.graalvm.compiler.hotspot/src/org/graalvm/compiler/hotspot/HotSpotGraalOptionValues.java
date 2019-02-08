@@ -75,11 +75,17 @@ public class HotSpotGraalOptionValues {
     @NativeImageReinitialize private static volatile OptionValues hotspotOptions;
 
     public static OptionValues defaultOptions() {
-        OptionValues options = hotspotOptions;
-        if (options != null) {
-            return options;
+        OptionValues res = hotspotOptions;
+        if (res == null) {
+            synchronized (HotSpotGraalOptionValues.class) {
+                res = hotspotOptions;
+                if (res == null) {
+                    res = initializeOptions();
+                    hotspotOptions = res;
+                }
+            }
         }
-        return (hotspotOptions = initializeOptions());
+        return res;
     }
 
     /**
