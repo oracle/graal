@@ -108,7 +108,7 @@ public final class Target_java_lang_reflect_Array {
      *                {@code dimensions} argument is negative.
      */
     @Substitution
-    public static Object multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray) {
+    public static @Host(Object.class) StaticObject multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (StaticObject.isNull(componentType)) {
             throw meta.throwEx(meta.NullPointerException);
@@ -122,7 +122,7 @@ public final class Target_java_lang_reflect_Array {
         if (component.isArray()) {
             finalDimensions += Types.getArrayDimensions(component.getType());
         }
-        if (finalDimensions > 255) {
+        if (dimensions.length == 0 || finalDimensions > 255) {
             throw meta.throwEx(meta.IllegalArgumentException);
         }
         for (int d : dimensions) {
@@ -130,7 +130,7 @@ public final class Target_java_lang_reflect_Array {
                 throw meta.throwEx(meta.NegativeArraySizeException);
             }
         }
-        return meta.getInterpreterToVM().newMultiArray(component, dimensions);
+        return meta.getInterpreterToVM().newMultiArray(component.getArrayClass(dimensions.length - 1), dimensions);
     }
 
     @Substitution
