@@ -32,8 +32,6 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.ServiceLoader;
-import java.util.jar.JarFile;
-import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 public class FileIterable implements ComponentIterable {

@@ -41,13 +41,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import sun.net.ConnectionResetException;
 
 public class FileDownloaderTest extends NetworkTestBase {
-    @Rule public ExpectedException exception = ExpectedException.none();
 
     class FA extends FeedbackAdapter {
 
@@ -65,7 +62,9 @@ public class FileDownloaderTest extends NetworkTestBase {
     }
 
     @Before
+    @Override
     public void setUp() throws Exception {
+        super.setUp();
         delegateFeedback(new FA());
     }
 
@@ -226,12 +225,15 @@ public class FileDownloaderTest extends NetworkTestBase {
         delegateFeedback(check);
         FileDownloader dn = new FileDownloader("test",
                         u, this);
+        ProxyConnectionFactory pcf = new ProxyConnectionFactory(this, u);
+        dn.setConnectionFactory(pcf);
+
         verbose = true;
         dn.setVerbose(true);
         dn.setDisplayProgress(true);
 
-        dn.envHttpProxy = "http://localhost:11111";
-        dn.envHttpsProxy = "http://localhost:11111";
+        pcf.envHttpProxy = "http://localhost:11111";
+        pcf.envHttpsProxy = "http://localhost:11111";
 
         synchronized (proxyConnect) {
             proxyConnect.nextChunk = 130 * 1024;
@@ -275,8 +277,11 @@ public class FileDownloaderTest extends NetworkTestBase {
         dn.setVerbose(true);
         dn.setDisplayProgress(true);
 
-        dn.envHttpProxy = "http://localhost:11111";
-        dn.envHttpsProxy = "http://localhost:11111";
+        ProxyConnectionFactory pcf = new ProxyConnectionFactory(this, u);
+        dn.setConnectionFactory(pcf);
+
+        pcf.envHttpProxy = "http://localhost:11111";
+        pcf.envHttpsProxy = "http://localhost:11111";
 
         synchronized (directConnect) {
             directConnect.nextChunk = 130 * 1024;
@@ -337,8 +342,11 @@ public class FileDownloaderTest extends NetworkTestBase {
         dn.setVerbose(true);
         dn.setDisplayProgress(true);
 
-        dn.envHttpProxy = "http://localhost:11111";
-        dn.envHttpsProxy = "http://localhost:11111";
+        ProxyConnectionFactory pcf = new ProxyConnectionFactory(this, u);
+        dn.setConnectionFactory(pcf);
+
+        pcf.envHttpProxy = "http://localhost:11111";
+        pcf.envHttpsProxy = "http://localhost:11111";
 
         dn.download();
     }

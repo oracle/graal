@@ -100,7 +100,7 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     }
 
     @Override
-    public void init(CommandInput input, Feedback output) {
+    public void init(CommandInput ignoreInput, Feedback ignoreOutput) {
     }
 
     @Override

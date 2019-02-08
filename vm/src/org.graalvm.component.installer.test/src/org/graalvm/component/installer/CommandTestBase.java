@@ -213,7 +213,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     }
 
     @Override
-    public MetadataLoader completeMetadata(MetadataLoader ldr, ComponentInfo info) {
+    public MetadataLoader completeMetadata(MetadataLoader ldr, ComponentInfo ci) {
         return ldr;
     }
 }

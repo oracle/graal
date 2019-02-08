@@ -51,12 +51,8 @@ import org.graalvm.component.installer.URLConnectionFactory;
  * @author sdedic
  */
 public final class FileDownloader {
-    String envHttpProxy = System.getenv("http_proxy"); // NOI18N
-    String envHttpsProxy = System.getenv("https_proxy"); // NOI18N
-
     private static final int TRANSFER_LENGTH = 2048;
     private static final long MIN_PROGRESS_THRESHOLD = Long.getLong("org.graalvm.component.installer.minDownloadFeedback", 1024 * 1024);
-    private static final int DEFAULT_CONNECT_DELAY = Integer.getInteger("org.graalvm.component.installer.connectDelaySec", 5);
     private final String fileDescription;
     private final URL sourceURL;
     private final Feedback feedback;
@@ -68,9 +64,8 @@ public final class FileDownloader {
     private static volatile File tempDir;
     private boolean displayProgress;
     private byte[] shaDigest;
-    private int connectDelay = DEFAULT_CONNECT_DELAY;
     long sizeThreshold = MIN_PROGRESS_THRESHOLD;
-    private Map<String, String> requestHeaders = new HashMap<>();
+    private final Map<String, String> requestHeaders = new HashMap<>();
     private Consumer<SeekableByteChannel> dataInterceptor;
     private URLConnectionFactory connectionFactory;
 
@@ -216,7 +211,7 @@ public final class FileDownloader {
         fileDigest.update(input);
     }
 
-    String fingerPrint(byte[] digest) {
+    static String fingerPrint(byte[] digest) {
         StringBuilder sb = new StringBuilder(digest.length * 3);
         for (int i = 0; i < digest.length; i++) {
             if (i > 0) {

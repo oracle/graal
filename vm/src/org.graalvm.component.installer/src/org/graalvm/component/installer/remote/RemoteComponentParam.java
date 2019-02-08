@@ -32,9 +32,6 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.jar.JarFile;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
@@ -195,9 +192,9 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
     /**
      * Creates a metaloader for the local file.
      * 
-     * @param localFile
-     * @return
-     * @throws IOException
+     * @param localFile the locally stored file
+     * @return loader reading the local file.
+     * @throws IOException error during construction of the loader.
      */
     protected abstract MetadataLoader metadataFromLocal(Path localFile) throws IOException;
 

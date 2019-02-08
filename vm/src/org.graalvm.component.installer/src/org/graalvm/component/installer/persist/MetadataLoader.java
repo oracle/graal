@@ -39,8 +39,6 @@ import org.graalvm.component.installer.model.ComponentInfo;
  */
 public interface MetadataLoader extends Closeable {
 
-    void close() throws IOException;
-
     ComponentInfo getComponentInfo();
 
     List<InstallerStopException> getErrors();

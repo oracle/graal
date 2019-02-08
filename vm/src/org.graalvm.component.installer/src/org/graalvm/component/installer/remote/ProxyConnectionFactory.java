@@ -49,6 +49,12 @@ import org.graalvm.component.installer.URLConnectionFactory;
  * @author sdedic
  */
 public class ProxyConnectionFactory implements URLConnectionFactory {
+    enum ProxyType {
+        DIRECT,
+        HTTP,
+        HTTPS
+    }
+
     /**
      * The max delay to connect to the final destination or open a proxy connection. In seconds.
      */
@@ -60,7 +66,7 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
     /**
      * Remembered type of proxy / no proxy.
      */
-    private int proxyType;
+    private volatile ProxyType detectedType;
 
     /**
      * HTTP proxy settings. The default is taken from system environment variables.
@@ -111,15 +117,18 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
         class Connector implements Runnable {
             private final String proxySpec;
             private final boolean directConnect;
+            private final ProxyType type;
 
             Connector() {
                 directConnect = true;
                 proxySpec = null;
+                this.type = ProxyType.DIRECT;
             }
 
-            Connector(String proxySpec) {
+            Connector(String proxySpec, ProxyType pt) {
                 this.proxySpec = proxySpec;
                 this.directConnect = false;
+                this.type = pt;
             }
 
             @Override
@@ -159,7 +168,12 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
                             throw new IOException(feedback.l10n("EXC_ProxyFailed", rcode));
                         }
                     }
-                    conn[0] = test;
+                    synchronized (conn) {
+                        if (conn[0] == null) {
+                            conn[0] = test;
+                            detectedType = type;
+                        }
+                    }
                     connected.countDown();
                 } catch (IOException ex) {
                     if (directConnect) {
@@ -171,8 +185,37 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
             }
 
         }
-        connectors.submit(new Connector(httpProxy));
-        connectors.submit(new Connector(httpsProxy));
+        if (detectedType != null) {
+            Connector c;
+            switch (detectedType) {
+                case DIRECT:
+                    c = new Connector();
+                    break;
+                case HTTP:
+                    c = new Connector(httpProxy, ProxyType.HTTP);
+                    break;
+                case HTTPS:
+                    c = new Connector(httpsProxy, ProxyType.HTTPS);
+                    break;
+                default:
+                    // cannot happen.
+                    throw new AssertionError(detectedType.name());
+            }
+            c.run();
+            if (conn[0] == null) {
+                if (ex3.get() != null) {
+                    throw ex3.get();
+                } else if (ex2.get() != null) {
+                    throw ex2.get();
+                }
+                throw new ConnectException(feedback.l10n("EXC_CannotConnectTo", url));
+            }
+        }
+
+        URLConnection res = null;
+
+        connectors.submit(new Connector(httpProxy, ProxyType.HTTP));
+        connectors.submit(new Connector(httpsProxy, ProxyType.HTTPS));
         connectors.submit(new Connector());
         try {
             if (!connected.await(connectDelay, TimeUnit.SECONDS)) {
@@ -181,7 +224,10 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
                 }
                 throw new ConnectException(feedback.l10n("EXC_TimeoutConnectTo", url));
             }
-            if (conn[0] == null) {
+            synchronized (conn[0]) {
+                res = conn[0];
+            }
+            if (res == null) {
                 if (ex3.get() != null) {
                     throw ex3.get();
                 } else if (ex2.get() != null) {
@@ -192,7 +238,7 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
-        return conn[0];
+        return res;
     }
 
     @Override

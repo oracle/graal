@@ -89,7 +89,8 @@ public interface SoftwareChannel {
      * Creates metadata + archive loader from a downloaded file.
      * 
      * @param localFile the local file.
-     * @return
+     * @verify if true, verify archives
+     * @return loader instance
      */
     MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException;
 

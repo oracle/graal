@@ -52,8 +52,6 @@ public interface ComponentParam extends Closeable {
      * populate the {@link ComponentInfo} with complete metadata. If {@code fileList} is true, the
      * list of files must be also initialized. File contents do not need to be available locally.
      * 
-     * @param fileList if {@code false}, the {@link ComponentInfo} need not to contain list of
-     *            installed files.
      * @throws IOException if the metadata load fails.
      * @return MetadataLoader capable of loading the ComponentInfo
      */

@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.MetadataException;
-import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
  * Command to lists installed components.
@@ -100,10 +99,6 @@ public class ListInstalledCommand extends QueryCommandBase {
             printComponents();
         }
         return 0;
-    }
-
-    protected void prepareComponent(ComponentInfo info) {
-
     }
 
     boolean process() {

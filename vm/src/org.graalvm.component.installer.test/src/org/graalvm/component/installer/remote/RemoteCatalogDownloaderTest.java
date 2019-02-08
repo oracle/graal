@@ -29,32 +29,13 @@ import java.net.URL;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.MockURLConnection;
-import org.graalvm.component.installer.commands.MockStorage;
-import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.NetworkTestBase;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.rules.TemporaryFolder;
 
 public class RemoteCatalogDownloaderTest extends NetworkTestBase {
-    @Rule public ExpectedException exception = ExpectedException.none();
-
-    @Rule public TemporaryFolder folder = new TemporaryFolder();
-
-    ComponentRegistry registry;
-
-    @Before
-    public void setUp() throws Exception {
-        targetPath = folder.newFolder("inst").toPath();
-        storage = new MockStorage();
-        localRegistry = new ComponentRegistry(this, storage);
-    }
-
     @Test
     public void testDownloadCatalogBadGraalVersion() throws Exception {
         URL clu = getClass().getResource("catalog");
