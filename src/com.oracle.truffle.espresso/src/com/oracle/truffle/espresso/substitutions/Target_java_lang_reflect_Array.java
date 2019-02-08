@@ -26,6 +26,8 @@ package com.oracle.truffle.espresso.substitutions;
 import java.lang.reflect.Array;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -36,21 +38,99 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 @EspressoSubstitutions
 public final class Target_java_lang_reflect_Array {
 
+    /**
+     * Creates a new array with the specified component type and length. Invoking this method is
+     * equivalent to creating an array as follows: <blockquote>
+     * 
+     * <pre>
+     * int[] x = {length};
+     * Array.newInstance(componentType, x);
+     * </pre>
+     * 
+     * </blockquote>
+     *
+     * <p>
+     * The number of dimensions of the new array must not exceed 255.
+     *
+     * @param componentType the {@code Class} object representing the component type of the new
+     *            array
+     * @param length the length of the new array
+     * @return the new array
+     * @exception NullPointerException if the specified {@code componentType} parameter is null
+     * @exception IllegalArgumentException if componentType is {@link Void#TYPE} or if the number of
+     *                dimensions of the requested array instance exceed 255.
+     * @exception NegativeArraySizeException if the specified {@code length} is negative
+     */
     @Substitution
-    public static Object newArray(@Host(Class.class) StaticObjectClass componentType, int length) {
-        if (componentType.getMirrorKlass().isPrimitive()) {
-            byte jvmPrimitiveType = (byte) componentType.getMirrorKlass().getJavaKind().getBasicType();
+    public static Object newArray(@Host(Class.class) StaticObject componentType, int length) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        if (StaticObject.isNull(componentType)) {
+            throw meta.throwEx(meta.NullPointerException);
+        }
+        Klass component = ((StaticObjectClass) componentType).getMirrorKlass();
+        if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+
+        if (component.isPrimitive()) {
+            byte jvmPrimitiveType = (byte) component.getJavaKind().getBasicType();
             return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length);
         }
-        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
-        return vm.newArray(componentType.getMirrorKlass(), length);
+
+        // NegativeArraySizeException is thrown in getInterpreterToVM().newArray
+        // if (length < 0) {
+        // throw meta.throwEx(meta.NegativeArraySizeException);
+        // }
+        return meta.getInterpreterToVM().newArray(component, length);
     }
 
+    /**
+     * Creates a new array with the specified component type and dimensions. If
+     * {@code componentType} represents a non-array class or interface, the new array has
+     * {@code dimensions.length} dimensions and {@code componentType} as its component type. If
+     * {@code componentType} represents an array class, the number of dimensions of the new array is
+     * equal to the sum of {@code dimensions.length} and the number of dimensions of
+     * {@code componentType}. In this case, the component type of the new array is the component
+     * type of {@code componentType}.
+     *
+     * <p>
+     * The number of dimensions of the new array must not exceed 255.
+     *
+     * @param componentType the {@code Class} object representing the component type of the new
+     *            array
+     * @param dimensionsArray an array of {@code int} representing the dimensions of the new array
+     * @return the new array
+     * @exception NullPointerException if the specified {@code componentType} argument is null
+     * @exception IllegalArgumentException if the specified {@code dimensions} argument is a
+     *                zero-dimensional array, if componentType is {@link Void#TYPE}, or if the
+     *                number of dimensions of the requested array instance exceed 255.
+     * @exception NegativeArraySizeException if any of the components in the specified
+     *                {@code dimensions} argument is negative.
+     */
     @Substitution
-    public static Object multiNewArray(@Host(Class.class) StaticObject componentType,
-                    @Host(int[].class) StaticObject guestDimensions) {
-        int[] dimensions = ((StaticObjectArray) guestDimensions).unwrap();
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM().newMultiArray(((StaticObjectClass) componentType).getMirrorKlass(), dimensions);
+    public static Object multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        if (StaticObject.isNull(componentType)) {
+            throw meta.throwEx(meta.NullPointerException);
+        }
+        Klass component = ((StaticObjectClass) componentType).getMirrorKlass();
+        if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+        final int[] dimensions = ((StaticObjectArray) dimensionsArray).unwrap();
+        int finalDimensions = dimensions.length;
+        if (component.isArray()) {
+            finalDimensions += Types.getArrayDimensions(component.getType());
+        }
+        if (finalDimensions > 255) {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+        for (int d : dimensions) {
+            if (d < 0) {
+                throw meta.throwEx(meta.NegativeArraySizeException);
+            }
+        }
+        return meta.getInterpreterToVM().newMultiArray(component, dimensions);
     }
 
     @Substitution
