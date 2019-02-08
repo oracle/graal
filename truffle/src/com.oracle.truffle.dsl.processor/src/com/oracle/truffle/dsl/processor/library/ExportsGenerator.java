@@ -372,7 +372,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     }
 
     private CodeTree createDefaultAccepts(CodeTypeElement libraryGen, ExportsLibrary libraryExports, TypeMirror exportReceiverType, boolean cached) {
-        CodeTreeBuilder builder;
+        CodeTreeBuilder constructorBuilder;
         CodeTreeBuilder acceptsBuilder = CodeTreeBuilder.createBuilder();
         if (libraryExports.needsDynamicDispatch()) {
             CodeExecutableElement constructor = libraryGen.add(GeneratorUtils.createConstructorUsingFields(modifiers(), libraryGen));
@@ -383,18 +383,26 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
             CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();
 
-            builder = constructor.createBuilder();
+            constructorBuilder = constructor.createBuilder();
             if (cached) {
-                builder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".create(receiver)").end();
+                constructorBuilder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".create(receiver)").end();
             } else {
-                builder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".getUncached(receiver)").end();
+                constructorBuilder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".getUncached(receiver)").end();
             }
             acceptsBuilder.string("dynamicDispatch_.accepts(receiver) && dynamicDispatch_.dispatch(receiver) == ");
 
             if (libraryExports.isDynamicDispatchTarget()) {
                 acceptsBuilder.typeLiteral(libraryExports.getTemplateType().asType());
             } else {
-                acceptsBuilder.nullLiteral();
+                CodeVariableElement dynamicDispatchTarget = libraryGen.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), context.getType(Class.class), "dynamicDispatchTarget_"));
+                if (cached) {
+                    constructorBuilder.startStatement();
+                    constructorBuilder.string("this.dynamicDispatchTarget_ = ").staticReference(dispatchLibraryConstant).string(".getUncached(receiver).dispatch(receiver)");
+                    constructorBuilder.end();
+                } else {
+                    constructorBuilder.statement("this.dynamicDispatchTarget_ = dynamicDispatch_.dispatch(receiver)");
+                }
+                acceptsBuilder.string(dynamicDispatchTarget.getSimpleName().toString());
             }
         } else {
             if (libraryExports.isFinalReceiver()) {

@@ -281,4 +281,19 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         }
     }
 
+    @GenerateLibrary
+    abstract static class TestOtherLibrary extends Library {
+        public String m1(Object receiver) {
+            return "m1";
+        }
+    }
+
+    @Test
+    public void testOtherLibraryDefault() {
+        Object dynamicDispatch = new DynamicDispatch(DynamicDispatchTarget1.class);
+
+        TestOtherLibrary lib = createLibrary(TestOtherLibrary.class, dynamicDispatch);
+        assertEquals("m1", lib.m1(dynamicDispatch));
+    }
+
 }
