@@ -29,11 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
@@ -42,21 +40,20 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public final class ProtectReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
 
-    @Child Node execute;
+    @Child InteropLibrary interop;
 
     private final TruffleObject protectReadonlyGlobalsBlock;
 
     public ProtectReadOnlyGlobalsBlockNode(LLVMContext context) {
-        this.execute = Message.EXECUTE.createNode();
-
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
         this.protectReadonlyGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_protect_readonly_globals_block", "(POINTER):VOID");
+        this.interop = InteropLibrary.getFactory().create(protectReadonlyGlobalsBlock);
     }
 
     @Override
     public void execute(LLVMPointer ptr) {
         try {
-            ForeignAccess.sendExecute(execute, protectReadonlyGlobalsBlock, ptr);
+            interop.execute(protectReadonlyGlobalsBlock, ptr);
         } catch (InteropException ex) {
             assert false; // should never happen, but probably also safe to ignore
         }
