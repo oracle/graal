@@ -49,6 +49,28 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [engine bound TruffleLogger for instruments](file:///Users/tom/Projects/graal/tzezula/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getLogger-java.lang.String-). The engine bound logger can be used by threads executing without any context.
 
 ## Version 1.0.0 RC13
+* This version includes a major revision of the Truffle Interoperability APIs. Most existing APIs for Truffle Interoperability were deprecated. The compatiblity layer may cause significant performance reduction for interoperability calls. 
+	* Please see the [Interop Migration Guide]() for an overview and individual `@deprecated` javadoc tags for guidance.
+	* Deprecated classes `ForeignAccess`, `Message`, `MessageResolution`, `Resolve` and `KeyInfo`. 
+	* The following methods got deprecated:
+		* `InteropException.raise`, with libraries there should be no need to convert checked exceptions to runtime exceptions.
+		* `TruffleObject.getForeignAccess()`.
+	* Introduced new classes: `InteropLibrary` and `InvalidArrayIndexException`.
+* Added Truffle Library API that allows language implementations to use polymorphic dispatch for receiver types with support for implementation specific caching/profiling with support for uncached dispatch. 
+	* Please see the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibaries.md) for further details.
+	* Introduced new package: `com.oracle.truffle.api.library`.
+* Added `@GenerateUncached` to allow the generation of uncached Truffle DSL nodes accessible via the new static generated method`getUncached()`.
+	* Set the default value for @Cached to `"create()"`. This allows `@Cached` to be used without attribute.
+	* Added `@Cached(uncached="")` to specify the expression to use for the uncached node.
+	* Added `@Cached(allowUncached=true)` to allow the cached expression to be reused as uncached expression. Only necessary if the cached expression is not trivial or there is no `getUncached()` static method in the node.
+	* Added `@Cached#parameters` to allow to share the parameter specification for the cached and uncached version of a node.
+	* Added 
+* Truffle DSL can now properly handle checked exceptions in execute methods and specializations.
+* Truffle DSL now guarantees to adopt nodes before they are executed in guards. Previously, nodes used in guards were only adopted for their second cached invocation.
+* Added `@Cached.Shared` to allow sharing of cached values between specialization and exported Truffle Library methods.
+* Added `getUncached()` method to the following profiles: `
+* Added `Node.isAdoptable()` that allows `Node.getParent()` to always remain `null` even if the node is adopted by a parent. This allows to share nodes statically and avoid the memory leak for the parent reference.
+* Added Truffle DSL option `-Dtruffle.dsl.ignoreCompilerWarnings=true|false`, to ignore Truffle DSL compiler warnings. This is useful and recommended to be used for downstream testing.
 * Added [Debugger.getSessionCount()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getSessionCount--) to return the number of active debugger sessions.
 * The [TruffleFile.getName()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getName--) returns `null` for root directory.
 * `TruffleLanguage` can [register additional services](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#registerService-java.lang.Object-). This change also deprecates the automatic registration of the language class as a service.
@@ -57,6 +79,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * The name of an [@Option](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html) can now start with a lowercase letter.
 * Allowed navigation from host class to host symbol (companion object for static members) via the synthetic member `"static"`.
 * Moved `getStackTrace` and `fillIn` from [TruffleStackTraceElement](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleStackTraceElement.html) to [TruffleStackTrace](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleStackTrace.html).
+
+
+
 
 ## Version 1.0.0 RC12
 * Fixed: [Env.asHostException()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#asHostException-java.lang.Throwable-) should throw an `IllegalArgumentException` if the provided value is not a host exception.

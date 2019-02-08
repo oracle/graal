@@ -10,6 +10,9 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 * [OptionCategory.DEBUG](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionCategory.html) has been renamed to `OptionCategory.INTERNAL` for clarity.
 * Added `"static"` member to class objects that provides access to the class's static members.
 * [OptionStability](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionStability.html) has been added for specifying the stability of an option.
+## Version 1.0 RC13
+* Removed deprecated API class `ProxyPrimitive`.
+
 
 ## Version 1.0 RC11
 * Added [SourceSection.hasLines()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasLines--), [SourceSection.hasColumns()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasColumns--) and [SourceSection.hasCharIndex()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasCharIndex--) to distinguish which positions are defined and which are not.
