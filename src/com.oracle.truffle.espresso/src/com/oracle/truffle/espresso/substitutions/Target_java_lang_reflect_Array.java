@@ -23,13 +23,15 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.lang.reflect.Array;
+
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
-import java.lang.reflect.Array;
 
 @EspressoSubstitutions
 public final class Target_java_lang_reflect_Array {
@@ -219,16 +221,90 @@ public final class Target_java_lang_reflect_Array {
         }
     }
 
+    /**
+     * Sets the value of the indexed component of the specified array object to the specified new
+     * value. The new value is first automatically unwrapped if the array has a primitive component
+     * type.
+     * 
+     * @param array the array
+     * @param index the index into the array
+     * @param value the new value of the indexed component
+     * @exception NullPointerException If the specified object argument is null
+     * @exception IllegalArgumentException If the specified object argument is not an array, or if
+     *                the array component type is primitive and an unwrapping conversion fails
+     * @exception ArrayIndexOutOfBoundsException If the specified {@code index} argument is
+     *                negative, or if it is greater than or equal to the length of the specified
+     *                array
+     */
     @Substitution
     public static void set(@Host(Object.class) StaticObject array, int index, @Host(Object.class) StaticObject value) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        InterpreterToVM vm = meta.getInterpreterToVM();
+        if (StaticObject.isNull(array)) {
+            throw meta.throwEx(meta.NullPointerException);
+        }
         if (array instanceof StaticObjectArray) {
-            EspressoLanguage.getCurrentContext().getInterpreterToVM().setArrayObject(value, index, (StaticObjectArray) array);
-        } else {
-            if (StaticObject.isNull(array)) {
-                throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NullPointerException.class);
-            } else {
-                throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+            // @formatter:off
+            // Checkstyle: stop
+            switch (array.getKlass().getComponentType().getJavaKind()) {
+                case Boolean : vm.setArrayByte(meta.unboxBoolean(value) ? (byte) 1 : (byte) 0, index, array); break;
+                case Byte    : vm.setArrayByte(meta.unboxByte(value), index, array);       break;
+                case Short   : vm.setArrayShort(meta.unboxShort(value), index, array);     break;
+                case Char    : vm.setArrayChar(meta.unboxCharacter(value), index, array);  break;
+                case Int     : vm.setArrayInt(meta.unboxInteger(value), index, array);     break;
+                case Float   : vm.setArrayFloat(meta.unboxFloat(value), index, array);     break;
+                case Long    : vm.setArrayLong(meta.unboxLong(value), index, array);       break;
+                case Double  : vm.setArrayDouble(meta.unboxDouble(value), index, array);   break;
+                case Object  : vm.setArrayObject(value, index, (StaticObjectArray) array); break ;
+                default      : throw EspressoError.shouldNotReachHere("invalid array type: " + array);
             }
+            // @formatter:on
+            // Checkstyle: resume
+        } else {
+            throw meta.throwEx(meta.IllegalArgumentException);
         }
     }
+
+    /**
+     * Returns the value of the indexed component in the specified array object. The value is
+     * automatically wrapped in an object if it has a primitive type.
+     *
+     * @param array the array
+     * @param index the index
+     * @return the (possibly wrapped) value of the indexed component in the specified array
+     * @exception NullPointerException If the specified object is null
+     * @exception IllegalArgumentException If the specified object is not an array
+     * @exception ArrayIndexOutOfBoundsException If the specified {@code index} argument is
+     *                negative, or if it is greater than or equal to the length of the specified
+     *                array
+     */
+    @Substitution
+    public static @Host(Object.class) StaticObject get(@Host(Object.class) StaticObject array, int index) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        InterpreterToVM vm = meta.getInterpreterToVM();
+        if (StaticObject.isNull(array)) {
+            throw meta.throwEx(meta.NullPointerException);
+        }
+        if (array instanceof StaticObjectArray) {
+            // @formatter:off
+            // Checkstyle: stop
+            switch (array.getKlass().getComponentType().getJavaKind()) {
+                case Boolean : return meta.boxBoolean(vm.getArrayByte(index, array) != 0);
+                case Byte    : return meta.boxByte(vm.getArrayByte(index, array));
+                case Short   : return meta.boxShort(vm.getArrayShort(index, array));
+                case Char    : return meta.boxCharacter(vm.getArrayChar(index, array));
+                case Int     : return meta.boxInteger(vm.getArrayInt(index, array));
+                case Float   : return meta.boxFloat(vm.getArrayFloat(index, array));
+                case Long    : return meta.boxLong(vm.getArrayLong(index, array));
+                case Double  : return meta.boxDouble(vm.getArrayDouble(index, array));
+                case Object  : return vm.getArrayObject(index, array);
+                default      : throw EspressoError.shouldNotReachHere("invalid array type: " + array);
+            }
+            // @formatter:on
+            // Checkstyle: resume
+        } else {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+    }
+
 }

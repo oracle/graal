@@ -30,12 +30,12 @@ import java.util.function.Predicate;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -53,8 +53,6 @@ import com.oracle.truffle.espresso.substitutions.Host;
  * host to guest classes for a well known subset (e.g. common types and exceptions).
  */
 public final class Meta implements ContextAccess {
-
-
 
     private final EspressoContext context;
 
@@ -117,6 +115,15 @@ public final class Meta implements ContextAccess {
         Double_valueOf = Double.lookupDeclaredMethod(Name.valueOf, Signature.Double_double);
         Long_valueOf = Long.lookupDeclaredMethod(Name.valueOf, Signature.Long_long);
 
+        Boolean_value = Boolean.lookupDeclaredField(Name.value, Type._boolean);
+        Byte_value = Byte.lookupDeclaredField(Name.value, Type._byte);
+        Character_value = Character.lookupDeclaredField(Name.value, Type._char);
+        Short_value = Short.lookupDeclaredField(Name.value, Type._short);
+        Float_value = Float.lookupDeclaredField(Name.value, Type._float);
+        Integer_value = Integer.lookupDeclaredField(Name.value, Type._int);
+        Double_value = Double.lookupDeclaredField(Name.value, Type._double);
+        Long_value = Long.lookupDeclaredField(Name.value, Type._long);
+
         String_value = String.lookupDeclaredField(Name.value, Type._char_array);
         String_hash = String.lookupDeclaredField(Name.hash, Type._int);
         String_hashCode = String.lookupDeclaredMethod(Name.hashCode, Signature._int);
@@ -128,6 +135,8 @@ public final class Meta implements ContextAccess {
         StackTraceElement = knownKlass(Type.StackTraceElement);
         StackTraceElement_init = StackTraceElement.lookupDeclaredMethod(Name.INIT, Signature._void_String_String_String_int);
 
+        IllegalArgumentException = knownKlass(Type.IllegalArgumentException);
+        NullPointerException = knownKlass(Type.NullPointerException);
         ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
         StackOverflowError = knownKlass(Type.StackOverflowError);
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
@@ -139,7 +148,6 @@ public final class Meta implements ContextAccess {
 
         PrivilegedActionException = knownKlass(Type.PrivilegedActionException);
         PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, Signature._void_Exception);
-
 
         ClassLoader = knownKlass(Type.ClassLoader);
         ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
@@ -220,6 +228,15 @@ public final class Meta implements ContextAccess {
     public final Method Double_valueOf;
     public final Method Long_valueOf;
 
+    public final Field Boolean_value;
+    public final Field Byte_value;
+    public final Field Character_value;
+    public final Field Short_value;
+    public final Field Float_value;
+    public final Field Integer_value;
+    public final Field Double_value;
+    public final Field Long_value;
+
     // Guest String.
     public final Field String_value;
     public final Field String_hash;
@@ -240,6 +257,8 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Field;
     public final Field Field_root;
 
+    public final ObjectKlass IllegalArgumentException;
+    public final ObjectKlass NullPointerException;
     public final ObjectKlass ClassNotFoundException;
     public final ObjectKlass StackOverflowError;
     public final ObjectKlass OutOfMemoryError;
@@ -305,6 +324,13 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
+    public static StaticObject initEx(ObjectKlass klass) {
+        StaticObject ex = klass.allocateInstance();
+        // Call constructor.
+        klass.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(ex);
+        return ex;
+    }
+
     public StaticObject initEx(java.lang.Class<?> clazz, String message) {
         assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
@@ -329,7 +355,6 @@ public final class Meta implements ContextAccess {
         throw new EspressoException(initEx(clazz, message));
     }
 
-
     public EspressoException throwEx(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initEx(clazz, cause));
@@ -338,6 +363,11 @@ public final class Meta implements ContextAccess {
     public EspressoException throwEx(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
         assert Throwable.isAssignableFrom(exKlass);
         throw new EspressoException(initEx(exKlass, message));
+    }
+
+    public EspressoException throwEx(ObjectKlass exKlass) {
+        assert Throwable.isAssignableFrom(exKlass);
+        throw new EspressoException(initEx(exKlass));
     }
 
     @TruffleBoundary
@@ -505,4 +535,100 @@ public final class Meta implements ContextAccess {
     }
 
     // endregion
+
+    // region Guest Unboxing
+
+    public boolean unboxBoolean(@Host(Boolean.class) StaticObject boxed) {
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != Boolean) {
+            throw throwEx(IllegalArgumentException);
+        }
+        return (boolean) Boolean_value.get(boxed);
+    }
+
+    public byte unboxByte(@Host(Byte.class) StaticObject boxed) {
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != Byte) {
+            throw throwEx(IllegalArgumentException);
+        }
+        return (byte) Byte_value.get(boxed);
+    }
+
+    public char unboxCharacter(@Host(Character.class) StaticObject boxed) {
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != Character) {
+            throw throwEx(IllegalArgumentException);
+        }
+        return (char) Character_value.get(boxed);
+    }
+
+    public short unboxShort(@Host(Short.class) StaticObject boxed) {
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != Short) {
+            throw throwEx(IllegalArgumentException);
+        }
+        return (short) Short_value.get(boxed);
+    }
+
+    public float unboxFloat(@Host(Float.class) StaticObject boxed) {
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != Float) {
+            throw throwEx(IllegalArgumentException);
+        }
+        return (float) Float_value.get(boxed);
+    }
+
+    public int unboxInteger(@Host(Integer.class) StaticObject boxed) {
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != Integer) {
+            throw throwEx(IllegalArgumentException);
+        }
+        return (int) Integer_value.get(boxed);
+    }
+
+    public double unboxDouble(@Host(Double.class) StaticObject boxed) {
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != Double) {
+            throw throwEx(IllegalArgumentException);
+        }
+        return (double) Double_value.get(boxed);
+    }
+
+    public long unboxLong(@Host(Long.class) StaticObject boxed) {
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != Long) {
+            throw throwEx(IllegalArgumentException);
+        }
+        return (long) Long_value.get(boxed);
+    }
+
+    // endregion Guest Unboxing
+
+    // region Guest boxing
+
+    public @Host(Boolean.class) StaticObject boxBoolean(boolean value) {
+        return (StaticObject) Boolean_valueOf.invokeDirect(null, value);
+    }
+
+    public @Host(Byte.class) StaticObject boxByte(byte value) {
+        return (StaticObject) Byte_valueOf.invokeDirect(null, value);
+    }
+
+    public @Host(Character.class) StaticObject boxCharacter(char value) {
+        return (StaticObject) Character_valueOf.invokeDirect(null, value);
+    }
+
+    public @Host(Short.class) StaticObject boxShort(short value) {
+        return (StaticObject) Short_valueOf.invokeDirect(null, value);
+    }
+
+    public @Host(Float.class) StaticObject boxFloat(float value) {
+        return (StaticObject) Float_valueOf.invokeDirect(null, value);
+    }
+
+    public @Host(Integer.class) StaticObject boxInteger(int value) {
+        return (StaticObject) Integer_valueOf.invokeDirect(null, value);
+    }
+
+    public @Host(Double.class) StaticObject boxDouble(double value) {
+        return (StaticObject) Double_valueOf.invokeDirect(null, value);
+    }
+
+    public @Host(Long.class) StaticObject boxLong(long value) {
+        return (StaticObject) Long_valueOf.invokeDirect(null, value);
+    }
+
+    // endregion Guest boxing
 }
