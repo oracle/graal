@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer;
 
+import java.io.Console;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -60,7 +61,8 @@ public final class Environment implements Feedback, CommandInput {
     private Iterable<ComponentParam> fileIterable;
     private Map<URL, Path> fileMap = new HashMap<>();
     private boolean allOutputToErr;
-
+    private boolean autoYesEnabled;
+    private boolean nonInteractive;
     private Path graalHome;
 
     Environment(String commandName, List<String> parameters, Map<String, String> options) {
@@ -69,6 +71,10 @@ public final class Environment implements Feedback, CommandInput {
 
     Environment(String commandName, InstallerCommand cmdInstance, List<String> parameters, Map<String, String> options) {
         this(commandName, makeBundle(cmdInstance), parameters, options);
+    }
+
+    public void setIn(InputStream input) {
+        this.in = input;
     }
 
     private static String makeBundle(InstallerCommand cmdInstance) {
@@ -93,6 +99,22 @@ public final class Environment implements Feedback, CommandInput {
         }
 
         this.fileIterable = new FileIterable(this, this);
+    }
+
+    public boolean isAutoYesEnabled() {
+        return autoYesEnabled;
+    }
+
+    public void setAutoYesEnabled(boolean autoYesEnabled) {
+        this.autoYesEnabled = autoYesEnabled;
+    }
+
+    public boolean isNonInteractive() {
+        return nonInteractive;
+    }
+
+    public void setNonInteractive(boolean nonInteractive) {
+        this.nonInteractive = nonInteractive;
     }
 
     public boolean isAllOutputToErr() {
@@ -419,12 +441,18 @@ public final class Environment implements Feedback, CommandInput {
         } catch (EOFException ex) {
             throw new UserAbortException(ex);
         } catch (IOException ex) {
-            throw failure("ERROR_UserInput", ex, ex.getMessage());
+            throw withBundle(Environment.class).failure("ERROR_UserInput", ex, ex.getMessage());
         }
     }
 
     @Override
     public String acceptLine(boolean autoYes) {
+        if (autoYes && isAutoYesEnabled()) {
+            return AUTO_YES;
+        }
+        if (isNonInteractive()) {
+            throw new NonInteractiveException(withBundle(Environment.class).l10n("ERROR_NoninteractiveInput"));
+        }
         StringBuilder sb = new StringBuilder();
         char c;
         while ((c = acceptCharacter()) != '\n') {
@@ -439,8 +467,16 @@ public final class Environment implements Feedback, CommandInput {
 
     @Override
     public String acceptPassword() {
-        System.console().flush();
-        return String.copyValueOf(System.console().readPassword());
+        if (isNonInteractive()) {
+            throw new NonInteractiveException(withBundle(Environment.class).l10n("ERROR_NoninteractiveInput"));
+        }
+        Console console = System.console();
+        if (console != null) {
+            console.flush();
+            return String.copyValueOf(console.readPassword());
+        } else {
+            return acceptLine(false);
+        }
     }
 
     @Override

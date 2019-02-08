@@ -168,4 +168,10 @@ public interface Commands {
      */
     String OPTION_AUTO_YES = "A";
     String LONG_OPTION_AUTO_YES = "auto-yes";
+
+    /**
+     * Abort on all prompts except YES/NO.
+     */
+    String OPTION_NON_INTERACTIVE = "N";
+    String LONG_OPTION_NON_INTERACTIVE = "non-interactive";
 }

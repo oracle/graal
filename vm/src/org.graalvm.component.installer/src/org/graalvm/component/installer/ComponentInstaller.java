@@ -86,7 +86,7 @@ public final class ComponentInstaller {
         // not necessary except for tests to cleanup extra items
         commands.clear();
         globalOptions.clear();
-        
+
         commands.put("install", new InstallCommand()); // NOI18N
         commands.put("uninstall", new UninstallCommand()); // NOI18N
         commands.put("list", new ListInstalledCommand()); // NOI18N
@@ -116,6 +116,9 @@ public final class ComponentInstaller {
 
         globalOptions.put(Commands.OPTION_AUTO_YES, "");
         globalOptions.put(Commands.LONG_OPTION_AUTO_YES, Commands.OPTION_AUTO_YES);
+
+        globalOptions.put(Commands.OPTION_NON_INTERACTIVE, "");
+        globalOptions.put(Commands.LONG_OPTION_NON_INTERACTIVE, Commands.OPTION_NON_INTERACTIVE);
     }
 
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
@@ -239,6 +242,12 @@ public final class ComponentInstaller {
                 err("ERROR_MultipleSourcesUnsupported");
             }
 
+            if (env.hasOption(Commands.OPTION_AUTO_YES)) {
+                env.setAutoYesEnabled(true);
+            }
+            if (env.hasOption(Commands.OPTION_NON_INTERACTIVE)) {
+                env.setNonInteractive(true);
+            }
             if (optValues.containsKey(Commands.OPTION_FILES)) {
                 env.setFileIterable(new FileIterable(env, env));
             } else if (optValues.containsKey(Commands.OPTION_URLS)) {
