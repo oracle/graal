@@ -1330,7 +1330,7 @@ public final class BytecodeNode extends EspressoRootNode {
             CompilerDirectives.transferToInterpreter();
             // TODO(peterssen): Profile whether null was hit or not.
             Meta meta = getMethod().getContext().getMeta();
-            throw meta.throwEx(NullPointerException.class);
+            throw meta.throwEx(meta.NullPointerException);
         }
         return value;
     }

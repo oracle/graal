@@ -142,6 +142,17 @@ public final class ObjectKlass extends Klass {
             }
             initState = INITIALIZED;
 
+            // TODO(peterssen): Initialize superinterfaces with default methods.
+
+            /**
+             * Spec fragment: Then, initialize each final static field of C with the constant value
+             * in its ConstantValue attribute (§4.7.2), in the order the fields appear in the
+             * ClassFile structure.
+             *
+             * ...
+             *
+             * Next, execute the class or interface initialization method of C.
+             */
             for (Field f : declaredFields) {
                 if (f.isStatic()) {
                     ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
@@ -159,17 +170,17 @@ public final class ObjectKlass extends Klass {
                             f.set(getStatics(), c);
                             break;
                         }
-                        case Short:{
+                        case Short: {
                             short c = (short) getConstantPool().intAt(a.getConstantvalueIndex());
                             f.set(getStatics(), c);
                             break;
                         }
-                        case Char:{
+                        case Char: {
                             char c = (char) getConstantPool().intAt(a.getConstantvalueIndex());
                             f.set(getStatics(), c);
                             break;
                         }
-                        case Int:{
+                        case Int: {
                             int c = getConstantPool().intAt(a.getConstantvalueIndex());
                             f.set(getStatics(), c);
                             break;
@@ -179,12 +190,12 @@ public final class ObjectKlass extends Klass {
                             f.set(getStatics(), c);
                             break;
                         }
-                        case Long:{
+                        case Long: {
                             long c = getConstantPool().longAt(a.getConstantvalueIndex());
                             f.set(getStatics(), c);
                             break;
                         }
-                        case Double:{
+                        case Double: {
                             double c = getConstantPool().doubleAt(a.getConstantvalueIndex());
                             f.set(getStatics(), c);
                             break;

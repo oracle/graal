@@ -23,11 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toList;
-
-import java.util.Collections;
-import java.util.List;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
@@ -77,7 +72,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     @CompilationFinal //
     private StaticObjectClass mirrorCache;
-
 
     public final ObjectKlass[] getSuperInterfaces() {
         return superInterfaces;
@@ -487,22 +481,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return interfaces;
     }
 
-    public List<Klass> getInterfaces(boolean includeSuperclasses) {
-        return getInterfacesStream(includeSuperclasses).collect(collectingAndThen(toList(), new Function<List<Klass>, List<Klass>>() {
-            @Override
-            public List<Klass> apply(List<Klass> list) {
-                return Collections.unmodifiableList(list);
-            }
-        }));
-    }
-
     @TruffleBoundary
-    public Object allocateArray(int length) {
+    public StaticObject allocateArray(int length) {
         return getInterpreterToVM().newArray(this, length);
     }
 
     @TruffleBoundary
-    public Object allocateArray(int length, IntFunction<StaticObject> generator) {
+    public StaticObject allocateArray(int length, IntFunction<StaticObject> generator) {
         // TODO(peterssen): Store check is missing.
         StaticObject[] array = new StaticObject[length];
         for (int i = 0; i < array.length; ++i) {
@@ -569,7 +554,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     public String getRuntimePackage() {
         String typeString = getType().toString();
         int lastDot = typeString.lastIndexOf('.');
-        if (lastDot < 0) return "";
+        if (lastDot < 0)
+            return "";
         String pkg = typeString.substring(lastDot + 1);
         if (pkg.endsWith(";")) {
             return pkg.substring(0, pkg.length() - 1);

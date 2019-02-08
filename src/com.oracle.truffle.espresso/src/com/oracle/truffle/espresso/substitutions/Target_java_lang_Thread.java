@@ -74,7 +74,8 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void start0(@Host(Thread.class) StaticObject self) {
-        /* nop */ }
+        /* nop */
+    }
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
