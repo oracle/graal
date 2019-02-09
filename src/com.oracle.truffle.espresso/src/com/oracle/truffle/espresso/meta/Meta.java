@@ -54,7 +54,7 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class Meta implements ContextAccess {
 
-    private final EspressoContext context;
+        private final EspressoContext context;
 
     public Meta(EspressoContext context) {
         CompilerAsserts.neverPartOfCompilation();
@@ -157,11 +157,14 @@ public final class Meta implements ContextAccess {
 
         // Guest reflection.
         Constructor = knownKlass(Type.Constructor);
-        Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Class.getType());
-        Constructor_root = Constructor.lookupDeclaredField(Name.root, Constructor.getType());
+        Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Type.Class);
+        Constructor_root = Constructor.lookupDeclaredField(Name.root, Type.Constructor);
 
         Method = knownKlass(Type.Method);
-        Method_root = Method.lookupDeclaredField(Name.root, Method.getType());
+        Method_root = Method.lookupDeclaredField(Name.root, Type.Method);
+        Method_clazz = Method.lookupDeclaredField(Name.clazz, Type.Class);
+        Method_override = Method.lookupDeclaredField(Name.override, Type._boolean);
+        Method_parameterTypes = Method.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
 
         Field = knownKlass(Type.Field);
         Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
@@ -255,6 +258,9 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass Method;
     public final Field Method_root;
+    public final Field Method_clazz;
+    public final Field Method_override;
+    public final Field Method_parameterTypes;
 
     public final ObjectKlass Field;
     public final Field Field_root;

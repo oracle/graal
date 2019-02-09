@@ -96,6 +96,9 @@ public final class Symbol<T> extends ByteSequence {
 
     public static final class Name extends ModifiedUTF8 {
 
+
+
+
         public static void init() {
             /* nop */
         }
@@ -130,6 +133,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getProperty = StaticSymbols.putName("getProperty");
         public static final Symbol<Name> setProperty = StaticSymbols.putName("setProperty");
         public static final Symbol<Name> exit = StaticSymbols.putName("exit");
+        public static final Symbol<Name> override = StaticSymbols.putName("override");
+        public static final Symbol<Name> parameterTypes = StaticSymbols.putName("parameterTypes");
 
         // Attribute names
         public static final Symbol<Name> Code = StaticSymbols.putName("Code");
