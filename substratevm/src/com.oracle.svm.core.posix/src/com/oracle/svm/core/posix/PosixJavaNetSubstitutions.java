@@ -49,10 +49,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -64,6 +66,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
@@ -4367,6 +4370,59 @@ final class Target_java_net_PlainSocketImpl {
 
     /* Substitutions for native methods. */
 
+    /**
+     * This method is called by the static initializer for java.net.PlainSocketImpl. It is called
+     * again at runtime to get a new file descriptor to use as the marker_fd.
+     */
+    // 129 /*
+    // 130 * The initroto function is called whenever PlainSocketImpl is
+    // 131 * loaded, to cache field IDs for efficiency. This is called every time
+    // 132 * the Java class is loaded.
+    // 133 *
+    // 134 * Class: java_net_PlainSocketImpl
+    // 135 * Method: initProto
+    // 136 * Signature: ()V
+    // 137 */
+    // 138 JNIEXPORT void JNICALL
+    // 139 Java_java_net_PlainSocketImpl_initProto(JNIEnv *env, jclass cls) {
+    /* { Do not re-format commented-out code: @formatter:off */
+    @Substitute
+    static void initProto() {
+        // 140      psi_fdID = (*env)->GetFieldID(env, cls , "fd",
+        // 141                                    "Ljava/io/FileDescriptor;");
+        // 142      CHECK_NULL(psi_fdID);
+        // 143      psi_addressID = (*env)->GetFieldID(env, cls, "address",
+        // 144                                            "Ljava/net/InetAddress;");
+        // 145      CHECK_NULL(psi_addressID);
+        // 146      psi_portID = (*env)->GetFieldID(env, cls, "port", "I");
+        // 147      CHECK_NULL(psi_portID);
+        // 148      psi_localportID = (*env)->GetFieldID(env, cls, "localport", "I");
+        // 149      CHECK_NULL(psi_localportID);
+        // 150      psi_timeoutID = (*env)->GetFieldID(env, cls, "timeout", "I");
+        // 151      CHECK_NULL(psi_timeoutID);
+        // 152      psi_trafficClassID = (*env)->GetFieldID(env, cls, "trafficClass", "I");
+        // 153      CHECK_NULL(psi_trafficClassID);
+        // 154      psi_serverSocketID = (*env)->GetFieldID(env, cls, "serverSocket",
+        // 155                          "Ljava/net/ServerSocket;");
+        // 156      CHECK_NULL(psi_serverSocketID);
+        // 157      psi_fdLockID = (*env)->GetFieldID(env, cls, "fdLock",
+        // 158                                        "Ljava/lang/Object;");
+        // 159      CHECK_NULL(psi_fdLockID);
+        // 160      psi_closePendingID = (*env)->GetFieldID(env, cls, "closePending", "Z");
+        // 161      CHECK_NULL(psi_closePendingID);
+        // 162      IO_fd_fdID = NET_GetFileDescriptorID(env);
+        // 163      CHECK_NULL(IO_fd_fdID);
+        // 164
+        // 165      initInetAddressIDs(env);
+        // 166      JNU_CHECK_EXCEPTION(env);
+        // 167
+        // 168      /* Create the marker fd used for dup2 */
+        // 169      marker_fd = getMarkerFD();
+        Util_java_net_PlainSocketImpl.marker_fd = Util_java_net_PlainSocketImpl.getMarkerFD();
+        return;
+    }
+    /* } Do not re-format commented-out code: @formatter:on */
+
     /* Do not re-format commented-out code: @formatter:off */
     @Substitute
     // 176 /*
@@ -5331,12 +5387,6 @@ final class Target_java_net_PlainSocketImpl {
     }
     /* @formatter:on */
 
-    @Substitute
-    static void initProto() {
-        VMError.unimplemented();
-        return;
-    }
-
     /* Do not re-format commented-out code: @formatter:off */
     // 886 /*
     // 887  * Class:     java_net_PlainSocketImpl
@@ -5697,6 +5747,63 @@ final class Util_java_net_PlainSocketImpl {
         Fcntl.fcntl(fd, Fcntl.F_SETFL(), flags);
     }
     /* @formatter:on */
+
+    /* { Do not re-format commented-out code: @formatter:off */
+    // 93  /*
+    // 94   * Create the marker file descriptor by establishing a loopback connection
+    // 95   * which we shutdown but do not close the fd. The result is an fd that
+    // 96   * can be used for read/write.
+    // 97   */
+    // 98  static int getMarkerFD()
+    // 99  {
+    static int getMarkerFD() {
+        // 100      int sv[2];
+        CIntPointer sv = StackValue.get(2, CIntPointer.class);
+        // 101
+        // 102  #ifdef AF_UNIX
+        if (IsDefined.socket_AF_UNIX()) {
+            // 103      if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1) {
+            if (Socket.socketpair(Socket.AF_UNIX(), Socket.SOCK_STREAM(), 0, sv) == -1) {
+                // 104          return -1;
+                return -1;
+            }
+            // 106  #else
+        } else {
+            // 107      return -1;
+            return -1;
+            // 108  #endif
+        }
+        // 109
+        // 110      /*
+        // 111       * Finally shutdown sv[0] (any reads to this fd will get
+        // 112       * EOF; any writes will get an error).
+        // 113       */
+        // 114      JVM_SocketShutdown(sv[0], 2);
+        VmPrimsJVM.JVM_SocketShutdown(sv.read(0), 2);
+        // 115      JVM_SocketClose(sv[1]);
+        VmPrimsJVM.JVM_SocketClose(sv.read(1));
+        // 116
+        // 117      return sv[0];
+        return sv.read(0);
+    }
+    /* } Do not re-format commented-out code: @formatter:on */
+}
+
+/**
+ * Re-run the class initialization for {@code java.net.PlainSocketImpl} so that static fields are
+ * re-initialized from the platform running the image.
+ * <p>
+ * The static initializer for {@code java.net.PlainSocketImpl} captures a file descriptor that is
+ * used as a marker fd when sockets are closed. The file descriptor must be re-initialized at
+ * runtime.
+ */
+@AutomaticFeature
+final class JavaNetPlainSocketImplFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.PlainSocketImpl"));
+    }
 }
 
 @TargetClass(sun.net.spi.DefaultProxySelector.class)

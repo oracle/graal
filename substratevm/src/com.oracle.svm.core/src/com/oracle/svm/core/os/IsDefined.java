@@ -75,6 +75,11 @@ public class IsDefined {
         return isDarwin() || isLinux();
     }
 
+    @Fold
+    public static boolean socket_AF_UNIX() {
+        return isDarwin() || isLinux();
+    }
+
     /*
      * Apple #ifdefs.
      */
