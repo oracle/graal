@@ -45,7 +45,7 @@ public class StaticObjectImpl extends StaticObject {
 
     // FIXME(peterssen): Klass does not need to be initialized, just prepared?.
     public boolean isStatic() {
-        return this == getKlass().tryInitializeAndGetStatics();
+        return this == getKlass().getStatics();
     }
 
     // Shallow copy.
@@ -63,10 +63,6 @@ public class StaticObjectImpl extends StaticObject {
         // assert !isStatic || klass.isInitialized();
         this.hiddenFields = null;
         this.fields = isStatic ? new Object[klass.getStaticFieldSlots()] : new Object[klass.getInstanceFieldSlots()];
-//        Field[] allFields = isStatic ? klass.getStaticFields() : klass.getInstanceFields(true);
-//        for (Field fi : allFields) {
-//            this.fields[fi.getSlot()] = MetaUtil.defaultFieldValue(fi.getKind());
-//        }
     }
 
     public final Object getField(Field field) {

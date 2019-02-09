@@ -94,12 +94,12 @@ public interface MemberRefConstant extends PoolConstant {
      * following is true:
      * <ul>
      * <li>R is public.
-     * <li>R is protected and is declared in a class C, and D is either a subclass of C or C
-     * itself. Furthermore, if R is not static, then the symbolic reference to R must contain a
-     * symbolic reference to a class T, such that T is either a subclass of D, a superclass of
-     * D, or D itself.
-     * <li>R is either protected or has default access (that is, neither public nor protected
-     * nor private), and is declared by a class in the same run-time package as D.
+     * <li>R is protected and is declared in a class C, and D is either a subclass of C or C itself.
+     * Furthermore, if R is not static, then the symbolic reference to R must contain a symbolic
+     * reference to a class T, such that T is either a subclass of D, a superclass of D, or D
+     * itself.
+     * <li>R is either protected or has default access (that is, neither public nor protected nor
+     * private), and is declared by a class in the same run-time package as D.
      * <li>R is private and is declared in D.
      * </ul>
      */

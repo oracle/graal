@@ -33,12 +33,12 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Names;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jni.JniEnv;
@@ -218,7 +218,6 @@ public final class EspressoContext {
                         Type.IllegalArgumentException)) {
             initializeKnownClass(type);
         }
-
 
         System.err.println("After spawnVM: " + (System.currentTimeMillis() - ticks) + " ms " + BytecodeNode.bcCount.get());
     }

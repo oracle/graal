@@ -23,13 +23,13 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.function.IntFunction;
+
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Runtime {

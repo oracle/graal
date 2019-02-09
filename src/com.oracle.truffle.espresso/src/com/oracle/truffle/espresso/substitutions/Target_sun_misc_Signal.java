@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+
 import sun.misc.Signal;
 
 @EspressoSubstitutions

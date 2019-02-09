@@ -106,11 +106,15 @@ public abstract class NativeRootNode extends EspressoRootNode {
         }
 
         switch (getMethod().getReturnKind()) {
-            case Boolean : return ((byte) result != 0);
-            case Byte    : return (byte) result;
-            case Char    : return (char) result;
-            case Short   : return (short) result;
-            case Object  :
+            case Boolean:
+                return ((byte) result != 0);
+            case Byte:
+                return (byte) result;
+            case Char:
+                return (char) result;
+            case Short:
+                return (short) result;
+            case Object:
                 if (result instanceof TruffleObject) {
                     if (ForeignAccess.sendIsNull(isNullNode, (TruffleObject) result)) {
                         return StaticObject.NULL;

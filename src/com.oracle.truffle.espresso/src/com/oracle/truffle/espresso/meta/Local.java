@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import java.util.Objects;
+
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-
-import java.util.Objects;
 
 /**
  * Describes the type and bytecode index range in which a local variable is live.

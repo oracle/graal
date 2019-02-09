@@ -80,7 +80,6 @@ public final class PrimitiveKlass extends Klass {
         return this;
     }
 
-
     @Override
     public void initialize() {
         /* nop */

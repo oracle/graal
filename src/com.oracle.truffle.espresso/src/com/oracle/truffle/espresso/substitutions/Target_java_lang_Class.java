@@ -249,8 +249,8 @@ public final class Target_java_lang_Class {
             @Override
             public boolean test(Method m) {
                 return (!publicOnly || m.isPublic()) &&
-                        // Filter out <init> and <clinit> from reflection.
-                        !Name.INIT.equals(m.getName()) && !Name.CLINIT.equals(m.getName());
+                                // Filter out <init> and <clinit> from reflection.
+                                !Name.INIT.equals(m.getName()) && !Name.CLINIT.equals(m.getName());
             }
         }).toArray(
                         new IntFunction<Method[]>() {

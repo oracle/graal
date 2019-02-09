@@ -42,8 +42,6 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.object.DebugCounter;
-import com.sun.org.apache.bcel.internal.classfile.ConstantValue;
 
 public final class ClassfileParser {
 
@@ -84,10 +82,10 @@ public final class ClassfileParser {
 
     private ConstantPool pool;
 
-// /**
-// * The host class for an anonymous class.
-// */
-// private final Klass hostClass;
+    // /**
+    // * The host class for an anonymous class.
+    // */
+    // private final Klass hostClass;
 
     private Symbol<Type> typeDescriptor;
 
@@ -203,11 +201,9 @@ public final class ClassfileParser {
         // if this is an anonymous class fix up its name if it's in the unnamed
         // package. Otherwise, throw IAE if it is in a different package than
         // its host class.
-// if (hostClass != null) {
-// fixAnonymousClassName();
-// }
-
-
+        // if (hostClass != null) {
+        // fixAnonymousClassName();
+        // }
 
         Symbol<Name> thisKlassName = pool.classAt(thisClassIndex).getName(pool);
         Symbol<Type> thisKlassType = context.getTypes().fromName(thisKlassName);
@@ -435,27 +431,28 @@ public final class ClassfileParser {
         return null;
     }
 
-// /**
-// * If the host class and the anonymous class are in the same package then do nothing. If the
-// * anonymous class is in the unnamed package then move it to its host's package. If the classes
-// * are in different packages then throw an {@link IllegalArgumentException}.
-// */
-// private void fixAnonymousClassName() {
-// int slash = this.typeDescriptor.toJavaName().lastIndexOf('/');
-// String hostPackageName = getPackageName(hostClass.getName());
-// if (slash == -1) {
-// // For an anonymous class that is in the unnamed package, move it to its host class's
-// // package by prepending its host class's package name to its class name.
-// if (hostPackageName != null) {
-// String newClassName = 'L' + hostPackageName + '/' + this.typeDescriptor.toJavaName() + ';';
-// this.className = pool.getContext().getTypeDescriptors().make(newClassName).toJavaName();
-// }
-// } else {
-// String packageName = getPackageName(this.className);
-// if (!hostPackageName.equals(packageName)) {
-// throw new IllegalArgumentException("Host class " + hostClass + " and anonymous class " +
-// this.className + " are in different packages");
-// }
-// }
-// }
+    // /**
+    // * If the host class and the anonymous class are in the same package then do nothing. If the
+    // * anonymous class is in the unnamed package then move it to its host's package. If the
+    // classes
+    // * are in different packages then throw an {@link IllegalArgumentException}.
+    // */
+    // private void fixAnonymousClassName() {
+    // int slash = this.typeDescriptor.toJavaName().lastIndexOf('/');
+    // String hostPackageName = getPackageName(hostClass.getName());
+    // if (slash == -1) {
+    // // For an anonymous class that is in the unnamed package, move it to its host class's
+    // // package by prepending its host class's package name to its class name.
+    // if (hostPackageName != null) {
+    // String newClassName = 'L' + hostPackageName + '/' + this.typeDescriptor.toJavaName() + ';';
+    // this.className = pool.getContext().getTypeDescriptors().make(newClassName).toJavaName();
+    // }
+    // } else {
+    // String packageName = getPackageName(this.className);
+    // if (!hostPackageName.equals(packageName)) {
+    // throw new IllegalArgumentException("Host class " + hostClass + " and anonymous class " +
+    // this.className + " are in different packages");
+    // }
+    // }
+    // }
 }

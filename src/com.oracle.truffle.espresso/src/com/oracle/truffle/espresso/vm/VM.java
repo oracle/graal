@@ -46,7 +46,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -65,6 +64,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -728,7 +728,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         // TODO(peterssen): Use EspressoProperties to store classpath.
         EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "Classpath must be defined.");
-        setProperty.invokeWithConversions(properties,"java.class.path", options.get(EspressoOptions.Classpath));
+        setProperty.invokeWithConversions(properties, "java.class.path", options.get(EspressoOptions.Classpath));
 
         EspressoProperties props = getContext().getVmProperties();
         setProperty.invokeWithConversions(properties, "java.home", props.getJavaHome());

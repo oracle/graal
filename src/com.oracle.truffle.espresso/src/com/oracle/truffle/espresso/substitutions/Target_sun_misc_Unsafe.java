@@ -248,7 +248,6 @@ public final class Target_sun_misc_Unsafe {
         return (boolean) f.get(holder);
     }
 
-
     @Substitution(hasReceiver = true)
     public static int getInt(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);

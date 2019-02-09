@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 import java.util.ArrayList;
 import java.util.Locale;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * Indicates a condition in Espresso related code that should never occur during normal operation.

@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -36,6 +33,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 public class Classpath {
 

@@ -82,9 +82,9 @@ public final class Mangle {
     }
 
     /**
-     * The delimiter in the string returned by
-     * mangleMethod(ByteString<Type>, String, ByteString<Signature>, boolean) separating the
-     * short mangled form from the suffix to be added to obtain the long mangled form.
+     * The delimiter in the string returned by mangleMethod(ByteString<Type>, String, ByteString
+     * <Signature>, boolean) separating the short mangled form from the suffix to be added to obtain
+     * the long mangled form.
      */
     public static final char LONG_NAME_DELIMITER = ' ';
 

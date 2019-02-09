@@ -298,75 +298,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return superInterfaces;
     }
 
-    /**
-     * Walks the class hierarchy upwards and returns the least common class that is a superclass of
-     * both the current and the given type.
-     *
-     * @return the least common type that is a super type of both the current and the given type, or
-     *         {@code null} if primitive types are involved.
-     */
-    // public abstract Klass findLeastCommonAncestor(Klass otherType);
-
     public abstract Klass getElementalType();
-
-    /**
-     * Resolves the method implementation for virtual dispatches on objects of this dynamic type.
-     * This resolution process only searches "up" the class hierarchy of this type. For interface
-     * types it returns null since no concrete object can be an interface.
-     *
-     * @param method the method to select the implementation of
-     * @param callerType the caller or context type used to perform access checks
-     * @return the method that would be selected at runtime (might be abstract) or {@code null} if
-     *         it can not be resolved
-     */
-    // public abstract Method resolveMethod(Method method, Klass callerType);
-
-    /**
-     * A convenience wrapper for {@link #resolveMethod(Method, Klass)} that only returns
-     * non-abstract methods.
-     *
-     * @param method the method to select the implementation of
-     * @param callerType the caller or context type used to perform access checks
-     * @return the concrete method that would be selected at runtime, or {@code null} if there is no
-     *         concrete implementation of {@code method} in this type or any of its superclasses
-     */
-// public Method resolveConcreteMethod(Method method, Klass callerType) {
-// Method resolvedMethod = resolveMethod(method, callerType);
-// if (resolvedMethod == null || resolvedMethod.isAbstract()) {
-// return null;
-// }
-// return resolvedMethod;
-// }
-
-    /**
-     * Returns the instance fields of this class, including {@linkplain Field#isInternal() internal}
-     * fields. A zero-length array is returned for array and primitive types. The order of fields
-     * returned by this method is stable. That is, for a single JVM execution the same order is
-     * returned each time this method is called. It is also the "natural" order, which means that
-     * the JVM would expect the fields in this order if no specific order is given.
-     *
-     * @param includeSuperclasses if true, then instance fields for the complete hierarchy of this
-     *            type are included in the result
-     * @return an array of instance fields
-     */
-    // public abstract Field[] getInstanceFields(boolean includeSuperclasses);
-
-    /**
-     * Returns the static fields of this class, including {@linkplain Field#isInternal() internal}
-     * fields. A zero-length array is returned for array and primitive types. The order of fields
-     * returned by this method is stable. That is, for a single JVM execution the same order is
-     * returned each time this method is called.
-     */
-    // public abstract Field[] getStaticFields();
-
-    /**
-     * Returns the instance field of this class (or one of its super classes) at the given offset,
-     * or {@code null} if there is no such field.
-     *
-     * @param offset the offset of the field to look for
-     * @return the field with the given offset, or {@code null} if there is no such field.
-     */
-    // public abstract Field findInstanceFieldWithOffset(long offset, JavaKind expectedKind);
 
     /**
      * Returns {@code true} if the type is a local type.

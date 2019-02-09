@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.jni;
 import java.io.IOException;
 import java.io.UTFDataFormatException;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-
 /**
  * Modified UTF-8 conversions.
  */
@@ -180,33 +178,33 @@ public final class Utf8 {
                     count += 2;
                     if (count > utflen)
                         throw new UTFDataFormatException(
-                                "malformed input: partial character at end");
+                                        "malformed input: partial character at end");
                     char2 = (int) bytearr[count - 1 + offset];
                     if ((char2 & 0xC0) != 0x80)
                         throw new UTFDataFormatException(
-                                "malformed input around byte " + count);
+                                        "malformed input around byte " + count);
                     chararr[chararrCount++] = (char) (((c & 0x1F) << 6) |
-                            (char2 & 0x3F));
+                                    (char2 & 0x3F));
                     break;
                 case 14:
                     /* 1110 xxxx 10xx xxxx 10xx xxxx */
                     count += 3;
                     if (count > utflen)
                         throw new UTFDataFormatException(
-                                "malformed input: partial character at end");
+                                        "malformed input: partial character at end");
                     char2 = (int) bytearr[count - 2 + offset];
                     char3 = (int) bytearr[count - 1 + offset];
                     if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80))
                         throw new UTFDataFormatException(
-                                "malformed input around byte " + (count - 1));
+                                        "malformed input around byte " + (count - 1));
                     chararr[chararrCount++] = (char) (((c & 0x0F) << 12) |
-                            ((char2 & 0x3F) << 6) |
-                            ((char3 & 0x3F) << 0));
+                                    ((char2 & 0x3F) << 6) |
+                                    ((char3 & 0x3F) << 0));
                     break;
                 default:
                     /* 10xx xxxx, 1111 xxxx */
                     throw new UTFDataFormatException(
-                            "malformed input around byte " + count);
+                                    "malformed input around byte " + count);
             }
         }
         // The number of chars produced may be less than utflen
