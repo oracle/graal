@@ -5183,145 +5183,144 @@ final class Target_java_net_PlainSocketImpl {
             // 684         return;
             throw new NullPointerException("socket is null");
         }
-        try {
-            // 686
-            // 687     /*
-            // 688      * accept connection but ignore ECONNABORTED indicating that
-            // 689      * connection was eagerly accepted by the OS but was reset
-            // 690      * before accept() was called.
-            // 691      *
-            // 692      * If accept timeout in place and timeout is adjusted with
-            // 693      * each ECONNABORTED or EWOULDBLOCK to ensure that semantics
-            // 694      * of timeout are preserved.
-            // 695      */
-            // 696     for (;;) {
-            for (;;) {
-                // 697         int ret;
-                int ret;
-                // 698
-                // 699         /* first usage pick up current time */
-                // 700         if (prevTime == 0 && timeout > 0) {
-                if (prevTime == 0 && timeout > 0) {
-                    // 701             prevTime = JVM_CurrentTimeMillis(env, 0);
-                    prevTime = System.currentTimeMillis();
+        // 686
+        // 687     /*
+        // 688      * accept connection but ignore ECONNABORTED indicating that
+        // 689      * connection was eagerly accepted by the OS but was reset
+        // 690      * before accept() was called.
+        // 691      *
+        // 692      * If accept timeout in place and timeout is adjusted with
+        // 693      * each ECONNABORTED or EWOULDBLOCK to ensure that semantics
+        // 694      * of timeout are preserved.
+        // 695      */
+        // 696     for (;;) {
+        for (;;) {
+            // 697         int ret;
+            int ret;
+            // 698
+            // 699         /* first usage pick up current time */
+            // 700         if (prevTime == 0 && timeout > 0) {
+            if (prevTime == 0 && timeout > 0) {
+                // 701             prevTime = JVM_CurrentTimeMillis(env, 0);
+                prevTime = System.currentTimeMillis();
+            }
+            // 703
+            // 704         /* passing a timeout of 0 to poll will return immediately,
+            // 705            but in the case of ServerSocket 0 means infinite. */
+            // 706         if (timeout <= 0) {
+            if (timeout <= 0) {
+                // 707             ret = NET_Timeout(fd, -1);
+                ret = JavaNetNetUtilMD.NET_Timeout(fd, -1);
+            } else {
+                // 709             ret = NET_Timeout(fd, timeout);
+                ret = JavaNetNetUtilMD.NET_Timeout(fd, timeout);
+            }
+            // 711         if (ret == 0) {
+            if (ret == 0) {
+                // 712             JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
+                // 713                             "Accept timed out");
+                // 714             return;
+                throw new SocketTimeoutException("Accept timed out");
+                // 715         } else if (ret == JVM_IO_ERR) {
+            } else if (ret == Target_jvm.JVM_IO_ERR()) {
+                // 716             if (errno == EBADF) {
+                if (Errno.errno() == Errno.EBADF()) {
+                    // 717                JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
+                    throw new SocketException("Socket closed");
+                    // 718             } else if (errno == ENOMEM) {
+                } else if (Errno.errno() == Errno.ENOMEM()) {
+                    // 719                JNU_ThrowOutOfMemoryError(env, "NET_Timeout native heap allocation failed");
+                    throw new OutOfMemoryError("NET_Timeout native heap allocation failed");
+                } else {
+                    // 721                NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
+                    throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
                 }
-                // 703
-                // 704         /* passing a timeout of 0 to poll will return immediately,
-                // 705            but in the case of ServerSocket 0 means infinite. */
-                // 706         if (timeout <= 0) {
+                /* The previous if-then-else blocks all throw exceptions, which abruptly returns from this method. */
+                // 723             return;
+                // 724         } else if (ret == JVM_IO_INTR) {
+            } else if (ret == Target_jvm.JVM_IO_INTR()) {
+                // 725             JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
+                // 726                             "operation interrupted");
+                throw new InterruptedIOException("operation interrupted");
+                // 727             return;
+            }
+            // 729
+            // 730         newfd = NET_Accept(fd, (struct sockaddr *)&him, (jint*)&len);
+            newfd = JavaNetNetUtilMD.NET_Accept(fd, him, len_Pointer);
+            // 731
+            // 732         /* connection accepted */
+            // 733         if (newfd >= 0) {
+            if (newfd >= 0) {
+                // 734             SET_BLOCKING(newfd);
+                Util_java_net_PlainSocketImpl.SET_BLOCKING(newfd);
+                // 735             break;
+                break;
+            }
+            // 737
+            // 738         /* non (ECONNABORTED or EWOULDBLOCK) error */
+            // 739         if (!(errno == ECONNABORTED || errno == EWOULDBLOCK)) {
+            if (!(Errno.errno() == Errno.ECONNABORTED() || Errno.errno() == Errno.EWOULDBLOCK())) {
+                // 740             break;
+                break;
+            }
+            // 742
+            // 743         /* ECONNABORTED or EWOULDBLOCK error so adjust timeout if there is one. */
+            // 744         if (timeout) {
+            if (CTypeConversion.toBoolean(timeout)) {
+                // 745             jlong currTime = JVM_CurrentTimeMillis(env, 0);
+                long currTime = System.currentTimeMillis();
+                // 746             timeout -= (currTime - prevTime);
+                timeout -= (currTime - prevTime);
+                // 747
+                // 748             if (timeout <= 0) {
                 if (timeout <= 0) {
-                    // 707             ret = NET_Timeout(fd, -1);
-                    ret = JavaNetNetUtilMD.NET_Timeout(fd, -1);
-                } else {
-                    // 709             ret = NET_Timeout(fd, timeout);
-                    ret = JavaNetNetUtilMD.NET_Timeout(fd, timeout);
-                }
-                // 711         if (ret == 0) {
-                if (ret == 0) {
-                    // 712             JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
-                    // 713                             "Accept timed out");
-                    // 714             return;
+                    // 749                 JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
+                    // 750                                 "Accept timed out");
                     throw new SocketTimeoutException("Accept timed out");
-                    // 715         } else if (ret == JVM_IO_ERR) {
-                } else if (ret == Target_jvm.JVM_IO_ERR()) {
-                    // 716             if (errno == EBADF) {
-                    if (Errno.errno() == Errno.EBADF()) {
-                        // 717                JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
-                        throw new SocketException("Socket closed");
-                        // 718             } else if (errno == ENOMEM) {
-                    } else if (Errno.errno() == Errno.ENOMEM()) {
-                        // 719                JNU_ThrowOutOfMemoryError(env, "NET_Timeout native heap allocation failed");
-                        throw new OutOfMemoryError("NET_Timeout native heap allocation failed");
-                    } else {
-                        // 721                NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
-                        throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
-                    }
-                    // 723             return;
-                    // 724         } else if (ret == JVM_IO_INTR) {
-                } else if (ret == Target_jvm.JVM_IO_INTR()) {
-                    // 725             JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
-                    // 726                             "operation interrupted");
-                    // 727             return;
-                    throw new InterruptedIOException("operation interrupted");
+                    // 751                 return;
                 }
-                // 729
-                // 730         newfd = NET_Accept(fd, (struct sockaddr *)&him, (jint*)&len);
-                newfd = JavaNetNetUtilMD.NET_Accept(fd, him, len_Pointer);
-                // 731
-                // 732         /* connection accepted */
-                // 733         if (newfd >= 0) {
-                if (newfd >= 0) {
-                    // 734             SET_BLOCKING(newfd);
-                    Util_java_net_PlainSocketImpl.SET_BLOCKING(newfd);
-                    // 735             break;
-                    break;
-                }
-                // 737
-                // 738         /* non (ECONNABORTED or EWOULDBLOCK) error */
-                // 739         if (!(errno == ECONNABORTED || errno == EWOULDBLOCK)) {
-                if (!(Errno.errno() == Errno.ECONNABORTED() || Errno.errno() == Errno.EWOULDBLOCK())) {
-                    // 740             break;
-                    break;
-                }
-                // 742
-                // 743         /* ECONNABORTED or EWOULDBLOCK error so adjust timeout if there is one. */
-                // 744         if (timeout) {
-                if (CTypeConversion.toBoolean(timeout)) {
-                    // 745             jlong currTime = JVM_CurrentTimeMillis(env, 0);
-                    long currTime = System.currentTimeMillis();
-                    // 746             timeout -= (currTime - prevTime);
-                    timeout -= (currTime - prevTime);
-                    // 747
-                    // 748             if (timeout <= 0) {
-                    if (timeout <= 0) {
-                        // 749                 JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
-                        // 750                                 "Accept timed out");
-                        // 751                 return;
-                        throw new SocketTimeoutException("Accept timed out");
-                    }
-                    // 753             prevTime = currTime;
-                    prevTime = currTime;
-                }
+                // 753             prevTime = currTime;
+                prevTime = currTime;
             }
-            // 756
-            // 757     if (newfd < 0) {
-            if (newfd < 0) {
-                // 758         if (newfd == -2) {
-                if (newfd == -2) {
-                    // 759             JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
-                    // 760                             "operation interrupted");
-                    throw new InterruptedIOException("operation interrupted");
+        }
+        // 756
+        // 757     if (newfd < 0) {
+        if (newfd < 0) {
+            // 758         if (newfd == -2) {
+            if (newfd == -2) {
+                // 759             JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
+                // 760                             "operation interrupted");
+                throw new InterruptedIOException("operation interrupted");
+            } else {
+                // 762             if (errno == EINVAL) {
+                if (Errno.errno() == Errno.EINVAL()) {
+                    // 763                 errno = EBADF;
+                    Errno.set_errno(Errno.EBADF());
+                }
+                // 765             if (errno == EBADF) {
+                if (Errno.errno() == Errno.EBADF()) {
+                    // 766                 JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
+                    throw new SocketException("Socket closed");
                 } else {
-                    // 762             if (errno == EINVAL) {
-                    if (Errno.errno() == Errno.EINVAL()) {
-                        // 763                 errno = EBADF;
-                        Errno.set_errno(Errno.EBADF());
-                    }
-                    // 765             if (errno == EBADF) {
-                    if (Errno.errno() == Errno.EBADF()) {
-                        // 766                 JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
-                        throw new SocketException("Socket closed");
-                    } else {
-                        // 768                 NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
-                        throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
-                    }
+                    // 768                 NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
+                    throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
                 }
-                // 771         return;
             }
-        } finally {
-            // 773
-            // 774     /*
-            // 775      * fill up the remote peer port and address in the new socket structure.
-            // 776      */
-            // 777     socketAddressObj = NET_SockaddrToInetAddress(env, (struct sockaddr *)&him, &port);
-            socketAddressObj = JavaNetNetUtil.NET_SockaddrToInetAddress(him, port_Pointer);
-            // 778     if (socketAddressObj == NULL) {
-            if (socketAddressObj == null) {
-                // 779         /* should be pending exception */
-                // 780         close(newfd);
-                Unistd.close(newfd);
-                // 781         return;
-            }
+            /* The previous if-then-else blocks all end with throws, which abruptly return from this method. */
+            // 771         return;
+        }
+        // 773
+        // 774     /*
+        // 775      * fill up the remote peer port and address in the new socket structure.
+        // 776      */
+        // 777     socketAddressObj = NET_SockaddrToInetAddress(env, (struct sockaddr *)&him, &port);
+        socketAddressObj = JavaNetNetUtil.NET_SockaddrToInetAddress(him, port_Pointer);
+        // 778     if (socketAddressObj == NULL) {
+        if (socketAddressObj == null) {
+            // 779         /* should be pending exception */
+            // 780         close(newfd);
+            Unistd.close(newfd);
+            // 781         return;
         }
         // 783
         // 784     /*
