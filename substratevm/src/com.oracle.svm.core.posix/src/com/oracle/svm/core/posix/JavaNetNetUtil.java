@@ -2235,20 +2235,7 @@ class Target_os {
             pfd.set_events(Poll.POLLIN() | Poll.POLLERR());
             // 210
             // 211     int res = ::poll(&pfd, 1, timeout);
-            /* { FIXME: Limited timeout. */
-            int res;
-            final boolean limitedTimeout = false;
-            if (limitedTimeout) {
-                /* This is a compromise between frequent poll requests and promptness of interruption. */
-                final int limitedTimeoutMillis = 2_000;
-                res = Poll.poll(pfd, 1, limitedTimeoutMillis);
-                if (Thread.interrupted()) {
-                    return VmRuntimeOS.OSReturn.OS_OK();
-                }
-            } else {
-                res = Poll.poll(pfd, 1, timeout);
-            }
-            /* } FIXME: Limited timeout. */
+            int res = Poll.poll(pfd, 1, timeout);
             // 212
             // 213     if (res == OS_ERR && errno == EINTR) {
             if (res == VmRuntimeOS.OSReturn.OS_ERR() && Errno.errno() == Errno.EINTR()) {
