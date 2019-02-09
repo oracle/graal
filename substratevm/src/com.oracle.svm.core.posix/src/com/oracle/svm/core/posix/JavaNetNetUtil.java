@@ -2372,6 +2372,19 @@ class Target_os {
         return Socket.listen(fd, count);
     }
 
+    // 238  inline int os::accept(int fd, struct sockaddr* him, socklen_t* len) {
+    static int accept(int fd, Socket.sockaddr him, CIntPointer len_Pointer) {
+    // 239    // At least OpenBSD and FreeBSD can return EINTR from accept.
+    // 240    RESTARTABLE_RETURN_INT(::accept(fd, him, len));
+        do {
+            int _result;
+            do {
+                _result = Socket.accept(fd, him, len_Pointer);
+            } while ((_result == VmRuntimeOS.OSReturn.OS_ERR()) && (Errno.errno() == Errno.EINTR()));
+            return _result;
+        } while (false);
+    }
+
     /* formatter:on */
 }
 
