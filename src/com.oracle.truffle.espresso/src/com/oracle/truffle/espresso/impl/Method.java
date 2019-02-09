@@ -15,11 +15,11 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
@@ -47,9 +47,6 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     @CompilationFinal(dimensions = 1) //
     private final Symbol<Type>[] parsedSignature;
-
-    // private final LineNumberTable lineNumberTable;
-    // private final LocalVariableTable localVariableTable;
 
     private final ExceptionsAttribute exceptionsAttribute;
     private final CodeAttribute codeAttribute;
@@ -98,12 +95,10 @@ public final class Method implements ModifiersProvider, ContextAccess {
         this.linkedMethod = linkedMethod;
 
         this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);
-        // this.lineNumberTable = (LineNumberTable) lineNumberTable;
-        // this.localVariableTable = localVariableTable;
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
     }
 
-    private final Attribute getAttribute(Symbol<Name> name) {
+    final Attribute getAttribute(Symbol<Name> name) {
         return linkedMethod.getAttribute(name);
     }
 
@@ -265,22 +260,6 @@ public final class Method implements ModifiersProvider, ContextAccess {
     public boolean isFinal() {
         return ModifiersProvider.super.isFinalFlagSet();
     }
-
-    /**
-     * Returns the LineNumberTable of this method or null if this method does not have a line
-     * numbers table.
-     */
-// public LineNumberTable getLineNumberTable() {
-// return lineNumberTable;
-// }
-
-    /**
-     * Returns the local variable table of this method or null if this method does not have a local
-     * variable table.
-     */
-// public LocalVariableTable getLocalVariableTable() {
-// return localVariableTable;
-// }
 
     /**
      * Checks whether the method has bytecodes associated with it. Methods without bytecodes are
