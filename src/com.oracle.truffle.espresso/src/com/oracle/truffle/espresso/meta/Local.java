@@ -33,6 +33,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
  */
 public final class Local {
 
+    public static final Local[] EMPTY_ARRAY = new Local[0];
+
     private final Symbol<Name> name;
     private final Symbol<Type> type;
     private final int startBci;

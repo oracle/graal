@@ -264,7 +264,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -299,7 +298,7 @@ public final class BytecodeNode extends EspressoRootNode {
     private final BytecodeStream bs;
 
     @TruffleBoundary
-    public BytecodeNode(EspressoContext context, Method method) {
+    public BytecodeNode(Method method) {
         super(method, initFrameDescriptor(method.getMaxLocals() + method.getMaxStackSize()));
         CompilerAsserts.neverPartOfCompilation();
         this.bs = new BytecodeStream(method.getCode());
@@ -822,15 +821,15 @@ public final class BytecodeNode extends EspressoRootNode {
                     case NEW                   : putObject(frame, top, allocateInstance(resolveType(curOpcode, bs.readCPI(curBCI)))); break;
                     case NEWARRAY              : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1))); break;
                     case ANEWARRAY             : putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
-                    case ARRAYLENGTH           : putInt(frame, top - 1, getInterpreterToVM().arrayLength(nullCheck(peekObject(frame, top - 1)))); break;
+                    case ARRAYLENGTH           : putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekObject(frame, top - 1)))); break;
 
                     case ATHROW                : CompilerDirectives.transferToInterpreter(); throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
 
                     case CHECKCAST             : putObject(frame, top - 1, checkCast(peekObject(frame, top - 1), resolveType(curOpcode, bs.readCPI(curBCI)))); break;
                     case INSTANCEOF            : top += quickenInstanceOf(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
 
-                    case MONITORENTER          : getInterpreterToVM().monitorEnter(nullCheck(peekObject(frame, top - 1))); break;
-                    case MONITOREXIT           : getInterpreterToVM().monitorExit(nullCheck(peekObject(frame, top - 1))); break;
+                    case MONITORENTER          : InterpreterToVM.monitorEnter(nullCheck(peekObject(frame, top - 1))); break;
+                    case MONITOREXIT           : InterpreterToVM.monitorExit(nullCheck(peekObject(frame, top - 1))); break;
 
                     case WIDE                  : throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
                     case MULTIANEWARRAY        : top += allocateMultiArray(frame, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
@@ -1035,7 +1034,7 @@ public final class BytecodeNode extends EspressoRootNode {
                     // exception handlers are similar to instanceof bytecodes, so we pass instanceof
                     catchType = resolveType(Bytecodes.INSTANCEOF, (char) handler.catchTypeCPI());
                 }
-                if (catchType == null || getInterpreterToVM().instanceOf(ex, catchType)) {
+                if (catchType == null || InterpreterToVM.instanceOf(ex, catchType)) {
                     // the first found exception handler is our exception handler
                     return handler;
                 }
@@ -1159,13 +1158,11 @@ public final class BytecodeNode extends EspressoRootNode {
 
     private Klass resolveType(@SuppressWarnings("unused") int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
-        // resolveKlassCount.inc();
         return getConstantPool().resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
     }
 
-    private Method resolveMethod(int opcode, char cpi) {
+    private Method resolveMethod(@SuppressWarnings("unused") int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
-        // resolveMethodCount.inc();
         return getConstantPool().resolvedMethodAt(getMethod().getDeclaringKlass(), cpi);
     }
 
@@ -1179,9 +1176,9 @@ public final class BytecodeNode extends EspressoRootNode {
     // region Instance/array allocation
 
     @TruffleBoundary
-    private StaticObjectArray allocateArray(Klass componentType, int length) {
+    private static StaticObjectArray allocateArray(Klass componentType, int length) {
         assert !componentType.isPrimitive();
-        return getInterpreterToVM().newArray(componentType, length);
+        return InterpreterToVM.newArray(componentType, length);
     }
 
     @ExplodeLoop
@@ -1197,9 +1194,9 @@ public final class BytecodeNode extends EspressoRootNode {
         return -allocatedDimensions; // Does not include the created (pushed) array.
     }
 
-    private StaticObject allocateInstance(Klass klass) {
-        klass.initialize();
-        return getInterpreterToVM().newObject(klass);
+    private static StaticObject allocateInstance(Klass klass) {
+        klass.safeInitialize();
+        return InterpreterToVM.newObject(klass);
     }
 
     // endregion Instance/array allocation
@@ -1375,15 +1372,15 @@ public final class BytecodeNode extends EspressoRootNode {
         // @formatter:off
         // Checkstyle: stop
         switch (field.getKind()) {
-            case Boolean : getInterpreterToVM().setFieldBoolean(peekInt(frame, top - 1) == 1, receiver, field);  break;
-            case Byte    : getInterpreterToVM().setFieldByte((byte) peekInt(frame, top - 1), receiver, field);   break;
-            case Char    : getInterpreterToVM().setFieldChar((char) peekInt(frame, top - 1), receiver, field);   break;
-            case Short   : getInterpreterToVM().setFieldShort((short) peekInt(frame, top - 1), receiver, field); break;
-            case Int     : getInterpreterToVM().setFieldInt(peekInt(frame, top - 1), receiver, field);           break;
-            case Double  : getInterpreterToVM().setFieldDouble(peekDouble(frame, top - 1), receiver, field);     break;
-            case Float   : getInterpreterToVM().setFieldFloat(peekFloat(frame, top - 1), receiver, field);       break;
-            case Long    : getInterpreterToVM().setFieldLong(peekLong(frame, top - 1), receiver, field);         break;
-            case Object  : getInterpreterToVM().setFieldObject(peekObject(frame, top - 1), receiver, field);     break;
+            case Boolean : InterpreterToVM.setFieldBoolean(peekInt(frame, top - 1) == 1, receiver, field);  break;
+            case Byte    : InterpreterToVM.setFieldByte((byte) peekInt(frame, top - 1), receiver, field);   break;
+            case Char    : InterpreterToVM.setFieldChar((char) peekInt(frame, top - 1), receiver, field);   break;
+            case Short   : InterpreterToVM.setFieldShort((short) peekInt(frame, top - 1), receiver, field); break;
+            case Int     : InterpreterToVM.setFieldInt(peekInt(frame, top - 1), receiver, field);           break;
+            case Double  : InterpreterToVM.setFieldDouble(peekDouble(frame, top - 1), receiver, field);     break;
+            case Float   : InterpreterToVM.setFieldFloat(peekFloat(frame, top - 1), receiver, field);       break;
+            case Long    : InterpreterToVM.setFieldLong(peekLong(frame, top - 1), receiver, field);         break;
+            case Object  : InterpreterToVM.setFieldObject(peekObject(frame, top - 1), receiver, field);     break;
             default      : throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
@@ -1415,15 +1412,15 @@ public final class BytecodeNode extends EspressoRootNode {
         // @formatter:off
         // Checkstyle: stop
         switch (field.getKind()) {
-            case Boolean : putInt(frame, resultAt, getInterpreterToVM().getFieldBoolean(receiver, field) ? 1 : 0); break;
-            case Byte    : putInt(frame, resultAt, getInterpreterToVM().getFieldByte(receiver, field));      break;
-            case Char    : putInt(frame, resultAt, getInterpreterToVM().getFieldChar(receiver, field));      break;
-            case Short   : putInt(frame, resultAt, getInterpreterToVM().getFieldShort(receiver, field));     break;
-            case Int     : putInt(frame, resultAt, getInterpreterToVM().getFieldInt(receiver, field));       break;
-            case Double  : putDouble(frame, resultAt, getInterpreterToVM().getFieldDouble(receiver, field)); break;
-            case Float   : putFloat(frame, resultAt, getInterpreterToVM().getFieldFloat(receiver, field));   break;
-            case Long    : putLong(frame, resultAt, getInterpreterToVM().getFieldLong(receiver, field));     break;
-            case Object  : putObject(frame, resultAt, getInterpreterToVM().getFieldObject(receiver, field)); break;
+            case Boolean : putInt(frame, resultAt, InterpreterToVM.getFieldBoolean(receiver, field) ? 1 : 0); break;
+            case Byte    : putInt(frame, resultAt, InterpreterToVM.getFieldByte(receiver, field));      break;
+            case Char    : putInt(frame, resultAt, InterpreterToVM.getFieldChar(receiver, field));      break;
+            case Short   : putInt(frame, resultAt, InterpreterToVM.getFieldShort(receiver, field));     break;
+            case Int     : putInt(frame, resultAt, InterpreterToVM.getFieldInt(receiver, field));       break;
+            case Double  : putDouble(frame, resultAt, InterpreterToVM.getFieldDouble(receiver, field)); break;
+            case Float   : putFloat(frame, resultAt, InterpreterToVM.getFieldFloat(receiver, field));   break;
+            case Long    : putLong(frame, resultAt, InterpreterToVM.getFieldLong(receiver, field));     break;
+            case Object  : putObject(frame, resultAt, InterpreterToVM.getFieldObject(receiver, field)); break;
             default      : throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on

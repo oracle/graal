@@ -47,6 +47,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
 public abstract class Klass implements ModifiersProvider, ContextAccess {
@@ -128,7 +129,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
                 }
             }
         }
-        return arrayClass;
+        return ak;
     }
 
     public final ArrayKlass array() {
@@ -414,12 +415,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     @TruffleBoundary
-    public StaticObject allocateArray(int length) {
-        return getInterpreterToVM().newArray(this, length);
+    public StaticObjectArray allocateArray(int length) {
+        return InterpreterToVM.newArray(this, length);
     }
 
     @TruffleBoundary
-    public StaticObject allocateArray(int length, IntFunction<StaticObject> generator) {
+    public StaticObjectArray allocateArray(int length, IntFunction<StaticObject> generator) {
         // TODO(peterssen): Store check is missing.
         StaticObject[] array = new StaticObject[length];
         for (int i = 0; i < array.length; ++i) {
@@ -430,44 +431,44 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     // region Lookup
 
-    public final Field lookupDeclaredField(Symbol<Name> name, Symbol<Type> type) {
+    public final Field lookupDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         declaredFieldLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
         for (Field field : getDeclaredFields()) {
-            if (name.equals(field.getName()) && type.equals(field.getType())) {
+            if (fieldName.equals(field.getName()) && fieldType.equals(field.getType())) {
                 return field;
             }
         }
         return null;
     }
 
-    public final Field lookupField(Symbol<Name> name, Symbol<Type> type) {
+    public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         fieldLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
-        Field field = lookupDeclaredField(name, type);
+        Field field = lookupDeclaredField(fieldName, fieldType);
         if (field == null && getSuperKlass() != null) {
-            return getSuperKlass().lookupField(name, type);
+            return getSuperKlass().lookupField(fieldName, fieldType);
         }
         return field;
     }
 
-    public final Method lookupDeclaredMethod(Symbol<Name> name, Symbol<Signature> signature) {
+    public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         declaredMethodLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
         for (Method method : getDeclaredMethods()) {
-            if (name.equals(method.getName()) && signature.equals(method.getRawSignature())) {
+            if (methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
                 return method;
             }
         }
         return null;
     }
 
-    public final Method lookupMethod(Symbol<Name> name, Symbol<Signature> signature) {
+    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         methodLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
-        Method method = lookupDeclaredMethod(name, signature);
+        Method method = lookupDeclaredMethod(methodName, signature);
         if (method == null && getSuperKlass() != null) {
-            return getSuperKlass().lookupMethod(name, signature);
+            return getSuperKlass().lookupMethod(methodName, signature);
         }
         return method;
     }
@@ -480,7 +481,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     protected abstract int getFlags();
 
     public final StaticObject allocateInstance() {
-        return getInterpreterToVM().newObject(this);
+        return InterpreterToVM.newObject(this);
     }
 
     public String getRuntimePackage() {

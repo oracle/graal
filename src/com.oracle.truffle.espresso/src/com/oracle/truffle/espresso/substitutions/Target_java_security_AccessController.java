@@ -27,13 +27,11 @@ import java.security.AccessControlContext;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedExceptionAction;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -48,7 +46,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Target_java_security_AccessController {
     @Substitution
     public static @Host(Object.class) StaticObject doPrivileged(@Host(PrivilegedAction.class) StaticObject action) {
-        EspressoContext context = EspressoLanguage.getCurrentContext(); // action.getKlass().getContext();
         Method run = action.getKlass().lookupMethod(Name.run, Signature.Object);
         return (StaticObject) run.invokeDirect(action);
     }

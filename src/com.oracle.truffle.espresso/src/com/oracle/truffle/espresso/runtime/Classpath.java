@@ -463,8 +463,7 @@ public class Classpath {
 
     public static byte[] readZipEntry(ZipFile zipFile, ZipEntry zipEntry) throws IOException {
         final byte[] bytes = new byte[(int) zipEntry.getSize()];
-        final InputStream zipStream = new BufferedInputStream(zipFile.getInputStream(zipEntry), bytes.length);
-        try {
+        try (InputStream zipStream = new BufferedInputStream(zipFile.getInputStream(zipEntry), bytes.length)) {
             int offset = 0;
             while (offset < bytes.length) {
                 final int n = zipStream.read(bytes, offset, bytes.length - offset);
@@ -473,8 +472,6 @@ public class Classpath {
                 }
                 offset += n;
             }
-        } finally {
-            zipStream.close();
         }
         return bytes;
     }

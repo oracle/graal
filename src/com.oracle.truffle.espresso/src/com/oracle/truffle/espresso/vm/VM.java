@@ -245,13 +245,13 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public long JVM_CurrentTimeMillis(@SuppressWarnings("unused") StaticObject ignored) {
+    public static long JVM_CurrentTimeMillis(@SuppressWarnings("unused") StaticObject ignored) {
         return System.currentTimeMillis();
     }
 
     @VmImpl
     @JniImpl
-    public long JVM_NanoTime(@SuppressWarnings("unused") StaticObject ignored) {
+    public static long JVM_NanoTime(@SuppressWarnings("unused") StaticObject ignored) {
         return System.nanoTime();
     }
 
@@ -262,7 +262,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      */
     @VmImpl
     @JniImpl
-    public int JVM_IHashCode(@Host(Object.class) StaticObject object) {
+    public static int JVM_IHashCode(@Host(Object.class) StaticObject object) {
         return System.identityHashCode(MetaUtil.unwrap(object));
     }
 
@@ -420,18 +420,18 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    public void JVM_Halt(int code) {
+    public static void JVM_Halt(int code) {
         // Runtime.getRuntime().halt(code);
         throw new EspressoExitException(code);
     }
 
     @VmImpl
-    public boolean JVM_IsNaN(double d) {
+    public static boolean JVM_IsNaN(double d) {
         return Double.isNaN(d);
     }
 
     @VmImpl
-    public boolean JVM_SupportsCX8() {
+    public static boolean JVM_SupportsCX8() {
         try {
             Class<?> klass = Class.forName("java.util.concurrent.atomic.AtomicLong");
             Field field = klass.getDeclaredField("VM_SUPPORTS_LONG_CAS");
@@ -454,18 +454,18 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region JNI Invocation Interface
 
     @VmImpl
-    public int DestroyJavaVM() {
+    public static int DestroyJavaVM() {
         return JniEnv.JNI_OK;
     }
 
     @SuppressWarnings("unused")
     @VmImpl
-    public int AttachCurrentThread(long penvPtr, long argsPtr) {
+    public static int AttachCurrentThread(long penvPtr, long argsPtr) {
         return JniEnv.JNI_OK;
     }
 
     @VmImpl
-    public int DetachCurrentThread() {
+    public static int DetachCurrentThread() {
         return JniEnv.JNI_OK;
     }
 
@@ -493,7 +493,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @SuppressWarnings("unused")
     @VmImpl
-    public int AttachCurrentThreadAsDaemon(long penvPtr, long argsPtr) {
+    public static int AttachCurrentThreadAsDaemon(long penvPtr, long argsPtr) {
         return JniEnv.JNI_OK;
     }
 
@@ -554,7 +554,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool) {
+    public static int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool) {
         return jcpool.getMirrorKlass().getConstantPool().length();
     }
 
@@ -598,7 +598,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         StaticObject instance = klass.allocateInstance();
 
-        StaticObject args = StaticObject.isNull(args0) ? (StaticObject) getMeta().Object.allocateArray(0) : args0;
+        StaticObject args = StaticObject.isNull(args0) ? getMeta().Object.allocateArray(0) : args0;
 
         StaticObject curInit = constructor;
 
@@ -619,7 +619,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindLoadedClass(@Host(ClassLoader.class) StaticObject loader, @Host(String.class) StaticObject name) {
         Symbol<Type> type = getTypes().fromClassGetName(Meta.toHostString(name));
-        Klass klass = getContext().getRegistries().findLoadedClass(type, loader);
+        Klass klass = getRegistries().findLoadedClass(type, loader);
         if (klass == null) {
             return StaticObject.NULL;
         }
@@ -646,7 +646,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    public void JVM_UnloadLibrary(@SuppressWarnings("unused") long handle) {
+    public static void JVM_UnloadLibrary(@SuppressWarnings("unused") long handle) {
         // TODO(peterssen): Do unload the library.
         System.err.println("JVM_UnloadLibrary called but library was not unloaded!");
     }
@@ -672,7 +672,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     // endregion Library support
 
     @VmImpl
-    public boolean JVM_IsSupportedJNIVersion(int version) {
+    public static boolean JVM_IsSupportedJNIVersion(int version) {
         return version == JNI_VERSION_1_1 ||
                         version == JNI_VERSION_1_2 ||
                         version == JNI_VERSION_1_4 ||
@@ -681,7 +681,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    public int JVM_GetInterfaceVersion() {
+    public static int JVM_GetInterfaceVersion() {
         return JniEnv.JVM_INTERFACE_VERSION;
     }
 
@@ -697,18 +697,18 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    public long JVM_TotalMemory() {
+    public static long JVM_TotalMemory() {
         // TODO(peterssen): What to report here?
         return Runtime.getRuntime().totalMemory();
     }
 
     @VmImpl
-    public void JVM_GC() {
+    public static void JVM_GC() {
         System.gc();
     }
 
     @VmImpl
-    public void JVM_Exit(int code) {
+    public static void JVM_Exit(int code) {
         // System.exit(code);
         // Unlike Halt, runs finalizers
         throw new EspressoExitException(code);
@@ -753,14 +753,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     @SuppressWarnings("unused")
     @VmImpl
     @JniImpl
-    public boolean JVM_DesiredAssertionStatus(@Host(Class.class) StaticObject unused, @Host(Class.class) StaticObject cls) {
+    public static boolean JVM_DesiredAssertionStatus(@Host(Class.class) StaticObject unused, @Host(Class.class) StaticObject cls) {
         // TODO(peterssen): Assertions are always disabled, use the VM arguments.
         return false;
     }
 
     @VmImpl
     @JniImpl
-    public @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
+    public static @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
         // TODO(peterssen): HotSpot verifies that the method is marked as @CallerSensitive.
         // Non-Espresso frames (e.g TruffleNFI) are ignored.
         // The call stack should look like this:
@@ -802,7 +802,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public int JVM_GetClassAccessFlags(@Host(Class.class) StaticObject clazz) {
+    public static int JVM_GetClassAccessFlags(@Host(Class.class) StaticObject clazz) {
         Klass klass = ((StaticObjectClass) clazz).getMirrorKlass();
         return klass.getModifiers();
     }

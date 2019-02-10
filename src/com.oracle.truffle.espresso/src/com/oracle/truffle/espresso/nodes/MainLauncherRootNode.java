@@ -52,7 +52,7 @@ public class MainLauncherRootNode extends RootNode {
 
     private static StaticObject toGuestArguments(EspressoContext context, String... args) {
         Meta meta = context.getMeta();
-        return (StaticObject) meta.String.allocateArray(args.length, new IntFunction<StaticObject>() {
+        return meta.String.allocateArray(args.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return meta.toGuestString(args[i]);

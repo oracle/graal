@@ -257,7 +257,7 @@ public final class ObjectKlass extends Klass {
                 constructors.add(m);
             }
         }
-        return constructors.toArray(new Method[constructors.size()]);
+        return constructors.toArray(Method.EMPTY_ARRAY);
     }
 
     @Override

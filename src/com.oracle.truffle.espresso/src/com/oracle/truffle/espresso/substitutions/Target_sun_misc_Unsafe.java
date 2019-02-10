@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 import sun.misc.Unsafe;
 
@@ -417,7 +418,7 @@ public final class Target_sun_misc_Unsafe {
     public static Object allocateInstance(@SuppressWarnings("unused") Object self, @Host(Class.class) StaticObject clazz) { // throws
         // InstantiationException;
         assert !((StaticObjectClass) clazz).getMirrorKlass().isAbstract();
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM().newObject(((StaticObjectClass) clazz).getMirrorKlass());
+        return InterpreterToVM.newObject(((StaticObjectClass) clazz).getMirrorKlass());
     }
 
     @Substitution(hasReceiver = true)

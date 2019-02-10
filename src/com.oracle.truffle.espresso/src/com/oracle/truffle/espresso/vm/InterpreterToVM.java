@@ -75,7 +75,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             return (((StaticObjectArray) arr).<int[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -83,7 +83,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             return (((StaticObjectArray) arr).<StaticObject[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -91,7 +91,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             return (((StaticObjectArray) arr).<long[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -99,7 +99,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             return (((StaticObjectArray) arr).<float[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -107,7 +107,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             return (((StaticObjectArray) arr).<double[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -119,7 +119,7 @@ public final class InterpreterToVM implements ContextAccess {
             }
             return ((byte[]) raw)[index];
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -127,7 +127,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             return (((StaticObjectArray) arr).<char[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -135,7 +135,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             return (((StaticObjectArray) arr).<short[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
     // endregion
@@ -145,7 +145,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             (((StaticObjectArray) arr).<int[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -153,7 +153,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             (((StaticObjectArray) arr).<long[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -161,7 +161,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             (((StaticObjectArray) arr).<float[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -169,7 +169,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             (((StaticObjectArray) arr).<double[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -183,7 +183,7 @@ public final class InterpreterToVM implements ContextAccess {
                 ((byte[]) raw)[index] = value;
             }
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -191,7 +191,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             (((StaticObjectArray) arr).<char[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -199,7 +199,7 @@ public final class InterpreterToVM implements ContextAccess {
         try {
             (((StaticObjectArray) arr).<short[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
+            throw getMeta().throwExWithMessage(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
@@ -208,7 +208,7 @@ public final class InterpreterToVM implements ContextAccess {
         if (index >= 0 && index < array.length) {
             array[index] = arrayStoreExCheck(value, wrapper.getKlass().getComponentType());
         } else {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class);
+            throw getMeta().throwEx(ArrayIndexOutOfBoundsException.class);
         }
     }
 
@@ -216,7 +216,7 @@ public final class InterpreterToVM implements ContextAccess {
         if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
             return value;
         } else {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayStoreException.class);
+            throw getMeta().throwEx(ArrayStoreException.class);
         }
     }
 
@@ -225,7 +225,7 @@ public final class InterpreterToVM implements ContextAccess {
     // region Monitor enter/exit
 
     @SuppressWarnings({"deprecation"})
-    public void monitorEnter(Object obj) {
+    public static void monitorEnter(Object obj) {
         // TODO(peterssen): Nop for single-threaded language + enable on SVM.
         if (!EspressoOptions.RUNNING_ON_SVM) {
             hostUnsafe.monitorEnter(obj);
@@ -233,7 +233,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     @SuppressWarnings({"deprecation"})
-    public void monitorExit(Object obj) {
+    public static void monitorExit(Object obj) {
         // TODO(peterssen): Nop for single-threaded language + enable on SVM.
         if (!EspressoOptions.RUNNING_ON_SVM) {
             hostUnsafe.monitorExit(obj);
@@ -241,97 +241,97 @@ public final class InterpreterToVM implements ContextAccess {
     }
     // endregion
 
-    public boolean getFieldBoolean(StaticObject obj, Field field) {
+    public static boolean getFieldBoolean(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Boolean && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         return (boolean) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public int getFieldInt(StaticObject obj, Field field) {
+    public static int getFieldInt(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Int && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         return (int) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public long getFieldLong(StaticObject obj, Field field) {
+    public static long getFieldLong(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Long && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         return (long) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public byte getFieldByte(StaticObject obj, Field field) {
+    public static byte getFieldByte(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Byte && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         return (byte) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public short getFieldShort(StaticObject obj, Field field) {
+    public static short getFieldShort(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Short && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         return (short) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public float getFieldFloat(StaticObject obj, Field field) {
+    public static float getFieldFloat(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Float && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         return (float) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public double getFieldDouble(StaticObject obj, Field field) {
+    public static double getFieldDouble(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Double && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         return (double) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public StaticObject getFieldObject(StaticObject obj, Field field) {
+    public static StaticObject getFieldObject(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Object && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         return (StaticObject) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public char getFieldChar(StaticObject obj, Field field) {
+    public static char getFieldChar(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Char && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         return (char) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public void setFieldBoolean(boolean value, StaticObject obj, Field field) {
+    public static void setFieldBoolean(boolean value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Boolean && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldByte(byte value, StaticObject obj, Field field) {
+    public static void setFieldByte(byte value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Byte && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldChar(char value, StaticObject obj, Field field) {
+    public static void setFieldChar(char value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Char && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldShort(short value, StaticObject obj, Field field) {
+    public static void setFieldShort(short value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Short && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldInt(int value, StaticObject obj, Field field) {
+    public static void setFieldInt(int value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Int && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldLong(long value, StaticObject obj, Field field) {
+    public static void setFieldLong(long value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Long && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldFloat(float value, StaticObject obj, Field field) {
+    public static void setFieldFloat(float value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Float && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldDouble(double value, StaticObject obj, Field field) {
+    public static void setFieldDouble(double value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Double && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldObject(StaticObject value, StaticObject obj, Field field) {
+    public static void setFieldObject(StaticObject value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Object && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public StaticObjectArray newArray(Klass componentType, int length) {
+    public static StaticObjectArray newArray(Klass componentType, int length) {
         if (length < 0) {
             throw componentType.getContext().getMeta().throwEx(NegativeArraySizeException.class);
         }
@@ -412,7 +412,7 @@ public final class InterpreterToVM implements ContextAccess {
      * Object >1 P[] Cloneable >1 P[] java.io.Serializable >1 P[]
      */
     @TruffleBoundary
-    public boolean instanceOf(StaticObject instance, Klass typeToCheck) {
+    public static boolean instanceOf(StaticObject instance, Klass typeToCheck) {
         if (StaticObject.isNull(instance)) {
             return false;
         }
@@ -423,18 +423,17 @@ public final class InterpreterToVM implements ContextAccess {
         if (StaticObject.isNull(instance) || instanceOf(instance, klass)) {
             return instance;
         }
-        Meta meta = klass.getContext().getMeta();
-        throw meta.throwEx(ClassCastException.class);
+        throw getMeta().throwEx(getMeta().ClassCastException);
     }
 
-    public StaticObject newObject(Klass klass) {
+    public static StaticObject newObject(Klass klass) {
         // TODO(peterssen): Accept only ObjectKlass.
         assert klass != null && !klass.isArray() && !klass.isPrimitive() && !klass.isAbstract();
         klass.safeInitialize();
         return new StaticObjectImpl((ObjectKlass) klass);
     }
 
-    public int arrayLength(StaticObject arr) {
+    public static int arrayLength(StaticObject arr) {
         return ((StaticObjectArray) arr).length();
     }
 

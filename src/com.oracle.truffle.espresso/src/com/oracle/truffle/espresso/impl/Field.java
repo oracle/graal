@@ -86,19 +86,18 @@ public final class Field implements ModifiersProvider {
 
     public Object get(StaticObject self) {
         assert getDeclaringKlass().isAssignableFrom(self.getKlass());
-        InterpreterToVM vm = getDeclaringKlass().getContext().getInterpreterToVM();
         // @formatter:off
         // Checkstyle: stop
         switch (getKind()) {
-            case Boolean : return vm.getFieldBoolean(self, this);
-            case Byte    : return vm.getFieldByte(self, this);
-            case Short   : return vm.getFieldShort(self, this);
-            case Char    : return vm.getFieldChar(self, this);
-            case Int     : return vm.getFieldInt(self, this);
-            case Float   : return vm.getFieldFloat(self, this);
-            case Long    : return vm.getFieldLong(self, this);
-            case Double  : return vm.getFieldDouble(self, this);
-            case Object  : return vm.getFieldObject(self, this);
+            case Boolean : return InterpreterToVM.getFieldBoolean(self, this);
+            case Byte    : return InterpreterToVM.getFieldByte(self, this);
+            case Short   : return InterpreterToVM.getFieldShort(self, this);
+            case Char    : return InterpreterToVM.getFieldChar(self, this);
+            case Int     : return InterpreterToVM.getFieldInt(self, this);
+            case Float   : return InterpreterToVM.getFieldFloat(self, this);
+            case Long    : return InterpreterToVM.getFieldLong(self, this);
+            case Double  : return InterpreterToVM.getFieldDouble(self, this);
+            case Object  : return InterpreterToVM.getFieldObject(self, this);
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
@@ -108,19 +107,18 @@ public final class Field implements ModifiersProvider {
     public void set(StaticObject self, Object value) {
         assert value != null;
         assert getDeclaringKlass().isAssignableFrom(self.getKlass());
-        InterpreterToVM vm = getDeclaringKlass().getContext().getInterpreterToVM();
         // @formatter:off
         // Checkstyle: stop
         switch (getKind()) {
-            case Boolean : vm.setFieldBoolean((boolean) value, self, this); break;
-            case Byte    : vm.setFieldByte((byte) value, self, this);       break;
-            case Short   : vm.setFieldShort((short) value, self, this);     break;
-            case Char    : vm.setFieldChar((char) value, self, this);       break;
-            case Int     : vm.setFieldInt((int) value, self, this);         break;
-            case Float   : vm.setFieldFloat((float) value, self, this);     break;
-            case Long    : vm.setFieldLong((long) value, self, this);       break;
-            case Double  : vm.setFieldDouble((double) value, self, this);   break;
-            case Object  : vm.setFieldObject((StaticObject) value, self, this); break;
+            case Boolean : InterpreterToVM.setFieldBoolean((boolean) value, self, this); break;
+            case Byte    : InterpreterToVM.setFieldByte((byte) value, self, this);       break;
+            case Short   : InterpreterToVM.setFieldShort((short) value, self, this);     break;
+            case Char    : InterpreterToVM.setFieldChar((char) value, self, this);       break;
+            case Int     : InterpreterToVM.setFieldInt((int) value, self, this);         break;
+            case Float   : InterpreterToVM.setFieldFloat((float) value, self, this);     break;
+            case Long    : InterpreterToVM.setFieldLong((long) value, self, this);       break;
+            case Double  : InterpreterToVM.setFieldDouble((double) value, self, this);   break;
+            case Object  : InterpreterToVM.setFieldObject((StaticObject) value, self, this); break;
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
@@ -145,7 +143,7 @@ public final class Field implements ModifiersProvider {
         return typeKlassCache;
     }
 
-    Attribute getAttribute(Symbol<Name> name) {
-        return linkedField.getAttribute(name);
+    Attribute getAttribute(Symbol<Name> attrName) {
+        return linkedField.getAttribute(attrName);
     }
 }

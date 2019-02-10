@@ -277,12 +277,14 @@ public final class ClassfileParser {
     }
 
     private Attribute parseConstantValue(Symbol<Name> name) {
+        assert Name.ConstantValue.equals(name);
         /* int length = */ stream.readS4();
         int constantValueIndex = stream.readU2();
         return new ConstantValueAttribute(constantValueIndex);
     }
 
     private ExceptionsAttribute parseExceptions(Symbol<Name> name) {
+        assert Name.Exceptions.equals(name);
         /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         int[] entries = new int[entryCount];

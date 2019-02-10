@@ -152,9 +152,9 @@ public final class ClassfileStream {
 
     public byte[] readByteArray(int len) {
         try {
-            final byte[] bytes = new byte[len];
-            stream.readFully(bytes);
-            return bytes;
+            final byte[] buf = new byte[len];
+            stream.readFully(buf);
+            return buf;
         } catch (EOFException eofException) {
             throw eofError();
         } catch (IOException ioException) {

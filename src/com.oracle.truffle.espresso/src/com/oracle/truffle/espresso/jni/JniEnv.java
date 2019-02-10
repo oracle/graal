@@ -229,7 +229,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
     }
 
-    public boolean containsMethod(String methodName) {
+    public static boolean containsMethod(String methodName) {
         return jniMethods.containsKey(methodName);
     }
 
@@ -445,7 +445,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *         </ul>
      */
     @JniImpl
-    public int GetVersion() {
+    public static int GetVersion() {
         return JniVersion.JNI_VERSION_ESPRESSO;
     }
 
@@ -459,8 +459,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @return the length of the array.
      */
     @JniImpl
-    public int GetArrayLength(@Host(Object.class) StaticObject array) {
-        return getInterpreterToVM().arrayLength(array);
+    public static int GetArrayLength(@Host(Object.class) StaticObject array) {
+        return InterpreterToVM.arrayLength(array);
     }
 
     /**
@@ -1022,7 +1022,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Get*ArrayRegion
 
     @JniImpl
-    public void GetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void GetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, long bufPtr) {
         ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
         boolean[] booleans = ((StaticObjectArray) array).unwrap();
         for (int i = 0; i < len; ++i) {
@@ -1031,43 +1031,43 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public void GetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void GetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.put(((StaticObjectArray) array).<char[]> unwrap(), start, len);
     }
 
     @JniImpl
-    public void GetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void GetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, long bufPtr) {
         ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.put(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void GetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void GetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, long bufPtr) {
         ShortBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
         buf.put(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void GetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void GetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, long bufPtr) {
         IntBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
         buf.put(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void GetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void GetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, long bufPtr) {
         FloatBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
         buf.put(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void GetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void GetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, long bufPtr) {
         DoubleBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
         buf.put(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void GetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void GetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, long bufPtr) {
         LongBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
         buf.put(((StaticObjectArray) array).unwrap(), start, len);
     }
@@ -1077,7 +1077,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Set*ArrayRegion
 
     @JniImpl
-    public void SetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void SetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, long bufPtr) {
         ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
         boolean[] booleans = ((StaticObjectArray) array).unwrap();
         for (int i = 0; i < len; ++i) {
@@ -1086,43 +1086,43 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public void SetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void SetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.get(((StaticObjectArray) array).<char[]> unwrap(), start, len);
     }
 
     @JniImpl
-    public void SetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void SetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, long bufPtr) {
         ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.get(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void SetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void SetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, long bufPtr) {
         ShortBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
         buf.get(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void SetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void SetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, long bufPtr) {
         IntBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
         buf.get(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void SetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void SetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, long bufPtr) {
         FloatBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
         buf.get(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void SetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void SetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, long bufPtr) {
         DoubleBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
         buf.get(((StaticObjectArray) array).unwrap(), start, len);
     }
 
     @JniImpl
-    public void SetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, long bufPtr) {
+    public static void SetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, long bufPtr) {
         LongBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
         buf.get(((StaticObjectArray) array).unwrap(), start, len);
     }
@@ -1198,42 +1198,42 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region New*Array
 
     @JniImpl
-    Object NewBooleanArray(int len) {
+    public static Object NewBooleanArray(int len) {
         return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Boolean.getBasicType(), len);
     }
 
     @JniImpl
-    Object NewByteArray(int len) {
+    public static Object NewByteArray(int len) {
         return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Byte.getBasicType(), len);
     }
 
     @JniImpl
-    Object NewCharArray(int len) {
+    public static Object NewCharArray(int len) {
         return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Char.getBasicType(), len);
     }
 
     @JniImpl
-    Object NewShortArray(int len) {
+    public static Object NewShortArray(int len) {
         return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Short.getBasicType(), len);
     }
 
     @JniImpl
-    Object NewIntArray(int len) {
+    public static Object NewIntArray(int len) {
         return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Int.getBasicType(), len);
     }
 
     @JniImpl
-    Object NewLongArray(int len) {
+    public static Object NewLongArray(int len) {
         return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), len);
     }
 
     @JniImpl
-    Object NewFloatArray(int len) {
+    public static Object NewFloatArray(int len) {
         return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Float.getBasicType(), len);
     }
 
     @JniImpl
-    Object NewDoubleArray(int len) {
+    public static Object NewDoubleArray(int len) {
         return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Double.getBasicType(), len);
     }
 
@@ -1247,7 +1247,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public StaticObject GetObjectClass(StaticObject self) {
+    public static StaticObject GetObjectClass(StaticObject self) {
         return self.getKlass().mirror();
     }
 
@@ -1323,7 +1323,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * global or local reference. Returns NULL if ref refers to null.
      */
     @JniImpl
-    public Object NewLocalRef(Object ref) {
+    public static Object NewLocalRef(Object ref) {
         // Local ref is allocated by host JNI on return.
         return ref;
     }
@@ -1422,12 +1422,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public int EnsureLocalCapacity(@SuppressWarnings("unused") int capacity) {
+    public static int EnsureLocalCapacity(@SuppressWarnings("unused") int capacity) {
         return JNI_OK;
     }
 
     @JniImpl
-    public void DeleteLocalRef(@SuppressWarnings("unused") Object localRef) {
+    public static void DeleteLocalRef(@SuppressWarnings("unused") Object localRef) {
         // nop
     }
 
@@ -1488,21 +1488,21 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public int MonitorEnter(Object obj) {
-        getInterpreterToVM().monitorEnter(obj);
+    public static int MonitorEnter(Object obj) {
+        InterpreterToVM.monitorEnter(obj);
         return JNI_OK;
     }
 
     @JniImpl
-    public int MonitorExit(Object obj) {
-        getInterpreterToVM().monitorExit(obj);
+    public static int MonitorExit(Object obj) {
+        InterpreterToVM.monitorExit(obj);
         return JNI_OK;
     }
 
     @JniImpl
     public StaticObject NewObjectArray(int length, @Host(Class.class) StaticObjectClass elementClass, @Host(Object.class) StaticObject initialElement) {
         assert !elementClass.getMirrorKlass().isPrimitive();
-        StaticObjectArray arr = (StaticObjectArray) elementClass.getMirrorKlass().allocateArray(length);
+        StaticObjectArray arr = elementClass.getMirrorKlass().allocateArray(length);
         if (length > 0) {
             // Single store check
             getInterpreterToVM().setArrayObject(initialElement, 0, arr);
@@ -1578,12 +1578,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public int GetStringUTFLength(@Host(String.class) StaticObject string) {
+    public static int GetStringUTFLength(@Host(String.class) StaticObject string) {
         return Utf8.UTFLength(Meta.toHostString(string));
     }
 
     @JniImpl
-    public void GetStringUTFRegion(@Host(String.class) StaticObject str, int start, int len, long bufPtr) {
+    public static void GetStringUTFRegion(@Host(String.class) StaticObject str, int start, int len, long bufPtr) {
         byte[] bytes = Utf8.asUTF(Meta.toHostString(str), start, len, true); // always 0 terminated.
         ByteBuffer buf = directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
         buf.put(bytes);
@@ -1633,7 +1633,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *         </ul>
      */
     @JniImpl
-    public boolean IsAssignableFrom(@Host(Class.class) StaticObject clazz1, @Host(Class.class) StaticObject clazz2) {
+    public static boolean IsAssignableFrom(@Host(Class.class) StaticObject clazz1, @Host(Class.class) StaticObject clazz2) {
         Klass klass2 = ((StaticObjectClass) clazz2).getMirrorKlass();
         return klass2.isAssignableFrom(((StaticObjectClass) clazz1).getMirrorKlass());
     }
@@ -1650,11 +1650,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *         {@code JNI_FALSE}. <b>A NULL object can be cast to any class.</b>
      */
     @JniImpl
-    public boolean IsInstanceOf(@Host(Object.class) StaticObject obj, @Host(Class.class) StaticObjectClass clazz) {
+    public static boolean IsInstanceOf(@Host(Object.class) StaticObject obj, @Host(Class.class) StaticObjectClass clazz) {
         if (StaticObject.isNull(obj)) {
             return true;
         }
-        return getInterpreterToVM().instanceOf(obj, clazz.getMirrorKlass());
+        return InterpreterToVM.instanceOf(obj, clazz.getMirrorKlass());
     }
 
     /**

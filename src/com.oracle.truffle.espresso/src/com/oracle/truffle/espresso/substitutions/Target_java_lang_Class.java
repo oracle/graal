@@ -144,7 +144,7 @@ public final class Target_java_lang_Class {
                         /* signature */ Type.String,
                         /* annotations */ Type._byte_array));
 
-        StaticObject fieldsArray = (StaticObject) meta.Field.allocateArray(fields.length, new IntFunction<StaticObject>() {
+        StaticObject fieldsArray = meta.Field.allocateArray(fields.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 final Field f = fields[i];
@@ -197,13 +197,13 @@ public final class Target_java_lang_Class {
                         /* annotations */ Type._byte_array,
                         /* parameterAnnotations */ Type._byte_array));
 
-        StaticObject arr = (StaticObject) meta.Constructor.allocateArray(constructors.length, new IntFunction<StaticObject>() {
+        StaticObject arr = meta.Constructor.allocateArray(constructors.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 final Method m = constructors[i];
 
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = (StaticObject) meta.Class.allocateArray(
+                StaticObject parameterTypes = meta.Class.allocateArray(
                                 m.getParameterCount(),
                                 new IntFunction<StaticObject>() {
                                     @Override
@@ -213,7 +213,7 @@ public final class Target_java_lang_Class {
                                 });
 
                 final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObjectArray checkedExceptions = (StaticObjectArray) meta.Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                StaticObjectArray checkedExceptions = meta.Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int j) {
                         return rawCheckedExceptions[j].mirror();
@@ -279,13 +279,13 @@ public final class Target_java_lang_Class {
                         /* parameterAnnotations */ Type._byte_array,
                         /* annotationDefault */ Type._byte_array));
 
-        StaticObject arr = (StaticObject) meta.Method.allocateArray(methods.length, new IntFunction<StaticObject>() {
+        StaticObject arr = meta.Method.allocateArray(methods.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 Method m = methods[i];
 
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = (StaticObject) meta.Class.allocateArray(
+                StaticObject parameterTypes = meta.Class.allocateArray(
                                 m.getParameterCount(),
                                 new IntFunction<StaticObject>() {
                                     @Override
@@ -295,14 +295,12 @@ public final class Target_java_lang_Class {
                                 });
 
                 final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObjectArray checkedExceptions = (StaticObjectArray) meta.Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                StaticObjectArray checkedExceptions = meta.Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int j) {
                         return rawCheckedExceptions[j].mirror();
                     }
                 });
-
-                Meta meta = self.getKlass().getMeta();
 
                 StaticObjectImpl instance = (StaticObjectImpl) meta.Method.allocateInstance();
                 methodInit.invokeDirect(
@@ -335,7 +333,7 @@ public final class Target_java_lang_Class {
         final Klass[] superInterfaces = self.getMirrorKlass().getInterfaces();
 
         Meta meta = self.getKlass().getMeta();
-        StaticObject instance = (StaticObject) meta.Class.allocateArray(superInterfaces.length, new IntFunction<StaticObject>() {
+        StaticObject instance = meta.Class.allocateArray(superInterfaces.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return superInterfaces[i].mirror();
@@ -396,7 +394,7 @@ public final class Target_java_lang_Class {
             if (enclosingMethodAttr == null) {
                 return StaticObject.NULL;
             }
-            StaticObjectArray arr = (StaticObjectArray) meta.Object.allocateArray(3);
+            StaticObjectArray arr = meta.Object.allocateArray(3);
             Klass enclosingKlass = ((ObjectKlass) self.getMirrorKlass()).getConstantPool().resolvedKlassAt(self.getMirrorKlass(), enclosingMethodAttr.getClassIndex());
 
             vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
@@ -492,7 +490,7 @@ public final class Target_java_lang_Class {
      */
     @Substitution(hasReceiver = true)
     public static boolean isInstance(StaticObjectClass self, StaticObject obj) {
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM().instanceOf(obj, self.getMirrorKlass());
+        return InterpreterToVM.instanceOf(obj, self.getMirrorKlass());
     }
 
     @Substitution

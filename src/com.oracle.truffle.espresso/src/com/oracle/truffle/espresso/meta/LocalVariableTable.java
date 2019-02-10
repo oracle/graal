@@ -87,6 +87,6 @@ public final class LocalVariableTable {
                 result.add(l);
             }
         }
-        return result.toArray(new Local[result.size()]);
+        return result.toArray(Local.EMPTY_ARRAY);
     }
 }

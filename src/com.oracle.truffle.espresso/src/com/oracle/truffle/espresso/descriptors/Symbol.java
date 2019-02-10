@@ -64,7 +64,7 @@ public final class Symbol<T> extends ByteSequence {
 
     @SuppressWarnings("unchecked")
     public static <S> Symbol<S>[] emptyArray() {
-        return (Symbol<S>[]) EMPTY_ARRAY;
+        return EMPTY_ARRAY;
     }
 
     public final ByteSequence substring(int from) {
