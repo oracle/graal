@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.195.1",
+    "mxversion": "5.206.2",
     "name": "espresso",
 
     # ------------- licenses
@@ -20,7 +20,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch mokapot).
-                "version": "6386cd39fa8c447351cf9e74f7c3e07b692c395a",
+                "version": "d5e05af2eb0b94b0bb67153842e69c4c1bd331b1",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
