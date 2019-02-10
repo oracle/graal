@@ -103,12 +103,6 @@ public final class LinkedKlass {
         this.methods = linkedMethods;
     }
 
-    public boolean equals(LinkedKlass other) {
-        return parserKlass == other.parserKlass &&
-                        superKlass == other.superKlass &&
-                        /* reference equals */ Arrays.equals(interfaces, other.interfaces);
-    }
-
     int getFlags() {
         return parserKlass.getFlags();
     }
@@ -127,5 +121,13 @@ public final class LinkedKlass {
 
     public Symbol<Name> getName() {
         return parserKlass.getName();
+    }
+
+    public LinkedKlass getSuperKlass() {
+        return superKlass;
+    }
+
+    public LinkedKlass[] getInterfaces() {
+        return interfaces;
     }
 }

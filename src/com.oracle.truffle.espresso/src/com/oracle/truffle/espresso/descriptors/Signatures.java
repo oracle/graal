@@ -179,9 +179,9 @@ public final class Signatures {
         return endIndex == signature.length();
     }
 
-    public static boolean isValid(String signatureString) {
+    public static boolean isValid(@SuppressWarnings("unused") String signatureString) {
+        // TODO(peterssen): Implement FAST validation.
         return true;
-        // throw EspressoError.unimplemented();
     }
 
     public static Symbol<Signature> verify(Symbol<Signature> signature) {
@@ -207,6 +207,7 @@ public final class Signatures {
         return signature[paramIndex];
     }
 
+    @SuppressWarnings({"varargs", "rawtypes"})
     @SafeVarargs
     public static final Symbol<Type>[] makeParsedUncached(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         final Symbol<Type>[] signature = Arrays.copyOf(parameterTypes, parameterTypes.length + 1);
@@ -214,7 +215,7 @@ public final class Signatures {
         return signature;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes)"})
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public final Symbol<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
         Symbol<Type>[] parameterTypes = new Symbol[parameterClasses.length];
         for (int i = 0; i < parameterClasses.length; ++i) {

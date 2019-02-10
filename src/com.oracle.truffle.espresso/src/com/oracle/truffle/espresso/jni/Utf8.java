@@ -150,7 +150,7 @@ public final class Utf8 {
         int chararrCount = 0;
 
         while (count < utflen) {
-            c = (int) bytearr[count + offset] & 0xff;
+            c = bytearr[count + offset] & 0xff;
             if (c > 127)
                 break;
             count++;
@@ -158,7 +158,7 @@ public final class Utf8 {
         }
 
         while (count < utflen) {
-            c = (int) bytearr[count + offset] & 0xff;
+            c = bytearr[count + offset] & 0xff;
             switch (c >> 4) {
                 case 0:
                 case 1:
@@ -179,7 +179,7 @@ public final class Utf8 {
                     if (count > utflen)
                         throw new UTFDataFormatException(
                                         "malformed input: partial character at end");
-                    char2 = (int) bytearr[count - 1 + offset];
+                    char2 = bytearr[count - 1 + offset];
                     if ((char2 & 0xC0) != 0x80)
                         throw new UTFDataFormatException(
                                         "malformed input around byte " + count);
@@ -192,8 +192,8 @@ public final class Utf8 {
                     if (count > utflen)
                         throw new UTFDataFormatException(
                                         "malformed input: partial character at end");
-                    char2 = (int) bytearr[count - 2 + offset];
-                    char3 = (int) bytearr[count - 1 + offset];
+                    char2 = bytearr[count - 2 + offset];
+                    char3 = bytearr[count - 1 + offset];
                     if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80))
                         throw new UTFDataFormatException(
                                         "malformed input around byte " + (count - 1));

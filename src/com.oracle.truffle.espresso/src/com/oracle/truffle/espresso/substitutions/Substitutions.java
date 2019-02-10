@@ -146,7 +146,7 @@ public final class Substitutions implements ContextAccess {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static void registerStaticSubstitutions(Class<?> clazz) {
         int registered = 0;
 

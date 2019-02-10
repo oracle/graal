@@ -37,6 +37,9 @@ final class SymbolKey {
         if (this == other) {
             return true;
         }
+        if (other == null) {
+            return false;
+        }
         // Always a SymbolKey.
         SymbolKey that = (SymbolKey) other;
         ByteSequence thisSeq = seq;
