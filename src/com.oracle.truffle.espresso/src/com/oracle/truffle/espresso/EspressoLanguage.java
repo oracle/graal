@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso;
 
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -119,7 +120,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        context.getMeta().System_exit.invokeDirect(null, 0);
+        try {
+            context.getMeta().System_exit.invokeDirect(null, 0);
+        } catch (EspressoExitException e) {
+            // Swallow suicidal exception.
+        }
     }
 
     @Override
