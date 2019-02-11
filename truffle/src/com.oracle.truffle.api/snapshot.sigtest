@@ -154,8 +154,6 @@ supr java.lang.Object
 hfds arguments,name,node,variables
 
 CLSS public com.oracle.truffle.api.Truffle
-cons public init()
- anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.TruffleRuntime getRuntime()
 supr java.lang.Object
 hfds RUNTIME

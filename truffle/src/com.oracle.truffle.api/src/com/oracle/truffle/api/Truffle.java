@@ -54,13 +54,9 @@ import java.util.ServiceConfigurationError;
  *
  * @since 0.8 or earlier
  */
-public class Truffle {
-    /**
-     * @deprecated Accidentally public - don't use.
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public Truffle() {
+public final class Truffle {
+
+    private Truffle() {
     }
 
     private static final TruffleRuntime RUNTIME = initRuntime();
