@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -132,4 +132,19 @@ public interface Feedback {
     String translateFilename(Path f);
 
     void bindFilename(Path file, String label);
+
+    /**
+     * Waits for user input of a single character. If the user closes the terminal, the method will
+     * not return, but will throw an {@link UserAbortException}.
+     * 
+     * @return the character that the user has entered.
+     */
+    char acceptCharacter();
+
+    /**
+     * Waits for user input confirmed by ENTER.
+     * 
+     * @return accepted line.
+     */
+    String acceptLine();
 }

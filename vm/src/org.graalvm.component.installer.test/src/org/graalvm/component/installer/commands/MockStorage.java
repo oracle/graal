@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static org.graalvm.component.installer.CommonConstants.CAP_OS_NAME;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -53,6 +54,7 @@ public class MockStorage implements ComponentStorage {
         DEFAULT_GRAAL_INFO.put(CAP_OS_NAME, "linux");
     }
 
+    public Map<String, Map<String, Date>> acceptedLicenses = new HashMap<>();
     public List<ComponentInfo> installed = new ArrayList<>();
     public Map<String, String> graalInfo = new HashMap<>(DEFAULT_GRAAL_INFO);
     public Map<String, Collection<String>> replacedFiles = new HashMap<>();
@@ -105,4 +107,22 @@ public class MockStorage implements ComponentStorage {
         updatedReplacedFiles = newReplacedFiles;
     }
 
+    @Override
+    public Date licenseAccepted(ComponentInfo info, String licenseID) {
+        return acceptedLicenses.computeIfAbsent(info.getId(), (i) -> new HashMap<>()).get(licenseID);
+    }
+
+    @Override
+    public void recordLicenseAccepted(ComponentInfo info, String licenseID, String text) throws IOException {
+        if (info == null) {
+            acceptedLicenses.clear();
+            return;
+        }
+        Map<String, Date> acc = acceptedLicenses.computeIfAbsent(info.getId(), (i) -> new HashMap<>());
+        if (licenseID != null) {
+            acc.put(licenseID, new Date());
+        } else {
+            acc.clear();
+        }
+    }
 }

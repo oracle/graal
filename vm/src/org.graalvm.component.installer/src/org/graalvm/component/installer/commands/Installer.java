@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,8 @@
  */
 package org.graalvm.component.installer.commands;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -45,7 +43,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.zip.CRC32;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
@@ -53,15 +50,12 @@ import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
-import org.graalvm.component.installer.model.Verifier;
 
 /**
  * The working internals of the 'install' command.
  */
-public class Installer implements Closeable {
+public class Installer extends AbstractInstaller {
     private static final Logger LOG = Logger.getLogger(Installer.class.getName());
-
-    private static final int CHECKSUM_BUFFER_SIZE = 1024 * 1024;
 
     /**
      * Default permisions for files that should have the permissions changed.
@@ -71,101 +65,22 @@ public class Installer implements Closeable {
                     PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_EXECUTE,
                     PosixFilePermission.OTHERS_READ, PosixFilePermission.OTHERS_EXECUTE);
 
-    private final Feedback feedback;
-    private final ComponentInfo componentInfo;
-    private Archive archive;
-    private final ComponentRegistry registry;
-
     private final List<Path> filesToDelete = new ArrayList<>();
     private final List<Path> dirsToDelete = new ArrayList<>();
 
-    private Map<String, String> permissions = Collections.emptyMap();
-    private Map<String, String> symlinks = Collections.emptyMap();
-    private Path installPath;
-    private Path licenseRelativePath;
-    private Set<String> componentDirectories = Collections.emptySet();
-
-    private boolean replaceDiferentFiles;
-    private boolean replaceComponents;
-    private boolean dryRun;
-    private boolean ignoreRequirements;
     private boolean rebuildPolyglot;
-    private boolean failOnExisting;
-
     /**
      * Paths tracked by the component system.
      */
-    private Set<String> trackedPaths = new HashSet<>();
-    private Set<Path> visitedPaths = new HashSet<>();
+    private final Set<Path> visitedPaths = new HashSet<>();
 
-    public boolean isFailOnExisting() {
-        return failOnExisting;
+    public Installer(Feedback feedback, ComponentInfo componentInfo, ComponentRegistry registry, Archive a) {
+        super(feedback, componentInfo, registry, a);
     }
 
-    public void setFailOnExisting(boolean failOnExisting) {
-        this.failOnExisting = failOnExisting;
-    }
-
-    public boolean isReplaceDiferentFiles() {
-        return replaceDiferentFiles;
-    }
-
-    public void setReplaceDiferentFiles(boolean replaceDiferentFiles) {
-        this.replaceDiferentFiles = replaceDiferentFiles;
-    }
-
-    public boolean isReplaceComponents() {
-        return replaceComponents;
-    }
-
-    public void setReplaceComponents(boolean replaceComponents) {
-        this.replaceComponents = replaceComponents;
-    }
-
-    public boolean isIgnoreRequirements() {
-        return ignoreRequirements;
-    }
-
-    public void setIgnoreRequirements(boolean ignoreRequirements) {
-        this.ignoreRequirements = ignoreRequirements;
-    }
-
-    public Installer(Feedback feedback, ComponentInfo componentInfo, ComponentRegistry registry) {
-        this.feedback = feedback;
-        this.componentInfo = componentInfo;
-        this.registry = registry;
-    }
-
-    public ComponentInfo getComponentInfo() {
-        return componentInfo;
-    }
-
-    public Set<String> getTrackedPaths() {
-        return trackedPaths;
-    }
-
-    public Map<String, String> getPermissions() {
-        return permissions;
-    }
-
-    public void setPermissions(Map<String, String> permissions) {
-        this.permissions = permissions;
-    }
-
-    public Map<String, String> getSymlinks() {
-        return symlinks;
-    }
-
-    public void setArchive(Archive archive) {
-        this.archive = archive;
-    }
-
-    public void setSymlinks(Map<String, String> symlinks) {
-        this.symlinks = symlinks;
-    }
-
+    @Override
     public void revertInstall() {
-        if (dryRun) {
+        if (isDryRun()) {
             return;
         }
         LOG.fine("Reverting installation");
@@ -205,14 +120,6 @@ public class Installer implements Closeable {
         return getInstallPath().resolve(rel);
     }
 
-    public Verifier validateRequirements() {
-        return new Verifier(feedback, registry, componentInfo)
-                        .ignoreRequirements(ignoreRequirements)
-                        .replaceComponents(replaceComponents)
-                        .ignoreExisting(!failOnExisting)
-                        .validateRequirements();
-    }
-
     /**
      * Validates requirements, decides whether to install. Returns false if the component should be
      * skipped.
@@ -220,6 +127,7 @@ public class Installer implements Closeable {
      * @return true, if the component should be installed
      * @throws IOException
      */
+    @Override
     public boolean validateAll() throws IOException {
         validateRequirements();
         ComponentInfo existing = registry.findComponent(componentInfo.getId());
@@ -231,6 +139,7 @@ public class Installer implements Closeable {
         return true;
     }
 
+    @Override
     public void validateFiles() throws IOException {
         if (archive == null) {
             throw new UnsupportedOperationException();
@@ -244,19 +153,21 @@ public class Installer implements Closeable {
         }
     }
 
+    @Override
     public void validateSymlinks() throws IOException {
-        for (String sl : symlinks.keySet()) {
+        Map<String, String> processSymlinks = getSymlinks();
+        for (String sl : processSymlinks.keySet()) {
             Path target = translateTargetPath(sl);
             if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
                 checkLinkReplacement(target,
-                                translateTargetPath(symlinks.get(sl)));
+                                translateTargetPath(processSymlinks.get(sl)));
             }
         }
     }
 
     boolean validateOneEntry(Path target, Archive.FileEntry entry) throws IOException {
         if (entry.isDirectory()) {
-            Path dirPath = installPath.resolve(SystemUtils.fromCommonString(entry.getName()));
+            Path dirPath = getInstallPath().resolve(SystemUtils.fromCommonString(entry.getName()));
             if (Files.exists(dirPath)) {
                 if (!Files.isDirectory(dirPath)) {
                     throw new IOException(
@@ -287,7 +198,7 @@ public class Installer implements Closeable {
         processPermissions();
         createSymlinks();
 
-        List<String> ll = new ArrayList<>(trackedPaths);
+        List<String> ll = new ArrayList<>(getTrackedPaths());
         Collections.sort(ll);
         // replace paths with the really tracked ones
         componentInfo.setPaths(ll);
@@ -299,7 +210,7 @@ public class Installer implements Closeable {
 
     void installFinish() throws IOException {
         // installation succeeded, add to component registry
-        if (!dryRun) {
+        if (!isDryRun()) {
             registry.addComponent(getComponentInfo());
         }
     }
@@ -314,8 +225,8 @@ public class Installer implements Closeable {
         if (!visitedPaths.add(targetPath)) {
             return;
         }
-        Path relative = installPath.relativize(targetPath);
-        Path parent = installPath;
+        Path relative = getInstallPath().relativize(targetPath);
+        Path parent = getInstallPath();
         Path relativeSubpath;
         int count = 0;
         for (Path n : relative) {
@@ -326,13 +237,13 @@ public class Installer implements Closeable {
 
             // Need to track either directories, which do not exist (and will be created)
             // AND directories created by other components.
-            if (!Files.exists(dir) || componentDirectories.contains(pathString)) {
+            if (!Files.exists(dir) || getComponentDirectories().contains(pathString)) {
                 feedback.verboseOutput("INSTALL_CreatingDirectory", dir);
                 dirsToDelete.add(dir);
                 // add the created directory to the installed file list
-                trackedPaths.add(pathString);
+                addTrackedPath(pathString);
                 if (!Files.exists(dir)) {
-                    if (!dryRun) {
+                    if (!isDryRun()) {
                         Files.createDirectory(dir);
                     }
                 }
@@ -377,21 +288,23 @@ public class Installer implements Closeable {
                 feedback.verboseOutput("INSTALL_InstallingFile", eName);
             }
             ensurePathExists(target.getParent());
-            trackedPaths.add(installPath.relativize(target).toString());
-            if (!dryRun) {
+            addTrackedPath(getInstallPath().relativize(target).toString());
+            if (!isDryRun()) {
                 Files.copy(jarStream, target, StandardCopyOption.REPLACE_EXISTING);
             }
         }
         return target;
     }
 
+    @Override
     public void processPermissions() throws IOException {
-        List<String> paths = new ArrayList<>(permissions.keySet());
+        Map<String, String> setPermissions = getPermissions();
+        List<String> paths = new ArrayList<>(setPermissions.keySet());
         Collections.sort(paths);
         for (String s : paths) {
-            Path p = installPath.resolve(SystemUtils.fromCommonString(s));
+            Path p = getInstallPath().resolve(SystemUtils.fromCommonString(s));
             if (Files.exists(p)) {
-                String permissionString = permissions.get(s);
+                String permissionString = setPermissions.get(s);
                 Set<PosixFilePermission> perms;
 
                 if (permissionString != null && !"".equals(permissionString)) {
@@ -406,20 +319,22 @@ public class Installer implements Closeable {
         }
     }
 
+    @Override
     public void createSymlinks() throws IOException {
         if (SystemUtils.isWindows()) {
             return;
         }
+        Map<String, String> makeSymlinks = getSymlinks();
         List<String> createdRelativeLinks = new ArrayList<>();
         try {
-            List<String> paths = new ArrayList<>(symlinks.keySet());
+            List<String> paths = new ArrayList<>(makeSymlinks.keySet());
             Collections.sort(paths);
             for (String s : paths) {
-                Path source = installPath.resolve(SystemUtils.fromCommonString(s));
-                Path target = SystemUtils.fromCommonString(symlinks.get(s));
+                Path source = getInstallPath().resolve(SystemUtils.fromCommonString(s));
+                Path target = SystemUtils.fromCommonString(makeSymlinks.get(s));
                 ensurePathExists(source.getParent());
                 createdRelativeLinks.add(s);
-                trackedPaths.add(s);
+                addTrackedPath(s);
                 // TODO: check if the symlink does not exist and if so, whether
                 // reads the same. Behaviour similar to file CRC check.
                 if (Files.exists(source, LinkOption.NOFOLLOW_LINKS)) {
@@ -433,8 +348,8 @@ public class Installer implements Closeable {
                     }
                 }
                 filesToDelete.add(source);
-                feedback.verboseOutput("INSTALL_CreatingSymlink", s, symlinks.get(s));
-                if (!dryRun) {
+                feedback.verboseOutput("INSTALL_CreatingSymlink", s, makeSymlinks.get(s));
+                if (!isDryRun()) {
                     Files.createSymbolicLink(source, target);
                 }
             }
@@ -445,9 +360,10 @@ public class Installer implements Closeable {
     }
 
     boolean checkLinkReplacement(Path existingPath, Path target) throws IOException {
+        boolean replace = isReplaceDiferentFiles();
         if (Files.exists(existingPath, LinkOption.NOFOLLOW_LINKS)) {
             if (!Files.isSymbolicLink(existingPath)) {
-                if (Files.isRegularFile(existingPath) && replaceDiferentFiles) {
+                if (Files.isRegularFile(existingPath) && replace) {
                     return false;
                 }
                 throw new IOException(
@@ -456,7 +372,7 @@ public class Installer implements Closeable {
         }
         Path p = Files.readSymbolicLink(existingPath);
         if (!target.equals(p)) {
-            if (replaceDiferentFiles) {
+            if (replace) {
                 return false;
             }
             throw feedback.failure("INSTALL_ReplacedFileDiffers", null, existingPath);
@@ -465,21 +381,20 @@ public class Installer implements Closeable {
     }
 
     boolean checkFileReplacement(Path existingPath, Archive.FileEntry entry) throws IOException {
+        boolean replace = isReplaceDiferentFiles();
         if (Files.isDirectory(existingPath)) {
             throw new IOException(
                             feedback.l10n("INSTALL_OverwriteWithFile", existingPath));
         }
         if (!Files.isRegularFile(existingPath) || (Files.size(existingPath) != entry.getSize())) {
-            if (replaceDiferentFiles) {
+            if (replace) {
                 return false;
             }
             throw feedback.failure("INSTALL_ReplacedFileDiffers", null, existingPath);
         }
-        CRC32 crc = new CRC32();
-        ByteBuffer bb = null;
         try (ByteChannel is = Files.newByteChannel(existingPath)) {
             if (!archive.checkContentsMatches(is, entry)) {
-                if (replaceDiferentFiles) {
+                if (replace) {
                     return false;
                 }
                 throw feedback.failure("INSTALL_ReplacedFileDiffers", null, existingPath);
@@ -488,45 +403,7 @@ public class Installer implements Closeable {
         return true;
     }
 
-    public Path getInstallPath() {
-        return installPath;
-    }
-
-    public void setInstallPath(Path installPath) {
-        this.installPath = installPath;
-    }
-
-    public Path getLicenseRelativePath() {
-        return licenseRelativePath;
-    }
-
-    public void setLicenseRelativePath(Path licenseRelativePath) {
-        this.licenseRelativePath = licenseRelativePath;
-    }
-
     @Override
-    public void close() throws IOException {
-        if (archive != null) {
-            archive.close();
-        }
-    }
-
-    public boolean isDryRun() {
-        return dryRun;
-    }
-
-    public void setDryRun(boolean dryRun) {
-        this.dryRun = dryRun;
-    }
-
-    public Set<String> getComponentDirectories() {
-        return componentDirectories;
-    }
-
-    public void setComponentDirectories(Set<String> componentDirectories) {
-        this.componentDirectories = componentDirectories;
-    }
-
     public boolean isRebuildPolyglot() {
         return rebuildPolyglot;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipException;
+import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
@@ -45,6 +46,7 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.SystemUtils;
+import org.graalvm.component.installer.UserAbortException;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
@@ -119,6 +121,7 @@ public class InstallCommand implements InstallerCommand {
         if (validateBeforeInstall) {
             return 0;
         }
+        executeStep(this::acceptLicenses, false);
         executeStep(this::completeInstallers, false);
         executeStep(this::doInstallation, false);
         // execute the post-install steps for all processed installers
@@ -130,19 +133,31 @@ public class InstallCommand implements InstallerCommand {
         return 0;
     }
 
+    private Map<String, List<MetadataLoader>> licensesToAccept = new LinkedHashMap<>();
+
+    void addLicenseToAccept(String id, MetadataLoader ldr) {
+        licensesToAccept.computeIfAbsent(id, (x) -> new ArrayList<>()).add(ldr);
+    }
+
     void prepareInstallation() throws IOException {
         for (ComponentParam p : input.existingFiles()) {
 
             feedback.output("INSTALL_VerboseProcessingArchive", /* feedback.translateFilename( */p.getDisplayName());
             current = p.getSpecification();
-            Installer inst = createInstaller(p,
-                            validateDownload ? p.createFileLoader() : p.createMetaLoader());
+            MetadataLoader ldr = validateDownload ? p.createFileLoader() : p.createMetaLoader();
+            Installer inst = createInstaller(p, ldr);
             boolean keep = force || inst.validateRequirements().shouldInstall();
             if (!keep) {
                 // component will be skipped, do not bother with validation
                 feedback.output("INSTALL_ComponentAlreadyInstalled", inst.getComponentInfo().getName(), inst.getComponentInfo().getId());
                 continue;
             }
+
+            if (ldr.getLicenseType() != null) {
+                String licId = ldr.getLicenseID();
+                addLicenseToAccept(licId, ldr);
+            }
+
             installers.add(inst);
             if (p.isComplete()) {
                 realInstallers.put(p, inst);
@@ -183,6 +198,8 @@ public class InstallCommand implements InstallerCommand {
             ok = true;
         } catch (ZipException ex) {
             feedback.error("INSTALL_InvalidComponentArchive", ex, current);
+            throw ex;
+        } catch (UserAbortException ex) {
             throw ex;
         } catch (InstallerStopException | IOException ex) {
             if (ignoreFailures) {
@@ -359,18 +376,29 @@ public class InstallCommand implements InstallerCommand {
                         partialInfo.getVersionString(),
                         partialInfo.getName());
         ldr.loadPaths();
-        Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry());
+        Archive a = null;
+        if (p.isComplete()) {
+            a = p.getFile();
+            a.verifyIntegrity(input);
+        }
+        Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry(), a);
         String path = ldr.getLicensePath();
         if (path != null) {
             inst.setLicenseRelativePath(SystemUtils.fromCommonString(ldr.getLicensePath()));
         }
         inst.setPermissions(ldr.loadPermissions());
         inst.setSymlinks(ldr.loadSymlinks());
-        if (p.isComplete()) {
-            inst.setArchive(p.getFile());
-        }
         configureInstaller(inst);
         return inst;
 
+    }
+
+    /**
+     * Forces the user to accept the licenses.
+     * 
+     * @throws IOException
+     */
+    void acceptLicenses() throws IOException {
+        new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept).run();
     }
 }

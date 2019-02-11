@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import org.graalvm.component.installer.jar.JarArchive;
 import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
-import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.graalvm.component.installer.persist.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
@@ -195,13 +194,12 @@ public class CatalogIterable implements ComponentIterable {
             this.file = f;
             return fileLoader;
         }
-        
-            
+
         @Override
         public Archive getFile() throws IOException {
             return new JarArchive(downloadJarFile());
         }
-        
+
         private JarFile downloadJarFile() throws IOException {
             if (file != null) {
                 return file;
@@ -253,6 +251,16 @@ public class CatalogIterable implements ComponentIterable {
             } catch (IOException ex) {
                 throw feedback.failure("REMOTE_ErrorDownloadingComponent", ex, spec, remoteURL, ex.getLocalizedMessage());
             }
+        }
+
+        @Override
+        public String getLicenseType() {
+            return null;
+        }
+
+        @Override
+        public String getLicenseID() {
+            return null;
         }
 
         @Override

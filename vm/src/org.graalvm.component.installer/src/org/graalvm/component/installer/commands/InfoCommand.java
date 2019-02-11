@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -134,12 +134,7 @@ public class InfoCommand extends QueryCommandBase {
                     // verifyjar set to false, as Verifier is not supported in SVM
                     // components.add(ldr = new ComponentPackageLoader(new JarFile(f, false),
                     // feedback));
-                    MetadataLoader ldr = cp.createMetaLoader();
-
-                    components.add(cp);
-                    loadComponentDetails(cp, ldr);
-                    // registerFile(f, ldr.getComponentInfo(), ldr);
-                    addComponent(cp, ldr.getComponentInfo());
+                    processComponentParam(cp);
                 } catch (ZipException ex) {
                     if (ignoreOpenErrors) {
                         feedback.error("INFO_ErrorOpeningBundle", ex,
@@ -186,6 +181,16 @@ public class InfoCommand extends QueryCommandBase {
             }
         }
         return 0;
+    }
+
+    void processComponentParam(ComponentParam cp) throws IOException {
+        MetadataLoader ldr = cp.createMetaLoader();
+
+        components.add(cp);
+        loadComponentDetails(cp, ldr);
+        // registerFile(f, ldr.getComponentInfo(), ldr);
+        addComponent(cp, ldr.getComponentInfo());
+
     }
 
     void registerFile(ComponentParam param, ComponentInfo info, MetadataLoader ldr) {

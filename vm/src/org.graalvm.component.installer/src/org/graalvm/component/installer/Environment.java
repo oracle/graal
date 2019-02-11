@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package org.graalvm.component.installer;
 
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.io.PrintStream;
 import java.nio.file.Path;
@@ -47,6 +50,7 @@ public final class Environment implements Feedback, CommandInput {
     private final Map<String, String> options;
     private final boolean verbose;
     private final ResourceBundle bundle;
+    private InputStream in = System.in;
     private PrintStream err = System.err;
     private PrintStream out = System.out;
     private Supplier<ComponentRegistry> registrySupplier;
@@ -57,15 +61,15 @@ public final class Environment implements Feedback, CommandInput {
     private boolean allOutputToErr;
 
     private Path graalHome;
-    
+
     Environment(String commandName, List<String> parameters, Map<String, String> options) {
-        this(commandName, (String)null, parameters, options);
+        this(commandName, (String) null, parameters, options);
     }
 
     Environment(String commandName, InstallerCommand cmdInstance, List<String> parameters, Map<String, String> options) {
         this(commandName, makeBundle(cmdInstance), parameters, options);
     }
-    
+
     private static String makeBundle(InstallerCommand cmdInstance) {
         if (cmdInstance == null) {
             return null;
@@ -74,7 +78,7 @@ public final class Environment implements Feedback, CommandInput {
         s = s.substring(0, s.lastIndexOf('.'));
         return s;
     }
-    
+
     public Environment(String commandName, String bundlePackage, List<String> parameters, Map<String, String> options) {
         this.commandName = commandName;
         this.parameters = new LinkedList<>(parameters);
@@ -310,6 +314,16 @@ public final class Environment implements Feedback, CommandInput {
             public void bindFilename(Path file, String label) {
                 Environment.this.bindFilename(file, label);
             }
+
+            @Override
+            public char acceptCharacter() {
+                return Environment.this.acceptCharacter();
+            }
+
+            @Override
+            public String acceptLine() {
+                return Environment.this.acceptLine();
+            }
         };
     }
 
@@ -389,6 +403,10 @@ public final class Environment implements Feedback, CommandInput {
         return options.get(optName);
     }
 
+    public boolean hasOption(String optName) {
+        return optValue(optName) != null;
+    }
+
     @Override
     public String translateFilename(Path f) {
         return fileMap.getOrDefault(f, f.toString());
@@ -397,5 +415,34 @@ public final class Environment implements Feedback, CommandInput {
     @Override
     public void bindFilename(Path file, String label) {
         fileMap.put(file, label);
+    }
+
+    @Override
+    public char acceptCharacter() {
+        try {
+            int input = in.read();
+            if (input == -1) {
+                throw new UserAbortException();
+            }
+            return (char) input;
+        } catch (EOFException ex) {
+            throw new UserAbortException(ex);
+        } catch (IOException ex) {
+            throw failure("ERROR_UserInput", ex, ex.getMessage());
+        }
+    }
+
+    @Override
+    public String acceptLine() {
+        StringBuilder sb = new StringBuilder();
+        char c;
+        while ((c = acceptCharacter()) != '\n') {
+            if (c == 0x08) {
+                sb.delete(sb.length() - 1, sb.length());
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,10 +77,20 @@ public class CommonConstants {
      * Key in <code>release</code> file with catalog URL.
      */
     public static final String RELEASE_CATALOG_KEY = "component_catalog"; // NOI18N
-    
+
     /**
-     * Default installation dir encoded in RPM packages. The installer will strip this prefix
-     * to relocate the package contents.
+     * Default installation dir encoded in RPM packages. The installer will strip this prefix to
+     * relocate the package contents.
      */
     public static final String BUILTIN_INSTALLATION_DIR = "/usr/lib/graalvm"; // NOI18N
+
+    /**
+     * The default location of graalvm public key for package verification.
+     */
+    public static final String DEFAULT_PUBLIC_KEY_FILE = "jre/lib/installer/graalvm_key.asc"; // NOI18N
+
+    /**
+     * Env variable which overrides the public key file.
+     */
+    public static final String ENV_PUBLIC_KEY_FILE = "GRAALVM_PUBLIC_KEY"; // NOI18N
 }

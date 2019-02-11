@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.text.MessageFormat;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
@@ -187,4 +188,14 @@ public class RemoteStorage implements ComponentStorage {
     public void updateReplacedFiles(Map<String, Collection<String>> replacedFiles) throws IOException {
         throw new UnsupportedOperationException("Should not be called."); // NOI18N
     }
+
+    @Override
+    public Date licenseAccepted(ComponentInfo info, String licenseID) {
+        return null;
+    }
+
+    @Override
+    public void recordLicenseAccepted(ComponentInfo info, String licenseID, String licenseText) throws IOException {
+    }
+
 }

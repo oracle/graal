@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,6 +85,11 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
      * Path for the LICENSE file; adjusted with version etc.
      */
     private String licensePath;
+
+    /**
+     * Type / name of the license.
+     */
+    private String licenseType;
 
     /**
      * The produced component info.
@@ -192,15 +197,30 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                         },
                         () -> info.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
                         () -> loadWorkingDirectories(),
-                        () -> loadMessages()
+                        () -> loadMessages(),
+                        () -> loadLicenseType()
 
         );
         return info;
     }
 
+    private void loadLicenseType() {
+        licenseType = parseHeader(BundleConstants.BUNDLE_LICENSE_TYPE, null).getContents(null);
+    }
+
     @Override
     public String getLicensePath() {
         return licensePath;
+    }
+
+    @Override
+    public String getLicenseID() {
+        return null;
+    }
+
+    @Override
+    public String getLicenseType() {
+        return licenseType;
     }
 
     private void throwInvalidPermissions() {
@@ -302,12 +322,12 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
             info.setPostinstMessage(text);
         }
     }
-    
+
     protected void setLicensePath(String path) {
         this.licensePath = path;
         getComponentInfo().setLicensePath(licensePath);
     }
-    
+
     protected void addFiles(List<String> files) {
         fileList.addAll(files);
     }

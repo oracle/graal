@@ -1,20 +1,40 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 package org.graalvm.component.installer.jar;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.ByteChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.zip.CRC32;
 import org.graalvm.component.installer.Archive;
+import org.graalvm.component.installer.CommandInput;
 
 /**
  *
@@ -28,11 +48,11 @@ public class JarArchive implements Archive {
     public JarArchive(JarFile jarFile) {
         this.jarFile = jarFile;
     }
-    
+
     public FileEntry getEntry(String path) {
         return getJarEntry(path);
     }
-    
+
     public FileEntry getJarEntry(String path) {
         JarEntry e = jarFile.getJarEntry(path);
         return e == null ? null : new JarEntryImpl(e);
@@ -49,17 +69,12 @@ public class JarArchive implements Archive {
     }
 
     @Override
-    public Enumeration<FileEntry> entries() {
-        return new EntryIterator(jarFile.entries());
-    }
-
-    @Override
     public InputStream getInputStream(FileEntry e) throws IOException {
-        return jarFile.getInputStream(((JarEntryImpl)e).e);
+        return jarFile.getInputStream(((JarEntryImpl) e).e);
     }
 
     @Override
-    public boolean checkContentsMatches(ByteChannel bc, FileEntry entry) throws IOException {
+    public boolean checkContentsMatches(ReadableByteChannel bc, FileEntry entry) throws IOException {
         ByteBuffer bb = ByteBuffer.allocate(CHECKSUM_BUFFER_SIZE);
         CRC32 crc = new CRC32();
         while (bc.read(bb) >= 0) {
@@ -67,24 +82,24 @@ public class JarArchive implements Archive {
             crc.update(bb);
             bb.clear();
         }
-        return crc.getValue() == ((JarEntryImpl)entry).e.getCrc();
+        return crc.getValue() == ((JarEntryImpl) entry).e.getCrc();
     }
-    
-    private static class EntryIterator implements Iterator<FileEntry>, Enumeration<FileEntry> {
+
+    /**
+     * Always returns true. Signer JARs are automatically verified on open
+     * 
+     * @return true
+     */
+    @Override
+    public boolean verifyIntegrity(CommandInput input) {
+        return true;
+    }
+
+    private static class EntryIterator implements Iterator<FileEntry> {
         private final Enumeration<JarEntry> enEntries;
 
-        public EntryIterator(Enumeration<JarEntry> enEntries) {
+        EntryIterator(Enumeration<JarEntry> enEntries) {
             this.enEntries = enEntries;
-        }
-
-        @Override
-        public boolean hasMoreElements() {
-            return hasNext();
-        }
-
-        @Override
-        public FileEntry nextElement() {
-            return next();
         }
 
         @Override
@@ -97,14 +112,14 @@ public class JarArchive implements Archive {
             return new JarEntryImpl(enEntries.nextElement());
         }
     }
-    
+
     private static class JarEntryImpl implements FileEntry {
         private final JarEntry e;
 
-        public JarEntryImpl(JarEntry e) {
+        JarEntryImpl(JarEntry e) {
             this.e = e;
         }
-        
+
         @Override
         public String getName() {
             return e.getName();

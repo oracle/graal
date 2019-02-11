@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,23 +40,39 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.MessageFormat;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.ResourceBundle;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import org.junit.AfterClass;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
+import org.junit.rules.TestName;
 
 /**
  * Boilerplate for tests.
  */
 public class TestBase implements Feedback {
+    private static final ResourceBundle NO_BUNDLE = new ResourceBundle() {
+        @Override
+        protected Object handleGetObject(String key) {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public Enumeration<String> getKeys() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+    };
     protected ResourceBundle defaultBundle = ResourceBundle.getBundle("org.graalvm.component.installer.Bundle"); // NOI18N
     private Feedback feedbackDelegate;
     protected boolean verbose;
 
     @ClassRule public static TemporaryFolder expandedFolder = new ClassTempFolder();
+    @Rule public TemporaryFolder testFolder = new TemporaryFolder();
+    @Rule public TestName testName = new TestName();
 
     static class ClassTempFolder extends TemporaryFolder {
         ThreadLocal<File> root = new ThreadLocal<>();
@@ -197,6 +213,9 @@ public class TestBase implements Feedback {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
         }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
+        }
         if (feedbackDelegate != null) {
             feedbackDelegate.message(bundleKey, params);
         }
@@ -205,6 +224,9 @@ public class TestBase implements Feedback {
     public void output(ResourceBundle bundle, String bundleKey, Object... params) {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
+        }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
         }
         if (feedbackDelegate != null) {
             feedbackDelegate.output(bundleKey, params);
@@ -228,6 +250,9 @@ public class TestBase implements Feedback {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
         }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
+        }
         if (feedbackDelegate != null) {
             feedbackDelegate.verbosePart(bundleKey, params);
         }
@@ -237,6 +262,9 @@ public class TestBase implements Feedback {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
         }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
+        }
         if (feedbackDelegate != null) {
             feedbackDelegate.verboseOutput(bundleKey, params);
         }
@@ -245,6 +273,9 @@ public class TestBase implements Feedback {
     public void error(ResourceBundle bundle, String key, Throwable t, Object... params) {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(key), params);
+        }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
         }
         if (feedbackDelegate != null) {
             feedbackDelegate.error(key, t, params);
@@ -258,7 +289,7 @@ public class TestBase implements Feedback {
         if (feedbackDelegate != null) {
             String s;
             if (feedbackDelegate instanceof FeedbackAdapter) {
-                ((FeedbackAdapter)feedbackDelegate).setBundle(bundle);
+                ((FeedbackAdapter) feedbackDelegate).setBundle(bundle);
             }
             s = feedbackDelegate.l10n(key, params);
             if (s != null) {
@@ -272,16 +303,25 @@ public class TestBase implements Feedback {
         ResourceBundle b = bundle != null ? bundle : defaultBundle;
         return MessageFormat.format(b.getString(key), params);
     }
-    
+
     @Override
     public boolean verbatimOut(String msg, boolean verboseOutput) {
-        if (verboseOutput) {
-            verboseOutput((ResourceBundle) null, msg);
-        } else {
-            if (feedbackDelegate != null) {
-                feedbackDelegate.verbatimOut(msg, verboseOutput);
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(NO_BUNDLE);
+        }
+        try {
+            if (verboseOutput) {
+                verboseOutput((ResourceBundle) null, msg);
+            } else {
+                if (feedbackDelegate != null) {
+                    feedbackDelegate.verbatimOut(msg, verboseOutput);
+                }
+                output((ResourceBundle) null, msg);
             }
-            output((ResourceBundle) null, msg);
+        } finally {
+            if (feedbackDelegate instanceof FeedbackAdapter) {
+                ((FeedbackAdapter) feedbackDelegate).setBundle(null);
+            }
         }
         return verboseOutput;
     }
@@ -418,7 +458,7 @@ public class TestBase implements Feedback {
 
         @Override
         public void outputPart(String bundleKey, Object... params) {
-            throw new UnsupportedOperationException("Not supported yet.");
+            TestBase.this.output(localBundle, bundleKey, params);
         }
 
         @Override
@@ -440,11 +480,21 @@ public class TestBase implements Feedback {
         public void bindFilename(Path file, String label) {
             TestBase.this.bindFilename(file, label);
         }
+
+        @Override
+        public char acceptCharacter() {
+            return TestBase.this.acceptCharacter();
+        }
+
+        @Override
+        public String acceptLine() {
+            return TestBase.this.acceptLine();
+        }
     }
 
     public class FeedbackAdapter implements Feedback {
         private ResourceBundle currentBundle;
-        
+
         @Override
         public boolean verbatimOut(String msg, boolean beVerbose) {
             return verbose;
@@ -509,25 +559,74 @@ public class TestBase implements Feedback {
         @Override
         public void bindFilename(Path file, String label) {
         }
-        
+
         protected String reallyl10n(String k, Object... params) {
             return TestBase.this.reallyl10n(getBundle(), k, params);
         }
-        
+
         protected ResourceBundle getBundle() {
+            if (currentBundle == NO_BUNDLE) {
+                return null;
+            }
             if (currentBundle != null) {
                 return currentBundle;
             }
             return defaultBundle;
         }
-        
+
         void setBundle(ResourceBundle bundle) {
             this.currentBundle = bundle;
         }
 
+        @Override
+        public char acceptCharacter() {
+            return TestBase.this.doAcceptCharacter();
+        }
+
+        @Override
+        public String acceptLine() {
+            return TestBase.this.doAcceptLine();
+        }
     }
 
     public static boolean isWindows() {
         return SystemUtils.isWindows();
+    }
+
+    private StringBuilder userInput = new StringBuilder();
+
+    @Override
+    public char acceptCharacter() {
+        if (feedbackDelegate != null) {
+            return feedbackDelegate.acceptCharacter();
+        }
+        return doAcceptCharacter();
+    }
+
+    char doAcceptCharacter() {
+        if (userInput.length() == 0) {
+            throw new UserAbortException();
+        }
+        char c = userInput.charAt(0);
+        userInput.delete(0, 1);
+        return c;
+    }
+
+    @Override
+    public String acceptLine() {
+        if (feedbackDelegate != null) {
+            return feedbackDelegate.acceptLine();
+        }
+        return doAcceptLine();
+    }
+
+    String doAcceptLine() {
+        int nl = userInput.indexOf("\n");
+        if (nl < 0) {
+            nl = userInput.length();
+        }
+        String r = userInput.substring(0, nl);
+        userInput.delete(0, nl);
+        return r;
     }
 }

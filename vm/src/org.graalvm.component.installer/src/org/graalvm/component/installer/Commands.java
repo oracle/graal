@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -163,4 +163,9 @@ public interface Commands {
     String OPTION_FAIL_EXISTING = "i"; // NOI18N
     String LONG_OPTION_FAIL_EXISTING = "fail-existing"; // NOI18N
 
+    /**
+     * Public key for RPM signature verification.
+     */
+    String OPTION_PUBLIC_KEY = "k";
+    String LONG_OPTION_PUBLIC_KEY = "public-key";
 }

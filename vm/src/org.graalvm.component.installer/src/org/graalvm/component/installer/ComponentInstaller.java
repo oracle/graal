@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -220,6 +220,9 @@ public final class ComponentInstaller {
         } catch (MetadataException ex) {
             env.error("INSTALLER_InvalidMetadata", ex, ex.getMessage()); // NOI18N
             return 3;
+        } catch (UserAbortException ex) {
+            env.error("ERROR_Aborted", ex, ex.getMessage()); // NOI18N
+            return 4;
         } catch (InstallerStopException ex) {
             env.error("INSTALLER_Error", ex, ex.getMessage()); // NOI18N
             return 3;
@@ -276,6 +279,9 @@ public final class ComponentInstaller {
             cmdlineParams = new LinkedList<>(Arrays.asList(mainArguments));
 
             System.exit(processCommand());
+        } catch (UserAbortException ex) {
+            System.err.println(MessageFormat.format(
+                            BUNDLE.getString("ERROR_Aborted"), ex.getMessage())); // NOI18N
         } catch (Exception ex) {
             System.err.println(MessageFormat.format(
                             BUNDLE.getString("ERROR_InternalError"), ex.getMessage())); // NOI18N

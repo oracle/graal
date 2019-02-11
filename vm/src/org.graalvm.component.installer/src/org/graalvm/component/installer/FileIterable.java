@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.jar.JarFile;
-import org.graalvm.component.installer.jar.JarArchive;
 import org.graalvm.component.installer.jar.JarMetaLoader;
-import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.graalvm.component.installer.persist.MetadataLoader;
+import org.graalvm.component.installer.rpm.RpmMetaLoader;
 
 public class FileIterable implements ComponentIterable {
     private final CommandInput input;
@@ -74,10 +73,10 @@ public class FileIterable implements ComponentIterable {
             }
         };
     }
-    
+
     public static class FileComponent implements ComponentParam {
         private final File localFile;
-        private ComponentPackageLoader loader;
+        private MetadataLoader loader;
         private JarFile jf;
         private final boolean verifyJars;
         private final Feedback feedback;
@@ -90,11 +89,21 @@ public class FileIterable implements ComponentIterable {
 
         @Override
         public MetadataLoader createMetaLoader() throws IOException {
-            if (loader == null) {
-                if (jf == null) {
-                    jf = new JarFile(localFile, verifyJars);
-                }
-                loader = new JarMetaLoader(jf, feedback);
+            if (loader != null) {
+                return loader;
+            }
+            switch (SystemUtils.autodetectFile(localFile)) {
+                case JAR:
+                    if (jf == null) {
+                        jf = new JarFile(localFile, verifyJars);
+                    }
+                    loader = new JarMetaLoader(jf, feedback);
+                    break;
+                case RPM:
+                    loader = new RpmMetaLoader(localFile.toPath(), feedback);
+                    break;
+                default:
+                    throw feedback.failure("ERROR_UnknownFileFormat", null, localFile.toString());
             }
             return loader;
         }
@@ -115,12 +124,7 @@ public class FileIterable implements ComponentIterable {
 
         @Override
         public Archive getFile() throws IOException {
-            if (loader != null) {
-                return loader.getArchive();
-            } else {
-                jf = new JarFile(localFile, verifyJars);
-                return new JarArchive(jf);
-            }
+            return createFileLoader().getArchive();
         }
 
         @Override
@@ -147,6 +151,5 @@ public class FileIterable implements ComponentIterable {
         public String getShortName() {
             return localFile.getName();
         }
-
     }
 }

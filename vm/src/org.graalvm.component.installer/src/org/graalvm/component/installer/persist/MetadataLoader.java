@@ -31,16 +31,42 @@ import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.model.ComponentInfo;
 
+/**
+ * Abstraction that loads metadata for a given component.
+ * 
+ * @author sdedic
+ */
 public interface MetadataLoader {
 
     void close() throws IOException;
 
-    ComponentInfo getComponentInfo() throws IOException;
+    ComponentInfo getComponentInfo();
 
     List<InstallerStopException> getErrors();
 
-    Archive getArchive();
+    Archive getArchive() throws IOException;
 
+    /**
+     * License name/type. Not the actual content, but general name, like "Oracle OTN license",
+     * "GPLv2" or so.
+     * 
+     * @return license type or {@code null}
+     */
+    String getLicenseType();
+
+    /**
+     * License ID. Usually a digest of the license file contents.
+     * 
+     * @return license ID
+     */
+    String getLicenseID();
+
+    /**
+     * Path to the license file. Should be to iterate through {@link #getArchive} to obtain the
+     * license contents.
+     * 
+     * @return path to the license or {@code null}
+     */
     String getLicensePath();
 
     MetadataLoader infoOnly(boolean only);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -391,5 +391,18 @@ public class SimpleGetoptTest extends TestBase {
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
         assertEquals("bubu", opts.get("C"));
+    }
+
+    @Test
+    public void testIgnoreUnknownCommands() {
+        setParams("-v bubak 1");
+        getopt.ignoreUnknownCommands(true);
+        getopt.process();
+        Map<String, String> opts = getopt.getOptValues();
+        assertEquals(1, opts.size());
+        assertNotNull(opts.get("v"));
+
+        assertEquals(2, getopt.getPositionalParameters().size());
+        assertEquals("bubak", getopt.getPositionalParameters().get(0));
     }
 }

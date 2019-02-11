@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -341,5 +342,17 @@ public final class ComponentRegistry {
             }
         }
         return id;
+    }
+
+    public Date isLicenseAccepted(ComponentInfo info, String id) {
+        return storage.licenseAccepted(info, id);
+    }
+
+    public void acceptLicense(ComponentInfo info, String id, String text) {
+        try {
+            storage.recordLicenseAccepted(info, id, text);
+        } catch (IOException ex) {
+            env.error("ERROR_RecordLicenseAccepted", ex, ex.getLocalizedMessage());
+        }
     }
 }

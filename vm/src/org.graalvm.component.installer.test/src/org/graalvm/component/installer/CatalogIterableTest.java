@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import java.net.URLConnection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.graalvm.component.installer.CatalogIterable.RemoteComponentParam;
@@ -227,7 +226,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
         URL remoteU = rparam.createMetaLoader().getComponentInfo().getRemoteURL();
         assertEquals(url, remoteU);
-        JarArchive jf = (JarArchive)rparam.getArchive();
+        JarArchive jf = (JarArchive) rparam.getArchive();
         assertNotNull(jf.getEntry("META-INF"));
 
         rparam.close();
@@ -241,7 +240,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
-        JarArchive jf = (JarArchive)rparam.getArchive();
+        JarArchive jf = (JarArchive) rparam.getArchive();
         assertNotNull(jf.getEntry("META-INF"));
         rparam.close();
         exception.expect(IllegalStateException.class);

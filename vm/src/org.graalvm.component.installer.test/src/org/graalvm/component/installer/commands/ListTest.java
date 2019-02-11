@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.ResourceBundle;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.RemoteStorage;
@@ -49,7 +48,6 @@ public class ListTest extends CommandTestBase {
 
     private RemoteStorage remoteStorage;
     private Properties catalogContents = new Properties();
-    private static final ResourceBundle BUNDLE = ResourceBundle.getBundle("org.graalvm.component.installer.commands.Bundle");
 
     private void initRemoteStorage() throws MalformedURLException {
         this.remoteStorage = new RemoteStorage(

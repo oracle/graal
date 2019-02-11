@@ -1,35 +1,48 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 package org.graalvm.component.installer;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.channels.ByteChannel;
-import java.util.Enumeration;
+import java.nio.channels.ReadableByteChannel;
 
 /**
- * Simple abstraction over an archive, so that both JAR and RPMs (or other packaging) can be read
+ * Simple abstraction over an archive, so that both JAR and RPMs (or other packaging) can be read.
+ * 
  * @author sdedic
  */
-public interface Archive extends Iterable<Archive.FileEntry>, Closeable {
-    /**
-     * Provides access to archive entries
-     * @return enumeration of entries
-     */
-    public Enumeration<Archive.FileEntry> entries();
-    
+public interface Archive extends Iterable<Archive.FileEntry>, AutoCloseable {
     /**
      * Opens an input stream for the entry.
+     * 
      * @param e file entry
      * @return the input stream
      * @throws IOException on I/O error
      */
-    public InputStream getInputStream(FileEntry e) throws IOException;
-    
+    InputStream getInputStream(FileEntry e) throws IOException;
+
     /**
      * Checks that contents of the entry matches the given file. If the archive stores checksums,
      * the method may not need do byte comparison but can only compute checksum/hash on the supplied
@@ -40,37 +53,51 @@ public interface Archive extends Iterable<Archive.FileEntry>, Closeable {
      * @return true if the content is the same
      * @throws IOException on I/O error
      */
-    public boolean checkContentsMatches(ByteChannel bc, FileEntry entry) throws IOException;
-    
+    boolean checkContentsMatches(ReadableByteChannel bc, FileEntry entry) throws IOException;
+
     /**
-     * Represents a single entry in the archive
+     * Verifies integrity of the archive.
+     * 
+     * @param input options for verificaion
+     * @return true, if the archive has been verified
+     * @throws IOException
      */
-    public interface FileEntry {
+    boolean verifyIntegrity(CommandInput input) throws IOException;
+
+    @Override
+    void close() throws IOException;
+
+    /**
+     * Represents a single entry in the archive.
+     */
+    interface FileEntry {
         /**
          * Returns name of the entry. Directory names should end with "/".
+         * 
          * @return entry name
          */
-        public String getName();
-        
+        String getName();
+
         /**
-         * @return  true, if the entry represents a directory
+         * @return true, if the entry represents a directory
          */
-        public boolean isDirectory();
-        
+        boolean isDirectory();
+
         /**
          * @return True, if the entry represents a symbolic link
          */
-        public boolean isSymbolicLink();
-        
+        boolean isSymbolicLink();
+
         /**
-         * Link target for symbolic links
-         * @return 
+         * Link target for symbolic links.
+         * 
+         * @return target path
          */
-        public String getLinkTarget();
-        
+        String getLinkTarget();
+
         /**
          * @return size of the content, only valid for regular files.
          */
-        public long getSize();
+        long getSize();
     }
 }

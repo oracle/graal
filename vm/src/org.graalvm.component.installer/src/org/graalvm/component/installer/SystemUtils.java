@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,24 +129,26 @@ public class SystemUtils {
         String osName = System.getProperty("os.name"); // NOI18N
         return osName != null && osName.toLowerCase().contains("windows");
     }
-    
+
     public enum ArchiveFormat {
-        JAR, RPM
+        NONE,
+        JAR,
+        RPM
     }
-    
+
     public static ArchiveFormat autodetectFile(File f) throws IOException {
         try (ReadableByteChannel ch = FileChannel.open(f.toPath(), StandardOpenOption.READ)) {
             ByteBuffer bb = ByteBuffer.allocate(4);
             ch.read(bb);
             byte[] magic = bb.array();
-            if ((magic[0] == 0xed) && (magic[1] == 0xab) &&
-                (magic[2] == 0xee) && (magic[3] == 0xeb)) {
+            if ((magic[0] == (byte) 0xed) && (magic[1] == (byte) 0xab) &&
+                            (magic[2] == (byte) 0xee) && (magic[3] == (byte) 0xdb)) {
                 return ArchiveFormat.RPM;
             } else if ((magic[0] == 0x50) && (magic[1] == 0x4b) &&
-                (magic[2] == 0x03) && (magic[3] == 0x04)) {
+                            (magic[2] == 0x03) && (magic[3] == 0x04)) {
                 return ArchiveFormat.JAR;
             } else {
-                return null;
+                return ArchiveFormat.NONE;
             }
         }
     }
