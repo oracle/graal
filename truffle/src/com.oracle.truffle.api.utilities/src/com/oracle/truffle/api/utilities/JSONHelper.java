@@ -55,13 +55,9 @@ import com.oracle.truffle.api.nodes.RootNode;
  *
  * @since 0.8 or earlier
  */
-public class JSONHelper {
-    /**
-     * @deprecated accidentally public - to be removed.
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public JSONHelper() {
+public final class JSONHelper {
+
+    private JSONHelper() {
     }
 
     private static StringBuilder AstJsonDumpBuilder = new StringBuilder();
