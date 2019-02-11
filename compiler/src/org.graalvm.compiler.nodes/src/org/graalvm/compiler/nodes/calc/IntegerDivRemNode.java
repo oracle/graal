@@ -96,27 +96,50 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
         Pair<Long, Integer> nums = magicDivideConstants(c, bitSize);
         long magicNum = nums.getLeft().longValue();
         int shiftNum = nums.getRight().intValue();
-        ConstantNode m = ConstantNode.forIntegerBits(bitSize, magicNum);
-        ValueNode quot = new IntegerMulHighNode(m, forX);
-        if (c > 0 && magicNum < 0) {
-            quot = BinaryArithmeticNode.add(quot, forX, NodeView.DEFAULT);
-        } else if (c < 0 && magicNum > 0) {
-            quot = BinaryArithmeticNode.sub(quot, forX, NodeView.DEFAULT);
+        assert shiftNum >= 0;
+        ConstantNode m = ConstantNode.forLong(magicNum);
+
+        ValueNode value;
+        if (bitSize == 32) {
+            value = new MulNode(new SignExtendNode(forX, 64), m);
+            if ((c > 0 && magicNum < 0) || (c < 0 && magicNum > 0)) {
+                // Get upper 32-bits of the result
+                value = NarrowNode.create(new RightShiftNode(value, ConstantNode.forInt(32)), 32, NodeView.DEFAULT);
+                if (c > 0) {
+                    value = BinaryArithmeticNode.add(value, forX, NodeView.DEFAULT);
+                } else {
+                    value = BinaryArithmeticNode.sub(value, forX, NodeView.DEFAULT);
+                }
+                if (shiftNum > 0) {
+                    value = new RightShiftNode(value, ConstantNode.forInt(shiftNum));
+                }
+            } else {
+                value = new RightShiftNode(value, ConstantNode.forInt(32 + shiftNum));
+                value = new NarrowNode(value, Integer.SIZE);
+            }
+        } else {
+            assert bitSize == 64;
+            value = new IntegerMulHighNode(forX, m);
+            if (c > 0 && magicNum < 0) {
+                value = BinaryArithmeticNode.add(value, forX, NodeView.DEFAULT);
+            } else if (c < 0 && magicNum > 0) {
+                value = BinaryArithmeticNode.sub(value, forX, NodeView.DEFAULT);
+            }
+            if (shiftNum > 0) {
+                value = new RightShiftNode(value, ConstantNode.forInt(shiftNum));
+            }
         }
-        if (shiftNum > 0) {
-            ConstantNode s = ConstantNode.forInt(shiftNum);
-            quot = new RightShiftNode(quot, s);
-        }
+
         if (c < 0) {
             ConstantNode s = ConstantNode.forInt(bitSize - 1);
-            ValueNode sign = UnsignedRightShiftNode.create(quot, s, NodeView.DEFAULT);
-            quot = BinaryArithmeticNode.add(quot, sign, NodeView.DEFAULT);
+            ValueNode sign = UnsignedRightShiftNode.create(value, s, NodeView.DEFAULT);
+            value = BinaryArithmeticNode.add(value, sign, NodeView.DEFAULT);
         } else if (dividendStamp.canBeNegative()) {
             ConstantNode s = ConstantNode.forInt(bitSize - 1);
             ValueNode sign = UnsignedRightShiftNode.create(forX, s, NodeView.DEFAULT);
-            quot = BinaryArithmeticNode.add(quot, sign, NodeView.DEFAULT);
+            value = BinaryArithmeticNode.add(value, sign, NodeView.DEFAULT);
         }
-        return quot;
+        return value;
     }
 
     /**
