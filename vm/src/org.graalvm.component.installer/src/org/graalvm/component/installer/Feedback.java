@@ -134,17 +134,21 @@ public interface Feedback {
     void bindFilename(Path file, String label);
 
     /**
-     * Waits for user input of a single character. If the user closes the terminal, the method will
-     * not return, but will throw an {@link UserAbortException}.
-     * 
-     * @return the character that the user has entered.
+     * Returned from {@link #acceptLine} for an automatic accept.
      */
-    char acceptCharacter();
-
+    public static final String AUTO_YES = "<automatic-yes>";
+    
     /**
      * Waits for user input confirmed by ENTER.
      * 
+     * @param autoYes returns the {@link #AUTO_YES} if yes-to-all was specified on commandline.
      * @return accepted line.
      */
-    String acceptLine();
+    String acceptLine(boolean autoYes);
+
+    /**
+     * Allows to enter password using console services.
+     * @return password
+     */
+    String acceptPassword();
 }

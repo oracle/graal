@@ -143,7 +143,7 @@ public interface Commands {
      * Interpret parameters as remote component IDs, uses user-defined catalog URL.
      */
     String OPTION_FOREIGN_CATALOG = "C";
-    String LONG_OPTION_FOREIGN_CATALOG = "user-catalog";
+    String LONG_OPTION_FOREIGN_CATALOG = "custom-catalog";
 
     /**
      * Interpret parameters as URLs.
@@ -164,8 +164,8 @@ public interface Commands {
     String LONG_OPTION_FAIL_EXISTING = "fail-existing"; // NOI18N
 
     /**
-     * Public key for RPM signature verification.
+     * Automatic YES to all questions.
      */
-    String OPTION_PUBLIC_KEY = "k";
-    String LONG_OPTION_PUBLIC_KEY = "public-key";
+    String OPTION_AUTO_YES = "A";
+    String LONG_OPTION_AUTO_YES = "auto-yes";
 }

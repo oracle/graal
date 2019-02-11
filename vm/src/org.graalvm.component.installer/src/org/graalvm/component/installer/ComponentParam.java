@@ -37,8 +37,6 @@ public interface ComponentParam extends Closeable {
 
     MetadataLoader createFileLoader() throws IOException;
 
-    Archive getFile() throws IOException;
-
     boolean isComplete();
 
     @Override

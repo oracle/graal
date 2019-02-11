@@ -123,11 +123,6 @@ public class FileIterable implements ComponentIterable {
         }
 
         @Override
-        public Archive getFile() throws IOException {
-            return createFileLoader().getArchive();
-        }
-
-        @Override
         public boolean isComplete() {
             return true;
         }

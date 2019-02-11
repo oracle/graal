@@ -316,13 +316,13 @@ public final class Environment implements Feedback, CommandInput {
             }
 
             @Override
-            public char acceptCharacter() {
-                return Environment.this.acceptCharacter();
+            public String acceptLine(boolean autoYes) {
+                return Environment.this.acceptLine(autoYes);
             }
 
             @Override
-            public String acceptLine() {
-                return Environment.this.acceptLine();
+            public String acceptPassword() {
+                return Environment.this.acceptPassword();
             }
         };
     }
@@ -417,7 +417,6 @@ public final class Environment implements Feedback, CommandInput {
         fileMap.put(file, label);
     }
 
-    @Override
     public char acceptCharacter() {
         try {
             int input = in.read();
@@ -433,7 +432,7 @@ public final class Environment implements Feedback, CommandInput {
     }
 
     @Override
-    public String acceptLine() {
+    public String acceptLine(boolean autoYes) {
         StringBuilder sb = new StringBuilder();
         char c;
         while ((c = acceptCharacter()) != '\n') {
@@ -444,5 +443,11 @@ public final class Environment implements Feedback, CommandInput {
             }
         }
         return sb.toString();
+    }
+
+    @Override
+    public String acceptPassword() {
+        System.console().flush();
+        return String.copyValueOf(System.console().readPassword());
     }
 }

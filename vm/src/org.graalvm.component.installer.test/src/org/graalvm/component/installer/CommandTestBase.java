@@ -34,18 +34,23 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarFile;
+import org.graalvm.component.installer.DownloadURLIterable.DownloadURLParam;
 import org.graalvm.component.installer.commands.MockStorage;
 import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
+import org.graalvm.component.installer.remote.FileDownloader;
+import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.test.Handler;
+import org.graalvm.component.installer.remote.RemoteComponentParam;
+import org.graalvm.component.installer.remote.CatalogIterable.CatalogItemParam;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
-public class CommandTestBase extends TestBase implements CommandInput {
+public class CommandTestBase extends TestBase implements CommandInput, SoftwareChannel {
     @Rule public ExpectedException exception = ExpectedException.none();
     protected JarFile componentJarFile;
     @Rule public TemporaryFolder folder = new TemporaryFolder();
@@ -62,7 +67,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
     protected Map<String, String> options = new HashMap<>();
 
     ComponentParam param;
-    CatalogIterable.RemoteComponentParam rparam;
+    RemoteComponentParam rparam;
     URL url;
     URL clu;
     ComponentInfo info;
@@ -82,7 +87,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
         // unknown in catalog metadata
         info.setLicensePath(null);
         info.setRemoteURL(url);
-        param = rparam = new CatalogIterable.RemoteComponentParam(info, disp, spec, this, false);
+        param = rparam = new CatalogItemParam(this, info, disp, spec, this, false);
     }
 
     protected void initURLComponent(String relativeJar, String spec) throws IOException {
@@ -97,7 +102,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
         // unknown in catalog metadata
         info.setLicensePath(null);
         info.setRemoteURL(url);
-        param = rparam = new CatalogIterable.RemoteComponentParam(url, spec, spec, this, false);
+        param = rparam = new DownloadURLParam(url, spec, spec, this, false);
     }
 
     protected Iterable<ComponentParam> paramIterable;
@@ -186,5 +191,24 @@ public class CommandTestBase extends TestBase implements CommandInput {
         targetPath = folder.newFolder("inst").toPath();
         storage = new MockStorage();
         localRegistry = registry = new ComponentRegistry(this, storage);
+    }
+
+    @Override
+    public boolean setupLocation(String urlString) {
+        return false;
+    }
+
+    @Override
+    public void init(CommandInput input, Feedback output) {
+    }
+
+    @Override
+    public FileDownloader configureDownloader(FileDownloader dn) {
+        return dn;
+    }
+
+    @Override
+    public MetadataLoader createLocalFileLoader(Path localFile) throws IOException {
+        return new JarMetaLoader(new JarFile(localFile.toFile()), this);
     }
 }

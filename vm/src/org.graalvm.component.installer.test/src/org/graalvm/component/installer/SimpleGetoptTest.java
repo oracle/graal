@@ -326,7 +326,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testLongOptionWithParameterBeforeCommand() {
-        setParams("--user-catalog bubu install");
+        setParams("--custom-catalog bubu install");
 
         getopt.process();
 
@@ -336,7 +336,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testLongOptionWithParameterAfterCommand() {
-        setParams("install --user-catalog bubu ");
+        setParams("install --custom-catalog bubu ");
 
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
@@ -365,7 +365,7 @@ public class SimpleGetoptTest extends TestBase {
 
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
-        assertEquals("bubu", opts.get("C"));
+        assertEquals("bubu", opts.get("U"));
     }
 
     @Test

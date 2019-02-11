@@ -24,11 +24,11 @@
  */
 package org.graalvm.component.installer;
 
+import org.graalvm.component.installer.remote.CatalogIterable;
 import java.io.File;
 import java.io.IOError;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.AccessDeniedException;
@@ -45,6 +45,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.ServiceLoader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
@@ -55,7 +56,7 @@ import org.graalvm.component.installer.commands.ListInstalledCommand;
 import org.graalvm.component.installer.commands.RebuildImageCommand;
 import org.graalvm.component.installer.commands.UninstallCommand;
 import org.graalvm.component.installer.persist.DirectoryStorage;
-import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
+import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 
 /**
  * The launcher.
@@ -103,10 +104,17 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.LONG_OPTION_FOREIGN_CATALOG, Commands.OPTION_FOREIGN_CATALOG);
         globalOptions.put(Commands.LONG_OPTION_URLS, Commands.OPTION_URLS);
         globalOptions.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
+        
+        globalOptions.put(Commands.OPTION_AUTO_YES, "");
+        globalOptions.put(Commands.LONG_OPTION_AUTO_YES, Commands.OPTION_AUTO_YES);
     }
 
     static {
         initCommands();
+        // add options from software channels
+        for (SoftwareChannel ch : ServiceLoader.load(SoftwareChannel.class)) {
+            globalOptions.putAll(ch.globalOptions());
+        }
     }
 
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
@@ -122,7 +130,31 @@ public final class ComponentInstaller {
     }
 
     private static void printHelp() {
-        System.err.println(BUNDLE.getString("INFO_Usage")); // NOI18N
+        StringBuilder extra = new StringBuilder();
+        Environment env = null;
+        try {
+            for (SoftwareChannel ch : ServiceLoader.load(SoftwareChannel.class)) {
+                if (env == null) {
+                    env = new Environment("help", Collections.emptyList(), Collections.emptyMap());
+                }
+                ch.init(env, env);
+                String s = ch.globalOptionsHelp();
+                if (s != null) {
+                    extra.append(s);
+                }
+            }
+        } catch (Exception ex) {
+            // ignore, must display help
+        }
+        String extraS;
+        
+        if (extra.length() != 0) {
+            extraS = MessageFormat.format(BUNDLE.getString("INFO_UsageExtensions"), extra.toString());
+        } else {
+            extraS = ""; // NOI18N
+        }
+        
+        System.err.println(MessageFormat.format(BUNDLE.getString("INFO_Usage"), extraS)); // NOI18N
     }
 
     static void printErr(String messageKey, Object... args) {
@@ -195,9 +227,9 @@ public final class ComponentInstaller {
                 catalogURL = optValues.get(Commands.OPTION_FOREIGN_CATALOG);
                 RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
                                 env,
-                                env.getLocalRegistry(),
+                                env,
                                 getCatalogURL(env));
-                env.setComponentRegistry(downloader);
+                env.setComponentRegistry(downloader::openCatalog);
                 env.setFileIterable(new CatalogIterable(env, env, downloader));
             }
             cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));
@@ -291,7 +323,7 @@ public final class ComponentInstaller {
 
     }
 
-    private URL getCatalogURL(Feedback f) {
+    private String getCatalogURL(Feedback f) {
         String def;
         if (catalogURL != null) {
             def = catalogURL;
@@ -309,11 +341,7 @@ public final class ComponentInstaller {
             }
         }
         String s = System.getProperty(CommonConstants.SYSPROP_CATALOG_URL, def);
-        try {
-            return new URL(s);
-        } catch (MalformedURLException ex) {
-            throw f.failure("INSTALLER_InvalidCatalogURL", ex, s);
-        }
+        return s;
     }
 
     /**

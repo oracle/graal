@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.component.installer.persist;
+package org.graalvm.component.installer.remote;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,6 +45,8 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -52,7 +54,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.component.installer.Feedback;
 
-public class FileDownloader {
+/**
+ * Downloads file to local, optionally checks its integrity using digest.
+ * @author sdedic
+ */
+public final class FileDownloader {
     String envHttpProxy = System.getenv("http_proxy"); // NOI18N
     String envHttpsProxy = System.getenv("https_proxy"); // NOI18N
 
@@ -72,11 +78,17 @@ public class FileDownloader {
     private byte[] shaDigest;
     private int connectDelay = DEFAULT_CONNECT_DELAY;
     long sizeThreshold = MIN_PROGRESS_THRESHOLD;
+    private Map<String, String> requestHeaders = new HashMap<>();
+    
+    /**
+     * Algorithm to compute file digest. By default SHA-256 is used.
+     */
+    private String digestAlgorithm = "SHA-256";
 
     public FileDownloader(String fileDescription, URL sourceURL, Feedback feedback) {
         this.fileDescription = fileDescription;
         this.sourceURL = sourceURL;
-        this.feedback = feedback;
+        this.feedback = feedback.withBundle(FileDownloader.class);
     }
 
     public void setShaDigest(byte[] shaDigest) {
@@ -93,6 +105,18 @@ public class FileDownloader {
 
     public void setDisplayProgress(boolean displayProgress) {
         this.displayProgress = displayProgress;
+    }
+    
+    public void addRequestHeader(String header, String val) {
+        requestHeaders.put(header, val);
+    }
+
+    public String getDigestAlgorithm() {
+        return digestAlgorithm;
+    }
+
+    public void setDigestAlgorithm(String digestAlgorithm) {
+        this.digestAlgorithm = digestAlgorithm;
     }
 
     public static synchronized File createTempDir() throws IOException {
@@ -184,7 +208,7 @@ public class FileDownloader {
         }
         if (fileDigest == null) {
             try {
-                fileDigest = MessageDigest.getInstance("SHA-256"); // NOI18N
+                fileDigest = MessageDigest.getInstance(getDigestAlgorithm()); // NOI18N
             } catch (NoSuchAlgorithmException ex) {
                 throw new IOException(
                                 feedback.l10n("ERR_ComputeDigest", ex.getLocalizedMessage()),
@@ -219,6 +243,12 @@ public class FileDownloader {
         }
         throw new IOException(feedback.l10n("ERR_FileDigestError",
                         fingerPrint(shaDigest), fingerPrint(computed)));
+    }
+    
+    void configureHeaders(URLConnection con) {
+        for (String h : requestHeaders.keySet()) {
+            con.addRequestProperty(h, requestHeaders.get(h));
+        }
     }
 
     private URLConnection openConnectionWithProxies(URL url) throws IOException {
@@ -268,6 +298,7 @@ public class FileDownloader {
                 }
                 try {
                     URLConnection test = directConnect ? url.openConnection() : url.openConnection(proxy);
+                    configureHeaders(test);
                     test.connect();
                     if (test instanceof HttpURLConnection) {
                         HttpURLConnection htest = (HttpURLConnection) test;
@@ -303,7 +334,7 @@ public class FileDownloader {
                 if (ex3.get() != null) {
                     throw ex3.get();
                 }
-                throw new ConnectException("Timeout while connecting to " + url);
+                throw new ConnectException(feedback.l10n("EXC_TimeoutConnectTo", url));
             }
             if (conn[0] == null) {
                 if (ex3.get() != null) {
@@ -311,7 +342,7 @@ public class FileDownloader {
                 } else if (ex2.get() != null) {
                     throw ex2.get();
                 }
-                throw new ConnectException("Cannot connect to " + url);
+                throw new ConnectException(feedback.l10n("EXC_CannotConnectTo", url));
             }
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();

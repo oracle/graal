@@ -179,6 +179,9 @@ public class LicensePresenter {
     }
 
     boolean isYes(String userInput) {
+        if (userInput == Feedback.AUTO_YES) {
+            return true;
+        }
         Pattern p = Pattern.compile(feedback.l10n("INSTALL_AcceptPromptResponseYes"), Pattern.CASE_INSENSITIVE);
         return p.matcher(userInput).matches();
     }
@@ -189,13 +192,12 @@ public class LicensePresenter {
     }
 
     boolean processUserInputForList() {
-        String userInput = feedback.acceptLine();
+        String userInput = feedback.acceptLine(true);
         Pattern p = Pattern.compile(feedback.l10n("INSTALL_AcceptPromptResponseAbort"), Pattern.CASE_INSENSITIVE);
         if (p.matcher(userInput).matches()) {
             throw new UserAbortException();
         }
-        p = Pattern.compile(feedback.l10n("INSTALL_AcceptPromptResponseYes"), Pattern.CASE_INSENSITIVE);
-        if (p.matcher(userInput).matches()) {
+        if (isYes(userInput)) {
             acceptAllLicenses();
             state = State.NONE;
             return true;
@@ -235,7 +237,7 @@ public class LicensePresenter {
         String compList = formatComponentList(licId);
         feedback.output("INSTALL_AcceptLicense", compList, type);
         feedback.outputPart("INSTALL_AcceptSingleLicense");
-        String input = feedback.acceptLine();
+        String input = feedback.acceptLine(true);
 
         if (isYes(input)) {
             acceptLicense(licId);
@@ -252,7 +254,7 @@ public class LicensePresenter {
         String text = loadLicenseText(displayLicenseId);
         feedback.verbatimOut(text, false);
         feedback.output("INSTALL_AcceptLicensePrompt");
-        String input = feedback.acceptLine();
+        String input = feedback.acceptLine(true);
 
         if (isYes(input)) {
             acceptLicense(displayLicenseId);

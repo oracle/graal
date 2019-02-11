@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer.persist;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
  * 
  * @author sdedic
  */
-public interface MetadataLoader {
+public interface MetadataLoader extends Closeable {
 
     void close() throws IOException;
 

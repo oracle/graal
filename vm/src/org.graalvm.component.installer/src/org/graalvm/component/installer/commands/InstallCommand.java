@@ -378,7 +378,7 @@ public class InstallCommand implements InstallerCommand {
         ldr.loadPaths();
         Archive a = null;
         if (p.isComplete()) {
-            a = p.getFile();
+            a = ldr.getArchive();
             a.verifyIntegrity(input);
         }
         Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry(), a);

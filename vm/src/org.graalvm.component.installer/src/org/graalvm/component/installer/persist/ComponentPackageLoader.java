@@ -105,7 +105,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
 
     static final ResourceBundle BUNDLE = ResourceBundle.getBundle("org.graalvm.component.installer.persist.Bundle");
 
-    protected ComponentPackageLoader(Function<String, String> supplier, Feedback feedback) {
+    public ComponentPackageLoader(Function<String, String> supplier, Feedback feedback) {
         this.feedback = feedback.withBundle(ComponentPackageLoader.class);
         this.valueSupplier = supplier;
     }

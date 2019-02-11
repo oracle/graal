@@ -22,8 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.component.installer.persist;
+package org.graalvm.component.installer.remote;
 
+import org.graalvm.component.installer.remote.FileDownloader;
+import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.ChunkedConnection;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -33,6 +35,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.graalvm.component.installer.persist.NetworkTestBase;
 import org.graalvm.component.installer.persist.test.Handler;
 import org.junit.Assert;
 import static org.junit.Assert.assertArrayEquals;
@@ -99,7 +102,7 @@ public class FileDownloaderTest extends NetworkTestBase {
         dn.setShaDigest(new byte[0]);
         dn.download();
 
-        byte[] check = RemoteStorage.toHashBytes(null, "b649fe3b9309d1b3ae4d2dbae70eebd4d2978af32cd1ce7d262ebf7e0f0f53fa", this);
+        byte[] check = RemotePropertiesStorage.toHashBytes(null, "b649fe3b9309d1b3ae4d2dbae70eebd4d2978af32cd1ce7d262ebf7e0f0f53fa", this);
         assertArrayEquals(check, dn.getDigest());
     }
 

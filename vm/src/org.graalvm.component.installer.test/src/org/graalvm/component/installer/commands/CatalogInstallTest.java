@@ -27,13 +27,13 @@ package org.graalvm.component.installer.commands;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
-import org.graalvm.component.installer.CatalogIterable;
+import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.persist.ProxyResource;
-import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
+import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -78,7 +78,7 @@ public class CatalogInstallTest extends CommandTestBase {
         }
         Handler.bind(TEST_CATALOG_URL, u);
 
-        downloader = new RemoteCatalogDownloader(this, this.localRegistry, new URL(TEST_CATALOG_URL));
+        downloader = new RemoteCatalogDownloader(this, this, new URL(TEST_CATALOG_URL));
         this.registry = downloader.get();
     }
 

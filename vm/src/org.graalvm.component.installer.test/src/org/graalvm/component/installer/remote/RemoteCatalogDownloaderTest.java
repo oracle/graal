@@ -22,16 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.component.installer.persist;
+package org.graalvm.component.installer.remote;
 
+import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import java.net.ConnectException;
 import java.net.URL;
-import java.nio.file.Path;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.MockURLConnection;
 import org.graalvm.component.installer.commands.MockStorage;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.persist.NetworkTestBase;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -45,9 +46,6 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Rule public ExpectedException exception = ExpectedException.none();
 
     @Rule public TemporaryFolder folder = new TemporaryFolder();
-    Path targetPath;
-    ComponentRegistry localRegistry;
-    MockStorage storage;
 
     ComponentRegistry registry;
 
@@ -65,7 +63,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         Handler.bind(u.toString(),
                         clu);
 
-        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_UnsupportedGraalVersion");
         d.openCatalog();
@@ -78,7 +76,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         Handler.bind(u.toString(),
                         clu);
 
-        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_CorruptedCatalogFile");
         d.openCatalog();
@@ -90,7 +88,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         Handler.bind(u.toString(),
                         clu);
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
-        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
         registry = d.openCatalog();
     }
 
@@ -116,7 +114,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         Handler.bind(u.toString(),
                         clu);
 
-        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_CorruptedCatalogFile");
         d.openCatalog();
@@ -129,7 +127,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         Handler.bind(u.toString(),
                         new MockURLConnection(clu.openConnection(), u, new ConnectException()));
 
-        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_ErrorDownloadCatalogProxy");
         d.openCatalog();

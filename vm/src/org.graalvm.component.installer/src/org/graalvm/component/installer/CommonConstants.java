@@ -84,13 +84,4 @@ public class CommonConstants {
      */
     public static final String BUILTIN_INSTALLATION_DIR = "/usr/lib/graalvm"; // NOI18N
 
-    /**
-     * The default location of graalvm public key for package verification.
-     */
-    public static final String DEFAULT_PUBLIC_KEY_FILE = "jre/lib/installer/graalvm_key.asc"; // NOI18N
-
-    /**
-     * Env variable which overrides the public key file.
-     */
-    public static final String ENV_PUBLIC_KEY_FILE = "GRAALVM_PUBLIC_KEY"; // NOI18N
 }

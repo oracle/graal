@@ -52,7 +52,7 @@ import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSIO
 import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
-import org.graalvm.component.installer.persist.FileDownloader;
+import org.graalvm.component.installer.remote.FileDownloader;
 
 /**
  *

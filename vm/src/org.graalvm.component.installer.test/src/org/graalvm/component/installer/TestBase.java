@@ -240,10 +240,19 @@ public class TestBase implements Feedback {
 
     @Override
     public boolean verbatimPart(String msg, boolean beVerbose) {
-        if (feedbackDelegate != null) {
-            return feedbackDelegate.verbatimPart(msg, beVerbose);
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(NO_BUNDLE);
         }
-        return beVerbose;
+        try {
+            if (feedbackDelegate != null) {
+                return feedbackDelegate.verbatimPart(msg, beVerbose);
+            }
+        } finally {
+            if (feedbackDelegate instanceof FeedbackAdapter) {
+                ((FeedbackAdapter) feedbackDelegate).setBundle(null);
+            }
+        }
+        return verbose;
     }
 
     public void verbosePart(ResourceBundle bundle, String bundleKey, Object... params) {
@@ -463,7 +472,7 @@ public class TestBase implements Feedback {
 
         @Override
         public boolean verbatimPart(String msg, boolean beVerbose) {
-            return TestBase.this.verbatimOut(msg, beVerbose);
+            return TestBase.this.verbatimPart(msg, beVerbose);
         }
 
         @Override
@@ -482,13 +491,13 @@ public class TestBase implements Feedback {
         }
 
         @Override
-        public char acceptCharacter() {
-            return TestBase.this.acceptCharacter();
+        public String acceptLine(boolean autoYes) {
+            return TestBase.this.acceptLine(autoYes);
         }
 
         @Override
-        public String acceptLine() {
-            return TestBase.this.acceptLine();
+        public String acceptPassword() {
+            return TestBase.this.acceptPassword();
         }
     }
 
@@ -579,13 +588,13 @@ public class TestBase implements Feedback {
         }
 
         @Override
-        public char acceptCharacter() {
-            return TestBase.this.doAcceptCharacter();
+        public String acceptLine(boolean autoYes) {
+            return TestBase.this.doAcceptLine(autoYes);
         }
 
         @Override
-        public String acceptLine() {
-            return TestBase.this.doAcceptLine();
+        public String acceptPassword() {
+            return TestBase.this.doAcceptPassword();
         }
     }
 
@@ -593,34 +602,22 @@ public class TestBase implements Feedback {
         return SystemUtils.isWindows();
     }
 
-    private StringBuilder userInput = new StringBuilder();
+    protected StringBuilder userInput = new StringBuilder();
+    protected String password;
+    protected boolean autoYesEnabled;
 
     @Override
-    public char acceptCharacter() {
+    public String acceptLine(boolean autoYes) {
         if (feedbackDelegate != null) {
-            return feedbackDelegate.acceptCharacter();
+            return feedbackDelegate.acceptLine(autoYes);
         }
-        return doAcceptCharacter();
+        return doAcceptLine(autoYes);
     }
-
-    char doAcceptCharacter() {
-        if (userInput.length() == 0) {
-            throw new UserAbortException();
+    
+    String doAcceptLine(boolean autoYes) {
+        if (autoYes && autoYesEnabled) {
+            return AUTO_YES;
         }
-        char c = userInput.charAt(0);
-        userInput.delete(0, 1);
-        return c;
-    }
-
-    @Override
-    public String acceptLine() {
-        if (feedbackDelegate != null) {
-            return feedbackDelegate.acceptLine();
-        }
-        return doAcceptLine();
-    }
-
-    String doAcceptLine() {
         int nl = userInput.indexOf("\n");
         if (nl < 0) {
             nl = userInput.length();
@@ -628,5 +625,18 @@ public class TestBase implements Feedback {
         String r = userInput.substring(0, nl);
         userInput.delete(0, nl);
         return r;
+    }
+
+    @Override
+    public String acceptPassword() {
+        String s = null;
+        if (feedbackDelegate != null) {
+            return feedbackDelegate.acceptPassword();
+        }
+        return password;
+    }
+    
+    String doAcceptPassword() {
+        return password;
     }
 }
