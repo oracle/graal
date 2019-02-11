@@ -57,6 +57,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -684,6 +685,11 @@ public abstract class Node implements NodeInterface, Cloneable {
             @Override
             public boolean isInstrumentable(RootNode rootNode) {
                 return rootNode.isInstrumentable();
+            }
+
+            @Override
+            public void setCallTarget(RootNode rootNode, RootCallTarget callTarget) {
+                rootNode.setCallTarget(callTarget);
             }
 
             @Override

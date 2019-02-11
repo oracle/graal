@@ -131,7 +131,7 @@ public abstract class RootNode extends ExecutableNode {
      * instead for compatibility.
      */
     final Object sourceVM;
-    private RootCallTarget callTarget;
+    private volatile RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     final ReentrantLock lock = new ReentrantLock();
 
@@ -353,13 +353,8 @@ public abstract class RootNode extends ExecutableNode {
         return frameDescriptor;
     }
 
-    /**
-     * @since 0.8 or earlier
-     * @deprecated No replacement. Changing {@link CallTarget} of an existing {@link RootNode} isn't
-     *             a supported operation
-     */
-    @Deprecated
-    public final void setCallTarget(RootCallTarget callTarget) {
+    /** @since 1.0.0 */
+    protected final void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
     }
 

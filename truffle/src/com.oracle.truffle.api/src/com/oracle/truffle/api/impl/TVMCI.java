@@ -150,6 +150,10 @@ public abstract class TVMCI {
         }
     }
 
+    protected void setCallTarget(RootNode root, RootCallTarget callTarget) {
+        Accessor.nodesAccess().setCallTarget(root, callTarget);
+    }
+
     /**
      * Makes sure the <code>rootNode</code> is initialized.
      *

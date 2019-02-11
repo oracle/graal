@@ -948,8 +948,6 @@ meth public com.oracle.truffle.api.nodes.Node copy()
 meth public final <%0 extends java.lang.Object, %1 extends com.oracle.truffle.api.TruffleLanguage<{%%0}>> {%%0} getCurrentContext(java.lang.Class<{%%1}>)
 meth public final com.oracle.truffle.api.RootCallTarget getCallTarget()
 meth public final com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
-meth public final void setCallTarget(com.oracle.truffle.api.RootCallTarget)
- anno 0 java.lang.Deprecated()
 meth public java.lang.String getName()
 meth public static com.oracle.truffle.api.nodes.RootNode createConstantNode(java.lang.Object)
 supr com.oracle.truffle.api.nodes.ExecutableNode
