@@ -347,6 +347,7 @@ public final class InspectorRuntime extends RuntimeDomain {
             }
             int i = 0;
             for (DebugValue v : arrayElements) {
+                assert storedPropertyNames != null;
                 String name = Integer.toString(i++);
                 try {
                     if (v.isReadable() && !storedPropertyNames.contains(name)) {
