@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -201,7 +202,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
                             try {
                                 TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
-                                callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(nativeMethod, this));
+                                callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(this, new JniNativeNode(nativeMethod, this)));
                                 return callTarget;
                             } catch (UnknownIdentifierException e) {
                                 // native method not found in libjava, safe to ignore
@@ -225,12 +226,22 @@ public final class Method implements ModifiersProvider, ContextAccess {
                         throw getMeta().throwEx(UnsatisfiedLinkError.class);
                     }
                 } else {
-                    callTarget = Truffle.getRuntime().createCallTarget(new BytecodeNode(this));
+                    FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
+                    EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
+                    callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                 }
             }
         }
 
         return callTarget;
+    }
+
+    private static FrameDescriptor initFrameDescriptor(int slotCount) {
+        FrameDescriptor descriptor = new FrameDescriptor();
+        for (int i = 0; i < slotCount; ++i) {
+            descriptor.addFrameSlot(i);
+        }
+        return descriptor;
     }
 
     private CallTarget lookupJniCallTarget(Method findNative, boolean fullSignature) {
@@ -241,7 +252,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         }
         TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol, this);
-        return Truffle.getRuntime().createCallTarget(new JniNativeNode(nativeMethod, this));
+        return Truffle.getRuntime().createCallTarget(new EspressoRootNode(this, new JniNativeNode(nativeMethod, this)));
     }
 
     public boolean isConstructor() {
