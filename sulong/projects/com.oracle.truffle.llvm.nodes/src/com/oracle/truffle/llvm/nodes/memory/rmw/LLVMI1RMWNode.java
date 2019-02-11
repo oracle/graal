@@ -138,11 +138,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doOp(LLVMNativePointer address, boolean value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI1(address, value, (a, b) -> {
-                boolean boolA = a.booleanValue();
-                boolean boolB = b.booleanValue();
-                return !(boolA & boolB);
-            });
+            return memory.getAndOpI1(address, value, (a, b) -> !(a & b));
         }
 
         @Specialization
