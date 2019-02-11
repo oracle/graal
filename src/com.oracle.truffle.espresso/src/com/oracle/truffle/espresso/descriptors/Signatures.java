@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -155,6 +156,7 @@ public final class Signatures {
      * Gets the number of local variable slots used by the parameters only in this parsed signature.
      * Long and double parameters use two slots, all other parameters use one slot.
      */
+    @ExplodeLoop
     public static int slotsForParameters(final Symbol<Type>[] signature) {
         int slots = 0;
         int count = parameterCount(signature, false);

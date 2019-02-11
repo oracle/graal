@@ -411,7 +411,6 @@ public final class InterpreterToVM implements ContextAccess {
      * Cloneable >1 Object[] - java.io.Serializable >1 Object[] - If P is a primitive type, then:
      * Object >1 P[] Cloneable >1 P[] java.io.Serializable >1 P[]
      */
-    @TruffleBoundary
     public static boolean instanceOf(StaticObject instance, Klass typeToCheck) {
         if (StaticObject.isNull(instance)) {
             return false;

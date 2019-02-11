@@ -366,32 +366,38 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
+    @TruffleBoundary
     public EspressoException throwEx(ObjectKlass exKlass) {
         assert Throwable.isAssignableFrom(exKlass);
         throw new EspressoException(initEx(exKlass));
     }
 
+    @TruffleBoundary
     public EspressoException throwEx(java.lang.Class<?> clazz) {
         assert Throwable.class.isAssignableFrom(clazz);
         throw new EspressoException(initEx(clazz));
     }
 
+    @TruffleBoundary
     public EspressoException throwExWithMessage(java.lang.Class<?> clazz, String message) {
         throw new EspressoException(initExWithMessage(clazz, message));
     }
 
+    @TruffleBoundary
     public EspressoException throwExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.class.isAssignableFrom(clazz);
         assert Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCause(clazz, cause));
     }
 
+    @TruffleBoundary
     public EspressoException throwExWithMessage(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
         assert Throwable.isAssignableFrom(exKlass);
         assert String.isAssignableFrom(message.getKlass());
         throw new EspressoException(initExWithMessage(exKlass, message));
     }
 
+    @TruffleBoundary
     public EspressoException throwExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.isAssignableFrom(exKlass);
         assert Throwable.isAssignableFrom(cause.getKlass());
@@ -405,6 +411,7 @@ public final class Meta implements ContextAccess {
         return knownKlass(exceptionClass);
     }
 
+    @TruffleBoundary
     public ObjectKlass knownKlass(Symbol<Type> type) {
         return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
     }
