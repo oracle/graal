@@ -868,8 +868,6 @@ meth public abstract !hasdefault java.lang.String shortName()
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
 CLSS public final com.oracle.truffle.api.nodes.NodeUtil
-cons public init()
- anno 0 java.lang.Deprecated()
 innr public abstract interface static NodeCountFilter
 meth public static <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} cloneNode({%%0})
 meth public static <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} nonAtomicReplace(com.oracle.truffle.api.nodes.Node,{%%0},java.lang.CharSequence)
