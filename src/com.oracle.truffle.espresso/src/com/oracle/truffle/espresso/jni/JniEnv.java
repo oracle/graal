@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -121,6 +122,22 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return threadLocalPendingException;
     }
 
+    @TruffleBoundary
+    public final StaticObject getPendingException() {
+        return threadLocalPendingException.get();
+    }
+
+    @TruffleBoundary
+    public final void clearPendingException() {
+        threadLocalPendingException.clear();
+    }
+
+    @TruffleBoundary
+    public final void setPendingException(StaticObject ex) {
+        assert StaticObject.notNull(ex) && getMeta().Throwable.isAssignableFrom(ex.getKlass());
+        threadLocalPendingException.set(ex);
+    }
+
     public Callback jniMethodWrapper(java.lang.reflect.Method m) {
         return new Callback(m.getParameterCount() + 1, new Callback.Function() {
             @Override
@@ -172,7 +189,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 } catch (InvocationTargetException e) {
                     Throwable targetEx = e.getTargetException();
                     if (targetEx instanceof EspressoException) {
-                        JniEnv.this.getThreadLocalPendingException().set(((EspressoException) targetEx).getException());
+                        setPendingException(((EspressoException) targetEx).getException());
                         return defaultValue(m.getReturnType());
                     } else if (targetEx instanceof RuntimeException) {
                         throw (RuntimeException) targetEx;
@@ -1351,7 +1368,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public void ExceptionClear() {
-        getThreadLocalPendingException().clear();
+        clearPendingException();
     }
 
     /**
