@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,30 +29,85 @@
  */
 package com.oracle.truffle.llvm.test.interop.values;
 
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public final class NullValue implements TruffleObject {
+public final class BoxedIntValue implements TruffleObject {
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof NullValue;
+    final int value;
+
+    public BoxedIntValue(int value) {
+        this.value = value;
     }
 
     @ExportMessage
-    boolean isNull() {
+    boolean isNumber() {
+        return true;
+    }
+
+    @ExportMessage(limit = "1")
+    boolean fitsInByte(@Shared("interop") @CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.fitsInByte(value);
+    }
+
+    @ExportMessage(limit = "1")
+    boolean fitsInShort(@Shared("interop") @CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.fitsInShort(value);
+    }
+
+    @ExportMessage
+    boolean fitsInInt() {
         return true;
     }
 
     @ExportMessage
-    boolean isPointer() {
+    boolean fitsInLong() {
         return true;
     }
 
+    @ExportMessage(limit = "1")
+    boolean fitsInFloat(@Shared("interop") @CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.fitsInFloat(value);
+    }
+
     @ExportMessage
-    long asPointer() {
-        return 0;
+    boolean fitsInDouble() {
+        return true;
+    }
+
+    @ExportMessage(limit = "1")
+    byte asByte(@Shared("interop") @CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asByte(value);
+    }
+
+    @ExportMessage(limit = "1")
+    short asShort(@Shared("interop") @CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asShort(value);
+    }
+
+    @ExportMessage
+    public int asInt() {
+        return value;
+    }
+
+    @ExportMessage
+    long asLong() {
+        return value;
+    }
+
+    @ExportMessage(limit = "1")
+    float asFloat(@Shared("interop") @CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asFloat(value);
+    }
+
+    @ExportMessage
+    double asDouble() {
+        return value;
     }
 }

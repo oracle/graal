@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,11 +39,9 @@ import org.junit.ClassRule;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.test.options.TestOptions;
@@ -82,23 +80,23 @@ public class InteropTestBase {
 
     public static class SulongTestNode extends RootNode {
 
-        private final TruffleObject function;
-        @Child private Node execute;
+        private final Object function;
+        @Child InteropLibrary interop;
 
         protected SulongTestNode(TruffleObject testLibrary, String fnName) {
             super(null);
             try {
-                function = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, fnName);
+                function = InteropLibrary.getFactory().getUncached().readMember(testLibrary, fnName);
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }
-            this.execute = Message.EXECUTE.createNode();
+            this.interop = InteropLibrary.getFactory().create(function);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             try {
-                return ForeignAccess.sendExecute(execute, function, frame.getArguments());
+                return interop.execute(function, frame.getArguments());
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }

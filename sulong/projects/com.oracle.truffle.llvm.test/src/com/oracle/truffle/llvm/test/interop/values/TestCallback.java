@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,13 +31,12 @@ package com.oracle.truffle.llvm.test.interop.values;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = TestCallback.class)
+@ExportLibrary(InteropLibrary.class)
 public class TestCallback implements TruffleObject {
 
     public interface Function {
@@ -54,30 +53,23 @@ public class TestCallback implements TruffleObject {
     }
 
     @TruffleBoundary
-    Object call(Object... args) {
+    Object call(Object... args) throws ArityException {
         if (args.length == arity) {
             Object ret = function.call(args);
             return ret;
         } else {
-            throw ArityException.raise(arity, args.length);
+            throw ArityException.create(arity, args.length);
         }
     }
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof TestCallback;
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return TestCallbackForeign.ACCESS;
-    }
-
-    @Resolve(message = "EXECUTE")
-    abstract static class ExecuteNode extends Node {
-
-        Object access(TestCallback callback, Object[] arguments) {
-            Object res = callback.call(arguments);
-            return res == null ? new NullValue() : res;
-        }
+    @ExportMessage
+    Object execute(Object[] arguments) throws ArityException {
+        Object res = call(arguments);
+        return res == null ? new NullValue() : res;
     }
 }

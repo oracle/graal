@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,43 +29,27 @@
  */
 package com.oracle.truffle.llvm.test.interop.values;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.test.interop.values.TestCallback.Function;
 
 @ExportLibrary(InteropLibrary.class)
-public class TestConstructor implements TruffleObject {
+public final class BoxedStringValue implements TruffleObject {
 
-    private final int arity;
-    private final Function constructor;
+    private final String value;
 
-    public TestConstructor(int arity, Function constructor) {
-        this.arity = arity;
-        this.constructor = constructor;
-    }
-
-    @TruffleBoundary
-    Object call(Object... args) throws ArityException {
-        if (args.length == arity) {
-            Object ret = constructor.call(args);
-            return ret;
-        } else {
-            throw ArityException.create(arity, args.length);
-        }
+    public BoxedStringValue(String value) {
+        this.value = value;
     }
 
     @ExportMessage
-    boolean isInstantiable() {
+    public String asString() {
+        return value;
+    }
+
+    @ExportMessage
+    boolean isString() {
         return true;
-    }
-
-    @ExportMessage
-    Object instantiate(Object[] arguments) throws ArityException {
-        Object res = call(arguments);
-        return res == null ? new NullValue() : res;
     }
 }
