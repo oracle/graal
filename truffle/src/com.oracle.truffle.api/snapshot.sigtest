@@ -19,8 +19,6 @@ meth public static void neverPartOfCompilation(java.lang.String)
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.CompilerDirectives
-cons public init()
- anno 0 java.lang.Deprecated()
 fld public final static double FASTPATH_PROBABILITY = 0.9999
 fld public final static double LIKELY_PROBABILITY = 0.75
 fld public final static double SLOWPATH_PROBABILITY = 1.0E-4

@@ -56,12 +56,8 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
  * @since 0.8 or earlier
  */
 public final class CompilerDirectives {
-    /**
-     * @deprecated accidentally public - don't use
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public CompilerDirectives() {
+
+    private CompilerDirectives() {
     }
 
     /** @since 0.8 or earlier */
