@@ -37,6 +37,7 @@ import java.io.PrintStream;
 import java.util.List;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.debug.DebugOptions.PrintGraphTarget;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assert;
@@ -54,7 +55,7 @@ public class OptionsInFileTest extends GraalCompilerTest {
         try {
             Assert.assertFalse(methodFilterValue.equals(MethodFilter.getDefaultValue()));
             Assert.assertFalse(debugFilterValue.equals(Dump.getDefaultValue()));
-            Assert.assertTrue(PrintGraph.getDefaultValue());
+            Assert.assertEquals(PrintGraphTarget.file, PrintGraph.getDefaultValue());
 
             try (PrintStream out = new PrintStream(new FileOutputStream(optionsFile))) {
                 out.println(MethodFilter.getName() + "=" + methodFilterValue);
