@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso;
 
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
