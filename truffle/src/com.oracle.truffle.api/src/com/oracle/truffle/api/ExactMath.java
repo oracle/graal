@@ -47,13 +47,9 @@ package com.oracle.truffle.api;
  *
  * @since 0.8 or earlier
  */
-public class ExactMath {
-    /**
-     * @deprecated accidentally public - don't use
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public ExactMath() {
+public final class ExactMath {
+
+    private ExactMath() {
     }
 
     /**

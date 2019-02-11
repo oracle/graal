@@ -72,9 +72,7 @@ CLSS public abstract interface com.oracle.truffle.api.CompilerOptions
 meth public abstract boolean supportsOption(java.lang.String)
 meth public abstract void setOption(java.lang.String,java.lang.Object)
 
-CLSS public com.oracle.truffle.api.ExactMath
-cons public init()
- anno 0 java.lang.Deprecated()
+CLSS public final com.oracle.truffle.api.ExactMath
 meth public static int addExact(int,int)
  anno 0 java.lang.Deprecated()
 meth public static int multiplyExact(int,int)
