@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class Meta implements ContextAccess {
 
+
     private final EspressoContext context;
 
     public Meta(EspressoContext context) {
@@ -170,6 +171,9 @@ public final class Meta implements ContextAccess {
         Field = knownKlass(Type.Field);
         Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
 
+        Shutdown = knownKlass(Type.Shutdown);
+        Shutdown_shutdown = Shutdown.lookupDeclaredMethod(Name.shutdown, Signature._void);
+
         ByteBuffer = knownKlass(Type.ByteBuffer);
         ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
 
@@ -265,6 +269,9 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass Field;
     public final Field Field_root;
+
+    public final Method Shutdown_shutdown;
+    public final ObjectKlass Shutdown;
 
     public final ObjectKlass InvocationTargetException;
     public final ObjectKlass NegativeArraySizeException;

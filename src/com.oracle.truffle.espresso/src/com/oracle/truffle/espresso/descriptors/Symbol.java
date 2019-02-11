@@ -154,6 +154,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> exit = StaticSymbols.putName("exit");
         public static final Symbol<Name> override = StaticSymbols.putName("override");
         public static final Symbol<Name> parameterTypes = StaticSymbols.putName("parameterTypes");
+        public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");
 
         // Attribute names
         public static final Symbol<Name> Code = StaticSymbols.putName("Code");
@@ -242,6 +243,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> Serializable = StaticSymbols.putType(java.io.Serializable.class);
         public static final Symbol<Type> ByteBuffer = StaticSymbols.putType(java.nio.ByteBuffer.class);
         public static final Symbol<Type> PrivilegedActionException = StaticSymbols.putType(java.security.PrivilegedActionException.class);
+
+        // Shutdown is not public.
+        public static final Symbol<Type> Shutdown = StaticSymbols.putType("Ljava/lang/Shutdown;");
 
         public static final Symbol<Type> sun_launcher_LauncherHelper = StaticSymbols.putType(sun.launcher.LauncherHelper.class);
 

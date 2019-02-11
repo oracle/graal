@@ -120,11 +120,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        try {
-            context.getMeta().System_exit.invokeDirect(null, 0);
-        } catch (EspressoExitException e) {
-            // Swallow suicidal exception.
-        }
+        context.getMeta().Shutdown_shutdown.invokeDirect(null);
     }
 
     @Override
@@ -170,15 +166,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected boolean isObjectOfLanguage(final Object object) {
-        return false;
+        return object instanceof StaticObject;
     }
 
     public final Utf8ConstantTable getUtf8ConstantTable() {
         return utf8Constants;
-    }
-
-    public final Symbols getSymbols() {
-        return symbols;
     }
 
     public final Names getNames() {
