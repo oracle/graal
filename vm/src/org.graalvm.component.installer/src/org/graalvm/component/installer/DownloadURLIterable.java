@@ -76,10 +76,10 @@ public class DownloadURLIterable implements ComponentIterable {
             return p;
         }
     }
-    
+
     static class DownloadURLParam extends RemoteComponentParam {
 
-        public DownloadURLParam(URL remoteURL, String dispName, String spec, Feedback feedback, boolean progress) {
+        DownloadURLParam(URL remoteURL, String dispName, String spec, Feedback feedback, boolean progress) {
             super(remoteURL, dispName, spec, feedback, progress);
         }
 

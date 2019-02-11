@@ -56,6 +56,7 @@ import org.graalvm.component.installer.Feedback;
 
 /**
  * Downloads file to local, optionally checks its integrity using digest.
+ * 
  * @author sdedic
  */
 public final class FileDownloader {
@@ -79,7 +80,7 @@ public final class FileDownloader {
     private int connectDelay = DEFAULT_CONNECT_DELAY;
     long sizeThreshold = MIN_PROGRESS_THRESHOLD;
     private Map<String, String> requestHeaders = new HashMap<>();
-    
+
     /**
      * Algorithm to compute file digest. By default SHA-256 is used.
      */
@@ -106,7 +107,7 @@ public final class FileDownloader {
     public void setDisplayProgress(boolean displayProgress) {
         this.displayProgress = displayProgress;
     }
-    
+
     public void addRequestHeader(String header, String val) {
         requestHeaders.put(header, val);
     }
@@ -195,11 +196,15 @@ public final class FileDownloader {
         }
     }
 
-    void stopProgress() {
+    void stopProgress(boolean success) {
         if (displayProgress) {
             feedback.verbatimPart(backspaceString, false);
         }
-        feedback.verboseOutput("MSG_DownloadingDone");
+        if (success) {
+            feedback.verboseOutput("MSG_DownloadingDone");
+        } else {
+            feedback.output("MSG_DownloadingTerminated");
+        }
     }
 
     void updateFileDigest(ByteBuffer input) throws IOException {
@@ -244,7 +249,7 @@ public final class FileDownloader {
         throw new IOException(feedback.l10n("ERR_FileDigestError",
                         fingerPrint(shaDigest), fingerPrint(computed)));
     }
-    
+
     void configureHeaders(URLConnection con) {
         for (String h : requestHeaders.keySet()) {
             con.addRequestProperty(h, requestHeaders.get(h));
@@ -375,6 +380,7 @@ public final class FileDownloader {
             feedback.bindFilename(localFile.toPath(), fileDescription);
         }
         boolean first = displayProgress;
+        boolean success = false;
         try (
                         ReadableByteChannel rbc = Channels.newChannel(conn.getInputStream());
                         WritableByteChannel wbc = Files.newByteChannel(localFile.toPath(),
@@ -394,11 +400,13 @@ public final class FileDownloader {
                 bb.clear();
                 first = false;
             }
+            success = true;
         } catch (IOException ex) {
             // f.delete();
             throw ex;
+        } finally {
+            stopProgress(success);
         }
-        stopProgress();
         verifyDigest();
     }
 }

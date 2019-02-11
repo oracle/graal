@@ -41,11 +41,14 @@ import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
@@ -62,6 +65,8 @@ import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
  * The launcher.
  */
 public final class ComponentInstaller {
+    private static final Logger LOG = Logger.getLogger(ComponentInstaller.class.getName());
+
     public static final String GRAAL_DEFAULT_RELATIVE_PATH = "../../..";
 
     private String[] mainArguments;
@@ -78,6 +83,10 @@ public final class ComponentInstaller {
 
     @SuppressWarnings("deprecation")
     static void initCommands() {
+        // not necessary except for tests to cleanup extra items
+        commands.clear();
+        globalOptions.clear();
+        
         commands.put("install", new InstallCommand()); // NOI18N
         commands.put("uninstall", new UninstallCommand()); // NOI18N
         commands.put("list", new ListInstalledCommand()); // NOI18N
@@ -104,21 +113,35 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.LONG_OPTION_FOREIGN_CATALOG, Commands.OPTION_FOREIGN_CATALOG);
         globalOptions.put(Commands.LONG_OPTION_URLS, Commands.OPTION_URLS);
         globalOptions.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
-        
+
         globalOptions.put(Commands.OPTION_AUTO_YES, "");
         globalOptions.put(Commands.LONG_OPTION_AUTO_YES, Commands.OPTION_AUTO_YES);
     }
 
-    static {
-        initCommands();
-        // add options from software channels
-        for (SoftwareChannel ch : ServiceLoader.load(SoftwareChannel.class)) {
-            globalOptions.putAll(ch.globalOptions());
+    private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
+                    "org.graalvm.component.installer.Bundle"); // NOI18N
+
+    private static void forSoftwareChannels(boolean report, Consumer<SoftwareChannel> callback) {
+        ServiceLoader<SoftwareChannel> channels = ServiceLoader.load(SoftwareChannel.class);
+        for (Iterator<SoftwareChannel> it = channels.iterator(); it.hasNext();) {
+            try {
+                SoftwareChannel ch = it.next();
+                callback.accept(ch);
+            } catch (ServiceConfigurationError | Exception ex) {
+                if (report) {
+                    LOG.log(Level.SEVERE,
+                                    MessageFormat.format(BUNDLE.getString("ERROR_SoftwareChannelBroken"), ex.getLocalizedMessage()));
+                }
+            }
         }
     }
 
-    private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
-                    "org.graalvm.component.installer.Bundle"); // NOI18N
+    static {
+        initCommands();
+        forSoftwareChannels(true, (ch) -> {
+            globalOptions.putAll(ch.globalOptions());
+        });
+    }
 
     private ComponentInstaller(String[] args) {
         this.mainArguments = args;
@@ -131,29 +154,26 @@ public final class ComponentInstaller {
 
     private static void printHelp() {
         StringBuilder extra = new StringBuilder();
-        Environment env = null;
-        try {
-            for (SoftwareChannel ch : ServiceLoader.load(SoftwareChannel.class)) {
-                if (env == null) {
-                    env = new Environment("help", Collections.emptyList(), Collections.emptyMap());
-                }
-                ch.init(env, env);
-                String s = ch.globalOptionsHelp();
-                if (s != null) {
-                    extra.append(s);
-                }
+        Environment[] env = new Environment[1];
+
+        forSoftwareChannels(false, (ch) -> {
+            if (env[0] == null) {
+                env[0] = new Environment("help", Collections.emptyList(), Collections.emptyMap());
             }
-        } catch (Exception ex) {
-            // ignore, must display help
-        }
+            ch.init(env[0], env[0]);
+            String s = ch.globalOptionsHelp();
+            if (s != null) {
+                extra.append(s);
+            }
+        });
         String extraS;
-        
+
         if (extra.length() != 0) {
             extraS = MessageFormat.format(BUNDLE.getString("INFO_UsageExtensions"), extra.toString());
         } else {
             extraS = ""; // NOI18N
         }
-        
+
         System.err.println(MessageFormat.format(BUNDLE.getString("INFO_Usage"), extraS)); // NOI18N
     }
 

@@ -154,6 +154,10 @@ public class InstallCommand implements InstallerCommand {
             }
 
             if (ldr.getLicenseType() != null) {
+                String path = ldr.getLicensePath();
+                if (path != null) {
+                    inst.setLicenseRelativePath(SystemUtils.fromCommonString(ldr.getLicensePath()));
+                }
                 String licId = ldr.getLicenseID();
                 addLicenseToAccept(licId, ldr);
             }
@@ -382,10 +386,6 @@ public class InstallCommand implements InstallerCommand {
             a.verifyIntegrity(input);
         }
         Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry(), a);
-        String path = ldr.getLicensePath();
-        if (path != null) {
-            inst.setLicenseRelativePath(SystemUtils.fromCommonString(ldr.getLicensePath()));
-        }
         inst.setPermissions(ldr.loadPermissions());
         inst.setSymlinks(ldr.loadSymlinks());
         configureInstaller(inst);

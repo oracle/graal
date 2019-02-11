@@ -24,8 +24,6 @@
  */
 package org.graalvm.component.installer.remote;
 
-import org.graalvm.component.installer.remote.FileDownloader;
-import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.ChunkedConnection;
 import java.io.File;
 import java.io.FileNotFoundException;

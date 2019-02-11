@@ -47,6 +47,8 @@ public class SimpleGetoptTest extends TestBase {
     public void setUp() {
         Map<String, String> g = new HashMap<>(ComponentInstaller.globalOptions);
         g.put("8", "=C");
+        g.put("long-user", "U");
+        g.put("U", "s");
         getopt = new SimpleGetopt(g) {
             @Override
             public RuntimeException err(String messageKey, Object... args) {
@@ -361,7 +363,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testLongOptionAbbreviation() {
-        setParams("install --user bubu");
+        setParams("install --long-user bubu");
 
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();

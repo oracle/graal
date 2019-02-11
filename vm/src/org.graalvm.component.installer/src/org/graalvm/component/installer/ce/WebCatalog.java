@@ -54,12 +54,12 @@ import org.graalvm.component.installer.SoftwareChannel;
  * @author sdedic
  */
 public class WebCatalog implements SoftwareChannel {
-    private CommandInput    input;
-    private Feedback        feedback;
-    private String          urlString;
-    private URL             catalogURL;
-    private ComponentRegistry   local;
-    
+    private CommandInput input;
+    private Feedback feedback;
+    private String urlString;
+    private URL catalogURL;
+    private ComponentRegistry local;
+
     @Override
     public boolean setupLocation(String url) {
         int schColon = url.indexOf(':');
@@ -68,13 +68,13 @@ public class WebCatalog implements SoftwareChannel {
         }
         String scheme = url.toLowerCase().substring(0, schColon);
         if (acceptURLScheme(scheme)) {
-                urlString = url;
-                return true;
+            urlString = url;
+            return true;
         } else {
             return false;
         }
     }
-    
+
     protected boolean acceptURLScheme(String scheme) {
         switch (scheme) {
             case "http":
@@ -85,11 +85,11 @@ public class WebCatalog implements SoftwareChannel {
         }
         return false;
     }
-    
+
     @Override
     public void init(CommandInput in, Feedback out) {
         assert this.input == null;
-        
+
         this.input = in;
         this.feedback = out.withBundle(WebCatalog.class);
         this.local = in.getLocalRegistry();

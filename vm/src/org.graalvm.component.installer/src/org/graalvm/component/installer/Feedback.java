@@ -32,6 +32,11 @@ import java.nio.file.Path;
  */
 public interface Feedback {
     /**
+     * Returned from {@link #acceptLine} for an automatic accept.
+     */
+    String AUTO_YES = "<automatic-yes>";
+
+    /**
      * Formats a message on stderr.
      * 
      * @param bundleKey key into the bundle
@@ -134,11 +139,6 @@ public interface Feedback {
     void bindFilename(Path file, String label);
 
     /**
-     * Returned from {@link #acceptLine} for an automatic accept.
-     */
-    public static final String AUTO_YES = "<automatic-yes>";
-    
-    /**
      * Waits for user input confirmed by ENTER.
      * 
      * @param autoYes returns the {@link #AUTO_YES} if yes-to-all was specified on commandline.
@@ -148,6 +148,7 @@ public interface Feedback {
 
     /**
      * Allows to enter password using console services.
+     * 
      * @return password
      */
     String acceptPassword();

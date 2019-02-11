@@ -308,7 +308,7 @@ public class SimpleGetopt {
     }
 
     public void addCommandOptions(String commandName, Map<String, String> optSpec) {
-        commandOptions.put(commandName, optSpec);
+        commandOptions.put(commandName, new HashMap<>(optSpec));
     }
 
     // test only

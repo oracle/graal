@@ -239,7 +239,7 @@ public class InstallTest extends CommandTestBase {
         Handler.bind(u.toString(), getClass().getResource("catalog"));
         componentIterable = new CatalogIterable(this, this,
                         new RemoteCatalogDownloader(
-                                        this, 
+                                        this,
                                         this,
                                         u));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
@@ -269,8 +269,8 @@ public class InstallTest extends CommandTestBase {
         Handler.bind(u.toString(), getClass().getResource("catalog"));
         Handler.bind(u2.toString(), getClass().getResource("graalvm-ruby.zip"));
         componentIterable = new CatalogIterable(this, this,
-                        new RemoteCatalogDownloader(    
-                                        this, 
+                        new RemoteCatalogDownloader(
+                                        this,
                                         this,
                                         u));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");

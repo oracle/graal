@@ -33,12 +33,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarFile;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.model.ComponentInfo;
-import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
@@ -54,7 +55,6 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
     private ComponentInfo fileInfo;
     private final boolean progress;
     private boolean verifyJars;
-    private JarFile file;
     private MetadataLoader fileLoader;
     private boolean complete;
 
@@ -98,7 +98,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
     public void setVerifyJars(boolean verifyJars) {
         this.verifyJars = verifyJars;
     }
-    
+
     private Path localPath;
 
     @Override
@@ -107,17 +107,17 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
             return fileLoader;
         }
         return fileLoader = new DelegateMetaLoader(
-                metadataFromLocal(downloadLocalFile()));
+                        metadataFromLocal(downloadLocalFile()));
     }
-    
+
     /**
-     * The delegate will ensure the ComponentParam will start to serve LOCAL
-     * ComponentInfo just after the delegate metaloader creates it.
+     * The delegate will ensure the ComponentParam will start to serve LOCAL ComponentInfo just
+     * after the delegate metaloader creates it.
      */
     class DelegateMetaLoader implements MetadataLoader {
         private final MetadataLoader delegate;
 
-        public DelegateMetaLoader(MetadataLoader delegate) {
+        DelegateMetaLoader(MetadataLoader delegate) {
             this.delegate = delegate;
         }
 
@@ -191,12 +191,13 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
             delegate.setNoVerifySymlinks(noVerifySymlinks);
         }
     }
-    
+
     /**
      * Creates a metaloader for the local file.
+     * 
      * @param localFile
      * @return
-     * @throws IOException 
+     * @throws IOException
      */
     protected abstract MetadataLoader metadataFromLocal(Path localFile) throws IOException;
 
@@ -217,11 +218,12 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         }
         return localPath;
     }
-    
+
     protected FileDownloader createDownloader() {
         FileDownloader dn = new FileDownloader(feedback.l10n("REMOTE_ComponentFileLabel", spec), remoteURL, feedback);
         return dn;
     }
+
     @Override
     public boolean isComplete() {
         return complete;
@@ -231,9 +233,6 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
     public void close() throws IOException {
         if (fileLoader != null) {
             fileLoader.close();
-        } 
-        if (file != null) {
-            file.close();
         }
         if (localPath != null) {
             try {
@@ -265,17 +264,36 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
 
     @Override
     public String getLicenseType() {
-        return null;
+        if (catalogInfo != null) {
+            return catalogInfo.getLicenseType();
+        } else {
+            return null;
+        }
     }
 
     @Override
     public String getLicenseID() {
-        return null;
+        try {
+            return createFileLoader().getLicenseID();
+        } catch (IOException ex) {
+            throw feedback.failure("REMOTE_ErrorDownloadingComponent", ex, spec, remoteURL, ex.getLocalizedMessage());
+        }
     }
 
     @Override
     public String getLicensePath() {
-        return null;
+        if (catalogInfo != null) {
+            String lt = catalogInfo.getLicenseType();
+            String path = catalogInfo.getLicensePath();
+            if (lt == null || path != null) {
+                return path;
+            }
+        }
+        try {
+            return createFileLoader().getLicensePath();
+        } catch (IOException ex) {
+            throw feedback.failure("REMOTE_ErrorDownloadingComponent", ex, spec, remoteURL, ex.getLocalizedMessage());
+        }
     }
 
     @Override

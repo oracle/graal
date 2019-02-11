@@ -613,7 +613,7 @@ public class TestBase implements Feedback {
         }
         return doAcceptLine(autoYes);
     }
-    
+
     String doAcceptLine(boolean autoYes) {
         if (autoYes && autoYesEnabled) {
             return AUTO_YES;
@@ -635,7 +635,7 @@ public class TestBase implements Feedback {
         }
         return password;
     }
-    
+
     String doAcceptPassword() {
         return password;
     }

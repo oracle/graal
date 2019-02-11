@@ -22,17 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.component.installer;
 
-package org.graalvm.component.installer.remote;
-
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.function.Consumer;
+import java.io.IOException;
+import java.nio.file.Path;
+import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
- *
+ * Recognizes file format and creates and loads metadata for it.
+ * 
  * @author sdedic
  */
-public interface URLConnectionFactory {
-    URLConnection createConnection(URL u, Consumer<URLConnection> configCallback);
+public interface ComponentArchiveReader {
+    /**
+     * Creates a MetadataLoader for the file. The method returns {@code null}, if it does not
+     * support the file format.
+     * 
+     * @param p path to the file
+     * @param fileStart bytes at the start of the file; min 8 bytes.
+     * @param feedback output interface
+     * @param verify verify archive integrity
+     * @return Metadata loader instance or {@code null} if unsupported.
+     * @throws java.io.IOException if the loader creation or file open fails
+     */
+    MetadataLoader createLoader(Path p, byte[] fileStart, Feedback feedback, boolean verify) throws IOException;
 }

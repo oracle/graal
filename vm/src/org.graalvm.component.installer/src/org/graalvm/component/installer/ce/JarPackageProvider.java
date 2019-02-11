@@ -22,17 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.component.installer.ce;
 
-package org.graalvm.component.installer.remote;
-
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.function.Consumer;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.jar.JarFile;
+import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.jar.JarMetaLoader;
+import org.graalvm.component.installer.persist.MetadataLoader;
+import org.graalvm.component.installer.ComponentArchiveReader;
 
 /**
- *
+ * Loads JAR files.
+ * 
  * @author sdedic
  */
-public interface URLConnectionFactory {
-    URLConnection createConnection(URL u, Consumer<URLConnection> configCallback);
+public final class JarPackageProvider implements ComponentArchiveReader {
+    @Override
+    public MetadataLoader createLoader(Path p, byte[] magic, Feedback feedback, boolean verify) throws IOException {
+        if ((magic[0] == 0x50) && (magic[1] == 0x4b) &&
+                        (magic[2] == 0x03) && (magic[3] == 0x04)) {
+            return new JarMetaLoader(new JarFile(p.toFile()), feedback);
+        } else {
+            return null;
+        }
+    }
 }

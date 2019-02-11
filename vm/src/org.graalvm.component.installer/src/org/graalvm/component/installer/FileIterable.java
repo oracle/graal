@@ -26,11 +26,15 @@ package org.graalvm.component.installer;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
+import java.util.ServiceLoader;
 import java.util.jar.JarFile;
 import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.persist.MetadataLoader;
-import org.graalvm.component.installer.rpm.RpmMetaLoader;
 
 public class FileIterable implements ComponentIterable {
     private final CommandInput input;
@@ -77,7 +81,6 @@ public class FileIterable implements ComponentIterable {
     public static class FileComponent implements ComponentParam {
         private final File localFile;
         private MetadataLoader loader;
-        private JarFile jf;
         private final boolean verifyJars;
         private final Feedback feedback;
 
@@ -92,28 +95,28 @@ public class FileIterable implements ComponentIterable {
             if (loader != null) {
                 return loader;
             }
-            switch (SystemUtils.autodetectFile(localFile)) {
-                case JAR:
-                    if (jf == null) {
-                        jf = new JarFile(localFile, verifyJars);
-                    }
-                    loader = new JarMetaLoader(jf, feedback);
-                    break;
-                case RPM:
-                    loader = new RpmMetaLoader(localFile.toPath(), feedback);
-                    break;
-                default:
-                    throw feedback.failure("ERROR_UnknownFileFormat", null, localFile.toString());
+            byte[] fileStart = null;
+
+            try (ReadableByteChannel ch = FileChannel.open(localFile.toPath(), StandardOpenOption.READ)) {
+                ByteBuffer bb = ByteBuffer.allocate(8);
+                ch.read(bb);
+                fileStart = bb.array();
             }
-            return loader;
+
+            for (ComponentArchiveReader provider : ServiceLoader.load(ComponentArchiveReader.class)) {
+                MetadataLoader ldr = provider.createLoader(localFile.toPath(), fileStart, feedback, verifyJars);
+                if (ldr != null) {
+                    loader = ldr;
+                    return ldr;
+                }
+            }
+            throw feedback.failure("ERROR_UnknownFileFormat", null, localFile.toString());
         }
 
         @Override
         public void close() throws IOException {
             if (loader != null) {
                 loader.close();
-            } else if (jf != null) {
-                jf.close();
             }
         }
 

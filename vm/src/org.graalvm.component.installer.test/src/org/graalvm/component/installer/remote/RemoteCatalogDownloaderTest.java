@@ -24,7 +24,6 @@
  */
 package org.graalvm.component.installer.remote;
 
-import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import java.net.ConnectException;
 import java.net.URL;
 import org.graalvm.component.installer.CommonConstants;

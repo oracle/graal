@@ -29,13 +29,12 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.ServiceLoader;
 import org.graalvm.component.installer.CommandInput;
-import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.SoftwareChannel;
 
-public class RemoteCatalogDownloader implements SoftwareChannel{
+public class RemoteCatalogDownloader implements SoftwareChannel {
     private final CommandInput input;
     private final Feedback feedback;
     private final String catalogString;
@@ -51,23 +50,23 @@ public class RemoteCatalogDownloader implements SoftwareChannel{
         this.catalogString = catLocation;
         channels = ServiceLoader.load(SoftwareChannel.class);
     }
-    
+
     public RemoteCatalogDownloader(CommandInput in, Feedback out, URL catalogURL) {
         this(in, out, catalogURL.toString());
     }
-    
+
     // for testing only
     void setChannels(Iterable<SoftwareChannel> chan) {
         this.channels = chan;
     }
-    
+
     public ComponentRegistry get() {
         if (catalog == null) {
             catalog = openCatalog();
         }
         return catalog;
     }
-    
+
     SoftwareChannel delegate() {
         if (delegate != null) {
             return delegate;
@@ -83,12 +82,12 @@ public class RemoteCatalogDownloader implements SoftwareChannel{
         delegate.init(input, feedback);
         return delegate;
     }
-    
+
     @SuppressWarnings("unchecked")
     public ComponentRegistry openCatalog() {
         return delegate().getRegistry();
     }
-    
+
     @Override
     public boolean setupLocation(String urlString) {
         for (SoftwareChannel ch : channels) {

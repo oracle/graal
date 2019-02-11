@@ -37,7 +37,6 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
-import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
@@ -115,7 +114,7 @@ public class CatalogIterable implements ComponentIterable {
             return createComponenParam(s, info, progress);
         }
     }
-    
+
     protected ComponentParam createComponenParam(String cmdLineString, ComponentInfo info, boolean progress) {
         RemoteComponentParam param = new CatalogItemParam(
                         factory,
@@ -126,10 +125,10 @@ public class CatalogIterable implements ComponentIterable {
         param.setVerifyJars(verifyJars);
         return param;
     }
-    
+
     public static class CatalogItemParam extends RemoteComponentParam {
         final SoftwareChannel channel;
-        
+
         public CatalogItemParam(SoftwareChannel channel, ComponentInfo catalogInfo, String dispName, String spec, Feedback feedback, boolean progress) {
             super(catalogInfo, dispName, spec, feedback, progress);
             this.channel = channel;

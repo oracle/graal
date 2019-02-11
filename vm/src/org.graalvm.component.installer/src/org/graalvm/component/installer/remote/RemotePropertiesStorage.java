@@ -66,7 +66,6 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         return ret;
     }
 
-
     @Override
     public ComponentInfo loadComponentMetadata(String id) throws IOException {
         URL downloadURL;
