@@ -539,6 +539,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
+        addImageBuilderJavaArgs("-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime");
 
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
         config.getImageProvidedClasspath().forEach(this::addImageProvidedClasspath);
