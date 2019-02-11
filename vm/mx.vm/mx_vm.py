@@ -297,15 +297,17 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     if _include_sources():
                         _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/sources', _component)
                 # add links from jre/bin to launcher
-                _add_link(_jdk_jre_bin, _launcher_dest)
-                _jre_bin_names.append(basename(_launcher_dest))
+                if _launcher_config.default_symlinks:
+                    _add_link(_jdk_jre_bin, _launcher_dest)
+                    _jre_bin_names.append(basename(_launcher_dest))
                 for _component_link in _launcher_config.links:
                     _link_dest = _component_base + _component_link
                     # add links `LauncherConfig.links` -> `LauncherConfig.destination`
                     _add(layout, _link_dest, 'link:{}'.format(relpath(_launcher_dest, start=dirname(_link_dest))), _component)
                     # add links from jre/bin to component link
-                    _add_link(_jdk_jre_bin, _link_dest)
-                    _jre_bin_names.append(basename(_link_dest))
+                    if _launcher_config.default_symlinks:
+                        _add_link(_jdk_jre_bin, _link_dest)
+                        _jre_bin_names.append(basename(_link_dest))
             for _library_config in _get_library_configs(_component):
                 _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _library_config.jar_distributions], _component, with_sources=True)
                 if not stage1:
