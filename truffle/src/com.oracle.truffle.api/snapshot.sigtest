@@ -531,8 +531,6 @@ meth public com.oracle.truffle.api.frame.Frame getFrame(com.oracle.truffle.api.f
 CLSS public final static !enum com.oracle.truffle.api.frame.FrameInstance$FrameAccess
  outer com.oracle.truffle.api.frame.FrameInstance
 fld public final static com.oracle.truffle.api.frame.FrameInstance$FrameAccess MATERIALIZE
-fld public final static com.oracle.truffle.api.frame.FrameInstance$FrameAccess NONE
- anno 0 java.lang.Deprecated()
 fld public final static com.oracle.truffle.api.frame.FrameInstance$FrameAccess READ_ONLY
 fld public final static com.oracle.truffle.api.frame.FrameInstance$FrameAccess READ_WRITE
 meth public static com.oracle.truffle.api.frame.FrameInstance$FrameAccess valueOf(java.lang.String)
