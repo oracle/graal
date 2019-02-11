@@ -458,10 +458,6 @@ meth public static void fillIn(java.lang.Throwable)
 supr java.lang.Object
 hfds frame,location,target
 
-CLSS public abstract interface com.oracle.truffle.api.TypedObject
- anno 0 java.lang.Deprecated()
-meth public abstract java.lang.Object getTypeIdentifier()
-
 CLSS public abstract interface com.oracle.truffle.api.frame.Frame
 meth public abstract boolean getBoolean(com.oracle.truffle.api.frame.FrameSlot) throws com.oracle.truffle.api.frame.FrameSlotTypeException
 meth public abstract boolean isBoolean(com.oracle.truffle.api.frame.FrameSlot)
