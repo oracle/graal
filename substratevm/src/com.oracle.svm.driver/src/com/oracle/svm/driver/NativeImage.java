@@ -34,6 +34,7 @@ import java.lang.management.OperatingSystemMXBean;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -701,7 +702,7 @@ public class NativeImage {
                     }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | FileSystemNotFoundException e) {
             throw showError("Invalid classpath entry " + ImageClassLoader.classpathToString(classpathEntry), e);
         }
     }

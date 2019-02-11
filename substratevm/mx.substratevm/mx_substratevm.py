@@ -61,6 +61,8 @@ GRAAL_COMPILER_FLAGS_BASE = [
     '-XX:+EnableJVMCI',
     '-XX:-UseJVMCICompiler', # GR-8656: Do not run with Graal as JIT compiler until libgraal is available.
     '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
+    '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', # use truffle interpreter as fallback
+    '-Dgraalvm.locatorDisabled=true',
 ]
 
 GRAAL_COMPILER_FLAGS_MAP = dict()
@@ -281,8 +283,8 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
     target_path = remove_existing_symlink(join(target_dir, 'native-image.properties'))
 
     option_properties = None
-    for svm_suite in svmSuites:
-        candidate = join(svm_suite.mxDir, option_kind + '-' + option_flag + '.properties')
+    for suite in mx.suites():
+        candidate = join(suite.mxDir, option_kind + '-' + option_flag + '.properties')
         if exists(candidate):
             option_properties = candidate
 
