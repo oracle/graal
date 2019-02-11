@@ -54,7 +54,6 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class Meta implements ContextAccess {
 
-
     private final EspressoContext context;
 
     public Meta(EspressoContext context) {
