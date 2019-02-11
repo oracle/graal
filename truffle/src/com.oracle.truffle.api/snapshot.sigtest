@@ -611,9 +611,7 @@ meth public com.oracle.truffle.api.CallTarget getCallTarget()
 meth public com.oracle.truffle.api.CallTarget getCurrentCallTarget()
 meth public final boolean isCallTargetCloned()
 meth public final com.oracle.truffle.api.nodes.RootNode getCurrentRootNode()
-meth public java.lang.Object call(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object[])
- anno 0 java.lang.Deprecated()
-meth public java.lang.Object call(java.lang.Object[])
+meth public abstract java.lang.Object call(java.lang.Object[])
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.nodes.DirectCallNode create(com.oracle.truffle.api.CallTarget)
 supr com.oracle.truffle.api.nodes.Node
@@ -701,9 +699,7 @@ intf java.lang.annotation.Annotation
 
 CLSS public abstract com.oracle.truffle.api.nodes.IndirectCallNode
 cons protected init()
-meth public java.lang.Object call(com.oracle.truffle.api.CallTarget,java.lang.Object[])
-meth public java.lang.Object call(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.CallTarget,java.lang.Object[])
- anno 0 java.lang.Deprecated()
+meth public abstract java.lang.Object call(com.oracle.truffle.api.CallTarget,java.lang.Object[])
 meth public static com.oracle.truffle.api.nodes.IndirectCallNode create()
 supr com.oracle.truffle.api.nodes.Node
 hfds dummyFrame

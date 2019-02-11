@@ -40,7 +40,7 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
     @CompilationFinal private ValueProfile exceptionProfile;
 
     @Override
-    public Object call(CallTarget target, Object[] arguments) {
+    public Object call(CallTarget target, Object... arguments) {
 
         try {
             return OptimizedDirectCallNode.callProxy(this, target, arguments, false);
