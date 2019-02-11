@@ -41,6 +41,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetConstantFieldInfo;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetDescription;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetFailedSpeculationsAddress;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetFrameSlotKindTagForJavaKind;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetInlineKind;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLanguage;
@@ -50,7 +51,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetOffsetEnd;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetOffsetStart;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetPosition;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetSpeculationLog;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTrace;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementClassName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementFileName;
@@ -104,9 +104,11 @@ import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -282,9 +284,11 @@ final class SVMToHotSpotEntryPoints {
         truffleRuntime.onCodeInstallation(compilable, installedCode);
     }
 
-    @SVMToHotSpot(GetSpeculationLog)
-    static long getSpeculationLog(CompilableTruffleAST compilable) {
-        return ((SVMSpeculationLog) compilable.getSpeculationLog()).handle;
+    @SVMToHotSpot(GetFailedSpeculationsAddress)
+    static long getFailedSpeculationsAddress(CompilableTruffleAST compilable) {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) compilable;
+        HotSpotSpeculationLog log = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
+        return log.getFailedSpeculationsAddress();
     }
 
     /**

@@ -428,12 +428,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(TruffleCompilerOptions.getOptions())) {
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
 
-            // Failed speculations must be collected before any compilation or
-            // partial evaluation is performed.
-            SpeculationLog speculationLog = compilable.getSpeculationLog();
-            if (speculationLog != null) {
-                speculationLog.collectFailedSpeculations();
-            }
+            SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
 
             try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
                 graph = partialEvaluator.createGraph(debug, compilable, inliningPlan, AllowAssumptions.YES, compilationId, speculationLog, task);

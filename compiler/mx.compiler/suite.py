@@ -195,7 +195,11 @@ suite = {
     "org.graalvm.compiler.serviceprovider.jdk8" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["JVMCI_SERVICES", "JVMCI_API"],
+      "dependencies" : [
+        "org.graalvm.compiler.serviceprovider",
+        "JVMCI_SERVICES",
+        "JVMCI_API"
+      ],
       "overlayTarget" : "org.graalvm.compiler.serviceprovider",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8",
@@ -1697,8 +1701,33 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
-      "annotationProcessors" : [
+      "workingSets" : "Graal,Truffle",
+    },
+
+    "org.graalvm.compiler.truffle.runtime.hotspot.jdk8" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.runtime",
+        "JVMCI_HOTSPOT",
       ],
+      "checkPackagePrefix" : "false",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8",
+      "workingSets" : "Graal,Truffle",
+    },
+
+    "org.graalvm.compiler.truffle.runtime.hotspot.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.runtime.hotspot",
+        "JVMCI_HOTSPOT",
+      ],
+      "checkPackagePrefix" : "false",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "9+",
+      "multiReleaseJarVersion" : "9",
       "workingSets" : "Graal,Truffle",
     },
 
@@ -2134,6 +2163,8 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk8",
         "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk9",
+        "org.graalvm.compiler.truffle.runtime.hotspot.jdk8",
+        "org.graalvm.compiler.truffle.runtime.hotspot.jdk9",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.runtime.hotspot.java",
         "org.graalvm.compiler.truffle.runtime.hotspot.libgraal",

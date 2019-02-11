@@ -41,6 +41,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateInstalledCode, OptimizedAssumptionDependency {
 
@@ -54,6 +55,11 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     @Override
     public SubstrateSpeculationLog getSpeculationLog() {
         return (SubstrateSpeculationLog) super.getSpeculationLog();
+    }
+
+    @Override
+    public SpeculationLog getCompilationSpeculationLog() {
+        return getSpeculationLog();
     }
 
     @Override
