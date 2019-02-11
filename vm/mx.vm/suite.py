@@ -80,33 +80,6 @@ suite = {
         ]
     },
 
-    "libraries": {
-        "REDLINE_1.2.7" : {
-          "sha1" : "6ae854ccff9c2baa0dff8f70c8d7d617a4c0eb86",
-            "maven" : {
-                "groupId" : "org.redline-rpm",
-                "artifactId" : "redline",
-                "version" : "1.2.7",
-            },
-        },
-        "SLF4J_API_1.7.5" : {
-          "sha1" : "6b262da268f8ad9eff941b25503a9198f0a0ac93",
-            "maven" : {
-                "groupId" : "org.slf4j",
-                "artifactId" : "slf4j-api",
-                "version" : "1.7.5",
-            },
-        },
-        "SLF4J_JDK4_1.7.5" : {
-          "sha1" : "33cf4abac351aa45dd130d31a1e7e33fbbba4762",
-            "maven" : {
-                "groupId" : "org.slf4j",
-                "artifactId" : "slf4j-jdk14",
-                "version" : "1.7.5",
-            },
-        },
-    },
-
     "projects": {
         "com.oracle.graalvm.locator": {
             "subDir": "src",
@@ -121,10 +94,6 @@ suite = {
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "dependencies": [
-                "REDLINE_1.2.7",
-                "SLF4J_JDK4_1.7.5",
-            ],
             "javaCompliance" : "1.8",
             "checkstyle": "com.oracle.graalvm.locator",
             "license" : "GPLv2-CPE",
@@ -153,14 +122,9 @@ suite = {
             "subDir": "src",
             "mainClass": "org.graalvm.component.installer.ComponentInstaller",
             "dependencies": [
-                "org.graalvm.component.installer"
+                "org.graalvm.component.installer",
             ],
-            "distDependencies" : [ 
-                "REDLINE_1.2.7", 
-                "SLF4J_API_1.7.5",
-                "SLF4J_JDK4_1.7.5"
-            ]
-                
+            "maven" : False,
         },
         "INSTALLER_TESTS": {
             "subDir": "src",
@@ -179,7 +143,9 @@ suite = {
             "platformDependent": True,
             "description": "GraalVM Installer support distribution for the GraalVM",
             "layout": {
-                "./": "dependency:vm:INSTALLER",
+                "./": [
+                    "dependency:vm:INSTALLER",
+                ],
                 "bin/": "file:mx.vm/gu",
                 "components/polyglot/.registry" : "string:",
             },
