@@ -49,6 +49,7 @@ import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY;
 import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSION;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.graalvm.component.installer.persist.FileDownloader;
@@ -173,7 +174,7 @@ public final class GenerateCatalog {
     private void readCommandLine() throws IOException {
         SimpleGetopt getopt = new SimpleGetopt(OPTIONS) {
             @Override
-            RuntimeException err(String messageKey, Object... args) {
+            public RuntimeException err(String messageKey, Object... args) {
                 ComponentInstaller.printErr(messageKey, args);
                 System.exit(1);
                 return null;
@@ -181,7 +182,7 @@ public final class GenerateCatalog {
         }.ignoreUnknownCommands(true);
         getopt.setParameters(new LinkedList<>(params));
         getopt.process();
-        this.env = new Environment(null, null, getopt.getPositionalParameters(), getopt.getOptValues());
+        this.env = new Environment(null, getopt.getPositionalParameters(), getopt.getOptValues());
         this.env.setAllOutputToErr(true);
 
         String pb = env.optValue("p");
@@ -310,7 +311,7 @@ public final class GenerateCatalog {
             File f = spec.f;
             byte[] hash = computeHash(f);
             try (JarFile jf = new JarFile(f)) {
-                ComponentPackageLoader ldr = new ComponentPackageLoader(jf, env);
+                ComponentPackageLoader ldr = new JarMetaLoader(jf, env);
                 ComponentInfo info = ldr.createComponentInfo();
                 String prefix = findComponentPrefix(info);
                 if (!graalVMReleases.containsKey(prefix)) {

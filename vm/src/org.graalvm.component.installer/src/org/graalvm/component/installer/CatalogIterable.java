@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.jar.JarFile;
+import org.graalvm.component.installer.jar.JarArchive;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
@@ -178,8 +180,8 @@ public class CatalogIterable implements ComponentIterable {
                 return fileLoader;
             }
 
-            JarFile f = getFile();
-            fileLoader = new ComponentPackageLoader(f, feedback) {
+            JarFile f = downloadJarFile();
+            fileLoader = new JarMetaLoader(f, feedback) {
                 @Override
                 public ComponentInfo createComponentInfo() {
                     ComponentInfo i = super.createComponentInfo();
@@ -193,9 +195,14 @@ public class CatalogIterable implements ComponentIterable {
             this.file = f;
             return fileLoader;
         }
-
+        
+            
         @Override
-        public JarFile getFile() throws IOException {
+        public Archive getFile() throws IOException {
+            return new JarArchive(downloadJarFile());
+        }
+        
+        private JarFile downloadJarFile() throws IOException {
             if (file != null) {
                 return file;
             }
@@ -240,7 +247,7 @@ public class CatalogIterable implements ComponentIterable {
         }
 
         @Override
-        public JarFile getJarFile() {
+        public Archive getArchive() {
             try {
                 return getFile();
             } catch (IOException ex) {

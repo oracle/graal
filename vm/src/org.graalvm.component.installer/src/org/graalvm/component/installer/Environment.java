@@ -38,7 +38,7 @@ import java.util.function.Supplier;
 /**
  * Implementation of feedback and input for commands.
  */
-final class Environment implements Feedback, CommandInput {
+public final class Environment implements Feedback, CommandInput {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle");
 
@@ -57,17 +57,32 @@ final class Environment implements Feedback, CommandInput {
     private boolean allOutputToErr;
 
     private Path graalHome;
+    
+    Environment(String commandName, List<String> parameters, Map<String, String> options) {
+        this(commandName, (String)null, parameters, options);
+    }
 
     Environment(String commandName, InstallerCommand cmdInstance, List<String> parameters, Map<String, String> options) {
+        this(commandName, makeBundle(cmdInstance), parameters, options);
+    }
+    
+    private static String makeBundle(InstallerCommand cmdInstance) {
+        if (cmdInstance == null) {
+            return null;
+        }
+        String s = cmdInstance.getClass().getName();
+        s = s.substring(0, s.lastIndexOf('.'));
+        return s;
+    }
+    
+    public Environment(String commandName, String bundlePackage, List<String> parameters, Map<String, String> options) {
         this.commandName = commandName;
         this.parameters = new LinkedList<>(parameters);
         this.options = options;
         this.verbose = options.containsKey(Commands.OPTION_VERBOSE);
         this.stacktraces = options.containsKey(Commands.OPTION_DEBUG);
-        if (cmdInstance != null) {
-            String s = cmdInstance.getClass().getName();
-            s = s.substring(0, s.lastIndexOf('.'));
-            bundle = ResourceBundle.getBundle(s + ".Bundle"); // NOI18N
+        if (bundlePackage != null) {
+            bundle = ResourceBundle.getBundle(bundlePackage + ".Bundle"); // NOI18N
         } else {
             bundle = BUNDLE;
         }

@@ -42,6 +42,8 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
+import org.graalvm.component.installer.Archive;
+import org.graalvm.component.installer.Archive.FileEntry;
 
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.DependencyException;
@@ -49,6 +51,8 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
+import org.graalvm.component.installer.jar.JarArchive;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
@@ -63,7 +67,7 @@ import org.junit.rules.TemporaryFolder;
 
 public class InstallerTest extends TestBase {
     @Rule public ExpectedException exception = ExpectedException.none();
-    protected JarFile componentJarFile;
+    protected JarArchive componentJarFile;
     @Rule public TemporaryFolder folder = new TemporaryFolder();
 
     private Path targetPath;
@@ -76,14 +80,15 @@ public class InstallerTest extends TestBase {
 
     private void setupComponentInstall(String relativePath) throws IOException {
         File f = dataFile(relativePath).toFile();
-        componentJarFile = new JarFile(f);
+        JarFile jf = new JarFile(f);
+        componentJarFile = new JarArchive(jf);
 
-        loader = new ComponentPackageLoader(componentJarFile, this);
+        loader = new JarMetaLoader(jf, this);
         componentInfo = loader.createComponentInfo();
 
         loader.loadPaths();
         installer = new Installer(fb(), componentInfo, registry);
-        installer.setJarFile(componentJarFile);
+        installer.setArchive(componentJarFile);
         installer.setInstallPath(targetPath);
         installer.setLicenseRelativePath(SystemUtils.fromCommonString(loader.getLicensePath()));
     }
@@ -458,7 +463,7 @@ public class InstallerTest extends TestBase {
         /*
          * inst.setPermissions(ldr.loadPermissions()); inst.setSymlinks(ldr.loadSymlinks());
          */
-        JarEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
+        FileEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
         Path resultPath = installer.installOneFile(installer.translateTargetPath(entry), entry);
         Path relative = targetPath.relativize(resultPath);
         assertEquals(entry.getName(), SystemUtils.toCommonPath(relative));
@@ -490,7 +495,7 @@ public class InstallerTest extends TestBase {
         Files.createDirectories(existing.getParent());
         Files.copy(dataFile("ruby"), existing);
 
-        JarEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
+        FileEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
         Path resultPath = installer.installOneFile(installer.translateTargetPath(entry), entry);
         Path relative = targetPath.relativize(resultPath);
         assertEquals(entry.getName(), SystemUtils.toCommonPath(relative));
@@ -522,7 +527,7 @@ public class InstallerTest extends TestBase {
         Files.createDirectories(existing.getParent());
         Files.copy(dataFile("ruby2"), existing);
 
-        JarEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
+        FileEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
         Path resultPath = installer.installOneFile(installer.translateTargetPath(entry), entry);
         Path relative = targetPath.relativize(resultPath);
         assertEquals(entry.getName(), SystemUtils.toCommonPath(relative));
@@ -541,9 +546,18 @@ public class InstallerTest extends TestBase {
 
     @Test
     public void testInstallOneLicenseFile() throws Exception {
+        delegateFeedback(new FeedbackAdapter() {
+            @Override
+            public String l10n(String key, Object... params) {
+                if (key.startsWith("LICENSE_")) {
+                    return reallyl10n(key, params);
+                }
+                return null;
+            };
+        });
         setupComponentInstall("truffleruby2.jar");
 
-        JarEntry entry2 = componentJarFile.getJarEntry("LICENSE");
+        FileEntry entry2 = componentJarFile.getJarEntry("LICENSE");
         Path resultPath = installer.installOneFile(installer.translateTargetPath(entry2), entry2);
         Path relative = targetPath.relativize(resultPath);
         assertNotEquals(entry2.getName(), relative.toString());
@@ -561,7 +575,7 @@ public class InstallerTest extends TestBase {
     public void testInstallOneDirectory() throws Exception {
         setupComponentInstall("truffleruby2.jar");
 
-        JarEntry entry = componentJarFile.getJarEntry("jre/bin/");
+        FileEntry entry = componentJarFile.getJarEntry("jre/bin/");
         installer.installOneEntry(entry);
 
         Path check = targetPath.resolve(SystemUtils.fromCommonString("jre/bin"));
@@ -585,7 +599,7 @@ public class InstallerTest extends TestBase {
         Path existing = targetPath.resolve(SystemUtils.fromCommonString("jre/bin"));
         Files.createDirectories(existing);
 
-        JarEntry entry = componentJarFile.getJarEntry("jre/bin/");
+        FileEntry entry = componentJarFile.getJarEntry("jre/bin/");
         installer.installOneEntry(entry);
 
         Path check = targetPath.resolve(SystemUtils.fromCommonString("jre/bin"));
@@ -662,7 +676,7 @@ public class InstallerTest extends TestBase {
 
         Path existing = dataFile("ruby");
 
-        JarEntry je = componentJarFile.getJarEntry("jre/bin/ruby");
+        FileEntry je = componentJarFile.getJarEntry("jre/bin/ruby");
 
         // should pass:
         installer.checkFileReplacement(existing, je);
@@ -676,7 +690,7 @@ public class InstallerTest extends TestBase {
         setupComponentInstall("truffleruby2.jar");
 
         Path existing = dataFile("ruby2");
-        JarEntry je = componentJarFile.getJarEntry("jre/bin/ruby");
+        FileEntry je = componentJarFile.getJarEntry("jre/bin/ruby");
 
         // should fail:
         exception.expect(FailedOperationException.class);
@@ -693,7 +707,7 @@ public class InstallerTest extends TestBase {
         installer.setReplaceDiferentFiles(true);
 
         Path existing = dataFile("ruby2");
-        JarEntry je = componentJarFile.getJarEntry("jre/bin/ruby");
+        FileEntry je = componentJarFile.getJarEntry("jre/bin/ruby");
 
         // should succeed:
         installer.checkFileReplacement(existing, je);
@@ -731,7 +745,7 @@ public class InstallerTest extends TestBase {
         setupComponentInstall("truffleruby2.jar");
         Path offending = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
         Files.createDirectories(offending);
-        ZipEntry entry = componentJarFile.getEntry("jre/bin/ruby");
+        FileEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
 
         exception.expect(IOException.class);
         exception.expectMessage("INSTALL_OverwriteWithFile");
@@ -745,7 +759,7 @@ public class InstallerTest extends TestBase {
         Path offending = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby"));
         Files.createDirectories(offending.getParent());
         Files.createFile(offending);
-        ZipEntry entry = componentJarFile.getEntry("jre/languages/ruby/");
+        FileEntry entry = componentJarFile.getJarEntry("jre/languages/ruby/");
 
         exception.expect(IOException.class);
         exception.expectMessage("INSTALL_OverwriteWithDirectory");

@@ -67,7 +67,7 @@ public class SimpleGetopt {
     }
 
     // overridable by tests
-    RuntimeException err(String messageKey, Object... args) {
+    public RuntimeException err(String messageKey, Object... args) {
         throw ComponentInstaller.err(messageKey, args);
     }
 

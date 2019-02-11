@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.jar.JarFile;
 import org.graalvm.component.installer.commands.MockStorage;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
@@ -76,7 +77,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
 
         File f = dataFile(relativeJar).toFile();
         JarFile jf = new JarFile(f, false);
-        ComponentPackageLoader cpl = new ComponentPackageLoader(jf, this);
+        ComponentPackageLoader cpl = new JarMetaLoader(jf, this);
         info = cpl.getComponentInfo();
         // unknown in catalog metadata
         info.setLicensePath(null);
@@ -91,7 +92,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
 
         File f = dataFile(relativeJar).toFile();
         JarFile jf = new JarFile(f, false);
-        ComponentPackageLoader cpl = new ComponentPackageLoader(jf, this);
+        ComponentPackageLoader cpl = new JarMetaLoader(jf, this);
         info = cpl.getComponentInfo();
         // unknown in catalog metadata
         info.setLicensePath(null);

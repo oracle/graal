@@ -73,7 +73,7 @@ public class ListTest extends CommandTestBase {
             @Override
             public String l10n(String key, Object... params) {
                 if ("LIST_ComponentShortList".equals(key)) {
-                    return reallyl10n(BUNDLE, key, params);
+                    return reallyl10n(key, params);
                 }
                 return null;
             }

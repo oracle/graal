@@ -37,6 +37,7 @@ import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.graalvm.component.installer.CatalogIterable.RemoteComponentParam;
+import org.graalvm.component.installer.jar.JarArchive;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.MetadataLoader;
@@ -213,7 +214,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
         Handler.clearVisited();
 
-        JarFile jf = rparam.getJarFile();
+        Archive jf = rparam.getArchive();
         assertNotNull(jf);
         assertFalse(Handler.isVisited(url));
     }
@@ -226,7 +227,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
         URL remoteU = rparam.createMetaLoader().getComponentInfo().getRemoteURL();
         assertEquals(url, remoteU);
-        JarFile jf = rparam.getJarFile();
+        JarArchive jf = (JarArchive)rparam.getArchive();
         assertNotNull(jf.getEntry("META-INF"));
 
         rparam.close();
@@ -240,7 +241,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
-        JarFile jf = rparam.getJarFile();
+        JarArchive jf = (JarArchive)rparam.getArchive();
         assertNotNull(jf.getEntry("META-INF"));
         rparam.close();
         exception.expect(IllegalStateException.class);

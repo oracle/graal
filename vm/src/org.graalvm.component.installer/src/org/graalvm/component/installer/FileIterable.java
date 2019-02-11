@@ -28,6 +28,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.jar.JarFile;
+import org.graalvm.component.installer.jar.JarArchive;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
@@ -72,7 +74,7 @@ public class FileIterable implements ComponentIterable {
             }
         };
     }
-
+    
     public static class FileComponent implements ComponentParam {
         private final File localFile;
         private ComponentPackageLoader loader;
@@ -92,7 +94,7 @@ public class FileIterable implements ComponentIterable {
                 if (jf == null) {
                     jf = new JarFile(localFile, verifyJars);
                 }
-                loader = new ComponentPackageLoader(jf, feedback);
+                loader = new JarMetaLoader(jf, feedback);
             }
             return loader;
         }
@@ -112,12 +114,12 @@ public class FileIterable implements ComponentIterable {
         }
 
         @Override
-        public JarFile getFile() throws IOException {
+        public Archive getFile() throws IOException {
             if (loader != null) {
-                return loader.getJarFile();
+                return loader.getArchive();
             } else {
                 jf = new JarFile(localFile, verifyJars);
-                return jf;
+                return new JarArchive(jf);
             }
         }
 

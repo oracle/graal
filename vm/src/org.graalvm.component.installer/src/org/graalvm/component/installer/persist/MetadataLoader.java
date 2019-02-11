@@ -27,7 +27,7 @@ package org.graalvm.component.installer.persist;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.jar.JarFile;
+import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.model.ComponentInfo;
 
@@ -35,11 +35,11 @@ public interface MetadataLoader {
 
     void close() throws IOException;
 
-    ComponentInfo getComponentInfo();
+    ComponentInfo getComponentInfo() throws IOException;
 
     List<InstallerStopException> getErrors();
 
-    JarFile getJarFile();
+    Archive getArchive();
 
     String getLicensePath();
 
@@ -47,7 +47,7 @@ public interface MetadataLoader {
 
     boolean isNoVerifySymlinks();
 
-    void loadPaths();
+    void loadPaths() throws IOException;
 
     Map<String, String> loadPermissions() throws IOException;
 

@@ -61,7 +61,7 @@ import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
  * The launcher.
  */
 public final class ComponentInstaller {
-    private static final String GRAAL_DEFAULT_RELATIVE_PATH = "../../..";
+    public static final String GRAAL_DEFAULT_RELATIVE_PATH = "../../..";
 
     private String[] mainArguments;
     private String command;
@@ -164,7 +164,7 @@ public final class ComponentInstaller {
         parameters = go.getPositionalParameters();
 
         try {
-            env = new Environment(command, null, parameters, optValues);
+            env = new Environment(command, parameters, optValues);
             finddGraalHome();
             env.setGraalHome(graalHomePath);
             env.setLocalRegistry(new ComponentRegistry(env, new DirectoryStorage(

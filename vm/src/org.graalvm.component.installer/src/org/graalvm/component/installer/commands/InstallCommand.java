@@ -367,7 +367,7 @@ public class InstallCommand implements InstallerCommand {
         inst.setPermissions(ldr.loadPermissions());
         inst.setSymlinks(ldr.loadSymlinks());
         if (p.isComplete()) {
-            inst.setJarFile(p.getFile());
+            inst.setArchive(p.getFile());
         }
         configureInstaller(inst);
         return inst;

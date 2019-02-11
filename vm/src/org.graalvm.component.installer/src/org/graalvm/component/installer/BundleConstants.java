@@ -53,4 +53,9 @@ public class BundleConstants {
      * Post-install message. In the future more x-GraalVM-Message might appear
      */
     public static final String BUNDLE_MESSAGE_POSTINST = "x-GraalVM-Message-PostInst"; // NOI18N
+    
+    /**
+     * Version key in the release file.
+     */
+    public static final String GRAAL_VERSION = "graalvm_version"; // NOI18N
 }

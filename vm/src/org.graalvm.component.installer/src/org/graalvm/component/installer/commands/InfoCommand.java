@@ -193,7 +193,7 @@ public class InfoCommand extends QueryCommandBase {
         map.put(info, ldr);
     }
 
-    void loadComponentDetails(ComponentParam param, MetadataLoader ldr) {
+    void loadComponentDetails(ComponentParam param, MetadataLoader ldr) throws IOException {
         ldr.infoOnly(true);
         ComponentInfo info = ldr.getComponentInfo();
         registerFile(param, info, ldr);

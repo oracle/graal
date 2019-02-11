@@ -43,12 +43,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.CRC32;
-import java.util.zip.ZipEntry;
+import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.model.ComponentRegistry;
@@ -75,7 +73,7 @@ public class Installer implements Closeable {
 
     private final Feedback feedback;
     private final ComponentInfo componentInfo;
-    private JarFile jarFile;
+    private Archive archive;
     private final ComponentRegistry registry;
 
     private final List<Path> filesToDelete = new ArrayList<>();
@@ -158,8 +156,8 @@ public class Installer implements Closeable {
         return symlinks;
     }
 
-    public void setJarFile(JarFile jarFile) {
-        this.jarFile = jarFile;
+    public void setArchive(Archive archive) {
+        this.archive = archive;
     }
 
     public void setSymlinks(Map<String, String> symlinks) {
@@ -193,7 +191,7 @@ public class Installer implements Closeable {
         }
     }
 
-    Path translateTargetPath(ZipEntry entry) {
+    Path translateTargetPath(Archive.FileEntry entry) {
         return translateTargetPath(entry.getName());
     }
 
@@ -234,10 +232,10 @@ public class Installer implements Closeable {
     }
 
     public void validateFiles() throws IOException {
-        if (jarFile == null) {
+        if (archive == null) {
             throw new UnsupportedOperationException();
         }
-        for (JarEntry entry : Collections.list(jarFile.entries())) {
+        for (Archive.FileEntry entry : archive) {
             if (entry.getName().startsWith("META-INF")) {   // NOI18N
                 continue;
             }
@@ -256,7 +254,7 @@ public class Installer implements Closeable {
         }
     }
 
-    boolean validateOneEntry(Path target, ZipEntry entry) throws IOException {
+    boolean validateOneEntry(Path target, Archive.FileEntry entry) throws IOException {
         if (entry.isDirectory()) {
             Path dirPath = installPath.resolve(SystemUtils.fromCommonString(entry.getName()));
             if (Files.exists(dirPath)) {
@@ -275,13 +273,13 @@ public class Installer implements Closeable {
     }
 
     public void install() throws IOException {
-        assert jarFile != null : "Must first download / set jar file";
+        assert archive != null : "Must first download / set jar file";
         installContent();
         installFinish();
     }
 
     void installContent() throws IOException {
-        if (jarFile == null) {
+        if (archive == null) {
             throw new UnsupportedOperationException();
         }
         // unpack files
@@ -307,7 +305,7 @@ public class Installer implements Closeable {
     }
 
     void unpackFiles() throws IOException {
-        for (JarEntry entry : Collections.list(jarFile.entries())) {
+        for (Archive.FileEntry entry : archive) {
             installOneEntry(entry);
         }
     }
@@ -343,7 +341,7 @@ public class Installer implements Closeable {
         }
     }
 
-    Path installOneEntry(JarEntry entry) throws IOException {
+    Path installOneEntry(Archive.FileEntry entry) throws IOException {
         if (entry.getName().startsWith("META-INF")) {   // NOI18N
             return null;
         }
@@ -362,9 +360,9 @@ public class Installer implements Closeable {
         }
     }
 
-    Path installOneFile(Path target, JarEntry entry) throws IOException {
+    Path installOneFile(Path target, Archive.FileEntry entry) throws IOException {
         // copy contents of the file
-        try (InputStream jarStream = jarFile.getInputStream(entry)) {
+        try (InputStream jarStream = archive.getInputStream(entry)) {
             boolean existingFile = Files.exists(target, LinkOption.NOFOLLOW_LINKS);
             String eName = entry.getName();
             if (existingFile) {
@@ -466,7 +464,7 @@ public class Installer implements Closeable {
         return true;
     }
 
-    boolean checkFileReplacement(Path existingPath, ZipEntry entry) throws IOException {
+    boolean checkFileReplacement(Path existingPath, Archive.FileEntry entry) throws IOException {
         if (Files.isDirectory(existingPath)) {
             throw new IOException(
                             feedback.l10n("INSTALL_OverwriteWithFile", existingPath));
@@ -480,18 +478,12 @@ public class Installer implements Closeable {
         CRC32 crc = new CRC32();
         ByteBuffer bb = null;
         try (ByteChannel is = Files.newByteChannel(existingPath)) {
-            bb = ByteBuffer.allocate(CHECKSUM_BUFFER_SIZE);
-            while (is.read(bb) >= 0) {
-                bb.flip();
-                crc.update(bb);
-                bb.clear();
+            if (!archive.checkContentsMatches(is, entry)) {
+                if (replaceDiferentFiles) {
+                    return false;
+                }
+                throw feedback.failure("INSTALL_ReplacedFileDiffers", null, existingPath);
             }
-        }
-        if (crc.getValue() != entry.getCrc()) {
-            if (replaceDiferentFiles) {
-                return false;
-            }
-            throw feedback.failure("INSTALL_ReplacedFileDiffers", null, existingPath);
         }
         return true;
     }
@@ -514,8 +506,8 @@ public class Installer implements Closeable {
 
     @Override
     public void close() throws IOException {
-        if (jarFile != null) {
-            jarFile.close();
+        if (archive != null) {
+            archive.close();
         }
     }
 

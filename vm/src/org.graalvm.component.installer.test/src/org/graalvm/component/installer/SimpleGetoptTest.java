@@ -49,7 +49,7 @@ public class SimpleGetoptTest extends TestBase {
         g.put("8", "=C");
         getopt = new SimpleGetopt(g) {
             @Override
-            RuntimeException err(String messageKey, Object... args) {
+            public RuntimeException err(String messageKey, Object... args) {
                 errorKey = messageKey;
                 errorParams = args;
                 throw new FailedOperationException(messageKey);

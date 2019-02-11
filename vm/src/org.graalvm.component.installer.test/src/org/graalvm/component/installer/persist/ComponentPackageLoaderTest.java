@@ -46,6 +46,7 @@ import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.TestBase;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.junit.After;
 import org.junit.Assert;
@@ -116,7 +117,7 @@ public class ComponentPackageLoaderTest extends TestBase {
         if (jarData == null) {
             return new ComponentPackageLoader(data::getProperty, this).createComponentInfo();
         } else {
-            return new ComponentPackageLoader(jarData, this).createComponentInfo();
+            return new JarMetaLoader(jarData, this).createComponentInfo();
         }
     }
 
@@ -162,7 +163,7 @@ public class ComponentPackageLoaderTest extends TestBase {
     public void testCollectErrors() throws Exception {
         File f = dataFile("broken1.zip").toFile();
         jf = new JarFile(f);
-        loader = new ComponentPackageLoader(jf, this).infoOnly(true);
+        loader = new JarMetaLoader(jf, this).infoOnly(true);
         info = loader.createComponentInfo();
 
         List<String> errs = new ArrayList<>();
@@ -181,7 +182,7 @@ public class ComponentPackageLoaderTest extends TestBase {
     private void setupLoader() throws IOException {
         File f = dataFile("data/truffleruby2.jar").toFile();
         jf = new JarFile(f);
-        loader = new ComponentPackageLoader(jf, this);
+        loader = new JarMetaLoader(jf, this);
         info = loader.createComponentInfo();
     }
 
@@ -220,6 +221,15 @@ public class ComponentPackageLoaderTest extends TestBase {
     @Test
     public void testComponentLicensePath() throws Exception {
         setupLoader();
+        delegateFeedback(new FeedbackAdapter() {
+            @Override
+            public String l10n(String key, Object... params) {
+                if (key.startsWith("LICENSE_")) {
+                    return reallyl10n(key, params);
+                }
+                return null;
+            };
+        });
         // must load file paths
         loader.loadPaths();
         assertNotNull(info.getLicensePath());

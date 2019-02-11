@@ -256,7 +256,11 @@ public class TestBase implements Feedback {
             MessageFormat.format(bundle.getString(key), params);
         }
         if (feedbackDelegate != null) {
-            String s = feedbackDelegate.l10n(key, params);
+            String s;
+            if (feedbackDelegate instanceof FeedbackAdapter) {
+                ((FeedbackAdapter)feedbackDelegate).setBundle(bundle);
+            }
+            s = feedbackDelegate.l10n(key, params);
             if (s != null) {
                 return s;
             }
@@ -268,7 +272,7 @@ public class TestBase implements Feedback {
         ResourceBundle b = bundle != null ? bundle : defaultBundle;
         return MessageFormat.format(b.getString(key), params);
     }
-
+    
     @Override
     public boolean verbatimOut(String msg, boolean verboseOutput) {
         if (verboseOutput) {
@@ -439,6 +443,8 @@ public class TestBase implements Feedback {
     }
 
     public class FeedbackAdapter implements Feedback {
+        private ResourceBundle currentBundle;
+        
         @Override
         public boolean verbatimOut(String msg, boolean beVerbose) {
             return verbose;
@@ -502,6 +508,21 @@ public class TestBase implements Feedback {
 
         @Override
         public void bindFilename(Path file, String label) {
+        }
+        
+        protected String reallyl10n(String k, Object... params) {
+            return TestBase.this.reallyl10n(getBundle(), k, params);
+        }
+        
+        protected ResourceBundle getBundle() {
+            if (currentBundle != null) {
+                return currentBundle;
+            }
+            return defaultBundle;
+        }
+        
+        void setBundle(ResourceBundle bundle) {
+            this.currentBundle = bundle;
         }
 
     }

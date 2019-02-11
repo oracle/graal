@@ -25,8 +25,13 @@
 package org.graalvm.component.installer;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.regex.Pattern;
 
 /**
@@ -123,5 +128,26 @@ public class SystemUtils {
     public static boolean isWindows() {
         String osName = System.getProperty("os.name"); // NOI18N
         return osName != null && osName.toLowerCase().contains("windows");
+    }
+    
+    public enum ArchiveFormat {
+        JAR, RPM
+    }
+    
+    public static ArchiveFormat autodetectFile(File f) throws IOException {
+        try (ReadableByteChannel ch = FileChannel.open(f.toPath(), StandardOpenOption.READ)) {
+            ByteBuffer bb = ByteBuffer.allocate(4);
+            ch.read(bb);
+            byte[] magic = bb.array();
+            if ((magic[0] == 0xed) && (magic[1] == 0xab) &&
+                (magic[2] == 0xee) && (magic[3] == 0xeb)) {
+                return ArchiveFormat.RPM;
+            } else if ((magic[0] == 0x50) && (magic[1] == 0x4b) &&
+                (magic[2] == 0x03) && (magic[3] == 0x04)) {
+                return ArchiveFormat.JAR;
+            } else {
+                return null;
+            }
+        }
     }
 }
