@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.210.2",
+  "mxversion" : "5.213.1",
   "name" : "truffle",
   "version" : "1.0.0-rc14",
   "release" : False,
@@ -583,23 +583,37 @@ suite = {
 
     "com.oracle.truffle.nfi.native" : {
       "subDir" : "src",
-      "native" : True,
-      "vpath" : True,
-      "results" : [
-        "bin/<lib:trufflenfi>",
-      ],
-      "headers" : [
-        "include/trufflenfi.h"
-      ],
+      "native" : "shared_lib",
+      "deliverable" : "trufflenfi",
       "buildDependencies" : [
+        "libffi",
         "com.oracle.truffle.nfi",
-        "LIBFFI_DIST"
       ],
-      "buildEnv" : {
-        "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.nfi>",
-        "LIBFFI_DIST" : "<path:LIBFFI_DIST>",
-        "LIBTRUFFLENFI" : "<lib:trufflenfi>",
-        "OS" : "<os>",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ignore" : "windows is not supported",
+          },
+        },
+        "solaris" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-DOS_solaris", "-m64", "-pthread"],
+            "ldflags" : ["-m64", "-pthread"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
+        "darwin" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-DOS_darwin"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-DOS_linux"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
       },
     },
 
@@ -741,17 +755,16 @@ suite = {
 
     "TRUFFLE_NFI_NATIVE" : {
       "native" : True,
-      "relpath" : True,
       "platformDependent" : True,
       "platforms" : [
           "linux-amd64",
           "darwin-amd64",
       ],
-      "output" : "<mxbuild>/truffle-nfi-native",
-      "dependencies" : [
-        "com.oracle.truffle.nfi.native",
-      ],
-      "description" : """Contains the native library needed by truffle-nfi.""",
+      "layout" : {
+        "bin/" : "dependency:com.oracle.truffle.nfi.native",
+        "include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
+      },
+      "description" : "Contains the native library needed by truffle-nfi.",
       "maven": True,
     },
 
