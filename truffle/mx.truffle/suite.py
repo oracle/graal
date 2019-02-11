@@ -576,7 +576,7 @@ suite = {
 
     "libffi" : {
       "class" : "LibffiBuilderProject",
-      "buildDependencies" : [
+      "dependencies" : [
         "LIBFFI_SOURCES",
       ],
     },
