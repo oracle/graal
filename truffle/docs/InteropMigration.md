@@ -172,7 +172,7 @@ Note that the array namespace does no longer support querying for read or write 
 
 ### Remove return type for TO_NATIVE
 
-The TO_NATIVE message was renamed to toNative in the InteropLibrary with the difference that it no longer returns a value, but avoid. From the experience in practice, we found that
+The TO_NATIVE message was renamed to toNative in the InteropLibrary with the difference that it no longer returns a value, but performs the native transition as a side-effect if supported by the receiver. This allows the caller of the message to simplify their code. We found that in no cases the toNative transition required to return a different value. The default behavior fo toNative was changed to not return any value.
 
 ### Minor Changes
 
@@ -207,6 +207,7 @@ With the use of Truffle Libraries for interop, most existing interop APIs had to
 The following comparison of Interop 1.0 with Interop 2.0 is designed to help to migrate existing uses of interop.
 
 <hr/>
+
 ### Fast-Path Sending Interop Messages
 
 This is the fast-path way of sending interop messages embedded in an operation node. This is the most common way of sending interop messages.
@@ -262,6 +263,7 @@ Note the following differences:
 * The new interop API allows using a dispatched version of the library by specifying `@CachedLibrary(limit="2")` instead. This allows the interop library to be used with any value, but it has the disadvantage of duplicating the inline cache for every message invocation, like with the old interop API. It is therefore recommended to use specialized libraries whenever it is possible.
 
 <hr/>
+
 ### Slow-Path Sending Interop Messages
 
 It is sometimes necessary to call interop messages from the runtime without the context of a node. 
@@ -285,6 +287,7 @@ Note the following differences:
 * With `InteropLibrary.getFactory().getUncached(object)` an uncached and specialized version of a library can be looked up. This can be used to avoid repeated export lookups if multiple uncached interop messages need to be sent to the same receiver.
 
 <hr/>
+
 ### Custom Fast-Path Sending Interop Messages
 
 Sometimes Truffle DSL cannot be used and the nodes need to be written manually. Both APIs allow you to do so.
@@ -344,6 +347,7 @@ Note the following differences:
 
 
 <hr/>
+
 ### Implementing / Exporting Interop Messages
 
 To implement / export interop library messages see the following example.
@@ -453,6 +457,7 @@ Note the following differences:
 
 
 <hr/>
+
 ### Integration with DynamicObject
 
 The old interop allowed to specify a foreign access factory through `ObjectType.getForeignAccessFactory()`. This method is now deprecated and a new method `ObjectType.dispatch()` was introduced. Instead of a foreign access factory, the dispatch method needs to return a class that exports the InteropLibrary with an explicit receiver.
@@ -526,6 +531,7 @@ Note the following differences:
 
 
 <hr/>
+
 ### Extending Interop
 
 Truffle languages rarely need to extend interop, but they might need to extend their own language specific protocol.  
