@@ -5918,11 +5918,18 @@ final class Util_sun_net_sdp_SdpSupport {
         return 27;
     }
 
+    /* { Do not re-format commented-out code: @formatter:off */
+    /*
+     * The translation of RESTARTABLE is to expand the body without the wrapper
+     *     do { ... } while (0)
+     * whose purpose is to make the macro expansion in to a single C statement.
+     */
     // 044 #define RESTARTABLE(_cmd, _result) do { \
-    // 045 do { \
-    // 046 _result = _cmd; \
-    // 047 } while((_result == -1) && (errno == EINTR)); \
+    // 045   do { \
+    // 046     _result = _cmd; \
+    // 047   } while((_result == -1) && (errno == EINTR)); \
     // 048 } while(0)
+    /* } Do not re-format commented-out code: @formatter:on */
 
     /* Do not re-format commented-out code: @formatter:off */
     // 051 /**
