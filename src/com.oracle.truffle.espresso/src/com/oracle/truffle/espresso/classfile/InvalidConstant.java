@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 public final class InvalidConstant implements PoolConstant {
 
     private InvalidConstant() {
-
+        /* no instances */
     }
 
     @Override
@@ -40,7 +40,7 @@ public final class InvalidConstant implements PoolConstant {
     }
 
     @Override
-    public String toString(ConstantPool pool, int thisIndex) {
+    public String toString(ConstantPool pool) {
         return "<INVALID>";
     }
 

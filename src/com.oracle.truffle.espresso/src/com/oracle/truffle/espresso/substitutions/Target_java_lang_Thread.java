@@ -30,24 +30,21 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
-public class Target_java_lang_Thread {
+public final class Target_java_lang_Thread {
 
     // TODO(peterssen): Remove single thread shim, support real threads.
     @Substitution
-    public static @Type(Thread.class) StaticObject currentThread() {
+    public static @Host(Thread.class) StaticObject currentThread() {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         if (context.getMainThread() == null) {
             Meta meta = context.getMeta();
-            Meta.Klass threadGroupKlass = meta.knownKlass(ThreadGroup.class);
-            Meta.Klass threadKlass = meta.knownKlass(Thread.class);
+            StaticObject mainThread = meta.Thread.allocateInstance();
+            meta.Thread_group.set(mainThread, meta.ThreadGroup.allocateInstance());
+            meta.Thread_name.set(mainThread, meta.toGuestString("mainThread"));
+            meta.Thread_priority.set(mainThread, 5);
 
-            StaticObject mainThread = threadKlass.metaNew().fields(
-                            Meta.Field.set("group", threadGroupKlass.allocateInstance()),
-                            Meta.Field.set("name", meta.toGuest("mainThread")),
-                            Meta.Field.set("priority", 5),
-                            // Lock object used by NIO.
-                            Meta.Field.set("blockerLock", meta.OBJECT.allocateInstance())).getInstance();
-
+            // Lock object used by NIO.
+            meta.Thread_blockerLock.set(mainThread, meta.Object.allocateInstance());
             context.setMainThread(mainThread);
         }
         return context.getMainThread();
@@ -55,17 +52,17 @@ public class Target_java_lang_Thread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void setPriority0(@Type(Thread.class) StaticObject self, int newPriority) {
+    public static void setPriority0(@Host(Thread.class) StaticObject self, int newPriority) {
         /* nop */ }
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void setDaemon(@Type(Thread.class) StaticObject self, boolean on) {
+    public static void setDaemon(@Host(Thread.class) StaticObject self, boolean on) {
         /* nop */ }
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static boolean isAlive(@Type(Thread.class) StaticObject self) {
+    public static boolean isAlive(@Host(Thread.class) StaticObject self) {
         return false;
     }
 
@@ -76,12 +73,13 @@ public class Target_java_lang_Thread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void start0(@Type(Thread.class) StaticObject self) {
-        /* nop */ }
+    public static void start0(@Host(Thread.class) StaticObject self) {
+        /* nop */
+    }
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static boolean isInterrupted(@Type(Thread.class) StaticObject self, boolean ClearInterrupted) {
+    public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean ClearInterrupted) {
         return false;
     }
 
@@ -102,7 +100,7 @@ public class Target_java_lang_Thread {
             Thread.sleep(millis);
         } catch (InterruptedException | IllegalArgumentException e) {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwEx(e.getClass(), e.getMessage());
+            throw meta.throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 }

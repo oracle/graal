@@ -1,7 +1,7 @@
 {
   local labsjdk8 = {
     name: 'labsjdk',
-    version: '8u192-jvmci-0.53',
+    version: '8u192-jvmci-0.54',
     platformspecific: true,
   },
 

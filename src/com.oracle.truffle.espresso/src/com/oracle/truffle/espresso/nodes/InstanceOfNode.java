@@ -1,8 +1,6 @@
 package com.oracle.truffle.espresso.nodes;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -37,16 +35,16 @@ public abstract class InstanceOfNode extends QuickNode {
         this.typeToCheck = typeToCheck;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     static boolean instanceOf(Klass typeToCheck, Klass instanceKlass) {
         // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
-        return meta(typeToCheck).isAssignableFrom(meta(instanceKlass));
+        return typeToCheck.isAssignableFrom(instanceKlass);
     }
 
     @Override
     public final int invoke(final VirtualFrame frame, int top) {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        EspressoRootNode root = (EspressoRootNode) getParent();
+        BytecodeNode root = (BytecodeNode) getParent();
         StaticObject receiver = root.peekObject(frame, top - 1);
         boolean result = StaticObject.notNull(receiver) && executeInstanceOf(receiver.getKlass());
         root.putKind(frame, top - 1, result, JavaKind.Boolean);

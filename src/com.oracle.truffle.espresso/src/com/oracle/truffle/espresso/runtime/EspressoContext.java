@@ -22,56 +22,71 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.StringTable;
-import com.oracle.truffle.espresso.classfile.SymbolTable;
+import com.oracle.truffle.espresso.descriptors.Names;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.types.SignatureDescriptors;
-import com.oracle.truffle.espresso.types.TypeDescriptors;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.Method;
-
-public class EspressoContext {
+public final class EspressoContext {
 
     private final EspressoLanguage language;
 
     private final TruffleLanguage.Env env;
 
     // Must be initialized after the context instance creation.
+    @CompilationFinal //
     private InterpreterToVM interpreterToVM;
+
     private final StringTable strings;
     private final ClassRegistries registries;
+
     private boolean initialized = false;
+
     private Classpath bootClasspath;
     private String[] mainArguments;
     private Source mainSourceFile;
-    private StaticObject appClassLoader;
-    private Meta meta;
     private StaticObject mainThread;
 
-    @CompilerDirectives.CompilationFinal private JniEnv jniEnv;
+    @CompilationFinal //
+    private Meta meta;
 
-    @CompilerDirectives.CompilationFinal private VM vm;
+    @CompilationFinal //
+    private JniEnv jniEnv;
+
+    @CompilationFinal //
+    private VM vm;
+    private Substitutions substitutions;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
         this.language = language;
         this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
+        this.substitutions = new Substitutions(this);
     }
 
     public ClassRegistries getRegistries() {
@@ -141,7 +156,7 @@ public class EspressoContext {
 
     public void initializeContext() {
         assert !this.initialized;
-        createVm();
+        spawnVM();
         this.initialized = true;
     }
 
@@ -149,7 +164,12 @@ public class EspressoContext {
         return meta;
     }
 
-    private void createVm() {
+    private void spawnVM() {
+
+        System.err.println("Before spawnVM: " + BytecodeNode.bcCount.get());
+
+        long ticks = System.currentTimeMillis();
+
         // FIXME(peterssen): Contextualize the JniENv, even if shared libraries are isolated,
         // currently we assume a singleton context.
 
@@ -157,50 +177,49 @@ public class EspressoContext {
 
         this.meta = new Meta(this);
 
-        this.interpreterToVM = new InterpreterToVM(language);
+        this.interpreterToVM = new InterpreterToVM(this);
         // Spawn JNI first, then the VM.
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
-        initializeClass(Object.class);
+        initializeKnownClass(Type.Object);
 
         // Primitive classes have no dependencies.
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive()) {
-                initializeClass(kind.toJavaClass());
+                initializeKnownClass(kind.getType());
             }
         }
 
-        for (Class<?> clazz : new Class<?>[]{
-                        String.class,
-                        System.class,
-                        ThreadGroup.class,
-                        Thread.class,
-                        Class.class,
-                        Method.class}) {
-            initializeClass(clazz);
+        for (Symbol<Type> type : Arrays.asList(
+                        Type.String,
+                        Type.System,
+                        Type.ThreadGroup,
+                        Type.Thread,
+                        Type.Class,
+                        Type.Method)) {
+            initializeKnownClass(type);
         }
 
         // Finalizer is not public.
-        initializeClass("Ljava/lang/ref/Finalizer;");
+        initializeKnownClass(Type.java_lang_ref_Finalizer);
 
         // Call System.initializeSystemClass
-        meta.knownKlass(System.class).staticMethod("initializeSystemClass", void.class).invokeDirect();
+        meta.System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void).invokeDirect(null);
 
         // System exceptions.
-        for (Class<?> clazz : new Class<?>[]{
-                        OutOfMemoryError.class,
-                        NullPointerException.class,
-                        ClassCastException.class,
-                        ArrayStoreException.class,
-                        ArithmeticException.class,
-                        StackOverflowError.class,
-                        IllegalMonitorStateException.class,
-                        IllegalArgumentException.class}) {
-            initializeClass(clazz);
+        for (Symbol<Type> type : Arrays.asList(
+                        Type.OutOfMemoryError,
+                        Type.NullPointerException,
+                        Type.ClassCastException,
+                        Type.ArrayStoreException,
+                        Type.ArithmeticException,
+                        Type.StackOverflowError,
+                        Type.IllegalMonitorStateException,
+                        Type.IllegalArgumentException)) {
+            initializeKnownClass(type);
         }
 
-        // Load system class loader.
-        appClassLoader = (StaticObject) meta.knownKlass(ClassLoader.class).staticMethod("getSystemClassLoader", ClassLoader.class).invokeDirect();
+        System.err.println("After spawnVM: " + (System.currentTimeMillis() - ticks) + " ms " + BytecodeNode.bcCount.get());
     }
 
     private EspressoProperties vmProperties;
@@ -209,12 +228,8 @@ public class EspressoContext {
         vmProperties = EspressoProperties.getDefault().processOptions(getEnv().getOptions());
     }
 
-    private void initializeClass(Class<?> clazz) {
-        initializeClass(MetaUtil.toInternalName(clazz.getName()));
-    }
-
-    private void initializeClass(String name) {
-        Klass klass = getRegistries().resolve(getTypeDescriptors().make(name), StaticObject.NULL);
+    private void initializeKnownClass(Symbol<Type> type) {
+        Klass klass = getRegistries().loadKlassWithBootClassLoader(type);
         klass.initialize();
     }
 
@@ -230,39 +245,44 @@ public class EspressoContext {
         return vm;
     }
 
-    public StaticObject getMainThread() {
+    public @Host(Thread.class) StaticObject getMainThread() {
         return mainThread;
     }
 
-    public void setMainThread(StaticObject mainThread) {
+    public void setMainThread(@Host(Thread.class) StaticObject mainThread) {
         this.mainThread = mainThread;
     }
 
-    public SymbolTable getSymbolTable() {
-        return getLanguage().getSymbolTable();
+    public Types getTypes() {
+        return getLanguage().getTypes();
     }
 
-    public TypeDescriptors getTypeDescriptors() {
-        return getLanguage().getTypeDescriptors();
-    }
-
-    public SignatureDescriptors getSignatureDescriptors() {
-        return getLanguage().getSignatureDescriptors();
-    }
-
-    public StaticObject getAppClassLoader() {
-        return appClassLoader;
+    public Signatures getSignatures() {
+        return getLanguage().getSignatures();
     }
 
     public JniEnv getJNI() {
         if (jniEnv == null) {
             CompilerAsserts.neverPartOfCompilation();
-            jniEnv = JniEnv.create();
+            jniEnv = JniEnv.create(this);
         }
         return jniEnv;
     }
 
     public void disposeContext() {
+        getVM().dispose();
         getJNI().dispose();
+    }
+
+    public Substitutions getSubstitutions() {
+        return substitutions;
+    }
+
+    public void setBootstrapMeta(Meta meta) {
+        this.meta = meta;
+    }
+
+    public final Names getNames() {
+        return getLanguage().getNames();
     }
 }

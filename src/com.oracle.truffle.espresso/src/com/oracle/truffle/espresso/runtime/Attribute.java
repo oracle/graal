@@ -20,10 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
-public interface LinkedNode {
-    Meta.Method getOriginalMethod();
+public class Attribute {
+
+    public static final Attribute[] EMPTY_ARRAY = new Attribute[0];
+
+    private final Symbol<Name> name;
+
+    @CompilationFinal(dimensions = 1) //
+    private final byte[] data;
+
+    public final Symbol<Name> getName() {
+        return name;
+    }
+
+    public final byte[] getData() {
+        return data;
+    }
+
+    public Attribute(Symbol<Name> name, final byte[] data) {
+        this.name = name;
+        this.data = data;
+    }
 }

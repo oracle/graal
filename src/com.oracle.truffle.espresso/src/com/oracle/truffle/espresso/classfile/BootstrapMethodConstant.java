@@ -22,75 +22,50 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
+/**
+ * Interface denoting a bootstrap method constant entry in a constant pool.
+ */
 public interface BootstrapMethodConstant extends PoolConstant {
 
     int getBootstrapMethodAttrIndex();
 
-    Utf8Constant getName(ConstantPool pool, int thisIndex);
+    Symbol<Name> getName(ConstantPool pool);
 
-    SignatureDescriptor getSignature(ConstantPool pool, int thisIndex);
+    Symbol<Signature> getSignature(ConstantPool pool);
 
     @Override
-    default String toString(ConstantPool pool, int thisIndex) {
-        return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool, thisIndex);
+    default String toString(ConstantPool pool) {
+        return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool);
     }
 
-    public static abstract class Unresolved implements BootstrapMethodConstant {
-        private final char bootstrapMethodAttrIndex;
-        private final Utf8Constant name;
-        private final SignatureDescriptor signature;
+    abstract class Indexes implements BootstrapMethodConstant {
 
-        public Unresolved(int bootstrapMethodAttrIndex, Utf8Constant name, SignatureDescriptor signature) {
-            this.bootstrapMethodAttrIndex = PoolConstant.u2(bootstrapMethodAttrIndex);
-            this.name = name;
-            this.signature = signature;
-        }
-
-        public final Utf8Constant getName(ConstantPool pool, int thisIndex) {
-            return name;
-        }
-
-        public int getBootstrapMethodAttrIndex() {
-            return bootstrapMethodAttrIndex;
-        }
-
-        public SignatureDescriptor getSignature(ConstantPool pool, int thisIndex) {
-            return signature;
-        }
-    }
-
-    public static abstract class Indexes implements BootstrapMethodConstant {
-
-        private final char bootstrapMethodAttrIndex;
-        private final char nameAndTypeIndex;
+        protected final char bootstrapMethodAttrIndex;
+        protected final char nameAndTypeIndex;
 
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
             this.bootstrapMethodAttrIndex = PoolConstant.u2(bootstrapMethodAttrIndex);
             this.nameAndTypeIndex = PoolConstant.u2(nameAndTypeIndex);
         }
 
-        protected abstract BootstrapMethodConstant createUnresolved(int bsmAttrIndex, Utf8Constant name, SignatureDescriptor signature);
-
-        protected BootstrapMethodConstant replace(ConstantPool pool, int thisIndex) {
-            NameAndTypeConstant nat = pool.nameAndTypeAt(nameAndTypeIndex);
-            Utf8Constant name = nat.getName(pool, nameAndTypeIndex);
-            Utf8Constant type = nat.getType(pool, nameAndTypeIndex);
-            SignatureDescriptor signature = pool.getContext().getLanguage().getSignatureDescriptors().make(type.toString());
-            return (BootstrapMethodConstant) pool.updateAt(thisIndex, createUnresolved(bootstrapMethodAttrIndex, name, signature));
-        }
-
-        public Utf8Constant getName(ConstantPool pool, int thisIndex) {
-            return replace(pool, thisIndex).getName(pool, thisIndex);
-        }
-
-        public SignatureDescriptor getSignature(ConstantPool pool, int thisIndex) {
-            return replace(pool, thisIndex).getSignature(pool, thisIndex);
-        }
-
-        public int getBootstrapMethodAttrIndex() {
+        @Override
+        public final int getBootstrapMethodAttrIndex() {
             return bootstrapMethodAttrIndex;
+        }
+
+        @Override
+        public final Symbol<Name> getName(ConstantPool pool) {
+            return pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
+        }
+
+        @Override
+        public final Symbol<Signature> getSignature(ConstantPool pool) {
+            return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }
     }
 }

@@ -23,212 +23,368 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.lang.reflect.Array;
+
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
-import java.lang.reflect.Array;
-
 @EspressoSubstitutions
-public class Target_java_lang_reflect_Array {
+public final class Target_java_lang_reflect_Array {
 
+    /**
+     * Creates a new array with the specified component type and length. Invoking this method is
+     * equivalent to creating an array as follows: <blockquote>
+     * 
+     * <pre>
+     * int[] x = {length};
+     * Array.newInstance(componentType, x);
+     * </pre>
+     * 
+     * </blockquote>
+     *
+     * <p>
+     * The number of dimensions of the new array must not exceed 255.
+     *
+     * @param componentType the {@code Class} object representing the component type of the new
+     *            array
+     * @param length the length of the new array
+     * @return the new array
+     * @exception NullPointerException if the specified {@code componentType} parameter is null
+     * @exception IllegalArgumentException if componentType is {@link Void#TYPE} or if the number of
+     *                dimensions of the requested array instance exceed 255.
+     * @exception NegativeArraySizeException if the specified {@code length} is negative
+     */
     @Substitution
-    public static Object newArray(@Type(Class.class) StaticObjectClass componentType, int length) {
-        if (componentType.getMirror().isPrimitive()) {
-            byte jvmPrimitiveType = (byte) componentType.getMirror().getJavaKind().getBasicType();
+    public static Object newArray(@Host(Class.class) StaticObject componentType, int length) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        if (StaticObject.isNull(componentType)) {
+            throw meta.throwEx(meta.NullPointerException);
+        }
+        Klass component = ((StaticObjectClass) componentType).getMirrorKlass();
+        if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+
+        if (component.isPrimitive()) {
+            byte jvmPrimitiveType = (byte) component.getJavaKind().getBasicType();
             return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length);
         }
-        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
-        return vm.newArray(componentType.getMirror(), length);
+
+        // NegativeArraySizeException is thrown in getInterpreterToVM().newArray
+        // if (length < 0) {
+        // throw meta.throwEx(meta.NegativeArraySizeException);
+        // }
+        return InterpreterToVM.newArray(component, length);
+    }
+
+    /**
+     * Creates a new array with the specified component type and dimensions. If
+     * {@code componentType} represents a non-array class or interface, the new array has
+     * {@code dimensions.length} dimensions and {@code componentType} as its component type. If
+     * {@code componentType} represents an array class, the number of dimensions of the new array is
+     * equal to the sum of {@code dimensions.length} and the number of dimensions of
+     * {@code componentType}. In this case, the component type of the new array is the component
+     * type of {@code componentType}.
+     *
+     * <p>
+     * The number of dimensions of the new array must not exceed 255.
+     *
+     * @param componentType the {@code Class} object representing the component type of the new
+     *            array
+     * @param dimensionsArray an array of {@code int} representing the dimensions of the new array
+     * @return the new array
+     * @exception NullPointerException if the specified {@code componentType} argument is null
+     * @exception IllegalArgumentException if the specified {@code dimensions} argument is a
+     *                zero-dimensional array, if componentType is {@link Void#TYPE}, or if the
+     *                number of dimensions of the requested array instance exceed 255.
+     * @exception NegativeArraySizeException if any of the components in the specified
+     *                {@code dimensions} argument is negative.
+     */
+    @Substitution
+    public static @Host(Object.class) StaticObject multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        if (StaticObject.isNull(componentType)) {
+            throw meta.throwEx(meta.NullPointerException);
+        }
+        Klass component = ((StaticObjectClass) componentType).getMirrorKlass();
+        if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+        final int[] dimensions = ((StaticObjectArray) dimensionsArray).unwrap();
+        int finalDimensions = dimensions.length;
+        if (component.isArray()) {
+            finalDimensions += Types.getArrayDimensions(component.getType());
+        }
+        if (dimensions.length == 0 || finalDimensions > 255) {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+        for (int d : dimensions) {
+            if (d < 0) {
+                throw meta.throwEx(meta.NegativeArraySizeException);
+            }
+        }
+        return meta.getInterpreterToVM().newMultiArray(component.getArrayClass(dimensions.length - 1), dimensions);
     }
 
     @Substitution
-    public static Object multiNewArray(@Type(Class.class) StaticObject componentType,
-                    @Type(int[].class) StaticObject guestDimensions) {
-        int[] dimensions = ((StaticObjectArray) guestDimensions).unwrap();
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM().newMultiArray(((StaticObjectClass) componentType).getMirror(), dimensions);
-    }
-
-    @Substitution
-    public static boolean getBoolean(@Type(Object.class) StaticObject array, int index) {
+    public static boolean getBoolean(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
         try {
             return Array.getBoolean(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static byte getByte(@Type(Object.class) StaticObject array, int index) {
+    public static byte getByte(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
         try {
             return Array.getByte(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static char getChar(@Type(Object.class) StaticObject array, int index) {
+    public static char getChar(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
         try {
             return Array.getChar(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static short getShort(@Type(Object.class) StaticObject array, int index) {
+    public static short getShort(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
         try {
             return Array.getShort(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static int getInt(@Type(Object.class) StaticObject array, int index) {
+    public static int getInt(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
         try {
             return Array.getInt(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static float getFloat(@Type(Object.class) StaticObject array, int index) {
+    public static float getFloat(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
         try {
             return Array.getFloat(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static double getDouble(@Type(Object.class) StaticObject array, int index) {
+    public static double getDouble(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
         try {
             return Array.getDouble(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static long getLong(@Type(Object.class) StaticObject array, int index) {
+    public static long getLong(@Host(Object.class) StaticObject array, int index) {
         if (!(array instanceof StaticObjectArray)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
         }
         try {
             return Array.getLong(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static void setBoolean(@Type(Object.class) StaticObject array, int index, boolean value) {
+    public static void setBoolean(@Host(Object.class) StaticObject array, int index, boolean value) {
         try {
             Array.setBoolean(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static void setByte(@Type(Object.class) StaticObject array, int index, byte value) {
+    public static void setByte(@Host(Object.class) StaticObject array, int index, byte value) {
         try {
             Array.setByte(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static void setChar(@Type(Object.class) StaticObject array, int index, char value) {
+    public static void setChar(@Host(Object.class) StaticObject array, int index, char value) {
         try {
             Array.setChar(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static void setShort(@Type(Object.class) StaticObject array, int index, short value) {
+    public static void setShort(@Host(Object.class) StaticObject array, int index, short value) {
         try {
             Array.setShort(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static void setInt(@Type(Object.class) StaticObject array, int index, int value) {
+    public static void setInt(@Host(Object.class) StaticObject array, int index, int value) {
         try {
             Array.setInt(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static void setFloat(@Type(Object.class) StaticObject array, int index, float value) {
+    public static void setFloat(@Host(Object.class) StaticObject array, int index, float value) {
         try {
             Array.setFloat(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static void setDouble(@Type(Object.class) StaticObject array, int index, double value) {
+    public static void setDouble(@Host(Object.class) StaticObject array, int index, double value) {
         try {
             Array.setDouble(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     @Substitution
-    public static void setLong(@Type(Object.class) StaticObject array, int index, long value) {
+    public static void setLong(@Host(Object.class) StaticObject array, int index, long value) {
         try {
             Array.setLong(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
+    /**
+     * Sets the value of the indexed component of the specified array object to the specified new
+     * value. The new value is first automatically unwrapped if the array has a primitive component
+     * type.
+     * 
+     * @param array the array
+     * @param index the index into the array
+     * @param value the new value of the indexed component
+     * @exception NullPointerException If the specified object argument is null
+     * @exception IllegalArgumentException If the specified object argument is not an array, or if
+     *                the array component type is primitive and an unwrapping conversion fails
+     * @exception ArrayIndexOutOfBoundsException If the specified {@code index} argument is
+     *                negative, or if it is greater than or equal to the length of the specified
+     *                array
+     */
     @Substitution
-    public static void set(@Type(Object.class) StaticObject array, int index, @Type(Object.class) StaticObject value) {
+    public static void set(@Host(Object.class) StaticObject array, int index, @Host(Object.class) StaticObject value) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        InterpreterToVM vm = meta.getInterpreterToVM();
+        if (StaticObject.isNull(array)) {
+            throw meta.throwEx(meta.NullPointerException);
+        }
         if (array instanceof StaticObjectArray) {
-            EspressoLanguage.getCurrentContext().getInterpreterToVM().setArrayObject(value, index, (StaticObjectArray) array);
-        } else {
-            if (StaticObject.isNull(array)) {
-                throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NullPointerException.class);
-            } else {
-                throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+            // @formatter:off
+            // Checkstyle: stop
+            switch (array.getKlass().getComponentType().getJavaKind()) {
+                case Boolean : vm.setArrayByte(meta.unboxBoolean(value) ? (byte) 1 : (byte) 0, index, array); break;
+                case Byte    : vm.setArrayByte(meta.unboxByte(value), index, array);       break;
+                case Short   : vm.setArrayShort(meta.unboxShort(value), index, array);     break;
+                case Char    : vm.setArrayChar(meta.unboxCharacter(value), index, array);  break;
+                case Int     : vm.setArrayInt(meta.unboxInteger(value), index, array);     break;
+                case Float   : vm.setArrayFloat(meta.unboxFloat(value), index, array);     break;
+                case Long    : vm.setArrayLong(meta.unboxLong(value), index, array);       break;
+                case Double  : vm.setArrayDouble(meta.unboxDouble(value), index, array);   break;
+                case Object  : vm.setArrayObject(value, index, (StaticObjectArray) array); break ;
+                default      : throw EspressoError.shouldNotReachHere("invalid array type: " + array);
             }
+            // @formatter:on
+            // Checkstyle: resume
+        } else {
+            throw meta.throwEx(meta.IllegalArgumentException);
         }
     }
+
+    /**
+     * Returns the value of the indexed component in the specified array object. The value is
+     * automatically wrapped in an object if it has a primitive type.
+     *
+     * @param array the array
+     * @param index the index
+     * @return the (possibly wrapped) value of the indexed component in the specified array
+     * @exception NullPointerException If the specified object is null
+     * @exception IllegalArgumentException If the specified object is not an array
+     * @exception ArrayIndexOutOfBoundsException If the specified {@code index} argument is
+     *                negative, or if it is greater than or equal to the length of the specified
+     *                array
+     */
+    @Substitution
+    public static @Host(Object.class) StaticObject get(@Host(Object.class) StaticObject array, int index) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        InterpreterToVM vm = meta.getInterpreterToVM();
+        if (StaticObject.isNull(array)) {
+            throw meta.throwEx(meta.NullPointerException);
+        }
+        if (array instanceof StaticObjectArray) {
+            // @formatter:off
+            // Checkstyle: stop
+            switch (array.getKlass().getComponentType().getJavaKind()) {
+                case Boolean : return meta.boxBoolean(vm.getArrayByte(index, array) != 0);
+                case Byte    : return meta.boxByte(vm.getArrayByte(index, array));
+                case Short   : return meta.boxShort(vm.getArrayShort(index, array));
+                case Char    : return meta.boxCharacter(vm.getArrayChar(index, array));
+                case Int     : return meta.boxInteger(vm.getArrayInt(index, array));
+                case Float   : return meta.boxFloat(vm.getArrayFloat(index, array));
+                case Long    : return meta.boxLong(vm.getArrayLong(index, array));
+                case Double  : return meta.boxDouble(vm.getArrayDouble(index, array));
+                case Object  : return vm.getArrayObject(index, array);
+                default      : throw EspressoError.shouldNotReachHere("invalid array type: " + array);
+            }
+            // @formatter:on
+            // Checkstyle: resume
+        } else {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+    }
+
 }

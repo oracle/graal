@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
 
 public interface DynamicConstant extends BootstrapMethodConstant {
 
@@ -31,22 +30,9 @@ public interface DynamicConstant extends BootstrapMethodConstant {
         return Tag.DYNAMIC;
     }
 
-    static final class Unresolved extends BootstrapMethodConstant.Unresolved implements DynamicConstant {
-
-        public Unresolved(int bootstrapMethodAttrIndex, Utf8Constant name, SignatureDescriptor signature) {
-            super(bootstrapMethodAttrIndex, name, signature);
-        }
-    }
-
-    public static final class Indexes extends BootstrapMethodConstant.Indexes implements DynamicConstant {
-
+    final class Indexes extends BootstrapMethodConstant.Indexes implements DynamicConstant {
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
             super(bootstrapMethodAttrIndex, nameAndTypeIndex);
-        }
-
-        @Override
-        protected BootstrapMethodConstant createUnresolved(int bsmAttrIndex, Utf8Constant name, SignatureDescriptor signature) {
-            return new DynamicConstant.Unresolved(bsmAttrIndex, name, signature);
         }
     }
 }

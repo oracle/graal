@@ -23,19 +23,19 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
 import java.net.URL;
 
+import com.oracle.truffle.espresso.runtime.StaticObject;
+
 @EspressoSubstitutions
-public class Target_sun_misc_URLClassPath {
+public final class Target_sun_misc_URLClassPath {
     /**
      * These ... new JVM_ functions uses hotspot internals to improve sun.misc.URLClassPath search
      * time, a hack! http://mail.openjdk.java.net/pipermail/distro-pkg-dev/2015-December/034337.html
      */
     @SuppressWarnings("unused")
     @Substitution
-    public static @Type(URL[].class) StaticObject getLookupCacheURLs(@Type(ClassLoader.class) StaticObject classLoader) {
+    public static @Host(URL[].class) StaticObject getLookupCacheURLs(@Host(ClassLoader.class) StaticObject classLoader) {
         return StaticObject.NULL;
     }
 }

@@ -22,35 +22,25 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 public final class StaticObjectClass extends StaticObjectImpl {
-    @CompilerDirectives.CompilationFinal //
-    private Klass mirror;
+    @CompilationFinal //
+    private final Klass mirror;
 
-    public void setMirror(Klass mirror) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        assert this.mirror == null;
-        this.mirror = mirror;
-    }
-
-    public Klass getMirror() {
+    public final Klass getMirrorKlass() {
         assert this.mirror != null;
         return this.mirror;
     }
 
-    public StaticObjectClass(ObjectKlass klass) {
-        super(klass);
-    }
-
-    public StaticObjectClass(ObjectKlass klass, boolean isStatic) {
-        super(klass, isStatic);
+    public StaticObjectClass(Klass mirror) {
+        super(mirror.getMeta().Class);
+        this.mirror = mirror;
     }
 
     @Override
     public String toString() {
-        return "class " + mirror.getName();
+        return "class " + mirror.getType();
     }
 }

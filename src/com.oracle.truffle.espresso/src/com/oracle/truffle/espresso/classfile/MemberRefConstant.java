@@ -22,8 +22,12 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 
 /**
  * Interface denoting a field or method entry in a constant pool.
@@ -34,7 +38,7 @@ public interface MemberRefConstant extends PoolConstant {
      * Gets the class in which this method or field is declared. Note that the actual holder after
      * resolution may be a super class of the class described by the one returned by this method.
      */
-    TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex);
+    Symbol<Name> getHolderKlassName(ConstantPool pool);
 
     /**
      * Gets the name of this field or method.
@@ -42,54 +46,110 @@ public interface MemberRefConstant extends PoolConstant {
      * @param pool the constant pool that maybe be required to convert a constant pool index to a
      *            name
      */
-    String getName(ConstantPool pool, int thisIndex);
+    Symbol<Name> getName(ConstantPool pool);
 
-    static abstract class Unresolved implements MemberRefConstant {
-        private final TypeDescriptor declaringClass;
-        private final String name;
+    /**
+     * Gets the descriptor (type or signature) of this field or method.
+     *
+     * @param pool the constant pool that maybe be required to convert a constant pool index to a
+     *            name
+     */
+    Symbol<? extends Descriptor> getDescriptor(ConstantPool pool);
 
-        public Unresolved(TypeDescriptor declaringClass, String name) {
-            this.declaringClass = declaringClass;
-            this.name = name;
-        }
-
-        public final TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex) {
-            return declaringClass;
-        }
-
-        public final String getName(ConstantPool pool, int thisIndex) {
-            return name;
-        }
+    @Override
+    default String toString(ConstantPool pool) {
+        return getHolderKlassName(pool) + "." + getName(pool) + getDescriptor(pool);
     }
 
-    static abstract class Indexes implements MemberRefConstant {
+    abstract class Indexes implements MemberRefConstant {
 
-        private final char classIndex;
-        private final char nameAndTypeIndex;
+        final char classIndex;
+        final char nameAndTypeIndex;
 
         Indexes(int classIndex, int nameAndTypeIndex) {
             this.classIndex = PoolConstant.u2(classIndex);
             this.nameAndTypeIndex = PoolConstant.u2(nameAndTypeIndex);
         }
 
-        protected abstract MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, String name, String type);
-
-        protected MemberRefConstant replace(ConstantPool pool, int thisIndex) {
-            TypeDescriptor declaringClass = pool.classAt(classIndex).getTypeDescriptor(pool, classIndex);
-            NameAndTypeConstant nat = pool.nameAndTypeAt(nameAndTypeIndex);
-            Utf8Constant name = nat.getName(pool, nameAndTypeIndex);
-            Utf8Constant type = nat.getType(pool, nameAndTypeIndex);
-            return (MemberRefConstant) pool.updateAt(thisIndex, createUnresolved(pool, declaringClass, name.getValue(), type.getValue()));
+        @Override
+        public Symbol<Name> getHolderKlassName(ConstantPool pool) {
+            return pool.classAt(classIndex).getName(pool);
         }
 
-        public final TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return replace(pool, thisIndex).getDeclaringClass(pool, thisIndex);
+        @Override
+        public Symbol<Name> getName(ConstantPool pool) {
+            return pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
         }
 
-        public String getName(ConstantPool pool, int thisIndex) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return replace(pool, thisIndex).getName(pool, thisIndex);
+        @Override
+        public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
+            return pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
         }
     }
+
+    /**
+     * <h3>5.4.4. Access Control</h3>
+     *
+     * A field or method R is accessible to a class or interface D if and only if any of the
+     * following is true:
+     * <ul>
+     * <li>R is public.
+     * <li>R is protected and is declared in a class C, and D is either a subclass of C or C itself.
+     * Furthermore, if R is not static, then the symbolic reference to R must contain a symbolic
+     * reference to a class T, such that T is either a subclass of D, a superclass of D, or D
+     * itself.
+     * <li>R is either protected or has default access (that is, neither public nor protected nor
+     * private), and is declared by a class in the same run-time package as D.
+     * <li>R is private and is declared in D.
+     * </ul>
+     */
+    static boolean checkAccess(Klass accessingKlass, Klass holderKlass, Field f) {
+        if (f.isPublic()) {
+            return true;
+        }
+        if (f.isProtected()) {
+            if (!f.isStatic()) {
+                if (f.getDeclaringKlass().isAssignableFrom(accessingKlass)) {
+                    return true;
+                }
+            } else {
+                if (holderKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(holderKlass)) {
+                    return true;
+                }
+            }
+        }
+        if (f.isProtected() || f.isPackagePrivate()) {
+            return accessingKlass.getRuntimePackage().equals(f.getDeclaringKlass().getRuntimePackage());
+        }
+        if (f.isPrivate() && f.getDeclaringKlass() == accessingKlass) {
+            return true;
+        }
+        return false;
+    }
+
+    // Same as above.
+    static boolean checkAccess(Klass accessingKlass, Klass holderKlass, Method m) {
+        if (m.isPublic()) {
+            return true;
+        }
+        if (m.isProtected()) {
+            if (!m.isStatic()) {
+                if (m.getDeclaringKlass().isAssignableFrom(accessingKlass)) {
+                    return true;
+                }
+            } else {
+                if (holderKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(holderKlass)) {
+                    return true;
+                }
+            }
+        }
+        if (m.isProtected() || m.isPackagePrivate()) {
+            return accessingKlass.getRuntimePackage().equals(m.getDeclaringKlass().getRuntimePackage());
+        }
+        if (m.isPrivate() && m.getDeclaringKlass() == accessingKlass) {
+            return true;
+        }
+        return false;
+    }
+
 }

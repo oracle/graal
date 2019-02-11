@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.bytecode;
 /**
  * A utility for processing {@link Bytecodes#TABLESWITCH} bytecodes.
  */
-public class BytecodeTableSwitch extends BytecodeSwitch {
+public final class BytecodeTableSwitch extends BytecodeSwitch {
 
     private static final int OFFSET_TO_LOW_KEY = 4;
     private static final int OFFSET_TO_HIGH_KEY = 8;

@@ -20,23 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
 
-public class AttributeInfo {
+package com.oracle.truffle.espresso.substitutions;
 
-    private final String name;
-    private final byte[] info;
+import static java.lang.annotation.ElementType.TYPE_USE;
 
-    public String getName() {
-        return name;
-    }
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    public byte[] getRawInfo() {
-        return info;
-    }
+@Retention(RetentionPolicy.RUNTIME)
+@Target(value = {TYPE_USE})
+public @interface Host {
+    Class<?> value() default Host.class;
 
-    public AttributeInfo(String name, byte[] info) {
-        this.name = name;
-        this.info = info;
-    }
+    String typeName() default "";
 }

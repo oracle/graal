@@ -23,45 +23,36 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
 import java.lang.reflect.Modifier;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Host;
+
 public final class ArrayKlass extends Klass {
+
     private final Klass componentType;
+    private final Klass elementalType;
 
     ArrayKlass(Klass componentType) {
-        super("[" + componentType.getName());
+        super(componentType.getContext(),
+                        null, // TODO(peterssen): Internal, , or / name?
+                        componentType.getTypes().arrayOf(componentType.getType()),
+                        componentType.getMeta().Object,
+                        componentType.getMeta().ARRAY_SUPERINTERFACES);
         this.componentType = componentType;
+        this.elementalType = componentType.getElementalType();
     }
 
     @Override
-    public ConstantPool getConstantPool() {
-        return getComponentType().getConstantPool();
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return getComponentType().getContext();
-    }
-
-    @Override
-    public StaticObject tryInitializeAndGetStatics() {
+    public StaticObject getStatics() {
         throw EspressoError.shouldNotReachHere("Arrays do not have static fields");
     }
 
     @Override
-    public boolean hasFinalizer() {
-        return false;
-    }
-
-    @Override
-    public int getModifiers() {
-        return (getElementalType().getModifiers() & (Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED)) | Modifier.FINAL | Modifier.ABSTRACT;
+    public final int getFlags() {
+        return (getElementalType().getFlags() & (Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED)) | Modifier.FINAL | Modifier.ABSTRACT;
     }
 
     @Override
@@ -71,32 +62,17 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public boolean isInstanceClass() {
-        return false;
-    }
-
-    @Override
-    public boolean isPrimitive() {
-        return false;
+        return !isArray() && !isInterface();
     }
 
     @Override
     public boolean isInitialized() {
-        return getComponentType().isInitialized();
+        return getElementalType().isInitialized();
     }
 
     @Override
     public void initialize() {
-        getComponentType().initialize();
-    }
-
-    @Override
-    public boolean isLinked() {
-        return getComponentType().isLinked();
-    }
-
-    @Override
-    public boolean isAssignableFrom(Klass other) {
-        throw EspressoError.unimplemented();
+        getElementalType().initialize();
     }
 
     @Override
@@ -105,60 +81,13 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public Klass getSuperclass() {
-        return getContext().getMeta().OBJECT.rawKlass();
-    }
-
-    @Override
-    public Klass[] getInterfaces() {
-        Klass cloneable = getContext().getMeta().CLONEABLE.rawKlass();
-        Klass serializable = getContext().getMeta().SERIALIZABLE.rawKlass();
-        return new Klass[]{cloneable, serializable};
-    }
-
-    @Override
-    public Klass findLeastCommonAncestor(Klass otherType) {
-        throw EspressoError.unimplemented();
+    public Klass getElementalType() {
+        return elementalType;
     }
 
     @Override
     public Klass getComponentType() {
         return componentType;
-    }
-
-    @Override
-    public MethodInfo resolveMethod(MethodInfo method, Klass callerType) {
-        return null;
-    }
-
-    @Override
-    public JavaKind getJavaKind() {
-        return JavaKind.Object;
-    }
-
-    @Override
-    public boolean isArray() {
-        return true;
-    }
-
-    @Override
-    public StaticObject getClassLoader() {
-        return getComponentType().getClassLoader();
-    }
-
-    @Override
-    public FieldInfo[] getInstanceFields(boolean includeSuperclasses) {
-        return FieldInfo.EMPTY_ARRAY;
-    }
-
-    @Override
-    public FieldInfo[] getStaticFields() {
-        return FieldInfo.EMPTY_ARRAY;
-    }
-
-    @Override
-    public FieldInfo findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-        throw EspressoError.unimplemented();
     }
 
     @Override
@@ -177,23 +106,31 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public MethodInfo[] getDeclaredConstructors() {
-        return MethodInfo.EMPTY_ARRAY;
+    public Method[] getDeclaredConstructors() {
+        return Method.EMPTY_ARRAY;
     }
 
     @Override
-    public MethodInfo[] getDeclaredMethods() {
-        return MethodInfo.EMPTY_ARRAY;
+    public Method[] getDeclaredMethods() {
+        return Method.EMPTY_ARRAY;
     }
 
     @Override
-    public FieldInfo[] getDeclaredFields() {
-        return FieldInfo.EMPTY_ARRAY;
+    public Field[] getDeclaredFields() {
+        return Field.EMPTY_ARRAY;
     }
 
     @Override
-    public MethodInfo getClassInitializer() {
-        return null;
+    public final @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+        return elementalType.getDefiningClassLoader();
     }
 
+    @Override
+    public ConstantPool getConstantPool() {
+        Klass elemental = getElementalType();
+        // TODO(peterssen): Array's elemental type cannot be null.
+        return elemental != null
+                        ? getElementalType().getConstantPool()
+                        : null;
+    }
 }

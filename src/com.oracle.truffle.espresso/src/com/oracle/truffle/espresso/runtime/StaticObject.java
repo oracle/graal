@@ -49,6 +49,10 @@ public abstract class StaticObject implements TruffleObject {
     public static boolean notNull(StaticObject object) {
         return !isNull(object);
     }
+
+    public final boolean isStaticStorage() {
+        return this == getKlass().getStatics();
+    }
 }
 
 final class Void extends StaticObject {

@@ -22,15 +22,15 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 import java.util.ArrayList;
 import java.util.Locale;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * Indicates a condition in Espresso related code that should never occur during normal operation.
  */
-public class EspressoError extends Error {
+public final class EspressoError extends Error {
 
     private static final long serialVersionUID = 2625263796982958128L;
 
@@ -128,4 +128,9 @@ public class EspressoError extends Error {
         return String.format(Locale.ENGLISH, msg, args);
     }
 
+    public static void warnIf(boolean condition, String msg) {
+        if (condition) {
+            System.err.println(msg);
+        }
+    }
 }

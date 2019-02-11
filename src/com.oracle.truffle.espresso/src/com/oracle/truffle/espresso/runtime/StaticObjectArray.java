@@ -22,13 +22,13 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import java.lang.reflect.Array;
+
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-
-import java.lang.reflect.Array;
 
 public final class StaticObjectArray extends StaticObject {
 
@@ -95,47 +95,47 @@ public final class StaticObjectArray extends StaticObject {
 
     public static StaticObjectArray wrap(StaticObject[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.OBJECT.array().rawKlass(), array);
+        return new StaticObjectArray(meta.Object_array, array);
     }
 
     public static StaticObjectArray wrap(byte[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.BYTE.array().rawKlass(), array);
+        return new StaticObjectArray(meta._byte_array, array);
     }
 
     public static StaticObjectArray wrap(boolean[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.BOOLEAN.array().rawKlass(), array);
+        return new StaticObjectArray(meta._boolean_array, array);
     }
 
     public static StaticObjectArray wrap(char[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.CHAR.array().rawKlass(), array);
+        return new StaticObjectArray(meta._char_array, array);
     }
 
     public static StaticObjectArray wrap(short[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.SHORT.array().rawKlass(), array);
+        return new StaticObjectArray(meta._short_array, array);
     }
 
     public static StaticObjectArray wrap(int[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.INT.array().rawKlass(), array);
+        return new StaticObjectArray(meta._int_array, array);
     }
 
     public static StaticObjectArray wrap(float[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.FLOAT.array().rawKlass(), array);
+        return new StaticObjectArray(meta._float_array, array);
     }
 
     public static StaticObjectArray wrap(double[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.DOUBLE.array().rawKlass(), array);
+        return new StaticObjectArray(meta._double_array, array);
     }
 
     public static StaticObjectArray wrap(long[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObjectArray(meta.LONG.array().rawKlass(), array);
+        return new StaticObjectArray(meta._long_array, array);
     }
 
     private Object cloneWrapped() {
@@ -143,7 +143,7 @@ public final class StaticObjectArray extends StaticObject {
             return this.<boolean[]> unwrap().clone();
         }
         if (array instanceof byte[]) {
-            return this.<boolean[]> unwrap().clone();
+            return this.<byte[]> unwrap().clone();
         }
         if (array instanceof char[]) {
             return this.<char[]> unwrap().clone();

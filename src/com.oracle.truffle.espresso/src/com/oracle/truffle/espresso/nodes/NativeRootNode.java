@@ -22,8 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -32,49 +31,41 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
-public abstract class NativeRootNode extends RootNode implements LinkedNode {
+public abstract class NativeRootNode extends EspressoRootNode {
 
     private final TruffleObject boundNative;
 
-    @CompilerDirectives.CompilationFinal //
-    private Meta.Method originalMethod;
+    @Child Node execute = Message.EXECUTE.createNode();
 
-    @Node.Child Node execute = Message.EXECUTE.createNode();
-
-    @Node.Child Node isNullNode = Message.IS_NULL.createNode();
+    @Child Node isNullNode = Message.IS_NULL.createNode();
 
     public final static DebugCounter nativeCalls = DebugCounter.create("Native calls");
 
-    public NativeRootNode(TruffleLanguage<?> language, TruffleObject boundNative) {
-        this(language, boundNative, null);
-    }
-
-    public NativeRootNode(TruffleLanguage<?> language, TruffleObject boundNative, Meta.Method originalMethod) {
-        super(language);
+    public NativeRootNode(TruffleObject boundNative, Method method) {
+        super(method);
         this.boundNative = boundNative;
-        this.originalMethod = originalMethod;
     }
 
     public Object[] preprocessArgs(Object[] args) {
-        Meta.Klass[] params = getOriginalMethod().getParameterTypes();
+        int paramCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
+        // Meta.Klass[] params = getOriginalMethod().getParameterTypes();
         // TODO(peterssen): Static method does not get the clazz in the arguments,
-        int argIndex = getOriginalMethod().isStatic() ? 0 : 1;
-        for (int i = 0; i < params.length; ++i) {
+        int argIndex = getMethod().isStatic() ? 0 : 1;
+        for (int i = 0; i < paramCount; ++i) {
             if (args[argIndex] == null) {
                 args[argIndex] = StaticObject.NULL;
             }
             if (args[argIndex] instanceof Boolean) {
-                if (params[i].kind() == JavaKind.Boolean) {
+                if (Signatures.parameterKind(getMethod().getParsedSignature(), i) == JavaKind.Boolean) {
                     args[argIndex] = (boolean) args[argIndex] ? (byte) 1 : (byte) 0;
                 }
             }
@@ -85,10 +76,6 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        if (originalMethod == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere();
-        }
         try {
             nativeCalls.inc();
             // TODO(peterssen): Inject JNIEnv properly, without copying.
@@ -107,18 +94,23 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
         }
     }
 
+    @TruffleBoundary
+    private static void maybeThrowAndClearPendingException(JniEnv jniEnv) {
+        StaticObject ex = jniEnv.getPendingException();
+        if (ex != null) {
+            jniEnv.clearPendingException();
+            throw new EspressoException(ex);
+        }
+    }
+
     public Object processResult(Object result) {
-        JniEnv jniEnv = EspressoLanguage.getCurrentContext().getJNI();
+        JniEnv jniEnv = getMethod().getContext().getJNI();
         assert jniEnv.getNativePointer() != 0;
 
         // JNI exception handling.
-        StaticObject ex = jniEnv.getThreadLocalPendingException().get();
-        if (ex != null) {
-            jniEnv.getThreadLocalPendingException().clear();
-            throw new EspressoException(ex);
-        }
+        maybeThrowAndClearPendingException(jniEnv);
 
-        switch (getOriginalMethod().getReturnType().kind()) {
+        switch (getMethod().getReturnKind()) {
             case Boolean:
                 return ((byte) result != 0);
             case Byte:
@@ -135,6 +127,7 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
                 }
                 return result;
         }
+
         // System.err.println("Return native " + originalMethod.getName() + " -> " + result);
         return result;
     }
@@ -152,15 +145,6 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
         newArgs[0] = first;
         newArgs[1] = second;
         return newArgs;
-    }
-
-    @Override
-    public Meta.Method getOriginalMethod() {
-        return originalMethod;
-    }
-
-    public void setOriginalMethod(Meta.Method originalMethod) {
-        this.originalMethod = originalMethod;
     }
 
     public TruffleObject getBoundNative() {

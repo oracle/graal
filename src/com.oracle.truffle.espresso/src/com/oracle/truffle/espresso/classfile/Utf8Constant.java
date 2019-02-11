@@ -23,8 +23,7 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-
-import java.util.Objects;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 
 public final class Utf8Constant implements PoolConstant {
 
@@ -33,40 +32,25 @@ public final class Utf8Constant implements PoolConstant {
         return Tag.UTF8;
     }
 
-    private final String value;
+    private final Symbol<?> value;
 
-    public Utf8Constant(String value) {
+    public Utf8Constant(Symbol<?> value) {
         this.value = value;
     }
 
-    public String getValue() {
-        return value;
+    @SuppressWarnings("unchecked")
+    public <T> Symbol<T> value() {
+        // TODO(peterssen): Maybe assert signature/type is valid.
+        return (Symbol<T>) value;
     }
 
     @Override
     public final String toString() {
-        return value;
+        return value.toString();
     }
 
     @Override
-    public String toString(ConstantPool pool, int thisIndex) {
-        return value;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        Utf8Constant that = (Utf8Constant) o;
-        return Objects.equals(value, that.value);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(value);
+    public String toString(ConstantPool pool) {
+        return value.toString();
     }
 }

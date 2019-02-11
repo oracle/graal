@@ -27,7 +27,7 @@ package com.oracle.truffle.espresso.meta;
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.12"
  */
-public class LineNumberTable {
+public final class LineNumberTable {
 
     private final int[] lineNumbers;
     private final int[] bcis;

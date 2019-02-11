@@ -22,70 +22,173 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveMethodCount;
+
+import java.util.Objects;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
+    @Override
     default Tag tag() {
         return Tag.INTERFACE_METHOD_REF;
     }
 
-    static final class Resolved extends MethodRefConstant.Resolved implements InterfaceMethodRefConstant {
-        public Resolved(MethodInfo method) {
-            super(method);
-        }
-    }
-
-    static final class Unresolved extends MethodRefConstant.Unresolved implements InterfaceMethodRefConstant {
-
-        public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
-            super(declaringClass, name, signature);
+    final class Indexes extends MethodRefConstant.Indexes implements InterfaceMethodRefConstant, Resolvable {
+        Indexes(int classIndex, int nameAndTypeIndex) {
+            super(classIndex, nameAndTypeIndex);
         }
 
-        private MethodInfo lookupMethod(Klass declaringInterface, String name, SignatureDescriptor signature) {
-            MethodInfo m = declaringInterface.findMethod(name, signature);
-            if (m != null) {
-                return m;
-            }
-            for (Klass i : declaringInterface.getInterfaces()) {
-                m = lookupMethod(i, name, signature);
-                if (m != null) {
+        /**
+         * <h3>5.4.3.4. Interface Method Resolution</h3>
+         *
+         * To resolve an unresolved symbolic reference from D to an interface method in an interface
+         * C, the symbolic reference to C given by the interface method reference is first resolved
+         * (§5.4.3.1). Therefore, any exception that can be thrown as a result of failure of
+         * resolution of an interface reference can be thrown as a result of failure of interface
+         * method resolution. If the reference to C can be successfully resolved, exceptions
+         * relating to the resolution of the interface method reference itself can be thrown.
+         *
+         * When resolving an interface method reference:
+         * <ol>
+         * <li><b>If C is not an interface, interface method resolution throws an
+         * IncompatibleClassChangeError.</b>
+         * <li>Otherwise, if C declares a method with the name and descriptor specified by the
+         * interface method reference, method lookup succeeds.
+         * <li>Otherwise, if the class Object declares a method with the name and descriptor
+         * specified by the interface method reference, which has its ACC_PUBLIC flag set and does
+         * not have its ACC_STATIC flag set, method lookup succeeds.
+         * <li>Otherwise, if the maximally-specific superinterface methods (§5.4.3.3) of C for the
+         * name and descriptor specified by the method reference include exactly one method that
+         * does not have its ACC_ABSTRACT flag set, then this method is chosen and method lookup
+         * succeeds.
+         * <li>Otherwise, if any superinterface of C declares a method with the name and descriptor
+         * specified by the method reference that has neither its ACC_PRIVATE flag nor its
+         * ACC_STATIC flag set, one of these is arbitrarily chosen and method lookup succeeds.
+         * <li>Otherwise, method lookup fails.
+         * </ol>
+         *
+         * The result of interface method resolution is determined by whether method lookup succeeds
+         * or fails:
+         * <ul>
+         * <li><b>If method lookup fails, interface method resolution throws a
+         * NoSuchMethodError.</b>
+         * <li><b>If method lookup succeeds and the referenced method is not accessible (§5.4.4) to
+         * D, interface method resolution throws an IllegalAccessError.</b>
+         * <li>Otherwise, let < E, L1 > be the class or interface in which the referenced interface
+         * method m is actually declared, and let L2 be the defining loader of D.
+         * <li>Given that the return type of m is Tr, and that the formal parameter types of m are
+         * Tf1, ..., Tfn, then:
+         * <li>If Tr is not an array type, let T0 be Tr; otherwise, let T0 be the element type
+         * (§2.4) of Tr.
+         * <li>For i = 1 to n: If Tfi is not an array type, let Ti be Tfi; otherwise, let Ti be the
+         * element type (§2.4) of Tfi.
+         * <li>The Java Virtual Machine must impose the loading constraints TiL1 = TiL2 for i = 0 to
+         * n (§5.3.4).
+         * </ul>
+         * The clause about accessibility is necessary because interface method resolution may pick
+         * a private method of interface C. (Prior to Java SE 8, the result of interface method
+         * resolution could be a non-public method of class Object or a static method of class
+         * Object; such results were not consistent with the inheritance model of the Java
+         * programming language, and are disallowed in Java SE 8 and above.)
+         */
+        private static Method lookupInterfaceMethod(ObjectKlass seed, Symbol<Name> name, Symbol<Signature> signature) {
+            for (Method m : seed.getDeclaredMethods()) {
+                if (!m.isStatic() && !m.isPrivate() && name.equals(m.getName()) && signature.equals(m.getRawSignature())) {
                     return m;
+                }
+            }
+            // FIXME(peterssen): Not implemented: If the maximally-specific superinterface methods
+            // of C for the name and descriptor specified by the method reference include exactly
+            // one method that does not have its ACC_ABSTRACT flag set, then this method is chosen
+            // and method lookup succeeds.
+            for (ObjectKlass i : seed.getInterfaces()) {
+                Method method = lookupInterfaceMethod(i, name, signature);
+                if (method != null) {
+                    return method;
                 }
             }
             return null;
         }
 
         @Override
-        public MethodInfo resolve(ConstantPool pool, int index) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Klass declaringInterface = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
-            assert declaringInterface.isInterface();
-            String name = getName(pool, index);
-            SignatureDescriptor signature = getSignature(pool, index);
-            MethodInfo m = lookupMethod(declaringInterface, name, signature);
-            if (m != null) {
-                return m;
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+            resolveMethodCount.inc();
+            EspressoContext context = pool.getContext();
+            Symbol<Name> holderKlassName = getHolderKlassName(pool);
+            Klass holderInterface = context.getRegistries().loadKlass(context.getTypes().fromName(holderKlassName), accessingKlass.getDefiningClassLoader());
+
+            Symbol<Name> name = getName(pool);
+
+            Meta meta = context.getMeta();
+            if (!holderInterface.isInterface()) {
+                throw meta.throwExWithMessage(meta.IncompatibleClassChangeError, meta.toGuestString(name));
             }
-            throw EspressoError.shouldNotReachHere(declaringInterface.toString() + "." + name + signature);
+
+            Symbol<Signature> signature = getSignature(pool);
+
+            Method method = holderInterface.lookupDeclaredMethod(name, signature);
+            if (method == null) {
+                Method m = meta.Object.lookupDeclaredMethod(name, signature);
+                if (m != null && m.isPublic() && !m.isStatic()) {
+                    method = m;
+                }
+            }
+
+            if (method == null) {
+                // Interfaces are always ObjectKlass(es).
+                method = lookupInterfaceMethod((ObjectKlass) holderInterface, name, signature);
+            }
+
+            if (method == null) {
+                throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString(name));
+            }
+
+            if (!MemberRefConstant.checkAccess(accessingKlass, holderInterface, method)) {
+                throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(name));
+            }
+
+            return new Resolved(method);
         }
     }
 
-    static final class Indexes extends MethodRefConstant.Indexes implements InterfaceMethodRefConstant {
+    final class Resolved implements InterfaceMethodRefConstant, Resolvable.ResolvedConstant {
+        private final Method resolved;
 
-        @Override
-        protected MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, String name, String type) {
-            return new InterfaceMethodRefConstant.Unresolved(declaringClass, name, pool.getContext().getSignatureDescriptors().make(type));
+        Resolved(Method resolved) {
+            this.resolved = Objects.requireNonNull(resolved);
         }
 
-        Indexes(int classIndex, int nameAndTypeIndex) {
-            super(classIndex, nameAndTypeIndex);
+        @Override
+        public Method value() {
+            return resolved;
+        }
+
+        @Override
+        public Symbol<Name> getHolderKlassName(ConstantPool pool) {
+            // return resolved.getDeclaringKlass().getName();
+            throw EspressoError.shouldNotReachHere("Method already resolved");
+        }
+
+        @Override
+        public Symbol<Name> getName(ConstantPool pool) {
+            return resolved.getName();
+        }
+
+        @Override
+        public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
+            return resolved.getRawSignature();
         }
     }
 }

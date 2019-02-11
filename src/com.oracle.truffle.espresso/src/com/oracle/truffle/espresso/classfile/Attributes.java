@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.types;
+package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import org.graalvm.collections.EconomicMap;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
-public abstract class DescriptorCache<T extends Descriptor> {
+public final class Attributes {
+    private static final EconomicMap<Symbol<Name>, Attribute> EMPTY = EconomicMap.create(0);
 
-    protected final ConcurrentHashMap<String, T> cache = new ConcurrentHashMap<>();
+    private final EconomicMap<Symbol<Name>, Attribute> map;
 
-    public T lookup(String key) {
-        CompilerAsserts.neverPartOfCompilation();
-        return cache.get(key);
+    public Attributes(final Attribute[] attributes) {
+        if (attributes.length == 0) {
+            map = EMPTY;
+        } else {
+            map = EconomicMap.create(attributes.length);
+        }
+        for (Attribute a : attributes) {
+            map.put(a.getName(), a);
+        }
     }
 
-    public T make(String key) {
-        CompilerAsserts.neverPartOfCompilation();
-        return cache.computeIfAbsent(key, new Function<String, T>() {
-            @Override
-            public T apply(String key1) {
-                return DescriptorCache.this.create(key1);
-            }
-        });
+    public Attribute get(Symbol<Name> name) {
+        return map.get(name);
     }
-
-    protected abstract T create(String key);
 }

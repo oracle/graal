@@ -28,14 +28,15 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 public abstract class InvokeInterfaceNode extends QuickNode {
 
-    final MethodInfo resolutionSeed;
+    final Method resolutionSeed;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -45,7 +46,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
     Object callVirtualDirect(StaticObjectImpl receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
-                    @Cached("methodLookup(resolutionSeed, receiver)") MethodInfo resolvedMethod,
+                    @Cached("methodLookup(resolutionSeed, receiver)") Method resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
         return directCallNode.call(args);
     }
@@ -55,20 +56,20 @@ public abstract class InvokeInterfaceNode extends QuickNode {
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // Brute virtual method resolution, walk the whole klass hierarchy.
         // TODO(peterssen): Implement itable-based lookup.
-        MethodInfo targetMethod = methodLookup(resolutionSeed, receiver);
+        Method targetMethod = methodLookup(resolutionSeed, receiver);
         return indirectCallNode.call(targetMethod.getCallTarget(), arguments);
     }
 
-    InvokeInterfaceNode(MethodInfo resolutionSeed) {
+    InvokeInterfaceNode(Method resolutionSeed) {
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
     }
 
     @TruffleBoundary
-    static MethodInfo methodLookup(MethodInfo resolutionSeed, StaticObject receiver) {
+    static Method methodLookup(Method resolutionSeed, StaticObject receiver) {
         // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
         Klass clazz = receiver.getKlass();
-        return clazz.findConcreteMethod(resolutionSeed.getName(), resolutionSeed.getSignature());
+        return clazz.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
     }
 
     @Override
@@ -77,14 +78,14 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        EspressoRootNode root = (EspressoRootNode) getParent();
+        BytecodeNode root = (BytecodeNode) getParent();
         // TODO(peterssen): IsNull Node?.
         final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
-        final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getSignature());
+        final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver != null;
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = executeVirtual(receiver, args);
-        int resultAt = top - resolutionSeed.getSignature().getNumberOfSlotsForParameters() - 1; // -receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, resolutionSeed.getSignature().resultKind());
+        int resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
+        return (resultAt - top) + root.putKind(frame, resultAt, result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
     }
 }

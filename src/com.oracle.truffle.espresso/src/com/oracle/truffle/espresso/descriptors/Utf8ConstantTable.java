@@ -20,34 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.types;
+package com.oracle.truffle.espresso.descriptors;
 
-import com.oracle.truffle.espresso.meta.MetaUtil;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
-public final class SignatureDescriptors extends DescriptorCache<SignatureDescriptor> {
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.espresso.classfile.Utf8Constant;
 
-    private final TypeDescriptors typeDescriptors;
+/**
+ * Global Utf8Constant table.
+ */
+public final class Utf8ConstantTable {
+    private final Symbols symbols;
 
-    public SignatureDescriptors(TypeDescriptors typeDescriptors) {
-        this.typeDescriptors = typeDescriptors;
+    // TODO(peterssen): Set generous initial capacity.
+    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> cache = new ConcurrentHashMap<>();
+
+    public Utf8ConstantTable(Symbols symbols) {
+        this.symbols = symbols;
     }
 
-    public TypeDescriptors getTypeDescriptors() {
-        return typeDescriptors;
-    }
-
-    @Override
-    protected SignatureDescriptor create(String key) {
-        return new SignatureDescriptor(typeDescriptors, key);
-    }
-
-    public SignatureDescriptor create(Class<?> returnType, Class<?>... parameterTypes) {
-        StringBuilder sb = new StringBuilder("(");
-        for (Class<?> param : parameterTypes) {
-            sb.append(MetaUtil.toInternalName(param.getName()));
-        }
-        sb.append(")");
-        sb.append(MetaUtil.toInternalName(returnType.getName()));
-        return new SignatureDescriptor(typeDescriptors, sb.toString());
+    public Utf8Constant getOrCreate(ByteSequence bytes) {
+        CompilerAsserts.neverPartOfCompilation();
+        return cache.computeIfAbsent(symbols.symbolify(bytes), new Function<Symbol<?>, Utf8Constant>() {
+            @Override
+            public Utf8Constant apply(Symbol<?> value) {
+                return new Utf8Constant(value);
+            }
+        });
     }
 }

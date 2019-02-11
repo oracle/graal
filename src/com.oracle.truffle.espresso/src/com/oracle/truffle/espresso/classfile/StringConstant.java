@@ -22,50 +22,67 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class StringConstant implements PoolConstant {
-
-    @CompilerDirectives.CompilationFinal() private volatile StaticObject internedString;
+public interface StringConstant extends PoolConstant {
 
     @Override
-    public Tag tag() {
+    default Tag tag() {
         return Tag.STRING;
     }
 
     @Override
-    public String toString(ConstantPool pool, int thisIndex) {
-        return getValue(pool);
+    default String toString(ConstantPool pool) {
+        return getSymbol(pool).toString();
     }
 
-    private final int utf8Index;
+    /**
+     * Gets the name of this name+descriptor pair constant.
+     *
+     * @param pool the constant pool that maybe be required to convert a constant pool index to a
+     *            name
+     */
+    Symbol<Constant> getSymbol(ConstantPool pool);
 
-    public StringConstant(int utf8Index) {
-        this.utf8Index = utf8Index;
-    }
+    final class Index implements StringConstant, Resolvable {
+        private final int utf8Index;
 
-    public Utf8Constant getSymbol(ConstantPool pool) {
-        return pool.utf8At(utf8Index);
-    }
-
-    public String getValue(ConstantPool pool) {
-        return pool.utf8At(utf8Index).toString();
-    }
-
-    public StaticObject intern(ConstantPool pool) {
-        StaticObject result = internedString;
-        if (result == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                result = internedString;
-                if (result == null) {
-                    result = pool.getContext().getStrings().intern(getValue(pool));
-                    internedString = result;
-                }
-            }
+        @Override
+        public Symbol<Constant> getSymbol(ConstantPool pool) {
+            return pool.utf8At(utf8Index);
         }
-        return result;
+
+        Index(int utf8Index) {
+            this.utf8Index = utf8Index;
+        }
+
+        @Override
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+            return new Resolved(pool.getContext().getStrings().intern(getSymbol(pool)));
+        }
+    }
+
+    final class Resolved implements StringConstant, Resolvable.ResolvedConstant {
+
+        private final StaticObject resolved;
+
+        Resolved(StaticObject resolved) {
+            this.resolved = resolved;
+        }
+
+        @Override
+        public StaticObject value() {
+            return resolved;
+        }
+
+        @Override
+        public Symbol<Constant> getSymbol(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere("String already resolved");
+        }
     }
 }

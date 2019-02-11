@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.bytecode;
 /**
  * A utility for processing {@link Bytecodes#LOOKUPSWITCH} bytecodes.
  */
-public class BytecodeLookupSwitch extends BytecodeSwitch {
+public final class BytecodeLookupSwitch extends BytecodeSwitch {
 
     private static final int OFFSET_TO_NUMBER_PAIRS = 4;
     private static final int OFFSET_TO_FIRST_PAIR_MATCH = 8;

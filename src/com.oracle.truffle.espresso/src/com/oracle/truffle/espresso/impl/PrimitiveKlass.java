@@ -23,49 +23,36 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.lang.reflect.Modifier;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.lang.reflect.Modifier;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
- * Implementation of {@link Klass} for primitive types.
+ * Implementation of {@link Klass} for primitive types. Primitive classes don't have a .class
+ * representation, so the associated LinkedKlass is null.
  */
 public final class PrimitiveKlass extends Klass {
-    private final JavaKind kind;
-    private final EspressoContext context;
-
     /**
      * Creates Espresso type for a primitive {@link JavaKind}.
      *
      * @param kind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind kind) {
-        super(String.valueOf(kind.getTypeChar()));
-        this.kind = kind;
-        this.context = context;
-        assert kind.isPrimitive() : kind + " not a primitive type";
+        super(context, kind.getPrimitiveBinaryName(), kind.getType(), null, ObjectKlass.EMPTY_ARRAY);
+        assert kind.isPrimitive() : kind + " not a primitive kind";
     }
 
     @Override
-    public int getModifiers() {
-        return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
-    }
-
-    @Override
-    public ArrayKlass getArrayClass() {
-        if (kind == JavaKind.Void) {
+    protected ArrayKlass createArrayKlass() {
+        if (getJavaKind() == JavaKind.Void) {
             return null;
         }
-        return super.getArrayClass();
-    }
-
-    @Override
-    public Klass getElementalType() {
-        return this;
+        return super.createArrayKlass();
     }
 
     @Override
@@ -74,47 +61,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public Klass getSuperclass() {
-        return null;
-    }
-
-    @Override
-    public Klass[] getInterfaces() {
-        return Klass.EMPTY_ARRAY;
-    }
-
-    @Override
-    public Klass findLeastCommonAncestor(Klass otherType) {
-        return null;
-    }
-
-    @Override
-    public boolean hasFinalizer() {
-        return false;
-    }
-
-    @Override
-    public boolean isArray() {
-        return false;
-    }
-
-    @Override
-    public StaticObject getClassLoader() {
-        return StaticObject.NULL; // BCL
-    }
-
-    @Override
-    public boolean isPrimitive() {
-        return true;
-    }
-
-    @Override
     public boolean isInitialized() {
-        return true;
-    }
-
-    @Override
-    public boolean isLinked() {
         return true;
     }
 
@@ -124,60 +71,23 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public boolean isInterface() {
-        return false;
-    }
-
-    @Override
-    public boolean isAssignableFrom(Klass other) {
-        assert other != null;
-        // TODO(peterssen): Reference equality should be enough per context.
-        return other.equals(this);
-    }
-
-    @Override
     public Klass getHostClass() {
         return null;
     }
 
     @Override
-    public JavaKind getJavaKind() {
-        return kind;
-    }
-
-    @Override
-    public boolean isJavaLangObject() {
-        return false;
-    }
-
-    @Override
-    public MethodInfo resolveMethod(MethodInfo method, Klass callerType) {
-        return null;
-    }
-
-    @Override
-    public String toString() {
-        return "PrimitiveKlass<" + kind + ">";
-    }
-
-    @Override
-    public FieldInfo[] getInstanceFields(boolean includeSuperclasses) {
-        return FieldInfo.EMPTY_ARRAY;
-    }
-
-    @Override
-    public FieldInfo[] getStaticFields() {
-        return FieldInfo.EMPTY_ARRAY;
+    public Klass getElementalType() {
+        return this;
     }
 
     @Override
     public void initialize() {
-        // nop
+        /* nop */
     }
 
     @Override
-    public FieldInfo findInstanceFieldWithOffset(long offset, JavaKind expectedType) {
-        return null;
+    public final @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+        return StaticObject.NULL; // BCL
     }
 
     @Override
@@ -186,12 +96,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public EspressoContext getContext() {
-        return context;
-    }
-
-    @Override
-    public StaticObject tryInitializeAndGetStatics() {
+    public StaticObject getStatics() {
         throw EspressoError.shouldNotReachHere("Primitives do not have static fields");
     }
 
@@ -211,22 +116,32 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public MethodInfo[] getDeclaredConstructors() {
-        return MethodInfo.EMPTY_ARRAY;
+    public Method[] getDeclaredConstructors() {
+        return Method.EMPTY_ARRAY;
     }
 
     @Override
-    public MethodInfo[] getDeclaredMethods() {
-        return MethodInfo.EMPTY_ARRAY;
+    public Method[] getDeclaredMethods() {
+        return Method.EMPTY_ARRAY;
     }
 
     @Override
-    public FieldInfo[] getDeclaredFields() {
-        return FieldInfo.EMPTY_ARRAY;
+    public Field[] getDeclaredFields() {
+        return Field.EMPTY_ARRAY;
     }
 
     @Override
-    public MethodInfo getClassInitializer() {
+    public Method getClassInitializer() {
         return null;
+    }
+
+    @Override
+    public String toString() {
+        return "PrimitiveKlass<" + getJavaKind() + ">";
+    }
+
+    @Override
+    protected final int getFlags() {
+        return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
     }
 }

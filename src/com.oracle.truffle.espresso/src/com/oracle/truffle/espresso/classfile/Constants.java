@@ -51,7 +51,7 @@ public final class Constants {
 
     public static final int JVM_RECOGNIZED_CLASS_MODIFIERS = ACC_PUBLIC |
                     ACC_FINAL |
-                    ACC_SUPER |
+                    // ACC_SUPER | // Only very old compilers.
                     ACC_INTERFACE |
                     ACC_ABSTRACT |
                     ACC_ANNOTATION |

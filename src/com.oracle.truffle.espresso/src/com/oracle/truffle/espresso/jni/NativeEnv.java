@@ -41,7 +41,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
-public class NativeEnv {
+public abstract class NativeEnv {
 
     static final Map<Class<?>, NativeSimpleType> classToNative = buildClassToNative();
 

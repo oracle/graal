@@ -37,7 +37,7 @@ public interface PoolConstant {
 
     Tag tag();
 
-    String toString(ConstantPool pool, int thisIndex);
+    String toString(ConstantPool pool);
 
     static byte u1(int i) {
         assert (byte) i == i;

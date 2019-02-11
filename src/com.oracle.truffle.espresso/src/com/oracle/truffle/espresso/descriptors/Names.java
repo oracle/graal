@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.espresso.descriptors;
 
-package com.oracle.truffle.espresso.substitutions;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+/**
+ * Manages access to "name" symbols.
+ *
+ * Names do not have a well-defined format, except for not being empty. In debug mode this class
+ * should warn if name symbol is valid type or signature.
+ */
+public final class Names {
+    private final Symbols symbols;
 
-import static java.lang.annotation.ElementType.TYPE_USE;
+    public Names(Symbols symbols) {
+        this.symbols = symbols;
+    }
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {TYPE_USE})
-public @interface Type {
-    Class<?> value() default Type.class;
+    public final Symbol<Name> lookup(ByteSequence bytes) {
+        return symbols.lookup(bytes);
+    }
 
-    String typeName() default "";
+    public final Symbol<Name> lookup(String name) {
+        return lookup(ByteSequence.create(name));
+    }
+
+    public final Symbol<Name> getOrCreate(String name) {
+        return symbols.symbolify(ByteSequence.create(name));
+    }
 }

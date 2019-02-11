@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 @EspressoSubstitutions
-public class Target_sun_misc_VM {
+public final class Target_sun_misc_VM {
     @Substitution
     public static void initialize() {
         /* nop */

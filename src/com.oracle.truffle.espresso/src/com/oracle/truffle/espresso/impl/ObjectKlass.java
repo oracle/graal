@@ -23,152 +23,109 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
-import java.util.Arrays;
-import java.util.function.Consumer;
-import java.util.function.IntFunction;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.AttributeInfo;
+import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
- * Represents resolved non-primitive, non-array types in Espresso.
+ * Resolved non-primitive, non-array types in Espresso.
  */
 public final class ObjectKlass extends Klass {
-    private final Klass superclass;
-    private final Klass[] interfaces;
-    private final MethodInfo[] declaredMethods;
 
-    private final FieldInfo[] declaredFields;
-    private final int accessFlags;
+    public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
+
     private final EnclosingMethodAttribute enclosingMethod;
-    private final ConstantPool pool;
 
-    @CompilerDirectives.CompilationFinal private StaticObject statics;
+    private final RuntimeConstantPool pool;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private FieldInfo[] instanceFieldsCache;
+    private final LinkedKlass linkedKlass;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private FieldInfo[] declaredInstanceFieldsCache;
+    @CompilationFinal //
+    private StaticObject statics;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private FieldInfo[] staticFieldsCache;
+    @CompilationFinal(dimensions = 1) //
+    private Field[] declaredFields;
+
+    @CompilationFinal(dimensions = 1) //
+    private Method[] declaredMethods;
 
     private final InnerClassesAttribute innerClasses;
 
-    private final AttributeInfo runtimeVisibleAnnotations;
+    private final Attribute runtimeVisibleAnnotations;
 
-    private final int instanceFieldSlots;
+    private int initState = LINKED;
 
-    public int getInstanceFieldSlots() {
-        return instanceFieldSlots;
-    }
-
-    public int getStaticFieldSlots() {
-        return getStaticFields().length;
-    }
-
-    private int initState = LOADED;
     public static final int LOADED = 0;
     public static final int LINKED = 1;
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
 
-    public ObjectKlass(String klassName, Klass superclass, Klass[] interfaces,
-                    MethodInfo.Builder[] declaredMethodsBuilders,
-                    FieldInfo.Builder[] declaredFieldBuilders,
-                    int accessFlags,
-                    EnclosingMethodAttribute enclosingMethod,
-                    InnerClassesAttribute innerClasses,
-                    ConstantPool pool, AttributeInfo runtimeVisibleAnnotations) {
-        super(klassName);
-        this.superclass = superclass;
-        this.interfaces = interfaces;
-        this.accessFlags = accessFlags;
-        this.enclosingMethod = enclosingMethod;
-        this.innerClasses = innerClasses;
-        this.pool = pool;
-        this.runtimeVisibleAnnotations = runtimeVisibleAnnotations;
+    public final Attribute getAttribute(Symbol<Name> name) {
+        return linkedKlass.getAttribute(name);
+    }
 
-        this.declaredMethods = new MethodInfo[declaredMethodsBuilders.length];
-        this.declaredFields = new FieldInfo[declaredFieldBuilders.length];
+    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces,
+                    StaticObject classLoader) {
+        super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces);
 
-        for (int i = 0; i < declaredMethods.length; ++i) {
-            this.declaredMethods[i] = declaredMethodsBuilders[i].setDeclaringClass(this).build();
+        this.linkedKlass = linkedKlass;
+
+        this.enclosingMethod = (EnclosingMethodAttribute) getAttribute(EnclosingMethodAttribute.NAME);
+        this.innerClasses = (InnerClassesAttribute) getAttribute(InnerClassesAttribute.NAME);
+
+        // Move attribute name to better location.
+        this.runtimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
+
+        // TODO(peterssen): Make writable copy.
+        this.pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
+
+        LinkedField[] linkedFields = linkedKlass.getLinkedFields();
+        Field[] fields = new Field[linkedFields.length];
+        for (int i = 0; i < fields.length; ++i) {
+            fields[i] = new Field(linkedFields[i], this);
         }
-        for (int i = 0; i < declaredFields.length; ++i) {
-            this.declaredFields[i] = declaredFieldBuilders[i].setDeclaringClass(this).build();
+
+        LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
+        Method[] methods = new Method[linkedMethods.length];
+        for (int i = 0; i < methods.length; ++i) {
+            methods[i] = new Method(this, linkedMethods[i]);
         }
 
-        this.instanceFieldSlots = countDeclaredInstanceFields(this.declaredFields) + (superclass == null ? 0 : ((ObjectKlass) superclass).getInstanceFieldSlots());
+        this.declaredFields = fields;
+        this.declaredMethods = methods;
     }
 
     @Override
-    public EspressoContext getContext() {
-        return pool.getContext();
-    }
-
-    private static int countDeclaredInstanceFields(FieldInfo[] declaredFields) {
-        int count = 0;
-        for (FieldInfo fi : declaredFields) {
-            if (!fi.isStatic()) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    public int getInitState() {
-        return initState;
-    }
-
-    @Override
-    public StaticObject tryInitializeAndGetStatics() {
+    public StaticObject getStatics() {
         if (statics == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             statics = new StaticObjectImpl(this, true);
         }
-        initialize();
         return statics;
     }
 
     @Override
-    public ConstantPool getConstantPool() {
-        return pool;
-    }
-
-    @Override
-    public boolean hasFinalizer() {
+    public boolean isInstanceClass() {
         throw EspressoError.unimplemented();
     }
 
     @Override
-    public int getModifiers() {
-        return getAccessFlags() & EspressoModifiers.jvmClassModifiers();
-    }
-
-    private int getAccessFlags() {
-        return accessFlags;
-    }
-
-    @Override
-    public boolean isInstanceClass() {
-        return !isArray() && !isInterface();
-    }
-
-    @Override
-    public boolean isPrimitive() {
-        return false;
+    public int getFlags() {
+        return linkedKlass.getFlags();
     }
 
     @Override
@@ -180,138 +137,101 @@ public final class ObjectKlass extends Klass {
     public void initialize() {
         if (!isInitialized()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (getSuperclass() != null) {
-                getSuperclass().initialize();
+            if (getSuperKlass() != null) {
+                getSuperKlass().initialize();
             }
             initState = INITIALIZED;
-            meta(this).getClassInitializer().ifPresent(new Consumer<Meta.Method.WithInstance>() {
-                @Override
-                public void accept(Meta.Method.WithInstance clinit) {
-                    clinit.invokeDirect();
+
+            // TODO(peterssen): Initialize superinterfaces with default methods.
+
+            /**
+             * Spec fragment: Then, initialize each final static field of C with the constant value
+             * in its ConstantValue attribute (§4.7.2), in the order the fields appear in the
+             * ClassFile structure.
+             *
+             * ...
+             *
+             * Next, execute the class or interface initialization method of C.
+             */
+            for (Field f : declaredFields) {
+                if (f.isStatic()) {
+                    ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
+                    if (a == null) {
+                        break;
+                    }
+                    switch (f.getKind()) {
+                        case Boolean: {
+                            boolean c = getConstantPool().intAt(a.getConstantvalueIndex()) != 0;
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Byte: {
+                            byte c = (byte) getConstantPool().intAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Short: {
+                            short c = (short) getConstantPool().intAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Char: {
+                            char c = (char) getConstantPool().intAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Int: {
+                            int c = getConstantPool().intAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Float: {
+                            float c = getConstantPool().floatAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Long: {
+                            long c = getConstantPool().longAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Double: {
+                            double c = getConstantPool().doubleAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Object: {
+                            StaticObject c = getConstantPool().resolvedStringAt(a.getConstantvalueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        default:
+                            EspressoError.shouldNotReachHere("invalid constant field kind");
+                    }
                 }
-            });
+            }
+
+            Method clinit = getClassInitializer();
+            if (clinit != null) {
+                clinit.getCallTarget().call();
+            }
             assert isInitialized();
         }
     }
 
     @Override
-    public boolean isLinked() {
-        throw EspressoError.unimplemented();
+    public Klass getElementalType() {
+        return this;
     }
 
     @Override
-    public boolean isAssignableFrom(Klass other) {
-        throw EspressoError.unimplemented();
+    public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+        return pool.getClassLoader();
     }
 
     @Override
-    public Klass getHostClass() {
-        return null;
-    }
-
-    @Override
-    public Klass getSuperclass() {
-        return superclass;
-    }
-
-    @Override
-    public Klass[] getInterfaces() {
-        return interfaces;
-    }
-
-    @Override
-    public Klass findLeastCommonAncestor(Klass otherType) {
-        return null;
-    }
-
-    @Override
-    public Klass getComponentType() {
-        return null;
-    }
-
-    @Override
-    public MethodInfo resolveMethod(MethodInfo method, Klass callerType) {
-        return null;
-    }
-
-    @Override
-    public JavaKind getJavaKind() {
-        return JavaKind.Object;
-    }
-
-    @Override
-    public boolean isArray() {
-        return false;
-    }
-
-    @Override
-    public StaticObject getClassLoader() {
-        return getConstantPool().getClassLoader();
-    }
-
-    @Override
-    public FieldInfo[] getInstanceFields(boolean includeSuperclasses) {
-        if (!includeSuperclasses) {
-            if (declaredInstanceFieldsCache == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                declaredInstanceFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<FieldInfo>() {
-                    @Override
-                    public boolean test(FieldInfo f) {
-                        return !f.isStatic();
-                    }
-                }).toArray(new IntFunction<FieldInfo[]>() {
-                    @Override
-                    public FieldInfo[] apply(int value) {
-                        return new FieldInfo[value];
-                    }
-                });
-            }
-            return declaredInstanceFieldsCache;
-        }
-        if (instanceFieldsCache == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Stream<FieldInfo> fields = Arrays.stream(declaredFields).filter(new Predicate<FieldInfo>() {
-                @Override
-                public boolean test(FieldInfo f) {
-                    return !f.isStatic();
-                }
-            });
-            if (includeSuperclasses && getSuperclass() != null) {
-                fields = Stream.concat(Arrays.stream(getSuperclass().getInstanceFields(includeSuperclasses)), fields);
-            }
-            instanceFieldsCache = fields.toArray(new IntFunction<FieldInfo[]>() {
-                @Override
-                public FieldInfo[] apply(int value) {
-                    return new FieldInfo[value];
-                }
-            });
-        }
-        return instanceFieldsCache;
-    }
-
-    @Override
-    public FieldInfo[] getStaticFields() {
-        // TODO(peterssen): Cache static fields.
-        if (staticFieldsCache == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            staticFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<FieldInfo>() {
-                @Override
-                public boolean test(FieldInfo fieldInfo) {
-                    return fieldInfo.isStatic();
-                }
-            }).toArray(new IntFunction<FieldInfo[]>() {
-                @Override
-                public FieldInfo[] apply(int value) {
-                    return new FieldInfo[value];
-                }
-            });
-        }
-        return staticFieldsCache;
-    }
-
-    @Override
-    public FieldInfo findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-        return null;
+    public RuntimeConstantPool getConstantPool() {
+        return pool;
     }
 
     @Override
@@ -330,28 +250,29 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public MethodInfo[] getDeclaredConstructors() {
-        return Arrays.stream(declaredMethods).filter(new Predicate<MethodInfo>() {
-            @Override
-            public boolean test(MethodInfo m) {
-                return "<init>".equals(m.getName());
+    public Method[] getDeclaredConstructors() {
+        List<Method> constructors = new ArrayList<>();
+        for (Method m : getDeclaredMethods()) {
+            if (Name.INIT.equals(m.getName())) {
+                constructors.add(m);
             }
-        }).toArray(new IntFunction<MethodInfo[]>() {
-            @Override
-            public MethodInfo[] apply(int value) {
-                return new MethodInfo[value];
-            }
-        });
+        }
+        return constructors.toArray(Method.EMPTY_ARRAY);
     }
 
     @Override
-    public MethodInfo[] getDeclaredMethods() {
+    public Method[] getDeclaredMethods() {
         return declaredMethods;
     }
 
     @Override
-    public FieldInfo[] getDeclaredFields() {
+    public Field[] getDeclaredFields() {
         return declaredFields;
+    }
+
+    @Override
+    public Klass getComponentType() {
+        return null;
     }
 
     public EnclosingMethodAttribute getEnclosingMethod() {
@@ -362,14 +283,19 @@ public final class ObjectKlass extends Klass {
         return innerClasses;
     }
 
-    public ObjectKlass getSupertype() {
-        if (isInterface()) {
-            return (ObjectKlass) getContext().getMeta().OBJECT.rawKlass();
-        }
-        return (ObjectKlass) getSuperclass();
+    public final LinkedKlass getLinkedKlass() {
+        return linkedKlass;
     }
 
-    public AttributeInfo getRuntimeVisibleAnnotations() {
+    public Attribute getRuntimeVisibleAnnotations() {
         return runtimeVisibleAnnotations;
+    }
+
+    public int getStaticFieldSlots() {
+        return linkedKlass.staticFieldCount;
+    }
+
+    public int getInstanceFieldSlots() {
+        return linkedKlass.instanceFieldCount;
     }
 }

@@ -23,15 +23,16 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
-
-import java.util.concurrent.ConcurrentHashMap;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
+import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.object.DebugCounter;
 
 /**
  * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
@@ -39,64 +40,62 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
  *
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
-public class GuestClassRegistry implements ClassRegistry {
+public final class GuestClassRegistry extends ClassRegistry {
 
-    private final EspressoContext context;
-
-    /**
-     * The map from symbol to classes for the classes defined by the class loader associated with
-     * this registry. Use of {@link ConcurrentHashMap} allows for atomic insertion while still
-     * supporting fast, non-blocking lookup. There's no need for deletion as class unloading removes
-     * a whole class registry and all its contained classes.
-     */
-    private final ConcurrentHashMap<TypeDescriptor, Klass> classes = new ConcurrentHashMap<>();
+    static final DebugCounter loadKlassCount = DebugCounter.create("Guest loadKlassCount");
+    static final DebugCounter loadKlassCacheHits = DebugCounter.create("Guest loadKlassCacheHits");
 
     /**
      * The class loader associated with this registry.
      */
     private final StaticObject classLoader;
 
-    public GuestClassRegistry(EspressoContext context, StaticObject classLoader) {
-        this.context = context;
+    // The virtual method can be cached because the receiver (classLoader) is constant.
+    private final Method ClassLoader_loadClass;
+    private final Method ClassLoader_addClass;
+
+    public GuestClassRegistry(EspressoContext context, @Host(ClassLoader.class) StaticObject classLoader) {
+        super(context);
+        assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
+        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String_boolean);
+        this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
     }
 
     @Override
-    public Klass resolve(TypeDescriptor type) {
-        if (type.isArray()) {
-            return resolve(type.getComponentType()).getArrayClass();
-        }
-        assert StaticObject.notNull(classLoader);
-        // TODO(peterssen): Should the class be resolved?
-        StaticObjectClass guestClass = (StaticObjectClass) Meta.meta(classLoader).method("loadClass", Class.class, String.class, boolean.class).invokeDirect(
-                        context.getMeta().toGuest(type.toJavaName()), false);
-        Klass k = guestClass.getMirror();
-        meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(guestClass);
-        classes.put(type, k);
-        return k;
-    }
-
-    @Override
-    public Klass findLoadedClass(TypeDescriptor type) {
-        if (type.isArray()) {
-            Klass klass = findLoadedClass(type.getComponentType());
-            if (klass == null) {
+    public Klass loadKlass(Symbol<Type> type) {
+        if (Types.isArray(type)) {
+            Klass elemental = loadKlass(getTypes().getElementalType(type));
+            if (elemental == null) {
                 return null;
             }
-            return klass.getArrayClass();
+            return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
-        return classes.get(type);
+
+        loadKlassCount.inc();
+        Klass klass = classes.get(type);
+        if (klass != null) {
+            loadKlassCacheHits.inc();
+            return klass;
+        }
+        assert StaticObject.notNull(classLoader);
+        StaticObjectClass guestClass = (StaticObjectClass) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)), false);
+        klass = guestClass.getMirrorKlass();
+        Klass previous = classes.putIfAbsent(type, klass);
+        assert previous == null || previous == klass;
+        return klass;
     }
 
     @Override
-    public Klass defineKlass(TypeDescriptor type, Klass klass) {
-        assert !classes.containsKey(type);
-        Klass prevKlass = classes.putIfAbsent(type, klass);
-        if (prevKlass != null) {
-            return prevKlass;
-        }
+    public @Host(ClassLoader.class) StaticObject getClassLoader() {
+        return classLoader;
+    }
+
+    @Override
+    public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
+        ObjectKlass klass = super.defineKlass(type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
-        meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(klass.mirror());
+        ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
         return klass;
     }
 }

@@ -22,28 +22,34 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.impl.Method;
 
 public final class InvokeStaticNode extends QuickNode {
-    protected final MethodInfo method;
+    protected final Method method;
     @Child private DirectCallNode directCallNode;
 
-    public InvokeStaticNode(MethodInfo method) {
+    public InvokeStaticNode(Method method) {
         assert method.isStatic();
         this.method = method;
-        this.directCallNode = DirectCallNode.create(method.getCallTarget());
     }
 
     @Override
     public int invoke(final VirtualFrame frame, int top) {
         // TODO(peterssen): Constant fold this check.
-        method.getDeclaringClass().initialize();
-        EspressoRootNode root = (EspressoRootNode) getParent();
-        Object[] args = root.peekArguments(frame, top, false, method.getSignature());
+        if (directCallNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            method.getDeclaringKlass().initialize();
+            directCallNode = DirectCallNode.create(method.getCallTarget());
+        }
+        BytecodeNode root = (BytecodeNode) getParent();
+        Object[] args = root.peekArguments(frame, top, false, method.getParsedSignature());
         Object result = directCallNode.call(args);
-        int resultAt = top - method.getSignature().getNumberOfSlotsForParameters(); // no receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getSignature().resultKind());
+        int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
+                                                                                         // receiver
+        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
     }
 }

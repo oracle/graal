@@ -23,56 +23,90 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.object.DebugCounter;
 
-import java.util.Arrays;
-import java.util.function.Predicate;
+public abstract class Klass implements ModifiersProvider, ContextAccess {
 
-public abstract class Klass implements ModifiersProvider {
+    public static final Klass[] EMPTY_ARRAY = new Klass[0];
 
-    public final static Klass[] EMPTY_ARRAY = new Klass[0];
-    private final String name;
+    static final DebugCounter methodLookupCount = DebugCounter.create("methodLookupCount");
+    static final DebugCounter fieldLookupCount = DebugCounter.create("fieldLookupCount");
+    static final DebugCounter declaredMethodLookupCount = DebugCounter.create("declaredMethodLookupCount");
+    static final DebugCounter declaredFieldLookupCount = DebugCounter.create("declaredFieldLookupCount");
 
-    @CompilerDirectives.CompilationFinal //
-    private StaticObject statics;
+    private final Symbol<Name> name;
+    private final Symbol<Type> type;
+    private final JavaKind kind;
+    private final EspressoContext context;
+    private final ObjectKlass superKlass;
 
-    @CompilerDirectives.CompilationFinal //
-    private ArrayKlass arrayClass;
+    @CompilationFinal(dimensions = 1) //
+    private final ObjectKlass[] superInterfaces;
 
-    @CompilerDirectives.CompilationFinal //
+    @CompilationFinal //
+    private volatile ArrayKlass arrayClass;
+
+    @CompilationFinal //
     private StaticObjectClass mirrorCache;
 
-    Klass(String name) {
-        this.name = name;
+    public final ObjectKlass[] getSuperInterfaces() {
+        return superInterfaces;
     }
 
-    public abstract JavaKind getJavaKind();
+    public Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
+        this.context = context;
+        this.name = name;
+        this.type = type;
+        this.kind = Types.getJavaKind(type);
+        this.superKlass = superKlass;
+        this.superInterfaces = superInterfaces;
+    }
 
-    public abstract boolean isArray();
+    public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
 
-    public String getName() {
-        return name;
+    public abstract ConstantPool getConstantPool();
+
+    public final JavaKind getJavaKind() {
+        return kind;
+    }
+
+    public final boolean isArray() {
+        return Types.isArray(getType());
     }
 
     public StaticObject mirror() {
+        // TODO(peterssen): Make thread-safe.
         if (mirrorCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            mirrorCache = new StaticObjectClass((ObjectKlass) getContext().getMeta().CLASS.rawKlass());
-            mirrorCache.setMirror(this);
+            mirrorCache = new StaticObjectClass(this);
         }
         return mirrorCache;
     }
-
-    public abstract StaticObject getClassLoader();
 
     @Override
     public final boolean equals(Object obj) {
@@ -83,37 +117,60 @@ public abstract class Klass implements ModifiersProvider {
         return this.mirror().equals(that.mirror());
     }
 
-    public ArrayKlass getArrayClass() {
-        // TODO(peterssen): Make thread-safe.
-        if (arrayClass == null) {
+    public final ArrayKlass getArrayClass() {
+        ArrayKlass ak = arrayClass;
+        if (ak == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            arrayClass = new ArrayKlass(this);
+            synchronized (this) {
+                ak = arrayClass;
+                if (ak == null) {
+                    ak = createArrayKlass();
+                    arrayClass = ak;
+                }
+            }
         }
-        return arrayClass;
+        return ak;
+    }
+
+    public final ArrayKlass array() {
+        return getArrayClass();
+    }
+
+    public ArrayKlass getArrayClass(int dimensions) {
+        assert dimensions > 0;
+        ArrayKlass array = getArrayClass();
+
+        // Careful with of impossible void[].
+        if (array == null) {
+            return null;
+        }
+
+        for (int i = 1; i < dimensions; ++i) {
+            array = array.getArrayClass();
+        }
+        return array;
+    }
+
+    protected ArrayKlass createArrayKlass() {
+        return new ArrayKlass(this);
     }
 
     @Override
     public final int hashCode() {
-        return getName().hashCode();
+        return getType().hashCode();
     }
 
-    public abstract ConstantPool getConstantPool();
-
-    public abstract EspressoContext getContext();
-
-    public MethodInfo findDeclaredMethod(String klassName, Class<?> returnType, Class<?>... parameterTypes) {
-        SignatureDescriptor signature = getContext().getSignatureDescriptors().create(returnType, parameterTypes);
-        return findDeclaredConcreteMethod(klassName, signature);
+    @Override
+    public final EspressoContext getContext() {
+        return context;
     }
 
-    public abstract StaticObject tryInitializeAndGetStatics();
+    public final StaticObject tryInitializeAndGetStatics() {
+        initialize();
+        return getStatics();
+    }
 
-    /**
-     * Checks whether this type has a finalizer method.
-     *
-     * @return {@code true} if this class has a finalizer
-     */
-    public abstract boolean hasFinalizer();
+    public abstract StaticObject getStatics();
 
     /**
      * Checks whether this type is an instance class.
@@ -127,7 +184,9 @@ public abstract class Klass implements ModifiersProvider {
      *
      * @return {@code true} if this type is primitive
      */
-    public abstract boolean isPrimitive();
+    public final boolean isPrimitive() {
+        return kind.isPrimitive();
+    }
 
     /*
      * The setting of the final bit for types is a bit confusing since arrays are marked as final.
@@ -139,7 +198,7 @@ public abstract class Klass implements ModifiersProvider {
 
     /**
      * Checks whether this type is initialized. If a type is initialized it implies that it was
-     * {@link #isLinked() linked} and that the static initializer has run.
+     * linked and that the static initializer has run.
      *
      * @return {@code true} if this type is initialized
      */
@@ -151,19 +210,38 @@ public abstract class Klass implements ModifiersProvider {
     public abstract void initialize();
 
     /**
-     * Checks whether this type is linked and verified. When a type is linked the static initializer
-     * has not necessarily run. An {@link #isInitialized() initialized} type is always linked.
-     *
-     * @return {@code true} if this type is linked
-     */
-    public abstract boolean isLinked();
-
-    /**
      * Determines if this type is either the same as, or is a superclass or superinterface of, the
      * type represented by the specified parameter. This method is identical to
      * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
      */
-    public abstract boolean isAssignableFrom(Klass other);
+    @TruffleBoundary
+    public final boolean isAssignableFrom(Klass other) {
+        if (this == other) {
+            return true;
+        }
+        if (this.isPrimitive() || other.isPrimitive()) {
+            // Reference equality is enough within the same context.
+            assert this.getContext() == other.getContext();
+            return this == other;
+        }
+        if (this.isArray() && other.isArray()) {
+            return this.getComponentType().isAssignableFrom(other.getComponentType());
+        }
+        if (isInterface()) {
+            return other.getInterfacesStream(true).anyMatch(new Predicate<Klass>() {
+                @Override
+                public boolean test(Klass i) {
+                    return i == Klass.this;
+                }
+            });
+        }
+        return other.getSupertypesStream(true).anyMatch(new Predicate<Klass>() {
+            @Override
+            public boolean test(Klass k) {
+                return k == Klass.this;
+            }
+        });
+    }
 
     /**
      * Returns the {@link Klass} object representing the host class of this VM anonymous class (as
@@ -179,7 +257,7 @@ public abstract class Klass implements ModifiersProvider {
      */
     public boolean isJavaLangObject() {
         // Removed assertion due to https://bugs.eclipse.org/bugs/show_bug.cgi?id=434442
-        return getSuperclass() == null && !isInterface() && getJavaKind() == JavaKind.Object;
+        return getSuperKlass() == null && !isInterface() && getJavaKind() == JavaKind.Object;
     }
 
     /**
@@ -187,92 +265,20 @@ public abstract class Klass implements ModifiersProvider {
      * an interface, a primitive type, or void, then null is returned. If this object represents an
      * array class then the type object representing the {@code Object} class is returned.
      */
-    public abstract Klass getSuperclass();
+    public final ObjectKlass getSuperKlass() {
+        return superKlass;
+    }
 
     /**
      * Gets the interfaces implemented or extended by this type. This method is analogous to
      * {@link Class#getInterfaces()} and as such, only returns the interfaces directly implemented
      * or extended by this type.
      */
-    public abstract Klass[] getInterfaces();
-
-    /**
-     * Walks the class hierarchy upwards and returns the least common class that is a superclass of
-     * both the current and the given type.
-     *
-     * @return the least common type that is a super type of both the current and the given type, or
-     *         {@code null} if primitive types are involved.
-     */
-    public abstract Klass findLeastCommonAncestor(Klass otherType);
-
-    public abstract Klass getComponentType();
-
-    public Klass getElementalType() {
-        Klass t = this;
-        while (t.isArray()) {
-            t = t.getComponentType();
-        }
-        return t;
+    public final ObjectKlass[] getInterfaces() {
+        return superInterfaces;
     }
 
-    /**
-     * Resolves the method implementation for virtual dispatches on objects of this dynamic type.
-     * This resolution process only searches "up" the class hierarchy of this type. For interface
-     * types it returns null since no concrete object can be an interface.
-     *
-     * @param method the method to select the implementation of
-     * @param callerType the caller or context type used to perform access checks
-     * @return the method that would be selected at runtime (might be abstract) or {@code null} if
-     *         it can not be resolved
-     */
-    public abstract MethodInfo resolveMethod(MethodInfo method, Klass callerType);
-
-    /**
-     * A convenience wrapper for {@link #resolveMethod(MethodInfo, Klass)} that only returns
-     * non-abstract methods.
-     *
-     * @param method the method to select the implementation of
-     * @param callerType the caller or context type used to perform access checks
-     * @return the concrete method that would be selected at runtime, or {@code null} if there is no
-     *         concrete implementation of {@code method} in this type or any of its superclasses
-     */
-    public MethodInfo resolveConcreteMethod(MethodInfo method, Klass callerType) {
-        MethodInfo resolvedMethod = resolveMethod(method, callerType);
-        if (resolvedMethod == null || resolvedMethod.isAbstract()) {
-            return null;
-        }
-        return resolvedMethod;
-    }
-
-    /**
-     * Returns the instance fields of this class, including {@linkplain FieldInfo#isInternal()
-     * internal} fields. A zero-length array is returned for array and primitive types. The order of
-     * fields returned by this method is stable. That is, for a single JVM execution the same order
-     * is returned each time this method is called. It is also the "natural" order, which means that
-     * the JVM would expect the fields in this order if no specific order is given.
-     *
-     * @param includeSuperclasses if true, then instance fields for the complete hierarchy of this
-     *            type are included in the result
-     * @return an array of instance fields
-     */
-    public abstract FieldInfo[] getInstanceFields(boolean includeSuperclasses);
-
-    /**
-     * Returns the static fields of this class, including {@linkplain FieldInfo#isInternal()
-     * internal} fields. A zero-length array is returned for array and primitive types. The order of
-     * fields returned by this method is stable. That is, for a single JVM execution the same order
-     * is returned each time this method is called.
-     */
-    public abstract FieldInfo[] getStaticFields();
-
-    /**
-     * Returns the instance field of this class (or one of its super classes) at the given offset,
-     * or {@code null} if there is no such field.
-     *
-     * @param offset the offset of the field to look for
-     * @return the field with the given offset, or {@code null} if there is no such field.
-     */
-    public abstract FieldInfo findInstanceFieldWithOffset(long offset, JavaKind expectedKind);
+    public abstract Klass getElementalType();
 
     /**
      * Returns {@code true} if the type is a local type.
@@ -293,84 +299,183 @@ public abstract class Klass implements ModifiersProvider {
      * Returns an array reflecting all the constructors declared by this type. This method is
      * similar to {@link Class#getDeclaredConstructors()} in terms of returned constructors.
      */
-    public abstract MethodInfo[] getDeclaredConstructors();
+    public abstract Method[] getDeclaredConstructors();
 
     /**
      * Returns an array reflecting all the methods declared by this type. This method is similar to
      * {@link Class#getDeclaredMethods()} in terms of returned methods.
      */
-    public abstract MethodInfo[] getDeclaredMethods();
+    public abstract Method[] getDeclaredMethods();
 
     /**
      * Returns an array reflecting all the fields declared by this type. This method is similar to
      * {@link Class#getDeclaredFields()} in terms of returned fields.
      */
-    public abstract FieldInfo[] getDeclaredFields();
+    public abstract Field[] getDeclaredFields();
 
     /**
      * Returns the {@code <clinit>} method for this class if there is one.
      */
-    public MethodInfo getClassInitializer() {
-        return Arrays.stream(getDeclaredMethods()).filter(new Predicate<MethodInfo>() {
-            @Override
-            public boolean test(MethodInfo m) {
-                return "<clinit>".equals(m.getName());
-            }
-        }).findAny().orElse(null);
+    public Method getClassInitializer() {
+        return lookupDeclaredMethod(Name.CLINIT, Signature._void);
     }
 
-    public MethodInfo findDeclaredConcreteMethod(String methodName, SignatureDescriptor signature) {
-        for (MethodInfo method : getDeclaredMethods()) {
-            if (!method.isAbstract() && method.getName().equals(methodName) && method.getSignature().equals(signature)) {
-                return method;
-            }
-        }
-        return null;
-    }
-
-    public MethodInfo findMethod(String methodName, SignatureDescriptor signature) {
-        for (MethodInfo method : getDeclaredMethods()) {
-            if (method.getName().equals(methodName) && method.getSignature().equals(signature)) {
-                return method;
-            }
-        }
-        if (getSuperclass() != null) {
-            MethodInfo m = getSuperclass().findMethod(methodName, signature);
-            if (m != null) {
-                return m;
-            }
-        }
-
-        // No concrete method found, look interface methods.
-        if (isAbstract()) {
-            // Look
-            for (Klass i : getInterfaces()) {
-                MethodInfo m = i.findMethod(methodName, signature);
-                if (m != null) {
-                    return m;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    public MethodInfo findConcreteMethod(String methodName, SignatureDescriptor signature) {
-        for (Klass c = this; c != null; c = c.getSuperclass()) {
-            MethodInfo method = c.findDeclaredConcreteMethod(methodName, signature);
-            if (method != null && !method.isAbstract()) {
-                return method;
-            }
-        }
-        return null;
-    }
-
-    public TypeDescriptor getTypeDescriptor() {
-        return getContext().getTypeDescriptors().make(getName());
+    public final Symbol<Type> getType() {
+        return type;
     }
 
     @Override
     public String toString() {
-        return getTypeDescriptor().toJavaName();
+        return "Klass<" + getType() + ">";
+    }
+
+    // region Meta.Klass
+
+    public void safeInitialize() {
+        try {
+            initialize();
+        } catch (EspressoException e) {
+            throw getMeta().throwExWithCause(ExceptionInInitializerError.class, e.getException());
+        }
+    }
+
+    public abstract Klass getComponentType();
+
+    public final Klass getSupertype() {
+        if (isArray()) {
+            Klass component = getComponentType();
+            if (this == getMeta().Object.array() || component.isPrimitive()) {
+                return getMeta().Object;
+            }
+            return component.getSupertype().array();
+        }
+        if (isInterface()) {
+            return getMeta().Object;
+        }
+        return getSuperKlass();
+    }
+
+    public final boolean isPrimaryType() {
+        assert !isPrimitive();
+        if (isArray()) {
+            return getElementalType().isPrimaryType();
+        }
+        return !isInterface();
+    }
+
+    @TruffleBoundary
+    private Stream<Klass> getSupertypesStream(boolean includeOwn) {
+        Klass supertype = getSupertype();
+        Stream<Klass> supertypes = (supertype != null)
+                        ? supertype.getSupertypesStream(true)
+                        : Stream.empty();
+        if (includeOwn) {
+            return Stream.concat(Stream.of(this), supertypes);
+        }
+        return supertypes;
+    }
+
+    @TruffleBoundary
+    protected Stream<ObjectKlass> getInterfacesStream(boolean includeInherited) {
+        Stream<ObjectKlass> interfaces = Stream.of(getInterfaces());
+        ObjectKlass superclass = getSuperKlass();
+        if (includeInherited && superclass != null) {
+            interfaces = Stream.concat(interfaces, superclass.getInterfacesStream(includeInherited));
+        }
+        if (includeInherited) {
+            interfaces = interfaces.flatMap(new Function<ObjectKlass, Stream<? extends ObjectKlass>>() {
+                @Override
+                public Stream<? extends ObjectKlass> apply(ObjectKlass i) {
+                    return Stream.concat(Stream.of(i), i.getInterfacesStream(includeInherited));
+                }
+            });
+        }
+        return interfaces;
+    }
+
+    @TruffleBoundary
+    public StaticObjectArray allocateArray(int length) {
+        return InterpreterToVM.newArray(this, length);
+    }
+
+    @TruffleBoundary
+    public StaticObjectArray allocateArray(int length, IntFunction<StaticObject> generator) {
+        // TODO(peterssen): Store check is missing.
+        StaticObject[] array = new StaticObject[length];
+        for (int i = 0; i < array.length; ++i) {
+            array[i] = generator.apply(i);
+        }
+        return new StaticObjectArray(getArrayClass(), array);
+    }
+
+    // region Lookup
+
+    public final Field lookupDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
+        declaredFieldLookupCount.inc();
+        // TODO(peterssen): Improve lookup performance.
+        for (Field field : getDeclaredFields()) {
+            if (fieldName.equals(field.getName()) && fieldType.equals(field.getType())) {
+                return field;
+            }
+        }
+        return null;
+    }
+
+    public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
+        fieldLookupCount.inc();
+        // TODO(peterssen): Improve lookup performance.
+        Field field = lookupDeclaredField(fieldName, fieldType);
+        if (field == null && getSuperKlass() != null) {
+            return getSuperKlass().lookupField(fieldName, fieldType);
+        }
+        return field;
+    }
+
+    public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        declaredMethodLookupCount.inc();
+        // TODO(peterssen): Improve lookup performance.
+        for (Method method : getDeclaredMethods()) {
+            if (methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        methodLookupCount.inc();
+        // TODO(peterssen): Improve lookup performance.
+        Method method = lookupDeclaredMethod(methodName, signature);
+        if (method == null && getSuperKlass() != null) {
+            return getSuperKlass().lookupMethod(methodName, signature);
+        }
+        return method;
+    }
+
+    @Override
+    public final int getModifiers() {
+        return getFlags() & Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
+    }
+
+    protected abstract int getFlags();
+
+    public final StaticObject allocateInstance() {
+        return InterpreterToVM.newObject(this);
+    }
+
+    public String getRuntimePackage() {
+        String typeString = getType().toString();
+        int lastDot = typeString.lastIndexOf('.');
+        if (lastDot < 0)
+            return "";
+        String pkg = typeString.substring(lastDot + 1);
+        if (pkg.endsWith(";")) {
+            return pkg.substring(0, pkg.length() - 1);
+        }
+        return pkg;
+    }
+
+    public Symbol<Name> getName() {
+        return name;
     }
 }

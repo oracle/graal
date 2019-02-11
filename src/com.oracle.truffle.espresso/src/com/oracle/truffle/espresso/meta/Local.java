@@ -22,20 +22,26 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import java.util.Objects;
+
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 /**
  * Describes the type and bytecode index range in which a local variable is live.
  */
-public class Local {
+public final class Local {
 
-    private final String name;
+    public static final Local[] EMPTY_ARRAY = new Local[0];
+
+    private final Symbol<Name> name;
+    private final Symbol<Type> type;
     private final int startBci;
     private final int endBci;
     private final int slot;
-    private final TypeDescriptor type;
 
-    public Local(String name, TypeDescriptor type, int startBci, int endBci, int slot) {
+    public Local(Symbol<Name> name, Symbol<Type> type, int startBci, int endBci, int slot) {
         this.name = name;
         this.startBci = startBci;
         this.endBci = endBci;
@@ -51,11 +57,11 @@ public class Local {
         return endBci;
     }
 
-    public String getName() {
+    public Symbol<Name> getName() {
         return name;
     }
 
-    public TypeDescriptor getType() {
+    public Symbol<Type> getType() {
         return type;
     }
 
@@ -74,7 +80,7 @@ public class Local {
 
     @Override
     public int hashCode() {
-        return super.hashCode();
+        return Objects.hash(name, type, startBci, endBci, slot);
     }
 
     @Override
