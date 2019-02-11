@@ -748,8 +748,6 @@ meth public final void accept(com.oracle.truffle.api.nodes.NodeVisitor)
 meth public final void adoptChildren()
 meth public final void atomic(java.lang.Runnable)
 meth public java.lang.String getDescription()
-meth public java.lang.String getLanguage()
- anno 0 java.lang.Deprecated()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object

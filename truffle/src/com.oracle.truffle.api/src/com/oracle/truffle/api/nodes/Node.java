@@ -616,27 +616,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         return "";
     }
 
-    /**
-     * Returns a string representing the language this node has been implemented for. If the
-     * language is unknown, returns "".
-     *
-     * @since 0.8 or earlier
-     * @deprecated in 0.25 use {@link #getRootNode() getRootNode()}.
-     *             {@link RootNode#getLanguageInfo() getLanguageInfo()}.
-     *             {@link LanguageInfo#getName() getName()} instead
-     */
-    @Deprecated
-    public String getLanguage() {
-        NodeInfo info = getClass().getAnnotation(NodeInfo.class);
-        if (info != null && info.language() != null && info.language().length() > 0) {
-            return info.language();
-        }
-        if (parent != null) {
-            return parent.getLanguage();
-        }
-        return "";
-    }
-
     private static final ReentrantLock GIL_LOCK = new ReentrantLock(false);
 
     private boolean inAtomicBlock() {
