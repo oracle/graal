@@ -281,8 +281,8 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
     target_path = remove_existing_symlink(join(target_dir, 'native-image.properties'))
 
     option_properties = None
-    for svm_suite in svmSuites:
-        candidate = join(svm_suite.mxDir, option_kind + '-' + option_flag + '.properties')
+    for suite in mx.suites():
+        candidate = join(suite.mxDir, option_kind + '-' + option_flag + '.properties')
         if exists(candidate):
             option_properties = candidate
 
