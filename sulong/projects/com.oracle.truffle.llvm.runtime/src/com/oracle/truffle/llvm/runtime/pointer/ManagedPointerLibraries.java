@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
@@ -74,22 +72,14 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
         }
     }
 
-    @ExportMessage(library = LLVMNativeLibrary.class, limit = "1")
-    static boolean accepts(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.getObject()") DynamicDispatchLibrary dispatch,
-                    @Cached(value = "dispatch.dispatch(receiver.getObject())", allowUncached = true) Class<?> dispatchClass) {
-        // TODO better solution?
-        return dispatchClass == dispatch.dispatch(receiver.getObject());
-    }
-
-    @ExportMessage(library = LLVMNativeLibrary.class, limit = "1")
+    @ExportMessage(library = LLVMNativeLibrary.class, limit = "5")
     @ExportMessage(library = InteropLibrary.class, limit = "5")
     static boolean isPointer(LLVMPointerImpl receiver,
                     @CachedLibrary("receiver.getObject()") LLVMNativeLibrary natives) {
         return natives.isPointer(receiver.getObject());
     }
 
-    @ExportMessage(library = LLVMNativeLibrary.class, limit = "1")
+    @ExportMessage(library = LLVMNativeLibrary.class, limit = "5")
     @ExportMessage(library = InteropLibrary.class, limit = "5")
     static long asPointer(LLVMPointerImpl receiver,
                     @CachedLibrary("receiver.getObject()") LLVMNativeLibrary natives) throws UnsupportedMessageException {
@@ -102,7 +92,7 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
         interop.toNative(receiver.getObject());
     }
 
-    @ExportMessage(limit = "1")
+    @ExportMessage(limit = "5")
     static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver,
                     @CachedLibrary("receiver.getObject()") LLVMNativeLibrary natives) {
         return natives.toNativePointer(receiver.getObject()).increment(receiver.getOffset());

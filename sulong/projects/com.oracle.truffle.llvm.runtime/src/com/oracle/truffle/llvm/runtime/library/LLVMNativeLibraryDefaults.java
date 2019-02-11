@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -51,13 +51,13 @@ abstract class LLVMNativeLibraryDefaults {
 
             @Specialization(limit = "1", guards = "interop.isPointer(receiver)")
             static boolean doPointer(Object receiver,
-                            @Shared("interop") @CachedLibrary("receiver") InteropLibrary interop) {
+                            @CachedLibrary("receiver") InteropLibrary interop) {
                 return true;
             }
 
             @Specialization(limit = "1", guards = "!interop.isPointer(receiver)")
             static boolean doOther(Object receiver,
-                            @Shared("interop") @CachedLibrary("receiver") InteropLibrary interop) {
+                            @CachedLibrary("receiver") InteropLibrary interop) {
                 return interop.isNull(receiver);
             }
         }
@@ -67,7 +67,7 @@ abstract class LLVMNativeLibraryDefaults {
 
             @Specialization(limit = "1", guards = "interop.isPointer(receiver)")
             static long doPointer(Object receiver,
-                            @Shared("interop") @CachedLibrary("receiver") InteropLibrary interop,
+                            @CachedLibrary("receiver") InteropLibrary interop,
                             @Shared("exception") @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException {
                 try {
                     return interop.asPointer(receiver);
@@ -83,7 +83,7 @@ abstract class LLVMNativeLibraryDefaults {
 
             @Specialization(limit = "1", guards = "!interop.isPointer(receiver)")
             static long doNullCheck(Object receiver,
-                            @Shared("interop") @CachedLibrary("receiver") InteropLibrary interop,
+                            @CachedLibrary("receiver") InteropLibrary interop,
                             @Shared("exception") @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException {
                 if (interop.isNull(receiver)) {
                     return 0;
@@ -99,13 +99,13 @@ abstract class LLVMNativeLibraryDefaults {
 
             @Specialization(limit = "1", guards = "interop.isNull(receiver)")
             static LLVMNativePointer doNull(Object receiver,
-                            @Shared("interop") @CachedLibrary("receiver") InteropLibrary interop) {
+                            @CachedLibrary("receiver") InteropLibrary interop) {
                 return LLVMNativePointer.createNull();
             }
 
             @Specialization(limit = "1", guards = "!interop.isNull(receiver)")
             static LLVMNativePointer doNotNull(Object receiver,
-                            @Shared("interop") @CachedLibrary("receiver") InteropLibrary interop,
+                            @CachedLibrary("receiver") InteropLibrary interop,
                             @Shared("exception") @Cached BranchProfile exceptionProfile) {
                 try {
                     interop.toNative(receiver);
