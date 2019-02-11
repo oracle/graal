@@ -44,6 +44,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CFunctionPointerStub;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
@@ -182,11 +183,42 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return new Annotation[0];
+        return needsTransition ? new Annotation[0] : new Annotation[]{UNINTERRUPTIBLE};
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        if (!needsTransition && annotationClass.equals(UNINTERRUPTIBLE.annotationType())) {
+            return (T) UNINTERRUPTIBLE;
+        }
         return null;
     }
+
+    private static final Uninterruptible UNINTERRUPTIBLE = new Uninterruptible() {
+        @Override
+        public Class<? extends Annotation> annotationType() {
+            return Uninterruptible.class;
+        }
+
+        @Override
+        public String reason() {
+            return "@" + InvokeCFunctionPointer.class.getSimpleName() + " method is marked " + CFunction.Transition.NO_TRANSITION;
+        }
+
+        @Override
+        public boolean callerMustBe() {
+            return false;
+        }
+
+        @Override
+        public boolean calleeMustBe() {
+            return true;
+        }
+
+        @Override
+        public boolean mayBeInlined() {
+            return false;
+        }
+    };
 }
