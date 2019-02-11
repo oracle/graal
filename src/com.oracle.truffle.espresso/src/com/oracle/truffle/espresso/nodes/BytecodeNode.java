@@ -238,7 +238,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.CustomNodeCount;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -286,7 +285,7 @@ import com.oracle.truffle.object.DebugCounter;
  * bytecode is first processed/executed without growing or shinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoRootNode implements CustomNodeCount {
+public final class BytecodeNode extends EspressoRootNode {
 
     public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
 
@@ -1538,10 +1537,5 @@ public final class BytecodeNode extends EspressoRootNode implements CustomNodeCo
         assert !m.isStatic();
         int skipSlots = Signatures.slotsForParameters(m.getParsedSignature());
         return peekObject(frame, top - skipSlots - 1);
-    }
-
-    @Override
-    public int customNodeCount() {
-        return getMethod().getCodeSize() / 3 + 3;
     }
 }
