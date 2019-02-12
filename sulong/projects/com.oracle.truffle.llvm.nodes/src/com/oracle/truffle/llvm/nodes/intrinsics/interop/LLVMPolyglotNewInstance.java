@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,13 +39,11 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
@@ -65,7 +63,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
     @Children private final LLVMExpressionNode[] args;
     @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
 
-    @Child private Node foreignNewInstance;
+    @Child private InteropLibrary foreignNewInstance;
     @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
     public LLVMPolyglotNewInstance(LLVMExpressionNode[] args) {
@@ -74,7 +72,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
             prepareValuesForEscape[i] = LLVMDataEscapeNode.create();
         }
-        this.foreignNewInstance = Message.NEW.createNode();
+        this.foreignNewInstance = InteropLibrary.getFactory().createDispatched(5);
     }
 
     @CompilationFinal private LLVMThreadingStack threadingStack = null;
@@ -104,7 +102,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
         try {
             Object rawValue;
             try (StackPointer save = stack.newFrame()) {
-                rawValue = ForeignAccess.sendNew(foreignNewInstance, foreign, evaluatedArgs);
+                rawValue = foreignNewInstance.instantiate(foreign, evaluatedArgs);
             }
             return toLLVM.executeWithTarget(rawValue);
         } catch (UnsupportedMessageException e) {

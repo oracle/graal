@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,15 +30,13 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -48,20 +46,17 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 @NodeChild(value = "name", type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotHasMember extends LLVMIntrinsic {
 
-    @Child protected Node keyInfo = Message.KEY_INFO.createNode();
-    @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
-    @Child private LLVMReadStringNode readString = LLVMReadStringNodeGen.create();
-
     @Specialization
-    protected boolean doHasMember(LLVMManagedPointer object, Object name) {
+    protected boolean doHasMember(LLVMManagedPointer object, Object name,
+                    @Cached LLVMAsForeignNode asForeign,
+                    @Cached LLVMReadStringNode readString,
+                    @CachedLibrary(limit = "3") InteropLibrary interop) {
         TruffleObject foreign = asForeign.execute(object);
         String id = readString.executeWithTarget(name);
-        int ret = ForeignAccess.sendKeyInfo(keyInfo, foreign, id);
-        return KeyInfo.isExisting(ret);
+        return interop.isMemberExisting(foreign, id);
     }
 
     @Fallback
-    @TruffleBoundary
     @SuppressWarnings("unused")
     public Object fallback(Object object, Object name) {
         throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
