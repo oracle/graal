@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.debug;
 
+import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
+import static org.graalvm.compiler.debug.DebugOptions.PrintGraphPort;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
@@ -35,8 +38,6 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.function.Supplier;
-import static org.graalvm.compiler.debug.DebugOptions.PrintGraphPort;
-import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
 
 import org.graalvm.compiler.debug.DebugOptions.PrintGraphTarget;
 import org.graalvm.compiler.options.OptionValues;
@@ -84,13 +85,17 @@ final class IgvDumpChannel implements WritableByteChannel {
             if (target == PrintGraphTarget.file) {
                 sharedChannel = createFileChannel(pathProvider);
             } else if (target == PrintGraphTarget.network) {
-                sharedChannel = createNetworkChannel(options);
+                sharedChannel = createNetworkChannel(pathProvider, options);
+            } else if (target == PrintGraphTarget.networkOnly) {
+                sharedChannel = createNetworkChannel(null, options);
+            } else {
+                TTY.println("WARNING: Graph dumping requested but value of %s option is %s", DebugOptions.PrintGraph.getName(), PrintGraphTarget.none);
             }
         }
         return sharedChannel;
     }
 
-    private static WritableByteChannel createNetworkChannel(OptionValues options) throws IOException {
+    private static WritableByteChannel createNetworkChannel(Supplier<Path> pathProvider, OptionValues options) throws IOException {
         String host = PrintGraphHost.getValue(options);
         int port = PrintGraphPort.getValue(options);
         try {
@@ -105,7 +110,11 @@ final class IgvDumpChannel implements WritableByteChannel {
              */
             return null;
         } catch (IOException e) {
-            throw new IOException(String.format("Could not connect to the IGV on %s:%d", host, port), e);
+            if (pathProvider != null) {
+                return createFileChannel(pathProvider);
+            } else {
+                throw new IOException(String.format("Could not connect to the IGV on %s:%d", host, port), e);
+            }
         }
     }
 
