@@ -269,9 +269,27 @@ public final class ClassfileParser {
         if (ConstantValueAttribute.NAME.equals(name)) {
             return parseConstantValue(name);
         }
+        if (MethodParametersAttribute.NAME.equals(name)) {
+            return parseMethodParameters(name);
+        }
         int length = stream.readS4();
         byte[] data = stream.readByteArray(length);
         return new Attribute(name, data);
+    }
+
+    private MethodParametersAttribute parseMethodParameters(Symbol<Name> name) {
+        /* int length = */ stream.readS4();
+        int entryCount = stream.readU1();
+        if (entryCount == 0) {
+            return MethodParametersAttribute.EMPTY;
+        }
+        MethodParametersAttribute.Entry[] entries = new MethodParametersAttribute.Entry[entryCount];
+        for (int i = 0; i < entryCount; i++) {
+            int nameIndex = stream.readU2();
+            int accessFlags = stream.readU2();
+            entries[i] = new MethodParametersAttribute.Entry(nameIndex, accessFlags);
+        }
+        return new MethodParametersAttribute(name, entries);
     }
 
     private Attribute parseConstantValue(Symbol<Name> name) {
