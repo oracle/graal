@@ -4,8 +4,7 @@ JNI is a native API that enables Java code to interact with native code and vice
 This page gives an overview over the JNI implementation in Substrate VM.
 
 ## Integration
-By default, the JNI implementation is not enabled and not built into Substrate VM images.
-It can be enabled explicitly with `-H:+JNI`, or implicitly by providing a JNI configuration with `-H:JNIConfigurationFiles` (read more below).
+JNI support is enabled by default and built into Substrate VM images. Individual classes, methods, and fields that should be accessible via JNI must be specified during native image generation in a configuration file (read below).
 
 ## Linking
 Java code can load native code from a shared object with `System.loadLibrary()`.
@@ -132,7 +131,7 @@ The image build generates accessor methods for for fields of all primitive types
 These accessor methods perform the transition to Java code and back, and use unsafe loads or stores to directly manipulate the field value.
 Because the analysis cannot observe assignments of object fields via JNI, it assumes that any subtype of the field's declared type can occur in a field that is accessible via JNI.
 
-JNI also permits writing fields that are declared `final`, which must be enabled for individual fields in the configuration file (see above).
+JNI also permits writing fields that are declared `final`, which must be enabled for individual fields with an `allowWrite` property in the configuration file.
 However, code accessing final fields might not observe changes of final field values in the same way as for non-final fields because of optimizations.
 
 ## Exceptions
@@ -145,12 +144,11 @@ When an exception remains unhandled in native code or the native code itself thr
 ## Monitors
 JNI declares the functions `MonitorEnter` and `MonitorExit` to acquire and release the intrinsic lock of an object.
 Substrate VM provides implementations of these functions.
-However, the native image build assigns intrinsic locks only to objects of classes which the analysis can observe as being used in Java `synchronized` statements.
-Therefore, `MonitorEnter` and `MonitorExit` only work on those objects.
-For the same reason, the classes of objects on which `wait()`, `notify()` or `notifyAll()` are called must be known during the image build, which is not possible via JNI.
-For that reason, calls to these methods from JNI must generally be wrapped in a Java method that uses a specific type.
+However, the native image build directly assigns intrinsic locks only to objects of classes which the analysis can observe as being used in Java `synchronized` statements and with `wait()`, `notify()` and `notifyAll()`.
+For other objects, synchronization falls back on a slower mechanism which uses a map to store lock associations, which itself needs synchronization.
+For that reason, it can be beneficial to wrap synchronization in Java code.
 
 ## java.lang.reflect Support
 The JNI functions `FromReflectedMethod` and `ToReflectedMethod` can be used to obtain the corresponding `jmethodID` to a `java.lang.reflect.Method`, or to a `java.lang.reflect.Constructor` object, and vice versa.
 The functions `FromReflectedField` and `ToReflectedField` convert between `jfieldID` and `java.lang.reflect.Field`.
-In order to use these functions, reflection support must be enabled and the methods and fields in question must be included in the reflection configuration, which is specified with `-H:ReflectionConfigurationFiles=`.
+In order to use these functions, [reflection support](REFLECTION.md) must be enabled and the methods and fields in question must be included in the reflection configuration, which is specified with `-H:ReflectionConfigurationFiles=`.
