@@ -59,6 +59,7 @@ import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
  * {@link TruffleObject}s that can be passed around via interop and can come from external RegExp
  * compilers (e.g. see {@link ForeignRegexCompiler}).
  */
+@SuppressWarnings("javadoc")
 public class CompiledRegexObject implements RegexLanguageObject {
 
     private final CompiledRegex compiledRegex;

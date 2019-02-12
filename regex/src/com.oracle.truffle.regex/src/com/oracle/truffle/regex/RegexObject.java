@@ -67,6 +67,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
  * </ol>
  * <p>
  */
+@SuppressWarnings("javadoc")
 public class RegexObject implements RegexLanguageObject {
 
     private final RegexCompiler compiler;
