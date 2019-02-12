@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,8 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -210,7 +209,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                         TruffleContext truffleContext = context.getEnv().getContext();
                         Object p = truffleContext.enter();
                         try {
-                            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), handler, signal.getNumber());
+                            InteropLibrary.getFactory().getUncached().execute(handler, signal.getNumber());
                         } finally {
                             truffleContext.leave(p);
                         }

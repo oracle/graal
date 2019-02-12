@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,11 +31,10 @@ package com.oracle.truffle.llvm.nodes.asm.syscall.posix;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -44,12 +43,9 @@ public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
     private final String name;
     private final String signature;
 
-    @Child private Node nativeExecute;
-
     public LLVMAMD64PosixCallNode(String name, String signature) {
         this.name = name;
         this.signature = signature;
-        this.nativeExecute = Message.EXECUTE.createNode();
     }
 
     protected TruffleObject createFunction() {
@@ -67,9 +63,10 @@ public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
 
     @Specialization
     protected Object doCall(Object[] args,
-                    @Cached("createFunction()") TruffleObject function) {
+                    @Cached("createFunction()") TruffleObject function,
+                    @CachedLibrary("function") InteropLibrary nativeExecute) {
         try {
-            return ForeignAccess.sendExecute(nativeExecute, function, args);
+            return nativeExecute.execute(function, args);
         } catch (InteropException e) {
             throw new AssertionError(e);
         }
