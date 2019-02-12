@@ -100,9 +100,9 @@ sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
 
 sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} ${sulong-weekly-notifications} {
     run: [
-        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", gate, --tags, "build,sulongCoverage", --jacoco-zip, report.zip, --jacoco-omit-excluded]
+        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", gate, --tags, "build,sulongCoverage", --jacocout, html]
+        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", --exclude-generated]
     ]
-    logs: [*/report.zip]
     targets: [weekly]
     timelimit: "1:00:00"
 }
