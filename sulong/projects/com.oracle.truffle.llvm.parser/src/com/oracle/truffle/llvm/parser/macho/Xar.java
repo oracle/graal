@@ -233,7 +233,7 @@ public final class Xar {
             lastTag = null;
         }
 
-        // uses fully qualified name to prevent mx to add "require javax.xml" when compiling on JDK9
+        // uses fully qualified name to prevent mx to add "require java.xml" when compiling on JDK9
         private static final javax.xml.parsers.SAXParserFactory PARSER_FACTORY = javax.xml.parsers.SAXParserFactory.newInstance();
 
         private static List<XarFile> parse(ObjectFileReader data, XarHeader header) {
