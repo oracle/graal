@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,33 +40,65 @@
  */
 package com.oracle.truffle.sl.nodes.interop;
 
-import java.util.Map;
-
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.nodes.Node;
 
-public class NodeObjectDescriptorKeys implements TruffleObject {
+@MessageResolution(receiverType = NodeObjectDescriptorKeys.class)
+public final class NodeObjectDescriptorKeys implements TruffleObject {
 
-    private final Object[] keys;
+    private final boolean hasKind;
 
-    NodeObjectDescriptorKeys(Map<String, Object> from) {
-        this.keys = from.keySet().toArray();
+    NodeObjectDescriptorKeys(boolean hasKind) {
+        this.hasKind = hasKind;
     }
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return NodeObjectDescriptorKeysFactoryForeign.ACCESS;
+        return NodeObjectDescriptorKeysForeign.ACCESS;
     }
 
-    public Object getKeyAt(int pos) {
-        return keys[pos];
+    public Object getKeyAt(int index) {
+        if (index < 0 || index >= size()) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.raise(Integer.toString(index));
+        }
+        return index == 0 ? NodeObjectDescriptor.NAME : NodeObjectDescriptor.KIND;
     }
 
     public int size() {
-        return keys.length;
+        return hasKind ? 2 : 1;
     }
 
     static boolean isInstance(TruffleObject object) {
         return object instanceof NodeObjectDescriptorKeys;
+    }
+
+    @Resolve(message = "READ")
+    abstract static class Read extends Node {
+
+        public Object access(NodeObjectDescriptorKeys target, Number index) {
+            return target.getKeyAt(index.intValue());
+        }
+    }
+
+    @Resolve(message = "HAS_SIZE")
+    abstract static class HasSize extends Node {
+
+        public boolean access(@SuppressWarnings("unused") NodeObjectDescriptorKeys target) {
+            return true;
+        }
+    }
+
+    @Resolve(message = "GET_SIZE")
+    abstract static class GetSize extends Node {
+
+        public Object access(NodeObjectDescriptorKeys target) {
+            return target.size();
+        }
     }
 }

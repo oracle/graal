@@ -1,14 +1,42 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.test.server;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -16,7 +44,6 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
-import org.junit.Test;
 
 public class ParsingTest extends TruffleLSPTest {
 
@@ -29,11 +56,15 @@ public class ParsingTest extends TruffleLSPTest {
     }
 
     @Test(expected = UnknownLanguageException.class)
-    public void unknownlanguage() throws InterruptedException, ExecutionException {
+    public void unknownlanguage() throws Throwable {
         URI uri = URI.create("file:///tmp/truffle-lsp-test-file-unknown-lang-id");
 
         Future<?> future = truffleAdapter.parse("", "unknown-lang-id", uri);
-        future.get();
+        try {
+            future.get();
+        } catch (ExecutionException ex) {
+            throw ex.getCause();
+        }
     }
 
     @Test()
@@ -53,18 +84,23 @@ public class ParsingTest extends TruffleLSPTest {
             future.get();
         }
 
-        // TODO(ds) failing, see https://github.com/graalvm/simplelanguage/issues/40
-// {
-// URI uri = createDummyFileUri();
-// String text = "function main";
-// truffleAdapter.didOpen(uri, text, "sl");
-//
-// Future<Void> future = truffleAdapter.parse(text, "sl", uri);
-// future.get();
-//
-// assertEquals(1, diagnostics.size());
-// assertTrue(diagnostics.get(uri).get(0).getMessage().contains("EOF"));
-// }
+        {
+            URI uri = createDummyFileUriForSL();
+            String text = "function main";
+            Future<?> future = truffleAdapter.parse(text, "sl", uri);
+            try {
+                future.get();
+                Assert.fail();
+            } catch (ExecutionException ex) {
+                Collection<PublishDiagnosticsParams> diagnosticParams = ((DiagnosticsNotification) ex.getCause()).getDiagnosticParamsCollection();
+                assertEquals(1, diagnosticParams.size());
+                PublishDiagnosticsParams param = diagnosticParams.iterator().next();
+                assertEquals(uri.toString(), param.getUri());
+                List<Diagnostic> diagnostics = param.getDiagnostics();
+                assertTrue(diagnostics.get(0).getMessage().contains("EOF"));
+            }
+        }
+
         {
             TextDocumentSurrogate surrogate;
             URI uri = createDummyFileUriForSL();
@@ -138,31 +174,38 @@ public class ParsingTest extends TruffleLSPTest {
                 assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
 
-            // TODO(ds) failing, see https://github.com/oracle/graal/pull/555
-            /*
-             * { String textToReplaceEmpty = ""; TextDocumentContentChangeEvent replaceEvent = new
-             * TextDocumentContentChangeEvent(new Range(new Position(0, 0), new Position(0, 30)),
-             * textToReplaceEmpty.length(), textToReplaceEmpty); Future<Void> future =
-             * truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
-             * future.get();
-             *
-             * assertTrue(diagnostics.isEmpty()); assertEquals("", surrogate.getEditorText());
-             * assertEquals(surrogate.getEditorText(), surrogate.getEditorText()); }
-             */
+            {
+                String textToReplaceEmpty = "";
+                TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(0, 0), new Position(0, 30)),
+                                textToReplaceEmpty.length(), textToReplaceEmpty);
+                Future<TextDocumentSurrogate> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
+                try {
+                    surrogate = future.get();
+                    Assert.fail();
+                } catch (ExecutionException e) {
+                    Collection<PublishDiagnosticsParams> diagnosticParamsCollection = ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection();
+                    assertEquals(1, diagnosticParamsCollection.size());
+                    PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
+                    List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
+                    assertTrue(diagnostics.get(0).getMessage().contains("EOF"));
+                }
+                assertEquals("", surrogate.getEditorText());
+            }
+
         }
     }
 
     @Test
-    public void parseingWithSyntaxErrors() throws InterruptedException, ExecutionException {
+    public void parseingWithSyntaxErrors() throws InterruptedException {
         {
             URI uri = createDummyFileUriForSL();
             String text = "function main() {return 3+;}";
 
+            Future<?> future = truffleAdapter.parse(text, "sl", uri);
             try {
-                Future<?> future = truffleAdapter.parse(text, "sl", uri);
                 future.get();
-                assertTrue(false);
-            } catch (RuntimeException e) {
+                Assert.fail();
+            } catch (ExecutionException e) {
                 DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
                 Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
                 assertEquals(1, diagnosticParamsCollection.size());

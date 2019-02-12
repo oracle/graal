@@ -46,7 +46,7 @@ suite = {
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
               "com.oracle.truffle.tools.chromeinspector.instrument to org.graalvm.truffle"
-           ],
+            ],
             "javaCompliance" : "8+",
             "checkstyleVersion" : "8.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
@@ -155,7 +155,9 @@ suite = {
         "org.graalvm.tools.lsp.api": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "dependencies": [ ],
+            "dependencies": [
+                "truffle:TRUFFLE_API"
+            ],
             "checkstyle": "org.graalvm.tools.lsp",
             "javaCompliance": "1.8",
             "workingSets": "LSP"
@@ -165,7 +167,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.lsp.api",
-                "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
                 "LSP4J"
             ],
@@ -218,80 +219,80 @@ suite = {
             "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
         },
         "LSP4J" : {
-            "sha1" : "90e34b7c7e0257e3993ca5a939ae94f889d31340",
-            "sourceSha1": "6dd33739fe6dc7f306b819d88a6f9a8f9279da51",
+            "sha1" : "286f7cdbfbdd53e18ec13fe75b903ce80f2a6564",
+            "sourceSha1": "4b17e315058475b0aec71574337159110ea073ef",
             "maven" : {
                 "groupId" : "org.eclipse.lsp4j",
                 "artifactId" : "org.eclipse.lsp4j",
-                "version" : "0.4.1",
+                "version" : "0.6.0",
             },
             "dependencies" : ["LSP4J-JSONRPC", "LSP4J-GENERATOR"],
         },
         "LSP4J-JSONRPC" : {
-            "sha1" : "f3f93f50bbeb7d58b50e6ffca615cbfc76491846",
-            "sourceSha1": "2cb08b2bcc262bb984822c274987a87664a75fed",
+            "sha1" : "c4ee677f6217134dff720e3cfa9a73e894d63948",
+            "sourceSha1": "5b2fa273de31282af890af861d219439a650849d",
             "maven" : {
                 "groupId" : "org.eclipse.lsp4j",
                 "artifactId" : "org.eclipse.lsp4j.jsonrpc",
-                "version" : "0.4.1",
+                "version" : "0.6.0",
             },
             "dependencies" : ["GSON"],
         },
         "LSP4J-GENERATOR" : {
-            "sha1" : "467f27e91fd694c05eb663532f2ede0404025afe",
-            "sourceSha1": "80fc1d3f970fd3e666ecd7f70781e22d4e7f70ee",
+            "sha1" : "e5953faafecc7ee2efdcdea0d59017c851f7338d",
+            "sourceSha1": "3702f071a3def081e5b966a1ecfed48d17309e6b",
             "maven" : {
                 "groupId" : "org.eclipse.lsp4j",
                 "artifactId" : "org.eclipse.lsp4j.generator",
-                "version" : "0.4.1",
+                "version" : "0.6.0",
             },
             "dependencies" : ["XTEND-LIB"],
         },
         "XTEXT-XBASE-LIB" : {
-            "sha1" : "ea0734bda785af01c6f02298d25ed3189dd5a2ac",
-            "sourceSha1": "d2ed94bab5bae700d752a6f638edf08c19298464",
+            "sha1" : "e19b0344818acb8ea69f9a6cadafda636c752229",
+            "sourceSha1": "9c8eeef6b628ff7ded7824687cb45e9d7a9af1c8",
             "maven" : {
                 "groupId" : "org.eclipse.xtext",
                 "artifactId" : "org.eclipse.xtext.xbase.lib",
-                "version" : "2.13.0",
+                "version" : "2.16.0",
             },
             "dependencies" : ["GUAVA"],
         },
         "XTEND-LIB" : {
-            "sha1" : "accfb60dda659a31dddb5823d4fbcc7c0c1aa4ae",
-            "sourceSha1": "c8841f7735714cc794a980094178a9fd31b50754",
+            "sha1" : "38a6aa16e7783fc9ab79f2eeefce54825db15b5e",
+            "sourceSha1": "83a956737c95d179404d9fba8c116dae613a3390",
             "maven" : {
                 "groupId" : "org.eclipse.xtend",
                 "artifactId" : "org.eclipse.xtend.lib",
-                "version" : "2.13.0",
+                "version" : "2.16.0",
             },
             "dependencies" : ["XTEND-LIB-MACRO", "XTEXT-XBASE-LIB"],
         },
         "XTEND-LIB-MACRO" : {
-            "sha1" : "04897a782f69cee9326ea1ae7e10078b4d738463",
-            "sourceSha1": "67abbc9540e78a8aba1c6e4fad3ba1b2183f7be7",
+            "sha1" : "92c1466fd97281f339a261d37650e3b33eae6fe6",
+            "sourceSha1": "0ea203dc6c34a45f3fba548ed4d7b77766037f95",
             "maven" : {
                 "groupId" : "org.eclipse.xtend",
                 "artifactId" : "org.eclipse.xtend.lib.macro",
-                "version" : "2.13.0",
+                "version" : "2.16.0",
             }
         },
         "GSON" : {
-            "sha1" : "751f548c85fa49f330cecbb1875893f971b33c4e",
-            "sourceSha1": "bbb63ca253b483da8ee53a50374593923e3de2e2",
+            "sha1" : "f645ed69d595b24d4cf8b3fbb64cc505bede8829",
+            "sourceSha1": "c5b4c491aecb72e7c32a78da0b5c6b9cda8dee0f",
             "maven" : {
                 "groupId" : "com.google.code.gson",
                 "artifactId" : "gson",
-                "version" : "2.7",
+                "version" : "2.8.5",
             }
         },
         "GUAVA" : {
-            "sha1" : "6ce200f6b23222af3d8abb6b6459e6c44f4bb0e9",
-            "sourceSha1": "91a4d115400e904f22b03a78deb355e9ea803cd4",
+            "sha1" : "bd41a290787b5301e63929676d792c507bbc00ae",
+            "sourceSha1": "cb5c1119df8d41a428013289b193eba3ccaf5f60",
             "maven" : {
                 "groupId" : "com.google.guava",
                 "artifactId" : "guava",
-                "version" : "19.0",
+                "version" : "27.0.1-jre",
             }
         },
         "TruffleJSON" : {
@@ -491,26 +492,43 @@ suite = {
                 ],
             },
         },
-        "LSP-API": {
+        "LSP_API": {
             "dependencies": ["org.graalvm.tools.lsp.api"],
-            "distDependencies" : [ ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API"
+            ],
         },
         "LSP": {
             "dependencies": ["org.graalvm.tools.lsp"],
             "distDependencies" : [
-                "LSP-API",
-                "truffle:TRUFFLE_API",
+                "LSP_API",
                 "truffle:TRUFFLE_NFI",
                 "LSP4J"
             ],
         },
-        "LSP-LAUNCHER": {
+        "LSP_LAUNCHER": {
             "dependencies": ["org.graalvm.tools.lsp.launcher"],
             "distDependencies" : [
-                "LSP-API",
+                "LSP_API",
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
+        },
+        "LSP_TEST": {
+            "dependencies": ["org.graalvm.tools.lsp.test"],
+            "distDependencies" : [
+                "LSP",
+                "LSP_LAUNCHER",
+                "sdk:LAUNCHER_COMMON",
+                "truffle:TRUFFLE_SL",
+            ],
+        },
+        "LSP_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Language Server Backend for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-lsp.properties",
+            },
         },
     },
 }

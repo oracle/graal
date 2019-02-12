@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,53 +40,109 @@
  */
 package com.oracle.truffle.sl.nodes.interop;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * A container class used to store per-node attributes used by the instrumentation framework.
- *
  */
-public class NodeObjectDescriptor implements TruffleObject {
+@MessageResolution(receiverType = NodeObjectDescriptor.class)
+public final class NodeObjectDescriptor implements TruffleObject {
 
-    private final Map<String, Object> data = new HashMap<>();
+    static final String NAME = "name";
+    static final String KIND = StandardTags.DeclarationTag.KIND;
+
+    private final String name;
+    private final String kind;
+    @CompilerDirectives.CompilationFinal private volatile TruffleObject keys;
+
+    public NodeObjectDescriptor(String name, String kind) {
+        assert name != null;
+        this.name = name;
+        this.kind = kind;
+    }
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return NodeObjectDescriptorFactoryForeign.ACCESS;
+        return NodeObjectDescriptorForeign.ACCESS;
     }
 
-    @TruffleBoundary
-    public void addProperty(String name, Object value) {
-        data.put(name, value);
+    public Object getProperty(String key) {
+        switch (key) {
+            case NAME:
+                return name;
+            case KIND:
+                if (kind != null) {
+                    return kind;
+                } else {
+                    throw UnknownIdentifierException.raise(key);
+                }
+            default:
+                throw UnknownIdentifierException.raise(key);
+        }
     }
 
-    @TruffleBoundary
-    public int size() {
-        return data.size();
+    public boolean hasProperty(String key) {
+        switch (key) {
+            case NAME:
+                return true;
+            case KIND:
+                return kind != null;
+            default:
+                return false;
+        }
     }
 
-    @TruffleBoundary
-    public Object getProperty(String name) {
-        assert hasProperty(name);
-        return data.get(name);
-    }
-
-    @TruffleBoundary
-    public boolean hasProperty(String name) {
-        return data.containsKey(name);
-    }
-
-    @TruffleBoundary
     public TruffleObject getPropertyNames() {
-        return new NodeObjectDescriptorKeys(data);
+        if (keys == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            keys = new NodeObjectDescriptorKeys(kind != null);
+        }
+        return keys;
     }
 
     static boolean isInstance(TruffleObject object) {
         return object instanceof NodeObjectDescriptor;
+    }
+
+    @Resolve(message = "READ")
+    abstract static class Read extends Node {
+        public Object access(NodeObjectDescriptor target, String key) {
+            return target.getProperty(key);
+        }
+    }
+
+    @Resolve(message = "HAS_KEYS")
+    abstract static class HasKeys extends Node {
+
+        public Object access(@SuppressWarnings("unused") Object target) {
+            return true;
+        }
+    }
+
+    @Resolve(message = "KEYS")
+    abstract static class Keys extends Node {
+        public Object access(NodeObjectDescriptor target) {
+            return target.getPropertyNames();
+        }
+    }
+
+    @Resolve(message = "KEY_INFO")
+    abstract static class KeyInfoMR extends Node {
+
+        public Object access(NodeObjectDescriptor target, Object key) {
+            if (key instanceof String && target.hasProperty((String) key)) {
+                return KeyInfo.READABLE;
+            } else {
+                return KeyInfo.NONE;
+            }
+        }
     }
 }

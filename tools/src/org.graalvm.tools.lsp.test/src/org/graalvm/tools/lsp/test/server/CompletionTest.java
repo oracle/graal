@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.test.server;
 
 import static org.junit.Assert.assertEquals;
@@ -29,21 +53,15 @@ public class CompletionTest extends TruffleLSPTest {
     @Test
     public void globalsAndLocals() throws InterruptedException, ExecutionException {
         URI uri = createDummyFileUriForSL();
-        //@formatter:off
-        /**
-         * 0 function main() {
-         * 1  return 3+3;
-         * 2 }
-         * 3 function abc(p1, p2) {
-         * 4   varA = p1 + p2;
-         * 5
-         * 6   varB = p1 * p2;
-         * 7   return varA;
-         * 8 }
-         * 9
-         */
-        //@formatter:on
-        String text = "function main() {\n  return 3+3;\n}\nfunction abc(p1, p2) {\n  varA = p1 + p2;\n\n  varB = p1 * p2;\n  return varA;\n}\n";
+        String text = "function main() {\n" +        // 0
+                        "  return 3+3;\n" +          // 1
+                        "}\n" +                      // 2
+                        "function abc(p1, p2) {\n" + // 3
+                        "  varA = p1 + p2;\n" +      // 4
+                        "\n" +                       // 5
+                        "  varB = p1 * p2;\n" +      // 6
+                        "  return varA;\n" +         // 7
+                        "}\n";                       // 8
         Future<?> future = truffleAdapter.parse(text, "sl", uri);
         future.get();
 
@@ -177,44 +195,24 @@ public class CompletionTest extends TruffleLSPTest {
     @Test
     public void objectPropertyCompletionLocalFile() throws InterruptedException, ExecutionException {
         URI uri = createDummyFileUriForSL();
-        //@formatter:off
-        /**
-         *  0 function main() {
-         *  1     obj = abc();
-         *  2     obj;
-         *  3 }
-         *  4
-         *  5 function abc() {
-         *  6   obj = new();
-         *  7   obj.p = 1;
-         *  8   return obj;
-         *  9 }
-         * 10
-         * 11 function never_called(obj) {
-         * 12     obj;
-         * 13 }
-         * 14
-         */
-        //@formatter:on
-        String text = "function main() {\n    obj = abc();\n    obj;\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n\nfunction never_called(obj) {\n    obj;\n}\n";
-        Future<?> future = truffleAdapter.parse(text, "sl", uri);
+        Future<?> future = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         future.get();
 
         {
             String replacement = ".";
-            Range range = new Range(new Position(2, 7), new Position(2, 7));
+            Range range = new Range(new Position(2, 12), new Position(2, 12));
             TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
             boolean thrown = false;
             try {
                 Future<?> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
                 future2.get();
-            } catch (RuntimeException e) {
+            } catch (ExecutionException e) {
                 thrown = true;
                 assertTrue(e.getCause() instanceof DiagnosticsNotification);
             }
             assertTrue(thrown);
 
-            Future<CompletionList> future3 = truffleAdapter.completion(uri, 2, 8, null);
+            Future<CompletionList> future3 = truffleAdapter.completion(uri, 2, 13, null);
             CompletionList completionList = future3.get();
             assertEquals(1, completionList.getItems().size());
             CompletionItem item = completionList.getItems().get(0);
@@ -225,7 +223,7 @@ public class CompletionTest extends TruffleLSPTest {
 
         {
             String replacement1 = "";
-            Range range1 = new Range(new Position(2, 7), new Position(2, 8));
+            Range range1 = new Range(new Position(2, 12), new Position(2, 13));
             TextDocumentContentChangeEvent event1 = new TextDocumentContentChangeEvent(range1, replacement1.length(), replacement1);
             Future<?> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event1), uri);
             future2.get();
@@ -237,7 +235,7 @@ public class CompletionTest extends TruffleLSPTest {
             try {
                 Future<?> future3 = truffleAdapter.processChangesAndParse(Arrays.asList(event2), uri);
                 future3.get();
-            } catch (RuntimeException e) {
+            } catch (ExecutionException e) {
                 thrown = true;
                 assertTrue(e.getCause() instanceof DiagnosticsNotification);
             }
@@ -248,7 +246,7 @@ public class CompletionTest extends TruffleLSPTest {
                 Future<CompletionList> future4 = truffleAdapter.completion(uri, 12, 8, null);
                 CompletionList completionList = future4.get();
                 assertEquals(0, completionList.getItems().size());
-            } catch (RuntimeException e) {
+            } catch (ExecutionException e) {
                 thrown = true;
                 assertTrue(e.getCause() instanceof DiagnosticsNotification);
             }
@@ -259,27 +257,7 @@ public class CompletionTest extends TruffleLSPTest {
     @Test
     public void objectPropertyCompletionViaCoverageData() throws InterruptedException, ExecutionException {
         URI uri = createDummyFileUriForSL();
-        //@formatter:off
-        /**
-         *  0 function main() {
-         *  1     obj = abc();
-         *  2     obj;
-         *  3 }
-         *  4
-         *  5 function abc() {
-         *  6   obj = new();
-         *  7   obj.p = 1;
-         *  8   return obj;
-         *  9 }
-         * 10
-         * 11 function never_called(obj) {
-         * 12     obj;
-         * 13 }
-         * 14
-         */
-        //@formatter:on
-        String text = "function main() {\n    obj = abc();\n    obj;\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n\nfunction never_called(obj) {\n    obj;\n}\n";
-        Future<?> future = truffleAdapter.parse(text, "sl", uri);
+        Future<?> future = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         future.get();
 
         Future<Boolean> futureCoverage = truffleAdapter.runCoverageAnalysis(uri);
@@ -293,7 +271,7 @@ public class CompletionTest extends TruffleLSPTest {
             try {
                 Future<?> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
                 future2.get();
-            } catch (RuntimeException e) {
+            } catch (ExecutionException e) {
                 thrown = true;
                 assertTrue(e.getCause() instanceof DiagnosticsNotification);
             }

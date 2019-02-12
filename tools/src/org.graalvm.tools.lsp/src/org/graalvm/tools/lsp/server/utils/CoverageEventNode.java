@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.server.utils;
 
 import java.net.URI;
@@ -8,9 +32,9 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -22,7 +46,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class CoverageEventNode extends ExecutionEventNode {
+public final class CoverageEventNode extends ExecutionEventNode {
 
     private final URI coverageUri;
     private final Node instrumentedNode;
@@ -49,15 +73,24 @@ public class CoverageEventNode extends ExecutionEventNode {
         if (entered || creatorThreadId != Thread.currentThread().getId()) {
             // We had problems with a finalizer thread, so we filter only for the thread which
             // created the node
+            // TODO ?
             return;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        entered = true;
+        getLock().lock();
+        try {
+            if (entered) {
+                return;
+            }
+            entered = true;
+        } finally {
+            getLock().unlock();
+        }
         putSection2Uri(frame.materialize());
     }
 
-    @TruffleBoundary
     private void putSection2Uri(MaterializedFrame frame) {
+        CompilerAsserts.neverPartOfCompilation();
         URI sourceUri = instrumentedSection.getSource().getURI();
         if (!sourceUri.getScheme().equals("file")) {
             String name = instrumentedSection.getSource().getName();

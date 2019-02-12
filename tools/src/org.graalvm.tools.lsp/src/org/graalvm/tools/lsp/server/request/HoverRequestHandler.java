@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.server.request;
 
 import java.net.URI;
@@ -41,10 +65,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class HoverRequestHandler extends AbstractRequestHandler {
+public final class HoverRequestHandler extends AbstractRequestHandler {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, HoverRequestHandler.class);
 
-    private CompletionRequestHandler completionHandler;
+    private final CompletionRequestHandler completionHandler;
 
     public HoverRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, CompletionRequestHandler completionHandler) {
         super(env, surrogateMap, contextAwareExecutor);
@@ -60,12 +84,12 @@ public class HoverRequestHandler extends AbstractRequestHandler {
             if (surrogate.hasCoverageData()) {
                 List<CoverageData> coverages = surrogate.getCoverageData(hoverSection);
                 if (coverages != null) {
-                    return evalHoverInfos(coverages, hoverSection, surrogate.getLangId());
+                    return evalHoverInfos(coverages, hoverSection, surrogate.getLanguageInfo());
                 }
-            } else if (env.getOptions().get(LSOptions.LanguageDeveloperMode)) {
+            } else if (env.getOptions().get(LSOptions.DeveloperMode)) {
                 String sourceText = hoverSection.getCharacters().toString();
                 List<Either<String, MarkedString>> contents = new ArrayList<>();
-                contents.add(Either.forRight(new MarkedString(surrogate.getLangId(), sourceText)));
+                contents.add(Either.forRight(new MarkedString(surrogate.getLanguageId(), sourceText)));
                 contents.add(Either.forLeft("Node class: " + nodeAtCaret.getClass().getSimpleName()));
                 contents.add(Either.forLeft("Tags: " + getTags(nodeAtCaret)));
                 return new Hover(contents, SourceUtils.sourceSectionToRange(hoverSection));
@@ -85,15 +109,15 @@ public class HoverRequestHandler extends AbstractRequestHandler {
         return tags.toString();
     }
 
-    private Hover evalHoverInfos(List<CoverageData> coverages, SourceSection hoverSection, String langId) {
+    private Hover evalHoverInfos(List<CoverageData> coverages, SourceSection hoverSection, LanguageInfo langInfo) {
         String textAtHoverPosition = hoverSection.getCharacters().toString();
         for (CoverageData coverageData : coverages) {
-            Hover frameSlotHover = tryFrameSlot(coverageData.getFrame(), textAtHoverPosition, langId, hoverSection);
+            Hover frameSlotHover = tryFrameSlot(coverageData.getFrame(), textAtHoverPosition, langInfo, hoverSection);
             if (frameSlotHover != null) {
                 return frameSlotHover;
             }
 
-            Hover coverageDataHover = tryCoverageDataEvaluation(hoverSection, langId, textAtHoverPosition, coverageData);
+            Hover coverageDataHover = tryCoverageDataEvaluation(hoverSection, langInfo, textAtHoverPosition, coverageData);
             if (coverageDataHover != null) {
                 return coverageDataHover;
             }
@@ -101,15 +125,15 @@ public class HoverRequestHandler extends AbstractRequestHandler {
         return new Hover(new ArrayList<>());
     }
 
-    private Hover tryCoverageDataEvaluation(SourceSection hoverSection, String langId, String textAtHoverPosition, CoverageData coverageData) {
+    private Hover tryCoverageDataEvaluation(SourceSection hoverSection, LanguageInfo langInfo, String textAtHoverPosition, CoverageData coverageData) {
         InstrumentableNode instrumentable = ((InstrumentableNode) coverageData.getCoverageEventNode().getInstrumentedNode());
         if (!instrumentable.hasTag(StandardTags.ExpressionTag.class)) {
             return null;
         }
 
         Future<Hover> future = contextAwareExecutor.executeWithNestedContext(() -> {
-            final LanguageInfo info = coverageData.getCoverageEventNode().getRootNode().getLanguageInfo();
-            final Source inlineEvalSource = Source.newBuilder(info.getId(), textAtHoverPosition, "in-line eval (hover request)").cached(false).build();
+            final LanguageInfo rootLangInfo = coverageData.getCoverageEventNode().getRootNode().getLanguageInfo();
+            final Source inlineEvalSource = Source.newBuilder(rootLangInfo.getId(), textAtHoverPosition, "in-line eval (hover request)").cached(false).build();
             ExecutableNode executableNode = null;
             try {
                 executableNode = env.parseInline(inlineEvalSource, coverageData.getCoverageEventNode(), coverageData.getFrame());
@@ -138,12 +162,12 @@ public class HoverRequestHandler extends AbstractRequestHandler {
             }
 
             if (evalResult instanceof TruffleObject) {
-                Hover signatureHover = trySignature(hoverSection, langId, (TruffleObject) evalResult);
+                Hover signatureHover = trySignature(hoverSection, langInfo.getId(), (TruffleObject) evalResult);
                 if (signatureHover != null) {
                     return signatureHover;
                 }
             }
-            return new Hover(createDefaultHoverInfos(textAtHoverPosition, evalResult, langId), SourceUtils.sourceSectionToRange(hoverSection));
+            return new Hover(createDefaultHoverInfos(textAtHoverPosition, evalResult, langInfo), SourceUtils.sourceSectionToRange(hoverSection));
         }, true);
 
         return getFutureResultOrHandleExceptions(future);
@@ -165,24 +189,24 @@ public class HoverRequestHandler extends AbstractRequestHandler {
         return null;
     }
 
-    private Hover tryFrameSlot(MaterializedFrame frame, String textAtHoverPosition, String langId, SourceSection hoverSection) {
+    private Hover tryFrameSlot(MaterializedFrame frame, String textAtHoverPosition, LanguageInfo langInfo, SourceSection hoverSection) {
         FrameSlot frameSlot = frame.getFrameDescriptor().getSlots().stream().filter(slot -> slot.getIdentifier().equals(textAtHoverPosition)).findFirst().orElseGet(() -> null);
         if (frameSlot != null) {
             Object frameSlotValue = frame.getValue(frameSlot);
-            return new Hover(createDefaultHoverInfos(textAtHoverPosition, frameSlotValue, langId), SourceUtils.sourceSectionToRange(hoverSection));
+            return new Hover(createDefaultHoverInfos(textAtHoverPosition, frameSlotValue, langInfo), SourceUtils.sourceSectionToRange(hoverSection));
         }
         return null;
     }
 
-    private List<Either<String, MarkedString>> createDefaultHoverInfos(String textAtHoverPosition, Object evalResultObject, String langId) {
+    private List<Either<String, MarkedString>> createDefaultHoverInfos(String textAtHoverPosition, Object evalResultObject, LanguageInfo langInfo) {
         List<Either<String, MarkedString>> contents = new ArrayList<>();
-        contents.add(Either.forRight(new MarkedString(langId, textAtHoverPosition)));
+        contents.add(Either.forRight(new MarkedString(langInfo.getId(), textAtHoverPosition)));
         String result = evalResultObject != null ? evalResultObject.toString() : "";
         if (!textAtHoverPosition.equals(result)) {
             String resultObjectString = evalResultObject instanceof String ? "\"" + result + "\"" : result;
-            contents.add(Either.forRight(new MarkedString(langId, resultObjectString)));
+            contents.add(Either.forRight(new MarkedString(langInfo.getId(), resultObjectString)));
         }
-        String detailText = completionHandler.createCompletionDetail(textAtHoverPosition, evalResultObject, langId);
+        String detailText = completionHandler.createCompletionDetail(textAtHoverPosition, evalResultObject, langInfo);
         contents.add(Either.forLeft("meta-object: " + detailText));
 
         if (evalResultObject instanceof TruffleObject) {

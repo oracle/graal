@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 public final class ObjectStructures {
 
-    public static Map<Object, Object> asMap(MessageNodes nodes, TruffleObject object) {
+    public static Map<Object, Object> asMap(TruffleObject object, MessageNodes nodes) {
         TruffleObject keys;
         try {
             keys = ForeignAccess.sendKeys(nodes.keys, object, true);
@@ -54,10 +54,10 @@ public final class ObjectStructures {
         } catch (UnsupportedMessageException ex) {
             return null;
         }
-        return new ObjectMap(nodes, object, keys);
+        return new ObjectMap(object, keys, nodes);
     }
 
-    public static List<Object> asList(MessageNodes nodes, TruffleObject object) {
+    public static List<Object> asList(TruffleObject object, MessageNodes nodes) {
         if (!ForeignAccess.sendHasSize(nodes.hasSize, object)) {
             return null;
         }
@@ -66,14 +66,14 @@ public final class ObjectStructures {
 
     private static class ObjectMap extends AbstractMap<Object, Object> {
 
-        private final MessageNodes nodes;
         private final TruffleObject object;
         private final TruffleObject keys;
+        private final MessageNodes nodes;
 
-        ObjectMap(MessageNodes nodes, TruffleObject object, TruffleObject keys) {
-            this.nodes = nodes;
+        ObjectMap(TruffleObject object, TruffleObject keys, MessageNodes nodes) {
             this.object = object;
             this.keys = keys;
+            this.nodes = nodes;
         }
 
         @Override
@@ -238,12 +238,12 @@ public final class ObjectStructures {
 
     public static class MessageNodes {
 
-        final Node keyInfo;
-        final Node keys;
-        final Node hasSize;
-        final Node getSize;
-        final Node read;
-        final Node write;
+        public final Node keyInfo;
+        public final Node keys;
+        public final Node hasSize;
+        public final Node getSize;
+        public final Node read;
+        public final Node write;
 
         public MessageNodes() {
             keyInfo = Message.KEY_INFO.createNode();

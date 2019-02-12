@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.server.request;
 
 import java.net.URI;
@@ -10,6 +34,7 @@ import org.eclipse.lsp4j.DocumentHighlight;
 import org.eclipse.lsp4j.DocumentHighlightKind;
 import org.eclipse.lsp4j.Range;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
+import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
@@ -23,10 +48,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class HighlightRequestHandler extends AbstractRequestHandler {
+public final class HighlightRequestHandler extends AbstractRequestHandler {
 
-    public HighlightRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
+    private final MessageNodes messageNodes;
+
+    public HighlightRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor, MessageNodes messageNodes) {
         super(env, surrogateMap, executor);
+        this.messageNodes = messageNodes;
     }
 
     public List<? extends DocumentHighlight> highlightWithEnteredContext(URI uri, int line, int character) {
@@ -41,7 +69,7 @@ public class HighlightRequestHandler extends AbstractRequestHandler {
     }
 
     List<? extends DocumentHighlight> findOtherReadOrWrites(TextDocumentSurrogate surrogate, InstrumentableNode nodeAtCaret) {
-        String variableName = InteropUtils.getNodeObjectName(nodeAtCaret);
+        String variableName = InteropUtils.getNodeObjectName(nodeAtCaret, messageNodes);
         if (variableName != null) {
             LinkedList<Scope> scopesOuterToInner = getScopesOuterToInner(surrogate, nodeAtCaret);
             List<DocumentHighlight> highlights = new ArrayList<>();
@@ -55,7 +83,7 @@ public class HighlightRequestHandler extends AbstractRequestHandler {
                                 InstrumentableNode instrumentableNode = (InstrumentableNode) node;
                                 if (instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ||
                                                 instrumentableNode.hasTag(StandardTags.ReadVariableTag.class)) {
-                                    String name = InteropUtils.getNodeObjectName(instrumentableNode);
+                                    String name = InteropUtils.getNodeObjectName(instrumentableNode, messageNodes);
                                     if (name.equals(variableName)) {
                                         SourceSection sourceSection = node.getSourceSection();
                                         if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {

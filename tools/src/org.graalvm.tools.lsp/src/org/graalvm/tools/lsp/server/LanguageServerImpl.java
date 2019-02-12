@@ -1,11 +1,35 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.server;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,7 +42,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 
+import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.CodeLensOptions;
@@ -38,6 +64,7 @@ import org.eclipse.lsp4j.DocumentFormattingParams;
 import org.eclipse.lsp4j.DocumentHighlight;
 import org.eclipse.lsp4j.DocumentOnTypeFormattingParams;
 import org.eclipse.lsp4j.DocumentRangeFormattingParams;
+import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.ExecuteCommandParams;
@@ -72,26 +99,35 @@ import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
 
 import com.google.gson.JsonPrimitive;
+
+import com.oracle.truffle.api.TruffleLogger;
 
 /**
  * A LSP4J {@link LanguageServer} implementation using TCP sockets as transportation layer for the
  * JSON-RPC requests. It delegates all requests to {@link TruffleAdapter}.
- *
  */
 public final class LanguageServerImpl implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService {
+
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, LanguageServer.class);
+
     private static final String SHOW_COVERAGE = "show_coverage";
     private static final String ANALYSE_COVERAGE = "analyse_coverage";
     private static final String CLEAR_COVERAGE = "clear_coverage";
     private static final String CLEAR_ALL_COVERAGE = "clear_all_coverage";
     private static final TextDocumentSyncKind TEXT_DOCUMENT_SYNC_KIND = TextDocumentSyncKind.Incremental;
+
     private final TruffleAdapter truffleAdapter;
     private final PrintWriter err;
     private final PrintWriter info;
     private LanguageClient client;
-    private Map<URI, String> openedFileUri2LangId = new HashMap<>();
+    private final Map<URI, String> openedFileUri2LangId = new HashMap<>();
     private ExecutorService clientConnectionExecutor;
+
+    private final Hover emptyHover = new Hover();
+    private final SignatureHelp emptySignatureHelp = new SignatureHelp();
 
     private LanguageServerImpl(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
         this.truffleAdapter = adapter;
@@ -104,6 +140,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
         return server;
     }
 
+    @Override
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
         truffleAdapter.initialize();
 
@@ -134,20 +171,24 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
         return CompletableFuture.completedFuture(new InitializeResult(capabilities));
     }
 
+    @Override
     public CompletableFuture<Object> shutdown() {
         info.println("[Graal LSP] Shutting down server...");
         return CompletableFuture.completedFuture(new Object());
     }
 
+    @Override
     public void exit() {
         clientConnectionExecutor.shutdown();
         info.println("[Graal LSP] Server shutdown done.");
     }
 
+    @Override
     public TextDocumentService getTextDocumentService() {
         return this;
     }
 
+    @Override
     public WorkspaceService getWorkspaceService() {
         return this;
     }
@@ -161,7 +202,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams position) {
         Future<CompletionList> futureCompletionList = truffleAdapter.completion(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
                         position.getPosition().getCharacter(), position.getContext());
-        return CompletableFuture.supplyAsync(() -> Either.forRight(waitForResultAndHandleExceptions(futureCompletionList, new CompletionList())));
+        return CompletableFuture.supplyAsync(() -> Either.forRight(waitForResultAndHandleExceptions(futureCompletionList, truffleAdapter.completionHandler.emptyList)));
     }
 
     @Override
@@ -173,21 +214,21 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     @Override
     public CompletableFuture<Hover> hover(TextDocumentPositionParams position) {
         Future<Hover> futureHover = truffleAdapter.hover(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
-        return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureHover, new Hover()));
+        return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureHover, emptyHover));
     }
 
     @Override
     public CompletableFuture<SignatureHelp> signatureHelp(TextDocumentPositionParams position) {
         Future<SignatureHelp> future = truffleAdapter.signatureHelp(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
 
-        return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(future, new SignatureHelp()));
+        return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(future, emptySignatureHelp));
     }
 
     @Override
     public CompletableFuture<List<? extends Location>> definition(TextDocumentPositionParams position) {
         Future<List<? extends Location>> future = truffleAdapter.definition(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
                         position.getPosition().getCharacter());
-        Supplier<List<? extends Location>> supplier = () -> waitForResultAndHandleExceptions(future, new ArrayList<>());
+        Supplier<List<? extends Location>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
         return CompletableFuture.supplyAsync(supplier);
     }
 
@@ -195,7 +236,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     public CompletableFuture<List<? extends Location>> references(ReferenceParams params) {
         Future<List<? extends Location>> future = truffleAdapter.references(URI.create(params.getTextDocument().getUri()), params.getPosition().getLine(),
                         params.getPosition().getCharacter());
-        Supplier<List<? extends Location>> supplier = () -> waitForResultAndHandleExceptions(future, new ArrayList<>());
+        Supplier<List<? extends Location>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
         return CompletableFuture.supplyAsync(supplier);
     }
 
@@ -203,20 +244,20 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     public CompletableFuture<List<? extends DocumentHighlight>> documentHighlight(TextDocumentPositionParams position) {
         Future<List<? extends DocumentHighlight>> future = truffleAdapter.documentHighlight(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
                         position.getPosition().getCharacter());
-        Supplier<List<? extends DocumentHighlight>> supplier = () -> waitForResultAndHandleExceptions(future, new ArrayList<>());
+        Supplier<List<? extends DocumentHighlight>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
         return CompletableFuture.supplyAsync(supplier);
     }
 
     @Override
-    public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(DocumentSymbolParams params) {
-        Future<List<? extends SymbolInformation>> future = truffleAdapter.documentSymbol(URI.create(params.getTextDocument().getUri()));
-        Supplier<List<? extends SymbolInformation>> supplier = () -> waitForResultAndHandleExceptions(future, new ArrayList<>());
+    public CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> documentSymbol(DocumentSymbolParams params) {
+        Future<List<Either<SymbolInformation, DocumentSymbol>>> future = truffleAdapter.documentSymbol(URI.create(params.getTextDocument().getUri()));
+        Supplier<List<Either<SymbolInformation, DocumentSymbol>>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
         return CompletableFuture.supplyAsync(supplier);
     }
 
     @Override
-    public CompletableFuture<List<? extends Command>> codeAction(CodeActionParams params) {
-        return CompletableFuture.completedFuture(new ArrayList<>());
+    public CompletableFuture<List<Either<Command, CodeAction>>> codeAction(CodeActionParams params) {
+        return CompletableFuture.completedFuture(Collections.emptyList());
     }
 
     @Override
@@ -299,21 +340,21 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     private void processChanges(final String documentUri,
                     final List<? extends TextDocumentContentChangeEvent> list) {
         String langId = openedFileUri2LangId.get(URI.create(documentUri));
-        assert langId != null : documentUri;
+        assert langId != null : documentUri; // TODO: Are we sure we want to throw AssertionError?
 
         URI uri = URI.create(documentUri);
         Future<?> future;
-        if (TEXT_DOCUMENT_SYNC_KIND.equals(TextDocumentSyncKind.Full)) {
-            // Only need the first element, as long as sync mode is
-            // TextDocumentSyncKind.Full
-            TextDocumentContentChangeEvent e = list.iterator().next();
-            final String langId1 = langId;
-
-            future = truffleAdapter.parse(e.getText(), langId1, uri);
-        } else if (TEXT_DOCUMENT_SYNC_KIND.equals(TextDocumentSyncKind.Incremental)) {
-            future = truffleAdapter.processChangesAndParse(list, uri);
-        } else {
-            throw new IllegalStateException("Unknown TextDocumentSyncKind: " + TEXT_DOCUMENT_SYNC_KIND);
+        switch (TEXT_DOCUMENT_SYNC_KIND) {
+            case Full:
+                // Only need the first element, as long as sync mode isTextDocumentSyncKind.Full
+                TextDocumentContentChangeEvent e = list.iterator().next();
+                future = truffleAdapter.parse(e.getText(), langId, uri);
+                break;
+            case Incremental:
+                future = truffleAdapter.processChangesAndParse(list, uri);
+                break;
+            default:
+                throw new IllegalStateException("Unknown TextDocumentSyncKind: " + TEXT_DOCUMENT_SYNC_KIND);
         }
 
         CompletableFuture.runAsync(() -> waitForResultAndHandleExceptions(future, null, uri));
@@ -346,7 +387,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     @Override
     public CompletableFuture<List<? extends SymbolInformation>> symbol(WorkspaceSymbolParams params) {
         Future<List<? extends SymbolInformation>> future = truffleAdapter.workspaceSymbol(params.getQuery());
-        Supplier<List<? extends SymbolInformation>> supplier = () -> waitForResultAndHandleExceptions(future, new ArrayList<>());
+        Supplier<List<? extends SymbolInformation>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
         return CompletableFuture.supplyAsync(supplier);
     }
 
@@ -359,39 +400,41 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
     }
 
+    @Override
     public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
-        if (ANALYSE_COVERAGE.equals(params.getCommand())) {
-            client.showMessage(new MessageParams(MessageType.Info, "Running Coverage analysis..."));
-            String uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
+        switch (params.getCommand()) {
+            case ANALYSE_COVERAGE:
+                client.showMessage(new MessageParams(MessageType.Info, "Running Coverage analysis..."));
+                String uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
 
-            Future<Boolean> future = truffleAdapter.runCoverageAnalysis(URI.create(uri));
-            return CompletableFuture.supplyAsync(() -> {
-                Boolean result = waitForResultAndHandleExceptions(future, Boolean.FALSE);
-                if (result) {
-                    client.showMessage(new MessageParams(MessageType.Info, "Coverage analysis done."));
-                    Future<?> futureShowCoverage = truffleAdapter.showCoverage(URI.create(uri));
-                    waitForResultAndHandleExceptions(futureShowCoverage);
-                } else {
-                    client.showMessage(new MessageParams(MessageType.Error, "Coverage analysis failed."));
-                }
-                return new Object();
-            });
-        } else if (SHOW_COVERAGE.equals(params.getCommand())) {
-            String uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
+                Future<Boolean> future = truffleAdapter.runCoverageAnalysis(URI.create(uri));
+                return CompletableFuture.supplyAsync(() -> {
+                    Boolean result = waitForResultAndHandleExceptions(future, Boolean.FALSE);
+                    if (result) {
+                        client.showMessage(new MessageParams(MessageType.Info, "Coverage analysis done."));
+                        Future<?> futureShowCoverage = truffleAdapter.showCoverage(URI.create(uri));
+                        waitForResultAndHandleExceptions(futureShowCoverage);
+                    } else {
+                        client.showMessage(new MessageParams(MessageType.Error, "Coverage analysis failed."));
+                    }
+                    return new Object();
+                });
+            case SHOW_COVERAGE:
+                uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
 
-            Future<?> futureCoverage = truffleAdapter.showCoverage(URI.create(uri));
-            return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureCoverage));
-        } else if (CLEAR_COVERAGE.equals(params.getCommand())) {
-            String uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
+                Future<?> futureCoverage = truffleAdapter.showCoverage(URI.create(uri));
+                return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureCoverage));
+            case CLEAR_COVERAGE:
+                uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
 
-            Future<?> futureClear = truffleAdapter.clearCoverage(URI.create(uri));
-            return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureClear));
-        } else if (CLEAR_ALL_COVERAGE.equals(params.getCommand())) {
-            Future<?> futureClearAll = truffleAdapter.clearCoverage();
-            return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureClearAll));
-        } else {
-            err.println("Unkown command: " + params.getCommand());
-            return CompletableFuture.completedFuture(new Object());
+                Future<?> futureClear = truffleAdapter.clearCoverage(URI.create(uri));
+                return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureClear));
+            case CLEAR_ALL_COVERAGE:
+                Future<?> futureClearAll = truffleAdapter.clearCoverage();
+                return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureClearAll));
+            default:
+                err.println("Unkown command: " + params.getCommand());
+                return CompletableFuture.completedFuture(new Object());
         }
     }
 
@@ -425,7 +468,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
         } catch (ExecutionException e) {
             if (e.getCause() instanceof UnknownLanguageException) {
                 String message = "Unknown language: " + e.getCause().getMessage();
-                err.println(message);
+                LOG.fine(message);
                 client.showMessage(new MessageParams(MessageType.Error, message));
             } else if (e.getCause() instanceof DiagnosticsNotification) {
                 for (PublishDiagnosticsParams params : ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection()) {
@@ -442,6 +485,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     public Future<?> start(final ServerSocket serverSocket) {
         clientConnectionExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
 
+            @Override
             public Thread newThread(Runnable r) {
                 Thread thread = Executors.defaultThreadFactory().newThread(r);
                 thread.setName("LSP client connection thread");
@@ -450,6 +494,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
         });
         Future<?> future = clientConnectionExecutor.submit(new Runnable() {
 
+            @Override
             public void run() {
                 try {
                     if (serverSocket.isClosed()) {
@@ -464,6 +509,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
                     ExecutorService lspRequestExecutor = Executors.newCachedThreadPool(new ThreadFactory() {
                         private final ThreadFactory factory = Executors.defaultThreadFactory();
 
+                        @Override
                         public Thread newThread(Runnable r) {
                             Thread thread = factory.newThread(r);
                             thread.setName("LSP client request handler " + thread.getName());
@@ -471,16 +517,29 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
                         }
                     });
 
-                    //@formatter:off
-                    Launcher<LanguageClient> launcher = new LSPLauncher.Builder<LanguageClient>()
-                        .setLocalService(LanguageServerImpl.this)
-                        .setRemoteInterface(LanguageClient.class)
-                        .setInput(clientSocket.getInputStream())
-                        .setOutput(clientSocket.getOutputStream())
-                        .setExecutorService(lspRequestExecutor)
-                      //.traceMessages(new PrintWriter(System.err, true))
-                        .create();
-                    //@formatter:on
+                    Launcher.Builder<LanguageClient> launcherBuilder = new LSPLauncher.Builder<LanguageClient>() //
+                                    .setLocalService(LanguageServerImpl.this) //
+                                    .setRemoteInterface(LanguageClient.class) //
+                                    .setInput(clientSocket.getInputStream()) //
+                                    .setOutput(clientSocket.getOutputStream()) //
+                                    .setExecutorService(lspRequestExecutor);
+                    if (LOG.isLoggable(Level.FINER)) {
+                        launcherBuilder.traceMessages(new PrintWriter(new Writer() {
+                            @Override
+                            public void write(char[] cbuf, int off, int len) throws IOException {
+                                LOG.finer(new String(cbuf, off, len));
+                            }
+
+                            @Override
+                            public void flush() throws IOException {
+                            }
+
+                            @Override
+                            public void close() throws IOException {
+                            }
+                        }));
+                    }
+                    Launcher<LanguageClient> launcher = launcherBuilder.create();
 
                     LanguageServerImpl.this.connect(launcher.getRemoteProxy());
                     Future<?> listenFuture = launcher.startListening();

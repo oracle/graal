@@ -731,10 +731,11 @@ public abstract class TruffleInstrument {
          *
          * @param languageInfo a language
          * @return a list of completion trigger characters of that language, can be empty.
+         * @since 1.0
          */
         public List<String> getCompletionTriggerCharacters(LanguageInfo languageInfo) {
-            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
-            return InstrumentAccessor.langAccess().getCompletionTriggerCharacters(env);
+            Object polyglotLanguage = InstrumentAccessor.nodesAccess().getPolyglotLanguage(languageInfo);
+            return InstrumentAccessor.engineAccess().getCompletionTriggerCharacters(polyglotLanguage);
         }
 
         /**
@@ -744,10 +745,11 @@ public abstract class TruffleInstrument {
          *
          * @param languageInfo a language
          * @return a list of signature help trigger characters of that language, can be empty.
+         * @since 1.0
          */
         public List<String> getSignatureHelpTriggerCharacters(LanguageInfo languageInfo) {
-            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
-            return InstrumentAccessor.langAccess().getSignatureHelpTriggerCharacters(env);
+            Object polyglotLanguage = InstrumentAccessor.nodesAccess().getPolyglotLanguage(languageInfo);
+            return InstrumentAccessor.engineAccess().getSignatureHelpTriggerCharacters(polyglotLanguage);
         }
 
         /**
@@ -757,6 +759,7 @@ public abstract class TruffleInstrument {
          * @param primitive a primitive value
          * @return a TruffleObject representing the primitive or <code>null</code> if the primitive
          *         cannot be boxed into a language-specific TruffleObject.
+         * @since 1.0
          */
         public Object boxPrimitive(String languageId, Object primitive) {
             LanguageInfo languageInfo = getLanguages().get(languageId);

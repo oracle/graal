@@ -412,6 +412,11 @@ public abstract class Accessor {
         public abstract Set<String> getInternalIds();
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
+
+        public abstract List<String> getCompletionTriggerCharacters(Object polyglotLanguage);
+
+        public abstract List<String> getSignatureHelpTriggerCharacters(Object polyglotLanguage);
+
     }
 
     public abstract static class LanguageSupport {
@@ -480,10 +485,6 @@ public abstract class Accessor {
         public abstract void finalizeContext(Env localEnv);
 
         public abstract Iterable<Scope> findLocalScopes(Env env, Node node, Frame frame);
-
-        public abstract List<String> getCompletionTriggerCharacters(Env env);
-
-        public abstract List<String> getSignatureHelpTriggerCharacters(Env env);
 
         public abstract Object boxPrimitive(Env env, Object primitive);
 

@@ -320,16 +320,6 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public List<String> getCompletionTriggerCharacters(TruffleLanguage.Env env) {
-            return env.getCompletionTriggerCharacters();
-        }
-
-        @Override
-        public List<String> getSignatureHelpTriggerCharacters(TruffleLanguage.Env env) {
-            return env.getSignatureHelpTriggerCharacters();
-        }
-
-        @Override
         public Object boxPrimitive(TruffleLanguage.Env env, Object primitive) {
             return env.boxPrimitive(primitive);
         }

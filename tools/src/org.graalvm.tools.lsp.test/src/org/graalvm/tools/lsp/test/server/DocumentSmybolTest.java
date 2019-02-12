@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.test.server;
 
 import static org.junit.Assert.assertEquals;
@@ -9,9 +33,11 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SymbolInformation;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.junit.Test;
 
 public class DocumentSmybolTest extends TruffleLSPTest {
@@ -19,37 +45,21 @@ public class DocumentSmybolTest extends TruffleLSPTest {
     @Test
     public void documentSymbol() throws InterruptedException, ExecutionException {
         URI uri = createDummyFileUriForSL();
-        //@formatter:off
-        /**
-         *  0 function main() {
-         *  1     abc();
-         *  2     x = abc();
-         *  3 }
-         *  4
-         *  5 function abc() {
-         *  6   obj = new();
-         *  7   obj.p = 1;
-         *  8   return obj;
-         *  9 }
-         * 10
-         */
-        //@formatter:on
-        String text = "function main() {\n    abc();\n    x = abc();\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n";
-        Future<?> futureOpen = truffleAdapter.parse(text, "sl", uri);
+        Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ, "sl", uri);
         futureOpen.get();
 
-        Future<List<? extends SymbolInformation>> futureSymbol = truffleAdapter.documentSymbol(uri);
-        List<? extends SymbolInformation> symbols = futureSymbol.get();
+        Future<List<Either<SymbolInformation, DocumentSymbol>>> futureSymbol = truffleAdapter.documentSymbol(uri);
+        List<? extends Either<SymbolInformation, DocumentSymbol>> symbols = futureSymbol.get();
 
         assertEquals(2, symbols.size());
 
-        Optional<? extends SymbolInformation> symbolOptMain = symbols.stream().filter(symbol -> symbol.getName().equals("main")).findFirst();
+        Optional<? extends Either<SymbolInformation, DocumentSymbol>> symbolOptMain = symbols.stream().filter(symbol -> symbol.getLeft().getName().equals("main")).findFirst();
         assertTrue(symbolOptMain.isPresent());
         Range rangeMain = new Range(new Position(0, 9), new Position(3, 1));
-        assertEquals(rangeMain, symbolOptMain.get().getLocation().getRange());
+        assertEquals(rangeMain, symbolOptMain.get().getLeft().getLocation().getRange());
 
-        Optional<? extends SymbolInformation> symbolOptAbc = symbols.stream().filter(symbol -> symbol.getName().equals("abc")).findFirst();
+        Optional<? extends Either<SymbolInformation, DocumentSymbol>> symbolOptAbc = symbols.stream().filter(symbol -> symbol.getLeft().getName().equals("abc")).findFirst();
         Range rangeAbc = new Range(new Position(5, 9), new Position(9, 1));
-        assertEquals(rangeAbc, symbolOptAbc.get().getLocation().getRange());
+        assertEquals(rangeAbc, symbolOptAbc.get().getLeft().getLocation().getRange());
     }
 }

@@ -22,29 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.tools.lsp.api;
+package org.graalvm.tools.lsp.api.interop;
 
-import java.nio.file.Path;
+import com.oracle.truffle.api.interop.Message;
 
-/**
- * This service interface provides callbacks for a custom file system. As we execute source code to
- * collect run-time information, the executed code needs to access the state of (potentially)
- * unsaved files in the LSP source code editor instead of the state on disk. Therefore, a custom
- * file system needs to check for every file access if there is an edited version in the source code
- * editor.
- *
- */
-public interface VirtualLanguageServerFileProvider {
+final class GetSignature extends Message {
 
-    /**
-     * @param path A path to a file in the file system.
-     * @return The source code of the file as seen/edited by the user in the source code editor.
-     */
-    String getSourceText(Path path);
+    static final GetSignature INSTANCE = new GetSignature();
 
-    /**
-     * @param path A path to a file in the file system.
-     * @return true if the file has been marked as "opened" in our LSP server.
-     */
-    boolean isVirtualFile(Path path);
+    private GetSignature() {
+    }
+
+    @Override
+    public boolean equals(Object message) {
+        return message instanceof GetSignature;
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(INSTANCE);
+    }
+
 }

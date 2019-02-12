@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -191,7 +190,8 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * variables.
  * </ul>
  */
-@TruffleLanguage.Registration(id = SLLanguage.ID, name = "SL", defaultMimeType = SLLanguage.MIME_TYPE, characterMimeTypes = SLLanguage.MIME_TYPE, contextPolicy = ContextPolicy.SHARED, fileTypeDetectors = SLFileDetector.class)
+@TruffleLanguage.Registration(id = SLLanguage.ID, name = "SL", defaultMimeType = SLLanguage.MIME_TYPE, characterMimeTypes = SLLanguage.MIME_TYPE, completionTriggerCharacters = ".", signatureHelpTriggerCharacters = "(", //
+                contextPolicy = ContextPolicy.SHARED, fileTypeDetectors = SLFileDetector.class)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.ExpressionTag.class, DebuggerTags.AlwaysHalt.class,
                 StandardTags.DeclarationTag.class, StandardTags.ReadVariableTag.class, StandardTags.WriteVariableTag.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
@@ -401,11 +401,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected Iterable<Scope> findTopScopes(SLContext context) {
         return context.getTopScopes();
-    }
-
-    @Override
-    protected List<String> getCompletionTriggerCharacters() {
-        return Arrays.asList(".");
     }
 
     public static SLContext getCurrentContext() {

@@ -1,7 +1,32 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.server.request;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -14,6 +39,7 @@ import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
+import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
@@ -31,16 +57,18 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class DefinitionRequestHandler extends AbstractRequestHandler {
+public final class DefinitionRequestHandler extends AbstractRequestHandler {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, DefinitionRequestHandler.class);
 
     final SourceCodeEvaluator sourceCodeEvaluator;
+    private final MessageNodes messageNodes;
     private final SymbolRequestHandler symbolHandler;
 
     public DefinitionRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator evaluator,
-                    SymbolRequestHandler documentSymbolHandler) {
+                    SymbolRequestHandler documentSymbolHandler, MessageNodes messageNodes) {
         super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = evaluator;
+        this.messageNodes = messageNodes;
         this.symbolHandler = documentSymbolHandler;
     }
 
@@ -61,7 +89,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
     }
 
     private List<? extends Location> definitionOfVariableNode(TextDocumentSurrogate surrogate, InstrumentableNode definitionSearchNode) {
-        String readVariableName = InteropUtils.getNodeObjectName(definitionSearchNode);
+        String readVariableName = InteropUtils.getNodeObjectName(definitionSearchNode, messageNodes);
         if (readVariableName != null) {
             LinkedList<Scope> scopesOuterToInner = getScopesOuterToInner(surrogate, definitionSearchNode);
             List<Node> writeNodes = new ArrayList<>();
@@ -73,7 +101,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
                         public boolean visit(Node node) {
                             if (node instanceof InstrumentableNode) {
                                 if (((InstrumentableNode) node).hasTag(StandardTags.WriteVariableTag.class)) {
-                                    String name = InteropUtils.getNodeObjectName((InstrumentableNode) node);
+                                    String name = InteropUtils.getNodeObjectName((InstrumentableNode) node, messageNodes);
                                     if (name.equals(readVariableName)) {
                                         writeNodes.add(node);
                                     }
@@ -112,7 +140,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
         Future<EvaluationResult> future = contextAwareExecutor.executeWithNestedContext(taskWithResult, true);
         EvaluationResult evalResult = getFutureResultOrHandleExceptions(future);
         if (evalResult != null && evalResult.isEvaluationDone() && !evalResult.isError()) {
-            SourceSection sourceSection = SourceUtils.findSourceLocation(env, surrogate.getLangId(), evalResult.getResult());
+            SourceSection sourceSection = SourceUtils.findSourceLocation(env, evalResult.getResult(), surrogate.getLanguageInfo());
             List<Location> locations = new ArrayList<>();
             if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {
                 Range range = SourceUtils.sourceSectionToRange(sourceSection);
@@ -127,14 +155,14 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
         // Fallback: Static String-based name matching of symbols
         LOG.fine("Trying static symbol matching...");
         String definitionSearchSymbol = definitionSearchSection.getCharacters().toString();
-        definitionSearchSymbol = InteropUtils.getNormalizedSymbolName(definitionSearchNode.getNodeObject(), definitionSearchSymbol);
+        definitionSearchSymbol = InteropUtils.getNormalizedSymbolName(definitionSearchNode.getNodeObject(), definitionSearchSymbol, messageNodes);
         return findMatchingSymbols(surrogate, definitionSearchSymbol);
     }
 
     List<Location> findMatchingSymbols(TextDocumentSurrogate surrogate, String symbol) {
         List<Location> locations = new ArrayList<>();
         SourcePredicate predicate = newDefaultSourcePredicateBuilder().language(surrogate.getLanguageInfo()).build();
-        List<? extends SymbolInformation> docSymbols = symbolHandler.symbolWithEnteredContext(predicate);
+        Collection<? extends SymbolInformation> docSymbols = symbolHandler.symbolWithEnteredContext(predicate);
         for (SymbolInformation symbolInfo : docSymbols) {
             if (symbol.equals(symbolInfo.getName())) {
                 locations.add(symbolInfo.getLocation());

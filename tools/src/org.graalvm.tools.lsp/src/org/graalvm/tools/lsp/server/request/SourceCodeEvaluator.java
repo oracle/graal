@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.server.request;
 
 import java.io.IOException;
@@ -15,7 +39,6 @@ import org.eclipse.lsp4j.Range;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.EvaluationResultException;
-import org.graalvm.tools.lsp.exceptions.InlineParsingNotSupportedException;
 import org.graalvm.tools.lsp.exceptions.InvalidCoverageScriptURI;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
@@ -31,6 +54,8 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -58,22 +83,25 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class SourceCodeEvaluator extends AbstractRequestHandler {
+public final class SourceCodeEvaluator extends AbstractRequestHandler {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, SourceCodeEvaluator.class);
+
+    private final Node nodeInfo = Message.KEY_INFO.createNode();
+    private final Node nodeRead = Message.READ.createNode();
 
     public SourceCodeEvaluator(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
         super(env, surrogateMap, executor);
     }
 
     public CallTarget parse(final TextDocumentSurrogate surrogate) throws DiagnosticsNotification {
-        if (!env.getLanguages().containsKey(surrogate.getLangId())) {
-            throw new UnknownLanguageException("Unknown language: " + surrogate.getLangId() + ". Known languages are: " + env.getLanguages().keySet());
+        if (!env.getLanguages().containsKey(surrogate.getLanguageId())) {
+            throw new UnknownLanguageException("Unknown language: " + surrogate.getLanguageId() + ". Known languages are: " + env.getLanguages().keySet());
         }
 
         SourceWrapper sourceWrapper = surrogate.prepareParsing();
         CallTarget callTarget = null;
         try {
-            LOG.log(Level.FINE, "Parsing {0} {1}", new Object[]{surrogate.getLangId(), surrogate.getUri()});
+            LOG.log(Level.FINE, "Parsing {0} {1}", new Object[]{surrogate.getLanguageId(), surrogate.getUri()});
             callTarget = env.parse(sourceWrapper.getSource());
             LOG.log(Level.FINER, "Parsing done.");
             surrogate.notifyParsingSuccessful(callTarget);
@@ -109,19 +137,19 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
         }
 
         LOG.fine("Trying global eval...");
-        EvaluationResult globalScopeEvalResult = evalInGlobalScope(surrogate.getLangId(), nearestNode);
+        EvaluationResult globalScopeEvalResult = evalInGlobalScope(surrogate.getLanguageId(), nearestNode);
         if (globalScopeEvalResult.isError()) {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
         return globalScopeEvalResult;
     }
 
-    private static EvaluationResult evalLiteral(Node nearestNode) {
+    private EvaluationResult evalLiteral(Node nearestNode) {
         Object nodeObject = ((InstrumentableNode) nearestNode).getNodeObject();
         if (nodeObject instanceof TruffleObject) {
             try {
-                if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), (TruffleObject) nodeObject, "literal"))) {
-                    Object result = ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) nodeObject, "literal");
+                if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(nodeInfo, (TruffleObject) nodeObject, "literal"))) {
+                    Object result = ForeignAccess.sendRead(nodeRead, (TruffleObject) nodeObject, "literal");
                     if (result instanceof TruffleObject || InteropUtils.isPrimitive(result)) {
                         return EvaluationResult.createResult(result);
                     } else {
@@ -211,48 +239,69 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
                                     @Override
                                     public void onReturnValue(VirtualFrame frame, Object result) {
                                         if (LOG.isLoggable(Level.FINEST)) {
-                                            if (indent.length() > 1) {
-                                                indent.setLength(indent.length() - 2);
-                                            }
-                                            LOG.log(Level.FINEST, "{0}onReturnValue {1} {2} {3} {4}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
-                                                            sourceSectionFormat(context.getInstrumentedSourceSection()), result});
+                                            logOnReturnValue(result);
                                         }
 
                                         if (!isInputFilterDefined) {
+                                            CompilerDirectives.transferToInterpreter();
                                             throw new EvaluationResultException(result);
                                         }
+                                    }
+
+                                    @TruffleBoundary
+                                    private void logOnReturnValue(Object result) {
+                                        if (indent.length() > 1) {
+                                            indent.setLength(indent.length() - 2);
+                                        }
+                                        LOG.log(Level.FINEST, "{0}onReturnValue {1} {2} {3} {4}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
+                                                        sourceSectionFormat(context.getInstrumentedSourceSection()), result});
                                     }
 
                                     @Override
                                     public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
                                         if (LOG.isLoggable(Level.FINEST)) {
-                                            indent.setLength(indent.length() - 2);
-                                            LOG.log(Level.FINEST, "{0}onReturnExceptional {1}", new Object[]{indent, sourceSectionFormat(context.getInstrumentedSourceSection())});
+                                            logOnReturnExceptional();
                                         }
+                                    }
+
+                                    @TruffleBoundary
+                                    private void logOnReturnExceptional() {
+                                        indent.setLength(indent.length() - 2);
+                                        LOG.log(Level.FINEST, "{0}onReturnExceptional {1}", new Object[]{indent, sourceSectionFormat(context.getInstrumentedSourceSection())});
                                     }
 
                                     @Override
                                     public void onEnter(VirtualFrame frame) {
                                         if (LOG.isLoggable(Level.FINEST)) {
-                                            LOG.log(Level.FINEST, "{0}onEnter {1} {2}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
-                                                            sourceSectionFormat(context.getInstrumentedSourceSection())});
-                                            indent.append("  ");
+                                            logOnEnter();
                                         }
+                                    }
+
+                                    @TruffleBoundary
+                                    private void logOnEnter() {
+                                        LOG.log(Level.FINEST, "{0}onEnter {1} {2}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
+                                                        sourceSectionFormat(context.getInstrumentedSourceSection())});
+                                        indent.append("  ");
                                     }
 
                                     @Override
                                     public void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
                                         if (LOG.isLoggable(Level.FINEST)) {
-                                            indent.setLength(indent.length() - 2);
-                                            LOG.log(Level.FINEST, "{0}onInputValue idx:{1} {2} {3} {4} {5} {6}",
-                                                            new Object[]{indent, inputIndex, inputContext.getInstrumentedNode().getClass().getSimpleName(),
-                                                                            sourceSectionFormat(context.getInstrumentedSourceSection()),
-                                                                            sourceSectionFormat(inputContext.getInstrumentedSourceSection()), inputValue,
-                                                                            env.findMetaObject(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(), inputValue)});
-                                            indent.append("  ");
+                                            logOnInputValue(inputContext, inputIndex, inputValue);
                                         }
-
+                                        CompilerDirectives.transferToInterpreter();
                                         throw new EvaluationResultException(inputValue);
+                                    }
+
+                                    @TruffleBoundary
+                                    private void logOnInputValue(EventContext inputContext, int inputIndex, Object inputValue) {
+                                        indent.setLength(indent.length() - 2);
+                                        LOG.log(Level.FINEST, "{0}onInputValue idx:{1} {2} {3} {4} {5} {6}",
+                                                        new Object[]{indent, inputIndex, inputContext.getInstrumentedNode().getClass().getSimpleName(),
+                                                                        sourceSectionFormat(context.getInstrumentedSourceSection()),
+                                                                        sourceSectionFormat(inputContext.getInstrumentedSourceSection()), inputValue,
+                                                                        env.findMetaObject(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(), inputValue)});
+                                        indent.append("  ");
                                     }
                                 };
                             }
@@ -263,9 +312,6 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             callTarget.call();
         } catch (EvaluationResultException e) {
             return e.isError() ? EvaluationResult.createError(e.getResult()) : EvaluationResult.createResult(e.getResult());
-        } catch (InlineParsingNotSupportedException e) {
-            LOG.log(Level.WARNING, "Inline parsing not supported for language {0}", surrogate.getLangId());
-            return EvaluationResult.createEvaluationSectionNotReached();
         } catch (RuntimeException e) {
             if (e instanceof TruffleException) {
                 if (((TruffleException) e).isExit()) {
@@ -294,7 +340,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             runScriptUri = runScriptUriFallback != null ? runScriptUriFallback : surrogateOfOpenedFile.getUri();
         }
 
-        final String langIdOfTestFile = findLanguageOfTestFile(runScriptUri, surrogateOfOpenedFile.getLangId());
+        final String langIdOfTestFile = findLanguageOfTestFile(runScriptUri, surrogateOfOpenedFile.getLanguageId());
         LanguageInfo languageInfo = env.getLanguages().get(langIdOfTestFile);
         assert languageInfo != null;
         TextDocumentSurrogate surrogateOfTestFile = surrogateMap.getOrCreateSurrogate(runScriptUri, languageInfo);
@@ -329,11 +375,11 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
     /**
      * A special method to create a {@link SourceSectionFilter} which filters for a specific source
      * section during source code evaluation. We cannot simply filter with
-     * {@link Builder#sourceIs(Source...)} and
-     * {@link Builder#sourceSectionEquals(SourceSection...)}, because we are possibly not the
-     * creator of the Source and do not know which properties are set. The source which is evaluated
-     * could have been created by the language. For example by a Python import statement. Therefore
-     * we need to filter via URI (or name if the URI is a generated truffle-schema-URI).
+     * {@link Builder#sourceIs(Source...)} and {@link Builder#sourceSectionEquals(SourceSection...)}
+     * , because we are possibly not the creator of the Source and do not know which properties are
+     * set. The source which is evaluated could have been created by the language. For example by a
+     * Python import statement. Therefore we need to filter via URI (or name if the URI is a
+     * generated truffle-schema-URI).
      *
      * @param uri to filter sources for
      * @param sourceSection to filter for with same start and end indices

@@ -32,7 +32,7 @@ import os
 from os.path import exists
 import re
 
-from argparse import ArgumentParser, REMAINDER
+from argparse import ArgumentParser
 
 import mx
 
@@ -170,7 +170,7 @@ def lsp(args):
                         help="argument to pass to launcher")
     parsed_args = parser.parse_args(args)
     dists = parsed_args.languages.split(",")
-    dists += ["LSP-LAUNCHER", "LSP"]
+    dists += ["LSP_LAUNCHER", "LSP"]
     vm_args, server_args = mx.extract_VM_args(parsed_args.remainder, useDoubleDash=True, defaultAllVMArgs=False)
     vm_args += mx.get_runtime_jvm_args(dists)
     vm_args.append("org.graalvm.tools.lsp.launcher.GraalLanguageServerLauncher")
@@ -183,8 +183,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='lsp',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=['tools:LSP', 'tools:LSP-API', 'tools:LSP-LAUNCHER'],
-    support_distributions=[],
+    truffle_jars=['tools:LSP', 'tools:LSP_API', 'tools:LSP_LAUNCHER'],
+    support_distributions=['tools:LSP_GRAALVM_SUPPORT'],
     include_by_default=True,
 ))
 

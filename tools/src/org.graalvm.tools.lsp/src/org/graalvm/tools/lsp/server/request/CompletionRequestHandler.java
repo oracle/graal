@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.tools.lsp.server.request;
 
 import java.net.URI;
@@ -21,13 +45,14 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.MarkupContent;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.hacks.LanguageSpecificHacks;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
-import org.graalvm.tools.lsp.interop.GetDocumentation;
-import org.graalvm.tools.lsp.interop.GetSignature;
+import org.graalvm.tools.lsp.api.interop.LSPMessage;
 import org.graalvm.tools.lsp.interop.ObjectStructures;
+import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.NearestNode;
@@ -59,7 +84,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class CompletionRequestHandler extends AbstractRequestHandler {
+public final class CompletionRequestHandler extends AbstractRequestHandler {
+
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, CompletionRequestHandler.class);
 
     private static boolean isInstrumentable(Node node) {
@@ -72,14 +98,15 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         GLOBALS_AND_LOCALS
     }
 
-    private static final Node HAS_SIZE = Message.HAS_SIZE.createNode();
-    private static final Node KEYS = Message.KEYS.createNode();
-    private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
-    private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
-    private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
-    private static final Node GET_DOCUMENTATION = GetDocumentation.INSTANCE.createNode();
-    private static final Node IS_NULL = Message.IS_NULL.createNode();
-    private static final Node INVOKE = Message.INVOKE.createNode();
+    public final CompletionList emptyList = new CompletionList();
+
+    private final MessageNodes messageNodes;
+    private final Node nodeIsInstantiable = Message.IS_INSTANTIABLE.createNode();
+    private final Node nodeIsExecutable = Message.IS_EXECUTABLE.createNode();
+    private final Node nodeGetSignature = LSPMessage.GET_SIGNATURE.createNode();
+    private final Node nodeGetDocumentation = LSPMessage.GET_DOCUMENTATION.createNode();
+    private final Node nodeIsNull = Message.IS_NULL.createNode();
+    private final Node nodeInvoke = Message.INVOKE.createNode();
 
     private static final int SORTING_PRIORITY_LOCALS = 1;
     private static final int SORTING_PRIORITY_GLOBALS = 2;
@@ -87,8 +114,9 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
     public CompletionRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor,
-                    SourceCodeEvaluator sourceCodeEvaluator) {
+                    SourceCodeEvaluator sourceCodeEvaluator, MessageNodes messageNodes) {
         super(env, surrogateMap, executor);
+        this.messageNodes = messageNodes;
         this.sourceCodeEvaluator = sourceCodeEvaluator;
     }
 
@@ -109,8 +137,8 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         Source source = surrogate.getSource();
 
         if (!SourceUtils.isLineValid(line, source) || !SourceUtils.isColumnValid(line, originalCharacter, source)) {
-            err.println("line or column is out of range, line=" + line + ", column=" + originalCharacter);
-            return new CompletionList();
+            LOG.fine("line or column is out of range, line=" + line + ", column=" + originalCharacter);
+            return emptyList;
         }
 
         CompletionKind completionKind = getCompletionKind(source, SourceUtils.zeroBasedLineToOneBasedLine(line, source), originalCharacter, surrogate.getCompletionTriggerCharacters(),
@@ -123,7 +151,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             SourceFix sourceFix = SourceUtils.removeLastTextInsertion(surrogate, originalCharacter);
             if (sourceFix == null) {
                 LOG.fine("Unable to fix unparsable source code. No completion possible.");
-                return new CompletionList();
+                return emptyList;
             }
 
             TextDocumentSurrogate fixedSurrogate = surrogate.copy();
@@ -135,7 +163,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
                 callTarget = env.parse(sourceWrapper.getSource());
             } catch (Exception e) {
                 err.println("Parsing a fixed source caused an exception: " + e.getClass().getSimpleName() + " > " + e.getLocalizedMessage());
-                return new CompletionList();
+                return emptyList;
             }
             fixedSurrogate.notifyParsingSuccessful(callTarget);
 
@@ -214,7 +242,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     private void fillCompletionsWithObjectProperties(TextDocumentSurrogate surrogate, int line, int character, CompletionList completions) throws DiagnosticsNotification {
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         Source source = sourceWrapper.getSource();
-        Class<?>[] tags = LanguageSpecificHacks.getSupportedTags(surrogate.getLangId());
+        Class<?>[] tags = LanguageSpecificHacks.getSupportedTags(surrogate.getLanguageInfo());
         NearestNode nearestNodeHolder = NearestSectionsFinder.findNearestNode(source, line, character, env, tags != null ? tags : new Class<?>[]{StandardTags.ExpressionTag.class});
         Node nearestNode = nearestNodeHolder.getNode();
 
@@ -228,7 +256,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             EvaluationResult evalResult = getFutureResultOrHandleExceptions(future);
             if (evalResult != null && evalResult.isEvaluationDone()) {
                 if (!evalResult.isError()) {
-                    fillCompletionsFromTruffleObject(completions, surrogate.getLangId(), evalResult.getResult());
+                    fillCompletionsFromTruffleObject(completions, surrogate.getLanguageInfo(), evalResult.getResult());
                 } else {
                     if (evalResult.getResult() instanceof TruffleException) {
                         TruffleException te = (TruffleException) evalResult.getResult();
@@ -283,12 +311,12 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     private void fillCompletionsWithGlobals(final TextDocumentSurrogate surrogate, CompletionList completions) {
-        fillCompletionsWithScopesValues(surrogate, completions, env.findTopScopes(surrogate.getLangId()), null, SORTING_PRIORITY_GLOBALS);
+        fillCompletionsWithScopesValues(surrogate, completions, env.findTopScopes(surrogate.getLanguageId()), null, SORTING_PRIORITY_GLOBALS);
     }
 
     private void fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, CompletionList completions, Iterable<Scope> scopes,
                     CompletionItemKind completionItemKindDefault, int displayPriority) {
-        String langId = surrogate.getLangId();
+        LanguageInfo langInfo = surrogate.getLanguageInfo();
         LinkedHashMap<Scope, Map<Object, Object>> scopeMap = scopesToObjectMap(scopes);
         String[] existingCompletions = completions.getItems().stream().map((item) -> item.getLabel()).toArray(String[]::new);
         // Filter duplicates
@@ -318,19 +346,19 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
                 completion.setSortText(String.format("%d.%04d.%s", displayPriority, scopeCounter, key));
                 CompletionItemKind completionItemKind = findCompletionItemKind(object);
                 completion.setKind(completionItemKind != null ? completionItemKind : completionItemKindDefault);
-                completion.setDetail(createCompletionDetail(entry.getKey(), object, langId));
-                completion.setDocumentation(createDocumentation(object, langId, "in " + scopeEntry.getKey().getName()));
+                completion.setDetail(createCompletionDetail(entry.getKey(), object, langInfo));
+                completion.setDocumentation(createDocumentation(object, surrogate.getLanguageInfo(), "in " + scopeEntry.getKey().getName()));
 
                 completions.getItems().add(completion);
             }
         }
     }
 
-    private static CompletionItemKind findCompletionItemKind(Object object) {
+    private CompletionItemKind findCompletionItemKind(Object object) {
         if (object instanceof TruffleObject) {
             TruffleObject truffleObjVal = (TruffleObject) object;
-            boolean isExecutable = ForeignAccess.sendIsExecutable(IS_EXECUTABLE, truffleObjVal);
-            boolean isInstatiatable = ForeignAccess.sendIsInstantiable(IS_INSTANTIABLE, truffleObjVal);
+            boolean isExecutable = ForeignAccess.sendIsExecutable(nodeIsExecutable, truffleObjVal);
+            boolean isInstatiatable = ForeignAccess.sendIsInstantiable(nodeIsInstantiable, truffleObjVal);
             if (isInstatiatable) {
                 return CompletionItemKind.Class;
             }
@@ -342,19 +370,22 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return null;
     }
 
-    protected boolean fillCompletionsFromTruffleObject(CompletionList completions, String langId, Object object) {
-        Object metaObject = getMetaObject(langId, object);
+    protected boolean fillCompletionsFromTruffleObject(CompletionList completions, LanguageInfo langInfo, Object object) {
+        if (object == null) {
+            return false;
+        }
+        Object metaObject = getMetaObject(langInfo, object);
         if (metaObject == null) {
             return false;
         }
 
         Map<Object, Object> map = null;
         if (object instanceof TruffleObject) {
-            map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) object);
+            map = ObjectStructures.asMap((TruffleObject) object, messageNodes);
         } else {
-            Object boxedObject = env.boxPrimitive(langId, object);
+            Object boxedObject = env.boxPrimitive(langInfo.getId(), object);
             if (boxedObject instanceof TruffleObject) {
-                map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) boxedObject);
+                map = ObjectStructures.asMap((TruffleObject) boxedObject, messageNodes);
             } else {
                 LOG.fine("Result is no TruffleObject: " + object.getClass());
             }
@@ -380,8 +411,8 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             completion.setSortText(String.format("%06d.%s", counter, key));
             CompletionItemKind kind = findCompletionItemKind(value);
             completion.setKind(kind != null ? kind : CompletionItemKind.Property);
-            completion.setDetail(createCompletionDetail(entry.getKey(), value, langId));
-            completion.setDocumentation(createDocumentation(value, langId, "of meta object: `" + metaObject.toString() + "`"));
+            completion.setDetail(createCompletionDetail(entry.getKey(), value, langInfo));
+            completion.setDocumentation(createDocumentation(value, langInfo, "of meta object: `" + metaObject.toString() + "`"));
 
             completions.getItems().add(completion);
         }
@@ -389,23 +420,24 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return !map.isEmpty();
     }
 
-    private Either<String, MarkupContent> createDocumentation(Object value, String langId, String scopeInformation) {
+    private Either<String, MarkupContent> createDocumentation(Object value, LanguageInfo langInfo, String scopeInformation) {
         MarkupContent markup = new MarkupContent();
         String documentation = null;
 
-        if (value instanceof TruffleObject && !ForeignAccess.sendIsNull(IS_NULL, (TruffleObject) value)) {
+        if (value instanceof TruffleObject && !ForeignAccess.sendIsNull(nodeIsNull, (TruffleObject) value)) {
             documentation = getDocumentation((TruffleObject) value);
             return Either.forLeft(documentation);
         }
 
         if (documentation == null) {
-            documentation = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, value), langId);
+            Object metaObject = getMetaObject(langInfo, value);
+            documentation = LanguageSpecificHacks.getDocumentation(metaObject, langInfo.getId());
 
             if (documentation == null) {
                 documentation = escapeMarkdown(scopeInformation);
             }
 
-            SourceSection section = SourceUtils.findSourceLocation(env, langId, value);
+            SourceSection section = env.findSourceLocation(langInfo, value);
             if (section != null) {
                 String code = section.getCharacters().toString();
                 if (!code.isEmpty()) {
@@ -419,21 +451,23 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return Either.forRight(markup);
     }
 
-    public String escapeMarkdown(String original) {
+    public static String escapeMarkdown(String original) {
         return original.replaceAll("__", "\\\\_\\\\_");
     }
 
-    public String createCompletionDetail(Object key, Object obj, String langId) {
+    @SuppressWarnings("all") // The parameter langInfo should not be assigned
+    public String createCompletionDetail(Object key, Object obj, LanguageInfo langInfo) {
         String detailText = "";
 
         TruffleObject truffleObj = null;
         if (obj instanceof TruffleObject) {
             truffleObj = (TruffleObject) obj;
-            if (ForeignAccess.sendIsNull(IS_NULL, truffleObj)) {
+            if (ForeignAccess.sendIsNull(nodeIsNull, truffleObj)) {
                 return "";
             }
+            langInfo = getObjectLanguageInfo(langInfo, obj);
         } else {
-            Object boxedObject = env.boxPrimitive(langId, obj);
+            Object boxedObject = env.boxPrimitive(langInfo.getId(), obj);
             if (boxedObject instanceof TruffleObject) {
                 truffleObj = (TruffleObject) boxedObject;
             }
@@ -448,24 +482,21 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             detailText += " ";
         }
 
-        Object metaObject = getMetaObject(langId, obj);
-        String metaObjectString = LanguageSpecificHacks.formatMetaObject(metaObject, langId);
-        if (metaObjectString == null) {
-            metaObjectString = metaObject != null ? metaObject.toString() : "";
+        Object metaObject = env.findMetaObject(langInfo, obj);
+        if (metaObject != null) {
+            detailText += env.toString(langInfo, metaObject);
         }
-        detailText += metaObjectString;
-
         return detailText;
     }
 
     public String getDocumentation(TruffleObject truffleObj) {
         try {
-            Object docu = ForeignAccess.send(GET_DOCUMENTATION, truffleObj);
+            Object docu = ForeignAccess.send(nodeGetDocumentation, truffleObj);
             if (docu instanceof String && !((String) docu).isEmpty()) {
                 return (String) docu;
             }
             if (docu instanceof TruffleObject) {
-                if (!ForeignAccess.sendIsNull(IS_NULL, (TruffleObject) docu)) {
+                if (!ForeignAccess.sendIsNull(nodeIsNull, (TruffleObject) docu)) {
                     return docu.toString();
                 }
             }
@@ -479,17 +510,17 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
     public String getFormattedSignature(TruffleObject truffleObj) {
         try {
-            Object signature = ForeignAccess.send(GET_SIGNATURE, truffleObj);
+            Object signature = ForeignAccess.send(nodeGetSignature, truffleObj);
             if (signature instanceof TruffleObject) {
                 try {
-                    Object formattedString = ForeignAccess.sendInvoke(INVOKE, (TruffleObject) signature, "format");
+                    Object formattedString = ForeignAccess.sendInvoke(nodeInvoke, (TruffleObject) signature, "format");
                     return formattedString.toString();
                 } catch (InteropException e) {
                     // Fallback if no format method is provided. Simply create a comma separated
                     // list of parameters.
-                    boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, (TruffleObject) signature);
+                    boolean hasSize = ForeignAccess.sendHasSize(messageNodes.hasSize, (TruffleObject) signature);
                     if (hasSize) {
-                        List<Object> params = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
+                        List<Object> params = ObjectStructures.asList((TruffleObject) signature, messageNodes);
                         if (params != null) {
                             return "Parameters: " + params.stream().reduce("", (a, b) -> a.toString() + (a.toString().isEmpty() ? "" : ", ") + b.toString());
                         }
@@ -504,37 +535,34 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return null;
     }
 
-    protected Object getMetaObject(String langId, Object object) {
-        if (object == null) {
-            return null;
+    private LanguageInfo getObjectLanguageInfo(LanguageInfo defaultInfo, Object object) {
+        assert object != null;
+        LanguageInfo langInfo = env.findLanguage(object);
+        if (langInfo == null) {
+            langInfo = defaultInfo;
         }
-
-        LanguageInfo languageInfo = env.findLanguage(object);
-        if (languageInfo == null) {
-            languageInfo = env.getLanguages().get(langId);
-        }
-
-        Object metaObject = null;
-        if (languageInfo != null) {
-            metaObject = env.findMetaObject(languageInfo, object);
-        }
-        return metaObject;
+        return langInfo;
     }
 
-    public static LinkedHashMap<Scope, Map<Object, Object>> scopesToObjectMap(Iterable<Scope> scopes) {
+    private Object getMetaObject(LanguageInfo defaultInfo, Object object) {
+        LanguageInfo langInfo = getObjectLanguageInfo(defaultInfo, object);
+        return env.findMetaObject(langInfo, object);
+    }
+
+    private LinkedHashMap<Scope, Map<Object, Object>> scopesToObjectMap(Iterable<Scope> scopes) {
         LinkedHashMap<Scope, Map<Object, Object>> map = new LinkedHashMap<>();
         for (Scope scope : scopes) {
             Object variables = scope.getVariables();
             if (variables instanceof TruffleObject) {
                 TruffleObject truffleObj = (TruffleObject) variables;
                 try {
-                    TruffleObject keys = ForeignAccess.sendKeys(KEYS, truffleObj, false);
-                    boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, keys);
+                    TruffleObject keys = ForeignAccess.sendKeys(messageNodes.keys, truffleObj, false);
+                    boolean hasSize = ForeignAccess.sendHasSize(messageNodes.hasSize, keys);
                     if (!hasSize) {
                         continue;
                     }
 
-                    map.put(scope, ObjectStructures.asMap(new ObjectStructures.MessageNodes(), truffleObj));
+                    map.put(scope, ObjectStructures.asMap(truffleObj, messageNodes));
                 } catch (UnsupportedMessageException e) {
                     throw new RuntimeException(e);
                 }
