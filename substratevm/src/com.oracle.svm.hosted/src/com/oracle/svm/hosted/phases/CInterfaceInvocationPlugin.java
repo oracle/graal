@@ -64,8 +64,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
@@ -497,18 +495,19 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
     }
 
     private boolean replaceCFunctionPointerInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        boolean hosted = method instanceof HostedMethod;
+        AnalysisMethod aMethod = (AnalysisMethod) (hosted ? ((HostedMethod) method).getWrapped() : method);
+        if (CFunctionPointerCallStubSupport.singleton().isStub(aMethod)) {
+            return false;
+        }
         if (!functionPointerType.isAssignableFrom(method.getDeclaringClass())) {
             throw UserError.abort(new CInterfaceError("Function pointer invocation method " + method.format("%H.%n(%p)") +
                             " must be in a type that extends " + CFunctionPointer.class.getSimpleName(), method).getMessage());
         }
         assert b.getInvokeKind() == InvokeKind.Interface;
-        MetaAccessProvider metaAccess = b.getMetaAccess();
-        boolean hosted = (metaAccess instanceof HostedMetaAccess);
-        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) (hosted ? ((HostedMetaAccess) metaAccess).getWrapped() : metaAccess);
-        AnalysisMethod aMethod = (AnalysisMethod) (hosted ? ((HostedMethod) method).getWrapped() : method);
-        ResolvedJavaMethod stub = CFunctionPointerCallStubSupport.singleton().getOrCreateStubForMethod(aMethod, aMetaAccess, wordTypes);
+        ResolvedJavaMethod stub = CFunctionPointerCallStubSupport.singleton().getOrCreateStubForMethod(aMethod);
         if (hosted) {
-            stub = ((UniverseMetaAccess) b.getMetaAccess()).getUniverse().lookup(stub);
+            stub = ((HostedMetaAccess) b.getMetaAccess()).getUniverse().lookup(stub);
         }
         b.handleReplacedInvoke(InvokeKind.Static, stub, args, false);
         return true;

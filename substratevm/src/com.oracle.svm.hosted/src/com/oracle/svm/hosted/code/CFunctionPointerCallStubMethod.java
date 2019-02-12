@@ -32,26 +32,17 @@ import java.util.List;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CFunctionPointerStub;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
-import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -64,71 +55,40 @@ import jdk.vm.ci.meta.Signature;
  */
 public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
 
-    static CFunctionPointerCallStubMethod create(AnalysisMethod aMethod, AnalysisMetaAccess aMetaAccess, WordTypes aWordTypes) {
+    static CFunctionPointerCallStubMethod create(AnalysisMethod aMethod) {
+        assert !aMethod.isSynthetic() : "Creating a stub for a stub? " + aMethod;
         ResolvedJavaMethod method = aMethod.getWrapped();
-        Signature signature = makeSignature(aMethod, aMetaAccess, aWordTypes);
-        MetaAccessProvider metaAccess = aMetaAccess.getWrapped();
-        ResolvedJavaType declaringClass = metaAccess.lookupJavaType(CFunctionPointerStub.class);
-        ConstantPool constantPool = CFunctionPointerStub.getConstantPool(metaAccess);
         boolean needsTransition = (aMethod.getAnnotation(InvokeCFunctionPointer.class).transition() != CFunction.Transition.NO_TRANSITION);
-        return new CFunctionPointerCallStubMethod(method, SubstrateUtil.uniqueShortName(method), signature, declaringClass, constantPool, needsTransition);
+        return new CFunctionPointerCallStubMethod(method, needsTransition);
     }
 
-    private static Signature makeSignature(AnalysisMethod method, AnalysisMetaAccess aMetaAccess, WordTypes aWordTypes) {
-        ResolvedJavaType stubsType = aMetaAccess.lookupJavaType(CFunctionPointerStub.class).getWrapped();
-        /*
-         * Non-primitive types used in the signature of the original method might not be resolvable
-         * in the context of this method and its enclosing class of CFunctionPointerStub. We replace
-         * word types with WordBase to avoid this problem.
-         */
-        ResolvedJavaType wordBase = aMetaAccess.lookupJavaType(WordBase.class).getWrapped();
-        WrappedSignature aSignature = method.getSignature();
-
-        AnalysisType aReturnType = (AnalysisType) aSignature.getReturnType(null);
-        ResolvedJavaType returnType = aWordTypes.isWord(aReturnType) ? wordBase : aReturnType.getWrapped().resolve(stubsType);
-
-        int paramCount = aSignature.getParameterCount(true);
-        JavaType[] paramTypes = new JavaType[paramCount];
-        AnalysisType declaringType = method.getDeclaringClass();
-        paramTypes[0] = aWordTypes.isWord(declaringType) ? wordBase : declaringType.getWrapped().resolve(stubsType);
-        for (int i = 1; i < paramCount; i++) {
-            AnalysisType aParamType = (AnalysisType) aSignature.getParameterType(i - 1, null);
-            paramTypes[i] = aWordTypes.isWord(aParamType) ? wordBase : aParamType.getWrapped().resolve(stubsType);
-        }
-        return new SimpleSignature(paramTypes, returnType);
-    }
-
-    private final String name;
-    private final Signature signature;
-    private final ResolvedJavaType declaringClass;
-    private final ConstantPool constantPool;
-
-    private CFunctionPointerCallStubMethod(ResolvedJavaMethod original, String name, Signature signature, ResolvedJavaType declaringClass, ConstantPool constantPool, boolean needsTransition) {
+    private CFunctionPointerCallStubMethod(ResolvedJavaMethod original, boolean needsTransition) {
         super(original, needsTransition);
-        this.name = name;
-        this.signature = signature;
-        this.declaringClass = declaringClass;
-        this.constantPool = constantPool;
-    }
-
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return declaringClass;
-    }
-
-    @Override
-    public ConstantPool getConstantPool() {
-        return constantPool;
-    }
-
-    @Override
-    public String getName() {
-        return name;
     }
 
     @Override
     public Signature getSignature() {
-        return signature;
+        return new Signature() {
+            private final Signature wrapped = getOriginal().getSignature();
+
+            @Override
+            public int getParameterCount(boolean receiver) {
+                return wrapped.getParameterCount(true);
+            }
+
+            @Override
+            public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
+                if (index == 0) {
+                    return getOriginal().getDeclaringClass().resolve(accessingClass);
+                }
+                return wrapped.getParameterType(index - 1, accessingClass);
+            }
+
+            @Override
+            public JavaType getReturnType(ResolvedJavaType accessingClass) {
+                return wrapped.getReturnType(accessingClass);
+            }
+        };
     }
 
     @Override
@@ -178,12 +138,21 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
 
     @Override
     public Annotation[] getAnnotations() {
-        return getDeclaredAnnotations();
+        return updateAnnotations(super.getAnnotations());
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return needsTransition ? new Annotation[0] : new Annotation[]{UNINTERRUPTIBLE};
+        return updateAnnotations(super.getDeclaredAnnotations());
+    }
+
+    private Annotation[] updateAnnotations(Annotation[] annotations) {
+        Annotation[] array = annotations;
+        if (!needsTransition) {
+            array = Arrays.copyOf(array, array.length + 1);
+            array[array.length - 1] = UNINTERRUPTIBLE;
+        }
+        return array;
     }
 
     @Override
@@ -192,7 +161,7 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
         if (!needsTransition && annotationClass.equals(UNINTERRUPTIBLE.annotationType())) {
             return (T) UNINTERRUPTIBLE;
         }
-        return null;
+        return super.getAnnotation(annotationClass);
     }
 
     private static final Uninterruptible UNINTERRUPTIBLE = new Uninterruptible() {

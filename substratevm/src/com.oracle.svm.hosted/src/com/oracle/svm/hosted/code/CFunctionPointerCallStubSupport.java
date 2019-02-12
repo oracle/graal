@@ -27,36 +27,41 @@ package com.oracle.svm.hosted.code;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 public final class CFunctionPointerCallStubSupport {
 
-    static void initialize() {
-        ImageSingletons.add(CFunctionPointerCallStubSupport.class, new CFunctionPointerCallStubSupport());
+    static void initialize(AnalysisUniverse universe) {
+        ImageSingletons.add(CFunctionPointerCallStubSupport.class, new CFunctionPointerCallStubSupport(universe));
     }
 
     public static CFunctionPointerCallStubSupport singleton() {
         return ImageSingletons.lookup(CFunctionPointerCallStubSupport.class);
     }
 
+    private AnalysisUniverse universe;
     private final Map<AnalysisMethod, AnalysisMethod> methodToStub = new ConcurrentHashMap<>();
 
-    private CFunctionPointerCallStubSupport() {
+    private CFunctionPointerCallStubSupport(AnalysisUniverse universe) {
+        this.universe = universe;
     }
 
-    public AnalysisMethod getOrCreateStubForMethod(AnalysisMethod method, AnalysisMetaAccess aMetaAccess, WordTypes wordTypes) {
+    public boolean isStub(AnalysisMethod method) {
+        return methodToStub.containsValue(method);
+    }
+
+    public AnalysisMethod getOrCreateStubForMethod(AnalysisMethod method) {
+        assert !isStub(method);
         return methodToStub.computeIfAbsent(method, m -> {
-            AnalysisUniverse aUniverse = (AnalysisUniverse) aMetaAccess.getUniverse();
-            assert !aUniverse.sealed();
-            CFunctionPointerCallStubMethod stub = CFunctionPointerCallStubMethod.create(method, aMetaAccess, wordTypes);
-            return aUniverse.lookup(stub);
+            assert !universe.sealed();
+            CFunctionPointerCallStubMethod stub = CFunctionPointerCallStubMethod.create(method);
+            return universe.lookup(stub);
         });
     }
 }
@@ -65,6 +70,7 @@ public final class CFunctionPointerCallStubSupport {
 class CFunctionPointerCallStubSupportFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess arg) {
-        CFunctionPointerCallStubSupport.initialize();
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) arg;
+        CFunctionPointerCallStubSupport.initialize(access.getUniverse());
     }
 }
