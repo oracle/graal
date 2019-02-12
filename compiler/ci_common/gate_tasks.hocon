@@ -22,7 +22,7 @@ builds += [
   ${gateTestBenchmark} ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64"}
   ${gateTestBenchmark} ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "weekly-test-compiler-benchmarktest-8-linux-amd64-fastdebug"} ${graalWeekly}
   ${gateStyle}         ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-style-linux-amd64"}
-  ${gateCoverage}      ${labsjdk8}       ${gateLinuxAMD64}   {name: "weekly-compiler-coverage-8-linux-amd64", timelimit: "1:50:00"} ${graalWeekly} { logs += [*/report.zip] }
+  ${gateCoverage}      ${labsjdk8}       ${gateLinuxAMD64}   {name: "weekly-compiler-coverage-8-linux-amd64", timelimit: "1:50:00"} ${graalWeekly}
 
   ${gateTestCompileImmediately}     ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-compile-immediately-8-linux-amd64"}
   ${gateMathStubsListener}                                                {name: "daily-hotspot-mathstubs-listener"}
