@@ -27,6 +27,7 @@ include "sulong/ci.hocon"
 #include "examples/ci.hocon"
 
 jvm-config.default = "graal-core"
+libgraal_env = "libgraal"
 
 include "compiler/ci_common/common.hocon"
 include "compiler/ci_common/gate.hocon"
