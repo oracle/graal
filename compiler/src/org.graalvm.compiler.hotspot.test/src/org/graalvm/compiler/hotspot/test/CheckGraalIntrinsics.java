@@ -359,6 +359,15 @@ public class CheckGraalIntrinsics extends GraalTest {
                             // handled by an intrinsic for StringUTF16.indexOfLatin1Unsafe
                             "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                             "java/lang/StringUTF16.indexOfLatin1([B[B)I");
+
+            if (!config.useAESCTRIntrinsics) {
+                add(ignore,
+                        "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
+            }
+            if (!config.useGHASHIntrinsics()) {
+                add(ignore,
+                        "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
+            }
         }
 
         if (isJDK10OrHigher()) {
