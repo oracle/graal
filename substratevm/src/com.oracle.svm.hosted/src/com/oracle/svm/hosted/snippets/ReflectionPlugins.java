@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.snippets;
 
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
+
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -36,6 +39,8 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -371,7 +376,19 @@ public class ReflectionPlugins {
         ValueNode messageNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph());
         ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(reportExceptionMethod);
         assert exceptionMethod.isStatic();
-        b.handleReplacedInvoke(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, false);
+        Invoke invoke = b.handleReplacedInvoke(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, false);
+        if (invoke != null) {
+            /*
+             * If there is an invoke node, i.e., the call was not inlined, append a deopt node to
+             * stop parsing. This way we don't need to make sure that the stack is left in a
+             * consistent state after the new invoke is introduced, e.g., like pushing a dummy value
+             * for a replaced field load.
+             *
+             * If there is no invoke node then the call to the error reporting method, i.e.,
+             * "throw ..." , was inlined.
+             */
+            b.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+        }
     }
 
     private static void traceConstant(ResolvedJavaMethod contextMethod, ResolvedJavaMethod reflectionMethod, String targetElement) {
