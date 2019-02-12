@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_Class.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
 
 import java.io.File;
 import java.lang.reflect.Array;
@@ -45,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.IntFunction;
 
 import org.graalvm.options.OptionValues;
 
@@ -62,6 +64,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.MethodParametersAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -90,6 +94,7 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 /**
@@ -562,6 +567,12 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool, int index) {
         return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().utf8At(index).toString());
+    }
+
+    @VmImpl
+    @JniImpl
+    public int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool, int index) {
+        return jcpool.getMirrorKlass().getConstantPool().intAt(index);
     }
 
     @VmImpl

@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public final class Meta implements ContextAccess {
 
+
     private final EspressoContext context;
 
     public Meta(EspressoContext context) {
@@ -167,8 +168,11 @@ public final class Meta implements ContextAccess {
         Method_override = Method.lookupDeclaredField(Name.override, Type._boolean);
         Method_parameterTypes = Method.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
 
+        Parameter = knownKlass(Type.Parameter);
+
         Field = knownKlass(Type.Field);
         Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
+
 
         Shutdown = knownKlass(Type.Shutdown);
         Shutdown_shutdown = Shutdown.lookupDeclaredMethod(Name.shutdown, Signature._void);
@@ -265,6 +269,8 @@ public final class Meta implements ContextAccess {
     public final Field Method_clazz;
     public final Field Method_override;
     public final Field Method_parameterTypes;
+
+    public final ObjectKlass Parameter;
 
     public final ObjectKlass Field;
     public final Field Field_root;
