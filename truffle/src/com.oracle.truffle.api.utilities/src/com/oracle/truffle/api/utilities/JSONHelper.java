@@ -171,12 +171,8 @@ public final class JSONHelper {
      * @since 0.8 or earlier
      */
     public abstract static class JSONStringBuilder {
-        /**
-         * @deprecated accidentally public - don't use
-         * @since 0.8 or earlier
-         */
-        @Deprecated
-        protected JSONStringBuilder() {
+
+        private JSONStringBuilder() {
         }
 
         /** @since 0.8 or earlier */
