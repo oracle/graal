@@ -35,5 +35,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
 public abstract class LLVMStoreNode extends LLVMStatementNode {
 
+    public static final LLVMStoreNode[] NO_STORES = {};
+
     public abstract void executeWithTarget(Object address, Object value);
 }

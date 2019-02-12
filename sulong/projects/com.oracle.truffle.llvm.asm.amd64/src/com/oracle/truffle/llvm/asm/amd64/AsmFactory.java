@@ -1660,8 +1660,8 @@ class AsmFactory {
     }
 
     private void getArguments() {
-        LLVMStoreNode[] writeNodes = null;
-        LLVMExpressionNode[] valueNodes = null;
+        LLVMStoreNode[] writeNodes = LLVMStoreNode.NO_STORES;
+        LLVMExpressionNode[] valueNodes = LLVMExpressionNode.NO_EXPRESSIONS;
         if (retType instanceof StructureType) {
             writeNodes = new LLVMStoreNode[retTypes.length];
             valueNodes = new LLVMExpressionNode[retTypes.length];
