@@ -362,11 +362,11 @@ public class CheckGraalIntrinsics extends GraalTest {
 
             if (!config.useAESCTRIntrinsics) {
                 add(ignore,
-                        "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
+                                "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
             }
             if (!config.useGHASHIntrinsics()) {
                 add(ignore,
-                        "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
+                                "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
             }
         }
 
