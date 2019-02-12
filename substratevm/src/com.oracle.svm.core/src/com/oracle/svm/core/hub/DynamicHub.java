@@ -256,6 +256,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     private static java.security.ProtectionDomain allPermDomain;
 
+    private static Target_java_lang_Module singleModule;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     Target_java_lang_ClassLoader classLoader) {
@@ -1086,7 +1088,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public Target_java_lang_Module getModule() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getModule()");
+        if (singleModule == null) {
+            singleModule = new Target_java_lang_Module();
+        }
+        return singleModule;
     }
 
     @Substitute //
