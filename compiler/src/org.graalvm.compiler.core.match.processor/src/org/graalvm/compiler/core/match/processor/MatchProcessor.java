@@ -349,7 +349,8 @@ public class MatchProcessor extends AbstractProcessor {
         final boolean shareable;
 
         /**
-         * Can this node be subsumed into a match even if there are side effecting nodes between this node and the match.
+         * Can this node be subsumed into a match even if there are side effecting nodes between
+         * this node and the match.
          */
         final boolean ignoresSideEffects;
 
@@ -375,7 +376,8 @@ public class MatchProcessor extends AbstractProcessor {
 
     private TypeDescriptor valueType;
 
-    private void declareType(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, List<String> inputs, boolean commutative, boolean shareable, boolean ignoresSideEffects, Element element) {
+    private void declareType(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, List<String> inputs, boolean commutative, boolean shareable, boolean ignoresSideEffects,
+                    Element element) {
         TypeDescriptor descriptor = new TypeDescriptor(mirror, shortName, nodeClass, nodePackage, inputs, commutative, shareable, ignoresSideEffects);
         descriptor.originatingElements.add(element);
         knownTypes.put(shortName, descriptor);

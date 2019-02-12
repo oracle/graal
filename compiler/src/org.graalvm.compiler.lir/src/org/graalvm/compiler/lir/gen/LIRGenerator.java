@@ -386,6 +386,29 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return blockScope;
     }
 
+    private final class BlockScopeMatchImpl extends BlockScope {
+
+        private BlockScopeMatchImpl(AbstractBlockBase<?> block) {
+            currentBlock = block;
+        }
+
+        @Override
+        public AbstractBlockBase<?> getCurrentBlock() {
+            return currentBlock;
+        }
+
+        @Override
+        public void close() {
+            currentBlock = null;
+        }
+
+    }
+
+    public final BlockScope getBlockScopeMatch(AbstractBlockBase<?> block) {
+        BlockScopeMatchImpl blockScope = new BlockScopeMatchImpl(block);
+        return blockScope;
+    }
+
     @Override
     public void emitIncomingValues(Value[] params) {
         ((LabelOp) res.getLIR().getLIRforBlock(getCurrentBlock()).get(0)).setIncomingValues(params);

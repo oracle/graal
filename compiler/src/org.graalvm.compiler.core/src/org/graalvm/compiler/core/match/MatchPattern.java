@@ -159,7 +159,8 @@ public class MatchPattern {
     private final boolean singleUser;
 
     /**
-     * Can this node be subsumed into a match even if there are side effecting nodes between this node and the match.
+     * Can this node be subsumed into a match even if there are side effecting nodes between this
+     * node and the match.
      */
     private final boolean ignoresSideEffects;
 
