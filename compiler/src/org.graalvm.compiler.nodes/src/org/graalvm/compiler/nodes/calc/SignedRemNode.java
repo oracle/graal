@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,6 +104,11 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                         // x - ((x / y) << log2(y))
                         return SubNode.create(forX, LeftShiftNode.create(SignedDivNode.canonical(forX, constY, view), ConstantNode.forInt(CodeUtil.log2(constY)), view), view);
                     }
+                }
+            } else if (!CodeUtil.isPowerOf2(constY)) {
+                ValueNode value = canonicalizeSignedDivConstant(forX, forY.asJavaConstant().asLong(), view);
+                if (value != null) {
+                    return SubNode.create(forX, new MulNode(value, forY), view);
                 }
             }
         }
