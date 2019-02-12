@@ -1074,7 +1074,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
             '-Dgraalvm.version={}'.format(version),
         ]
         if _debug_images():
-            build_args += ['-ea', '-H:-AOTInline']
+            build_args += ['-ea', '-H:-AOTInline', '-H:+UseStackBasePointer']
         if self.svm_support.is_debug_supported():
             build_args += ['-g']
         if self.subject.deps:
