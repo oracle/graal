@@ -73,7 +73,7 @@ public final class VmPrimsJVM {
         CIntPointer socklen_Pointer = StackValue.get(CIntPointer.class);
         socklen_Pointer.write(len_Pointer.read());
         // 3785   jint result = os::accept(fd, him, &socklen);
-        int result = Socket.accept(fd, him, socklen_Pointer);
+        int result = Target_os.accept(fd, him, socklen_Pointer);
         // 3786   *len = (jint)socklen;
         len_Pointer.write(socklen_Pointer.read());
         // 3787   return result;
