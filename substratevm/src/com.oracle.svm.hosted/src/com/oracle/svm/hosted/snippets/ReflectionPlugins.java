@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.hosted.snippets;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
-
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -37,10 +34,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -51,10 +45,8 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.reflect.ReflectionPluginExceptions;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -88,22 +80,6 @@ public class ReflectionPlugins {
     static class Options {
         @Option(help = "Enable trace logging for reflection plugins.")//
         static final HostedOptionKey<Boolean> ReflectionPluginTracing = new HostedOptionKey<>(false);
-    }
-
-    private static final Method throwClassNotFoundExceptionMethod;
-    private static final Method throwNoClassDefFoundErrorMethod;
-    private static final Method throwNoSuchFieldExceptionMethod;
-    private static final Method throwNoSuchMethodExceptionMethod;
-
-    static {
-        try {
-            throwClassNotFoundExceptionMethod = ReflectionPluginExceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class);
-            throwNoClassDefFoundErrorMethod = ReflectionPluginExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class);
-            throwNoSuchFieldExceptionMethod = ReflectionPluginExceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class);
-            throwNoSuchMethodExceptionMethod = ReflectionPluginExceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class);
-        } catch (NoSuchMethodException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -186,7 +162,7 @@ public class ReflectionPlugins {
             String className = snippetReflection.asObject(String.class, name.asJavaConstant());
             Class<?> clazz = imageClassLoader.findClassByName(className, false);
             if (clazz == null) {
-                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwClassNotFoundExceptionMethod)) {
+                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwClassNotFoundExceptionMethod)) {
                     return false;
                 }
                 throwClassNotFoundException(b, targetMethod, className);
@@ -216,7 +192,7 @@ public class ReflectionPlugins {
                 }
                 pushConstant(b, targetMethod, snippetReflection.forObject(field), target);
             } catch (NoSuchFieldException e) {
-                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoSuchFieldExceptionMethod)) {
+                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoSuchFieldExceptionMethod)) {
                     return false;
                 }
                 throwNoSuchFieldException(b, targetMethod, target);
@@ -225,7 +201,7 @@ public class ReflectionPlugins {
                  * If the declaring class of the field references missing classes a
                  * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
                  */
-                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoClassDefFoundErrorMethod)) {
+                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoClassDefFoundErrorMethod)) {
                     return false;
                 }
                 throwNoClassDefFoundError(b, targetMethod, e.getMessage());
@@ -253,7 +229,7 @@ public class ReflectionPlugins {
                     }
                     pushConstant(b, targetMethod, snippetReflection.forObject(method), target);
                 } catch (NoSuchMethodException e) {
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoSuchMethodExceptionMethod)) {
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoSuchMethodExceptionMethod)) {
                         return false;
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
@@ -262,7 +238,7 @@ public class ReflectionPlugins {
                      * If the declaring class of the method references missing classes a
                      * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
                      */
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoClassDefFoundErrorMethod)) {
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoClassDefFoundErrorMethod)) {
                         return false;
                     }
                     throwNoClassDefFoundError(b, targetMethod, e.getMessage());
@@ -292,7 +268,7 @@ public class ReflectionPlugins {
                     }
                     pushConstant(b, targetMethod, snippetReflection.forObject(constructor), target);
                 } catch (NoSuchMethodException e) {
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoSuchMethodExceptionMethod)) {
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoSuchMethodExceptionMethod)) {
                         return false;
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
@@ -301,7 +277,7 @@ public class ReflectionPlugins {
                      * If the declaring class of the constructor references missing classes a
                      * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
                      */
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoClassDefFoundErrorMethod)) {
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoClassDefFoundErrorMethod)) {
                         return false;
                     }
                     throwNoClassDefFoundError(b, targetMethod, e.getMessage());
@@ -347,48 +323,29 @@ public class ReflectionPlugins {
     private static void throwClassNotFoundException(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, String targetClass) {
         String message = targetClass + ". This exception was synthesized during native image building from a call to " + reflectionMethod.format("%H.%n(%p)") +
                         " with a constant class name argument.";
-        throwException(b, message, throwClassNotFoundExceptionMethod);
-        traceException(b.getMethod(), reflectionMethod, targetClass, throwClassNotFoundExceptionMethod);
+        ExceptionSynthesizer.throwException(b, message, ExceptionSynthesizer.throwClassNotFoundExceptionMethod);
+        traceException(b.getMethod(), reflectionMethod, targetClass, ExceptionSynthesizer.throwClassNotFoundExceptionMethod);
     }
 
     private static void throwNoClassDefFoundError(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, String targetClass) {
         String message = targetClass + ". This exception was synthesized during native image building from a call to " + reflectionMethod.format("%H.%n(%p)") +
                         " with constant arguments.";
-        throwException(b, message, throwNoClassDefFoundErrorMethod);
-        traceException(b.getMethod(), reflectionMethod, targetClass, throwNoClassDefFoundErrorMethod);
+        ExceptionSynthesizer.throwException(b, message, ExceptionSynthesizer.throwNoClassDefFoundErrorMethod);
+        traceException(b.getMethod(), reflectionMethod, targetClass, ExceptionSynthesizer.throwNoClassDefFoundErrorMethod);
     }
 
     private static void throwNoSuchFieldException(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, String targetField) {
         String message = targetField + ". This exception was synthesized during native image building from a call to " + reflectionMethod.format("%H.%n(%p)") +
                         " with a constant field name argument.";
-        throwException(b, message, throwNoSuchFieldExceptionMethod);
-        traceException(b.getMethod(), reflectionMethod, targetField, throwNoSuchFieldExceptionMethod);
+        ExceptionSynthesizer.throwException(b, message, ExceptionSynthesizer.throwNoSuchFieldExceptionMethod);
+        traceException(b.getMethod(), reflectionMethod, targetField, ExceptionSynthesizer.throwNoSuchFieldExceptionMethod);
     }
 
     private static void throwNoSuchMethodException(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, String targetMethod) {
         String message = targetMethod + ". This exception was synthesized during native image building from a call to " + reflectionMethod.format("%H.%n(%p)") +
                         " with constant method name and parameter types arguments.";
-        throwException(b, message, throwNoSuchMethodExceptionMethod);
-        traceException(b.getMethod(), reflectionMethod, targetMethod, throwNoSuchMethodExceptionMethod);
-    }
-
-    private static void throwException(GraphBuilderContext b, String message, Method reportExceptionMethod) {
-        ValueNode messageNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph());
-        ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(reportExceptionMethod);
-        assert exceptionMethod.isStatic();
-        Invoke invoke = b.handleReplacedInvoke(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, false);
-        if (invoke != null) {
-            /*
-             * If there is an invoke node, i.e., the call was not inlined, append a deopt node to
-             * stop parsing. This way we don't need to make sure that the stack is left in a
-             * consistent state after the new invoke is introduced, e.g., like pushing a dummy value
-             * for a replaced field load.
-             *
-             * If there is no invoke node then the call to the error reporting method, i.e.,
-             * "throw ..." , was inlined.
-             */
-            b.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-        }
+        ExceptionSynthesizer.throwException(b, message, ExceptionSynthesizer.throwNoSuchMethodExceptionMethod);
+        traceException(b.getMethod(), reflectionMethod, targetMethod, ExceptionSynthesizer.throwNoSuchMethodExceptionMethod);
     }
 
     private static void traceConstant(ResolvedJavaMethod contextMethod, ResolvedJavaMethod reflectionMethod, String targetElement) {
