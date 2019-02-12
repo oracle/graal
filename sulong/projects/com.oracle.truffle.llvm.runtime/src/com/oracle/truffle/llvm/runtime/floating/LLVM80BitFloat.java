@@ -41,12 +41,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloatFactory.LLVM80BitFloatNativeCallNodeGen;
@@ -644,8 +643,6 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     protected abstract static class LLVM80BitFloatNativeCallNode extends LLVMNode {
         private final String name;
 
-        @Child private Node nativeExecute = Message.EXECUTE.createNode();
-
         public LLVM80BitFloatNativeCallNode(String name) {
             this.name = name;
         }
@@ -661,6 +658,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         @Specialization(guards = "function != null")
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
                         @Cached("createFunction()") TruffleObject function,
+                        @CachedLibrary("function") InteropLibrary nativeExecute,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMNativePointer mem = memory.allocateMemory(3 * 16);
             LLVMNativePointer ptrX = mem;
@@ -669,7 +667,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
             memory.put80BitFloat(ptrX, x);
             memory.put80BitFloat(ptrY, y);
             try {
-                ForeignAccess.sendExecute(nativeExecute, function, ptrZ.asNative(), ptrX.asNative(), ptrY.asNative());
+                nativeExecute.execute(function, ptrZ.asNative(), ptrX.asNative(), ptrY.asNative());
                 LLVM80BitFloat z = memory.get80BitFloat(ptrZ);
                 return z;
             } catch (InteropException e) {
