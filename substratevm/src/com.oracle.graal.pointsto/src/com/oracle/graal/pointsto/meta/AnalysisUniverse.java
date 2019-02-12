@@ -40,7 +40,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -614,6 +616,16 @@ public class AnalysisUniverse implements Universe {
     @Override
     public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
         return substitutions.resolve(method);
+    }
+
+    @Override
+    public OptionValues adjustCompilerOptions(OptionValues optionValues, ResolvedJavaMethod method) {
+        /*
+         * For the AnalysisUniverse we want to always disable the liveness analysis, since we want
+         * the points-to analysis to be as conservative as possible. We don't want the optimization
+         * level to affect the execution of the points-to analysis.
+         */
+        return new OptionValues(optionValues, GraalOptions.OptClearNonLiveLocals, false);
     }
 
     @Override

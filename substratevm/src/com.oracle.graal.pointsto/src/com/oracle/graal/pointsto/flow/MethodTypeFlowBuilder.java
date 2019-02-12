@@ -39,7 +39,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -175,7 +174,7 @@ public class MethodTypeFlowBuilder {
 
     @SuppressWarnings("try")
     private boolean parse() {
-        OptionValues options = bb.getOptions();
+        OptionValues options = bb.getUniverse().adjustCompilerOptions(bb.getOptions(), method);
         GraalJVMCICompiler compiler = (GraalJVMCICompiler) JVMCI.getRuntime().getCompiler();
         SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
         // Use the real SnippetReflectionProvider for dumping
@@ -198,17 +197,7 @@ public class MethodTypeFlowBuilder {
                 if (!method.hasBytecodes()) {
                     return false;
                 }
-
                 needParsing = true;
-
-                /*
-                 * The analysis bytecode parsing configuration needs to be as conservative as
-                 * possible and match the compilation bytecode parsing configuration which disables
-                 * liveness analysis to preserve the values of local variables beyond the
-                 * bytecode-liveness. This greatly helps debugging. See
-                 * CompileQueue.defaultParseFunction().
-                 */
-                options = new OptionValues(options, GraalOptions.OptClearNonLiveLocals, false);
                 graph = new StructuredGraph.Builder(options, debug).method(method).build();
             }
 
