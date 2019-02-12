@@ -579,18 +579,6 @@ suite = {
       "buildDependencies" : [
         "LIBFFI_SOURCES",
       ],
-      "os_arch" : {
-        "windows" : {
-          "<others>" : {
-            "ignore" : "temporarily disabled",
-          },
-        },
-        "<others>" : {
-          "<others>" : {
-            "ignore" : False,
-          },
-        },
-      },
     },
 
     "com.oracle.truffle.nfi.native" : {
