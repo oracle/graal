@@ -202,7 +202,7 @@ builds += [
   },
   ${svm-common-linux-amd64} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
-      [mx, --env, ${libgraal_env}, build]
+      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-ea", "--extra-image-builder-argument=-J-esa", build]
       [mx, --env, ${libgraal_env}, gate, --task, LibGraal]
     ]
     timelimit: "35:00"
