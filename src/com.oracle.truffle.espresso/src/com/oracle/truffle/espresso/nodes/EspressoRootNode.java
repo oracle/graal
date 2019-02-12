@@ -59,7 +59,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     public String getName() {
-        // TODO(peterssen): Set proper location.
-        return getClass().getSimpleName() + "<" + getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature() + ">";
+        return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();
     }
 }
