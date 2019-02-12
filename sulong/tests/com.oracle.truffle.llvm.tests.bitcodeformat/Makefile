@@ -81,10 +81,12 @@ $(RESULT_DIR)/%-linux-link-fembed-bitcode.so: %.c
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) -flto=full -Wl,--embed-bitcode -fuse-ld=lld -shared -fPIC -o $@ $<
 endif
-endif
+else
 
 # We just copy prebuilt files since generating them is not easy in a target independent way.
 # Current binaries have been built with llvm 7.0.1.
 $(RESULT_DIR)/%: binaries/%
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) cp $< $@
+
+endif
