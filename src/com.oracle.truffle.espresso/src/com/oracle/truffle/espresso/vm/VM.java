@@ -858,6 +858,97 @@ public final class VM extends NativeEnv implements ContextAccess {
         return guestBox(elem);
     }
 
+    private static Method getHostReflectiveMethodRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
+        Meta meta = seed.getKlass().getMeta();
+        StaticObject curMethod = seed;
+        Method target = null;
+        while (target == null) {
+            target = (Method) ((StaticObjectImpl) curMethod).getHiddenField(Target_java_lang_Class.HIDDEN_METHOD_KEY);
+            if (target == null) {
+                curMethod = (StaticObject) meta.Method_root.get(curMethod);
+            }
+        }
+        return target;
+    }
+
+    private static StaticObject getGuestReflectiveMethodRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
+        Meta meta = seed.getKlass().getMeta();
+        StaticObject curMethod = seed;
+        Method target = null;
+        while (target == null) {
+            target = (Method) ((StaticObjectImpl) curMethod).getHiddenField(Target_java_lang_Class.HIDDEN_METHOD_KEY);
+            if (target == null) {
+                curMethod = (StaticObject) meta.Method_root.get(curMethod);
+            }
+        }
+        return curMethod;
+    }
+
+    @VmImpl
+    @JniImpl
+    public Object JVM_GetMethodParameters(@Host(Object.class) StaticObject guestReflectionMethod) {
+
+        StaticObjectArray parameterTypes = (StaticObjectArray) getMeta().Method_parameterTypes.get(guestReflectionMethod);
+        int numParams = parameterTypes.length();
+        if (numParams == 0) {
+            return StaticObject.NULL;
+        }
+
+        Method method = getHostReflectiveMethodRoot(guestReflectionMethod);
+        MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Name.MethodParameters);
+        assert methodParameters != null;
+
+        // Verify first.
+        int cpLength = method.getConstantPool().length();
+        for (MethodParametersAttribute.Entry entry : methodParameters.getEntries()) {
+            int nameIndex = entry.getNameIndex();
+            if (nameIndex < 0 || nameIndex >= cpLength) {
+                throw getMeta().throwExWithMessage(getMeta().IllegalArgumentException,
+                                getMeta().toGuestString("Constant pool index out of bounds"));
+            }
+            if (nameIndex != 0 && method.getConstantPool().tagAt(nameIndex) != ConstantPool.Tag.UTF8) {
+                throw getMeta().throwExWithMessage(getMeta().IllegalArgumentException,
+                                getMeta().toGuestString("Wrong type at constant pool index"));
+            }
+        }
+
+        // TODO(peterssen): Cache guest j.l.reflect.Parameter constructor.
+        // Calling the constructor is just for validation, manually setting the fields would
+        // be faster.
+        Method parameterInit = getMeta().Parameter.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(Type._void,
+                        /* name */ Type.String,
+                        /* modifiers */ Type._int,
+                        /* executable */ Type.Executable,
+                        /* index */ Type._int));
+
+        return getMeta().Parameter.allocateArray(numParams, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int index) {
+                MethodParametersAttribute.Entry entry = methodParameters.getEntries()[index];
+                StaticObject instance = getMeta().Parameter.allocateInstance();
+                // For a 0 index, give an empty name.
+                String hostName = "";
+                if (entry.getNameIndex() != 0) {
+                    hostName = method.getConstantPool().utf8At(entry.getNameIndex(), "parameter name").toString();
+                }
+                parameterInit.invokeDirect(/* this */ instance,
+                                /* name */ getMeta().toGuestString(hostName),
+                                /* modifiers */ entry.getAccessFlags(),
+                                /* executable */ guestReflectionMethod,
+                                /* index */ index);
+                return instance;
+            }
+        });
+    }
+
+    @VmImpl
+    @JniImpl
+    public Object JVM_GetMethodTypeAnnotations(@Host(Object.class) StaticObject guestReflectionMethod) {
+        StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
+        assert methodRoot != null;
+        return ((StaticObjectImpl) methodRoot).getHiddenField(HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+    }
+
     private StaticObject guestBox(Object elem) {
         if (elem instanceof Integer) {
             return (StaticObject) getMeta().Integer_valueOf.invokeDirect(null, (int) elem);

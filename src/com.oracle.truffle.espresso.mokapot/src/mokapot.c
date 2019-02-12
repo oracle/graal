@@ -594,8 +594,8 @@ jbyteArray JVM_GetFieldTypeAnnotations(JNIEnv *env, jobject field) {
 }
 
 jbyteArray JVM_GetMethodTypeAnnotations(JNIEnv *env, jobject method) {
-  UNIMPLEMENTED(JVM_GetMethodTypeAnnotations);
-  return NULL;
+  IMPLEMENTED(JVM_GetMethodTypeAnnotations);
+  return (*getEnv())->JVM_GetMethodTypeAnnotations(env, method);
 }
 
 jobjectArray JVM_GetClassDeclaredMethods(JNIEnv *env, jclass ofClass, jboolean publicOnly) {
@@ -674,8 +674,8 @@ jobjectArray JVM_ConstantPoolGetMemberRefInfoAt(JNIEnv *env, jobject unused, job
 }
 
 jint JVM_ConstantPoolGetIntAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
-  UNIMPLEMENTED(JVM_ConstantPoolGetIntAt);
-  return 0;
+  IMPLEMENTED(JVM_ConstantPoolGetIntAt);
+  return (*getEnv())->JVM_ConstantPoolGetIntAt(env, unused, jcpool, index);
 }
 
 jlong JVM_ConstantPoolGetLongAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
@@ -704,8 +704,8 @@ jstring JVM_ConstantPoolGetUTF8At(JNIEnv *env, jobject unused, jobject jcpool, j
 }
 
 jobjectArray JVM_GetMethodParameters(JNIEnv *env, jobject method) {
-  UNIMPLEMENTED(JVM_GetMethodParameters);
-  return NULL;
+  IMPLEMENTED(JVM_GetMethodParameters);
+  return (*getEnv())->JVM_GetMethodParameters(env, method);
 }
 
 jobject JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
