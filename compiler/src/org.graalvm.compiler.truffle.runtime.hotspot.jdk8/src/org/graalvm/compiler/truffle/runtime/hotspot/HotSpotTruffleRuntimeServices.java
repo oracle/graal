@@ -35,10 +35,29 @@ import jdk.vm.ci.meta.SpeculationLog;
 class HotSpotTruffleRuntimeServices {
 
     /**
+     * A wrapper that holds a strong reference to a "master" speculation log that
+     * {@linkplain HotSpotSpeculationLog#managesFailedSpeculations() manages} the failed
+     * speculations list.
+     */
+    static class CompilationSpeculationLog extends HotSpotSpeculationLog {
+        private final HotSpotSpeculationLog masterLog;
+
+        CompilationSpeculationLog(HotSpotSpeculationLog masterLog) {
+            super(masterLog.getFailedSpeculationsAddress());
+            this.masterLog = masterLog;
+        }
+
+        @Override
+        public String toString() {
+            return masterLog.toString();
+        }
+    }
+
+    /**
      * Gets a speculation log to be used for compiling {@code callTarget}.
      */
     public static SpeculationLog getCompilationSpeculationLog(OptimizedCallTarget callTarget) {
         HotSpotSpeculationLog masterLog = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
-        return new HotSpotSpeculationLog(masterLog.getFailedSpeculationsAddress());
+        return new CompilationSpeculationLog(masterLog);
     }
 }
