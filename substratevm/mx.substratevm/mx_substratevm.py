@@ -1026,10 +1026,12 @@ if os.environ.has_key('LIBGRAAL'):
             mx_sdk.LibraryConfig(
                 destination="<lib:jvmcicompiler>",
                 jvm_library=True,
-                jar_distributions=['substratevm:GRAAL_HOTSPOT_LIBRARY'],
+                jar_distributions=[
+                    'substratevm:GRAAL_HOTSPOT_LIBRARY',
+                    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL'
+                ],
                 build_args=[
                     '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
-                    '--tool:truffle',
                     '-H:-UseServiceLoaderFeature',
                     '-H:+AllowFoldMethods',
                     '-Djdk.vm.ci.services.aot=true'
