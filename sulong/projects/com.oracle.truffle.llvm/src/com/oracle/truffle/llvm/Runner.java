@@ -57,25 +57,23 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.RunnerFactory.SulongLibraryMessageResolutionFactory.ExecuteMainNodeGen;
-import com.oracle.truffle.llvm.RunnerFactory.SulongLibraryMessageResolutionFactory.LookupNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMStatementRootNode;
 import com.oracle.truffle.llvm.parser.LLVMParser;
@@ -111,7 +109,6 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -148,6 +145,7 @@ public final class Runner {
     /**
      * Object that is returned when a bitcode library is parsed.
      */
+    @ExportLibrary(InteropLibrary.class)
     static final class SulongLibrary implements TruffleObject {
 
         private final String name;
@@ -172,15 +170,7 @@ public final class Runner {
             return name;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return SulongLibraryMessageResolutionForeign.ACCESS;
-        }
-    }
-
-    @MessageResolution(receiverType = SulongLibrary.class)
-    abstract static class SulongLibraryMessageResolution {
-
+        @GenerateUncached
         abstract static class LookupNode extends LLVMNode {
 
             abstract LLVMFunctionDescriptor execute(SulongLibrary library, String name);
@@ -196,7 +186,7 @@ public final class Runner {
 
             @Specialization(replaces = "doCached")
             @TruffleBoundary
-            LLVMFunctionDescriptor doGeneric(SulongLibrary library, String name) {
+            static LLVMFunctionDescriptor doGeneric(SulongLibrary library, String name) {
                 return lookupFunctionDescriptor(library, name);
             }
 
@@ -216,75 +206,58 @@ public final class Runner {
             }
         }
 
-        @Resolve(message = "READ")
-        abstract static class ReadNode extends Node {
-
-            @Child LookupNode lookup = LookupNodeGen.create();
-
-            Object access(SulongLibrary boxed, String name) {
-                Object ret = lookup.execute(boxed, name);
-                if (ret == null) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnknownIdentifierException.raise(name);
-                }
-                return ret;
+        @ExportMessage
+        Object readMember(String name,
+                        @Shared("lookup") @Cached LookupNode lookup) throws UnknownIdentifierException {
+            Object ret = lookup.execute(this, name);
+            if (ret == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.create(name);
             }
+            return ret;
         }
 
-        @Resolve(message = "INVOKE")
-        abstract static class InvokeNode extends Node {
-
-            @Child LookupNode lookup = LookupNodeGen.create();
-            @Child LLVMForeignCallNode call = LLVMForeignCallNodeGen.create();
-
-            Object access(SulongLibrary library, String name, Object[] arguments) {
-                LLVMFunctionDescriptor fn = lookup.execute(library, name);
-                if (fn == null) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnknownIdentifierException.raise(name);
-                }
-
-                return call.executeCall(fn, arguments);
+        @ExportMessage
+        Object invokeMember(String name, Object[] arguments,
+                        @Shared("lookup") @Cached LookupNode lookup,
+                        @Cached LLVMForeignCallNode call) throws ArityException, UnknownIdentifierException {
+            LLVMFunctionDescriptor fn = lookup.execute(this, name);
+            if (fn == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.create(name);
             }
+
+            return call.executeCall(fn, arguments);
         }
 
-        @Resolve(message = "KEYS")
-        abstract static class KeysNode extends Node {
-
-            TruffleObject access(SulongLibrary library) {
-                return library.scope.getKeys();
-            }
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        @Resolve(message = "KEY_INFO")
-        abstract static class KeyInfoNode extends Node {
-
-            @Child LookupNode lookup = LookupNodeGen.create();
-
-            int access(SulongLibrary library, String name) {
-                if (lookup.execute(library, name) != null) {
-                    return KeyInfo.READABLE | KeyInfo.INVOCABLE;
-                } else {
-                    return KeyInfo.NONE;
-                }
-            }
+        @ExportMessage
+        Object getMembers(boolean includeInternal) {
+            return scope.getKeys();
         }
 
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class IsExecutableNode extends Node {
-
-            boolean access(SulongLibrary library) {
-                return library.main != null;
-            }
+        @ExportMessage(name = "isMemberReadable")
+        @ExportMessage(name = "isMemberInvocable")
+        boolean memberExists(String name,
+                        @Shared("lookup") @Cached LookupNode lookup) {
+            return lookup.execute(this, name) != null;
         }
 
-        abstract static class ExecuteMainNode extends LLVMNode {
+        @ExportMessage
+        boolean isExecutable() {
+            return main != null;
+        }
 
-            abstract Object execute(SulongLibrary library, Object[] args);
+        @ExportMessage
+        abstract static class Execute {
 
             @Specialization(guards = "library == cachedLibrary")
             @SuppressWarnings("unused")
-            Object executeCached(SulongLibrary library, Object[] args,
+            static Object doCached(SulongLibrary library, Object[] args,
                             @Cached("library") SulongLibrary cachedLibrary,
                             @Cached("createMainCall(cachedLibrary)") DirectCallNode call) {
                 return call.call(args);
@@ -294,29 +267,10 @@ public final class Runner {
                 return DirectCallNode.create(library.main);
             }
 
-            @Specialization(replaces = "executeCached")
-            Object executeGeneric(SulongLibrary library, Object[] args,
+            @Specialization(replaces = "doCached")
+            static Object doGeneric(SulongLibrary library, Object[] args,
                             @Cached("create()") IndirectCallNode call) {
                 return call.call(library.main, args);
-            }
-        }
-
-        @Resolve(message = "EXECUTE")
-        abstract static class ExecuteNode extends Node {
-
-            @Child ExecuteMainNode executeMain = ExecuteMainNodeGen.create();
-
-            Object access(SulongLibrary library, Object[] args) {
-                assert library.main != null;
-                return executeMain.execute(library, args);
-            }
-        }
-
-        @CanResolve
-        abstract static class CanResolveSulongLibrary extends Node {
-
-            boolean test(TruffleObject object) {
-                return object instanceof SulongLibrary;
             }
         }
     }
