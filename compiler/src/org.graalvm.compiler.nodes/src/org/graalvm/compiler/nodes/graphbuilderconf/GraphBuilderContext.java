@@ -91,32 +91,15 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Adds a node to the graph. If the node is in the graph, returns immediately. If the node is a
-     * {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}, the frame
-     * state is initialized.
+     * Adds a node and all its inputs to the graph. If the node is in the graph, returns
+     * immediately. If the node is a {@link StateSplit} with a null
+     * {@linkplain StateSplit#stateAfter() frame state} , the frame state is initialized.
      *
      * @param value the value to add to the graph and push to the stack. The
      *            {@code value.getJavaKind()} kind is used when type checking this operation.
      * @return a node equivalent to {@code value} in the graph
      */
     default <T extends ValueNode> T add(T value) {
-        if (value.graph() != null) {
-            assert !(value instanceof StateSplit) || ((StateSplit) value).stateAfter() != null;
-            return value;
-        }
-        return GraphBuilderContextUtil.setStateAfterIfNecessary(this, append(value));
-    }
-
-    /**
-     * Adds a node and its inputs to the graph. If the node is in the graph, returns immediately. If
-     * the node is a {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}
-     * , the frame state is initialized.
-     *
-     * @param value the value to add to the graph and push to the stack. The
-     *            {@code value.getJavaKind()} kind is used when type checking this operation.
-     * @return a node equivalent to {@code value} in the graph
-     */
-    default <T extends ValueNode> T addWithInputs(T value) {
         if (value.graph() != null) {
             assert !(value instanceof StateSplit) || ((StateSplit) value).stateAfter() != null;
             return value;
