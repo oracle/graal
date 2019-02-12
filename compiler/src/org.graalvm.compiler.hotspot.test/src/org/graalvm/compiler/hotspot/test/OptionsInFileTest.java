@@ -60,7 +60,7 @@ public class OptionsInFileTest extends GraalCompilerTest {
             try (PrintStream out = new PrintStream(new FileOutputStream(optionsFile))) {
                 out.println(MethodFilter.getName() + "=" + methodFilterValue);
                 out.println(Dump.getName() + "=" + debugFilterValue);
-                out.println(PrintGraph.getName() + " = false");
+                out.println(PrintGraph.getName() + " = network");
             }
 
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
@@ -71,7 +71,7 @@ public class OptionsInFileTest extends GraalCompilerTest {
             String[] expected = {
                             "graal.MethodFilter := \"a very unlikely method name\"",
                             "graal.Dump := \"a very unlikely debug scope\"",
-                            "graal.PrintGraph := false"};
+                            "graal.PrintGraph := network"};
             for (String line : proc.output) {
                 for (int i = 0; i < expected.length; i++) {
                     if (expected[i] != null && line.contains(expected[i])) {

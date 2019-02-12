@@ -29,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -40,6 +41,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
  * Options that configure a {@link DebugContext} and related functionality.
  */
 public class DebugOptions {
+
     /**
      * Values for the {@link DebugOptions#PrintGraph} option denoting where graphs dumped as a
      * result of the {@link DebugOptions#Dump} option are sent.
@@ -141,6 +143,24 @@ public class DebugOptions {
 
     @Option(help = "Where to dump graphs for the IdealGraphVisualizer.", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.file);
+
+    @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<Boolean>(true) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            PrintGraphTarget v = PrintGraph.getValueOrDefault(values);
+            if (newValue.booleanValue()) {
+                if (v != PrintGraphTarget.file) {
+                    PrintGraph.update(values, PrintGraphTarget.file);
+                }
+            } else {
+                if (v != PrintGraphTarget.network) {
+                    PrintGraph.update(values, PrintGraphTarget.network);
+                }
+            }
+        }
+    };
+
     @Option(help = "Host part of the address to which graphs are dumped.", type = OptionType.Debug)
     public static final OptionKey<String> PrintGraphHost = new OptionKey<>("127.0.0.1");
     @Option(help = "Port part of the address to which graphs are dumped in binary format.", type = OptionType.Debug)
