@@ -26,6 +26,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -44,5 +47,25 @@ public abstract class QuickNode extends Node {
             throw meta.throwEx(NullPointerException.class);
         }
         return value;
+    }
+
+
+    protected static Method lookupDefaultInterfaceMethod(ObjectKlass seed, Symbol<Symbol.Name> name, Symbol<Symbol.Signature> signature) {
+        for (Method m : seed.getDeclaredMethods()) {
+            if (!m.isStatic() && !m.isPrivate() && !m.isAbstract() && name.equals(m.getName()) && signature.equals(m.getRawSignature())) {
+                return m;
+            }
+        }
+        // FIXME(peterssen): Not implemented: If the maximally-specific superinterface methods
+        // of C for the name and descriptor specified by the method reference include exactly
+        // one method that does not have its ACC_ABSTRACT flag set, then this method is chosen
+        // and method lookup succeeds.
+        for (ObjectKlass i : seed.getInterfaces()) {
+            Method method = lookupDefaultInterfaceMethod(i, name, signature);
+            if (method != null) {
+                return method;
+            }
+        }
+        return null;
     }
 }
