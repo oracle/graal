@@ -22,40 +22,35 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
-/**
- * The root of all executable bits in Espresso, includes everything that can be called a "method" in
- * Java. Regular (concrete) Java methods, native methods and intrinsics/substitutions.
- */
-public final class EspressoRootNode extends RootNode implements ContextAccess {
-    // TODO(peterssen): This could be ObjectKlass bar array methods. But those methods could be
-    // redirected e.g. arrays .clone method to Object.clone.
-    // private final /* ObjectKlass */ Klass declaringKlass;
-    private final Method method;
+@GenerateWrapper
+public abstract class EspressoBaseNode extends Node implements ContextAccess, InstrumentableNode {
 
-    @Child EspressoBaseNode childNode;
+    private final Method method;
 
     public final Method getMethod() {
         return method;
     }
 
-    public EspressoRootNode(Method method, EspressoBaseNode childNode) {
-        super(method.getEspressoLanguage());
+    protected EspressoBaseNode(Method method) {
         this.method = method;
-        this.childNode = childNode;
     }
 
-    public EspressoRootNode(Method method, FrameDescriptor frameDescriptor, EspressoBaseNode childNode) {
-        super(method.getEspressoLanguage(), frameDescriptor);
-        this.method = method;
-        this.childNode = childNode;
+    protected EspressoBaseNode(EspressoBaseNode copy) {
+        this.method = copy.method;
     }
 
     @Override
@@ -63,18 +58,27 @@ public final class EspressoRootNode extends RootNode implements ContextAccess {
         return method.getContext();
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return childNode.execute(frame);
-    }
+    public abstract Object execute(VirtualFrame frame);
 
-    @Override
-    public String getName() {
-        return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();
-    }
-
+    @TruffleBoundary
     @Override
     public SourceSection getSourceSection() {
-        return childNode.getSourceSection();
+        String methodName = method.getName().toString();
+        Source source = Source.newBuilder("java", methodName, methodName).build();
+        return source.createSection(1);
     }
+
+    @Override
+    public boolean isInstrumentable() {
+        return true;
+    }
+
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new EspressoBaseNodeWrapper(this, this, probe);
+    }
+
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return tag == StandardTags.RootTag.class;
+    }
+
 }

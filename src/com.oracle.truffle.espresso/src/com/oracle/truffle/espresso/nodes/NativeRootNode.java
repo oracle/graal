@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
-public abstract class NativeRootNode extends EspressoRootNode {
+public abstract class NativeRootNode extends EspressoBaseNode {
 
     private final TruffleObject boundNative;
 

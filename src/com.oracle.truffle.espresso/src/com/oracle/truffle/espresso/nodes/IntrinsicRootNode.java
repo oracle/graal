@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
-public class IntrinsicRootNode extends EspressoRootNode {
+public class IntrinsicRootNode extends EspressoBaseNode {
 
     private final MethodHandle handle;
 

@@ -170,7 +170,7 @@ public final class Substitutions implements ContextAccess {
             final EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
                 @Override
                 public EspressoRootNode spawnNode(Method espressoMethod) {
-                    return new IntrinsicReflectionRootNode(method, espressoMethod);
+                    return new EspressoRootNode(espressoMethod, new IntrinsicReflectionRootNode(method, espressoMethod));
                 }
             };
 
