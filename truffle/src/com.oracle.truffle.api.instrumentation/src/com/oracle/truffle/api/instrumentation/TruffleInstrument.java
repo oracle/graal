@@ -527,27 +527,6 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Find a meta-object of a value, if any. The meta-object represents a description of the
-         * object, reveals it's kind and it's features. Some information that a meta-object might
-         * define includes the base object's type, interface, class, methods, attributes, etc. When
-         * no meta-object is known, <code>null</code> is returned.
-         *
-         * @param node a node
-         * @param value a value to find the meta-object of
-         * @return the meta-object, or <code>null</code>
-         * @since 0.22
-         * @deprecated use
-         *             {@link #findMetaObject(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Object)}
-         *             and retrieve {@link LanguageInfo} from
-         *             <code>node.getRootNode().getLanguageInfo()</code>.
-         */
-        @Deprecated
-        public Object findMetaObject(Node node, Object value) {
-            final TruffleLanguage.Env env = getLangEnv(node);
-            return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
-        }
-
-        /**
          * Uses the provided language to find a meta-object of a value, if any. The meta-object
          * represents a description of the object, reveals it's kind and it's features. Some
          * information that a meta-object might define includes the base object's type, interface,
