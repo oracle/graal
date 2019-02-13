@@ -1,241 +1,53 @@
-![Sulong Logo](https://raw.githubusercontent.com/mrigger/sulong-logos/master/sulong_black_with_text_transparent_300x185.png)
+# GraalVM
 
-Sulong is a high-performance LLVM bitcode interpreter built on the
-GraalVM by [Oracle Labs](https://labs.oracle.com).
+[![Join the chat at https://gitter.im/graalvm/home](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/graalvm/home?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Sulong is written in Java and uses the Truffle language implementation
-framework and Graal as a dynamic compiler.
+GraalVM is a universal virtual machine for running applications written in JavaScript, Python, Ruby, R, JVM-based languages like Java, Scala, Clojure, Kotlin, and LLVM-based languages such as C and C++.
 
-With Sulong you can execute C/C++, Fortran, and other programming languages
-that can be transformed to LLVM bitcode on Graal VM. To execute a program,
-you have to compile the program to LLVM bitcode by a LLVM front end such
-as `clang`.
+The project website at [https://www.graalvm.org](https://www.graalvm.org) describes how to [get started](https://www.graalvm.org/docs/getting-started/), how to [stay connected](https://www.graalvm.org/community/), and how to [contribute](https://www.graalvm.org/community/contributors/).
 
-Graal VM
---------
 
-Sulong is part of the [Graal VM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html).
-Graal VM supports Linux or Mac OS X on x86 64-bit systems.
+## Repository Structure
 
-1. Download the [Graal VM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html)
-binaries.
-2. Extract the archive to your file system.
-3. Add the Graal VM `/bin` folder to your `PATH` environment variable.
+The GraalVM main source repository includes the following components:
 
-To run programs in LLVM bitcode format on Graal VM, use:
+* [Graal SDK](sdk/README.md) contains long term supported APIs of GraalVM.
 
-    lli [LLI Options] [Graal VM Options] [Polyglot Options] file.bc [program args]
+* [Graal compiler](compiler/README.md) written in Java that supports both dynamic and static compilation and can integrate with
+the Java HotSpot VM or run standalone.
 
-Where `file.bc` is a single program source file in LLVM bitcode format.
-Graal VM executes the LLVM bitcode using Sulong as an interpreter.
-Note: LLVM bitcode is platform dependent. The program must be compiled to
-bitcode for the appropriate platform.
+* [Truffle](truffle/README.md) language implementation framework for creating languages and instrumentations for GraalVM.
 
-#### LLI Options
+* [Tools](tools/README.md) contains a set of tools for GraalVM languages
+implemented with the instrumentation framework.
 
-- `-L <path>` sets a path where lli searches for libraries. You can specify `-L`
-multiple times.
+* [Substrate VM](substratevm/README.md) framework that allows ahead-of-time (AOT)
+compilation of Java applications under closed-world assumption into executable
+images or shared objects.
 
-- `--lib <libraries>` adds external library sources (e.g. `--lib /path/to/libexample.so`
-or `--lib /path/to/example.bc`). These library sources are precompiled native libraries
-or bitcode files. You can specify `--lib` multiple times. *Note:* You must specify
-the library `example` with `--lib /path/to/libexample.so` as opposed to common linker
-`-l` options.
+* [Sulong](sulong/README.md) is an engine for running LLVM bitcode on GraalVM.
 
-#### Graal VM Options
+* [TRegex](regex/README.md) is an implementation of regular expressions which leverages GraalVM for efficient compilation of automata.
 
-- `--jvm` executes the application in JVM mode instead of executing the
-Graal VM native image.
+* [VM](vm/README.md) includes the components to build a modular GraalVM image.
 
-- `--jvm.<option>` passes JVM options to Graal VM.
-List available JVM options with `--jvm.help`.
 
-- `--graal.<property>=<value>` passes settings to the Graal compiler.
-For example, `--graal.DumpOnError=true` sends the compiler intermediate
-representation (IR) to dump handlers if errors occur.
+## Related Repositories
+GraalVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and Graal compiler. These are:
+* [Graal.JS](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2017 compatible) and node.js 8.11.1
+* [FastR](https://github.com/oracle/fastr) - R Language 3.4.0
+* [GraalPython](https://github.com/graalvm/graalpython) - Python 3.7
+* [TruffleRuby](https://github.com/oracle/truffleruby/) - Ruby Programming Language 2.3.7
+* [SimpleLanguage](https://github.com/graalvm/simplelanguage) - A simple demonstration language for the GraalVM.
 
-#### Polyglot Options
 
-- `--polyglot` enables you to interoperate with other programming languages.
+## License
 
-- `--<languageID>.<property>=<value>` passes properties to guest languages
-through the Graal Polyglot SDK.
-
-#### Compiling to LLVM bitcode format
-
-Graal VM can execute C/C++, Fortran, and other programs that can be compiled to
-LLVM bitcode. As a first step, you have to compile the program to LLVM bitcode
-using an LLVM frontend such as `clang`. C/C++ code can be compiled to LLVM
-bitcode using `clang` with the `-emit-llvm` option.
-
-Let's compile `test.c`
-
-```c
-#include <stdio.h>
-
-int main() {
-  printf("Hello from Sulong!");
-  return 0;
-}
-```
-
-to an LLVM bitcode file `test.bc`.
-
-    clang -O1 -c -emit-llvm -o test.bc test.c
-
-You can then run `test.bc` on Graal VM as follows:
-
-    lli test.bc
-
-Note the `-O1` flag in the compile command. Compiling without optimizations is
-not recommended with Sulong. In particular, cross-language interoperability
-with Java or another Truffle language will not work when the bitcode is
-compiled without optimizations.
-
-Build Dependencies
-------------------
-
-Sulong is mostly implemented in Java. However, parts of Sulong are
-implemented in C/C++ and will be compiled to a shared library or a bitcode
-file. For a successful build you need to have LLVM (incl. `CLANG` and `OPT`
-tool) 3.8 - v6.0 installed. Sulong also depends on `libc++` and `libc++abi`
-(on Ubuntu, install `libc++1`, `libc++abi1`, `libc++-dev`, `libc++abi-dev`).
-For a full list of external dependencies on Ubuntu you can look at our
-Travis configuration.
-
-MacOS: Apple's default LLVM does not contain the `opt` tool, which a Sulong
-build needs. We recommend installing LLVM via `homebrew` and appending the
-bin path to the `PATH`. For best experience we suggest to install LLVM 4.0.
-
-    brew install llvm@4
-    export PATH="/usr/local/opt/llvm@4/bin:$PATH"
-
-How to get started?
--------------------
-
-First create a new directory, which will contain the needed GraalVM
-projects:
-
-    mkdir sulong-dev && cd sulong-dev
-
-Then, download mx, which is the build tool used by Sulong:
-
-    git clone https://github.com/graalvm/mx
-    export PATH=$PWD/mx:$PATH
-
-Next, use git to clone the Sulong project and its dependencies:
-
-    git clone https://github.com/graalvm/sulong
-
-Next, you need to download a recent
-[labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
-Extract it inside the `sulong-dev` directory:
-
-    tar -zxf labsjdk-8u121-jvmci-0.29-linux-amd64.tar.gz
-
-Set `JAVA_HOME` to point to the extracted labsjdk from above:
-
-    echo JAVA_HOME=`pwd`/labsjdk1.8.0_121-jvmci-0.29 > sulong/mx.sulong/env
-
-Sulong partially consists of C/C++ code that is compiled using `make`. To speed
-up the build process you can edit the `MAKEFLAGS` environment variable:
-
-    echo MAKEFLAGS=-j9 > sulong/mx.sulong/env
-
-Finally, build the project:
-
-    cd sulong && mx build
-
-The first build will take some time because `mx` has not only to build Sulong,
-but also its dependencies and primary testsuite.
-
-Now, Sulong is ready to start. You can for example compile a C file named
-`test.c` (see further below) with clang and then use Sulong to execute it:
-
-    clang -c -emit-llvm -o test.bc test.c
-    mx lli test.bc
-
-For best experience we suggest to use clang 3.8, though versions 3.2, 3.3 and
-3.8 to 6.0 should also work. Additionally, if you compile with the `-g` option
-Sulong can provide source-file information in stacktraces.
-
-You can specify additional libraries to load with the `-Dpolyglot.llvm.libraries`
-option. These can be precompiled libraries (\*.so / \*.dylib) as well as LLVM bitcode
-files. The `-Dpolyglot.llvm.libraryPath` option can be used to amend the search
-path for the specifed libraries with a relative path. Both options can be given
-multiple arguments separated by `:`.
-
-    mx lli -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
-
-If you want to use the project from within Eclipse, use the following
-command to generate the Eclipse project files (there is also mx ideinit
-for other IDEs):
-
-    mx eclipseinit
-
-If you want to use the project from within Intellij Idea, use the following
-command instead:
-
-    mx intellijinit
-
-If you also want to edit the mx configuration files from within Idea, you can
-append the `--mx-python-modules` argument to this. Since the configuration files
-consist of Python code, you will probably want to install the
-[Python Language Support Plugin](https://plugins.jetbrains.com/plugin/631-python).
-
-You can also develop Sulong in Netbeans. The following command will generate the
-project files and print instructions on how to import them into the IDE:
-
-    mx netbeansinit
-
-If you want to inspect the command line that `mx` generates for a `mx`
-command you can use the `-v` flag.
-
-From where does the project name originate?
--------------------------------------------
-
-Sulong is the romanization of the Chinese term "速龙" (Velocisaurus).
-The first character translates as fast, rapid or quick, while the second
-character means dragon. A literal translation of the name giving Chinese
-term is thus "fast dragon". The name relates to the
-[LLVM logo](http://llvm.org/Logo.html) which is a dragon (more
-specifically a wyvern), and is also in line with the LLVM Dragonegg
-project.
-
-What is LLVM?
--------------
-
-LLVM is an umbrella project for a modular and reusable compiler
-infrastructure written in C++. It includes a compiler frontend `clang`
-for compiling C, C++, Objective C and Objective C++ to LLVM bitcode IR.
-Many of the other tools such as the optimizer `opt`, assembler,
-linker, and backends then operate on the LLVM bitcode, to finally produce
-machine code. LLVM envisions that transformations and analyses can be
-applied during compile-time, link-time, runtime, and offline.
-
-What is Truffle?
-----------------
-
-[Truffle](https://github.com/graalvm/graal/tree/master/truffle) is a language
-implementation framework written in Java. It allows language designers
-to implement a (guest) language as an Abstract Syntax Tree (AST)
-interpreter. Additionally, Truffle provides many language independent
-facilities to the host language such as profiling, debugging, and
-language interoperability. When a Truffle AST is executed often and then
-dynamically compiled with Graal, Graal can exploit its knowledge about the
-Truffle framework and produce efficient machine code.
-
-Build Status
-------------
-
-Thanks to Travis CI, all commits of this repository are tested:
-[![Build Status](https://travis-ci.org/graalvm/sulong.svg?branch=master)](https://travis-ci.org/graalvm/sulong)
-
-Further Information
--------------------
-
-The logo was designed by
-[Valentina Caruso](https://www.behance.net/volantina).
-
-Sulong is developed in a research collaboration with
-[Johannes Kepler University, Linz](http://www.ssw.jku.at).
+Each GraalVM component is licensed:
+* [Truffle](/truffle/) and its dependency [Graal SDK](/sdk/) are licensed under the [Universal Permissive License](truffle/LICENSE.md).
+* [Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](tools/LICENSE.GPL.md).
+* [TRegex](/regex/) project is licensed under the [GPL 2 with Classpath exception](regex/LICENSE.GPL.md).
+* The [Graal compiler](/compiler/) is licensed under the [GPL 2 with Classpath exception](compiler/LICENSE.md).
+* [Substrate VM](/substratevm/) is licensed under the [GPL 2 with Classpath exception](substratevm/LICENSE.md).
+* [Sulong](/sulong/) is licensed under [3-clause BSD](sulong/LICENSE).
+* [VM](/vm/) is licensed under the [GPL 2 with Classpath exception](vm/LICENSE_GRAALVM_CE).

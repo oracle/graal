@@ -1,0 +1,177 @@
+# DaCapo-related targets
+
+bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
+
+bench-jvmci : {
+  mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--fork-count-file=${FORK_COUNT_FILE}", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
+  mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
+  mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
+  mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
+  mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:*"]
+  mx-dacapo-move-profiling : ${bench-jvmci.mx-benchmark} ["dacapo-move-profiling:*"]
+  mx-scala-dacapo-move-profiling : ${bench-jvmci.mx-benchmark} ["scala-dacapo-move-profiling:*"]
+  mx-specjvm2008-Single: ${bench-jvmci.mx-benchmark} ["specjvm2008:*"]
+  mx-specjvm2008-OneVM: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
+  mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
+  mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
+  mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
+  mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
+  mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
+  mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:*"]
+  mx-teardown : ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "${BENCH_RESULTS_FILE_PATH}"]
+}
+
+bench-common : ${compilerCommon} {
+  environment: {
+    BENCH_RESULTS_FILE_PATH: "bench-results.json"
+  }
+  setup: ${compilerCommon.setup} [
+    ["mx", "build"]
+  ]
+  teardown : [
+    ${bench-jvmci.mx-teardown}
+  ]
+}
+
+bench-dacapo: ${bench-common} ${dacapo-bench-notifications} {
+  targets : [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-dacapo} ${bench-arguments}
+  ]
+}
+
+bench-dacapo-timing: ${bench-common} ${dacapo-bench-notifications} {
+  targets: [bench, daily]
+  run: [
+    ${bench-jvmci.mx-dacapo-timing} ${bench-arguments}
+  ]
+}
+
+bench-dacapo-move-profiling: ${bench-common} ${dacapo-bench-notifications} {
+  targets: [bench, daily]
+  run: [
+    ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments}
+  ]
+}
+
+# Scala DaCapo-related targets
+
+bench-scala-dacapo: ${bench-common} ${scala-dacapo-bench-notifications} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
+  ]
+}
+
+bench-scala-dacapo-timing: ${bench-common} ${scala-dacapo-bench-notifications} {
+  targets: [bench, daily]
+  run: [
+    ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
+  ]
+}
+
+bench-scala-dacapo-move-profiling: ${bench-common} ${scala-dacapo-bench-notifications} {
+  targets: [bench, daily]
+  run: [
+    ${bench-jvmci.mx-scala-dacapo-move-profiling} ${bench-arguments}
+  ]
+}
+
+# SPECjbb2005-related targets
+
+bench-specjbb2005: ${bench-common} ${specjbb-bench-notifications} {
+  targets: [bench, post-merge]
+  downloads: {
+    SPECJBB2005: { name: specjbb2005, version: "1.07" }
+  }
+  run: [
+    ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"]
+  ]
+  timelimit: "2:00:00"
+}
+
+# SPECJvm2008-related targets
+bench-specjvm2008: ${bench-common} ${specjvm-bench-notifications} {
+  downloads: {
+    SPECJVM2008: { name: specjvm2008, version: "1.01" }
+  }
+  teardown: ${bench-common.teardown} [
+    [rm, "-r", "${SPECJVM2008}/results"]
+  ]
+  timelimit: "2:50:00"
+}
+
+bench-specjvm2008-Single: ${bench-specjvm2008} ${specjvm-bench-notifications} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} [
+      "--", "-ikv", "-it", "240s", "-wt", "120s"
+    ]
+  ]
+}
+
+bench-specjvm2008-OneVM: ${bench-specjvm2008} ${specjvm-bench-notifications} {
+  targets: [bench, weekly]
+  run: [
+    ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} [
+      "--", "-it", "240s", "-wt", "120s"
+    ]
+  ]
+}
+
+# SPECjbb2015-related targets
+
+bench-specjbb2015: ${bench-common} ${specjbb-bench-notifications} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
+  ]
+  downloads: {
+    SPECJBB2015: { name: specjbb2015, version: "1.00" }
+  }
+  timelimit: "3:00:00"
+}
+
+# JMH micros graal
+
+bench-micros-graal-whitebox: ${bench-common} ${micros-bench-notifications} {
+  targets: [bench, weekly]
+  run: [
+    ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments}
+  ]
+  timelimit: "3:00:00"
+}
+
+bench-micros-graal-dist: ${bench-common} ${micros-bench-notifications} {
+  targets: [bench, weekly]
+  run: [
+    ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments}
+  ]
+  timelimit: "3:00:00"
+}
+
+# Renaissance-related targets
+
+bench-renaissance: ${bench-common} ${renaissance-bench-notifications} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-renaissance} ${bench-arguments}
+  ]
+  downloads: {
+    RENAISSANCE: { name: renaissance, version: "0.1" }
+  }
+  timelimit: "2:45:00"
+}
+
+# spark-sql-perf-related targets
+
+bench-spark-sql-perf: ${bench-common} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments}
+  ]
+  downloads: {
+    SPARK_SQL_PERF: { name: spark-sql-perf, version: "0.1" }
+  }
+  timelimit: "0:30:00"
+}

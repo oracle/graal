@@ -1,0 +1,42 @@
+# Publish Javadoc of graal components post-merge
+
+builds += [
+  ${linux-amd64} ${labsjdk8} {
+    timelimit : "30:00",
+    run : [
+        [cd, "./sdk"],
+        ["mx", "build"],
+        ["mx", "javadoc"],
+        ["zip", "-r", "javadoc.zip", "javadoc"],
+        [cd, "../truffle"],
+        ["mx", "build"],
+        ["mx", "javadoc"],
+        ["zip", "-r", "javadoc.zip", "javadoc"],
+        [cd, "../tools"],
+        ["mx", "build"],
+        ["mx", "javadoc"],
+        ["zip", "-r", "javadoc.zip", "javadoc"],
+        [cd, "../compiler"],
+        ["mx", "build"],
+        ["mx", "javadoc", "--projects", "org.graalvm.graphio"],
+        ["cd", "src/org.graalvm.graphio/"],
+        ["zip", "-r", "../../graphio-javadoc.zip", "javadoc"],
+        [cd, "../../.."],
+        ["git", "fetch", "origin", "gh-pages"],
+        ["git", "checkout", "-f", "FETCH_HEAD", "-B", "gh-pages"],
+        ["rm", "-rf", "sdk/javadoc", "truffle/javadoc", "tools/javadoc", "graphio/javadoc"],
+        ["git", "status" ],
+        ["unzip", "-o", "-d", "sdk", "sdk/javadoc.zip"],
+        ["unzip", "-o", "-d", "truffle", "truffle/javadoc.zip"],
+        ["unzip", "-o", "-d", "tools", "tools/javadoc.zip"],
+        ["unzip", "-o", "-d", "graphio", "compiler/graphio-javadoc.zip"],
+        ["git", "add", "sdk/javadoc", "truffle/javadoc", "tools/javadoc", "graphio/javadoc"],
+        ["git", "config", "user.name", "Javadoc Publisher"],
+        ["git", "config", "user.email", "graal-dev@openjdk.java.net"],
+        ["git", "diff", "--staged", "--quiet", "||", "git", "commit", "-m", [ "echo", "Javadoc as of", [ "date", "+%Y/%m/%d" ] ] ],
+        ["git", "push", "origin", "gh-pages"],
+    ],
+    targets : [post-merge],
+    name: "graal-publish-javadoc"
+  }
+]

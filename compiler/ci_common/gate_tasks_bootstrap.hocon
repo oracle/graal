@@ -1,0 +1,18 @@
+
+builds += [
+  # Darwin AMD64
+  ${gateBootstrapLite}       ${labsjdk8}    ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-8-darwin-amd64"}
+  ${gateBootstrapLite}       ${oraclejdk11} ${gateDarwinAMD64Bootstrap}  {name: "weekly-test-compiler-bootstraplite-11-darwin-amd64"} ${graalWeekly}
+
+  # Linux AMD64
+  ${gateBootstrap}           ${labsjdk8}    ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
+  ${gateBootstrapFullVerify} ${labsjdk8}    ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
+  ${gateBootstrap}           ${oraclejdk11} ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-11-linux-amd64"}
+
+  # Solaris SPARC
+  ${gateBootstrap}           ${labsjdk8}    ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",   timelimit: "1:00:00"}
+  ${gateBootstrap}           ${oraclejdk11} ${gateSolarisSPARCBootstrap} {name: "weekly-test-compiler-bootstrap-11-solaris-sparcv9",  timelimit: "1:00:00"} ${graalWeekly}
+
+  # Linux SPARC
+  ${gateBootstrap}           ${labsjdk8}   ${gateLinuxSPARCBootstrap} {name: "weekly-test-compiler-bootstrap-labsjdk8-linux-sparcv9", timelimit: "1:00:00"} ${graalWeekly}
+]

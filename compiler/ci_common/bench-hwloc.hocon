@@ -1,0 +1,141 @@
+# hwloc (Hardware Locality) provides means to bind a process to NUMA nodes
+hwloc.bench-common : {
+  packages: {hwloc: ">=1.9"}
+  environment: {
+    BASE_BENCH_RESULTS_FILE_NAME: "bench-results.json"
+    LOG_FILE_NAME : "-output.log"
+    MACHINE_NODE: undefined
+    BENCH_RESULTS_FILE_PATH: undefined
+  }
+  teardown : [
+    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
+  ]
+  logs : [
+    "*output.log"
+  ]
+}
+hwloc.scala.bench-common : ${hwloc.bench-common} {
+  teardown : ${hwloc.bench-common.teardown} [
+    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "serial-node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "serial-node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
+  ]
+}
+
+hwloc.cmd.nobackground.suffix : ["|","tee", "-a", "${LOGDIR}/node${MACHINE_NODE}${LOG_FILE_NAME}"]
+hwloc.cmd.suffix : ${hwloc.cmd.nobackground.suffix} ["&"]
+
+# command prefix for binding a command to a certain node
+hwloc.node0 : ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"]
+hwloc.node1 : ["hwloc-bind", "--cpubind", "node:1", "--membind", "node:1", "--"]
+hwloc.node : ["hwloc-bind", "--cpubind", "node:${MACHINE_NODE}", "--membind", "node:${MACHINE_NODE}", "--"]
+
+export.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+export.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
+
+export.serial.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=serial-node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+export.serial.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=serial-node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
+
+bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common} {
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
+
+bench-dacapo-timing-hwloc: ${bench-dacapo-timing} ${hwloc.bench-common} {
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
+
+bench-dacapo-move-profiling-hwloc: ${bench-dacapo-move-profiling} ${hwloc.bench-common} {
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
+
+# Scala DaCapo-related targets
+bench-hwloc-without-scala-actors : {
+  mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:~actors"]
+  mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:~actors"]
+  mx-scala-dacapo-move-profiling : ${bench-jvmci.mx-benchmark} ["scala-dacapo-move-profiling:~actors"]
+}
+bench-hwloc-only-scala-actors : {
+  mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:actors"]
+  mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:actors"]
+  mx-scala-dacapo-move-profiling : ${bench-jvmci.mx-benchmark} ["scala-dacapo-move-profiling:actors"]
+}
+
+
+bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.scala.bench-common} {
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-hwloc-without-scala-actors.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-hwloc-without-scala-actors.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+    ${export.serial.node0}
+    ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
+    ${export.serial.node1}
+    ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
+  ]
+}
+
+bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.scala.bench-common} {
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-hwloc-without-scala-actors.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-hwloc-without-scala-actors.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+    ${export.serial.node0}
+    ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
+    ${export.serial.node1}
+    ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
+  ]
+}
+
+bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${hwloc.scala.bench-common} {
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-hwloc-without-scala-actors.mx-scala-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-hwloc-without-scala-actors.mx-scala-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+    ${export.serial.node0}
+    ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
+    ${export.serial.node1}
+    ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
+  ]
+}
+
+# Renaissance-related targets
+
+bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}

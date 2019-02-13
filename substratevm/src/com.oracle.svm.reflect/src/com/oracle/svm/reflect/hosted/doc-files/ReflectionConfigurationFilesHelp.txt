@@ -1,0 +1,50 @@
+One or several (comma-separated) paths to JSON files that specify which program elements should be made available via reflection.
+The JSON object schema is:
+
+    {
+      String name; // fully qualified class name
+      boolean allDeclaredConstructors; // include all declared constructors, see Class.getDeclaredConstructors()
+      boolean allPublicConstructors;   // include all public constructors, see Class.getConstructors()
+      boolean allDeclaredMethods; // include all declared methods, see Class.getDeclaredMethods()
+      boolean allPublicMethods;   // include all public methods, see Class.getMethods()
+      boolean allDeclaredFields;  // include all declared fields, see Class.getDeclaredFields()
+      boolean allPublicFields;    // include all public fields, see Class.getFields()
+      {
+        String name; // method name
+        String[] parameterTypes; // parameter types (optional, use if ambiguous)
+      }[] methods;
+      {
+        String name; // field name
+      }[] fields;
+    }[];
+
+Example:
+
+	[
+	  {
+	    "name" : "java.lang.Class",
+	    "allDeclaredConstructors" : "true",
+	    "allPublicConstructors" : "true",
+	    "allDeclaredMethods" : "true",
+	    "allPublicMethods" : "true"
+	  },
+	  {
+	    "name" : "java.lang.String",
+	    "fields" : [
+	      { "name" : "value" },
+	      { "name" : "hash" }
+	    ],
+	    "methods" : [
+	      { "name" : "<init>", "parameterTypes" : [] },
+	      { "name" : "<init>", "parameterTypes" : ["char[]"] },
+	      { "name" : "charAt" },
+	      { "name" : "format", "parameterTypes" : ["java.lang.String", "java.lang.Object[]"] },
+	    ]
+	  },
+      {
+        "name" : "java.lang.String$CaseInsensitiveComparator",
+        "methods" : [
+          { "name" : "compare" }
+        ]
+      }
+	]

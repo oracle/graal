@@ -1,0 +1,6 @@
+
+compilerCommon : ${common} {
+  setup : [
+    [cd, ${compiler-suite-root}]
+  ]
+}

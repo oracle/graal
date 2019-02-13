@@ -1,0 +1,197 @@
+# overlay version
+overlay = a84dd00c92041dfcd04b34c8d3f4d9e8c047d510
+
+# oraclejdk* are released OracleJDK binaries
+# labsjdk* are JDKs based on OracleJDK binaries
+# openjdk8 JDKs on Linux are built by Oracle Labs
+# openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
+jdks: {
+  labsjdk8:      {name : labsjdk,   version : "8u192-jvmci-0.54", platformspecific: true}
+  openjdk8:      {name : openjdk,   version : "8u192-jvmci-0.54", platformspecific: true}
+  labsjdk8Debug: {name : labsjdk,   version : "8u192-jvmci-0.54-fastdebug", platformspecific: true}
+  oraclejdk11:   {name : oraclejdk, version : "11+28", platformspecific: true}
+  openjdk11:     {name : openjdk,   version : "11+28", platformspecific: true}
+
+  # Snapshot of http://hg.openjdk.java.net/jdk/jdk
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180808-073750", platformspecific: true}
+
+}
+
+# This must always point to HEAD in the master branch but can be used to point
+# to another branch/commit in a Graal PR when mx changes are required for the PR.
+mx : {
+  packages : {
+    mx: "HEAD"
+  }
+}
+
+labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+
+openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
+
+oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
+openjdk11 :       { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
+
+common : ${mx} {
+  timelimit : "30:00"
+  catch_files : [
+    "Graal diagnostic output saved in (?P<filename>.+\.zip)"
+  ]
+  packages : {
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    "pip:ninja_syntax" : "==1.7.2"
+  }
+}
+
+linux : ${common} {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "apache/ant": ">=1.9.4"
+  }
+}
+
+solaris : ${common} {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "apache/ant": ">=1.9.4"
+  }
+}
+
+darwin : ${common} {
+}
+
+windows : ${common} {
+}
+
+linux-amd64 : ${linux} {
+  capabilities : [linux, amd64]
+}
+
+darwin-amd64 : ${darwin} {
+  capabilities : [darwin, amd64]
+}
+
+windows-amd64 : ${windows} {
+  capabilities : [windows, amd64]
+}
+
+solaris-sparcv9 : ${solaris} {
+  capabilities : [solaris, sparcv9]
+}
+
+linux-sparcv9 : ${linux} {
+  capabilities : [linux, sparcv9]
+}
+
+linux-aarch64 : ${linux} {
+  capabilities : [linux, aarch64]
+}
+
+eclipse : {
+  downloads : {
+    ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
+  }
+  environment : {
+    ECLIPSE_EXE : "$ECLIPSE/eclipse"
+  }
+}
+
+jdt : {
+  downloads : {
+    JDT : {name: ecj, version: "4.5.1", platformspecific: false}
+  }
+}
+
+# for cases where a maven package is not easily accessible
+maven-download-unix : {
+  downloads : {
+    MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
+  }
+  environment : {
+    PATH : "$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH"
+  }
+}
+
+linux-deploy : ${linux} {
+  packages : {
+    maven : ">=3.3.9"
+  }
+}
+
+solaris-deploy : ${solaris} ${maven-download-unix}
+
+darwin-deploy : ${darwin} ${maven-download-unix} {
+  environment : {
+    PATH : "$MAVEN_HOME/bin:$JAVA_HOME/bin:/usr/local/bin:$PATH"
+  }
+}
+
+svm-common: ${mx} {
+  environment: {
+    DEFAULT_VM: "server"
+    LANG: "en_US.UTF-8"
+  }
+  logs: [
+    "../.native-image/*/*/*/*.log"
+    "*/svmbuild/*.log"
+    "*/svmbuild/images/*.log"
+    "*/*/stripped/*.map"
+    "*/callgrind.*"
+    "*.bgv"
+  ]
+}
+
+svm-common-linux-amd64: ${svm-common} ${linux-amd64} {
+  packages: {
+    make: ">=3.83"
+    gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
+    ruby: ">=2.1.0"
+    valgrind: ">=3.9.0"
+  }
+  timelimit: "55:00"
+}
+
+svm-common-linux-aarch64: ${svm-common} ${linux-aarch64} {
+  packages: {
+    make: ">=3.83"
+    gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
+    ruby: ">=2.1.0"
+    valgrind: ">=3.9.0"
+  }
+  timelimit: "55:00"
+}
+
+# fast is necessary here as slow machines don't handle image builds well
+svm-capabilities: [linux, amd64, fast]
+svm-capabilities-base : {
+  capabilities : ${svm-capabilities}
+}
+
+svm-capabilities-avx2 : {
+  capabilities : ${svm-capabilities} [avx2]
+}
+
+svm-capabilities-manycores : {
+  capabilities : ${svm-capabilities} [manycores]
+}
+
+svm-common-darwin: ${svm-common} ${darwin-amd64} {
+  timelimit: "45:00"
+}
+
+svm-common-windows: ${svm-common} ${windows-amd64} {
+  packages : {
+    msvc : "==10.0"
+  }
+  timelimit: "45:00"
+}
+
+svm-common-sulong: {
+  packages: {
+    llvm: "==3.8"
+  }
+}

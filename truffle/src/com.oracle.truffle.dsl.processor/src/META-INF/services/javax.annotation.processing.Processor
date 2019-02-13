@@ -1,0 +1,7 @@
+com.oracle.truffle.dsl.processor.TruffleProcessor
+com.oracle.truffle.dsl.processor.verify.VerifyTruffleProcessor
+com.oracle.truffle.dsl.processor.LanguageRegistrationProcessor
+com.oracle.truffle.dsl.processor.InstrumentRegistrationProcessor
+com.oracle.truffle.dsl.processor.InstrumentableProcessor
+com.oracle.truffle.dsl.processor.verify.VerifyCompilationFinalProcessor
+com.oracle.truffle.dsl.processor.OptionProcessor

@@ -1,0 +1,125 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface com.oracle.truffle.api.Assumption
+meth public abstract boolean isValid()
+meth public abstract java.lang.String getName()
+meth public abstract void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
+meth public abstract void invalidate()
+meth public void invalidate(java.lang.String)
+
+CLSS public final com.oracle.truffle.api.utilities.AlwaysValidAssumption
+fld public final static com.oracle.truffle.api.utilities.AlwaysValidAssumption INSTANCE
+intf com.oracle.truffle.api.Assumption
+meth public boolean isValid()
+meth public java.lang.String getName()
+meth public void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
+meth public void invalidate()
+meth public void invalidate(java.lang.String)
+supr java.lang.Object
+
+CLSS public com.oracle.truffle.api.utilities.AssumedValue<%0 extends java.lang.Object>
+cons public init(java.lang.String,{com.oracle.truffle.api.utilities.AssumedValue%0})
+cons public init({com.oracle.truffle.api.utilities.AssumedValue%0})
+meth public void set({com.oracle.truffle.api.utilities.AssumedValue%0})
+meth public {com.oracle.truffle.api.utilities.AssumedValue%0} get()
+supr java.lang.Object
+hfds ASSUMPTION_UPDATER,assumption,name,value
+
+CLSS public com.oracle.truffle.api.utilities.CyclicAssumption
+cons public init(java.lang.String)
+meth public com.oracle.truffle.api.Assumption getAssumption()
+meth public void invalidate()
+meth public void invalidate(java.lang.String)
+supr java.lang.Object
+hfds ASSUMPTION_UPDATER,assumption,name
+
+CLSS public com.oracle.truffle.api.utilities.JSONHelper
+cons public init()
+ anno 0 java.lang.Deprecated()
+innr public abstract static JSONStringBuilder
+innr public final static JSONArrayBuilder
+innr public final static JSONObjectBuilder
+meth public static com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder array()
+meth public static com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder object()
+meth public static java.lang.String getResult()
+ anno 0 java.lang.Deprecated()
+meth public static void dumpNewChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
+ anno 0 java.lang.Deprecated()
+meth public static void dumpNewNode(com.oracle.truffle.api.nodes.Node)
+ anno 0 java.lang.Deprecated()
+meth public static void dumpReplaceChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
+ anno 0 java.lang.Deprecated()
+meth public static void restart()
+ anno 0 java.lang.Deprecated()
+supr java.lang.Object
+hfds ACCESSOR,AstJsonDumpBuilder
+hcls DumpAccessor
+
+CLSS public final static com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder
+ outer com.oracle.truffle.api.utilities.JSONHelper
+meth protected void appendTo(java.lang.StringBuilder)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder add(com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder add(java.lang.Boolean)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder add(java.lang.Number)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder add(java.lang.String)
+supr com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder
+hfds contents
+
+CLSS public final static com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder
+ outer com.oracle.truffle.api.utilities.JSONHelper
+meth protected void appendTo(java.lang.StringBuilder)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder add(java.lang.String,com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder add(java.lang.String,java.lang.Boolean)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder add(java.lang.String,java.lang.Number)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder add(java.lang.String,java.lang.String)
+supr com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder
+hfds contents
+
+CLSS public abstract static com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder
+ outer com.oracle.truffle.api.utilities.JSONHelper
+cons protected init()
+ anno 0 java.lang.Deprecated()
+meth protected abstract void appendTo(java.lang.StringBuilder)
+meth protected static void appendValue(java.lang.StringBuilder,java.lang.Object)
+meth public final java.lang.String toString()
+supr java.lang.Object
+
+CLSS public final com.oracle.truffle.api.utilities.NeverValidAssumption
+fld public final static com.oracle.truffle.api.utilities.NeverValidAssumption INSTANCE
+intf com.oracle.truffle.api.Assumption
+meth public boolean isValid()
+meth public java.lang.String getName()
+meth public void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
+meth public void invalidate()
+meth public void invalidate(java.lang.String)
+supr java.lang.Object
+
+CLSS public com.oracle.truffle.api.utilities.UnionAssumption
+cons public init(com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
+cons public init(java.lang.String,com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
+intf com.oracle.truffle.api.Assumption
+meth public boolean isValid()
+meth public java.lang.String getName()
+meth public void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
+meth public void invalidate()
+meth public void invalidate(java.lang.String)
+supr java.lang.Object
+hfds first,name,second
+
+CLSS abstract interface com.oracle.truffle.api.utilities.package-info
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+

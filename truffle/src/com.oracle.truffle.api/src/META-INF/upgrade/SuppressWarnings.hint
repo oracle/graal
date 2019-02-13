@@ -1,0 +1,16 @@
+'Do not use @SuppressWarnings on variables, but on methods (Eclipse bug)':
+$mods$ @java.lang.SuppressWarnings(value={$1$, "unchecked", $2$})
+$type $var = $val; :: inTruffleButNotInTest()
+;;
+
+'Do not use @SuppressWarnings on variables, but on methods (Eclipse bug)':
+$mods$ @java.lang.SuppressWarnings(value="unchecked")
+$type $var = $val; :: inTruffleButNotInTest()
+;;
+
+<?
+private boolean inTruffleButNotInTest() {
+    String pkg = context.enclosingPackage();
+    return !(pkg.endsWith(".test") || pkg.contains(".test.") || pkg.equals("com.oracle.truffle.tck")) && pkg.startsWith("com.oracle.truffle.");
+}
+?>

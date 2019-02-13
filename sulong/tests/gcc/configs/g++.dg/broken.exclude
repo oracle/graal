@@ -1,0 +1,5 @@
+gcc-5.2.0/gcc/testsuite/g++.dg/warn/pragma-system_header3.C
+gcc-5.2.0/gcc/testsuite/g++.dg/ext/always_inline-2.C
+gcc-5.2.0/gcc/testsuite/g++.dg/ext/always_inline-3.C
+gcc-5.2.0/gcc/testsuite/g++.dg/ext/always_inline-4.C
+gcc-5.2.0/gcc/testsuite/g++.dg/lto/pr47333.C

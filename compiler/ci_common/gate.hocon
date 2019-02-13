@@ -1,0 +1,182 @@
+gateCmdSuffix : ["-v", "--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
+gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
+
+graalWeekly: ${graal-weekly-notifications} {
+  targets: ["weekly"]
+}
+gateTest : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,test"]
+  ]
+}
+
+gateCoverage : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,coverage", --jacoco-zip, report.zip]
+  ]
+}
+
+gateJavaBaseTest : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,javabasetest"]
+  ]
+}
+
+gateTestMaxVS : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.DetailedAsserts=true -XX:MaxVectorSize=16"
+  }
+}
+
+gateTestAVX0 : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-XX:UseAVX=0"
+  }
+}
+
+gateTestAVX1 : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-XX:UseAVX=1"
+  }
+}
+
+gateTestCompileImmediately : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.TruffleBackgroundCompilation=false -Dgraal.TruffleCompileImmediately=true -Dtck.inlineVerifierInstrument=false"
+  }
+}
+
+gateTestCTW : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    # At least one gate build should run without strict
+    # compliance as that's how Travis runs on JDK9
+    ["mx"] ${gateCmdSuffix} ["build,ctw"]
+  ]
+}
+
+gateTestBenchmark : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+    JVM_CONFIG    : ${jvm-config.default}
+    JVM           : "server"
+  }
+  run : [
+    ${gateCmd} ["build,benchmarktest"]
+    # blackbox jmh test
+    ["mx", "benchmark", "jmh-dist:*", "--", "-Djmh.ignoreLock=true", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
+    # whitebox jmh test
+    ["mx", "benchmark", "jmh-whitebox:*", "--", "-Djmh.ignoreLock=true", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
+  ]
+}
+
+gateBootstrap : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,bootstrap"]
+  ]
+}
+
+gateBootstrapLite : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,bootstraplite"]
+  ]
+}
+
+gateBootstrapFullVerify : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,bootstrapfullverify"]
+  ]
+}
+
+gateStyle : ${eclipse} ${jdt} {
+  downloads : {
+    JDT : {name: ecj, version: "4.5.1", platformspecific: false}
+    ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
+  }
+  environment : {
+    ECLIPSE_EXE : "$ECLIPSE/eclipse"
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["style,fullbuild,javadoc"]
+  ]
+}
+
+gateCommon : ${compilerCommon} {
+  targets : [gate]
+  logs: ${logPatterns}
+}
+
+gateLinuxAMD64 : ${linux-amd64} ${gateCommon}
+
+gateDarwinAMD64 : ${darwin-amd64} ${gateCommon}
+
+gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
+
+gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
+
+gateLinuxAArch64 : ${linux-aarch64} ${gateCommon} {
+  downloads : {
+    JAVA_HOME : ${jdks.oraclejdkSNAPSHOT}
+    EXTRA_JAVA_HOMES : {pathlist :[ ${jdks.labsjdk8} ]}
+  }
+}
+
+gateJAOTC : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,jaotc"]
+  ]
+}
+
+# This task listens to the hotspot math stubs changes. In case of failure, please check if the hotspot changes affect the
+# emitted stub code in C2, and update corresponding recasts in the org.graalvm.compiler.lir.amd64 package accordingly.
+gateMathStubsListener: ${linux-amd64} {
+  run: [
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_cos.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_exp.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_log10.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_log.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_pow.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_sin.cpp]
+    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_tan.cpp]
+    [echo, -e, "f801a757f3d5473368dce85993618e04  macroAssembler_x86_cos.cpp", |, md5sum, -c]
+    [echo, -e, "c2b94938c05999e4985ed43b18e5ed9f  macroAssembler_x86_exp.cpp", |, md5sum, -c]
+    [echo, -e, "5ede616384ebf2d7eb26cb889aca6cf0  macroAssembler_x86_log10.cpp", |, md5sum, -c]
+    [echo, -e, "9887acd94bae05f305873621950a7707  macroAssembler_x86_log.cpp", |, md5sum, -c]
+    [echo, -e, "1ce7e5d9af42216767f1e73faff9f738  macroAssembler_x86_pow.cpp", |, md5sum, -c]
+    [echo, -e, "612e6870fff00bd5e44452123170b16d  macroAssembler_x86_sin.cpp", |, md5sum, -c]
+    [echo, -e, "41e14dedcaddfbcc7a3042f7b926d474  macroAssembler_x86_tan.cpp", |, md5sum, -c]
+  ]
+  targets: [daily]
+  notify_emails: [
+    "yudi.zheng@oracle.com"
+  ]
+}
+
+gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }
+gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
+gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }
+gateLinuxSPARCBootstrap : ${gateLinuxSPARC} # No manycore

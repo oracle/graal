@@ -1,0 +1,71 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+<head>
+<!--
+
+Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+
+This code is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License version 2 only, as
+published by the Free Software Foundation.  Oracle designates this
+particular file as subject to the "Classpath" exception as provided
+by Oracle in the LICENSE file that accompanied this code.
+
+This code is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+version 2 for more details (a copy is included in the LICENSE file that
+accompanied this code).
+
+You should have received a copy of the GNU General Public License version
+2 along with this work; if not, write to the Free Software Foundation,
+Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+
+Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+or visit www.oracle.com if you need additional information or have any
+questions.
+-->
+
+</head>
+<body>
+
+<p>
+ The {@link com.oracle.truffle.tutorial Truffle Tutorial} gives
+ you the best introduction to <a href="https://github.com/graalvm/graal/tree/master/truffle">Truffle</a>:
+ the Open Source framework for implementing programming languages with very high performance, Java embedding,
+ language interoperation, debugging, and general tooling support.
+</p>
+
+
+<h4>Keeping Compatibility</h4>
+
+<p>
+The <b>Truffle</b> API values work of its adopters and as such it is developed
+with compatibility in mind. Methods and features are not removed and renamed
+randomly, without a notice and there is a binary compatibility testing framework
+in place to verify that.
+</p>
+<p>
+On the other hand the <b>Truffle</b> project is still young and needs a way
+to refine and change previously taken decisions. To balance the need between
+compatibility and give us a way to remove things from the API we following
+these rules:
+</p>
+<ul>
+    <li>Rather than removing/renaming or changing an API element (class, method,
+        field), mark it <em>deprecated</em>.</li>
+    <li>Make sure usage of such element can be replaced by non-deprecated ways</li>
+    <li>Keep such element working until next release</li>
+    <li>If possible provide automatic migration using Jackpot's META-INF/upgrade/ files</li>
+    <li>When new (major) release is out, remove it</li>
+</ul>
+<p>
+By deprecating parts of API while keeping them functional we are giving
+users of the <b>Truffle</b> API time to adjust to required
+changes and (under the assumption they pay attention to warnings in the code
+base) easily identify and migrate to more modern API alternatives.
+</p>
+
+</body>
+</html>

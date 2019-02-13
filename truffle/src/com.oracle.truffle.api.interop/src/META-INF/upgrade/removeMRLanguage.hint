@@ -1,0 +1,7 @@
+
+'Remove language parameter from MessageResolution':
+@com.oracle.truffle.api.interop.MessageResolution($1$, language=$2, $3$)
+=>
+'Remove it':
+@com.oracle.truffle.api.interop.MessageResolution($1$, $3$)
+;;

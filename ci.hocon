@@ -1,153 +1,66 @@
-java8: {name: labsjdk, version: "8u121-jvmci-0.29", platformspecific: true}
-eclipse: {name: eclipse, version: "4.5.2", platformspecific: true}
-dragonegg: {name: dragonegg, version: "3.2", platformspecific: true}
+include "common.hocon"
+builds = []
 
-linux-amd64: {
-    capabilities: [linux, amd64]
-}
+binaries-repository = "lafo"
 
-darwin-amd64: {
-    capabilities: [darwin_sierra, amd64]
-}
+#SDK
+include "sdk/ci.hocon"
 
-common: {
-    packages: {
-        git: ""
-    }
-    downloads: {
-        JAVA_HOME: ${java8}
-    }
+#Truffle
+include "truffle/ci.hocon"
 
-    timelimit: 1:30:00
-}
+#Compiler
+compiler-suite-root = "./compiler"
+logPatterns = ["*.bgv"]
 
-gateCommon: ${common} {
-    targets: [gate]
-}
+#Tools
+include "tools/ci.hocon"
 
-gateStyle: ${gateCommon} ${linux-amd64} {
-    packages: {
-        ruby: "==2.1.0" # for mdl
-        llvm: "==3.8"
-        "pip:astroid" : "==1.1.0"
-        "pip:pylint" : "==1.1.0"
-    }
+#Regex
+include "regex/ci.hocon"
 
-    downloads: {
-        ECLIPSE: ${eclipse}
-    }
+#Sulong
+include "sulong/ci.hocon"
 
-    environment: {
-        ECLIPSE_EXE: "$ECLIPSE/eclipse"
-    }
-}
+#Examples
+#Examples gate also disabled.
+#include "examples/ci.hocon"
 
-gateTest-linux: ${gateCommon} ${linux-amd64} {
-    downloads: {
-        LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
-    }
+jvm-config.default = "graal-core"
 
-    environment: {
-        CPPFLAGS: "-g -I$LIBGMP/include"
-        LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
-    }
-}
+include "compiler/ci_common/common.hocon"
+include "compiler/ci_common/gate.hocon"
+include "compiler/ci_common/gate_tasks.hocon"
+include "compiler/ci_common/gate_tasks_bootstrap.hocon"
+include "compiler/ci_includes/deploy.hocon"
 
-gateTest38-linux: ${gateTest-linux} {
-    packages: {
-        llvm: "==3.8"
-    }
-}
+include "compiler/ci_common/bench.hocon"
+include "compiler/ci_common/bench-hwloc.hocon"
+include "compiler/ci_common/bench-weekly.hocon"
+include "compiler/ci_common/x52.hocon"
+include "compiler/ci_common/x52-jfr.hocon"
+include "compiler/ci_common/m7_eighth.hocon"
+# C1 & C2 configs
+include "compiler/ci_includes/x52-c1.hocon"
+include "compiler/ci_includes/x52-c2.hocon"
+include "compiler/ci_includes/x52-c2-jfr.hocon"
+include "compiler/ci_includes/m7_eighth-c1.hocon"
+include "compiler/ci_includes/m7_eighth-c2.hocon"
 
-gateTest40-linux: ${gateTest-linux} {
-    packages: {
-        llvm: "==4.0.1"
-    }
-}
+# ------------------- JAOTC -------------------
+include "compiler/ci_includes/gate_tasks.hocon"
 
-darwin-llvm : {
-    packages: {
-        llvm: "==4.0.1"
-    }
-}
+# ------------------ SVM ----------------------
+include "substratevm/ci_includes/gate.hocon"
 
-gateTest40-darwin: ${gateCommon} ${darwin-amd64} ${darwin-llvm} {
-    environment: {
-        CPPFLAGS: "-g"
-    }
-}
+# Maven deploy dry-run
+include "substratevm/ci_includes/deploy.hocon"
 
-requireGCC: {
-    packages: {
-        gcc: "==6.1.0"
-    }
-    downloads: {
-        DRAGONEGG_GCC: {name: "gcc+dragonegg", version: "4.6.4-1", platformspecific: true}
-        DRAGONEGG_LLVM: {name: "clang+llvm", version: "3.2", platformspecific: true}
-    }
-}
+# Publish Javadoc
+include "ci_includes/publish-javadoc.hocon"
 
-requireJDT: {
-    downloads: {
-        JDT : {name: ecj, version: "4.5.1", platformspecific: false}
-    }
-}
-
-deploy-command: [
-    ["mx", "build"]
-    ["mx", "deploy-binary", "--skip-existing", "lafo-snapshots"]
-]
-
-deploy-binaries: ${common} {
-    targets: [post-merge, deploy]
-    run : ${deploy-command}
-}
-
-deploy-binaries-linux: ${deploy-binaries} ${linux-amd64} ${requireGCC} {
-    packages: {
-        llvm: "==3.8"
-        maven: ">=3.3.9"
-    }
-}
-
-deploy-binaries-darwin: ${deploy-binaries} ${darwin-amd64} ${darwin-llvm} {
-}
-
-ruby-downstream-test: {
-    packages: {
-        ruby: "==2.1.0"
-    }
-    run: [
-        [mx, testdownstream, --repo, "https://github.com/graalvm/truffleruby.git",
-         --mx-command, "--dynamicimports sulong ruby_testdownstream_sulong"]
-    ]
-}
-
-svm-downstream-test: ${requireGCC} {
-  environment: {
-    SVM_REPO: "https://github.com/graalvm/graal.git",
-    SVM_SUITEDIR: substratevm,
-  },
-  run: [[mx, testdownstream, -R, "${SVM_REPO}", --suitedir, "${SVM_SUITEDIR}", -C, "--dynamicimport sulong gate --tags build,sulong"]]
-}
-
-
-builds = [
-  ${gateStyle} { name: gate-style, run: [[mx, gate, --tags, "style"]] }
-  ${gateStyle} ${requireJDT} { name: gate-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
-  ${gateTest38-linux} { name: gate-misc0, run: [[mx, gate, --tags, "build,assembly,args,callback,vaargs"]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe"]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-parser, run: [[mx, gate, --tags, "build,parser"]] }
-  ${gateTest38-linux} { name: gate-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]] }
-  ${gateTest38-linux} { name: gate-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-basic_v38, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop,debug"]] }
-  ${gateTest40-linux} ${requireGCC} { name: gate-basic_v40, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop,debug"]] }
-  ${gateTest40-darwin} { name: gate-basic_mac, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop"]] }
-
-  ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
-  ${gateTest38-linux} ${svm-downstream-test} { name: gate-substratevm-downstream }
-
-  ${deploy-binaries-linux} { name: postmerge-deploy-binaries-linux-amd64 }
-  ${deploy-binaries-darwin} { name: postmerge-deploy-binaries-darwin-amd64 }
-]
+# ------------------- VM ----------------------
+include "vm/ci_common/common.hocon"
+include "vm/ci_includes/vm.hocon"
+include "vm/ci_includes/vm-bench.hocon"
+include "vm/ci_includes/vm-bench-sulong.hocon"

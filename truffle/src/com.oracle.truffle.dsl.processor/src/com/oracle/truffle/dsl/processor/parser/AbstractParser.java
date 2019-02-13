@@ -1,0 +1,184 @@
+/*
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package com.oracle.truffle.dsl.processor.parser;
+
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.tools.Diagnostic.Kind;
+
+import com.oracle.truffle.dsl.processor.CompileErrorException;
+import com.oracle.truffle.dsl.processor.Log;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.MessageContainer;
+import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
+import com.oracle.truffle.dsl.processor.model.NodeData;
+
+/**
+ * THIS IS NOT PUBLIC API.
+ */
+public abstract class AbstractParser<M extends MessageContainer> {
+
+    protected final ProcessorContext context;
+    protected final ProcessingEnvironment processingEnv;
+
+    protected final Log log;
+
+    public AbstractParser() {
+        this.context = ProcessorContext.getInstance();
+        this.processingEnv = context.getEnvironment();
+        this.log = context.getLog();
+    }
+
+    public final M parse(Element element) {
+        M model = null;
+        try {
+            AnnotationMirror mirror = null;
+            if (getAnnotationType() != null) {
+                mirror = ElementUtils.findAnnotationMirror(processingEnv, element.getAnnotationMirrors(), getAnnotationType());
+            }
+
+            if (!context.getTruffleTypes().verify(context, element, mirror)) {
+                return null;
+            }
+            model = parse(element, mirror);
+            if (model == null) {
+                return null;
+            }
+
+            redirectMessages(new HashSet<MessageContainer>(), model, model);
+            model.emitMessages(context, log);
+            if (model instanceof NodeData) {
+                return model;
+            } else {
+                return filterErrorElements(model);
+            }
+        } catch (CompileErrorException e) {
+            log.message(Kind.WARNING, element, null, null, "The truffle processor could not parse class due to error: %s", e.getMessage());
+            return null;
+        }
+    }
+
+    private void redirectMessages(Set<MessageContainer> visitedSinks, MessageContainer model, MessageContainer baseContainer) {
+        List<Message> messages = model.getMessages();
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Message message = messages.get(i);
+            if (!ElementUtils.isEnclosedIn(baseContainer.getMessageElement(), message.getOriginalContainer().getMessageElement())) {
+                // redirect message
+                MessageContainer original = message.getOriginalContainer();
+                String text = wrapText(original.getMessageElement(), original.getMessageAnnotation(), message.getText());
+                Message redirectedMessage = new Message(null, null, baseContainer, text, message.getKind());
+                model.getMessages().remove(i);
+                baseContainer.getMessages().add(redirectedMessage);
+            }
+        }
+
+        for (MessageContainer childContainer : model) {
+            if (visitedSinks.contains(childContainer)) {
+                continue;
+            }
+            visitedSinks.add(childContainer);
+
+            MessageContainer newBase = baseContainer;
+            if (childContainer.getBaseContainer() != null) {
+                newBase = childContainer.getBaseContainer();
+            }
+            redirectMessages(visitedSinks, childContainer, newBase);
+        }
+    }
+
+    private static String wrapText(Element element, AnnotationMirror mirror, String text) {
+        StringBuilder b = new StringBuilder();
+        if (element != null) {
+            if (element.getKind() == ElementKind.METHOD) {
+                b.append("Method " + ElementUtils.createReferenceName((ExecutableElement) element));
+            } else {
+                b.append("Element " + element.getSimpleName());
+            }
+        }
+        if (mirror != null) {
+            b.append(" at annotation @" + ElementUtils.getSimpleName(mirror.getAnnotationType()).trim());
+        }
+
+        if (b.length() > 0) {
+            b.append(" is erroneous: ").append(text);
+            return b.toString();
+        } else {
+            return text;
+        }
+    }
+
+    protected M filterErrorElements(M model) {
+        return model.hasErrors() ? null : model;
+    }
+
+    protected abstract M parse(Element element, AnnotationMirror mirror);
+
+    public abstract Class<? extends Annotation> getAnnotationType();
+
+    public boolean isDelegateToRootDeclaredType() {
+        return false;
+    }
+
+    public List<Class<? extends Annotation>> getAllAnnotationTypes() {
+        List<Class<? extends Annotation>> list = new ArrayList<>();
+        if (getAnnotationType() != null) {
+            list.add(getAnnotationType());
+        }
+        list.addAll(getTypeDelegatedAnnotationTypes());
+        return list;
+    }
+
+    public List<Class<? extends Annotation>> getTypeDelegatedAnnotationTypes() {
+        return Collections.emptyList();
+    }
+
+}

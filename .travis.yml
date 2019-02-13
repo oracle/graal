@@ -1,227 +1,109 @@
-cache:
-  directories:
-  - $HOME/.cache/pip
-  - $HOME/.m2
-  - $HOME/.mx
-dist: trusty
+language: java
+python:
+  - "2.7"
+addons:
+  apt:
+    packages:
+      - python-pip
+      - python-virtualenv
+      - wget
+      - mercurial
+
+# Use Trusty to get enough RAM
 sudo: required
-language: generic
-install:
-  - export MX_BINARY_SUITES="jvmci"
-  - gem install mdl
-  - pip install astroid==1.1.0 --user
-  - pip install pylint==1.1.0 --user
-  - git clone https://github.com/graalvm/mx
-  - export PATH=`pwd`/mx:$PATH
-  - wget -O mx/ecj.jar 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/ecj-4.5.2.jar'
-  - wget https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz
-  - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
-  - wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.34/openjdk1.8.0_141-jvmci-0.34-linux-amd64.tar.gz
-  - tar -xzf openjdk1.8.0_141-jvmci-0.34-linux-amd64.tar.gz
-  - mkdir llvmDir
-  - export SULONG_ENV=mx.sulong/env
-# Travis' pyenv prepends some directories to PATH with an older LLVM, we use mx to restore it
-  - echo PATH=`pwd`/llvmDir:$PATH >> $SULONG_ENV
-  - echo ECLIPSE_EXE=`pwd`/eclipse/eclipse >> $SULONG_ENV
-  - echo JDT=`pwd`/mx/ecj.jar >> $SULONG_ENV
-  - echo JAVA_HOME=`pwd`/openjdk1.8.0_141-jvmci-0.34 >> $SULONG_ENV
-  - echo MAKEFLAGS=-j2 >> $SULONG_ENV
-  - echo CPPFLAGS=-g >> $SULONG_ENV
-  - mx sforceimports
-script:
-  - cd llvmDir
-  - ln -s /usr/bin/clang-$LLVM_VER clang
-  - ln -s /usr/bin/clang++-$LLVM_VER clang++
-  - ln -s /usr/bin/opt-$LLVM_VER opt
-  - ln -s /usr/bin/llvm-link-$LLVM_VER llvm-link
-  - export PATH=`pwd`:$PATH
-  - cd ..
-  - test -z "$COMPILE_COMMAND" || $COMPILE_COMMAND
-  - test -z "$GATE_TAGS" || mx gate --tags $GATE_TAGS
-  - test -z "$DOWNSTREAM_COMMAND" || mx testdownstream -R $DOWNSTREAM_REPO --suitedir $DOWNSTREAM_SUITE -C "$DOWNSTREAM_COMMAND"
+dist: trusty
+
+jdk:
+    - oraclejdk11
+
+env:
+  global:
+    - JVMCI_VERSION="jvmci-0.54"
+    - JDK8_UPDATE_VERSION="192"
+
 matrix:
-  fast_finish: true
   include:
-  - env: LLVM_VER=3.8 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
+  - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="compiler"
+  - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
+  - env: JDK="jdk8" GATE="build,test" PRIMARY="substratevm"
+  - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
+  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong" LLVM_VERSION="3.8"
     addons:
       apt:
         packages:
-          - python2.7
           - python-pip
           - clang-3.8
           - llvm-3.8
+          - clang-format-3.8
           - libc++1
-          - libc++abi1
           - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.9 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
-    addons:
-      apt:
-        sources:
-          - ubuntu-toolchain-r-test
-          - llvm-toolchain-trusty-3.9
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.9
-          - llvm-3.9
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=4.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
-    addons:
-      apt:
-        sources:
-          - ubuntu-toolchain-r-test
-          - llvm-toolchain-trusty-4.0
-        packages:
-          - python2.7
-          - python-pip
-          - clang-4.0
-          - llvm-4.0
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=5.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
-    addons:
-      apt:
-        sources:
-          - ubuntu-toolchain-r-test
-          - llvm-toolchain-trusty-5.0
-        packages:
-          - python2.7
-          - python-pip
-          - clang-5.0
-          - llvm-5.0
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=6.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
+  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true NATIVE_IMAGE_TESTING=true
     addons:
       apt:
         sources:
           - ubuntu-toolchain-r-test
           - llvm-toolchain-trusty-6.0
         packages:
-          - python2.7
-          - python-pip
           - clang-6.0
           - llvm-6.0
           - libc++1
-          - libc++abi1
           - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.8 GATE_TAGS='style'
-    addons:
-      apt:
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - clang-format-3.8
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.8 GATE_TAGS='fullbuild'
-    addons:
-      apt:
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.8 GATE_TAGS='sulongMisc' COMPILE_COMMAND='mx build'
-    addons:
-      apt:
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.8 GATE_TAGS='nwcc' COMPILE_COMMAND='mx build'
-    addons:
-      apt:
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.8 GATE_TAGS='llvm' COMPILE_COMMAND='mx build'
-    addons:
-      apt:
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.8 GATE_TAGS='parser' COMPILE_COMMAND='mx build'
-    addons:
-      apt:
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.8 GATE_TAGS='gcc_c' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
-    addons:
-      apt:
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.8 GATE_TAGS='gcc_cpp' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
-    addons:
-      apt:
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
-  - env: LLVM_VER=3.8 DOWNSTREAM_REPO='https://github.com/graalvm/graal.git' DOWNSTREAM_SUITE='substratevm' DOWNSTREAM_COMMAND='--dynamicimport sulong gate --tags build,sulong'
-    addons:
-      apt:
-        packages:
-          - python2.7
-          - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - libc++1
-          - libc++abi1
-          - libc++-dev
-          - libc++abi-dev
+  - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
+  - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
+  - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+
+install:
+  - |
+      export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
+      git clone https://github.com/graalvm/mx.git ${MX_PATH}
+      export PATH=${PATH}:${MX_PATH}
+  - |
+      if [[ ${GATE} == *style* ]]
+      then
+        virtualenv venv
+        source venv/bin/activate
+        pip install astroid==1.1.0
+        pip install pylint==1.1.0
+
+        export ECLIPSE_TAR=${TRAVIS_BUILD_DIR}/../eclipse.tar.gz
+        wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/eclipse-SDK-4.5.2-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
+        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${ECLIPSE_TAR}
+        export ECLIPSE_EXE=${TRAVIS_BUILD_DIR}/../eclipse/eclipse
+
+        # the style gate needs the full commit history for checking copyright years
+        git fetch --unshallow
+      fi
+  - |
+      if [[ ${GATE} == *fullbuild* ]]
+      then
+        # Only test JDT on JDK8
+        if [ "${JDK}" == "jdk8" ]
+        then
+          export JDT=${MX_PATH}/ecj.jar
+          wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
+        fi
+      fi
+  - |
+      if [ "${JDK}" == "jdk8" ]
+      then
+        JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
+        wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
+        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
+        export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
+      fi
+  - |
+      if [ "${LLVM_VERSION}" != "" ]
+      then
+        export CLANG=clang-$LLVM_VERSION
+        export CLANGXX=clang++-$LLVM_VERSION
+        export OPT=opt-$LLVM_VERSION
+        export LLVM_AS=llvm-as-$LLVM_VERSION
+        export LLVM_LINK=llvm-link-$LLVM_VERSION
+      fi
+
+script:
+  - echo ${JAVA_HOME}
+  - ${JAVA_HOME}/bin/java -version
+  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
-  - find . -iname "*.log" -print0 | xargs -0 cat
+  - cat hs_err*
