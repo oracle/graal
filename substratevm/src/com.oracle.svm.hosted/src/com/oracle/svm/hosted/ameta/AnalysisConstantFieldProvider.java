@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.hosted.ClassInitializationFeature;
+import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -42,13 +42,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
     private final AnalysisUniverse universe;
     private final AnalysisConstantReflectionProvider constantReflection;
-    private final ClassInitializationFeature classInitializationFeature;
+    private final ClassInitializationSupport classInitializationSupport;
 
-    public AnalysisConstantFieldProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider constantReflection) {
+    public AnalysisConstantFieldProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider constantReflection,
+                    ClassInitializationSupport classInitializationSupport) {
         super(metaAccess);
         this.universe = universe;
         this.constantReflection = constantReflection;
-        this.classInitializationFeature = ClassInitializationFeature.singleton();
+        this.classInitializationSupport = classInitializationSupport;
     }
 
     @Override
@@ -73,7 +74,7 @@ public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
 
     @Override
     protected boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        if (classInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+        if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
             return false;
         }
         return super.isFinalField(field, tool);

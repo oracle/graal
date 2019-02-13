@@ -641,4 +641,12 @@ public class AnalysisUniverse implements Universe {
         }
         return false;
     }
+
+    public MetaAccessProvider getOriginalMetaAccess() {
+        return originalMetaAccess;
+    }
+
+    public Platform getPlatform() {
+        return platform;
+    }
 }
