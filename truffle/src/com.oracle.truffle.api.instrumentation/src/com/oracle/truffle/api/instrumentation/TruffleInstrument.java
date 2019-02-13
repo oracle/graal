@@ -490,26 +490,6 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Uses the original language of the node to print a string representation of this value.
-         * The behavior of this method is undefined if a type unknown to the language is passed as
-         * value.
-         *
-         * @param node a node
-         * @param value a known value of that language
-         * @return a human readable string representation of the value.
-         * @since 0.17
-         * @deprecated use
-         *             {@link #toString(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Object)}
-         *             and retrieve {@link LanguageInfo} from
-         *             <code>node.getRootNode().getLanguageInfo()</code>.
-         */
-        @Deprecated
-        public String toString(Node node, Object value) {
-            final TruffleLanguage.Env env = getLangEnv(node);
-            return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
-        }
-
-        /**
          * Uses the provided language to print a string representation of this value. The behavior
          * of this method is undefined if a type unknown to the language is passed as a value.
          *
@@ -591,14 +571,6 @@ public abstract class TruffleInstrument {
                 return null;
             }
             return AccessorInstrumentHandler.engineAccess().getObjectLanguage(value, vmObject);
-        }
-
-        private static TruffleLanguage.Env getLangEnv(Node node) {
-            LanguageInfo languageInfo = node.getRootNode().getLanguageInfo();
-            if (languageInfo == null) {
-                throw new IllegalArgumentException("No language available for given node.");
-            }
-            return AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
         }
 
         /**

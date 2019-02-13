@@ -363,8 +363,6 @@ meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes(com
 meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findTopScopes(java.lang.String)
 meth public java.lang.Object findMetaObject(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
 meth public java.lang.String toString(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
-meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node,java.lang.Object)
- anno 0 java.lang.Deprecated()
 meth public java.util.Map<java.lang.String,?> getExportedSymbols()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.InstrumentInfo> getInstruments()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.LanguageInfo> getLanguages()
