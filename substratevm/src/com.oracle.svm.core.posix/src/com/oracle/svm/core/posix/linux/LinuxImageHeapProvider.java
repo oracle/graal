@@ -162,18 +162,17 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
              */
             int mapfd = open(PROC_SELF_MAPS.get(), Fcntl.O_RDONLY(), 0);
             if (mapfd == -1) {
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
             final CCharPointer buffer = malloc(WordFactory.unsigned(MAX_PATHLEN));
             final CLongPointer startAddr = StackValue.get(CLongPointer.class);
             final CLongPointer offset = StackValue.get(CLongPointer.class);
-            final CLongPointer dev = StackValue.get(CLongPointer.class);
             final CLongPointer inode = StackValue.get(CLongPointer.class);
-            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, dev, inode, true);
+            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, inode, true);
             close(mapfd);
             if (!found) {
                 free(buffer);
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
             Stat.stat stat = StackValue.get(Stat.stat.class);
             int opened = open(buffer, Fcntl.O_RDONLY(), 0);
@@ -184,17 +183,17 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             if (fstat_no_transition(opened, stat) != 0) {
                 free(buffer);
                 close(opened);
-                return CEntryPointErrors.OPEN_IMAGE_FAILED;
+                return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
-            if (stat.st_ino() != inode.read() || stat.st_dev() != dev.read()) {
+            if (stat.st_ino() != inode.read()) {
                 boolean ignore = false;
                 int versionfd = open(PROC_VERSION.get(), Fcntl.O_RDONLY(), 0);
                 if (versionfd != -1) {
                     if (PosixUtils.readEntirely(versionfd, buffer, MAX_PATHLEN)) {
                         /*
-                         * The Windows Subsystem for Linux (WSL) reports incorrect inodes and
-                         * devices via /proc that don't match those returned by fstat. If we are
-                         * running under WSL, ignore when the comparison fails.
+                         * The Windows Subsystem for Linux (WSL) reports incorrect inodes via /proc
+                         * that don't match those returned by fstat. If we are running under WSL,
+                         * ignore when the comparison fails.
                          */
                         ignore = LibC.strstr(buffer, PROC_VERSION_WSL_SUBSTRING.get()).isNonNull();
                     }
@@ -203,7 +202,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
                 if (!ignore) {
                     free(buffer);
                     close(opened);
-                    return CEntryPointErrors.OPEN_IMAGE_FAILED;
+                    return CEntryPointErrors.LOCATE_IMAGE_IDENTITY_MISMATCH;
                 }
             }
             free(buffer);
