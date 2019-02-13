@@ -133,8 +133,6 @@ V(GetPrimitiveArrayCritical) \
 V(ReleasePrimitiveArrayCritical) \
 V(GetStringCritical) \
 V(ReleaseStringCritical) \
-V(NewWeakGlobalRef) \
-V(DeleteWeakGlobalRef) \
 V(ExceptionCheck) \
 V(GetDirectBufferAddress) \
 V(GetDirectBufferCapacity) \
@@ -591,7 +589,9 @@ jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   V(NewDirectByteBuffer) \
   V(RegisterNatives) \
   V(NewGlobalRef) \
-  V(DeleteGlobalRef)
+  V(DeleteGlobalRef) \
+  V(NewWeakGlobalRef) \
+  V(DeleteWeakGlobalRef)
 
 
 // Global state.
@@ -639,10 +639,30 @@ void DeleteGlobalRef(JNIEnv *env, jobject globalRef) {
   (*truffle_env)->releaseObjectRef(truffle_env, (TruffleObject) globalRef);
 }
 
+jobject NewWeakGlobalRef(JNIEnv *env, jobject obj) {
+  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
+  return (jobject) (*truffle_env)->newWeakObjectRef(truffle_env, (TruffleObject) obj);
+}
+
+void DeleteWeakGlobalRef(JNIEnv *env, jobject globalRef) {
+  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
+  (*truffle_env)->releaseWeakObjectRef(truffle_env, (TruffleObject) globalRef);
+}
+
+static void unset_function_error() {
+  fprintf(stderr, "Call to uninitialized JNI function slot\n");
+  exit(-1);
+}
+
 jlong initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
   JNIEnv* env = (JNIEnv*) malloc(sizeof(*env));
   struct JNINativeInterface_* jni_impl = malloc(sizeof(*jni_impl));
   struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
+
+  int fnCount = sizeof(*jni_impl) / sizeof(void*);
+  for (int i = 0; i < fnCount; ++i) {
+    ((void**)jni_impl)[i] = &unset_function_error;
+  }
 
   *env = jni_impl;
   
