@@ -571,24 +571,6 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Find a source location where a value is declared, if any.
-         *
-         * @param node a node
-         * @param value a value to get the source location for
-         * @return a source location of the object, or <code>null</code>
-         * @since 0.22
-         * @deprecated use
-         *             {@link #findSourceLocation(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Object)}
-         *             and retrieve {@link LanguageInfo} from
-         *             <code>node.getRootNode().getLanguageInfo()</code>.
-         */
-        @Deprecated
-        public SourceSection findSourceLocation(Node node, Object value) {
-            final TruffleLanguage.Env env = getLangEnv(node);
-            return AccessorInstrumentHandler.langAccess().findSourceLocation(env, value);
-        }
-
-        /**
          * Uses the provided language to find a source location where a value is declared, if any.
          * For the best results, use the {@link #findLanguage(java.lang.Object) value's language},
          * if any.

@@ -356,8 +356,6 @@ meth public com.oracle.truffle.api.instrumentation.Instrumenter getInstrumenter(
 meth public com.oracle.truffle.api.nodes.ExecutableNode parseInline(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame)
 meth public com.oracle.truffle.api.nodes.LanguageInfo findLanguage(java.lang.Object)
 meth public com.oracle.truffle.api.source.SourceSection findSourceLocation(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
-meth public com.oracle.truffle.api.source.SourceSection findSourceLocation(com.oracle.truffle.api.nodes.Node,java.lang.Object)
- anno 0 java.lang.Deprecated()
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
