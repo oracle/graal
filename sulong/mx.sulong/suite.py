@@ -71,6 +71,8 @@ suite = {
       },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "com.oracle.truffle.llvm.test.native" : {
       "subDir" : "projects",
@@ -98,6 +100,8 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.llvm.spi" : {
@@ -242,6 +246,7 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "defaultBuild" : False,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.llvm.pipe.native" : {
@@ -263,6 +268,7 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "defaultBuild" : False,
+      "jacoco" : "exclude",
     },
     "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
