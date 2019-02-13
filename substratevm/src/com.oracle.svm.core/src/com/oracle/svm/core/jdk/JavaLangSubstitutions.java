@@ -347,6 +347,24 @@ final class Target_java_lang_System {
         // Substituted because the original is caller-sensitive, which we don't support
         Runtime.getRuntime().load(filename);
     }
+
+    /*
+     * Note that there is no substitution for getSecurityManager, but instead getSecurityManager it
+     * is intrinsified in SubstrateGraphBuilderPlugins to always return null. This allows better
+     * constant folding of SecurityManager code already during static analysis.
+     */
+    @Substitute
+    private static void setSecurityManager(SecurityManager s) {
+        if (s != null) {
+            /*
+             * We deliberately treat this as a non-recoverable fatal error. We want to prevent bugs
+             * where an exception is silently ignored by an application and then necessary security
+             * checks are not in place.
+             */
+            throw VMError.shouldNotReachHere("Installing a SecurityManager is not yet supported");
+        }
+    }
+
 }
 
 @TargetClass(java.lang.StrictMath.class)
