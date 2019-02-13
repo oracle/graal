@@ -125,7 +125,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     @SuppressWarnings("try")
     public void dump(DebugContext debug, Object object, final String format, Object... arguments) {
         OptionValues options = debug.getOptions();
-        if (object instanceof Graph && DebugOptions.PrintGraph.getValue(options) != PrintGraphTarget.none) {
+        if (object instanceof Graph && DebugOptions.PrintGraph.getValue(options) != PrintGraphTarget.Disable) {
             final Graph graph = (Graph) object;
             ensureInitialized(debug, graph);
             if (printer == null) {

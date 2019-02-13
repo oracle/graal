@@ -82,14 +82,12 @@ final class IgvDumpChannel implements WritableByteChannel {
         }
         if (sharedChannel == null) {
             PrintGraphTarget target = DebugOptions.PrintGraph.getValue(options);
-            if (target == PrintGraphTarget.file) {
+            if (target == PrintGraphTarget.File) {
                 sharedChannel = createFileChannel(pathProvider);
-            } else if (target == PrintGraphTarget.network) {
+            } else if (target == PrintGraphTarget.Network) {
                 sharedChannel = createNetworkChannel(pathProvider, options);
-            } else if (target == PrintGraphTarget.networkOnly) {
-                sharedChannel = createNetworkChannel(null, options);
             } else {
-                TTY.println("WARNING: Graph dumping requested but value of %s option is %s", DebugOptions.PrintGraph.getName(), PrintGraphTarget.none);
+                TTY.println("WARNING: Graph dumping requested but value of %s option is %s", DebugOptions.PrintGraph.getName(), PrintGraphTarget.Disable);
             }
         }
         return sharedChannel;

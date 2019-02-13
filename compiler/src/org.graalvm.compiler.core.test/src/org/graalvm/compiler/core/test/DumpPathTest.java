@@ -53,7 +53,7 @@ public class DumpPathTest extends GraalCompilerTest {
         String[] extensions = new String[]{".cfg", ".bgv", ".graph-strings"};
         EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
         overrides.put(DebugOptions.DumpPath, dumpDirectoryPath.toString());
-        overrides.put(DebugOptions.PrintGraph, PrintGraphTarget.file);
+        overrides.put(DebugOptions.PrintGraph, PrintGraphTarget.File);
         overrides.put(DebugOptions.PrintCanonicalGraphStrings, true);
         overrides.put(DebugOptions.Dump, "*");
 
