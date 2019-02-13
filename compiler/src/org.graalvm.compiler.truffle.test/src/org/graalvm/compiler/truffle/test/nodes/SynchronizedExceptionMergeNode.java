@@ -39,7 +39,7 @@ public class SynchronizedExceptionMergeNode extends AbstractTestNode {
         return 42;
     }
 
-    @TruffleBoundary(throwsControlFlowException = true)
+    @TruffleBoundary(transferToInterpreterOnException = false)
     private static void boundary() {
     }
 }

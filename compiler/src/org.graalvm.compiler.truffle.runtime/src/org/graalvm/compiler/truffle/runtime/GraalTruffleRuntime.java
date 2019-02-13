@@ -995,7 +995,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 // by the partial evaluator, we want to prevent inlining across the boundary during
                 // partial evaluation,
                 // even if the TruffleBoundary allows inlining after partial evaluation.
-                if (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException()) {
+                if (truffleBoundary.transferToInterpreterOnException()) {
                     return InlineKind.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
                 } else {
                     return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;

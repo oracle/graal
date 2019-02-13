@@ -47,8 +47,6 @@ import java.lang.annotation.Target;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 
-import com.oracle.truffle.api.nodes.ControlFlowException;
-
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
  * no effect when executed in the Truffle interpreter.
@@ -265,14 +263,6 @@ public final class CompilerDirectives {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
     public @interface TruffleBoundary {
-        /**
-         * Determines whether this method throws a {@link ControlFlowException}.
-         *
-         * @since 0.8 or earlier
-         * @deprecated use {@link #transferToInterpreterOnException()}
-         */
-        @Deprecated
-        boolean throwsControlFlowException() default false;
 
         /**
          * Determines whether execution should be transferred to the interpreter in the case that an
