@@ -844,84 +844,72 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     // region Call*Method
 
+    private Object callVirtualMethodGeneric(StaticObject receiver, long methodHandle, long varargsPtr) {
+        Method resolutionSeed = methodIds.getObject(methodHandle);
+        assert !resolutionSeed.isStatic();
+        Object[] args = popVarArgs(varargsPtr, resolutionSeed.getParsedSignature());
+        Method m = receiver.getKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
+        assert m != null;
+        return m.invokeDirect(receiver, args);
+    }
+
     @JniImpl
     public Object CallObjectMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        // FIXME(peterssen): This is virtual dispatch. Re-resolve the method.
-        Object[] args = popVarArgs(varargsPtr, method.getParsedSignature());
-        return method.invokeDirect(receiver, args);
+        return callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public boolean CallBooleanMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        new RuntimeException().printStackTrace();
-        throw EspressoError.unimplemented();
+        return (boolean) callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public char CallCharMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        new RuntimeException().printStackTrace();
-        throw EspressoError.unimplemented();
+        return (char) callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public byte CallByteMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        new RuntimeException().printStackTrace();
-        throw EspressoError.unimplemented();
+        return (byte) callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public short CallShortMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        new RuntimeException().printStackTrace();
-        throw EspressoError.unimplemented();
+        return (short) callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public int CallIntMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        new RuntimeException().printStackTrace();
-        throw EspressoError.unimplemented();
+        return (int) callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public float CallFloatMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        new RuntimeException().printStackTrace();
-        throw EspressoError.unimplemented();
+        return (float) callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public double CallDoubleMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        new RuntimeException().printStackTrace();
-        throw EspressoError.unimplemented();
+        return (double) callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public long CallLongMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        new RuntimeException().printStackTrace();
-        throw EspressoError.unimplemented();
+        return (long) callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public void CallVoidMethodVarargs(@Host(Object.class) StaticObject receiver, long methodHandle, long varargsPtr) {
-        Method method = methodIds.getObject(methodHandle);
-        new RuntimeException().printStackTrace();
-        throw EspressoError.unimplemented();
+        callVirtualMethodGeneric(receiver, methodHandle, varargsPtr);
     }
 
     // endregion Call*Method
