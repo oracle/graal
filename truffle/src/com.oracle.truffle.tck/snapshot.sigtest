@@ -21,8 +21,6 @@ meth public void close()
 meth public void closeEngine()
 meth public void expectKilled()
 meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback)
-meth public void startEval(com.oracle.truffle.api.source.Source)
- anno 0 java.lang.Deprecated()
 meth public void startEval(org.graalvm.polyglot.Source)
 supr java.lang.Object
 hfds Java8OrEarlier,TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,out
