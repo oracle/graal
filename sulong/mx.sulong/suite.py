@@ -293,12 +293,14 @@ suite = {
         "bin/libsulong.bc",
         "bin/libsulong++.bc",
         "bin/libsulong-src.tar.gz",
+        "bin/<lib:polyglot-mock>",
       ],
       "headers" : [
         "include/polyglot.h",
       ],
       "buildEnv" : {
         "CFLAGS" : "<clangImplicitArgs>",
+        "LIB_POLYGLOT" : "<lib:polyglot-mock>",
       },
       "license" : "BSD-new",
     },
@@ -728,6 +730,7 @@ suite = {
         "./" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:polyglot-mock>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
           ],
@@ -747,6 +750,7 @@ suite = {
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:polyglot-mock>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
         ],
         "./include/" : [
