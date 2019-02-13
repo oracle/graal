@@ -586,20 +586,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
             }
 
-            ExecutableElement method = specialization.getMethod();
-            if (method != null) {
-                if (!method.getModifiers().contains(Modifier.STATIC)) {
-                    uncachable = false;
-                    if (requireUncachable) {
-                        specialization.addError(
-                                        "Failed to generate code for @%s: The specialization must declare the modifier static. " +
-                                                        "Add a static modifier to the method to resolve this.",
-                                        GenerateUncached.class.getSimpleName());
-                    }
-                    break;
-                }
-            }
-
             for (GuardExpression guard : specialization.getGuards()) {
                 if (guard.getExpression().isNodeReceiverBound()) {
                     uncachable = false;

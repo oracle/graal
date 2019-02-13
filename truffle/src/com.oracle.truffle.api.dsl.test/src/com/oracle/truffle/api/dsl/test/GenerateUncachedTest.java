@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.TestNonStaticSpecializationNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached1NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached2NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.Uncached3NodeGen;
@@ -411,6 +413,29 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
+    public abstract static class TestNonStaticSpecializationNode extends Node {
+
+        public abstract Object execute(Object arg);
+
+        @Specialization
+        protected String s0(int arg) {
+            return "s0";
+        }
+
+        @Override
+        protected boolean isAdoptable() {
+            return super.isAdoptable();
+        }
+    }
+
+    @Test
+    public void testNonStaticSpecialization() {
+        TestNonStaticSpecializationNode node = TestNonStaticSpecializationNodeGen.getUncached();
+        assertEquals("s0", node.execute(42));
+        assertFalse(node.isAdoptable());
+    }
+
+    @GenerateUncached
     @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any instance variables. Found instance variable ErrorNode1.field. Remove instance variable to resolve this.")
     abstract static class ErrorNode1 extends Node {
 
@@ -420,6 +445,17 @@ public class GenerateUncachedTest {
 
         @Specialization
         static int f0(int v) {
+            return v;
+        }
+
+    }
+
+    @GenerateUncached
+    @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any instance variables. Found instance variable ErrorNode1.field. Remove instance variable to resolve this.")
+    abstract static class ErrorNode1_Sub extends ErrorNode1 {
+
+        @Specialization
+        static double f1(double v) {
             return v;
         }
 
