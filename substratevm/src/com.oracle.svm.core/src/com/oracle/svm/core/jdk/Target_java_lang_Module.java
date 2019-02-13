@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,21 @@
  */
 package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.List;
 
 @TargetClass(className = "java.lang.Module", onlyWith = JDK9OrLater.class)
 public final class Target_java_lang_Module {
+
+    @Substitute
+    @TargetElement(name = "getResourceAsStream")
+    public InputStream getResourceAsStream(String name) {
+        List<byte[]> arr = Resources.get(name);
+        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+    }
 }
