@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -1660,8 +1660,8 @@ class AsmFactory {
     }
 
     private void getArguments() {
-        LLVMStoreNode[] writeNodes = null;
-        LLVMExpressionNode[] valueNodes = null;
+        LLVMStoreNode[] writeNodes = LLVMStoreNode.NO_STORES;
+        LLVMExpressionNode[] valueNodes = LLVMExpressionNode.NO_EXPRESSIONS;
         if (retType instanceof StructureType) {
             writeNodes = new LLVMStoreNode[retTypes.length];
             valueNodes = new LLVMExpressionNode[retTypes.length];

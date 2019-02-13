@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -135,8 +135,7 @@ final class DIScopeBuilder {
 
         final String relativePath = name.substring(pathStartIndex);
         try {
-            final Path path = Paths.get(pathPrefix, relativePath);
-            return context.getEnv().getTruffleFile(path.toUri());
+            return context.getEnv().getTruffleFile(pathPrefix).resolve(relativePath);
         } catch (InvalidPathException ex) {
             throw new LLVMParserException(ex.getMessage());
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,8 @@ import com.oracle.truffle.api.dsl.NodeChild;
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
 public abstract class LLVMStoreNode extends LLVMStatementNode {
+
+    public static final LLVMStoreNode[] NO_STORES = {};
 
     public abstract void executeWithTarget(Object address, Object value);
 }
