@@ -34,7 +34,7 @@ import java.util.List;
 
 @TargetClass(className = "java.lang.Module", onlyWith = JDK9OrLater.class)
 public final class Target_java_lang_Module {
-
+    @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(name = "getResourceAsStream")
     public InputStream getResourceAsStream(String name) {
