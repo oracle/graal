@@ -7,6 +7,10 @@ New features:
   as well as bitcode files in an embedded xar archive in the `__bundle` section of
   executables or dylibs.
 
+Changes:
+
+* Update libc++/libc++abi imports to 5.0.2 (no actual code changes).
+
 # Version 1.0.0 RC12
 
 Removed:
