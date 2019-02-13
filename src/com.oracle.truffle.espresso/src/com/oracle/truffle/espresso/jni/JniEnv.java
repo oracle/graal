@@ -1936,4 +1936,33 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     // endregion Release*ArrayElements
+
+    /**
+     * <h3>jint PushLocalFrame(JNIEnv *env, jint capacity);</h3>
+     *
+     * Creates a new local reference frame, in which at least a given number of local references can
+     * be created. Returns 0 on success, a negative number and a pending OutOfMemoryError on
+     * failure.
+     *
+     * Note that local references already created in previous local frames are still valid in the
+     * current local frame.
+     *
+     */
+    @JniImpl
+    public static int PushLocalFrame(@SuppressWarnings("unused") int capacity) {
+        return 0;
+    }
+
+    /**
+     * <h3></h3>jobject PopLocalFrame(JNIEnv *env, jobject result);
+     *
+     * Pops off the current local reference frame, frees all the local references, and returns a
+     * local reference in the previous local reference frame for the given result object.
+     *
+     * Pass NULL as result if you do not need to return a reference to the previous frame.
+     */
+    @JniImpl
+    public static @Host(Object.class) StaticObject PopLocalFrame(@Host(Object.class) StaticObject result) {
+        return result;
+    }
 }
