@@ -535,10 +535,10 @@ public class HotSpotGraphBuilderPlugins {
                                     int longArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Long);
                                     int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                                     ValueNode dataOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), inOffset, NodeView.DEFAULT);
-                                    ComputeObjectAddressNode dataAddress = b.addWithInputs(new ComputeObjectAddressNode(data, dataOffset));
-                                    ComputeObjectAddressNode stateAddress = b.addWithInputs(new ComputeObjectAddressNode(state, ConstantNode.forInt(longArrayBaseOffset)));
-                                    ComputeObjectAddressNode hashSubkeyAddress = b.addWithInputs(new ComputeObjectAddressNode(hashSubkey, ConstantNode.forInt(longArrayBaseOffset)));
-                                    b.addWithInputs(new ForeignCallNode(foreignCalls, GHASH_PROCESS_BLOCKS, stateAddress, hashSubkeyAddress, dataAddress, blocks));
+                                    ComputeObjectAddressNode dataAddress = b.add(new ComputeObjectAddressNode(data, dataOffset));
+                                    ComputeObjectAddressNode stateAddress = b.add(new ComputeObjectAddressNode(state, ConstantNode.forInt(longArrayBaseOffset)));
+                                    ComputeObjectAddressNode hashSubkeyAddress = b.add(new ComputeObjectAddressNode(hashSubkey, ConstantNode.forInt(longArrayBaseOffset)));
+                                    b.add(new ForeignCallNode(foreignCalls, GHASH_PROCESS_BLOCKS, stateAddress, hashSubkeyAddress, dataAddress, blocks));
                                     return true;
                                 }
                             });

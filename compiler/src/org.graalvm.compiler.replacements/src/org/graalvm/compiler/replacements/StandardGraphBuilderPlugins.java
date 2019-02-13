@@ -1368,7 +1368,7 @@ public class StandardGraphBuilderPlugins {
                             b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
                         } else if (falseCount == 0 || trueCount == 0) {
                             boolean expected = falseCount == 0;
-                            LogicNode condition = b.addWithInputs(
+                            LogicNode condition = b.add(
                                             IntegerEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, result, b.add(ConstantNode.forBoolean(!expected)),
                                                             NodeView.DEFAULT));
                             b.append(new FixedGuardNode(condition, DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateReprofile, true));
