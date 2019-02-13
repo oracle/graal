@@ -659,6 +659,73 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     // endregion Get*ID
 
+    // region GetStatic*Field
+
+    @JniImpl
+    public Object GetStaticObjectField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        return field.get(((StaticObjectClass) clazz).getMirrorKlass().getStatics());
+    }
+
+    @JniImpl
+    public boolean GetStaticBooleanField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        return (boolean) field.get(((StaticObjectClass) clazz).getMirrorKlass().getStatics());
+    }
+
+    @JniImpl
+    public byte GetStaticByteField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        return (byte) field.get(((StaticObjectClass) clazz).getMirrorKlass().getStatics());
+    }
+
+    @JniImpl
+    public char GetStaticCharField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        return (char) field.get(((StaticObjectClass) clazz).getMirrorKlass().getStatics());
+    }
+
+    @JniImpl
+    public short GetStaticShortField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        return (short) field.get(((StaticObjectClass) clazz).getMirrorKlass().getStatics());
+    }
+
+    @JniImpl
+    public int GetStaticIntField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        return (int) field.get(((StaticObjectClass) clazz).getMirrorKlass().getStatics());
+    }
+
+    @JniImpl
+    public long GetStaticLongField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        return (long) field.get(((StaticObjectClass) clazz).getMirrorKlass().getStatics());
+    }
+
+    @JniImpl
+    public float GetStaticFloatField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        return (float) field.get(((StaticObjectClass) clazz).getMirrorKlass().getStatics());
+    }
+
+    @JniImpl
+    public double GetStaticDoubleField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        return (double) field.get(((StaticObjectClass) clazz).getMirrorKlass().getStatics());
+    }
+
+    // endregion GetStatic*Field
+
     // region Get*Field
 
     @JniImpl
