@@ -1745,4 +1745,113 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public @Host(Object.class) StaticObject GetObjectArrayElement(StaticObject array, int index) {
         return getInterpreterToVM().getArrayObject(index, array);
     }
+
+    // region Get*ArrayElements
+
+    @JniImpl
+    public long GetBooleanArrayElements(@Host(boolean[].class) StaticObject array, long isCopyPtr) {
+        if (isCopyPtr != 0) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
+        ByteBuffer bytes = allocateDirect(((StaticObjectArray) array).length(), JavaKind.Boolean);
+        boolean[] data = ((StaticObjectArray) array).unwrap();
+        for (int i = 0; i < data.length; ++i) {
+            bytes.put(data[i] ? (byte) 1 : (byte) 0);
+        }
+        return byteBufferAddress(bytes);
+    }
+
+    @JniImpl
+    public long GetCharArrayElements(@Host(char[].class) StaticObject array, long isCopyPtr) {
+        if (isCopyPtr != 0) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
+        char[] data = ((StaticObjectArray) array).unwrap();
+        ByteBuffer bytes = allocateDirect(data.length, JavaKind.Char);
+        CharBuffer elements = bytes.asCharBuffer();
+        elements.put(data);
+        return byteBufferAddress(bytes);
+    }
+
+    @JniImpl
+    public long GetByteArrayElements(@Host(byte[].class) StaticObject array, long isCopyPtr) {
+        if (isCopyPtr != 0) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
+        byte[] data = ((StaticObjectArray) array).unwrap();
+        ByteBuffer bytes = allocateDirect(data.length, JavaKind.Byte);
+        ByteBuffer elements = bytes;
+        elements.put(data);
+        return byteBufferAddress(bytes);
+    }
+
+    @JniImpl
+    public long GetShortArrayElements(@Host(short[].class) StaticObject array, long isCopyPtr) {
+        if (isCopyPtr != 0) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
+        short[] data = ((StaticObjectArray) array).unwrap();
+        ByteBuffer bytes = allocateDirect(data.length, JavaKind.Short);
+        ShortBuffer elements = bytes.asShortBuffer();
+        elements.put(data);
+        return byteBufferAddress(bytes);
+    }
+
+    @JniImpl
+    public long GetIntArrayElements(@Host(int[].class) StaticObject array, long isCopyPtr) {
+        if (isCopyPtr != 0) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
+        int[] data = ((StaticObjectArray) array).unwrap();
+        ByteBuffer bytes = allocateDirect(data.length, JavaKind.Int);
+        IntBuffer elements = bytes.asIntBuffer();
+        elements.put(data);
+        return byteBufferAddress(bytes);
+    }
+
+    @JniImpl
+    public long GetFloatArrayElements(@Host(float[].class) StaticObject array, long isCopyPtr) {
+        if (isCopyPtr != 0) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
+        float[] data = ((StaticObjectArray) array).unwrap();
+        ByteBuffer bytes = allocateDirect(data.length, JavaKind.Float);
+        FloatBuffer elements = bytes.asFloatBuffer();
+        elements.put(data);
+        return byteBufferAddress(bytes);
+    }
+
+    @JniImpl
+    public long GetDoubleArrayElements(@Host(double[].class) StaticObject array, long isCopyPtr) {
+        if (isCopyPtr != 0) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
+        double[] data = ((StaticObjectArray) array).unwrap();
+        ByteBuffer bytes = allocateDirect(data.length, JavaKind.Double);
+        DoubleBuffer elements = bytes.asDoubleBuffer();
+        elements.put(data);
+        return byteBufferAddress(bytes);
+    }
+
+    @JniImpl
+    public long GetLongArrayElements(@Host(long[].class) StaticObject array, long isCopyPtr) {
+        if (isCopyPtr != 0) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
+        long[] data = ((StaticObjectArray) array).unwrap();
+        ByteBuffer bytes = allocateDirect(data.length, JavaKind.Long);
+        LongBuffer elements = bytes.asLongBuffer();
+        elements.put(data);
+        return byteBufferAddress(bytes);
+    }
+
+    // endregion Get*ArrayElements
 }
