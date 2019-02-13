@@ -25,6 +25,7 @@
 package com.oracle.svm.core.thread;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -208,33 +209,56 @@ public abstract class VMThreads {
 
     /**
      * Remove a {@link IsolateThread} from the list of VMThreads. This method must be the last
-     * method called in every thread.
+     * method called in every thread. If the specified thread is not the current thread, it must not
+     * be executing Java code at the current or later time.
      */
     @Uninterruptible(reason = "Manipulates the threads list; broadcasts on changes.")
-    public static void detachThread(IsolateThread vmThread) {
-        // Manipulating the VMThread list requires the lock for
-        // changing the status and for notification.
-        VMThreads.THREAD_MUTEX.guaranteeIsLocked("Must hold the VMThreads mutex.");
-        // Run down the current list and remove the given VMThread.
-        IsolateThread previous = nullThread();
-        IsolateThread current = head;
-        while (isNonNullThread(current)) {
-            IsolateThread next = nextTL.get(current);
-            if (current == vmThread) {
-                // Splice the current element out of the list.
-                if (isNullThread(previous)) {
-                    head = next;
-                } else {
-                    nextTL.set(previous, next);
-                }
-                break;
-            } else {
-                previous = current;
-                current = next;
-            }
+    public static void detachThread(IsolateThread thread) {
+        if (thread.equal(CurrentIsolate.getCurrentThread())) {
+            /*
+             * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling
+             * functions that are not marked as @Uninterruptible during the detach process. We hold
+             * the THREAD_MUTEX, so we know that we are not going to be interrupted by a safepoint.
+             * But a safepoint can already be requested, or our safepoint counter can reach 0 - so
+             * it is still possible that we enter the safepoint slow path.
+             */
+            StatusSupport.setStatusIgnoreSafepoints();
         }
-        // Signal that the VMThreads list has changed.
-        VMThreads.THREAD_LIST_CONDITION.broadcast();
+
+        // try-finally because try-with-resources can call interruptible code
+        THREAD_MUTEX.lockNoTransition();
+        try {
+            detachJavaThread(thread);
+
+            // Run down the current list and remove the given VMThread.
+            IsolateThread previous = nullThread();
+            IsolateThread current = head;
+            while (isNonNullThread(current)) {
+                IsolateThread next = nextTL.get(current);
+                if (current == thread) {
+                    // Splice the current element out of the list.
+                    if (isNullThread(previous)) {
+                        head = next;
+                    } else {
+                        nextTL.set(previous, next);
+                    }
+                    break;
+                } else {
+                    previous = current;
+                    current = next;
+                }
+            }
+            // Signal that the VMThreads list has changed.
+            THREAD_LIST_CONDITION.broadcast();
+        } finally {
+            THREAD_MUTEX.unlock();
+            singleton().freeIsolateThread(thread);
+        }
+    }
+
+    @Uninterruptible(reason = "For calling interruptible code from uninterruptible code.", callerMustBe = true, mayBeInlined = true, calleeMustBe = false)
+    private static void detachJavaThread(IsolateThread thread) {
+        JavaThreads.detachThread(thread);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -173,6 +173,31 @@ public final class CEntryPointNativeFunctions {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
+    @CEntryPoint(name = "detach_other_thread", documentation = {
+                    "Using the valid context of the isolate thread from the first argument,",
+                    "detaches the other isolate thread from the second argument, which must exist",
+                    "in the same isolate. At the time of the call, no code may still be executing",
+                    "in the context of the thread to be detached.",
+                    "Returns 0 on success, or a non-zero value on failure."})
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
+    public static int detachOtherThread(IsolateThread thread, IsolateThread other) {
+        int result = CEntryPointActions.enter(thread);
+        if (result != 0) {
+            CEntryPointActions.leave();
+            return result;
+        }
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            try {
+                VMThreads.detachThread(other);
+            } catch (Throwable t) {
+                result = CEntryPointErrors.UNCAUGHT_EXCEPTION;
+            }
+        }
+        int leaveResult = CEntryPointActions.leave();
+        return (result != 0) ? result : leaveResult;
+    }
+
+    @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
     @CEntryPoint(name = "tear_down_isolate", documentation = {
                     "Tears down the passed isolate, waiting for any attached threads to detach from",
                     "it, then discards the isolate's objects, threads, and any other state or context",
