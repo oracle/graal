@@ -1854,4 +1854,86 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     // endregion Get*ArrayElements
+
+
+    // region Release*ArrayElements
+
+    private void ReleaseGenericArrayElements(StaticObject object, long bufPtr, int mode) {
+        if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
+            StaticObjectArray array = (StaticObjectArray) object;
+            StaticObjectClass clazz = (StaticObjectClass) GetObjectClass(array);
+            JavaKind componentKind = clazz.getMirrorKlass().getComponentType().getJavaKind();
+            assert componentKind.isPrimitive();
+            int length = GetArrayLength(array);
+            // @formatter:off
+            // Checkstyle: stop
+            switch (componentKind) {
+                case Boolean : SetBooleanArrayRegion(array, 0, length, bufPtr); break;
+                case Byte    : SetByteArrayRegion(array, 0, length, bufPtr);    break;
+                case Short   : SetShortArrayRegion(array, 0, length, bufPtr);   break;
+                case Char    : SetCharArrayRegion(array, 0, length, bufPtr);    break;
+                case Int     : SetIntArrayRegion(array, 0, length, bufPtr);     break;
+                case Float   : SetFloatArrayRegion(array, 0, length, bufPtr);   break;
+                case Long    : SetLongArrayRegion(array, 0, length, bufPtr);    break;
+                case Double  : SetDoubleArrayRegion(array, 0, length, bufPtr);  break;
+                default      : throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            // Checkstyle: resume
+        }
+        if (mode == 0 || mode == JNI_ABORT) { // Dispose copy.
+            assert nativeBuffers.containsKey(bufPtr);
+            nativeBuffers.remove(bufPtr);
+        }
+    }
+
+    @JniImpl
+    public void ReleaseBooleanArrayElements(StaticObject object, long bufPtr, int mode) {
+        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Boolean;
+        ReleaseGenericArrayElements(object, bufPtr, mode);
+    }
+
+    @JniImpl
+    public void ReleaseByteArrayElements(StaticObject object, long bufPtr, int mode) {
+        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Byte;
+        ReleaseGenericArrayElements(object, bufPtr, mode);
+    }
+
+    @JniImpl
+    public void ReleaseCharArrayElements(StaticObject object, long bufPtr, int mode) {
+        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Char;
+        ReleaseGenericArrayElements(object, bufPtr, mode);
+    }
+
+    @JniImpl
+    public void ReleaseShortArrayElements(StaticObject object, long bufPtr, int mode) {
+        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Short;
+        ReleaseGenericArrayElements(object, bufPtr, mode);
+    }
+
+    @JniImpl
+    public void ReleaseIntArrayElements(StaticObject object, long bufPtr, int mode) {
+        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Int;
+        ReleaseGenericArrayElements(object, bufPtr, mode);
+    }
+
+    @JniImpl
+    public void ReleaseLongArrayElements(StaticObject object, long bufPtr, int mode) {
+        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Long;
+        ReleaseGenericArrayElements(object, bufPtr, mode);
+    }
+
+    @JniImpl
+    public void ReleaseFloatArrayElements(StaticObject object, long bufPtr, int mode) {
+        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Float;
+        ReleaseGenericArrayElements(object, bufPtr, mode);
+    }
+
+    @JniImpl
+    public void ReleaseDoubleArrayElements(StaticObject object, long bufPtr, int mode) {
+        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Double;
+        ReleaseGenericArrayElements(object, bufPtr, mode);
+    }
+
+    // endregion Release*ArrayElements
 }
