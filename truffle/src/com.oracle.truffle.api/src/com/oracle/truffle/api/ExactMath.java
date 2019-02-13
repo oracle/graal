@@ -52,60 +52,6 @@ public final class ExactMath {
     private ExactMath() {
     }
 
-    /**
-     * @deprecated use {@link Math#addExact(int, int)}
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public static int addExact(int x, int y) {
-        return Math.addExact(x, y);
-    }
-
-    /**
-     * @deprecated use {@link Math#addExact(long, long)}
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public static long addExact(long x, long y) {
-        return Math.addExact(x, y);
-    }
-
-    /**
-     * @deprecated use {@link Math#subtractExact(int, int)}
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public static int subtractExact(int x, int y) {
-        return Math.subtractExact(x, y);
-    }
-
-    /**
-     * @deprecated use {@link Math#subtractExact(long, long)}
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public static long subtractExact(long x, long y) {
-        return Math.subtractExact(x, y);
-    }
-
-    /**
-     * @deprecated use {@link Math#multiplyExact(int, int)}
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public static int multiplyExact(int x, int y) {
-        return Math.multiplyExact(x, y);
-    }
-
-    /**
-     * @deprecated use {@link Math#multiplyExact(long, long)}
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public static long multiplyExact(long x, long y) {
-        return Math.multiplyExact(x, y);
-    }
-
     /** @since 0.8 or earlier */
     public static int multiplyHigh(int x, int y) {
         long r = (long) x * (long) y;

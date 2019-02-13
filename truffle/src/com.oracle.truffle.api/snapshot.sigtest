@@ -71,22 +71,10 @@ meth public abstract boolean supportsOption(java.lang.String)
 meth public abstract void setOption(java.lang.String,java.lang.Object)
 
 CLSS public final com.oracle.truffle.api.ExactMath
-meth public static int addExact(int,int)
- anno 0 java.lang.Deprecated()
-meth public static int multiplyExact(int,int)
- anno 0 java.lang.Deprecated()
 meth public static int multiplyHigh(int,int)
 meth public static int multiplyHighUnsigned(int,int)
-meth public static int subtractExact(int,int)
- anno 0 java.lang.Deprecated()
-meth public static long addExact(long,long)
- anno 0 java.lang.Deprecated()
-meth public static long multiplyExact(long,long)
- anno 0 java.lang.Deprecated()
 meth public static long multiplyHigh(long,long)
 meth public static long multiplyHighUnsigned(long,long)
-meth public static long subtractExact(long,long)
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.InstrumentInfo
