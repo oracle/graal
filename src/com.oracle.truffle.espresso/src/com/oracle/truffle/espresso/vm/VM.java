@@ -571,7 +571,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool, int index) {
+    public static int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool, int index) {
         return jcpool.getMirrorKlass().getConstantPool().intAt(index);
     }
 
@@ -954,7 +954,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public Object JVM_GetMethodTypeAnnotations(@Host(Object.class) StaticObject guestReflectionMethod) {
+    public static Object JVM_GetMethodTypeAnnotations(@Host(Object.class) StaticObject guestReflectionMethod) {
         StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
         assert methodRoot != null;
         return ((StaticObjectImpl) methodRoot).getHiddenField(HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
