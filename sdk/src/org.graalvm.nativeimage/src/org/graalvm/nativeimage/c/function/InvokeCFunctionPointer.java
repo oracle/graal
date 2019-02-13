@@ -49,7 +49,8 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 
 /**
  * Annotation for an invocation method defined in a sub-interface of {@link CFunctionPointer}. The
- * method is called with C calling conventions.
+ * method is called with C calling conventions. See {@link CFunction} for more details on the
+ * invocation.
  *
  * @since 1.0
  */

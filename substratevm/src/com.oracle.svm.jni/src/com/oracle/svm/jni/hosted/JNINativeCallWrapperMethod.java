@@ -30,7 +30,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -49,9 +48,11 @@ import org.graalvm.compiler.nodes.java.MonitorIdNode;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.access.JNINativeLinkage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -190,7 +191,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
         kit.getFrameState().clearLocals();
 
-        Signature jniSignature = new JNISignature(jniArgumentTypes, jniReturnType);
+        Signature jniSignature = new SimpleSignature(jniArgumentTypes, jniReturnType);
         ValueNode returnValue = kit.createCFunctionCall(callAddress, jniArguments, jniSignature, true, false);
 
         if (getOriginal().isSynchronized()) {
