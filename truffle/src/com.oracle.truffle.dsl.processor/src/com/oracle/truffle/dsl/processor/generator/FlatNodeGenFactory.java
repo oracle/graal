@@ -549,7 +549,7 @@ public class FlatNodeGenFactory {
         }
 
         if (node.isUncachable() && node.isGenerateUncached()) {
-            CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC), "Uncached", node.getTemplateType().asType());
+            CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", node.getTemplateType().asType());
 
             for (ExecutableTypeData type : genericExecutableTypes) {
                 uncached.add(createUncachedExecute(type));
@@ -566,6 +566,10 @@ public class FlatNodeGenFactory {
             if (nodeInfo == null || nodeInfo.cost() == NodeCost.MONOMORPHIC /* the default */) {
                 uncached.add(createGetCostMethod(true));
             }
+            CodeExecutableElement isAdoptable = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "isAdoptable"));
+            isAdoptable.createBuilder().returnFalse();
+            uncached.add(isAdoptable);
+
             clazz.add(uncached);
             CodeVariableElement uncachedField = clazz.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), uncached.asType(), "UNCACHED"));
             uncachedField.createInitBuilder().startNew(uncached.asType()).end();

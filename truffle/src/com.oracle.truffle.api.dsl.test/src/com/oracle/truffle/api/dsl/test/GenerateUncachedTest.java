@@ -436,6 +436,22 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
+    public abstract static class UnachedArgumentNode extends Node {
+
+        public abstract Object execute(Object arg);
+
+        @Specialization
+        protected String s0(int arg) {
+            return "s0";
+        }
+
+        @Override
+        protected boolean isAdoptable() {
+            return super.isAdoptable();
+        }
+    }
+
+    @GenerateUncached
     @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any instance variables. Found instance variable ErrorNode1.field. Remove instance variable to resolve this.")
     abstract static class ErrorNode1 extends Node {
 
