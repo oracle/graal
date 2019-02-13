@@ -72,7 +72,7 @@ linux-amd64 : ${linux} {
 }
 
 darwin-amd64 : ${darwin} {
-  capabilities : [darwin_next, amd64]
+  capabilities : [darwin, amd64]
 }
 
 windows-amd64 : ${windows} {

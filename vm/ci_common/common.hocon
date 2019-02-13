@@ -111,7 +111,7 @@ vm_linux: ${common_vm_linux} {
 }
 
 vm_darwin: ${common_vm_darwin} {
-  capabilities: [darwin_sierra, amd64, ram16gb]
+  capabilities: [darwin, amd64, ram16gb]
 }
 
 gate_vm_linux: ${vm_linux} {
