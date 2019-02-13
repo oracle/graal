@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,18 +63,21 @@ static void initializeFlag(JNIEnv *env, jclass NFIContext, jobject context, cons
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNativeContext(JNIEnv *env, jobject context) {
     struct __TruffleContextInternal *ret = (struct __TruffleContextInternal *) malloc(sizeof(*ret));
 
+    jclass CallTarget, LibFFISignature, LibFFIType, NFIContext, LibFFIClosure_RetPatches, NativeSimpleType;
+    jmethodID initializeSimpleType;
+
     (*env)->GetJavaVM(env, &ret->javaVM);
     ret->functions = &truffleThreadAPI;
     ret->NFIContext = (*env)->NewGlobalRef(env, context);
 
-    jclass CallTarget = (*env)->FindClass(env, "com/oracle/truffle/api/CallTarget");
+    CallTarget = (*env)->FindClass(env, "com/oracle/truffle/api/CallTarget");
     ret->CallTarget_call = (*env)->GetMethodID(env, CallTarget, "call", "([Ljava/lang/Object;)Ljava/lang/Object;");
 
-    jclass LibFFISignature = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFISignature");
+    LibFFISignature = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFISignature");
     ret->LibFFISignature_cif = (*env)->GetFieldID(env, LibFFISignature, "cif", "J");
     ret->LibFFISignature_argTypes = (*env)->GetFieldID(env, LibFFISignature, "argTypes", "[Lcom/oracle/truffle/nfi/impl/LibFFIType;");
 
-    jclass LibFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType");
+    LibFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType");
     ret->LibFFIType_type = (*env)->GetFieldID(env, LibFFIType, "type", "J");
     ret->LibFFIType_EnvType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType$EnvType"));
     ret->LibFFIType_ObjectType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType$ObjectType"));
@@ -83,7 +86,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     ret->NativeString = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NativeString"));
     ret->NativeString_nativePointer = (*env)->GetFieldID(env, ret->NativeString, "nativePointer", "J");
 
-    jclass NFIContext = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NFIContext");
+    NFIContext = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NFIContext");
     ret->NFIContext_getNativeEnv = (*env)->GetMethodID(env, NFIContext, "getNativeEnv", "()J");
     ret->NFIContext_createClosureNativePointer = (*env)->GetMethodID(env, NFIContext, "createClosureNativePointer",
             "(JJLcom/oracle/truffle/api/CallTarget;Lcom/oracle/truffle/nfi/impl/LibFFISignature;)Lcom/oracle/truffle/nfi/impl/ClosureNativePointer;");
@@ -95,14 +98,14 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     ret->String = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/String"));
     ret->UnsatisfiedLinkError = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NFIUnsatisfiedLinkError"));
 
-    jclass LibFFIClosure_RetPatches = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIClosure$RetPatches");
+    LibFFIClosure_RetPatches = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIClosure$RetPatches");
     ret->RetPatches_count = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "count", "I");
     ret->RetPatches_patches = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "patches", "[I");
     ret->RetPatches_objects = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "objects", "[Ljava/lang/Object;");
 
 
-    jmethodID initializeSimpleType = (*env)->GetMethodID(env, NFIContext, "initializeSimpleType", "(Lcom/oracle/truffle/nfi/types/NativeSimpleType;IIJ)V");
-    jclass NativeSimpleType = (*env)->FindClass(env, "com/oracle/truffle/nfi/types/NativeSimpleType");
+    initializeSimpleType = (*env)->GetMethodID(env, NFIContext, "initializeSimpleType", "(Lcom/oracle/truffle/nfi/types/NativeSimpleType;IIJ)V");
+    NativeSimpleType = (*env)->FindClass(env, "com/oracle/truffle/nfi/types/NativeSimpleType");
 
     // it's important to initialize "POINTER" first, because the primitive array types depend on it
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "POINTER", &ffi_type_pointer);

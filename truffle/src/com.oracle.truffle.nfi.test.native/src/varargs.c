@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,14 +43,16 @@
 #include <stdarg.h>
 
 static char *add_int(char *dest, char *end, int64_t value, int base) {
+    char buffer[64];
+    int pos;
+    int64_t i;
+
     if (dest >= end) {
         return dest;
     }
 
-    char buffer[64];
-
-    int64_t i = value >= 0 ? value : -value;
-    int pos = 0;
+    i = value >= 0 ? value : -value;
+    pos = 0;
     do {
         buffer[pos++] = '0' + (i % base);
         i /= base;
@@ -68,6 +70,8 @@ static char *add_int(char *dest, char *end, int64_t value, int base) {
 }
 
 static char *add_double(char *dest, char *end, double value) {
+    int i;
+
     dest = add_int(dest, end, (int64_t) value, 10);
     value -= (int64_t) value;
 
@@ -75,7 +79,6 @@ static char *add_double(char *dest, char *end, double value) {
         *(dest++) = '.';
     }
 
-    int i;
     for (i = 0; dest < end && i < 2; i++) {
         value *= 10;
         *(dest++) = '0' + (int) value;
@@ -113,13 +116,13 @@ int format_string(char *buffer, uint64_t size, const char *format, ...) {
     char *dest = buffer;
     char *end = buffer + size;
 
-    va_list args;
-    va_start(args, format);
-
     int64_t d;
     double f;
     void *p;
     const char *s;
+
+    va_list args;
+    va_start(args, format);
 
     while (dest < end) {
         char ch = *(format++);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,8 +67,9 @@ char *string_ret_dynamic(int nr) {
 int free_dynamic_string(char *str) {
     struct dynamic_string *dynamic = NULL;
     intptr_t offset = dynamic->str - (char *) dynamic;
+    int magic;
     dynamic = (struct dynamic_string *) (str - offset);
-    int magic = dynamic->magic;
+    magic = dynamic->magic;
     free(dynamic);
     return magic;
 }

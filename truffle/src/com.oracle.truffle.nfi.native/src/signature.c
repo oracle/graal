@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,29 +60,37 @@ static int align_up(int index, int alignment) {
 
 static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *cif, jlong address, jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
     struct __TruffleEnvInternal truffleEnv;
+    void **argPtrs;
+    jbyte *primArgValues;
+    int primIdx, i;
+    jint *patches;
+
+    enum TypeTag *tagsForRelease;
+    jobject *objectsForRelease;
+    const void **ptrsForRelease;
+    int releaseCount;
 
     truffleEnv.functions = &truffleNativeAPI;
     truffleEnv.context = (struct __TruffleContextInternal *) ctx;
     truffleEnv.jniEnv = env;
 
-    void *argPtrs[cif->nargs];
+    argPtrs = alloca(sizeof(*argPtrs) * cif->nargs);
 
-    jbyte *primArgValues = (*env)->GetByteArrayElements(env, primArgs, NULL);
+    primArgValues = (*env)->GetByteArrayElements(env, primArgs, NULL);
 
-    int primIdx = 0;
-    int i;
+    primIdx = 0;
     for (i = 0; i < cif->nargs; i++) {
         primIdx = align_up(primIdx, cif->arg_types[i]->alignment);
         argPtrs[i] = primArgValues + primIdx;
         primIdx += cif->arg_types[i]->size;
     }
 
-    jint *patches = patchCount > 0 ? (*env)->GetIntArrayElements(env, patch, NULL) : NULL;
+    patches = patchCount > 0 ? (*env)->GetIntArrayElements(env, patch, NULL) : NULL;
 
-    enum TypeTag tagsForRelease[patchCount];
-    jobject objectsForRelease[patchCount];
-    const void *ptrsForRelease[patchCount];
-    int releaseCount = 0;
+    tagsForRelease = alloca(sizeof(*tagsForRelease) * patchCount);
+    objectsForRelease = alloca(sizeof(*objectsForRelease) * patchCount);
+    ptrsForRelease = alloca(sizeof(*ptrsForRelease) * patchCount);
+    releaseCount = 0;
 
     for (i = 0; i < patchCount; i++) {
         jobject arg = (*env)->GetObjectArrayElement(env, objArgs, i);
@@ -156,7 +164,7 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
 
     errno = errnoMirror;
 
-    ffi_call(cif, (void (*)()) address, ret, argPtrs);
+    ffi_call(cif, (void (*)(void)) address, ret, argPtrs);
 
     errnoMirror = errno;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,9 +66,11 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_freeLibrary(J
 static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
+    void *ret;
+
     // clear previous errors
     dlerror();
-    void *ret = dlsym(handle, utfName);
+    ret = dlsym(handle, utfName);
     if (ret == NULL) {
         const char *error = dlerror();
         // if error == NULL, the symbol was found, but really points to NULL
