@@ -266,6 +266,11 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
+    public static long getLong(@SuppressWarnings("unused") Object self, long offset) {
+        return U.getLong(offset);
+    }
+
+    @Substitution(hasReceiver = true)
     public static Object getObjectVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getObjectVolatile(((StaticObjectArray) holder).unwrap(), offset);
