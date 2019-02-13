@@ -99,9 +99,9 @@ def gate_body(args, tasks):
             import mx_compiler
             mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, prefix='LibGraal: ')
 
-        with Task('Test LibGraal', tasks, tags=[VmGateTasks.libgraal]) as t:
-            if t:
-                mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false"])
+            with Task('Test LibGraal', tasks, tags=[VmGateTasks.libgraal]) as t:
+                if t:
+                    mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false"])
     else:
         mx.warn("Skipping libgraal tests: component not enabled")
 
