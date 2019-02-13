@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -551,11 +551,6 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "workingSets" : "Truffle",
       "os_arch" : {
-        "windows" : {
-          "<others>" : {
-            "ignore" : "windows is not supported",  # necessary until Truffle is fully supported (GR-7941)
-          },
-        },
         "solaris" : {
           "<others>" : {
             "ignore" : "temporarily disabled",  # necessary until GR-13214 is resolved
@@ -600,8 +595,8 @@ suite = {
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "ignore" : "windows is not supported",
-          },
+            "cflags" : []
+          }
         },
         "solaris" : {
           "<others>" : {
