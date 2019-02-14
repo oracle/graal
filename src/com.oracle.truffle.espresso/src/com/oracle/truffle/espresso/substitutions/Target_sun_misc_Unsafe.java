@@ -347,6 +347,11 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
+    public static void putInt(@SuppressWarnings("unused") Object self, long offset, int value) {
+        U.putInt(offset, value);
+    }
+
+    @Substitution(hasReceiver = true)
     public static void putByte(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, byte value) {
         if (holder instanceof StaticObjectArray) {
             U.putByte(((StaticObjectArray) holder).unwrap(), offset, value);
