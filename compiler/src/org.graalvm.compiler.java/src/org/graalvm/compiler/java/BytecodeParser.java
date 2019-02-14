@@ -1648,11 +1648,11 @@ public class BytecodeParser implements GraphBuilderContext {
     private boolean forceInliningEverything;
 
     @Override
-    public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
+    public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
         boolean previous = forceInliningEverything;
         forceInliningEverything = previous || inlineEverything;
         try {
-            appendInvoke(invokeKind, targetMethod, args);
+            return appendInvoke(invokeKind, targetMethod, args);
         } finally {
             forceInliningEverything = previous;
         }
