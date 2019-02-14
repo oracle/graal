@@ -127,7 +127,7 @@ public class DebugOptions {
     public static final OptionKey<Boolean> LogVerbose = new OptionKey<>(false);
 
     @Option(help = "The directory where various Graal dump files are written.")
-    public static final OptionKey<String> DumpPath = new OptionKey<>("dumps");
+    public static final OptionKey<String> DumpPath = new OptionKey<>("graal_dumps");
     @Option(help = "Print the name of each dump file path as it's created.")
     public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);
 
