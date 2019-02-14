@@ -155,6 +155,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> override = StaticSymbols.putName("override");
         public static final Symbol<Name> parameterTypes = StaticSymbols.putName("parameterTypes");
         public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");
+        public static final Symbol<Name> clone = StaticSymbols.putName("clone");
 
         // Attribute names
         public static final Symbol<Name> Code = StaticSymbols.putName("Code");
@@ -248,6 +249,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> Parameter = StaticSymbols.putType(java.lang.reflect.Parameter.class);
         public static final Symbol<Type> Executable = StaticSymbols.putType(java.lang.reflect.Executable.class);
 
+        // MagicAccessorImpl is not public.
+        public static final Symbol<Type> MagicAccessorImpl = StaticSymbols.putType("Lsun/reflect/MagicAccessorImpl;");
+
         public static final Symbol<Type> Serializable = StaticSymbols.putType(java.io.Serializable.class);
         public static final Symbol<Type> ByteBuffer = StaticSymbols.putType(java.nio.ByteBuffer.class);
         public static final Symbol<Type> PrivilegedActionException = StaticSymbols.putType(java.security.PrivilegedActionException.class);
@@ -264,6 +268,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> NoSuchMethodError = StaticSymbols.putType(NoSuchMethodError.class);
         public static final Symbol<Type> IllegalAccessError = StaticSymbols.putType(IllegalAccessError.class);
         public static final Symbol<Type> IncompatibleClassChangeError = StaticSymbols.putType(IncompatibleClassChangeError.class);
+        public static final Symbol<Type> AbstractMethodError = StaticSymbols.putType(AbstractMethodError.class);
     }
 
     public static final class Signature extends Descriptor {

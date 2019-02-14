@@ -103,50 +103,73 @@ public interface MemberRefConstant extends PoolConstant {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean checkAccess(Klass accessingKlass, Klass holderKlass, Field f) {
+    static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Field f) {
         if (f.isPublic()) {
             return true;
         }
+        Klass fieldKlass = f.getDeclaringKlass();
         if (f.isProtected()) {
             if (!f.isStatic()) {
-                if (f.getDeclaringKlass().isAssignableFrom(accessingKlass)) {
+                if (resolvedKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(resolvedKlass)) {
                     return true;
                 }
             } else {
-                if (holderKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(holderKlass)) {
+                if (fieldKlass.isAssignableFrom(accessingKlass)) {
                     return true;
                 }
             }
         }
         if (f.isProtected() || f.isPackagePrivate()) {
-            return accessingKlass.getRuntimePackage().equals(f.getDeclaringKlass().getRuntimePackage());
+            if (accessingKlass.getRuntimePackage().equals(fieldKlass.getRuntimePackage())) {
+                return true;
+            }
         }
-        if (f.isPrivate() && f.getDeclaringKlass() == accessingKlass) {
+        if (f.isPrivate() && fieldKlass == accessingKlass) {
+            return true;
+        }
+        // MagicAccessorImpl marks internal reflection classes that have access to eveything.
+        if (accessingKlass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
             return true;
         }
         return false;
     }
 
     // Same as above.
-    static boolean checkAccess(Klass accessingKlass, Klass holderKlass, Method m) {
+    static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Method m) {
+
+        Klass methodKlass = m.getDeclaringKlass();
+
         if (m.isPublic()) {
             return true;
         }
+
+        if (Name.clone.equals(m.getName()) && methodKlass.isJavaLangObject()) {
+            if (resolvedKlass.isArray()) {
+                return true;
+            }
+        }
+
         if (m.isProtected()) {
             if (!m.isStatic()) {
-                if (m.getDeclaringKlass().isAssignableFrom(accessingKlass)) {
+                if (resolvedKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(resolvedKlass)) {
                     return true;
                 }
             } else {
-                if (holderKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(holderKlass)) {
+                if (methodKlass.isAssignableFrom(accessingKlass)) {
                     return true;
                 }
             }
         }
         if (m.isProtected() || m.isPackagePrivate()) {
-            return accessingKlass.getRuntimePackage().equals(m.getDeclaringKlass().getRuntimePackage());
+            if (accessingKlass.getRuntimePackage().equals(methodKlass.getRuntimePackage())) {
+                return true;
+            }
         }
-        if (m.isPrivate() && m.getDeclaringKlass() == accessingKlass) {
+        if (m.isPrivate() && methodKlass == accessingKlass) {
+            return true;
+        }
+        // MagicAccessorImpl marks internal reflection classes that have access to eveything.
+        if (accessingKlass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
             return true;
         }
         return false;

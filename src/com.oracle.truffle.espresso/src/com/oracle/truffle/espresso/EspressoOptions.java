@@ -59,4 +59,6 @@ public final class EspressoOptions {
     public static final OptionKey<String> JavaHome = new OptionKey<>("");
 
     public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
+
+    public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }
