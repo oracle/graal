@@ -41,9 +41,11 @@ public class G1BarrierSet extends BarrierSet {
 
     @Override
     public void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
-        assert (node.getBarrierType() == HeapAccess.BarrierType.PRECISE);
-        G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), node, false));
-        graph.addAfterFixed(node, barrier);
+        if (node.getBarrierType() != HeapAccess.BarrierType.NONE) {
+            assert (node.getBarrierType() == HeapAccess.BarrierType.PRECISE);
+            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), node, false));
+            graph.addAfterFixed(node, barrier);
+        }
     }
 
     @Override
