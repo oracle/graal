@@ -41,6 +41,8 @@
 package com.oracle.truffle.dsl.processor.library;
 
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createClass;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.findExecutableElement;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.findVariableElement;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
@@ -74,6 +76,7 @@ import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.library.LibraryExport;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -408,6 +411,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         cachedDispatch.add(GeneratorUtils.createConstructorUsingFields(modifiers(), cachedDispatch));
         for (MessageObjects message : methods) {
             CodeExecutableElement execute = cachedDispatch.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
+            execute.getAnnotationMirrors().add(createExplodeLoop());
             execute.renameArguments("receiver_");
             removeAbstractModifiers(execute);
             builder = execute.createBuilder();
@@ -630,6 +634,20 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             }
         }
         return newName.toString();
+    }
+
+    private CodeAnnotationMirror createExplodeLoop() {
+        DeclaredType explodeLoopType = context.getDeclaredType(ExplodeLoop.class);
+        CodeAnnotationMirror explodeLoop = new CodeAnnotationMirror(explodeLoopType);
+
+        DeclaredType loopExplosionKind = context.getDeclaredType(ExplodeLoop.LoopExplosionKind.class);
+        if (loopExplosionKind != null) {
+            VariableElement kindValue = findVariableElement(loopExplosionKind, "FULL_EXPLODE_UNTIL_RETURN");
+            if (kindValue != null) {
+                explodeLoop.setElementValue(findExecutableElement(explodeLoopType, "kind"), new CodeAnnotationValue(kindValue));
+            }
+        }
+        return explodeLoop;
     }
 
     private CodeExecutableElement createGenericDispatch(List<MessageObjects> methods, CodeTypeElement messageClass) {
