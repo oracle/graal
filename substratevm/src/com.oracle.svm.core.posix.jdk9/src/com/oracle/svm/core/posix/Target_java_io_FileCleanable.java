@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,46 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk9.posix;
+package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.ProcessProperties;
+import java.io.IOException;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK9OrLater;
-import com.oracle.svm.core.posix.Java_lang_Process_Supplement;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.posix.headers.Unistd;
 
-@TargetClass(className = "java.lang.ProcessHandleImpl", onlyWith = JDK9OrLater.class)
-final class Target_java_lang_ProcessHandleImpl {
+@TargetClass(className = "java.io.FileCleanable", onlyWith = JDK9OrLater.class)
+final class Target_java_io_FileCleanable {
 
-    @Substitute
-    private static long isAlive0(long pid) {
-        return ProcessProperties.isAlive(pid) ? 0 : -1;
-    }
-
-    @Substitute
-    private static int waitForProcessExit0(long pid, boolean reapvalue) {
-        return Java_lang_Process_Supplement.waitForProcessExit0(pid, reapvalue);
-    }
-
-    @Substitute
-    private static long getCurrentPid0() {
-        return ProcessProperties.getProcessID();
-    }
-
-    @Substitute
-    private static boolean destroy0(long pid, long startTime, boolean forcibly) {
-        VMError.guarantee(startTime == 0, "startTime != 0 currently not supported");
-        if (forcibly) {
-            return ProcessProperties.destroyForcibly(pid);
-        } else {
-            return ProcessProperties.destroy(pid);
+    /* { Do not re-format commented out C code. @formatter:off */
+    @Substitute //
+    @SuppressWarnings({"unused"})
+    // Translated from open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c
+    // 84  JNIEXPORT void JNICALL
+    // 85  Java_java_io_FileCleanable_cleanupClose0(JNIEnv *env, jclass fdClass, jint fd, jlong unused) {
+    private static /* native */ void cleanupClose0(int fd, long handle) throws IOException {
+        // 86      if (fd != -1) {
+        if (fd != -1) {
+            // 87          if (close(fd) == -1) {
+            if (Unistd.close(fd) == -1) {
+                // 88              JNU_ThrowIOExceptionWithLastError(env, "close failed");
+                throw PosixUtils.newIOExceptionWithLastError("close failed");
+            }
         }
     }
-
-    @Substitute
-    private static void initNative() {
-        /* Currently unused */
-    }
+    /* } Do not re-format commented out C code. @formatter:on */
 }

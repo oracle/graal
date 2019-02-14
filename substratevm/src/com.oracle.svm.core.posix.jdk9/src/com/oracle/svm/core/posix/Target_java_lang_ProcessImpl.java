@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk9.posix;
+package com.oracle.svm.core.posix;
 
 import java.io.IOException;
 
@@ -35,9 +35,7 @@ import org.graalvm.nativeimage.RuntimeClassInitialization;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK9OrLater;
-import com.oracle.svm.core.posix.Java_lang_Process_Supplement;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature

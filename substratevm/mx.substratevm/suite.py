@@ -84,7 +84,7 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.jdk9.posix": {
+        "com.oracle.svm.core.posix.jdk9": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -612,7 +612,7 @@ suite = {
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",
-                "com.oracle.svm.core.jdk9.posix",
+                "com.oracle.svm.core.posix.jdk9",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
             ],
