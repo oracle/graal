@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.213.1",
+  "mxversion" : "5.213.3",
   "name" : "truffle",
   "version" : "1.0.0-rc14",
   "release" : False,
@@ -635,18 +635,30 @@ suite = {
 
     "com.oracle.truffle.nfi.test.native" : {
       "subDir" : "src",
-      "native" : True,
-      "vpath" : True,
-      "results" : [
-        "bin/<lib:nativetest>",
-      ],
+      "native" : "shared_lib",
+      "deliverable" : "nativetest",
       "buildDependencies" : [
-        "TRUFFLE_NFI_NATIVE",
+        "com.oracle.truffle.nfi.native",
       ],
-      "buildEnv" : {
-        "TARGET" : "bin/<lib:nativetest>",
-        "CPPFLAGS" : "-I<path:TRUFFLE_NFI_NATIVE>/include",
-        "OS" : "<os>",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cflags" : []
+          }
+        },
+        "solaris" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+            "ldflags" : ["-m64"],
+            "ldlibs" : ["-lm"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror"],
+            "ldlibs" : ["-lm"],
+          },
+        },
       },
       "testProject" : True,
     },
