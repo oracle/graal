@@ -510,7 +510,8 @@ GraalTags = Tags([
     'build',
     'test',
     'benchmarktest',
-    'libgraal'
+    'libgraal',
+    'truffletck'
 ])
 
 @contextmanager
@@ -583,6 +584,28 @@ def svm_gate_body(args, tasks):
                 js = build_js(native_image)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
+
+        with Task('Truffle TCK', tasks, tags=[GraalTags.truffletck]) as t:
+            if t:
+                junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
+                mkpath(junit_native_dir)
+                junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
+                try:
+                    unittest_deps = []
+                    unittest_file = join(junit_tmp_dir, 'truffletck.tests')
+                    _run_tests([], lambda deps, vm_launcher, vm_args: unittest_deps.extend(deps), _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, [], [re.compile('com.oracle.truffle.tck.tests')], None, mx.suite('truffle'))
+                    if not exists(unittest_file):
+                        mx.abort('TCK tests not found.')
+                    unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
+                    vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
+                    tests_image = native_image(vm_image_args + ['--tool:truffle', '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature', '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*', '-H:MaxRuntimeCompileMethods=2000'])
+                    with open(unittest_file) as f:
+                        test_classes = [l.rstrip() for l in f.readlines()]
+                    mx.run([tests_image, '-Dtck.inlineVerifierInstrument=false'] + test_classes)
+                finally:
+                    remove_tree(junit_tmp_dir)
+
+
 
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:

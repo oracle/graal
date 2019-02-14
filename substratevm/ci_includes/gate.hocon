@@ -24,6 +24,12 @@ gate-svm-truffle-libgraal: {
   ]
 }
 
+gate-svm-truffle-tck: {
+  run: [
+    ${svm-cmd-gate} ["build,truffletck"]
+  ]
+}
+
 builds += [
   ${labsjdk8} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
     name: "gate-svm-js"
@@ -54,5 +60,9 @@ builds += [
   ${labsjdk8} ${svm-common-darwin-gate} ${gate-svm-truffle-libgraal} {
     name: "gate-svm-darwin-truffle-libgraal"
     timelimit: "45:00"
+  }
+  ${labsjdk8} ${svm-common-linux-gate} ${gate-svm-truffle-tck} ${svm-capabilities-base} {
+    name: "gate-svm-truffle-tck"
+    timelimit: "30:00"
   }
 ]
