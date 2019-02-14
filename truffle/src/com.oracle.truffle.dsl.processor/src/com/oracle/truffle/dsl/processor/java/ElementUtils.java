@@ -1575,12 +1575,14 @@ public class ElementUtils {
             return false;
         } else {
             if (visibility == Modifier.PROTECTED) {
-                TypeElement accessedType = findNearestEnclosingType(accessedElement).orElseThrow(AssertionError::new);
-                TypeElement accessingType = findNearestEnclosingType(accessingElement).orElseThrow(AssertionError::new);
-                if (ElementUtils.typeEquals(accessedType.asType(), accessingType.asType())) {
-                    return true;
-                } else if (ElementUtils.isSubtype(accessingType.asType(), accessedType.asType())) {
-                    return true;
+                TypeElement accessedType = findNearestEnclosingType(accessedElement).orElse(null);
+                TypeElement accessingType = findNearestEnclosingType(accessingElement).orElse(null);
+                if (accessedType != null && accessingType != null) {
+                    if (ElementUtils.typeEquals(accessedType.asType(), accessingType.asType())) {
+                        return true;
+                    } else if (ElementUtils.isSubtype(accessingType.asType(), accessedType.asType())) {
+                        return true;
+                    }
                 }
             }
             String thisPackageElement = ElementUtils.getPackageName(accessingElement);

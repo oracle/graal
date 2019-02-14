@@ -162,11 +162,18 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
+        Element packageElement = ElementUtils.findPackageElement(type);
+
         /*
-         * Second pass: duplication checks.
+         * Second pass: duplication and visibility checks.
          */
         for (ExportMessageElement exportedElement : exportedElements) {
             Element member = exportedElement.getMessageElement();
+
+            TypeMirror messageDeclaredType = exportedElement.getMessageElement().getEnclosingElement().asType();
+            TypeMirror messageReceiverType = exportedElement.getExport().getExportsLibrary().getReceiverType();
+            boolean isDeclaredInDifferentClass = !ElementUtils.typeEquals(messageDeclaredType, messageReceiverType);
+
             if (isMethodElement(member)) {
                 if (exportedElement.getExport().getExportedMethod() != null) {
                     // duplicate
@@ -187,8 +194,28 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 } else {
                     exportedElement.getExport().setExportedClass(exportedElement);
                 }
+
             } else {
                 throw new AssertionError("should not be reachable");
+            }
+
+            if (isDeclaredInDifferentClass) {
+                if (!ElementUtils.isVisible(packageElement, exportedElement.getMessageElement())) {
+                    exportedElement.addError("Element from class '%s' is not visible to the subclass '%s'. Increase the visibility in the base class to resolve this.",
+                                    ElementUtils.getSimpleName((TypeElement) exportedElement.getMessageElement().getEnclosingElement()),
+                                    ElementUtils.getSimpleName(exportedElement.getExport().getExportsLibrary().getReceiverType()));
+                } else if (isNodeElement(member)) {
+                    for (Element classMember : ElementFilter.methodsIn(member.getEnclosedElements())) {
+                        if (classMember.getAnnotation(Specialization.class) == null) {
+                            continue;
+                        }
+                        if (!ElementUtils.isVisible(packageElement, exportedElement.getMessageElement())) {
+                            exportedElement.addError("Element from class '%s' is not visible to the subclass '%s'. Increase the visibility in the base class to resolve this.",
+                                            ElementUtils.getSimpleName((TypeElement) exportedElement.getMessageElement().getEnclosingElement()),
+                                            ElementUtils.getSimpleName(exportedElement.getExport().getExportsLibrary().getReceiverType()));
+                        }
+                    }
+                }
             }
         }
 
@@ -196,7 +223,9 @@ public class ExportsParser extends AbstractParser<ExportsData> {
          * Third pass: initialize and further parsing that need both method and node to be
          * available.
          */
-        for (ExportMessageElement exportedElement : exportedElements) {
+        for (
+
+        ExportMessageElement exportedElement : exportedElements) {
             Element member = exportedElement.getMessageElement();
             if (isMethodElement(member)) {
                 initializeExportedMethod(model, exportedElement);
@@ -771,7 +800,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
             boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
             if (!isStatic) {
-                element.getParameters().add(0, new CodeVariableElement(exportsLibrary.getReceiverType(), "this"));
+                element.getParameters().add(0, new CodeVariableElement(exportedElement.getReceiverType(), "this"));
                 element.getModifiers().add(Modifier.STATIC);
             }
             type.add(element);
@@ -854,7 +883,9 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(GenerateUncached.class)));
         }
 
-        NodeData parsedNodeData = NodeParser.createExportParser(exportedMessage.getExport().getExportsLibrary().getLibrary().getTemplateType().asType()).parse(clonedType, false);
+        NodeData parsedNodeData = NodeParser.createExportParser(
+                        exportedMessage.getExport().getExportsLibrary().getLibrary().getTemplateType().asType(),
+                        exportedMessage.getExport().getExportsLibrary().getTemplateType()).parse(clonedType, false);
 
         parsedNodeCache.put(nodeTypeId, parsedNodeData);
 

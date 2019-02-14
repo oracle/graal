@@ -187,18 +187,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private boolean nodeOnly;
     private final ParseMode mode;
     private final TypeMirror exportLibraryType;
+    private final TypeElement exportDeclarationType;
 
-    private NodeParser(ParseMode mode, TypeMirror exportLibraryType) {
+    private NodeParser(ParseMode mode, TypeMirror exportLibraryType, TypeElement exportDeclarationType) {
         this.mode = mode;
         this.exportLibraryType = exportLibraryType;
+        this.exportDeclarationType = exportDeclarationType;
     }
 
-    public static NodeParser createExportParser(TypeMirror exportLibraryType) {
-        return new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType);
+    public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType) {
+        return new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType);
     }
 
     public static NodeParser createDefaultParser() {
-        return new NodeParser(ParseMode.DEFAULT, null);
+        return new NodeParser(ParseMode.DEFAULT, null, null);
     }
 
     @Override
@@ -799,6 +801,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return foundSpecialization;
     }
 
+    private Element getVisibiltySource(NodeData nodeData) {
+        if (mode == ParseMode.DEFAULT) {
+            return nodeData.getTemplateType();
+        } else {
+            return exportDeclarationType;
+        }
+    }
+
     private void initializeImportGuards(NodeData node, List<TypeElement> lookupTypes, List<Element> elements) {
         for (TypeElement lookupType : lookupTypes) {
             AnnotationMirror importAnnotation = findAnnotationMirror(processingEnv, lookupType, ImportStatic.class);
@@ -818,18 +828,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 TypeElement importClassElement = fromTypeMirror(context.reloadType(importClass));
-                Modifier visibility = getVisibility(importClassElement.getModifiers());
-                boolean error = false;
-                if (visibility == null || visibility == Modifier.PROTECTED) {
-                    if (!ElementUtils.elementEquals(ElementUtils.findPackageElement(node.getTemplateType()), ElementUtils.findPackageElement(importClassElement))) {
-                        error = true;
-                    }
-                } else if (visibility != Modifier.PUBLIC) {
-                    error = true;
-
-                }
-                if (error) {
-                    node.addError(importAnnotation, importClassesValue, "The specified static import class '%s' must be public or package protected and declared in the same package.",
+                if (!ElementUtils.isVisible(getVisibiltySource(node), importClassElement)) {
+                    node.addError(importAnnotation, importClassesValue, "The specified static import class '%s' is not visible.",
                                     getQualifiedName(importClass));
                 }
                 elements.addAll(importVisibleStaticMembers(node.getTemplateType(), importClassElement, false));
