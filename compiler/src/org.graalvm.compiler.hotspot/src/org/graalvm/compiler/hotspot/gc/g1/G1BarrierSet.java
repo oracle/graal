@@ -120,7 +120,7 @@ public class G1BarrierSet extends BarrierSet {
         graph.addAfterFixed(write.asNode(), g1ArrayRangePostWriteBarrier);
     }
 
-    private void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
+    private static void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
         G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(address, value, doLoad, nullCheck));
         preBarrier.setStateBefore(node.stateBefore());
         node.setNullCheck(false);
@@ -128,7 +128,7 @@ public class G1BarrierSet extends BarrierSet {
         graph.addBeforeFixed(node, preBarrier);
     }
 
-    private void addG1PostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
+    private static void addG1PostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
         graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(address, value, precise, alwaysNull)));
     }
