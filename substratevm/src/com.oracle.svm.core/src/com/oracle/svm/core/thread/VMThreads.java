@@ -209,56 +209,70 @@ public abstract class VMThreads {
 
     /**
      * Remove a {@link IsolateThread} from the list of VMThreads. This method must be the last
-     * method called in every thread. If the specified thread is not the current thread, it must not
-     * be executing Java code at the current or later time.
+     * method called in every thread.
      */
     @Uninterruptible(reason = "Manipulates the threads list; broadcasts on changes.")
-    public static void detachThread(IsolateThread thread) {
-        if (thread.equal(CurrentIsolate.getCurrentThread())) {
-            /*
-             * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling
-             * functions that are not marked as @Uninterruptible during the detach process. We hold
-             * the THREAD_MUTEX, so we know that we are not going to be interrupted by a safepoint.
-             * But a safepoint can already be requested, or our safepoint counter can reach 0 - so
-             * it is still possible that we enter the safepoint slow path.
-             */
-            StatusSupport.setStatusIgnoreSafepoints();
-        }
+    public static void detachThread(IsolateThread current) {
+        assert current.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach different thread with this method";
+
+        /*
+         * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling
+         * functions that are not marked as @Uninterruptible during the detach process. We hold the
+         * THREAD_MUTEX, so we know that we are not going to be interrupted by a safepoint. But a
+         * safepoint can already be requested, or our safepoint counter can reach 0 - so it is still
+         * possible that we enter the safepoint slow path.
+         */
+        StatusSupport.setStatusIgnoreSafepoints();
 
         // try-finally because try-with-resources can call interruptible code
         THREAD_MUTEX.lockNoTransition();
         try {
-            detachJavaThread(thread);
-
-            // Run down the current list and remove the given VMThread.
-            IsolateThread previous = nullThread();
-            IsolateThread current = head;
-            while (isNonNullThread(current)) {
-                IsolateThread next = nextTL.get(current);
-                if (current == thread) {
-                    // Splice the current element out of the list.
-                    if (isNullThread(previous)) {
-                        head = next;
-                    } else {
-                        nextTL.set(previous, next);
-                    }
-                    break;
-                } else {
-                    previous = current;
-                    current = next;
-                }
-            }
-            // Signal that the VMThreads list has changed.
-            THREAD_LIST_CONDITION.broadcast();
+            detachThreadInSafeContext(current);
         } finally {
             THREAD_MUTEX.unlock();
-            singleton().freeIsolateThread(thread);
         }
     }
 
-    @Uninterruptible(reason = "For calling interruptible code from uninterruptible code.", callerMustBe = true, mayBeInlined = true, calleeMustBe = false)
+    @Uninterruptible(reason = "Manipulates the threads list; broadcasts on changes.")
+    private static void detachThreadInSafeContext(IsolateThread thread) {
+        detachJavaThread(thread);
+
+        // Run down the current list and remove the given VMThread.
+        IsolateThread previous = nullThread();
+        IsolateThread current = head;
+        while (isNonNullThread(current)) {
+            IsolateThread next = nextTL.get(current);
+            if (current == thread) {
+                // Splice the current element out of the list.
+                if (isNullThread(previous)) {
+                    head = next;
+                } else {
+                    nextTL.set(previous, next);
+                }
+                break;
+            } else {
+                previous = current;
+                current = next;
+            }
+        }
+        // Signal that the VMThreads list has changed.
+        THREAD_LIST_CONDITION.broadcast();
+
+        singleton().freeIsolateThread(thread);
+    }
+
+    @Uninterruptible(reason = "For calling interruptible code from uninterruptible code.", calleeMustBe = false)
     private static void detachJavaThread(IsolateThread thread) {
         JavaThreads.detachThread(thread);
+    }
+
+    public static void detachThreads(IsolateThread[] threads) {
+        VMOperation.enqueueBlockingSafepoint("detachThreads", () -> {
+            for (IsolateThread thread : threads) {
+                assert !thread.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach current thread with this method";
+                detachThreadInSafeContext(thread);
+            }
+        });
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
