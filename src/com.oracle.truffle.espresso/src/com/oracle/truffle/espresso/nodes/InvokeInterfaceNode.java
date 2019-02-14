@@ -72,9 +72,10 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         Klass clazz = receiver.getKlass();
         Method m = clazz.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
 
-        if (m == null) {
+        while (m == null && clazz != null) {
             // FIXME(peterssen): Out-of-spec lookup for default (interface) method.
             m = lookupDefaultInterfaceMethod((ObjectKlass) clazz, resolutionSeed.getName(), resolutionSeed.getRawSignature());
+            clazz = clazz.getSuperKlass();
         }
 
         return m;
