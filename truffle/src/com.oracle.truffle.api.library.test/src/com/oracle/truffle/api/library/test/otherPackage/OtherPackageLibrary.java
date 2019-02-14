@@ -44,6 +44,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 
 @GenerateLibrary
+@SuppressWarnings("unused")
 public abstract class OtherPackageLibrary extends Library {
 
     public String m0(Object receiver) {

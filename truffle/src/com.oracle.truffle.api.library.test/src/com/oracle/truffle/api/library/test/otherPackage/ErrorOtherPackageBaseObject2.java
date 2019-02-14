@@ -56,7 +56,7 @@ public class ErrorOtherPackageBaseObject2 implements TruffleObject {
     @ExportMessage
     public static class M0 {
         @Specialization
-        static String doDefault(ErrorOtherPackageBaseObject2 receiver) {
+        static String doDefault(@SuppressWarnings("unused") ErrorOtherPackageBaseObject2 receiver) {
             return "m2_invalid";
         }
     }

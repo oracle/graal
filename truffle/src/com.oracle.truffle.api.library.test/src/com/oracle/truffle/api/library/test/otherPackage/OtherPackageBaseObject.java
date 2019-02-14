@@ -51,6 +51,7 @@ import com.oracle.truffle.api.library.ExportMessage;
  * Base language object used in tests for base types from other packages.
  */
 @ExportLibrary(OtherPackageLibrary.class)
+@SuppressWarnings("unused")
 public class OtherPackageBaseObject implements TruffleObject {
 
     public int value;
@@ -62,7 +63,7 @@ public class OtherPackageBaseObject implements TruffleObject {
     }
 
     @ExportMessage
-    public String m1(@Cached("this.value") int value) {
+    public String m1(@Cached("this.value") int cachedValue) {
         return "m1_base";
     }
 
