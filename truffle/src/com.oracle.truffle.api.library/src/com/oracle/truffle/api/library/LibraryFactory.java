@@ -328,7 +328,7 @@ public abstract class LibraryFactory<T extends Library> {
             String generatedClassName = libraryClass.getPackage().getName() + "." + libraryClass.getSimpleName() + "Gen";
             Class<?> loadedClass;
             try {
-                loadedClass = Class.forName(generatedClassName);
+                loadedClass = Class.forName(generatedClassName, true, libraryClass.getClassLoader());
             } catch (ClassNotFoundException e) {
                 return null;
             }
@@ -522,7 +522,7 @@ public abstract class LibraryFactory<T extends Library> {
         static void loadGeneratedClass(Class<?> currentReceiverClass) {
             String generatedClassName = currentReceiverClass.getPackage().getName() + "." + currentReceiverClass.getSimpleName() + "Gen";
             try {
-                Class.forName(generatedClassName);
+                Class.forName(generatedClassName, true, currentReceiverClass.getClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new AssertionError(String.format("Generated class '%s' for class '%s' not found. " +
                                 "Did the Truffle annotation processor run?", generatedClassName, currentReceiverClass.getName()), e);
