@@ -310,6 +310,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                 }
             } else if (interop.hasMembers(value)) {
                 return "Object";
+            } else if (value instanceof SLBigNumber) {
+                return value.toString();
             } else {
                 return "Unsupported";
             }
@@ -329,7 +331,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             return "ANY";
         }
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
-        if (interop.isNumber(value)) {
+        if (interop.isNumber(value) || value instanceof SLBigNumber) {
             return "Number";
         } else if (interop.isBoolean(value)) {
             return "Boolean";
