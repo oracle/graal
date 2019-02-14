@@ -39,10 +39,12 @@
  * SOFTWARE.
  */
 
+#if !defined(_WIN32)
 #define _GNU_SOURCE
 #include <dlfcn.h>
-#include <errno.h>
+#endif
 
+#include <errno.h>
 #include "internal.h"
 
 #if defined(__linux__)
@@ -62,6 +64,8 @@ void initialize_intrinsics(struct __TruffleContextInternal *context) {
 #ifdef ERRNO_LOCATION
     context->__pthreads_errno_location = ERRNO_LOCATION;
     context->__libc_errno_location = dlsym(RTLD_NEXT, STRINGIFY(ERRNO_LOCATION));
+#elif defined(_WIN32)
+    context->__libc_errno_location = _errno;
 #else
 #warning not intrinsifying __errno_location on this platform
     context->__pthreads_errno_location = NULL;
@@ -79,7 +83,11 @@ void *check_intrinsify(struct __TruffleContextInternal *context, void *orig) {
         return NULL;
     }
 
-    if (orig == context->__libc_errno_location || orig == context->__pthreads_errno_location) {
+    if (orig == context->__libc_errno_location
+#if !defined(_WIN32)
+        || orig == context->__pthreads_errno_location
+#endif
+        ) {
         return __errno_mirror_location;
     }
 

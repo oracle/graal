@@ -92,7 +92,9 @@ struct __TruffleContextInternal {
 
 
     void *__libc_errno_location;
+#if !defined(_WIN32)
     void *__pthreads_errno_location;
+#endif
 };
 
 struct __TruffleEnvInternal {
