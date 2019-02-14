@@ -190,21 +190,38 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                     insert(inlineNode);
                     snippetExecuted = true;
                 }
-                enter();
-                try {
-                    Object ret = inlineNode.execute(frame);
-                    if (resultVerifier != null) {
-                        verify(ret);
+                if (!isEntered()) {
+                    enter();
+                    try {
+                        Object ret = inlineNode.execute(frame);
+                        if (resultVerifier != null) {
+                            verify(ret);
+                        }
+                    } catch (ThreadDeath t) {
+                        throw t;
+                    } catch (Throwable t) {
+                        CompilerDirectives.transferToInterpreter();
+                        verify(t);
+                        throw t;
+                    } finally {
+                        leave();
                     }
-                } catch (ThreadDeath t) {
-                    throw t;
-                } catch (Throwable t) {
-                    CompilerDirectives.transferToInterpreter();
-                    verify(t);
-                    throw t;
-                } finally {
-                    leave();
                 }
+            }
+
+            @TruffleBoundary
+            private void leave() {
+                ENTERED.set(Boolean.FALSE);
+            }
+
+            @TruffleBoundary
+            private void enter() {
+                ENTERED.set(Boolean.TRUE);
+            }
+
+            @TruffleBoundary
+            private Boolean isEntered() {
+                return ENTERED.get();
             }
 
             @TruffleBoundary
