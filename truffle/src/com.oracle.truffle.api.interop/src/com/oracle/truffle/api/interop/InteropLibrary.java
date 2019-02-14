@@ -50,6 +50,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
 import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
@@ -57,31 +58,45 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 
 /**
- * Subclasses of this class represent guest language interoperability libraries. This class is only
- * a marker base class used for documentation purposes.
+ * Represents the library that specifies the interoperability message protocol between Truffle
+ * languages, tools and embedders. Every method represents one message specified by the protocol. In
+ * the following text we will abbreviate interoperability with interop.
  * <p>
- * With interop libraries only certain values are allowed to be passed. The following Java types are
- * allowed to be passed as receiver or argument value:
+ * The interop API differentiates between the source and the target language. The source language
+ * represents the language that implements/exports the message implementations. The implementations
+ * map types of the source language to the interop protocol as it is specified by the protocol. For
+ * example, language values that represent arrays or array like structures should implement the
+ * messages for {@link #hasArrayElements(Object) array based access}. This allows the target
+ * language to use/call the protocol without knowledge of the concrete source language. The target
+ * language embeds the interop protocol semantics as part of their existing language semantics. For
+ * example, language operations that access array elements in the target language should call
+ * {@link #hasArrayElements(Object) array access} messages for interop values.
+ * <p>
+ * The interop protocol only allows <i>interop values</i> to be used as receivers, return values or
+ * parameters of messages. Allowed Java types of interop values are:
  * <ul>
+ * <li>{@link TruffleObject}: Any subclass of {@link TruffleObject} is interpreted depending on the
+ * interop messages it {@link ExportLibrary exports}. Truffle objects are expected but not required
+ * to export interop library messages.
  * <li>{@link String} and {@link Character} are interpreted as {@link StringLibrary#isString(Object)
  * string} value.
  * <li>{@link Boolean} is interpreted as {@link BooleanLibrary#isBoolean(Object) boolean} value.
  * <li>{@link Byte}, {@link Short}, {@link Integer}, {@link Long}, {@link Float} and {@link Double}
  * are interpreted as {@link NumberLibrary#isNumber(Object) number} values.
- * <li>{@link TruffleObject}: A value that optionally exports implementations of some of the interop
- * libraries. Any value, even if not implementing any libraries is allowed to be passed.
  * </ul>
+ * <p>
+ * The interop library receiver must be an interop value.
+ *
  * Values are only verified if assertions are enabled. No other values are allowed to be passed in
  * order to allow the introduction of new types in future revisions of interop.
  * <p>
- * Across interop libraries checked exceptions are thrown to indicate error states. The interop
- * caller is supposed to catch those exceptions directly and translate them into guest language
- * errors of the target language. Interop errors include:
+ * Across interop message invocations {@link InteropException checked exceptions} are thrown to
+ * indicate error states. The target language is supposed to catch those exceptions directly and
+ * translate them into guest language errors of the target language. Interop errors include:
  *
- * TODO examples.
  *
- * <h3>Implementing</h3>
- *
+ * @see com.oracle.truffle.api.library Reference documentation on Truffle Libraries.
+ * @see For a tutorial on migration from the old interop API.
  * @since 1.0
  */
 @GenerateLibrary(assertions = Asserts.class, receiverType = TruffleObject.class)
