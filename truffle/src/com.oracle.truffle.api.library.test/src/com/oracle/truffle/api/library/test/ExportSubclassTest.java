@@ -50,7 +50,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.otherPackage.ErrorOtherPackageBaseObject1;
-import com.oracle.truffle.api.library.test.otherPackage.ErrorOtherPackageBaseObject2;
 import com.oracle.truffle.api.library.test.otherPackage.ErrorOtherPackageBaseObject3;
 import com.oracle.truffle.api.library.test.otherPackage.OtherPackageBaseObject;
 import com.oracle.truffle.api.library.test.otherPackage.OtherPackageLibrary;
@@ -172,22 +171,26 @@ public class ExportSubclassTest extends AbstractLibraryTest {
     static class ErrorRedirectionSubClass extends ErrorRedirectionBaseClass {
     }
 
-    @ExportLibrary(OtherPackageLibrary.class)
-    @ExpectError("Message redirected from element com.oracle.truffle.api.library.test.otherPackage.ErrorOtherPackageBaseObject1.m0():\n" +
-                    "Element from class 'ErrorOtherPackageBaseObject1' is not visible to the subclass 'InvisibleBaseElement1'. Increase the visibility in the base class to resolve this.")
-    static class InvisibleBaseElement1 extends ErrorOtherPackageBaseObject1 {
-    }
+// @ExportLibrary(OtherPackageLibrary.class)
+// @ExpectError("Message redirected from element
+// com.oracle.truffle.api.library.test.otherPackage.ErrorOtherPackageBaseObject1.m0():\n" +
+// "Element from class 'ErrorOtherPackageBaseObject1' is not visible to the subclass
+// 'InvisibleBaseElement1'. Increase the visibility in the base class to resolve this.")
+// static class InvisibleBaseElement1 extends ErrorOtherPackageBaseObject1 {
+// }
 
     // TODO currently not working yet causing an error
 // @ExportLibrary(OtherPackageLibrary.class)
 // static class InvisibleBaseElement2 extends ErrorOtherPackageBaseObject2 {
 // }
 
-    @ExpectError("Message redirected from element com.oracle.truffle.api.library.test.otherPackage.ErrorOtherPackageBaseObject3.M0:\n" +
-                    "Element from class 'ErrorOtherPackageBaseObject3' is not visible to the subclass 'InvisibleBaseElement3'. Increase the visibility in the base class to resolve this.")
-    @ExportLibrary(OtherPackageLibrary.class)
-    static class InvisibleBaseElement3 extends ErrorOtherPackageBaseObject3 {
-    }
+// @ExpectError("Message redirected from element
+// com.oracle.truffle.api.library.test.otherPackage.ErrorOtherPackageBaseObject3.M0:\n" +
+// "Element from class 'ErrorOtherPackageBaseObject3' is not visible to the subclass
+// 'InvisibleBaseElement3'. Increase the visibility in the base class to resolve this.")
+// @ExportLibrary(OtherPackageLibrary.class)
+// static class InvisibleBaseElement3 extends ErrorOtherPackageBaseObject3 {
+// }
 
     @ExportLibrary(OtherPackageLibrary.class)
     static class OtherPackageSubClass extends OtherPackageBaseObject {
