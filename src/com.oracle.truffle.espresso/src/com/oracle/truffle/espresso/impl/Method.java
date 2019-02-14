@@ -317,6 +317,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
      */
     @TruffleBoundary
     public Object invokeWithConversions(Object self, Object... args) {
+        getContext().getJNI().clearPendingException();
         assert args.length == Signatures.parameterCount(getParsedSignature(), false);
         // assert !isStatic() || ((StaticObjectImpl) self).isStatic();
         getDeclaringKlass().safeInitialize();
@@ -345,6 +346,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
      */
     @TruffleBoundary
     public Object invokeDirect(Object self, Object... args) {
+        getContext().getJNI().clearPendingException();
         if (isStatic()) {
             assert args.length == Signatures.parameterCount(getParsedSignature(), false);
             getDeclaringKlass().safeInitialize();
