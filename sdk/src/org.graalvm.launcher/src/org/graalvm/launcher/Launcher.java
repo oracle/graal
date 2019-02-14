@@ -453,7 +453,7 @@ public abstract class Launcher {
 
     @SuppressWarnings("fallthrough")
     final boolean runPolyglotAction() {
-        OptionCategory helpCategory = helpDebug ? OptionCategory.DEBUG : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
+        OptionCategory helpCategory = helpDebug ? OptionCategory.INTERNAL : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
 
         switch (versionAction) {
             case PrintAndContinue:

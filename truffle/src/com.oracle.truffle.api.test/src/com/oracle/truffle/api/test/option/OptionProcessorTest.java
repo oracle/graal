@@ -93,7 +93,7 @@ public class OptionProcessorTest {
         assertNotNull(descriptor);
         assertEquals("Help for lowerCaseOption", descriptor.getHelp());
         assertTrue(descriptor.isDeprecated());
-        assertSame(OptionCategory.DEBUG, descriptor.getCategory());
+        assertSame(OptionCategory.INTERNAL, descriptor.getCategory());
         assertSame(OptionTestLang1.LOWER_CASE_OPTION, descriptor.getKey());
 
         Iterator<OptionDescriptor> iterator = descriptors.iterator();
@@ -224,7 +224,7 @@ public class OptionProcessorTest {
         static final OptionKey<String> StringOption2 = new OptionKey<>("defaultValue");
 
         // The variable name differs from the option name on purpose, to test they can be different
-        @Option(help = "Help for lowerCaseOption", name = "lowerCaseOption", deprecated = true, category = OptionCategory.DEBUG) //
+        @Option(help = "Help for lowerCaseOption", name = "lowerCaseOption", deprecated = true, category = OptionCategory.INTERNAL) //
         static final OptionKey<String> LOWER_CASE_OPTION = new OptionKey<>("defaultValue");
 
         @Override

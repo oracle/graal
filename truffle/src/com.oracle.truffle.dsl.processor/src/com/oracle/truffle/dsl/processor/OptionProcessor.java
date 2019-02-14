@@ -278,7 +278,7 @@ public class OptionProcessor extends AbstractProcessor {
         OptionCategory category = annotation.category();
 
         if (category == null) {
-            category = OptionCategory.DEBUG;
+            category = OptionCategory.INTERNAL;
         }
 
         for (String group : groupPrefixStrings) {

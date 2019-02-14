@@ -52,7 +52,7 @@ public final class LLVMTracerInstrument extends TruffleInstrument {
     static final String ID = "TraceLLVM";
     static final String NAME = "LLVMTracerInstrument";
 
-    @Option(name = "", category = OptionCategory.DEBUG, help = "Enable tracing of executed instructions (defaults to \'stdout\', can be set to \'stderr\').") //
+    @Option(name = "", category = OptionCategory.INTERNAL, help = "Enable tracing of executed instructions (defaults to \'stdout\', can be set to \'stderr\').") //
     static final OptionKey<String> TRACELLVM = new OptionKey<>(String.valueOf("stdout"));
 
     private PrintStream traceTarget;

@@ -657,7 +657,7 @@ public class LanguageSPITest {
         boolean contextCachingEnabled = false;
         int executionIndex;
 
-        @Option(help = "", category = OptionCategory.DEBUG) static final OptionKey<Integer> DummyOption = new OptionKey<>(0);
+        @Option(help = "", category = OptionCategory.INTERNAL) static final OptionKey<Integer> DummyOption = new OptionKey<>(0);
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {

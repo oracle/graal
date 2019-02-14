@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Graal SDK versions. The main focus is on APIs exported by Graal SDK.
 
+## Version 1.0.0 RC13
+* [OptionCategory.DEBUG](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionCategory.html) has been renamed to `OptionCategory.INTERNAL` for clarity.
+
 ## Version 1.0 RC11
 * Added [SourceSection.hasLines()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasLines--), [SourceSection.hasColumns()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasColumns--) and [SourceSection.hasCharIndex()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasCharIndex--) to distinguish which positions are defined and which are not.
 * Added [FileSystem.getSeparator()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getSeparator--) to remove a dependency on NIO `FileSystem` for custom `Path` implementations.
