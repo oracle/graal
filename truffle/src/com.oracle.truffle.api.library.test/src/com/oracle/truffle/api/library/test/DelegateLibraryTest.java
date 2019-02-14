@@ -55,7 +55,7 @@ import com.oracle.truffle.api.test.ExpectError;
 public class DelegateLibraryTest extends AbstractLibraryTest {
 
     @GenerateLibrary
-    public abstract static class TestLibrary extends Library {
+    public abstract static class DelegateTestLibrary extends Library {
 
         public String doSomething(Object receiver) {
             return "default";
@@ -66,7 +66,7 @@ public class DelegateLibraryTest extends AbstractLibraryTest {
         }
     }
 
-    @ExportLibrary(TestLibrary.class)
+    @ExportLibrary(DelegateTestLibrary.class)
     static class SomeObject {
 
         @ExportMessage
@@ -80,7 +80,7 @@ public class DelegateLibraryTest extends AbstractLibraryTest {
         }
     }
 
-    @ExportLibrary(TestLibrary.class)
+    @ExportLibrary(DelegateTestLibrary.class)
     static class WrapperObject {
 
         final Object wrapped;
@@ -91,12 +91,12 @@ public class DelegateLibraryTest extends AbstractLibraryTest {
 
         @ExportMessage(limit = "1")
         @ExpectError("Specialized cached libraries cannot be shared yet.")
-        String doSomething(@ExpectError("Specialized cached libraries cannot be shared yet.") @Shared("delegate") @CachedLibrary("this.wrapped") TestLibrary delegate) {
+        String doSomething(@ExpectError("Specialized cached libraries cannot be shared yet.") @Shared("delegate") @CachedLibrary("this.wrapped") DelegateTestLibrary delegate) {
             return "wrapped:" + delegate.doSomething(wrapped);
         }
 
         @ExportMessage(limit = "1")
-        String doOther(@ExpectError("Specialized cached libraries cannot be shared yet.") @Shared("delegate") @CachedLibrary("this.wrapped") TestLibrary delegate) {
+        String doOther(@ExpectError("Specialized cached libraries cannot be shared yet.") @Shared("delegate") @CachedLibrary("this.wrapped") DelegateTestLibrary delegate) {
             return "wrapped:" + delegate.doOther(wrapped);
         }
     }
@@ -104,7 +104,7 @@ public class DelegateLibraryTest extends AbstractLibraryTest {
     @Test
     @org.junit.Ignore // not supported yet with specialized libraries.
     public void test() {
-        TestLibrary lib = createCachedDispatch(TestLibrary.class, 5);
+        DelegateTestLibrary lib = createCachedDispatch(DelegateTestLibrary.class, 5);
         Assert.assertEquals("wrapped:SomeObject", lib.doSomething(new WrapperObject(new SomeObject())));
         Assert.assertEquals("wrapped:other", lib.doOther(new WrapperObject(42)));
     }
