@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,59 +27,57 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.elf;
+package com.oracle.truffle.llvm.parser.macho;
 
 import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
+import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
-public final class ElfReader extends ObjectFileReader {
+public final class MachOReader extends ObjectFileReader {
 
-    private static final int EI_NIDENT = 16;
-    private static final int EI_CLASS = 4;
-    private static final int EI_DATA = 5;
-    private static final int ELFDATA2MSB = 2;
-    private static final int ELFCLASS64 = 2;
+    private static final long MH_CIGAM = LLVMScanner.Magic.MH_CIGAM.magic;
+    private static final long MH_MAGIC_64 = LLVMScanner.Magic.MH_MAGIC_64.magic;
+    private static final long MH_CIGAM_64 = LLVMScanner.Magic.MH_CIGAM_64.magic;
 
     private final boolean is64Bit;
 
-    private ElfReader(ByteSequence byteSequence, boolean littleEndian, boolean is64Bit) {
-        super(byteSequence, littleEndian);
+    private MachOReader(ByteSequence buffer, boolean littleEndian, boolean is64Bit) {
+        super(buffer, littleEndian);
         this.is64Bit = is64Bit;
-        setPosition(EI_NIDENT);
     }
 
-    static ElfReader create(ByteSequence byteSequence) {
-        checkIdent(byteSequence);
-        return new ElfReader(byteSequence, !isBigEndian(byteSequence), is64Bit(byteSequence));
+    public static MachOFile create(ByteSequence buffer) {
+        int position = 0;
+
+        int ret = buffer.byteAt(position++) & 0xff;
+        ret = (ret << 8) | (buffer.byteAt(position++) & 0xff);
+        ret = (ret << 8) | (buffer.byteAt(position++) & 0xff);
+        ret = (ret << 8) | (buffer.byteAt(position++) & 0xff);
+        long magic = Integer.toUnsignedLong(ret);
+
+        if (!MachOFile.isMachOMagicNumber(magic)) {
+            throw new LLVMParserException("Invalid Mach-O file!");
+        }
+
+        boolean is64Bit = isMachO64MagicNumber(magic);
+        MachOReader reader = new MachOReader(buffer, isReversedByteOrder(magic), is64Bit);
+        reader.setPosition(position);
+        MachOHeader header = MachOHeader.create(reader);
+        MachOLoadCommandTable loadCommandTable = MachOLoadCommandTable.create(header, reader);
+        return new MachOFile(header, loadCommandTable, reader.byteSequence);
     }
 
     public boolean is64Bit() {
         return is64Bit;
     }
 
-    public ByteSequence getStringTable(long offset, long size) {
-        return byteSequence.subSequence((int) offset, (int) (offset + size));
+    private static boolean isMachO64MagicNumber(long magic) {
+        return magic == MH_MAGIC_64 || magic == MH_CIGAM_64;
     }
 
-    private static boolean isBigEndian(ByteSequence ident) {
-        return ident.byteAt(EI_DATA) == ELFDATA2MSB;
+    private static boolean isReversedByteOrder(long magic) {
+        return magic == MH_CIGAM || magic == MH_CIGAM_64;
     }
 
-    private static boolean is64Bit(ByteSequence ident) {
-        return ident.byteAt(EI_CLASS) == ELFCLASS64;
-    }
-
-    private static void checkIdent(ByteSequence ident) {
-        checkIndentByte(ident, 0, 0x7f);
-        checkIndentByte(ident, 1, 'E');
-        checkIndentByte(ident, 2, 'L');
-        checkIndentByte(ident, 3, 'F');
-    }
-
-    private static void checkIndentByte(ByteSequence ident, int ind, int val) {
-        if (ident.byteAt(ind) != val) {
-            throw new LLVMParserException("Invalid ELF file!");
-        }
-    }
 }

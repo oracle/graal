@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,41 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.elf;
-
-import org.graalvm.polyglot.io.ByteSequence;
-
-public final class ElfFile {
-
-    private final ElfHeader header;
-    private final ElfSectionHeaderTable sectionHeaderTable;
-    private final ElfDynamicSection dynamicSection;
-
-    private ElfFile(ElfHeader header, ElfSectionHeaderTable sectionHeaderTable, ElfDynamicSection dynamicSection) {
-        super();
-        this.header = header;
-        this.sectionHeaderTable = sectionHeaderTable;
-        this.dynamicSection = dynamicSection;
-    }
-
-    public static ElfFile create(ByteSequence data) {
-        ElfReader reader = ElfReader.create(data);
-
-        ElfHeader header = ElfHeader.create(reader);
-        ElfSectionHeaderTable sectionHeaderTable = ElfSectionHeaderTable.create(header, reader);
-        ElfDynamicSection dynamicSection = ElfDynamicSection.create(sectionHeaderTable, reader);
-        return new ElfFile(header, sectionHeaderTable, dynamicSection);
-    }
-
-    public ElfHeader getHeader() {
-        return header;
-    }
-
-    public ElfDynamicSection getDynamicSection() {
-        return dynamicSection;
-    }
-
-    public ElfSectionHeaderTable getSectionHeaderTable() {
-        return sectionHeaderTable;
-    }
+#include <stdio.h>
+int main()
+{
+   printf("Hello, World!\n");
+   return 0;
 }

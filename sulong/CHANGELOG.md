@@ -1,3 +1,12 @@
+# Version 1.0.0 RC13
+
+New features:
+
+* Support for embedded bitcode in Mach-O files.
+  We support bitcode in the `__bitcode` section of Mach-O object files,
+  as well as bitcode files in an embedded xar archive in the `__bundle` section of
+  executables or dylibs.
+
 # Version 1.0.0 RC12
 
 Removed:

@@ -27,41 +27,66 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.elf;
+package com.oracle.truffle.llvm.parser.macho;
 
-import org.graalvm.polyglot.io.ByteSequence;
+public final class MachOHeader {
 
-public final class ElfFile {
+    private final int cpuType;
+    private final int cpuSubType;
+    private final int fileType;
+    private final int nCmds;
+    private final int sizeOfCmds;
+    private final int flags;
+    private final int reserved;
 
-    private final ElfHeader header;
-    private final ElfSectionHeaderTable sectionHeaderTable;
-    private final ElfDynamicSection dynamicSection;
-
-    private ElfFile(ElfHeader header, ElfSectionHeaderTable sectionHeaderTable, ElfDynamicSection dynamicSection) {
-        super();
-        this.header = header;
-        this.sectionHeaderTable = sectionHeaderTable;
-        this.dynamicSection = dynamicSection;
+    public MachOHeader(int cpuType, int cpuSubType, int fileType, int nrOfCmds, int sizeOfCmds, int flags, int reserved) {
+        this.cpuType = cpuType;
+        this.cpuSubType = cpuSubType;
+        this.fileType = fileType;
+        this.nCmds = nrOfCmds;
+        this.sizeOfCmds = sizeOfCmds;
+        this.flags = flags;
+        this.reserved = reserved;
     }
 
-    public static ElfFile create(ByteSequence data) {
-        ElfReader reader = ElfReader.create(data);
-
-        ElfHeader header = ElfHeader.create(reader);
-        ElfSectionHeaderTable sectionHeaderTable = ElfSectionHeaderTable.create(header, reader);
-        ElfDynamicSection dynamicSection = ElfDynamicSection.create(sectionHeaderTable, reader);
-        return new ElfFile(header, sectionHeaderTable, dynamicSection);
+    public int getCpuType() {
+        return cpuType;
     }
 
-    public ElfHeader getHeader() {
-        return header;
+    public int getCpuSubType() {
+        return cpuSubType;
     }
 
-    public ElfDynamicSection getDynamicSection() {
-        return dynamicSection;
+    public int getFileType() {
+        return fileType;
     }
 
-    public ElfSectionHeaderTable getSectionHeaderTable() {
-        return sectionHeaderTable;
+    public int getNCmds() {
+        return nCmds;
+    }
+
+    public int getSizeOfCmds() {
+        return sizeOfCmds;
+    }
+
+    public int getFlags() {
+        return flags;
+    }
+
+    public int getReserved() {
+        return reserved;
+    }
+
+    public static MachOHeader create(MachOReader reader) {
+        int cpuType = reader.getInt();
+        int cpuSubType = reader.getInt();
+        int fileType = reader.getInt();
+        int nrOfCmds = reader.getInt();
+        int sizeOfCmds = reader.getInt();
+        int flags = reader.getInt();
+        // 0 initialize the unused 'reserved' field
+        int reserved = reader.is64Bit() ? reader.getInt() : 0;
+
+        return new MachOHeader(cpuType, cpuSubType, fileType, nrOfCmds, sizeOfCmds, flags, reserved);
     }
 }
