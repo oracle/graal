@@ -23,10 +23,11 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.function.Function;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.function.IntFunction;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -228,19 +229,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             return this.getComponentType().isAssignableFrom(other.getComponentType());
         }
         if (isInterface()) {
-            return other.getInterfacesStream(true).anyMatch(new Predicate<Klass>() {
-                @Override
-                public boolean test(Klass i) {
-                    return i == Klass.this;
-                }
-            });
+            return other.getTransitiveInterfacesList().contains(this);
         }
-        return other.getSupertypesStream(true).anyMatch(new Predicate<Klass>() {
-            @Override
-            public boolean test(Klass k) {
-                return k == Klass.this;
-            }
-        });
+        return other.getSupertypesList(true).contains(this);
     }
 
     /**
@@ -363,34 +354,59 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return !isInterface();
     }
 
+    @CompilationFinal //
+    private List<Klass> supertypesWithSelfCache;
+
     @TruffleBoundary
-    private Stream<Klass> getSupertypesStream(boolean includeOwn) {
-        Klass supertype = getSupertype();
-        Stream<Klass> supertypes = (supertype != null)
-                        ? supertype.getSupertypesStream(true)
-                        : Stream.empty();
-        if (includeOwn) {
-            return Stream.concat(Stream.of(this), supertypes);
+    private final List<Klass> getSupertypesList(boolean includeSelf) {
+        List<Klass> supertypesWithSelf = getSupertypesList();
+        if (includeSelf) {
+            return supertypesWithSelf;
+        }
+        assert supertypesWithSelf.get(0) == this;
+        // Skip self.
+        return supertypesWithSelf.subList(1, supertypesWithSelf.size());
+    }
+
+    @TruffleBoundary
+    private final List<Klass> getSupertypesList() {
+        List<Klass> supertypes = supertypesWithSelfCache;
+        if (supertypes == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            supertypes = new ArrayList<>();
+            supertypes.add(this);
+            Klass supertype = getSupertype();
+            if (supertype != null) {
+                supertypes.addAll(supertype.getSupertypesList());
+            }
+            supertypes = Collections.unmodifiableList(supertypes);
+            supertypesWithSelfCache = supertypes;
         }
         return supertypes;
     }
 
+    @CompilationFinal //
+    private List<ObjectKlass> transitiveInterfacesCache;
+
     @TruffleBoundary
-    protected Stream<ObjectKlass> getInterfacesStream(boolean includeInherited) {
-        Stream<ObjectKlass> interfaces = Stream.of(getInterfaces());
-        ObjectKlass superclass = getSuperKlass();
-        if (includeInherited && superclass != null) {
-            interfaces = Stream.concat(interfaces, superclass.getInterfacesStream(includeInherited));
+    protected final List<ObjectKlass> getTransitiveInterfacesList() {
+        List<ObjectKlass> transitiveInterfaces = transitiveInterfacesCache;
+        if (transitiveInterfaces == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            List<ObjectKlass> interfaces = new ArrayList<>(Arrays.asList(getInterfaces()));
+            ObjectKlass superclass = getSuperKlass();
+            if (superclass != null) {
+                interfaces.addAll(superclass.getTransitiveInterfacesList());
+            }
+            ArrayList<ObjectKlass> flatMapped = new ArrayList<>();
+            for (ObjectKlass i : interfaces) {
+                flatMapped.add(i);
+                flatMapped.addAll(i.getTransitiveInterfacesList());
+            }
+            transitiveInterfaces = Collections.unmodifiableList(flatMapped);
+            transitiveInterfacesCache = transitiveInterfaces;
         }
-        if (includeInherited) {
-            interfaces = interfaces.flatMap(new Function<ObjectKlass, Stream<? extends ObjectKlass>>() {
-                @Override
-                public Stream<? extends ObjectKlass> apply(ObjectKlass i) {
-                    return Stream.concat(Stream.of(i), i.getInterfacesStream(includeInherited));
-                }
-            });
-        }
-        return interfaces;
+        return transitiveInterfaces;
     }
 
     @TruffleBoundary
