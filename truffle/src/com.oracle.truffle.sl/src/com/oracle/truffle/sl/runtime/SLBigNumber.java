@@ -105,7 +105,7 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isNumber() {
-        return true;
+        return fitsInLong();
     }
 
     @ExportMessage
