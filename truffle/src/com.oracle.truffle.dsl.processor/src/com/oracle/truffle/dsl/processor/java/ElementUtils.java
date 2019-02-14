@@ -1608,28 +1608,36 @@ public class ElementUtils {
         return null;
     }
 
-    public static String getReadableReference(Element element) {
+    public static String getReadableReference(Element element, boolean qualifiedType) {
         String parent;
         switch (element.getKind()) {
             case CLASS:
             case INTERFACE:
             case ENUM:
-                return getQualifiedName((TypeElement) element);
+                if (qualifiedType) {
+                    return getQualifiedName((TypeElement) element);
+                } else {
+                    return getSimpleName((TypeElement) element);
+                }
             case PACKAGE:
                 return ((PackageElement) element).getQualifiedName().toString();
             case CONSTRUCTOR:
             case METHOD:
-                parent = getReadableReference(element.getEnclosingElement());
+                parent = getReadableReference(element.getEnclosingElement(), qualifiedType);
                 return parent + "." + getReadableSignature((ExecutableElement) element);
             case PARAMETER:
-                parent = getReadableReference(element.getEnclosingElement());
+                parent = getReadableReference(element.getEnclosingElement(), qualifiedType);
                 return parent + " parameter " + element.getSimpleName().toString();
             case FIELD:
-                parent = getReadableReference(element.getEnclosingElement());
+                parent = getReadableReference(element.getEnclosingElement(), qualifiedType);
                 return parent + "." + element.getSimpleName().toString();
             default:
                 return "Unknown Element";
         }
+    }
+
+    public static String getReadableReference(Element element) {
+        return getReadableReference(element, true);
     }
 
 }

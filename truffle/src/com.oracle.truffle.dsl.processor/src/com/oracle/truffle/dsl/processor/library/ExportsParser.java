@@ -68,6 +68,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -130,9 +131,42 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         }
 
         parsedNodeCache.clear();
-
+        Element packageElement = ElementUtils.findPackageElement(type);
         List<Element> members = loadMembers(type);
         Map<String, List<Element>> potentiallyMissedOverrides = new LinkedHashMap<>();
+
+        TypeElement currentType = ElementUtils.getSuperType(type);
+        while (currentType != null) {
+            List<AnnotationMirror> exportedLibraries = getRepeatedAnnotation(currentType.getAnnotationMirrors(), ExportLibrary.class);
+            if (!exportedLibraries.isEmpty()) {
+                List<Element> foundInvisibleMembers = new ArrayList<>();
+                List<Element> superTypeMembers = loadMembers(currentType);
+                for (Element superTypeMember : superTypeMembers) {
+                    List<AnnotationMirror> exportedMessages = getRepeatedAnnotation(superTypeMember.getAnnotationMirrors(), ExportMessage.class);
+                    if (!exportedMessages.isEmpty()) {
+                        if (!ElementUtils.isVisible(packageElement, superTypeMember)) {
+                            foundInvisibleMembers.add(superTypeMember);
+                        } else if (superTypeMember.getKind().isClass()) {
+                            for (Element specializationMember : loadMembers((TypeElement) superTypeMember)) {
+                                if (specializationMember.getAnnotation(Specialization.class) != null && !ElementUtils.isVisible(packageElement, specializationMember)) {
+                                    foundInvisibleMembers.add(specializationMember);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!foundInvisibleMembers.isEmpty()) {
+                    StringBuilder b = new StringBuilder();
+                    for (Element invisibleMember : foundInvisibleMembers) {
+                        b.append("\n   - ");
+                        b.append(ElementUtils.getReadableReference(invisibleMember, false));
+                    }
+                    model.addError("Found invisible exported elements in super type '%s': %s%nIncrease their visibility to resolve this problem.", ElementUtils.getSimpleName(currentType),
+                                    b.toString());
+                }
+            }
+            currentType = ElementUtils.getSuperType(currentType);
+        }
 
         /*
          * First pass: element creation
@@ -162,18 +196,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
-        Element packageElement = ElementUtils.findPackageElement(type);
-
         /*
          * Second pass: duplication and visibility checks.
          */
         for (ExportMessageElement exportedElement : exportedElements) {
             Element member = exportedElement.getMessageElement();
-
-            TypeMirror messageDeclaredType = exportedElement.getMessageElement().getEnclosingElement().asType();
-            TypeMirror messageReceiverType = exportedElement.getExport().getExportsLibrary().getReceiverType();
-            boolean isDeclaredInDifferentClass = !ElementUtils.typeEquals(messageDeclaredType, messageReceiverType);
-
             if (isMethodElement(member)) {
                 if (exportedElement.getExport().getExportedMethod() != null) {
                     // duplicate
@@ -197,25 +224,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
             } else {
                 throw new AssertionError("should not be reachable");
-            }
-
-            if (isDeclaredInDifferentClass) {
-                if (!ElementUtils.isVisible(packageElement, exportedElement.getMessageElement())) {
-                    exportedElement.addError("Element from class '%s' is not visible to the subclass '%s'. Increase the visibility in the base class to resolve this.",
-                                    ElementUtils.getSimpleName((TypeElement) exportedElement.getMessageElement().getEnclosingElement()),
-                                    ElementUtils.getSimpleName(exportedElement.getExport().getExportsLibrary().getReceiverType()));
-                } else if (isNodeElement(member)) {
-                    for (Element classMember : ElementFilter.methodsIn(member.getEnclosedElements())) {
-                        if (classMember.getAnnotation(Specialization.class) == null) {
-                            continue;
-                        }
-                        if (!ElementUtils.isVisible(packageElement, exportedElement.getMessageElement())) {
-                            exportedElement.addError("Element from class '%s' is not visible to the subclass '%s'. Increase the visibility in the base class to resolve this.",
-                                            ElementUtils.getSimpleName((TypeElement) exportedElement.getMessageElement().getEnclosingElement()),
-                                            ElementUtils.getSimpleName(exportedElement.getExport().getExportsLibrary().getReceiverType()));
-                        }
-                    }
-                }
             }
         }
 
@@ -354,12 +362,15 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             // not interested in methods of Node
             if (typeEquals(element.getEnclosingElement().asType(), context.getTruffleTypes().getNode())) {
                 elementIterator.remove();
-            }
+            } else
             // not interested in methods of Object
             if (typeEquals(element.getEnclosingElement().asType(), context.getType(Object.class))) {
                 elementIterator.remove();
+            } else if (!ElementUtils.typeEquals(templateType.asType(), element.getEnclosingElement().asType()) && !ElementUtils.isVisible(templateType, element)) {
+                elementIterator.remove();
             }
         }
+
         return elements;
     }
 
