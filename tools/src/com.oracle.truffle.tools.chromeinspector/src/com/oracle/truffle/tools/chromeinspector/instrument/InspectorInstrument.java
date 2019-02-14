@@ -247,11 +247,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                 if (server != null) {
                     return server.getConnection().getExecutionContext();
                 } else {
-                    try {
-                        return new InspectorExecutionContext("Main Context", options.get(Internal), options.get(Initialization), env, Collections.emptyList(), new PrintWriter(env.err()));
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
+                    return new InspectorExecutionContext("Main Context", options.get(Internal), options.get(Initialization), env, Collections.emptyList(), new PrintWriter(env.err()));
                 }
             }
         }));
