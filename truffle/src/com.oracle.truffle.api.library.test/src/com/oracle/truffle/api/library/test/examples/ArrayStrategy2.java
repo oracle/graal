@@ -84,9 +84,9 @@ public class ArrayStrategy2 {
     }
 
     static final class SequenceArray implements Array {
-        private final int length;
         private final int start;
         private final int stride;
+        private final int length;
 
         SequenceArray(int start, int stride, int length) {
             this.start = start;

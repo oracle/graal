@@ -106,9 +106,9 @@ public class ArrayStrategy3 {
 
     @ExportLibrary(ArrayLibrary.class)
     static final class SequenceArray {
-        private final int length;
         private final int start;
         private final int stride;
+        private final int length;
 
         SequenceArray(int start, int stride, int length) {
             this.start = start;

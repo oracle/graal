@@ -96,8 +96,8 @@ public class ArrayStrategy1 {
         }
 
         @Specialization
-        int doSequence(SequenceArray array, int index) {
-            return array.start + array.stride * index;
+        int doSequence(SequenceArray seq, int index) {
+            return seq.start + seq.stride * index;
         }
     }
 
