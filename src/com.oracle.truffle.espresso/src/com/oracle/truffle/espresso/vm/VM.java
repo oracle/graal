@@ -601,33 +601,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public @Host(Object.class) StaticObject JVM_NewInstanceFromConstructor(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0) {
-        Klass klass = ((StaticObjectClass) getMeta().Constructor_clazz.get(constructor)).getMirrorKlass();
-        klass.initialize();
-        if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
-            throw klass.getMeta().throwEx(InstantiationException.class);
-        }
-        StaticObject instance = klass.allocateInstance();
-
-        StaticObject args = StaticObject.isNull(args0) ? getMeta().Object.allocateArray(0) : args0;
-
-        StaticObject curInit = constructor;
-
-        // Find constructor root.
-        Method target = null;
-        while (target == null) {
-            target = (Method) ((StaticObjectImpl) curInit).getHiddenField("$$method_info");
-            if (target == null) {
-                curInit = (StaticObject) getMeta().Constructor_root.get(curInit);
-            }
-        }
-
-        target.invokeDirect(instance, ((StaticObjectArray) args).unwrap());
-        return instance;
-    }
-
-    @VmImpl
-    @JniImpl
     public @Host(Class.class) StaticObject JVM_FindLoadedClass(@Host(ClassLoader.class) StaticObject loader, @Host(String.class) StaticObject name) {
         Symbol<Type> type = getTypes().fromClassGetName(Meta.toHostString(name));
         Klass klass = getRegistries().findLoadedClass(type, loader);
