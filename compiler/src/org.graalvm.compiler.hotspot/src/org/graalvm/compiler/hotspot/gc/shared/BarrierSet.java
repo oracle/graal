@@ -42,8 +42,12 @@ public abstract class BarrierSet {
     }
 
     public abstract void addReadNodeBarriers(ReadNode node, StructuredGraph graph);
+
     public abstract void addWriteNodeBarriers(WriteNode node, StructuredGraph graph);
+
     public abstract void addAtomicReadWriteNodeBarriers(LoweredAtomicReadAndWriteNode node, StructuredGraph graph);
+
     public abstract void addCASBarriers(AbstractCompareAndSwapNode node, StructuredGraph graph);
+
     public abstract void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph);
 }
