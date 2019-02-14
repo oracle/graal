@@ -310,6 +310,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 ValueNode created = kit.append(new NewInstanceNode(receiverClass, true));
                 AbstractMergeNode merge = kit.endIf();
                 receiver = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{created, unboxed}));
+                merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
             } else {
                 receiver = unboxed;
             }
