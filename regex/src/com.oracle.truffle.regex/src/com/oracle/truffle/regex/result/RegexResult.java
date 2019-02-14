@@ -24,13 +24,14 @@
  */
 package com.oracle.truffle.regex.result;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.RegexLanguageObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.RegexResultEndArrayObject;
-import com.oracle.truffle.regex.runtime.RegexResultMessageResolutionForeign;
 import com.oracle.truffle.regex.runtime.RegexResultStartArrayObject;
+import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
  * {@link RegexResult} is a {@link TruffleObject} that represents the result of matching a regular
@@ -54,15 +55,23 @@ import com.oracle.truffle.regex.runtime.RegexResultStartArrayObject;
  * </ol>
  * </li>
  */
-public abstract class RegexResult implements RegexLanguageObject {
+public abstract class RegexResult extends AbstractConstantKeysObject {
 
-    public static final RegexResult NO_MATCH = new RegexResult(null, "NULL", 0) {
+    public static final class NoMatchResult extends RegexResult {
+
+        private NoMatchResult(RegexObject regex, Object input, int groupCount) {
+            super(regex, input, groupCount);
+        }
 
         @Override
         public String toString() {
             return "NO_MATCH";
         }
-    };
+    }
+
+    public static final NoMatchResult NO_MATCH = new NoMatchResult(null, "NULL", 0);
+
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("input", "isMatch", "groupCount", "start", "end", "regex");
 
     private final RegexObject regex;
     private final Object input;
@@ -96,12 +105,29 @@ public abstract class RegexResult implements RegexLanguageObject {
         return new RegexResultEndArrayObject(this);
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexResult;
+    @Override
+    public TruffleReadOnlyKeysArray getKeys() {
+        return KEYS;
     }
 
     @Override
-    public ForeignAccess getForeignAccess() {
-        return RegexResultMessageResolutionForeign.ACCESS;
+    public final Object readMemberImpl(String symbol) throws UnknownIdentifierException {
+        switch (symbol) {
+            case "input":
+                return getInput();
+            case "isMatch":
+                return this != NO_MATCH;
+            case "groupCount":
+                return getGroupCount();
+            case "start":
+                return getStartArrayObject();
+            case "end":
+                return getEndArrayObject();
+            case "regex":
+                return getCompiledRegex();
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.create(symbol);
+        }
     }
 }

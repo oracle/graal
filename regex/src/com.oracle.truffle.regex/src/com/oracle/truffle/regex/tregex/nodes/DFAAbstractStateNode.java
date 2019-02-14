@@ -24,8 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
@@ -62,7 +61,7 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
      * {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. This return value is
      * called "successor index" and may either be an index of the successors array (between 0 and
      * {@link #getSuccessors()}{@code .length}) or {@link #FS_RESULT_NO_SUCCESSOR}.
-     * 
+     *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param compactString

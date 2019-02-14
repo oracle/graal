@@ -24,11 +24,9 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 
 /**
  * {@link ForeignRegexCompiler} wraps a {@link TruffleObject} that is compatible with
@@ -39,8 +37,6 @@ import com.oracle.truffle.api.nodes.Node;
 public class ForeignRegexCompiler extends RegexCompiler {
 
     private final TruffleObject foreignCompiler;
-
-    private final Node executeNode = Message.EXECUTE.createNode();
 
     public ForeignRegexCompiler(TruffleObject foreignCompiler) {
         this.foreignCompiler = foreignCompiler;
@@ -58,9 +54,9 @@ public class ForeignRegexCompiler extends RegexCompiler {
     @Override
     public TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException {
         try {
-            return (TruffleObject) ForeignAccess.sendExecute(executeNode, foreignCompiler, source.getPattern(), source.getFlags());
+            return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(foreignCompiler, source.getPattern(), source.getFlags());
         } catch (InteropException ex) {
-            throw ex.raise();
+            throw new RuntimeException(ex);
         }
     }
 }

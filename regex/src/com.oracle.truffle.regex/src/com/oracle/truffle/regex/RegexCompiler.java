@@ -24,13 +24,15 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.regex.runtime.nodes.ToStringNode;
 
 /**
  * {@link RegexCompiler} is an executable {@link TruffleObject} that compiles regular expressions
@@ -58,59 +60,37 @@ import com.oracle.truffle.api.nodes.Node;
  * they are easier to provide by third-party RegExp engines. {@link RegexEngine}s exist because they
  * provide features that are desired by users of {@link RegexLanguage} (e.g. lazy compilation).
  */
+@ExportLibrary(InteropLibrary.class)
 public abstract class RegexCompiler implements RegexLanguageObject {
 
     /**
      * Uses the compiler to try and compile the regular expression described in {@code source}.
-     * 
+     *
      * @return a {@link CompiledRegexObject} or a compatible {@link TruffleObject}
      * @throws RegexSyntaxException if the engine discovers a syntax error in the regular expression
      * @throws UnsupportedRegexException if the regular expression is not supported by the engine
      */
     public abstract TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException;
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexCompiler;
+    @ExportMessage
+    public boolean isExecutable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return RegexCompilerMessageResolutionForeign.ACCESS;
-    }
-
-    @MessageResolution(receiverType = RegexCompiler.class)
-    static class RegexCompilerMessageResolution {
-
-        @Resolve(message = "EXECUTE")
-        abstract static class RegexCompilerExecuteNode extends Node {
-
-            public Object access(RegexCompiler receiver, Object[] args) {
-                if (!(args.length == 1 || args.length == 2)) {
-                    throw ArityException.raise(2, args.length);
-                }
-                if (!(args[0] instanceof String)) {
-                    throw UnsupportedTypeException.raise(args);
-                }
-                String pattern = (String) args[0];
-                String flags = "";
-                if (args.length == 2) {
-                    if (!(args[1] instanceof String)) {
-                        throw UnsupportedTypeException.raise(args);
-                    }
-                    flags = (String) args[1];
-                }
-                RegexSource regexSource = new RegexSource(pattern, flags);
-                return receiver.compile(regexSource);
-            }
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Cached ToStringNode patternToStringNode,
+                    @Cached ToStringNode flagsToStringNode) throws ArityException, UnsupportedTypeException {
+        if (!(args.length == 1 || args.length == 2)) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(2, args.length);
         }
-
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class RegexCompilerIsExecutableNode extends Node {
-
-            @SuppressWarnings("unused")
-            public boolean access(RegexCompiler receiver) {
-                return true;
-            }
+        String pattern = patternToStringNode.execute(args[0]);
+        String flags = "";
+        if (args.length == 2) {
+            flags = flagsToStringNode.execute(args[1]);
         }
+        RegexSource regexSource = new RegexSource(pattern, flags);
+        return compile(regexSource);
     }
 }

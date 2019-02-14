@@ -24,18 +24,11 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.util.ForeignAccessUtil;
 
-@ImportStatic(ForeignAccessUtil.class)
+@GenerateUncached
 public abstract class InputLengthNode extends Node {
 
     public static InputLengthNode create() {
@@ -45,22 +38,7 @@ public abstract class InputLengthNode extends Node {
     public abstract int execute(Object input);
 
     @Specialization
-    public int getLength(String input) {
+    static int getLength(String input) {
         return input.length();
-    }
-
-    @Specialization
-    public int getLength(TruffleObject input, @Cached("createGetSizeMessageNode()") Node readNode) {
-        try {
-            Object length = ForeignAccess.sendGetSize(readNode, input);
-            if (length instanceof Number && ((Number) length).longValue() <= Integer.MAX_VALUE) {
-                return ((Number) length).intValue();
-            }
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{length});
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException(e);
-        }
     }
 }

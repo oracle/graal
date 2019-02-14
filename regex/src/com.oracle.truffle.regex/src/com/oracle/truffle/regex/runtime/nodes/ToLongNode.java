@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.util;
+package com.oracle.truffle.regex.runtime.nodes;
 
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
-public class ForeignAccessUtil {
+@GenerateUncached
+public abstract class ToLongNode extends Node {
 
-    public static Node createReadMessageNode() {
-        return Message.READ.createNode();
+    public abstract long execute(Object arg) throws UnsupportedTypeException;
+
+    @Specialization(guards = "args.fitsInLong(arg)", limit = "2")
+    static long doLong(Object arg, @CachedLibrary("arg") InteropLibrary args) throws UnsupportedTypeException {
+        try {
+            return args.asLong(arg);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{arg});
+        }
     }
 
-    public static Node createGetSizeMessageNode() {
-        return Message.GET_SIZE.createNode();
+    public static ToLongNode create() {
+        return ToLongNodeGen.create();
     }
 }

@@ -25,41 +25,33 @@
 package com.oracle.truffle.regex.runtime;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexObject;
 
+@GenerateUncached
 public abstract class ExecuteRegexObjectNode extends Node {
 
-    @Child private Node executeNode = Message.EXECUTE.createNode();
-
-    public static ExecuteRegexObjectNode create() {
-        return ExecuteRegexObjectNodeGen.create();
-    }
-
-    public abstract Object execute(RegexObject receiver, Object input, Object fromIndex);
+    public abstract Object execute(RegexObject receiver, Object input, Object fromIndex) throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
 
     @Specialization(guards = "receiver == cachedReceiver", limit = "3")
-    protected Object executeFixed(RegexObject receiver, Object input, Object fromIndex,
+    static Object executeFixed(RegexObject receiver, Object input, Object fromIndex,
                     @Cached("receiver") @SuppressWarnings("unused") RegexObject cachedReceiver,
-                    @Cached("receiver.getCompiledRegexObject()") TruffleObject cachedCompiledRegex) {
-        return doExecute(cachedCompiledRegex, receiver, input, fromIndex);
+                    @Cached("receiver.getCompiledRegexObject()") TruffleObject cachedCompiledRegex,
+                    @CachedLibrary("cachedCompiledRegex") InteropLibrary functions) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
+        return functions.execute(cachedCompiledRegex, receiver, input, fromIndex);
     }
 
     @Specialization(replaces = "executeFixed")
-    protected Object executeVarying(RegexObject receiver, Object input, Object fromIndex) {
-        return doExecute(receiver.getCompiledRegexObject(), receiver, input, fromIndex);
-    }
-
-    private Object doExecute(TruffleObject compiledRegexObject, RegexObject regexObject, Object input, Object fromIndex) {
-        try {
-            return ForeignAccess.sendExecute(executeNode, compiledRegexObject, regexObject, input, fromIndex);
-        } catch (InteropException ex) {
-            throw ex.raise();
-        }
+    static Object executeVarying(RegexObject receiver, Object input, Object fromIndex,
+                    @CachedLibrary(limit = "3") InteropLibrary functions) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
+        return functions.execute(receiver.getCompiledRegexObject(), receiver, input, fromIndex);
     }
 }

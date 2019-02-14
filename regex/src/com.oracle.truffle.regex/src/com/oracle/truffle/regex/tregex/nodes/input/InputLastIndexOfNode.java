@@ -24,9 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.util.Boundaries;
 
@@ -45,16 +43,5 @@ public abstract class InputLastIndexOfNode extends Node {
             return -1;
         }
         return index;
-    }
-
-    @Specialization
-    public int lastIndexOf(TruffleObject input, char c, int fromIndex, int maxIndex,
-                    @Cached("create()") InputCharAtNode charAtNode) {
-        for (int i = fromIndex; i >= maxIndex; i--) {
-            if (charAtNode.execute(input, i) == c) {
-                return i;
-            }
-        }
-        return -1;
     }
 }

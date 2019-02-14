@@ -25,9 +25,7 @@
 package com.oracle.truffle.regex.tregex.nodes.input;
 
 import com.oracle.truffle.api.ArrayUtils;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 public abstract class InputIndexOfNode extends Node {
@@ -41,19 +39,5 @@ public abstract class InputIndexOfNode extends Node {
     @Specialization
     public int indexOf(String input, int fromIndex, int maxIndex, char[] chars) {
         return ArrayUtils.indexOf(input, fromIndex, maxIndex, chars);
-    }
-
-    @Specialization
-    public int indexOf(TruffleObject input, int fromIndex, int maxIndex, char[] chars,
-                    @Cached("create()") InputCharAtNode charAtNode) {
-        for (int i = fromIndex; i < maxIndex; i++) {
-            char c = charAtNode.execute(input, i);
-            for (char v : chars) {
-                if (c == v) {
-                    return i;
-                }
-            }
-        }
-        return -1;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,54 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.runtime;
+package com.oracle.truffle.regex.util;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.ArityException;
+import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.RegexLanguageObject;
-import com.oracle.truffle.regex.RegexObject;
 
 @ExportLibrary(InteropLibrary.class)
-public final class RegexObjectExecMethod implements RegexLanguageObject {
+public class TruffleReadOnlyKeysArray implements RegexLanguageObject {
 
-    private final RegexObject regex;
+    @CompilationFinal(dimensions = 1) private final String[] keys;
 
-    public RegexObjectExecMethod(RegexObject regex) {
-        this.regex = regex;
+    public TruffleReadOnlyKeysArray(String... keys) {
+        this.keys = keys;
+        Arrays.sort(this.keys);
     }
 
-    public RegexObject getRegexObject() {
-        return regex;
+    public boolean contains(String key) {
+        return Arrays.binarySearch(keys, key) >= 0;
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
-    boolean isExecutable() {
+    boolean hasArrayElements() {
         return true;
     }
 
     @ExportMessage
-    Object execute(Object[] args, @Cached ExecuteRegexObjectNode executeNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        if (args.length != 2) {
-            throw ArityException.create(2, args.length);
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < keys.length;
+    }
+
+    @ExportMessage
+    long getArraySize() {
+        return keys.length;
+    }
+
+    @ExportMessage
+    String readArrayElement(long index) throws InvalidArrayIndexException {
+        try {
+            return keys[(int) index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw InvalidArrayIndexException.create(index);
         }
-        return executeNode.execute(getRegexObject(), args[0], args[1]);
     }
 }

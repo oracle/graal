@@ -26,15 +26,16 @@ package com.oracle.truffle.regex;
 
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.RegexObjectExecMethod;
-import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlags;
 import com.oracle.truffle.regex.util.TruffleNull;
+import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
 
 /**
@@ -54,8 +55,9 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
  * regular expression against a string. The method accepts two parameters:
  * <ol>
  * <li>{@link Object} {@code input}: the character sequence to search in. This may either be a
- * {@link String} or a {@link TruffleObject} that responds to {@link Message#GET_SIZE} and returns
- * {@link Character}s on indexed {@link Message#READ} requests.</li>
+ * {@link String} or a {@link TruffleObject} that responds to
+ * {@link InteropLibrary#hasArrayElements(Object)} and returns {@link Character}s on indexed
+ * {@link InteropLibrary#readArrayElement(Object, long)} requests.</li>
  * <li>{@link Number} {@code fromIndex}: the position to start searching from. This argument will be
  * cast to {@code int}, since a {@link String} can not be longer than {@link Integer#MAX_VALUE}. If
  * {@code fromIndex} is greater than {@link Integer#MAX_VALUE}, this method will immediately return
@@ -67,8 +69,9 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
  * </ol>
  * <p>
  */
-@SuppressWarnings("javadoc")
-public class RegexObject implements RegexLanguageObject {
+public final class RegexObject extends AbstractConstantKeysObject {
+
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("exec", "pattern", "flags", "groups");
 
     private final RegexCompiler compiler;
     private final RegexSource source;
@@ -122,12 +125,25 @@ public class RegexObject implements RegexLanguageObject {
         return new RegexObjectExecMethod(this);
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexObject;
+    @Override
+    public TruffleReadOnlyKeysArray getKeys() {
+        return KEYS;
     }
 
     @Override
-    public ForeignAccess getForeignAccess() {
-        return RegexObjectMessageResolutionForeign.ACCESS;
+    public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
+        switch (symbol) {
+            case "exec":
+                return getExecMethod();
+            case "pattern":
+                return getSource().getPattern();
+            case "flags":
+                return getFlags();
+            case "groups":
+                return getNamedCaptureGroups();
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.create(symbol);
+        }
     }
 }
