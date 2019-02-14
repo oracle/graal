@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.debug;
 
+import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
+import static org.graalvm.compiler.debug.DebugOptions.PrintGraphPort;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
@@ -35,8 +38,8 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.function.Supplier;
-import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphPort;
-import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
+
+import org.graalvm.compiler.debug.DebugOptions.PrintGraphTarget;
 import org.graalvm.compiler.options.OptionValues;
 
 final class IgvDumpChannel implements WritableByteChannel {
@@ -52,7 +55,8 @@ final class IgvDumpChannel implements WritableByteChannel {
 
     @Override
     public int write(ByteBuffer src) throws IOException {
-        return channel().write(src);
+        WritableByteChannel channel = channel();
+        return channel == null ? 0 : channel.write(src);
     }
 
     @Override
@@ -77,10 +81,13 @@ final class IgvDumpChannel implements WritableByteChannel {
             throw new IOException();
         }
         if (sharedChannel == null) {
-            if (DebugOptions.PrintGraphFile.getValue(options)) {
+            PrintGraphTarget target = DebugOptions.PrintGraph.getValue(options);
+            if (target == PrintGraphTarget.File) {
                 sharedChannel = createFileChannel(pathProvider);
-            } else {
+            } else if (target == PrintGraphTarget.Network) {
                 sharedChannel = createNetworkChannel(pathProvider, options);
+            } else {
+                TTY.println("WARNING: Graph dumping requested but value of %s option is %s", DebugOptions.PrintGraph.getName(), PrintGraphTarget.Disable);
             }
         }
         return sharedChannel;
@@ -88,7 +95,7 @@ final class IgvDumpChannel implements WritableByteChannel {
 
     private static WritableByteChannel createNetworkChannel(Supplier<Path> pathProvider, OptionValues options) throws IOException {
         String host = PrintGraphHost.getValue(options);
-        int port = PrintBinaryGraphPort.getValue(options);
+        int port = PrintGraphPort.getValue(options);
         try {
             WritableByteChannel channel = SocketChannel.open(new InetSocketAddress(host, port));
             TTY.println("Connected to the IGV on %s:%d", host, port);
@@ -101,7 +108,7 @@ final class IgvDumpChannel implements WritableByteChannel {
              */
             return null;
         } catch (IOException e) {
-            if (!DebugOptions.PrintGraphFile.hasBeenSet(options)) {
+            if (pathProvider != null) {
                 return createFileChannel(pathProvider);
             } else {
                 throw new IOException(String.format("Could not connect to the IGV on %s:%d", host, port), e);
