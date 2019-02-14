@@ -480,14 +480,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     public String getRuntimePackage() {
+        assert !isArray();
         String typeString = getType().toString();
-        int lastDot = typeString.lastIndexOf('.');
-        if (lastDot < 0)
+        int lastSlash = typeString.lastIndexOf('/');
+        if (lastSlash < 0)
             return "";
-        String pkg = typeString.substring(lastDot + 1);
-        if (pkg.endsWith(";")) {
-            return pkg.substring(0, pkg.length() - 1);
-        }
+        assert typeString.startsWith("L");
+        String pkg = typeString.substring(1, lastSlash);
+        assert !pkg.endsWith(";");
         return pkg;
     }
 
