@@ -53,7 +53,7 @@ import com.oracle.truffle.api.dsl.Specialization;
  * Libraries} conveniently in {@link Specialization specializations} or {@link ExportMessage
  * exported messages}. It is designed as the primary way of using libraries. The
  * {@link CachedLibrary} annotation may be used for any parameters of methods annotated with
- * {@linkplain Specialization @Specialization} or {@linkplain @ExportMessage}.
+ * {@linkplain Specialization @Specialization} or {@linkplain ExportMessage @ExportMessage}.
  *
  * <h3>Using Specialized Libraries</h3>
  *
