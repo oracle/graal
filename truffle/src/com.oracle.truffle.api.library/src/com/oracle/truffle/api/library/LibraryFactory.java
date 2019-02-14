@@ -154,14 +154,31 @@ public abstract class LibraryFactory<T extends Library> {
             assert validateExport(receiver, dispatchClass, cached);
             return cached;
         }
-        LibraryExport<T> exports = lookupExport(receiver, dispatchClass);
-        cached = exports.createCached(receiver);
-        assert (cached = createAssertions(cached)) != null;
+        LibraryExport<T> export = lookupExport(receiver, dispatchClass);
+        cached = export.createCached(receiver);
+        assert (cached = createAssertionsImpl(export, cached)) != null;
         if (!NodeUtil.isAdoptable(cached)) {
             assert cached.accepts(receiver) : String.format("Invalid accepts implementation detected in '%s'", dispatchClass.getName());
             cachedCache.putIfAbsent(dispatchClass, cached);
         }
         return cached;
+    }
+
+    private T createAssertionsImpl(LibraryExport<T> export, T cached) {
+        if (needsAssertions(export)) {
+            return createAssertions(cached);
+        } else {
+            return cached;
+        }
+    }
+
+    private boolean needsAssertions(LibraryExport<T> export) {
+        Class<?> registerClass = export.registerClass;
+        if (export.isDefaultExport() && registerClass != null && registerClass.getName().equals("com.oracle.truffle.api.interop.DefaultTruffleObjectExports")) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     /**
@@ -179,10 +196,11 @@ public abstract class LibraryFactory<T extends Library> {
             assert validateExport(receiver, dispatchClass, uncached);
             return uncached;
         }
-        uncached = lookupExport(receiver, dispatchClass).createUncached(receiver);
+        LibraryExport<T> export = lookupExport(receiver, dispatchClass);
+        uncached = export.createUncached(receiver);
         assert validateExport(receiver, dispatchClass, uncached);
         assert uncached.accepts(receiver);
-        assert (uncached = createAssertions(uncached)) != null;
+        assert (uncached = createAssertionsImpl(export, uncached)) != null;
         uncachedCache.putIfAbsent(dispatchClass, uncached);
         return uncached;
     }
@@ -461,6 +479,9 @@ public abstract class LibraryFactory<T extends Library> {
         }
 
         static <T extends Library> void register(Class<?> receiverClass, LibraryExport<?>... libs) {
+            for (LibraryExport<?> lib : libs) {
+                lib.registerClass = receiverClass;
+            }
             LibraryExport<?>[] prevLibs = REGISTRY.put(receiverClass, libs);
             if (prevLibs != null) {
                 throw new IllegalStateException("Receiver " + receiverClass + " is already registered.");

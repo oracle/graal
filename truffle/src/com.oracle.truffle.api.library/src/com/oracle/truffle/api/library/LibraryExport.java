@@ -58,6 +58,8 @@ public abstract class LibraryExport<T extends Library> {
     private final Class<? extends T> library;
     private final boolean defaultExport;
 
+    Class<?> registerClass;
+
     /**
      * Constructor for generated code. Do not call manually.
      *
