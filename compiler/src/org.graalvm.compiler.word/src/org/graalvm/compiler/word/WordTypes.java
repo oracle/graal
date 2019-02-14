@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.word.Word.Operation;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
@@ -100,9 +99,6 @@ public class WordTypes {
         if (isObjectAccess || isBarrieredAccess) {
             assert targetMethod.getAnnotation(Operation.class) != null : targetMethod + " should be annotated with @" + Operation.class.getSimpleName();
             return true;
-        }
-        if (targetMethod.isAnnotationPresent(InvokeCFunctionPointer.class)) {
-            return false;
         }
         return isWord(targetMethod.getDeclaringClass());
     }
