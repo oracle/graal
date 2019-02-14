@@ -349,7 +349,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeUncachable(node, members);
 
         if (mode == ParseMode.DEFAULT) {
-            boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.cacheSharingWarningsEnabled", "false"));
+            boolean emitWarnings = Boolean.parseBoolean(System.getProperty("truffle.dsl.cacheSharingWarningsEnabled", "false"));
             node.setSharedCaches(computeSharing(Arrays.asList(node), emitWarnings));
         } else {
             // sharing is computed by the ExportsParser
