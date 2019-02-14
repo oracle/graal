@@ -32,7 +32,7 @@ import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 
-public class BarrierSet {
+public abstract class BarrierSet {
     public static BarrierSet create(GraalHotSpotVMConfig config) {
         if (config.useG1GC) {
             return new G1BarrierSet();
@@ -41,9 +41,9 @@ public class BarrierSet {
         }
     }
 
-    public void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {}
-    public void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {}
-    public void addAtomicReadWriteNodeBarriers(LoweredAtomicReadAndWriteNode node, StructuredGraph graph) {}
-    public void addCASBarriers(AbstractCompareAndSwapNode node, StructuredGraph graph) {}
-    public void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph) {}
+    public abstract void addReadNodeBarriers(ReadNode node, StructuredGraph graph);
+    public abstract void addWriteNodeBarriers(WriteNode node, StructuredGraph graph);
+    public abstract void addAtomicReadWriteNodeBarriers(LoweredAtomicReadAndWriteNode node, StructuredGraph graph);
+    public abstract void addCASBarriers(AbstractCompareAndSwapNode node, StructuredGraph graph);
+    public abstract void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph);
 }
