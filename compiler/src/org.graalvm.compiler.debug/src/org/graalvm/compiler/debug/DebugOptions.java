@@ -127,7 +127,7 @@ public class DebugOptions {
     public static final OptionKey<Boolean> LogVerbose = new OptionKey<>(false);
 
     @Option(help = "The directory where various Graal dump files are written.")
-    public static final OptionKey<String> DumpPath = new OptionKey<>("dumps");
+    public static final OptionKey<String> DumpPath = new OptionKey<>("graal_dumps");
     @Option(help = "Print the name of each dump file path as it's created.")
     public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);
 
@@ -136,7 +136,7 @@ public class DebugOptions {
     @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(true);
 
-    @Option(help = "Where to dump graphs for the IdealGraphVisualizer.", type = OptionType.Debug)
+    @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);
 
     @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
