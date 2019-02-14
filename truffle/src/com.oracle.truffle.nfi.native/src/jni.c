@@ -38,6 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#if defined(_WIN32)
+// Workaround for static linking. See comment in ffi.h, line 169.
+#define FFI_BUILDING
+#endif
+
 #include "native.h"
 #include "trufflenfi.h"
 
@@ -46,7 +51,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ffi.h>
+
+#if !defined(_WIN32)
 #include <dlfcn.h>
+#endif
 
 static void cacheFFIType(JNIEnv *env, jclass nativeSimpleType, jobject context, jmethodID initializeSimpleType, const char *enumName, ffi_type *type) {
     jfieldID enumField = (*env)->GetStaticFieldID(env, nativeSimpleType, enumName, "Lcom/oracle/truffle/nfi/types/NativeSimpleType;");
@@ -125,12 +133,12 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "STRING", &ffi_type_pointer);
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "OBJECT", &ffi_type_pointer);
 
-
+#if !defined(_WIN32)
     initializeFlag(env, NFIContext, context, "RTLD_GLOBAL", RTLD_GLOBAL);
     initializeFlag(env, NFIContext, context, "RTLD_LOCAL", RTLD_LOCAL);
     initializeFlag(env, NFIContext, context, "RTLD_LAZY", RTLD_LAZY);
     initializeFlag(env, NFIContext, context, "RTLD_NOW", RTLD_NOW);
-
+#endif
 
     initialize_intrinsics(ret);
 
