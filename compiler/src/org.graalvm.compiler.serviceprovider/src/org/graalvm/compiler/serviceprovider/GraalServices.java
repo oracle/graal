@@ -94,9 +94,10 @@ public final class GraalServices {
      * Creates an encoding of the context objects representing a speculation reason.
      *
      * @param groupId
+     * @param groupName
      * @param context the objects forming a key for the speculation
      */
-    static SpeculationReason createSpeculationReason(int groupId, Object... context) {
+    static SpeculationReason createSpeculationReason(int groupId, String groupName, Object... context) {
         throw shouldNotReachHere();
     }
 

@@ -40,32 +40,47 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 public final class SpeculationReasonGroup {
 
     private final int id;
+    private final String name;
+    private final Class<?>[] signature;
 
     private static final AtomicInteger nextId = new AtomicInteger(1);
 
-    public SpeculationReasonGroup() {
+    /**
+     * Creates speculation group whose context will always match {@code signature}.
+     */
+    public SpeculationReasonGroup(String name, Class<?>... signature) {
         this.id = nextId.get();
+        this.name = name;
+        this.signature = signature;
+        for (Class<?> c : signature) {
+            if (!isOfSupportedType(c)) {
+                throw new IllegalArgumentException("Unsupported speculation context type: " + c.getName());
+            }
+        }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s{id:%d, sig=%s}", name, id, Arrays.toString(signature));
     }
 
     /**
-     * Creates a speculation reason that is part of this group.
+     * Creates a speculation reason described by this group.
      *
      * @param context the details of the reason instance being created
      */
     public SpeculationReason createSpeculationReason(Object... context) {
-        assert checkTypes(context);
-        return GraalServices.createSpeculationReason(id, context);
+        assert checkSignature(context);
+        return GraalServices.createSpeculationReason(id, name, context);
     }
 
     private static final Set<Class<?>> SUPPORTED_EXACT_TYPES = new HashSet<>(Arrays.asList(
                     String.class,
-                    Integer.class,
-                    Long.class,
-                    Float.class,
-                    Double.class,
-                    BytecodePosition.class,
-                    ResolvedJavaMethod.class,
-                    ResolvedJavaType.class));
+                    int.class,
+                    long.class,
+                    float.class,
+                    double.class,
+                    BytecodePosition.class));
 
     private static boolean isOfSupportedType(Class<?> c) {
         if (SUPPORTED_EXACT_TYPES.contains(c)) {
@@ -77,32 +92,44 @@ public final class SpeculationReasonGroup {
         }
         if (ResolvedJavaMethod.class.isAssignableFrom(c) || ResolvedJavaType.class.isAssignableFrom(c)) {
             // Only the JVMCI implementation specific concrete subclasses
-            // of these types can be accepted but we cannot test for that
-            // here. A violation of this requirement will be caught by
-            // GR-13685.
+            // of these types will be accepted but we cannot test for that
+            // here since we are in JVMCI implementation agnostic code.
             return true;
         }
         return false;
     }
 
-    Class<?>[] types;
-
-    private boolean checkTypes(Object[] context) {
-        if (types == null) {
-            types = new Class<?>[context.length];
-        } else {
-            assert types.length == context.length : types.length + " != " + context.length;
+    static Class<?> toBox(Class<?> c) {
+        if (c == int.class) {
+            return Integer.class;
         }
+        if (c == long.class) {
+            return Long.class;
+        }
+        if (c == float.class) {
+            return Float.class;
+        }
+        if (c == double.class) {
+            return Double.class;
+        }
+        return c;
+    }
+
+    private boolean checkSignature(Object[] context) {
+        assert signature.length == context.length : name + ": Incorrect number of context arguments. Expected " + signature.length + ", got " + context.length;
         for (int i = 0; i < context.length; i++) {
             Object o = context[i];
+            Class<?> c = signature[i];
             if (o != null) {
-                Class<?> t = types[i];
-                if (t == null) {
-                    t = o.getClass();
-                    assert isOfSupportedType(t) : "Unsupported speculation context type: " + t;
-                    types[i] = t;
+                if (c == ResolvedJavaMethod.class || c == ResolvedJavaType.class) {
+                    c.cast(o);
                 } else {
-                    assert t == o.getClass() : "context argument " + i + " has inconsistent type: " + t + " != " + o.getClass();
+                    Class<?> oClass = o.getClass();
+                    assert toBox(c) == oClass : name + ": Context argument " + i + " is not a " + c.getName() + " but a " + oClass.getName();
+                }
+            } else {
+                if (c.isPrimitive() || Enum.class.isAssignableFrom(c)) {
+                    throw new AssertionError(name + ": Cannot pass null for argument " + i);
                 }
             }
         }

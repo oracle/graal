@@ -108,7 +108,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         throw new IllegalStateException("Unexpected frame slot kind tag: " + tagValue);
     }
 
-    private static final SpeculationReasonGroup INTRINSIFY_FRAME_ACCESSORS_SPECULATIONS = new SpeculationReasonGroup();
+    private static final SpeculationReasonGroup INTRINSIFY_FRAME_ACCESSORS_SPECULATIONS = new SpeculationReasonGroup("IntrinsifyFrameAccessor");
 
     public NewFrameNode(GraphBuilderContext b, ValueNode frameDescriptorNode, ValueNode arguments, KnownTruffleTypes types) {
         super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(types.classFrameClass)));

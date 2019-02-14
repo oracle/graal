@@ -123,13 +123,12 @@ public final class GraalServices {
      */
     static final class DirectSpeculationReason implements SpeculationReason {
         final int groupId;
+        final String groupName;
         final Object[] context;
 
-        DirectSpeculationReason(int groupId, Object[] context) {
-            if (context == null || context.length == 0) {
-                throw new IllegalArgumentException("A speculation reason requires non-empty context");
-            }
+        DirectSpeculationReason(int groupId, String groupName, Object[] context) {
             this.groupId = groupId;
+            this.groupName = groupName;
             this.context = context;
         }
 
@@ -149,12 +148,12 @@ public final class GraalServices {
 
         @Override
         public String toString() {
-            return groupId + ":" + Arrays.toString(context);
+            return String.format("%s@%d%s", groupName, groupId, Arrays.toString(context));
         }
     }
 
-    static SpeculationReason createSpeculationReason(int groupId, Object[] context) {
-        return new DirectSpeculationReason(groupId, context);
+    static SpeculationReason createSpeculationReason(int groupId, String groupName, Object... context) {
+        return new DirectSpeculationReason(groupId, groupName, context);
     }
 
     /**

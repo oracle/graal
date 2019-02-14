@@ -101,7 +101,7 @@ public class OnStackReplacementPhase extends Phase {
         return Options.SupportOSRWithLocks.getValue(options);
     }
 
-    private static final SpeculationReasonGroup OSR_LOCAL_SPECULATIONS = new SpeculationReasonGroup();
+    private static final SpeculationReasonGroup OSR_LOCAL_SPECULATIONS = new SpeculationReasonGroup("OSRLocal", int.class, String.class, int.class);
 
     @Override
     @SuppressWarnings("try")

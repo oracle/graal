@@ -593,7 +593,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static final SpeculationReasonGroup INTEGER_EXACT_OP_SPECULATIONS = new SpeculationReasonGroup();
+    private static final SpeculationReasonGroup INTEGER_EXACT_OP_SPECULATIONS = new SpeculationReasonGroup("IntegerExactOp", ResolvedJavaMethod.class, IntegerExactOp.class);
 
     private static void createIntegerExactOperation(GraphBuilderContext b, JavaKind kind, ValueNode x, ValueNode y, IntegerExactOp op) {
         if (b.needsExplicitException()) {
@@ -1153,7 +1153,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup();
+    private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup("GraalDirective", BytecodePosition.class);
 
     private static void registerGraalDirectivesPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, GraalDirectives.class);
