@@ -600,20 +600,14 @@ suite = {
         },
         "solaris" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-DOS_solaris", "-m64", "-pthread"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64", "-pthread"],
             "ldflags" : ["-m64", "-pthread"],
-            "ldlibs" : ["-ldl"],
-          },
-        },
-        "darwin" : {
-          "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-DOS_darwin"],
             "ldlibs" : ["-ldl"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-DOS_linux"],
+            "cflags" : ["-g", "-Wall", "-Werror"],
             "ldlibs" : ["-ldl"],
           },
         },

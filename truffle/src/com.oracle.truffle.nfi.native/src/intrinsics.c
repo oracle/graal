@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,13 +45,14 @@
 
 #include "internal.h"
 
-#if defined(OS_linux)
+#if defined(__linux__)
 #define ERRNO_LOCATION __errno_location
-#elif defined(OS_darwin)
+#elif defined(__APPLE__) && defined(__MACH__)
 #define ERRNO_LOCATION __error
-#elif defined(OS_solaris)
+#elif defined(__sun) && defined(__SVR4)
 #define ERRNO_LOCATION ___errno
 #endif
+
 
 #define STRINGIFY_IMPL(x) #x
 #define STRINGIFY(x) STRINGIFY_IMPL(x)
