@@ -1,6 +1,6 @@
 # Truffle Library Tutorial
 
-*tl;dr* Truffle Libraries allow language implementations to use polymorphic dispatch for receiver types with support for implementation-specific caching/profiling and [automatic?] support for uncached dispatch. Truffle Libraries enable modularity and encapsulation for representation types in Truffle language implementations. Read this tutorial first before using it.
+*tl;dr* Truffle Libraries allow language implementations to use polymorphic dispatch for receiver types with support for implementation-specific caching/profiling and automatic support for uncached dispatch. Truffle Libraries enable modularity and encapsulation for representation types in Truffle language implementations. Read this tutorial first before using it.
 
 ## Getting Started
 
