@@ -237,6 +237,10 @@ public final class LLVMContext {
         }
     }
 
+    public boolean isInitialized() {
+        return threadingStack != null;
+    }
+
     public LLVMStatementNode createInitializeContextNode(FrameDescriptor rootFrame) {
         // we can't do the initialization in the LLVMContext constructor nor in
         // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
@@ -312,29 +316,31 @@ public final class LLVMContext {
             }
         }
 
-        threadingStack.freeMainStack(memory);
+        if (isInitialized()) {
+            threadingStack.freeMainStack(memory);
 
-        // free the space allocated for non-pointer globals
-        Truffle.getRuntime().createCallTarget(new RootNode(language) {
+            // free the space allocated for non-pointer globals
+            Truffle.getRuntime().createCallTarget(new RootNode(language) {
 
-            @Child LLVMMemoryOpNode freeRo = nodeFactory.createFreeGlobalsBlock(true);
-            @Child LLVMMemoryOpNode freeRw = nodeFactory.createFreeGlobalsBlock(false);
+                @Child LLVMMemoryOpNode freeRo = nodeFactory.createFreeGlobalsBlock(true);
+                @Child LLVMMemoryOpNode freeRw = nodeFactory.createFreeGlobalsBlock(false);
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                for (LLVMPointer store : globalsReadOnlyStore) {
-                    if (store != null) {
-                        freeRo.execute(store);
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    for (LLVMPointer store : globalsReadOnlyStore) {
+                        if (store != null) {
+                            freeRo.execute(store);
+                        }
                     }
-                }
-                for (LLVMPointer store : globalsNonPointerStore) {
-                    if (store != null) {
-                        freeRw.execute(store);
+                    for (LLVMPointer store : globalsNonPointerStore) {
+                        if (store != null) {
+                            freeRw.execute(store);
+                        }
                     }
+                    return null;
                 }
-                return null;
-            }
-        }).call();
+            }).call();
+        }
 
         // free the space which might have been when putting pointer-type globals into native memory
         for (LLVMPointer pointer : globalsReverseMap.keySet()) {
@@ -607,6 +613,7 @@ public final class LLVMContext {
     }
 
     public LLVMThreadingStack getThreadingStack() {
+        assert threadingStack != null;
         return threadingStack;
     }
 
