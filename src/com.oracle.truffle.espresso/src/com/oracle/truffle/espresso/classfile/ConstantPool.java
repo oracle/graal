@@ -46,12 +46,12 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
 import com.oracle.truffle.object.DebugCounter;
 
+/**
+ * Immutable, shareable constant-pool representation.
+ */
 public abstract class ConstantPool {
 
     static final DebugCounter utf8EntryCount = DebugCounter.create("utf8EntryCount");
-
-    // public static final ConstantPool EMPTY = new ConstantPoolImpl(new
-    // PoolConstant[]{InvalidConstant.VALUE});
 
     public enum Tag {
         INVALID(0),
