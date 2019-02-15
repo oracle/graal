@@ -73,6 +73,7 @@ import javax.tools.StandardLocation;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.Map;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.TruffleLanguage.Registration")
 public final class LanguageRegistrationProcessor extends AbstractProcessor {
@@ -135,6 +136,24 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             }
             p.setProperty(prefix + "interactive", Boolean.toString(annotation.interactive()));
             p.setProperty(prefix + "internal", Boolean.toString(annotation.internal()));
+
+            int serviceCounter = 0;
+            for (AnnotationMirror anno : l.getAnnotationMirrors()) {
+                final String annoName = anno.getAnnotationType().asElement().toString();
+                if (Registration.class.getCanonicalName().equals(annoName)) {
+                    for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : anno.getElementValues().entrySet()) {
+                        final CharSequence attrName = entry.getKey().getSimpleName();
+                        if ("services".contentEquals(attrName)) {
+                            AnnotationValue attrValue = entry.getValue();
+                            List<?> classes = (List<?>) attrValue.getValue();
+                            for (Object clazz : classes) {
+                                AnnotationValue clazzValue = (AnnotationValue) clazz;
+                                p.setProperty(prefix + "service" + serviceCounter++, clazzValue.getValue().toString());
+                            }
+                        }
+                    }
+                }
+            }
         }
         if (cnt > 0) {
             try {

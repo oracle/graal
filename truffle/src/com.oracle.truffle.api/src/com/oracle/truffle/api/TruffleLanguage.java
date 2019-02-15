@@ -415,6 +415,21 @@ public abstract class TruffleLanguage<C> {
          * @since 1.0
          */
         ContextPolicy contextPolicy() default ContextPolicy.EXCLUSIVE;
+
+        /**
+         * Declarative list of classes this language is known to provide. The language is supposed
+         * to override its {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)
+         * createContext} method and instantiate and {@link Env#registerService(java.lang.Object)
+         * register} all here in defined services.
+         * <p>
+         * Languages automatically get created when their registered
+         * {@link Env#lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class) service is
+         * requested}.
+         *
+         * @since 1.0
+         * @return list of service types that this language can provide
+         */
+        Class<?>[] services() default {};
     }
 
     /**
@@ -1330,6 +1345,7 @@ public abstract class TruffleLanguage<C> {
         @CompilationFinal private volatile boolean initialized = false;
         @CompilationFinal private volatile Assumption initializedUnchangedAssumption = Truffle.getRuntime().createAssumption("Language context initialized unchanged");
         @CompilationFinal private volatile boolean valid;
+        private volatile List<Object> languageServicesCollector;
 
         @SuppressWarnings("unchecked")
         private Env(Object vmObject, TruffleLanguage<?> language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments,
@@ -1871,16 +1887,20 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns an additional service provided by the given language, specified by type. If an
-         * language is not loaded, it will not be automatically loaded by requesting a service. In
-         * order to ensure a language to be loaded at least one {@link Source} must be
-         * {@link #parse(Source, String...) parsed} first.
+         * Returns an additional service provided by the given language, specified by type. For
+         * services registered by {@link Registration#services()} the service lookup will ensure
+         * that language is loaded and services are registered. For services extending the
+         * {@link TruffleLanguage} class if an language is not loaded, it will not be automatically
+         * loaded by requesting a service. In order to ensure a language to be loaded at least one
+         * {@link Source} must be {@link #parse(Source, String...) parsed} first.
          *
          * @param <S> the requested type
          * @param language the language to query
          * @param type the class of the requested type
          * @return the registered service or <code>null</code> if none is found
          * @since 0.26
+         * @since 1.0 supports services registered by {@link Env#registerService(java.lang.Object)
+         *        registerService}
          */
         @TruffleBoundary
         public <S> S lookup(LanguageInfo language, Class<S> type) {
@@ -1888,6 +1908,11 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
 
+            S result = AccessAPI.engineAccess().lookupService(vmObject, language, type);
+            if (result != null) {
+                return result;
+            }
+            // Legacy behaviour - deprecate and remove
             Env otherEnv = AccessAPI.engineAccess().getLanguageEnv(vmObject, language);
             return otherEnv == null ? null : otherEnv.getSpi().lookup(type);
         }
@@ -2020,6 +2045,30 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalArgumentException("Current working directory must be directory.");
             }
             fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+        }
+
+        /**
+         * Registers additional service. This method can be called multiple time, but only in
+         * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) createContext method}.
+         * These services are made available to users via
+         * {@link #lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class)} query method.
+         *
+         * This method can only be called from
+         * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) } method - then the
+         * services are collected and cannot be changed anymore.
+         *
+         * @param service a service to be returned from associated
+         *            {@link Env#lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class)
+         *            lookup method}
+         * @throws IllegalStateException if the method is called outside of
+         *             {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} method
+         * @since 1.0
+         */
+        public void registerService(Object service) {
+            if (languageServicesCollector == null) {
+                throw new IllegalStateException("The registerService can be called only from Env.createContext method.");
+            }
+            languageServicesCollector.add(service);
         }
 
         @SuppressWarnings("rawtypes")
@@ -2384,8 +2433,14 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Object createEnvContext(Env env) {
-            Object context = env.getSpi().createContext(env);
+        public Object createEnvContext(Env env, List<Object> servicesCollector) {
+            env.languageServicesCollector = servicesCollector;
+            Object context;
+            try {
+                context = env.getSpi().createContext(env);
+            } finally {
+                env.languageServicesCollector = null;
+            }
             env.context = context;
             Assumption contextUnchanged = env.contextUnchangedAssumption;
             env.contextUnchangedAssumption = Truffle.getRuntime().createAssumption("Language context unchanged");

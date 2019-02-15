@@ -89,6 +89,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final boolean internal;
     private final ClassLoader loader;
     private final TruffleLanguage<?> globalInstance;
+    private final Set<String> services;
     private String languageHome;
     private volatile ContextPolicy policy;
     private volatile Class<? extends TruffleLanguage<?>> languageClass;
@@ -121,6 +122,17 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.interactive = Boolean.valueOf(info.getProperty(prefix + "interactive"));
         this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
         this.languageHome = url;
+
+        this.services = new TreeSet<>();
+        for (int servicesCounter = 0;; servicesCounter++) {
+            String nth = prefix + "service" + servicesCounter;
+            String serviceName = info.getProperty(nth);
+            if (serviceName == null) {
+                break;
+            }
+            this.services.add(serviceName);
+        }
+
         if (TruffleOptions.AOT) {
             initializeLanguageClass();
             assert languageClass != null;
@@ -143,7 +155,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     @SuppressWarnings("unchecked")
     LanguageCache(String id, String name, String implementationName, String version, boolean interactive, boolean internal,
-                    TruffleLanguage<?> instance) {
+                    TruffleLanguage<?> instance, String... services) {
         this.id = id;
         this.className = instance.getClass().getName();
         this.mimeTypes = Collections.emptySet();
@@ -161,6 +173,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.languageHome = null;
         this.policy = ContextPolicy.SHARED;
         this.globalInstance = instance;
+        if (services.length == 0) {
+            this.services = Collections.emptySet();
+        } else {
+            this.services = new TreeSet<>();
+            Collections.addAll(this.services, services);
+        }
     }
 
     static Map<String, LanguageCache> languageMimes() {
@@ -404,6 +422,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return policy;
     }
 
+    String[] serices() {
+        return services.toArray(new String[services.size()]);
+    }
+
+    boolean supportsService(Class<?> clazz) {
+        return services.contains(clazz.getName()) || services.contains(clazz.getCanonicalName());
+    }
+
     @SuppressWarnings("unchecked")
     private void initializeLanguageClass() {
         if (languageClass == null) {
@@ -430,7 +456,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     @Override
     public String toString() {
-        return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + "]";
+        return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + ", services=" + services + "]";
     }
 
     static void resetNativeImageCacheLanguageHomes() {
