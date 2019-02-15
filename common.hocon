@@ -91,6 +91,9 @@ linux-aarch64 : ${linux} {
   capabilities : [linux, aarch64]
 }
 
+DEFAULT_HEAP_SIZE : "8G"
+LARGE_HEAP_SIZE : "31G"
+
 eclipse : {
   downloads : {
     ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
