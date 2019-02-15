@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -312,6 +313,7 @@ public abstract class PartialEvaluator {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             if (graph.getNodeCount() > nodeLimit) {
+                logGraphTooBig();
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
@@ -338,6 +340,18 @@ public abstract class PartialEvaluator {
             }
 
             return inlineInfo;
+        }
+
+        private boolean graphTooBigReported;
+
+        private void logGraphTooBig() {
+            if (!graphTooBigReported) {
+                graphTooBigReported = true;
+                final HashMap<String, Object> properties = new HashMap<>();
+                properties.put("graph node count", graph.getNodeCount());
+                properties.put("graph node limit", nodeLimit);
+                PerformanceInformationHandler.logPerformanceWarning(graph.name, null, "Graal graph node count too big during partial evaluation.", properties);
+            }
         }
 
         @Override
