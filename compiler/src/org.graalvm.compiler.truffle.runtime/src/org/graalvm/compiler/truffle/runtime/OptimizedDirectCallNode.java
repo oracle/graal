@@ -61,7 +61,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             onInterpreterCall();
         }
         try {
-            return ((OptimizedCallTarget) callTarget).callDirect(this, arguments);
+            return getCurrentCallTarget().callDirect(this, arguments);
         } catch (Throwable t) {
             if (exceptionProfile == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
