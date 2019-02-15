@@ -80,6 +80,7 @@ anyjdk_version_regex = re.compile(r'(openjdk|java) version \"(?P<jvm_version>[0-
 openjdk_version_regex = re.compile(r'openjdk version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\nOpenJDK Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
 graalvm_version_regex = re.compile(r'.*\n.*\nGraalVM (?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
+
 class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
     __metaclass__ = ABCMeta
 
@@ -290,6 +291,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _launcher_dest = _component_base + _launcher_config.destination
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
+                if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and GraalVmNativeImage.is_svm_debug_supported():
+                    _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/*.debug', _component)
+                    if _include_sources():
+                        _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/sources', _component)
                 # add links from jre/bin to launcher
                 _add_link(_jdk_jre_bin, _launcher_dest)
                 _jre_bin_names.append(basename(_launcher_dest))
@@ -744,9 +749,34 @@ class GraalVmNativeImage(mx.Project):
 
     def getArchivableResults(self, use_relpath=True, single=False):
         yield self.output_file(), self.native_image_name
+        if not single:
+            debug = self.debug_file()
+            if debug:
+                yield debug, basename(debug)
+            src_dir = self.image_sources_dir()
+            if exists(src_dir):
+                logical_root = dirname(src_dir)
+                for root, _, files in os.walk(src_dir):
+                    for name in files:
+                        yield join(root, name), join(relpath(root, logical_root), name)
+
+    def debug_file(self):
+        if not self.is_native():
+            return None
+        if GraalVmNativeImage.is_svm_debug_supported():
+            return join(self.get_output_base(), self.name, self.native_image_name + '.debug')
+        return None
+
+    @staticmethod
+    def is_svm_debug_supported():
+        svm_support = _get_svm_support()
+        return svm_support.is_supported() and svm_support.is_debug_supported()
 
     def output_file(self):
         return join(self.get_output_base(), self.name, self.native_image_name)
+
+    def image_sources_dir(self):
+        return join(self.get_output_base(), self.name, "sources")
 
     def build_args(self):
         return [mx_subst.string_substitutions.substitute(arg) for arg in self.native_image_config.build_args]
@@ -780,7 +810,7 @@ class GraalVmLauncher(GraalVmNativeImage):
             return GraalVmBashLauncherBuildTask(self, args)
 
     def is_native(self):
-        return _get_svm_support().is_supported() and not _force_bash_launchers(self.native_image_config, self.stage1 or None)
+        return GraalVmLauncher.is_launcher_native(self.native_image_config, self.stage1)
 
     def output_file(self):
         return join(self.get_output_base(), self.name, self.native_image_name)
@@ -793,8 +823,12 @@ class GraalVmLauncher(GraalVmNativeImage):
 
     @staticmethod
     def launcher_project_name(native_image_config, stage1=False):
-        is_bash = not _get_svm_support().is_supported() or _force_bash_launchers(native_image_config, stage1 or None)
+        is_bash = not GraalVmLauncher.is_launcher_native(native_image_config, stage1)
         return GraalVmNativeImage.project_name(native_image_config) + ("-bash" if is_bash else "") + ("-stage1" if stage1 else "")
+
+    @staticmethod
+    def is_launcher_native(native_image_config, stage1=False):
+        return _get_svm_support().is_supported() and not _force_bash_launchers(native_image_config, stage1 or None)
 
 
 class GraalVmPolyglotLauncher(GraalVmLauncher):
