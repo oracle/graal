@@ -169,15 +169,15 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             // of C for the name and descriptor specified by the method reference include exactly
             // one method that does not have its ACC_ABSTRACT flag set, then this method is chosen
             // and method lookup succeeds.
-            while (klass != null) {
-                for (ObjectKlass i : klass.getSuperInterfaces()) {
+            for (Klass curKlass = klass; klass  != null; curKlass = curKlass.getSuperKlass()) {
+                for (ObjectKlass i : curKlass.getSuperInterfaces()) {
                     method = lookupInterfaceMethod(i, name, signature);
                     if (method != null) {
                         return method;
                     }
                 }
-                klass = klass.getSuperKlass();
             }
+
             return null;
         }
 

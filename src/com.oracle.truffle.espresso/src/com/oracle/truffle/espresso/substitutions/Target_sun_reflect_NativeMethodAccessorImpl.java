@@ -239,9 +239,11 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         Klass klass = ((StaticObjectClass) meta.Method_clazz.get(guestMethod)).getMirrorKlass();
         StaticObjectArray parameterTypes = (StaticObjectArray) meta.Method_parameterTypes.get(guestMethod);
-        // System.err.println(EspressoOptions.INCEPTION_NAME + " Reflective method for " + reflectedMethod.getName());
+        // System.err.println(EspressoOptions.INCEPTION_NAME + " Reflective method for " +
+        // reflectedMethod.getName());
         StaticObject result = callMethodReflectively(meta, receiver, args, reflectedMethod, klass, parameterTypes);
-        // System.err.println(EspressoOptions.INCEPTION_NAME + " DONE Reflective method for " + reflectedMethod.getName());
+        // System.err.println(EspressoOptions.INCEPTION_NAME + " DONE Reflective method for " +
+        // reflectedMethod.getName());
         return result;
     }
 

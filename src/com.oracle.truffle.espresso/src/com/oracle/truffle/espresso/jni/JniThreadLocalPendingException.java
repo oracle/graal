@@ -35,9 +35,11 @@ public final class JniThreadLocalPendingException {
     }
 
     public void set(StaticObject t) {
-        if (pendingException.get() != null) {
-            System.err.println("Overwriting pending exception: " + pendingException.get().getKlass() + " with " + (t == null ? "<null>" : t.getKlass()));
-        }
+        // TODO(peterssen): Warn about overwritten pending exceptions.
+        // if (pendingException.get() != null) {
+        // System.err.println("Overwriting pending exception: " + pendingException.get().getKlass() + " with
+        // " + (t == null ? "<null>" : t.getKlass()));
+        // }
         pendingException.set(t);
     }
 
