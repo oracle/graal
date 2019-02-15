@@ -121,7 +121,8 @@ public interface FieldRefConstant extends MemberRefConstant {
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, field)) {
                 Meta meta = pool.getContext().getMeta();
-                System.err.println(EspressoOptions.INCEPTION_NAME + " Field access check of: " + field.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
+                System.err.println(EspressoOptions.INCEPTION_NAME + " Field access check of: " + field.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
+                                " throws IllegalAccessError");
                 throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(name));
             }
 

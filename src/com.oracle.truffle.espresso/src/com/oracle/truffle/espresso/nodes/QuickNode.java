@@ -49,7 +49,6 @@ public abstract class QuickNode extends Node {
         return value;
     }
 
-
     protected static Method lookupDefaultInterfaceMethod(ObjectKlass seed, Symbol<Symbol.Name> name, Symbol<Symbol.Signature> signature) {
         for (Method m : seed.getDeclaredMethods()) {
             if (!m.isStatic() && !m.isPrivate() && !m.isAbstract() && name.equals(m.getName()) && signature.equals(m.getRawSignature())) {
