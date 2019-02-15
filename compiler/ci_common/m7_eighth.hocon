@@ -48,18 +48,18 @@ builds += [
   # GR-11609 ${m7_eighth.default-g1gc} ${bench-specjbb2015}         ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjbb2015-g1gc-solaris-m7_eighth" }
 
   # LibGraal
-  ${m7_eighth.default-libgraal} ${bench-dacapo}              ${labsjdk8} { name: "bench-compiler-dacapo-libgraal-solaris-m7_eighth", timelimit: "1:00:00" }
-  ${m7_eighth.default-libgraal} ${bench-dacapo-timing}       ${labsjdk8} { name: "bench-compiler-dacapo-timing-libgraal-solaris-m7_eighth", timelimit: "1:00:00" }
-  ${m7_eighth.default-libgraal} ${bench-scala-dacapo}        ${labsjdk8} { name: "bench-compiler-scala-dacapo-libgraal-solaris-m7_eighth", timelimit: "1:00:00" }
-  ${m7_eighth.default-libgraal} ${bench-scala-dacapo-timing} ${labsjdk8} { name: "bench-compiler-scala-dacapo-timing-libgraal-solaris-m7_eighth", timelimit: "1:00:00" }
-  ${m7_eighth.default-libgraal} ${bench-specjvm2008-Single}  ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-libgraal-solaris-m7_eighth" }
-  ${m7_eighth.default-libgraal} ${bench-specjvm2008-OneVM}   ${labsjdk8} { name: "bench-compiler-specjvm2008-OneVM-libgraal-solaris-m7_eighth" }
-  # GR-11609 ${m7_eighth.default-libgraal} ${bench-specjbb2015}         ${labsjdk8} { name: "bench-compiler-specjbb2015-libgraal-solaris-m7_eighth" }
-  ${m7_eighth.default-libgraal} ${bench-micros-graal-whitebox} ${labsjdk8} { name: "bench-compiler-jmh-micros-graal-whitebox-libgraal-solaris-m7_eighth" }
-  ${m7_eighth.default-libgraal} ${bench-micros-graal-dist}   ${labsjdk8} { name: "bench-compiler-jmh-micros-graal-dist-libgraal-solaris-m7_eighth" }
+  ${m7_eighth.default-libgraal} ${bench-dacapo}              ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-dacapo-libgraal-solaris-m7_eighth", timelimit: "1:00:00" }
+  ${m7_eighth.default-libgraal} ${bench-dacapo-timing}       ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-dacapo-timing-libgraal-solaris-m7_eighth", timelimit: "1:00:00" }
+  ${m7_eighth.default-libgraal} ${bench-scala-dacapo}        ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-scala-dacapo-libgraal-solaris-m7_eighth", timelimit: "1:00:00" }
+  ${m7_eighth.default-libgraal} ${bench-scala-dacapo-timing} ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-scala-dacapo-timing-libgraal-solaris-m7_eighth", timelimit: "1:00:00" }
+  ${m7_eighth.default-libgraal} ${bench-specjvm2008-Single}  ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-specjvm2008-Single-libgraal-solaris-m7_eighth" }
+  ${m7_eighth.default-libgraal} ${bench-specjvm2008-OneVM}   ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-specjvm2008-OneVM-libgraal-solaris-m7_eighth" }
+  # GR-11609 ${m7_eighth.default-libgraal} ${bench-specjbb2015}         ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-specjbb2015-libgraal-solaris-m7_eighth" }
+  ${m7_eighth.default-libgraal} ${bench-micros-graal-whitebox} ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-jmh-micros-graal-whitebox-libgraal-solaris-m7_eighth" }
+  ${m7_eighth.default-libgraal} ${bench-micros-graal-dist}   ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-jmh-micros-graal-dist-libgraal-solaris-m7_eighth" }
 
-  ${m7_eighth.default-libgraal-g1gc} ${bench-dacapo}              ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-dacapo-libgraal-g1gc-solaris-m7_eighth", timelimit: "1:00:00" }
-  ${m7_eighth.default-libgraal-g1gc} ${bench-scala-dacapo}        ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-libgraal-g1gc-solaris-m7_eighth", timelimit: "1:00:00" }
-  ${m7_eighth.default-libgraal-g1gc} ${bench-specjvm2008-Single}  ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjvm2008-libgraal-g1gc-Single-solaris-m7_eighth" }
-  # GR-11609 ${m7_eighth.default-libgraal-g1gc} ${bench-specjbb2015}         ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjbb2015-libgraal-g1gc-solaris-m7_eighth" }
+  ${m7_eighth.default-libgraal-g1gc} ${bench-dacapo}              ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-dacapo-libgraal-g1gc-solaris-m7_eighth", timelimit: "1:00:00" }
+  ${m7_eighth.default-libgraal-g1gc} ${bench-scala-dacapo}        ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-scala-dacapo-libgraal-g1gc-solaris-m7_eighth", timelimit: "1:00:00" }
+  ${m7_eighth.default-libgraal-g1gc} ${bench-specjvm2008-Single}  ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-specjvm2008-libgraal-g1gc-Single-solaris-m7_eighth" }
+  # GR-11609 ${m7_eighth.default-libgraal-g1gc} ${bench-specjbb2015}         ${labsjdk8} { targets : [daily, bench], name: "bench-compiler-specjbb2015-libgraal-g1gc-solaris-m7_eighth" }
 ]
