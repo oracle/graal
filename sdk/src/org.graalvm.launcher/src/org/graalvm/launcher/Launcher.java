@@ -101,7 +101,7 @@ public abstract class Launcher {
     private final boolean verbose;
 
     private boolean help;
-    private boolean helpDebug;
+    private boolean helpInternal;
     private boolean helpExpert;
     private boolean helpTools;
     private boolean helpLanguages;
@@ -453,7 +453,7 @@ public abstract class Launcher {
 
     @SuppressWarnings("fallthrough")
     final boolean runPolyglotAction() {
-        OptionCategory helpCategory = helpDebug ? OptionCategory.INTERNAL : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
+        OptionCategory helpCategory = helpInternal ? OptionCategory.INTERNAL : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
 
         switch (versionAction) {
             case PrintAndContinue:
@@ -465,7 +465,7 @@ public abstract class Launcher {
                 printPolyglotVersions();
                 return true;
         }
-        boolean printDefaultHelp = help || ((helpExpert || helpDebug) && !helpTools && !helpLanguages);
+        boolean printDefaultHelp = help || ((helpExpert || helpInternal) && !helpTools && !helpLanguages);
         if (printDefaultHelp) {
             printHelp(helpCategory);
             // @formatter:off
@@ -484,8 +484,8 @@ public abstract class Launcher {
             printOption("--help:languages",              "Print options for all installed languages.");
             printOption("--help:tools",                  "Print options for all installed tools.");
             printOption("--help:expert",                 "Print additional options for experts.");
-            if (helpExpert || helpDebug) {
-                printOption("--help:debug",              "Print additional options for debugging.");
+            if (helpExpert || helpInternal) {
+                printOption("--help:internal",           "Print internal options for debugging language implementations and instruments.");
             }
             printOption("--version:graalvm",             "Print GraalVM version information and exit.");
             printOption("--show-version:graalvm",        "Print GraalVM version information and continue execution.");
@@ -587,7 +587,11 @@ public abstract class Launcher {
                 help = true;
                 return true;
             case "--help:debug":
-                helpDebug = true;
+                System.err.println("Warning: --help:debug is deprecated, use --help:internal instead.");
+                helpInternal = true;
+                return true;
+            case "--help:internal":
+                helpInternal = true;
                 return true;
             case "--help:expert":
                 helpExpert = true;
@@ -717,8 +721,8 @@ public abstract class Launcher {
         options.add("--help:expert");
         options.add("--version:graalvm");
         options.add("--show-version:graalvm");
-        if (helpExpert || helpDebug) {
-            options.add("--help:debug");
+        if (helpExpert || helpInternal) {
+            options.add("--help:internal");
         }
         addOptions(engine.getOptions(), options);
         for (Language language : engine.getLanguages().values()) {
