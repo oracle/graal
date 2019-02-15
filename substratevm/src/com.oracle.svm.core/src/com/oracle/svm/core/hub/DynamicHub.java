@@ -76,6 +76,7 @@ import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -254,9 +255,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
 
-    private static java.security.ProtectionDomain allPermDomain;
+    private static final LazyFinalReference<java.security.ProtectionDomain> allPermDomain = new LazyFinalReference<>(() -> {
+        java.security.Permissions perms = new java.security.Permissions();
+        perms.add(SecurityConstants.ALL_PERMISSION);
+        return new java.security.ProtectionDomain(null, perms);
+    });
 
-    private static Target_java_lang_Module singleModule;
+    private static final LazyFinalReference<Target_java_lang_Module> singleModule = new LazyFinalReference<>(Target_java_lang_Module::new);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
@@ -1072,12 +1077,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public Object getProtectionDomain() {
-        if (allPermDomain == null) {
-            java.security.Permissions perms = new java.security.Permissions();
-            perms.add(SecurityConstants.ALL_PERMISSION);
-            allPermDomain = new java.security.ProtectionDomain(null, perms);
-        }
-        return allPermDomain;
+        return allPermDomain.get();
     }
 
     @Substitute
@@ -1088,10 +1088,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public Target_java_lang_Module getModule() {
-        if (singleModule == null) {
-            singleModule = new Target_java_lang_Module();
-        }
-        return singleModule;
+        return singleModule.get();
     }
 
     @Substitute //
