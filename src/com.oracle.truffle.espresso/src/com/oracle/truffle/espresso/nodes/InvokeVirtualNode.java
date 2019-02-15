@@ -31,6 +31,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
@@ -69,7 +70,15 @@ public abstract class InvokeVirtualNode extends QuickNode {
     static Method methodLookup(Method resolutionSeed, StaticObject receiver) {
         // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
         Klass clazz = receiver.getKlass();
-        return clazz.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
+        Method m = clazz.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
+
+        while (m == null && clazz != null) {
+            // FIXME(peterssen): Out-of-spec lookup for default (interface) method.
+            m = lookupDefaultInterfaceMethod((ObjectKlass) clazz, resolutionSeed.getName(), resolutionSeed.getRawSignature());
+            clazz = clazz.getSuperKlass();
+        }
+
+        return m;
     }
 
     @Override

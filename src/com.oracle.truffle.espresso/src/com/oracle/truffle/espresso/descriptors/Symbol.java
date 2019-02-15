@@ -155,15 +155,21 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> override = StaticSymbols.putName("override");
         public static final Symbol<Name> parameterTypes = StaticSymbols.putName("parameterTypes");
         public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");
+        public static final Symbol<Name> clone = StaticSymbols.putName("clone");
 
         // Attribute names
         public static final Symbol<Name> Code = StaticSymbols.putName("Code");
         public static final Symbol<Name> EnclosingMethod = StaticSymbols.putName("EnclosingMethod");
         public static final Symbol<Name> Exceptions = StaticSymbols.putName("Exceptions");
         public static final Symbol<Name> InnerClasses = StaticSymbols.putName("InnerClasses");
-        public static final Symbol<Name> RuntimeVisibleAnnotations = StaticSymbols.putName("RuntimeVisibleAnnotations");
+
         public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
         public static final Symbol<Name> ConstantValue = StaticSymbols.putName("ConstantValue");
+        public static final Symbol<Name> RuntimeVisibleAnnotations = StaticSymbols.putName("RuntimeVisibleAnnotations");
+        public static final Symbol<Name> RuntimeVisibleTypeAnnotations = StaticSymbols.putName("RuntimeVisibleTypeAnnotations");
+        public static final Symbol<Name> RuntimeVisibleParameterAnnotations = StaticSymbols.putName("RuntimeVisibleParameterAnnotations");
+        public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
+        public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
     }
 
     public static final class Type extends Descriptor {
@@ -236,9 +242,15 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> Thread = StaticSymbols.putType(Thread.class);
         public static final Symbol<Type> ThreadGroup = StaticSymbols.putType(ThreadGroup.class);
 
+        // Guest reflection.
         public static final Symbol<Type> Field = StaticSymbols.putType(java.lang.reflect.Field.class);
         public static final Symbol<Type> Method = StaticSymbols.putType(java.lang.reflect.Method.class);
         public static final Symbol<Type> Constructor = StaticSymbols.putType(java.lang.reflect.Constructor.class);
+        public static final Symbol<Type> Parameter = StaticSymbols.putType(java.lang.reflect.Parameter.class);
+        public static final Symbol<Type> Executable = StaticSymbols.putType(java.lang.reflect.Executable.class);
+
+        // MagicAccessorImpl is not public.
+        public static final Symbol<Type> MagicAccessorImpl = StaticSymbols.putType("Lsun/reflect/MagicAccessorImpl;");
 
         public static final Symbol<Type> Serializable = StaticSymbols.putType(java.io.Serializable.class);
         public static final Symbol<Type> ByteBuffer = StaticSymbols.putType(java.nio.ByteBuffer.class);
@@ -256,6 +268,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> NoSuchMethodError = StaticSymbols.putType(NoSuchMethodError.class);
         public static final Symbol<Type> IllegalAccessError = StaticSymbols.putType(IllegalAccessError.class);
         public static final Symbol<Type> IncompatibleClassChangeError = StaticSymbols.putType(IncompatibleClassChangeError.class);
+        public static final Symbol<Type> AbstractMethodError = StaticSymbols.putType(AbstractMethodError.class);
     }
 
     public static final class Signature extends Descriptor {

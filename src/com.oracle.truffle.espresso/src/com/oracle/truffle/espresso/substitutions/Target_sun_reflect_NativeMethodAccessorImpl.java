@@ -38,13 +38,18 @@ import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
+/**
+ * This substitution is merely for performance reasons, to avoid the deep-dive to native. libjava
+ * hardwires {@link #invoke0} to JVM_InvokeMethod in libjvm.
+ */
 @EspressoSubstitutions
 public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
     /**
-     * Checks argument for reflection, checking type matches and widening for primitives.
+     * Checks argument for reflection, checking type matches and widening for primitives. Throws
+     * guest IllegalArgumentException if any of the arguments does not match.
      */
-    private static Object checkAndWiden(Meta meta, StaticObject arg, Klass targetKlass) {
+    public static Object checkAndWiden(Meta meta, StaticObject arg, Klass targetKlass) {
         if (targetKlass.isPrimitive()) {
             if (StaticObject.isNull(arg)) {
                 throw meta.throwExWithMessage(meta.IllegalArgumentException, meta.toGuestString("argument type mismatch"));
@@ -220,21 +225,31 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
     @Substitution
     public static @Host(Object.class) StaticObject invoke0(@Host(java.lang.reflect.Method.class) StaticObject guestMethod, @Host(Object.class) StaticObject receiver,
                     @Host(Object[].class) StaticObject args) {
+
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         StaticObject curMethod = guestMethod;
 
         Method reflectedMethod = null;
         while (reflectedMethod == null) {
-            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField("$$method_info");
+            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField(Target_java_lang_Class.HIDDEN_METHOD_KEY);
             if (reflectedMethod == null) {
                 curMethod = (StaticObject) meta.Method_root.get(curMethod);
             }
         }
 
         Klass klass = ((StaticObjectClass) meta.Method_clazz.get(guestMethod)).getMirrorKlass();
-        klass.safeInitialize();
-
         StaticObjectArray parameterTypes = (StaticObjectArray) meta.Method_parameterTypes.get(guestMethod);
+        // System.err.println(EspressoOptions.INCEPTION_NAME + " Reflective method for " +
+        // reflectedMethod.getName());
+        StaticObject result = callMethodReflectively(meta, receiver, args, reflectedMethod, klass, parameterTypes);
+        // System.err.println(EspressoOptions.INCEPTION_NAME + " DONE Reflective method for " +
+        // reflectedMethod.getName());
+        return result;
+    }
+
+    public static @Host(Object.class) StaticObject callMethodReflectively(Meta meta, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args, Method reflectedMethod,
+                    Klass klass, StaticObjectArray parameterTypes) {
+        klass.safeInitialize();
 
         Method method;      // actual method to invoke
         Klass targetKlass; // target klass, receiver's klass for non-static
@@ -266,7 +281,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                     // Match resolution errors with those thrown due to reflection inlining
                     // Linktime resolution & IllegalAccessCheck already done by Class.getMethod()
                     throw EspressoError.unimplemented("reflective interface calls");
-                    // THis is what it should look like.
+                    // This is what it should look like for interfaces.
                     // try {
                     // method = resolveInterfaceCall(klass, reflectedMethod, targetKlass, receiver);
                     // } catch (EspressoException e) {
@@ -284,7 +299,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                         // Check for abstract methods as well
                         if (method.isAbstract()) {
                             // new default: 65315
-                            throw meta.throwExWithCause(meta.InvocationTargetException, meta.initEx(AbstractMethodError.class));
+                            throw meta.throwExWithCause(meta.InvocationTargetException, Meta.initEx(meta.AbstractMethodError));
                         }
                     }
                 }
@@ -319,6 +334,9 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         try {
             result = method.invokeDirect(receiver, adjustedArgs);
         } catch (EspressoException e) {
+            if (e.getException() == null) {
+                throw EspressoError.shouldNotReachHere("no wrapped exception???");
+            }
             throw meta.throwExWithCause(meta.InvocationTargetException, e.getException());
         }
 

@@ -89,6 +89,7 @@ public final class Substitutions implements ContextAccess {
                     Target_sun_misc_Unsafe.class,
                     Target_sun_misc_URLClassPath.class,
                     Target_sun_misc_VM.class,
+                    Target_sun_reflect_NativeConstructorAccessorImpl.class,
                     Target_sun_reflect_NativeMethodAccessorImpl.class));
 
     static {

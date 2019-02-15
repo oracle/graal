@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -65,7 +64,8 @@ public final class LinkedKlass {
 
     public LinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
 
-        assert Arrays.stream(interfaces).allMatch(i -> Modifier.isInterface(i.getFlags()));
+        // Streams are forbidden in Espresso.
+        // assert Arrays.stream(interfaces).allMatch(i -> Modifier.isInterface(i.getFlags()));
         assert superKlass == null || !Modifier.isInterface(superKlass.getFlags());
 
         int instanceFieldSlot = superKlass != null ? superKlass.instanceFieldCount : 0;

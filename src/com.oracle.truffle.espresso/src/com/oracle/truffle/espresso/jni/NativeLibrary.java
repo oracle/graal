@@ -70,6 +70,9 @@ public class NativeLibrary {
     public static TruffleObject lookupAndBind(TruffleObject library, String method, String signature) throws UnknownIdentifierException {
         try {
             TruffleObject symbol = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, method);
+            if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), symbol)) {
+                throw UnknownIdentifierException.raise(method);
+            }
             return (TruffleObject) ForeignAccess.sendInvoke(Message.INVOKE.createNode(), symbol, "bind", signature);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot bind " + method);

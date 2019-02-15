@@ -44,6 +44,16 @@ def _run_espresso(args):
                 + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
                 + args)
 
+def _run_espresso_meta(args):
+    vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
+
+    mx.run_java(vm_args
+                + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
+                + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
+                + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
+                + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
+                + args)
+
 
 def _run_espresso_playground(args):
     vm_args, args = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
@@ -99,5 +109,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
 # register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
     'espresso': [_run_espresso, ''],
+    'espresso-meta': [_run_espresso_meta, ''],
     'espresso-playground': [_run_espresso_playground, ''],
 })

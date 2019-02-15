@@ -39,7 +39,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.TRAP;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * Definitions of the standard Java bytecodes defined by
@@ -359,25 +359,25 @@ public final class Bytecodes {
      * An array that maps from a bytecode value to a {@link String} for the corresponding
      * instruction mnemonic.
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private static final String[] nameArray = new String[256];
+    @CompilationFinal(dimensions = 1) private static final String[] nameArray = new String[256];
 
     /**
      * An array that maps from a bytecode value to the set of {@link Flags} for the corresponding
      * instruction.
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private static final int[] flagsArray = new int[256];
+    @CompilationFinal(dimensions = 1) private static final int[] flagsArray = new int[256];
 
     /**
      * An array that maps from a bytecode value to the length in bytes for the corresponding
      * instruction.
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private static final int[] lengthArray = new int[256];
+    @CompilationFinal(dimensions = 1) private static final int[] lengthArray = new int[256];
 
     /**
      * An array that maps from a bytecode value to the number of slots pushed on the stack by the
      * corresponding instruction.
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private static final int[] stackEffectArray = new int[256];
+    @CompilationFinal(dimensions = 1) private static final int[] stackEffectArray = new int[256];
 
     // Checkstyle: stop
     // @formatter:off
@@ -590,7 +590,7 @@ public final class Bytecodes {
         def(JSR_W               , "jsr_w"           , "boooo",  0, STOP | BRANCH);
         def(BREAKPOINT          , "breakpoint"      , "b"    ,  0, TRAP);
         // Espresso quickened bytecodes.
-        // Quickening patches the BCI, replacing it by a QUICK(nodeIndex) bytecode, spawning a child node.
+        // Quickening patches the BCI, replacing it by a QUICK(nodeIndex) bytecode and spawning a child node.
         // Unlike standard bytecodes, stack effects are determined completely by the node, even if the semantics
         // of patched bytecode is partially or completely known.
         def(QUICK               , "quick"           , "bjj"  ,  0, QUICKENED);

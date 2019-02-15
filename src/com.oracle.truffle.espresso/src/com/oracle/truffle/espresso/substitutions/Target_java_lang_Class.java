@@ -58,6 +58,8 @@ public final class Target_java_lang_Class {
 
     public static final String HIDDEN_METHOD_KEY = "$$method_info";
     public static final String HIDDEN_FIELD_KEY = "$$field_info";
+    public static final String HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = "$$field_runtime_visible_type_annotations";
+    public static final String HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = "$$method_runtime_visible_type_annotations";
 
     @Substitution
     public static @Host(Class.class) StaticObject getPrimitiveClass(
@@ -149,6 +151,17 @@ public final class Target_java_lang_Class {
             public StaticObject apply(int i) {
                 final Field f = fields[i];
                 StaticObjectImpl instance = (StaticObjectImpl) meta.Field.allocateInstance();
+
+                Attribute rawRuntimeVisibleAnnotations = f.getAttribute(Name.RuntimeVisibleAnnotations);
+                StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                                ? StaticObjectArray.wrap(rawRuntimeVisibleAnnotations.getData())
+                                : StaticObject.NULL;
+
+                Attribute rawRuntimeVisibleTypeAnnotations = f.getAttribute(Name.RuntimeVisibleTypeAnnotations);
+                StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                                ? StaticObjectArray.wrap(rawRuntimeVisibleTypeAnnotations.getData())
+                                : StaticObject.NULL;
+
                 fieldInit.invokeDirect(
                                 /* this */ instance,
                                 /* declaringKlass */ f.getDeclaringKlass().mirror(),
@@ -158,8 +171,9 @@ public final class Target_java_lang_Class {
                                 /* slot */ f.getSlot(),
                                 /* signature */ meta.toGuestString(f.getType()),
                                 // FIXME(peterssen): Fill annotations bytes.
-                                /* annotations */ StaticObject.NULL);
+                                /* annotations */ runtimeVisibleAnnotations);
                 instance.setHiddenField(HIDDEN_FIELD_KEY, f);
+                instance.setHiddenField(HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
                 return instance;
             }
         });
@@ -202,6 +216,21 @@ public final class Target_java_lang_Class {
             public StaticObject apply(int i) {
                 final Method m = constructors[i];
 
+                Attribute rawRuntimeVisibleAnnotations = m.getAttribute(Name.RuntimeVisibleAnnotations);
+                StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                                ? StaticObjectArray.wrap(rawRuntimeVisibleAnnotations.getData())
+                                : StaticObject.NULL;
+
+                Attribute rawRuntimeVisibleParameterAnnotations = m.getAttribute(Name.RuntimeVisibleParameterAnnotations);
+                StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
+                                ? StaticObjectArray.wrap(rawRuntimeVisibleParameterAnnotations.getData())
+                                : StaticObject.NULL;
+
+                Attribute rawRuntimeVisibleTypeAnnotations = m.getAttribute(Name.RuntimeVisibleTypeAnnotations);
+                StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                                ? StaticObjectArray.wrap(rawRuntimeVisibleTypeAnnotations.getData())
+                                : StaticObject.NULL;
+
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
                 StaticObject parameterTypes = meta.Class.allocateArray(
                                 m.getParameterCount(),
@@ -231,10 +260,11 @@ public final class Target_java_lang_Class {
                                 /* signature */ meta.toGuestString(m.getRawSignature().toString()),
 
                                 // FIXME(peterssen): Fill annotations bytes.
-                                /* annotations */ StaticObject.NULL,
-                                /* parameterAnnotations */ StaticObject.NULL);
+                                /* annotations */ runtimeVisibleAnnotations,
+                                /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
 
                 instance.setHiddenField(HIDDEN_METHOD_KEY, m);
+                instance.setHiddenField(HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
 
                 return instance;
             }
@@ -284,6 +314,26 @@ public final class Target_java_lang_Class {
             public StaticObject apply(int i) {
                 Method m = methods[i];
 
+                Attribute rawRuntimeVisibleAnnotations = m.getAttribute(Name.RuntimeVisibleAnnotations);
+                StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                                ? StaticObjectArray.wrap(rawRuntimeVisibleAnnotations.getData())
+                                : StaticObject.NULL;
+
+                Attribute rawRuntimeVisibleParameterAnnotations = m.getAttribute(Name.RuntimeVisibleParameterAnnotations);
+                StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
+                                ? StaticObjectArray.wrap(rawRuntimeVisibleParameterAnnotations.getData())
+                                : StaticObject.NULL;
+
+                Attribute rawRuntimeVisibleTypeAnnotations = m.getAttribute(Name.RuntimeVisibleTypeAnnotations);
+                StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                                ? StaticObjectArray.wrap(rawRuntimeVisibleTypeAnnotations.getData())
+                                : StaticObject.NULL;
+
+                Attribute rawAnnotationDefault = m.getAttribute(Name.AnnotationDefault);
+                StaticObject annotationDefault = rawAnnotationDefault != null
+                                ? StaticObjectArray.wrap(rawAnnotationDefault.getData())
+                                : StaticObject.NULL;
+
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
                 StaticObject parameterTypes = meta.Class.allocateArray(
                                 m.getParameterCount(),
@@ -315,11 +365,12 @@ public final class Target_java_lang_Class {
                                 /* signature */ meta.toGuestString(m.getRawSignature().toString()),
 
                                 // FIXME(peterssen): Fill annotations bytes.
-                                /* annotations */ StaticObject.NULL,
-                                /* parameterAnnotations */ StaticObject.NULL,
-                                /* annotationDefault */ StaticObject.NULL);
+                                /* annotations */ runtimeVisibleAnnotations,
+                                /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
+                                /* annotationDefault */ annotationDefault);
 
                 instance.setHiddenField(HIDDEN_METHOD_KEY, m);
+                instance.setHiddenField(HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
 
                 return instance;
             }

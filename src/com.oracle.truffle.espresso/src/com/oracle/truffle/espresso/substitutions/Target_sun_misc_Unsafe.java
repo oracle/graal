@@ -266,6 +266,17 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
+    public static long getLong(@SuppressWarnings("unused") Object self, long offset) {
+        return U.getLong(offset);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static long getLong(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        return (long) f.get(holder);
+    }
+
+    @Substitution(hasReceiver = true)
     public static Object getObjectVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getObjectVolatile(((StaticObjectArray) holder).unwrap(), offset);
@@ -328,6 +339,16 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void putByte(@SuppressWarnings("unused") Object self, long offset, byte value) {
         U.putByte(offset, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void putChar(@SuppressWarnings("unused") Object self, long offset, char value) {
+        U.putChar(offset, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void putInt(@SuppressWarnings("unused") Object self, long offset, int value) {
+        U.putInt(offset, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -453,5 +474,17 @@ public final class Target_sun_misc_Unsafe {
     public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
         Field target = getReflectiveFieldRoot(field);
         return target.getDeclaringKlass().tryInitializeAndGetStatics();
+    }
+
+    @SuppressWarnings("deprecation")
+    @Substitution(hasReceiver = true)
+    public static void monitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
+        U.monitorEnter(object);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Substitution(hasReceiver = true)
+    public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
+        U.monitorExit(object);
     }
 }

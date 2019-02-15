@@ -27,6 +27,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -63,14 +64,31 @@ public class StaticObjectImpl extends StaticObject {
         // assert !isStatic || klass.isInitialized();
         this.hiddenFields = null;
         this.fields = isStatic ? new Object[klass.getStaticFieldSlots()] : new Object[klass.getInstanceFieldSlots()];
+        initFields(klass, isStatic);
+    }
+
+    @ExplodeLoop
+    private void initFields(ObjectKlass klass, boolean isStatic) {
+        if (isStatic) {
+            for (Field f : klass.getDeclaredFields()) {
+                if (f.isStatic()) {
+                    fields[f.getSlot()] = MetaUtil.defaultFieldValue(f.getKind());
+                }
+            }
+        } else {
+            for (ObjectKlass curKlass = klass; curKlass != null; curKlass = curKlass.getSuperKlass()) {
+                for (Field f : curKlass.getDeclaredFields()) {
+                    if (!f.isStatic()) {
+                        fields[f.getSlot()] = MetaUtil.defaultFieldValue(f.getKind());
+                    }
+                }
+            }
+        }
     }
 
     public final Object getField(Field field) {
         // TODO(peterssen): Klass check.
         Object result = fields[field.getSlot()];
-        if (result == null) {
-            return MetaUtil.defaultFieldValue(field.getKind());
-        }
         assert result != null;
         return result;
     }

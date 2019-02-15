@@ -4,6 +4,9 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
+/**
+ * Immutable constant pool implementation backed by an array of constants.
+ */
 final class ConstantPoolImpl extends ConstantPool {
 
     @CompilationFinal(dimensions = 1) //

@@ -143,6 +143,7 @@ public final class Meta implements ContextAccess {
         StackOverflowError = knownKlass(Type.StackOverflowError);
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
         ClassCastException = knownKlass(Type.ClassCastException);
+        AbstractMethodError = knownKlass(Type.AbstractMethodError);
 
         NoSuchFieldError = knownKlass(Type.NoSuchFieldError);
         NoSuchMethodError = knownKlass(Type.NoSuchMethodError);
@@ -160,12 +161,16 @@ public final class Meta implements ContextAccess {
         Constructor = knownKlass(Type.Constructor);
         Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Type.Class);
         Constructor_root = Constructor.lookupDeclaredField(Name.root, Type.Constructor);
+        Constructor_parameterTypes = Constructor.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
+        MagicAccessorImpl = knownKlass(Type.MagicAccessorImpl);
 
         Method = knownKlass(Type.Method);
         Method_root = Method.lookupDeclaredField(Name.root, Type.Method);
         Method_clazz = Method.lookupDeclaredField(Name.clazz, Type.Class);
         Method_override = Method.lookupDeclaredField(Name.override, Type._boolean);
         Method_parameterTypes = Method.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
+
+        Parameter = knownKlass(Type.Parameter);
 
         Field = knownKlass(Type.Field);
         Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
@@ -259,12 +264,17 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Constructor;
     public final Field Constructor_clazz;
     public final Field Constructor_root;
+    public final Field Constructor_parameterTypes;
+
+    public final ObjectKlass MagicAccessorImpl;
 
     public final ObjectKlass Method;
     public final Field Method_root;
     public final Field Method_clazz;
     public final Field Method_override;
     public final Field Method_parameterTypes;
+
+    public final ObjectKlass Parameter;
 
     public final ObjectKlass Field;
     public final Field Field_root;
@@ -280,6 +290,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass StackOverflowError;
     public final ObjectKlass OutOfMemoryError;
     public final ObjectKlass ClassCastException;
+    public final ObjectKlass AbstractMethodError;
 
     public final ObjectKlass Throwable;
     public final Field Throwable_backtrace;
