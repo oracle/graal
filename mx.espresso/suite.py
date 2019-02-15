@@ -20,7 +20,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch mokapot).
-                "version": "d5e05af2eb0b94b0bb67153842e69c4c1bd331b1",
+                "version": "862859e7ed680b5b1912c836fbad9676167b1ff0",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
