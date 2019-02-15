@@ -282,7 +282,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             compilationExecutor = Inflation.createExecutor(debug, maxConcurrentThreads);
             generator = new NativeImageGenerator(imageClassLoader, optionParser);
             generator.run(entryPoints, mainEntryPoint, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
-                            analysisExecutor, compilationExecutor, optionParser.getRuntimeOptionNames());
+                            compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames());
         } catch (InterruptImageBuilding e) {
             if (analysisExecutor != null) {
                 analysisExecutor.shutdownNow();
