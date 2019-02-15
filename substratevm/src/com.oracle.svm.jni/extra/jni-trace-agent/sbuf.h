@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef TRACE_AGENT_H
-#define TRACE_AGENT_H
+#ifndef SBUF_H
+#define SBUF_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stdbool.h>
 #include <stdarg.h>
 
-#include <jvmti.h>
+struct sbuf {
+    char *buffer;
+    int   capacity;
+    int   length;
+};
 
-#define MAX_PATH_LEN 4096
-
-// A copy of the initial JNI function table before any modifications
-extern jniNativeInterface *jnifun;
-
-// Non-debug assertion
-void __guarantee_fail(const char *test, const char *file, unsigned int line, const char *funcname);
-#define guarantee(expr) \
-  ((expr) \
-   ? (void) (0) \
-   : __guarantee_fail (#expr, __FILE__, __LINE__, __func__))
-
-void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz,
-        const char *function, const char *result, va_list args);
+void sbuf_new(struct sbuf *b);
+const char *sbuf_as_cstr(struct sbuf *b);
+void sbuf_printf(struct sbuf *b, const char *fmt, ...);
+void sbuf_vprintf(struct sbuf *b, const char *fmt, va_list ap);
+void sbuf_append(struct sbuf *b, const struct sbuf *other);
+void sbuf_destroy(struct sbuf *b);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* TRACE_AGENT_H */
+#endif /* SBUF_H */

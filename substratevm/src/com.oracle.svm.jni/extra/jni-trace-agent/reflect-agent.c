@@ -27,43 +27,19 @@ extern "C" {
 #endif
 
 #include "trace-agent.h"
+#include "sbuf.h"
 
 #include <string.h>
 #include <malloc.h>
 
-static FILE *output;
+static jmethodID java_lang_Class_getName;
 
-static jmethodID classGetName;
-
-static void reflect_trace(JNIEnv *env, jclass clazz, const char *function, char *fmt, ...) {
-  fputs("reflect:", output);
-  if (clazz != NULL) {
-    fputc('"', output);
-    jobject name;
-    guarantee((name = jnifun->CallObjectMethod(env, clazz, classGetName)) != NULL);
-    const char *cname;
-    guarantee((cname = jnifun->GetStringUTFChars(env, name, NULL)) != NULL);
-    fputs(cname, output);
-    jnifun->ReleaseStringUTFChars(env, name, cname);
-    fputc('"', output);
-  }
-  fputc(':', output);
-  fputs(function, output);
-  va_list args;
-  va_start (args, fmt);
-  vfprintf(output, fmt, args);
-  va_end(args);
-  fputc('\n', output);
+static void reflect_trace(JNIEnv *env, jclass clazz, const char *function, ...) {
+  va_list ap;
+  va_start(ap, function);
+  trace_append_v(env, "reflect", clazz, function, NULL, ap);
+  va_end(ap);
 }
-
-static jboolean test_exception(JNIEnv *env) {
-  if (jnifun->ExceptionCheck(env)) {
-    jnifun->ExceptionDescribe(env);
-    return JNI_TRUE;
-  }
-  return JNI_FALSE;
-}
-
 struct reflect_breakpoint_entry;
 
 typedef void (*reflect_breakpoint_handler)(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, struct reflect_breakpoint_entry *bp);
@@ -82,14 +58,14 @@ static void OnBreakpoint_forName(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, s
   guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 0, &name) == JVMTI_ERROR_NONE);
   const char *cname;
   guarantee((cname = jnifun->GetStringUTFChars(jni, name, NULL)) != NULL);
-  reflect_trace(jni, NULL, bp->name, "(\"%s\")", cname);
+  reflect_trace(jni, NULL, bp->name, cname, NULL);
   jnifun->ReleaseStringUTFChars(jni, name, cname);
 }
 
 static void OnBreakpoint_bulkGetMembers(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, struct reflect_breakpoint_entry *bp) {
   jstring self;
   guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 0, &self) == JVMTI_ERROR_NONE);
-  reflect_trace(jni, self, bp->name, "()");
+  reflect_trace(jni, self, bp->name, NULL);
 }
 
 static void OnBreakpoint_getSingleField(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, struct reflect_breakpoint_entry *bp) {
@@ -99,50 +75,45 @@ static void OnBreakpoint_getSingleField(jvmtiEnv *jvmti, JNIEnv* jni, jthread th
   guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 1, &name) == JVMTI_ERROR_NONE);
   const char *cname;
   guarantee((cname = jnifun->GetStringUTFChars(jni, name, NULL)) != NULL);
-  reflect_trace(jni, self, bp->name, "(\"%s\")", cname);
+  reflect_trace(jni, self, bp->name, cname, NULL);
   jnifun->ReleaseStringUTFChars(jni, name, cname);
 }
 
 static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, struct reflect_breakpoint_entry *bp) {
   jclass self;
   guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 0, &self) == JVMTI_ERROR_NONE);
-  jstring name;
-  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 1, &name) == JVMTI_ERROR_NONE);
-  jobjectArray types;
-  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 2, &types) == JVMTI_ERROR_NONE);
-  jint types_len = jnifun->GetArrayLength(jni, types);
-  char *types_str = "";
-  if (types_len > 0) {
-    size_t types_str_capacity = 64 * types_len;
-    guarantee ((types_str = malloc(types_str_capacity)) != NULL);
-    types_str[0] = '\0';
-    size_t types_str_len = 0;
-    for (jint i = 0; i < types_len; i++) {
+  jstring method_name;
+  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 1, &method_name) == JVMTI_ERROR_NONE);
+  const char *method_cname;
+  guarantee((method_cname = jnifun->GetStringUTFChars(jni, method_name, NULL)) != NULL);
+  jobjectArray param_types;
+  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 2, &param_types) == JVMTI_ERROR_NONE);
+  jint param_types_len = jnifun->GetArrayLength(jni, param_types);
+  struct sbuf b;
+  if (param_types_len > 0) {
+    sbuf_new(&b);
+    sbuf_printf(&b, "[");
+    for (jint i = 0; i < param_types_len; i++) {
       jclass arg;
-      guarantee((arg = jnifun->GetObjectArrayElement(jni, types, i)) != NULL);
+      guarantee((arg = jnifun->GetObjectArrayElement(jni, param_types, i)) != NULL);
       jstring class_name;
-      guarantee((class_name = jnifun->CallObjectMethod(jni, arg, classGetName)) != NULL);
+      guarantee((class_name = jnifun->CallObjectMethod(jni, arg, java_lang_Class_getName)) != NULL);
       const char *class_cname;
       guarantee((class_cname = jnifun->GetStringUTFChars(jni, class_name, NULL)) != NULL);
-      size_t class_cname_len = strlen(class_cname);
-      size_t required_capacity = types_str_len + 3 + class_cname_len + 2;
-      if(required_capacity > types_str_capacity) {
-        guarantee((types_str = realloc(types_str, required_capacity)) != NULL);
-        types_str_capacity = required_capacity;
+      if (i == 0) {
+        sbuf_printf(&b, ", \"%s\"", class_cname);
+      } else {
+        sbuf_printf(&b, "\"%s\"", class_cname);
       }
-      strcpy(&types_str[types_str_len], ", \"");
-      types_str_len += 3;
-      strcpy(&types_str[types_str_len], class_cname);
-      types_str_len += class_cname_len;
-      strcpy(&types_str[types_str_len], "\"");
-      types_str_len++;
       jnifun->ReleaseStringUTFChars(jni, class_name, class_cname);
     }
+    sbuf_printf(&b, "]");
+    reflect_trace(jni, self, bp->name, method_cname, sbuf_as_cstr(&b), NULL);
+    sbuf_destroy(&b);
+  } else {
+    reflect_trace(jni, self, bp->name, method_cname, NULL);
   }
-  const char *cname;
-  guarantee((cname = jnifun->GetStringUTFChars(jni, name, NULL)) != NULL);
-  reflect_trace(jni, self, bp->name, "(\"%s\"%s)", cname, types_str);
-  jnifun->ReleaseStringUTFChars(jni, name, cname);
+  jnifun->ReleaseStringUTFChars(jni, method_name, method_cname);
 }
 
 #define REFLECTION_BREAKPOINT(class_name, name, signature, handler) \
@@ -176,6 +147,14 @@ static struct reflect_breakpoint_entry reflect_breakpoints[] = {
   //REFLECTION_BREAKPOINT("java/lang/Class", "getEnclosingConstructor", "()Ljava/lang/reflect/Constructor;", &OnBreakpoint_getEnclosingMethod),
 };
 
+static jboolean test_exception(JNIEnv *env) {
+  if (jnifun->ExceptionCheck(env)) {
+    jnifun->ExceptionDescribe(env);
+    return JNI_TRUE;
+  }
+  return JNI_FALSE;
+}
+
 static void JNICALL OnBreakpoint(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jmethodID method, jlocation location) {
   // Linear search should be fine for now, but we could sort and do binary searches
   const int count = sizeof (reflect_breakpoints) / sizeof (struct reflect_breakpoint_entry);
@@ -193,10 +172,6 @@ static void JNICALL OnBreakpoint(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, j
 }
 
 jint OnLoad_Reflection(JavaVM *vm, char *options, jvmtiEnv *jvmti, jvmtiEventCallbacks *callbacks) {
-  char path[MAX_PATH_LEN];
-  guarantee(snprintf(path, MAX_PATH_LEN, "%s%s", options, ".reflect.log") < MAX_PATH_LEN);
-  guarantee((output = fopen(path, "w")) != NULL);
-
   jvmtiCapabilities caps;
   guarantee((*jvmti)->GetCapabilities(jvmti, &caps) == JVMTI_ERROR_NONE);
   caps.can_generate_breakpoint_events = 1;
@@ -232,9 +207,9 @@ void OnVMInit_Reflection(jvmtiEnv *jvmti, JNIEnv *jni, jthread thread) {
 }
 
 void OnVMStart_Reflection(jvmtiEnv *jvmti, JNIEnv *jni) {
-  jclass javaLangClass;
-  guarantee((javaLangClass = jnifun->FindClass(jni, "java/lang/Class")) != NULL);
-  guarantee((classGetName = jnifun->GetMethodID(jni, javaLangClass, "getName", "()Ljava/lang/String;")) != NULL);
+  jclass java_lang_Class;
+  guarantee((java_lang_Class = jnifun->FindClass(jni, "java/lang/Class")) != NULL);
+  guarantee((java_lang_Class_getName = jnifun->GetMethodID(jni, java_lang_Class, "getName", "()Ljava/lang/String;")) != NULL);
 }
 
 #ifdef __cplusplus

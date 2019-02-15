@@ -29,9 +29,7 @@
 extern "C" {
 #endif
 
-jint OnLoad_JNI(JavaVM *vm, char *options, void *reserved, jvmtiEventCallbacks *callbacks);
 void OnVMStart_JNI(jvmtiEnv *jvmti, JNIEnv *jni);
-void OnVMDeath_JNI(jvmtiEnv *jvmti, JNIEnv *jni);
 
 #ifdef __cplusplus
 }
