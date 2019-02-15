@@ -43,6 +43,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -62,6 +66,11 @@ public class NodeLimitTest extends PartialEvaluationTest {
     @Test
     public void oneRootNodeTest() {
         fullTest(createRootNodeFillerOnly(), createRootNodeFillerAndTest());
+    }
+
+    @Test
+    public void oneRootNodeTestEscapingFrame() {
+        fullTest(createRootNodeFillerThatUsedFrame(), createRootNodeFillerAndTestThatUsedFrame());
     }
 
     @Test
@@ -98,7 +107,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private void assertNotInCompilation() {
-                for (int i = 0; i < 100_000; i++) {
+                for (; i < 100_000; i++) {
                     global++;
                 }
                 CompilerAsserts.neverPartOfCompilation();
@@ -111,6 +120,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     // Used as a black hole for filler code
     @SuppressWarnings("unused") private static int global;
+    @SuppressWarnings("unused") private static int i;
 
     private static RootNode createRootNodeFillerOnly() {
         return new RootNode(null) {
@@ -122,7 +132,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private void foo() {
-                for (int i = 0; i < 1000; i++) {
+                for (; i < 1000; i++) {
                     global += i;
                 }
 
@@ -140,7 +150,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private void foo() {
-                for (int i = 0; i < 1000; i++) {
+                for (; i < 1000; i++) {
                     global += i;
                 }
                 testMethod();
@@ -148,6 +158,54 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
             void testMethod() {
                 CompilerAsserts.neverPartOfCompilation();
+            }
+        };
+    }
+
+    private static RootNode createRootNodeFillerThatUsedFrame() {
+        FrameDescriptor descriptor = new FrameDescriptor();
+        final FrameSlot slot = descriptor.addFrameSlot("test");
+        return new RootNode(null, descriptor) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setInt(slot, foo());
+                return null;
+            }
+
+            private int foo() {
+                for (; i < 1000; i++) {
+                    global += i;
+                }
+                return global;
+            }
+        };
+    }
+
+    private static RootNode createRootNodeFillerAndTestThatUsedFrame() {
+        FrameDescriptor descriptor = new FrameDescriptor();
+        FrameSlot slot = (descriptor.getSlots().isEmpty()) ? descriptor.addFrameSlot("test", null, FrameSlotKind.Int) : descriptor.findFrameSlot("test");
+        return new RootNode(null, descriptor) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setInt(slot, global);
+                foo();
+                testMethod(frame);
+                return null;
+            }
+
+            private int foo() {
+                for (; i < 1000; i++) {
+                    global += i;
+                }
+                return global;
+            }
+
+            void testMethod(VirtualFrame frame) {
+                CompilerAsserts.neverPartOfCompilation();
+                global += (int) frame.getArguments()[0];
+                global += FrameUtil.getIntSafe(frame, slot);
             }
         };
     }
@@ -162,7 +220,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
             peRootNodeWithFillerAndTest(getBaselineGraphNodeCount(fillerOnly), fillerAndTest);
             throw new AssertionError("Expected to throw but did not.");
         } catch (GraalBailoutException e) {
-            Assert.assertEquals(e.getMessage(), "CompilerAsserts.neverPartOfCompilation()");
+            Assert.assertEquals("CompilerAsserts.neverPartOfCompilation()", e.getMessage());
         }
     }
 
@@ -180,7 +238,9 @@ public class NodeLimitTest extends PartialEvaluationTest {
     private void peRootNodeWithFillerAndTest(int nodeLimit, RootNode rootNode) {
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleMaximumGraalNodeCount, nodeLimit)) {
             RootCallTarget target = runtime.createCallTarget(rootNode);
-            partialEval((OptimizedCallTarget) target, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+            final Object[] arguments = {1};
+            i = 0;
+            partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
         }
     }
 
@@ -197,7 +257,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private void foo() {
-                for (int i = 0; i < 1000; i++) {
+                for (; i < 1000; i++) {
                     global += i;
                 }
 
