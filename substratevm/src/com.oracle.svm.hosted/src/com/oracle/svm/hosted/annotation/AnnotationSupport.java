@@ -158,6 +158,11 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 }
                 result.addSubstitutionMethod(originalMethod, substitutionMethod);
             }
+            for (ResolvedJavaMethod originalMethod : type.getDeclaredConstructors()) {
+                AnnotationSubstitutionMethod substitutionMethod = new AnnotationAccessorMethod(originalMethod);
+                result.addSubstitutionField(new AnnotationSubstitutionField(result, originalMethod, snippetReflection, metaAccess));
+                result.addSubstitutionMethod(originalMethod, substitutionMethod);
+            }
 
             typeSubstitutions.put(type, result);
         }
