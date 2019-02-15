@@ -497,7 +497,7 @@ public abstract class Launcher {
                 if (!descriptor.getName().startsWith("engine.") && !descriptor.getName().startsWith("compiler.")) {
                     continue;
                 }
-                if (!descriptor.isDeprecated() && descriptor.getCategory().ordinal() == helpCategory.ordinal()) {
+                if (!descriptor.isDeprecated() && sameCategory(descriptor, helpCategory)) {
                     engineOptions.add(asPrintableOption(descriptor));
                 }
             }
@@ -528,7 +528,7 @@ public abstract class Launcher {
         for (Instrument instrument : instruments) {
             List<PrintableOption> options = new ArrayList<>();
             for (OptionDescriptor descriptor : instrument.getOptions()) {
-                if (!descriptor.isDeprecated() && descriptor.getCategory().ordinal() == optionCategory.ordinal()) {
+                if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
                     options.add(asPrintableOption(descriptor));
                 }
             }
@@ -554,7 +554,7 @@ public abstract class Launcher {
         for (Language language : languages) {
             List<PrintableOption> options = new ArrayList<>();
             for (OptionDescriptor descriptor : language.getOptions()) {
-                if (!descriptor.isDeprecated() && descriptor.getCategory().ordinal() == optionCategory.ordinal()) {
+                if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
                     options.add(asPrintableOption(descriptor));
                 }
             }
@@ -572,6 +572,13 @@ public abstract class Launcher {
                 }
             }
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean sameCategory(OptionDescriptor descriptor, OptionCategory optionCategory) {
+        return descriptor.getCategory().ordinal() == optionCategory.ordinal() ||
+                        (optionCategory.ordinal() == OptionCategory.INTERNAL.ordinal() &&
+                                        descriptor.getCategory().ordinal() == OptionCategory.DEBUG.ordinal());
     }
 
     boolean parsePolyglotOption(String defaultOptionPrefix, Map<String, String> options, String arg) {
@@ -781,7 +788,7 @@ public abstract class Launcher {
     }
 
     static void printOption(OptionCategory optionCategory, OptionDescriptor descriptor) {
-        if (!descriptor.isDeprecated() && descriptor.getCategory().ordinal() == optionCategory.ordinal()) {
+        if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
             printOption(asPrintableOption(descriptor));
         }
     }
