@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 /**
  * A <tt>ByteSequence</tt> is a readable sequence of <code>byte</code> values. This interface
  * provides uniform, read-only access to different kinds of <code>byte</code> sequences.
+ * Implements a "view" over a byte array.
  */
 // TODO(peterssen): Should not be public.
 public abstract class ByteSequence {

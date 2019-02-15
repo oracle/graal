@@ -37,7 +37,7 @@ import java.util.zip.ZipFile;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
-public class Classpath {
+public final class Classpath {
 
     private static final List<Entry> EMPTY_LIST = Collections.emptyList();
 

@@ -31,7 +31,6 @@ import static com.oracle.truffle.espresso.substitutions.Target_java_lang_Class.H
 
 import java.io.File;
 import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;

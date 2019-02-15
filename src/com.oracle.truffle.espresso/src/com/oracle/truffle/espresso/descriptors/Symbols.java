@@ -59,15 +59,15 @@ public final class Symbols {
             public Symbol<?> apply(SymbolKey __) {
                 // Create Symbol<?>
                 final byte[] bytes = Arrays.copyOfRange(sequence.getUnderlyingBytes(),
-                        sequence.offset(),
-                        sequence.offset() + sequence.length());
+                                sequence.offset(),
+                                sequence.offset() + sequence.length());
                 Symbol<?> computed = new Symbol<>(bytes, sequence.hashCode());
                 // Swap the byte sequence, which could be holding a large underlying byte array, by
                 // a fresh symbol.
                 //
-                // ConcurrentHashMap provides no guarantees about how many times the mapping function
-                // could be called. In the worst case it's possible to end up with a key.seq != computed
-                // e.g. two different copies of the symbol.
+                // ConcurrentHashMap provides no guarantees about how many times the mapping
+                // function can be potentially called. In the worst case it's possible to end up
+                // with a key.seq != computed e.g. two different copies of the symbol.
                 // This wastes space but remains correct since key.seq never leaks out of the
                 // symbol map and it's byte-equals to the computed value.
                 // It doesn't keep the underlying byte array (which can be large e.g. .class file

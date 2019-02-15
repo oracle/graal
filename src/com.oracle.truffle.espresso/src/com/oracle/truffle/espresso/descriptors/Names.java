@@ -27,8 +27,9 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 /**
  * Manages access to "name" symbols.
  *
- * Names do not have a well-defined format, except for not being empty. In debug mode this class
- * should warn if name symbol is valid type or signature.
+ * Names do not have a well-defined format, except for not being empty.
+ *
+ * TODO(peterssen): In debug mode this class should warn if name symbol is valid type or signature.
  */
 public final class Names {
     private final Symbols symbols;
