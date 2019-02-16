@@ -117,11 +117,11 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.word.ObjectAccess;
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -142,6 +142,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -149,11 +150,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
@@ -177,8 +173,6 @@ import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pwd.passwd;
 import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
 import com.oracle.svm.core.posix.headers.Resource.rlimit;
-import com.oracle.svm.core.posix.headers.Signal;
-import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Socket.sockaddr;
 import com.oracle.svm.core.posix.headers.Stat;
@@ -348,14 +342,13 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void signal(long thread) throws IOException {
             if (SubstrateOptions.MultiThreaded.getValue()) {
-                Util_sun_nio_ch_NativeThread.ensureInitialized();
                 // 090     int ret;
                 int ret;
                 // 091 #ifdef __solaris__
                 // 092     ret = thr_kill((thread_t)thread, INTERRUPT_SIGNAL);
                 // 093 #else
                 // 094     ret = pthread_kill((pthread_t)thread, INTERRUPT_SIGNAL);
-                ret = Pthread.pthread_kill(WordFactory.pointer(thread), Util_sun_nio_ch_NativeThread.INTERRUPT_SIGNAL);
+                ret = Pthread.pthread_kill(WordFactory.pointer(thread), PosixInterruptSignalHandler.INTERRUPT_SIGNAL);
                 // 095 #endif
                 // 096     if (ret != 0)
                 if (ret != 0) {
@@ -365,88 +358,29 @@ public final class PosixJavaNIOSubstitutions {
             }
         }
 
-        /** See {@link Util_sun_nio_ch_NativeThread#ensureInitialized()}. */
         @Substitute
-        private static void init() {
-            throw new InternalError("init() is only called from static initializers, so not reachable in Substrate VM");
+        // 58  JNIEXPORT void JNICALL
+        // 59  Java_sun_nio_ch_NativeThread_init(JNIEnv *env, jclass cl)
+        // 60  {
+        private static /* native */ void init() throws IOException {
+            // 61      /* Install the null handler for INTERRUPT_SIGNAL.  This might overwrite the
+            // 62       * handler previously installed by java/net/linux_close.c, but that's okay
+            // 63       * since neither handler actually does anything.  We install our own
+            // 64       * handler here simply out of paranoia; ultimately the two mechanisms
+            // 65       * should somehow be unified, perhaps within the VM.
+            // 66       */
+            // 67
+            // 68      sigset_t ss;
+            // 69      struct sigaction sa, osa;
+            // 70      sa.sa_handler = nullHandler;
+            // 71      sa.sa_flags = 0;
+            // 72      sigemptyset(&sa.sa_mask);
+            // 73      if (sigaction(INTERRUPT_SIGNAL, &sa, &osa) < 0)
+            // 74          JNU_ThrowIOExceptionWithLastError(env, "sigaction");
+            PosixInterruptSignalHandler.ensureInitialized();
         }
 
         /* } Do not re-format commented code: @formatter:on */
-    }
-
-    static final class Util_sun_nio_ch_NativeThread {
-
-        /**
-         * The initialization of {@link sun.nio.ch.NativeThread} is in a static block that gets run
-         * during image building. I need to initialize the signal handler at run time. I am not
-         * worried about races, as they will all register the same signal handler.
-         */
-        static boolean initialized = false;
-
-        /* { Do not re-format commented code: @formatter:off */
-        // 035 #ifdef __linux__
-        // 036   #include <pthread.h>
-        // 037   #include <sys/signal.h>
-        // 038   /* Also defined in net/linux_close.c */
-        // 039   #define INTERRUPT_SIGNAL (__SIGRTMAX - 2)
-        // 040 #elif __solaris__
-        // 041   #include <thread.h>
-        // 042   #include <signal.h>
-        // 043   #define INTERRUPT_SIGNAL (SIGRTMAX - 2)
-        // 044 #elif _ALLBSD_SOURCE
-        // 045   #include <pthread.h>
-        // 046   #include <signal.h>
-        // 047   /* Also defined in net/bsd_close.c */
-        // 048   #define INTERRUPT_SIGNAL SIGIO
-        // 049 #else
-        // 050   #error "missing platform-specific definition here"
-        // 051 #endif
-        static final Signal.SignalEnum INTERRUPT_SIGNAL = Signal.SignalEnum.SIGIO;
-        /* } Do not re-format commented code: @formatter:on */
-
-        /* Translated from jdk/src/solaris/native/sun/nio/ch/NativeThread.c?v=Java_1.8.0_40_b10. */
-        // 053 static void
-        // 054 nullHandler(int sig)
-        // 055 {
-        // 056 }
-        @CEntryPoint
-        @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-        @Uninterruptible(reason = "Can not check for safepoints because I am running on a borrowed thread.")
-        private static void nullHandler(@SuppressWarnings("unused") int signalNumber) {
-        }
-
-        /** The address of the null signal handler. */
-        private static final CEntryPointLiteral<SignalDispatcher> nullDispatcher = CEntryPointLiteral.create(Util_sun_nio_ch_NativeThread.class, "nullHandler", int.class);
-
-        static void ensureInitialized() throws IOException {
-            if (!initialized) {
-                /* { Do not re-format commented code: @formatter:off */
-                // 061     /* Install the null handler for INTERRUPT_SIGNAL.  This might overwrite the
-                // 062      * handler previously installed by java/net/linux_close.c, but that's okay
-                // 063      * since neither handler actually does anything.  We install our own
-                // 064      * handler here simply out of paranoia; ultimately the two mechanisms
-                // 065      * should somehow be unified, perhaps within the VM.
-                // 066      */
-                // 067
-                // 068     sigset_t ss;
-                // 069     struct sigaction sa, osa;
-                Signal.sigaction saPointer = StackValue.get(Signal.sigaction.class);
-                Signal.sigaction osaPointer = StackValue.get(Signal.sigaction.class);
-                // 070     sa.sa_handler = nullHandler;
-                saPointer.sa_handler(Util_sun_nio_ch_NativeThread.nullDispatcher.getFunctionPointer());
-                // 071     sa.sa_flags = 0;
-                saPointer.sa_flags(0);
-                // 072     sigemptyset(&sa.sa_mask);
-                Signal.sigemptyset(saPointer.sa_mask());
-                // 073     if (sigaction(INTERRUPT_SIGNAL, &sa, &osa) < 0)
-                if (Signal.sigaction(INTERRUPT_SIGNAL, saPointer, osaPointer) < 0) {
-                    // 074         JNU_ThrowIOExceptionWithLastError(env, "sigaction");
-                    throw PosixUtils.newIOExceptionWithLastError("sigaction");
-                }
-                /* } Do not re-format commented code: @formatter:on */
-                initialized = true;
-            }
-        }
     }
 
     /*
@@ -4039,5 +3973,18 @@ public final class PosixJavaNIOSubstitutions {
 
         /* } Allow names with underscores: Checkstyle: resume. */
         /* } Do not format quoted code: @formatter:on */
+    }
+}
+
+/**
+ * Re-run the class initialization for {@code sun.nio.ch.NativeThread} so that it ensures that the
+ * interrupt signal handler is initialized at runtime.
+ */
+@AutomaticFeature
+final class SunNioChNativeThreadFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.NativeThread"));
     }
 }
