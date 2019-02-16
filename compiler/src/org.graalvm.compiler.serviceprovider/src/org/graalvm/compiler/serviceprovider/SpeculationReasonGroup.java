@@ -67,7 +67,7 @@ public final class SpeculationReasonGroup {
     /**
      * Creates a speculation reason described by this group.
      *
-     * @param context the details of the reason instance being created
+     * @param context the components of the reason instance being created
      */
     public SpeculationReason createSpeculationReason(Object... context) {
         assert checkSignature(context);
@@ -88,6 +88,9 @@ public final class SpeculationReasonGroup {
         }
         if (Enum.class.isAssignableFrom(c)) {
             // Trust the ordinal of an Enum to be unique
+            return true;
+        }
+        if (SpeculationContextObject.class.isAssignableFrom(c)) {
             return true;
         }
         if (ResolvedJavaMethod.class.isAssignableFrom(c) || ResolvedJavaType.class.isAssignableFrom(c)) {
@@ -121,7 +124,7 @@ public final class SpeculationReasonGroup {
             Object o = context[i];
             Class<?> c = signature[i];
             if (o != null) {
-                if (c == ResolvedJavaMethod.class || c == ResolvedJavaType.class) {
+                if (c == ResolvedJavaMethod.class || c == ResolvedJavaType.class || SpeculationContextObject.class.isAssignableFrom(c)) {
                     c.cast(o);
                 } else {
                     Class<?> oClass = o.getClass();
@@ -134,5 +137,33 @@ public final class SpeculationReasonGroup {
             }
         }
         return true;
+    }
+
+    /**
+     * Denotes part of a {@linkplain SpeculationReasonGroup#createSpeculationReason(Object...)
+     * reason} that can have its attributes {@linkplain #accept(Visitor) visited}.
+     */
+    public interface SpeculationContextObject {
+        void accept(Visitor v);
+
+        public interface Visitor {
+            void visitBoolean(boolean v);
+
+            void visitByte(byte v);
+
+            void visitChar(char v);
+
+            void visitShort(short v);
+
+            void visitInt(int v);
+
+            void visitLong(long v);
+
+            void visitFloat(float v);
+
+            void visitDouble(double v);
+
+            void visitObject(Object v);
+        }
     }
 }

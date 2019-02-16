@@ -101,7 +101,7 @@ public class OnStackReplacementPhase extends Phase {
         return Options.SupportOSRWithLocks.getValue(options);
     }
 
-    private static final SpeculationReasonGroup OSR_LOCAL_SPECULATIONS = new SpeculationReasonGroup("OSRLocal", int.class, String.class, int.class);
+    private static final SpeculationReasonGroup OSR_LOCAL_SPECULATIONS = new SpeculationReasonGroup("OSRLocal", int.class, Stamp.class, int.class);
 
     @Override
     @SuppressWarnings("try")
@@ -207,7 +207,7 @@ public class OnStackReplacementPhase extends Phase {
                         osrLocal = graph.addOrUnique(new OSRLocalNode(i, unrestrictedStamp));
                     }
                     // Speculate on the OSRLocal stamps that could be more precise.
-                    SpeculationReason reason = OSR_LOCAL_SPECULATIONS.createSpeculationReason(osrState.bci, narrowedStamp.toString(), i);
+                    SpeculationReason reason = OSR_LOCAL_SPECULATIONS.createSpeculationReason(osrState.bci, narrowedStamp, i);
                     if (graph.getSpeculationLog().maySpeculate(reason) && osrLocal instanceof OSRLocalNode && value.getStackKind().equals(JavaKind.Object) && !narrowedStamp.isUnrestricted()) {
                         // Add guard.
                         LogicNode check = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) narrowedStamp, osrLocal, null, null));
