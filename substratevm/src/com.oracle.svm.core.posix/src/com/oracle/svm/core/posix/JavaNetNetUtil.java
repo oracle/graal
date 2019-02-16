@@ -34,6 +34,7 @@ import java.net.StandardProtocolFamily;
 import java.nio.channels.DatagramChannel;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -57,6 +58,7 @@ import com.oracle.svm.core.posix.headers.Poll;
 import com.oracle.svm.core.posix.headers.Poll.pollfd;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Sysctl;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.util.VMError;
@@ -1326,17 +1328,40 @@ class JavaNetNetUtilMD {
     }
     /* @formatter:on */
 
-    /* Do not re-wrap commented-out code.  @formatter:off */
-    // 074 #define NET_Timeout     JVM_Timeout
-    static int NET_Timeout(int fd, long timeout) {
-        return Target_os.timeout(fd, timeout);
+    /* { Do not re-wrap commented-out code.  @formatter:off */
+    // 1669  long NET_GetCurrentTime() {
+    static long NET_GetCurrentTime() {
+        // 1670      struct timeval time;
+        Time.timeval time = StackValue.get(Time.timeval.class);
+         // 1671      gettimeofday(&time, NULL);
+        Time.gettimeofday(time, WordFactory.nullPointer());
+        // 1672      return (time.tv_sec * 1000 + time.tv_usec / 1000);
+        return (time.tv_sec() * 1000 + time.tv_usec() / 1000);
     }
-    /* @formatter:on */
+    /* } Do not re-wrap commented-out code.  @formatter:on */
+
+    /* { Do not re-wrap commented-out code.  @formatter:off */
+    // 1675  int NET_TimeoutWithCurrentTime(int s, long timeout, long currentTime) {
+    static long NET_TimeoutWithCurrentTime(int s, long timeout, long currentTime) {
+        // 1676      return NET_Timeout0(s, timeout, currentTime);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Timeout0(s, timeout, currentTime);
+    }
+    /* } Do not re-wrap commented-out code.  @formatter:on */
+
+    /* { Do not re-wrap commented-out code.  @formatter:off */
+    // 1679  int NET_Timeout(int s, long timeout) {
+    static int NET_Timeout(int s, long timeout) {
+        // 1680      long currentTime = (timeout > 0) ? NET_GetCurrentTime() : 0;
+        long currentTime = (timeout > 0) ? NET_GetCurrentTime() : 0;
+        // 1681      return NET_Timeout0(s, timeout, currentTime);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Timeout0(s, timeout, currentTime);
+    }
+    /* } Do not re-wrap commented-out code.  @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 075 #define NET_Read        JVM_Read
     static int NET_Read(int fd, CCharPointer bufP, int len) {
-        return (int) Target_os.restartable_read(fd, bufP, len);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Read(fd, bufP, len);
     }
     /* @formatter:on */
 
