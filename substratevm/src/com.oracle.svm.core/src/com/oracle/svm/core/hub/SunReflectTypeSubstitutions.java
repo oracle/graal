@@ -31,7 +31,7 @@ import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Type;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -89,7 +89,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
     @Substitute
     public Type[] getBounds() {
         /* Variant method bodies from JDK-8 and JDK-9 to use the appropriately typed variables. */
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return boundsJDK8OrEarlier;
         } else {
             Object[] value = boundsJDK9OrLater;
@@ -186,7 +186,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
 
     @Substitute
     public Type[] getUpperBounds() {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return upperBoundsJDK8OrEarlier;
         } else {
             Object[] value = upperBoundsJDK9OrLater;
@@ -200,7 +200,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
 
     @Substitute
     public Type[] getLowerBounds() {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return lowerBoundsJDK8OrEarlier;
         } else {
             Object[] value = lowerBoundsJDK9OrLater;

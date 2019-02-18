@@ -26,7 +26,7 @@ package com.oracle.svm.core.posix.linux;
 
 import java.io.IOException;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -429,7 +429,7 @@ public final class LinuxNIOSubstitutions {
 
         @Override
         public void duringSetup(DuringSetupAccess access) {
-            if (GraalServices.Java8OrEarlier) {
+            if (JavaVersionUtil.Java8OrEarlier) {
                 /* This class only exists on JDK-8 and earlier platforms. */
                 RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.EPollArrayWrapper"));
             }

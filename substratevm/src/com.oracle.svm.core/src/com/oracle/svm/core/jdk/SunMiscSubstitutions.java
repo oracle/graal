@@ -30,7 +30,7 @@ import java.lang.ref.ReferenceQueue;
 import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -184,7 +184,7 @@ final class Target_sun_misc_MessageUtils {
 class Package_jdk_internal_ref implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.ref." + annotation.className();
@@ -248,7 +248,7 @@ final class Target_jdk_internal_ref_SoftCleanable {
 class Package_jdk_internal_perf implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.perf." + annotation.className();
@@ -295,7 +295,7 @@ final class Target_jdk_internal_misc_JavaLangAccess {
 class Package_jdk_internal_loader implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.loader." + annotation.className();
