@@ -2052,10 +2052,14 @@ public abstract class TruffleLanguage<C> {
          * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) createContext method}.
          * These services are made available to users via
          * {@link #lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class)} query method.
-         *
+         * <p>
          * This method can only be called from
          * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) } method - then the
          * services are collected and cannot be changed anymore.
+         * <p>
+         * The registered services must be enumerated in {@link Registration#services() language
+         * registration} to initialize the language by
+         * {@link #lookup(com.oracle.truffle.api.InstrumentInfo, java.lang.Class) service lookup}.
          *
          * @param service a service to be returned from associated
          *            {@link Env#lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class)

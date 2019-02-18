@@ -1817,10 +1817,63 @@ public class LanguageSPITest {
             assertTrue(result.asBoolean());
         }
         // Registered service
+        langContext = null;
         try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
             Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService2.class.getName());
             assertTrue(result.isBoolean());
             assertTrue(result.asBoolean());
+            result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService3.class.getName());
+            assertNotNull(langContext);
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+        }
+        // Non registered service
+        langContext = null;
+        try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
+            Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService4.class.getName());
+            assertNull(langContext);
+            assertTrue(result.isBoolean());
+            assertFalse(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testRegisterService() {
+        ProxyLanguage registerServiceLanguage = new ProxyLanguage() {
+            @Override
+            protected ProxyLanguage.LanguageContext createContext(Env env) {
+                env.registerService(new LanguageSPITestLanguageService2() {
+                });
+                return super.createContext(env);
+            }
+
+            @Override
+            protected void initializeContext(ProxyLanguage.LanguageContext context) throws Exception {
+                try {
+                    context.env.registerService(new LanguageSPITestLanguageService3() {
+                    });
+                    fail("Illegal state exception should be thrown when calling Env.registerService outside createContext");
+                } catch (IllegalStateException e) {
+                    // expected
+                }
+                super.initializeContext(context);
+            }
+
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                try {
+                    getContextReference().get().env.registerService(new LanguageSPITestLanguageService4() {
+                    });
+                    fail("Illegal state exception should be thrown when calling Env.registerService outside createContext");
+                } catch (IllegalStateException e) {
+                    // expected
+                }
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+            }
+        };
+        ProxyLanguage.setDelegate(registerServiceLanguage);
+        try (Context context = Context.create(ProxyLanguage.ID)) {
+            context.eval(ProxyLanguage.ID, "");
         }
     }
 
