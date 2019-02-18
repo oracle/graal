@@ -304,8 +304,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         try {
                             List<Object> languageServicesCollector = new ArrayList<>();
                             LANGUAGE.createEnvContext(localEnv, languageServicesCollector);
-                            String errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.serices());
-                            assert errorMessage == null : errorMessage;
+                            String errorMessage;
+                            assert (errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.serices())) == null : errorMessage;
                             this.languageServices = languageServicesCollector;
                             lang.language.profile.notifyContextCreate(this, localEnv);
                             if (eventsEnabled) {
