@@ -30,6 +30,7 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -70,8 +71,11 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean desiredAssertionStatus(@SuppressWarnings("unused") Object self) {
-        return false;
+    public static boolean desiredAssertionStatus(@Host(Class.class) StaticObjectClass self) {
+        if (StaticObject.isNull(self.getMirrorKlass().getDefiningClassLoader())) {
+            return EspressoOptions.EnableSystemAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());
+        }
+        return EspressoOptions.EnableAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());
     }
 
     @Substitution
