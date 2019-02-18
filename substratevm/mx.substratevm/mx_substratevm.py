@@ -510,7 +510,6 @@ GraalTags = Tags([
     'build',
     'test',
     'benchmarktest',
-    'libgraal',
     'truffletck'
 ])
 
@@ -612,67 +611,6 @@ def svm_gate_body(args, tasks):
             maven_plugin_install(["--deploy-dependencies"])
             maven_plugin_test([])
 
-
-@mx.command(suite.name, 'buildlibgraal')
-def build_libgraal_cli(args):
-    build_libgraal(args)
-
-def check_libgraal_dependencies():
-    if mx.get_os() == 'windows':
-        return 'libgraal is unsupported on Windows'
-
-    graal_hotspot_library = mx.dependency('substratevm:GRAAL_HOTSPOT_LIBRARY', fatalIfMissing=False)
-    if not graal_hotspot_library:
-        return 'libgraal dependency substratevm:GRAAL_HOTSPOT_LIBRARY is missing'
-
-    truffle_compiler_library = mx.dependency('compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL', fatalIfMissing=False)
-    if not truffle_compiler_library:
-        return 'libgraal dependency compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL is missing'
-
-    return None
-
-def build_libgraal(image_args):
-    msg = check_libgraal_dependencies()
-    if msg:
-        return msg
-
-    graal_hotspot_library = mx.dependency('substratevm:GRAAL_HOTSPOT_LIBRARY')
-    truffle_compiler_library = mx.dependency('compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL')
-    truffle_api = mx.dependency('truffle:TRUFFLE_API')
-
-    libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', os.pathsep.join([graal_hotspot_library.classpath_repr(), truffle_compiler_library.classpath_repr()]),
-        '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
-        '-J-Xbootclasspath/a:' + truffle_api.classpath_repr(),
-        '-H:-UseServiceLoaderFeature',
-        '-H:+AllowFoldMethods',
-        '-Djdk.vm.ci.services.aot=true']
-
-    native_image_on_jvm(libgraal_args + image_args)
-
-    return None
-
-
-def libgraal_gate_body(args, tasks):
-    msg = check_libgraal_dependencies()
-    if msg:
-        mx.logv('Skipping libgraal because: {}'.format(msg))
-        return
-
-    with Task('Build libgraal', tasks, tags=[GraalTags.build, GraalTags.benchmarktest, GraalTags.test, GraalTags.libgraal]) as t:
-        # Build libgraal with assertions in the image builder and assertions in the image
-        if t: build_libgraal(['-J-esa', '-ea'])
-
-    extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
-    if args.extra_vm_argument:
-        extra_vm_argument += args.extra_vm_argument
-
-    mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
-
-    with Task('Test libgraal', tasks, tags=[GraalTags.libgraal]) as t:
-        if t:
-            mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false"])
-
-mx_gate.add_gate_runner(suite, libgraal_gate_body)
 
 def javac_image_command(javac_path):
     return [join(javac_path, 'javac'), "-proc:none", "-bootclasspath",
@@ -1008,6 +946,36 @@ if os.environ.has_key('NATIVE_IMAGE_TESTING'):
         builder_jar_distributions=['mx:JUNIT_TOOL', 'mx:JUNIT', 'mx:HAMCREST'],
         support_distributions=['substratevm:NATIVE_IMAGE_JUNIT_SUPPORT'],
         include_in_polyglot=False,
+    ))
+
+
+if os.environ.has_key('LIBGRAAL'):
+    mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+        suite=suite,
+        name='LibGraal',
+        short_name='lg',
+        dir_name=False,
+        license_files=[],
+        third_party_license_files=[],
+        jar_distributions=[],
+        builder_jar_distributions=[],
+        support_distributions=[],
+        library_configs=[
+            mx_sdk.LibraryConfig(
+                destination="<lib:jvmcicompiler>",
+                jvm_library=True,
+                jar_distributions=[
+                    'substratevm:GRAAL_HOTSPOT_LIBRARY',
+                    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL'
+                ],
+                build_args=[
+                    '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
+                    '-H:-UseServiceLoaderFeature',
+                    '-H:+AllowFoldMethods',
+                    '-Djdk.vm.ci.services.aot=true'
+                ],
+            ),
+        ],
     ))
 
 

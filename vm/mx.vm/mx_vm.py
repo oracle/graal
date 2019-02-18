@@ -305,7 +305,17 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     # add links from jre/bin to component link
                     _add_link(_jdk_jre_bin, _link_dest)
                     _jre_bin_names.append(basename(_link_dest))
-
+            for _library_config in _get_library_configs(_component):
+                _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _library_config.jar_distributions], _component, with_sources=True)
+                if not stage1:
+                    if _library_config.jvm_library:
+                        assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
+                        _library_dest = _component_base if mx.get_os() == 'darwin' else (_component_base + mx.get_arch() + '/')
+                    else:
+                        _library_dest = _component_base
+                    _library_dest += _library_config.destination
+                    # add `LibraryConfig.destination` to the layout
+                    _add(layout, _library_dest, 'dependency:' + GraalVmNativeImage.project_name(_library_config), _component)
             for _provided_executable in _component.provided_executables:
                 if _component.short_name is 'vvm':
                     _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable)
@@ -881,6 +891,7 @@ class GraalVmLibrary(GraalVmNativeImage):
             absolute_path = join(output_dir, e)
             if isfile(absolute_path) and e.endswith('.h'):
                 yield absolute_path, e
+
 
 
 class GraalVmMiscLauncher(GraalVmLauncher):
@@ -1470,28 +1481,37 @@ def register_vm_config(config_name, components):
     _vm_configs[config_name] = components
 
 
-_launcher_configs = None
+_native_image_configs = {}
 
 
 def _get_launcher_configs(component):
     """ :rtype : list[mx_sdk.LauncherConfig]"""
-    global _launcher_configs
-    if _launcher_configs is None:
-        launchers = {}
+    return _get_native_image_configs(component, 'launcher_configs')
+
+
+def _get_library_configs(component):
+    """ :rtype : list[mx_sdk.LibraryConfig]"""
+    return _get_native_image_configs(component, 'library_configs')
+
+
+def _get_native_image_configs(component, config_type):
+    if _native_image_configs.get(config_type) is None:
+        new_configs = {}
         for component_ in mx_sdk.graalvm_components():
-            for launcher_config in component_.launcher_configs:
-                launcher_name = launcher_config.destination
-                if launcher_name in launchers:
-                    _, prev_component = launchers[launcher_name]
+            for config in getattr(component_, config_type):
+                config_name = config.destination
+                if config_name in new_configs:
+                    _, prev_component = new_configs[config_name]
                     if prev_component.priority > component_.priority:
                         continue
                     if prev_component.priority == component_.priority:
-                        raise mx.abort("Conflicting launchers: {} and {} both declare a launcher called {}".format(component_.name, prev_component.name, launcher_name))
-                launchers[launcher_name] = launcher_config, component_
-        _launcher_configs = {}
-        for launcher_config, component_ in launchers.values():
-            _launcher_configs.setdefault(component_.name, []).append(launcher_config)
-    return _launcher_configs.get(component.name, [])
+                        raise mx.abort("Conflicting native-image configs: {} and {} both declare a config called {}".format(component_.name, prev_component.name, config_name))
+                new_configs[config_name] = config, component_
+        configs = {}
+        for config, component_ in new_configs.values():
+            configs.setdefault(component_.name, []).append(config)
+        _native_image_configs[config_type] = configs
+    return _native_image_configs.get(config_type).get(component.name, [])
 
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
@@ -1530,6 +1550,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 register_project(launcher_project)
                 if launcher_project.is_native():
                     needs_stage1 = True
+            for library_config in _get_library_configs(component):
+                register_project(GraalVmLibrary(_suite, GraalVmNativeImage.project_name(library_config), [], None, library_config))
+                needs_stage1 = True
         # The JS components have issues ATM since they share the same directory
         if isinstance(component, mx_sdk.GraalVmLanguage) and not (_disable_installable(component) or component.dir_name == 'js'):
             installable_component = GraalVmInstallableComponent(component)
@@ -1593,6 +1616,15 @@ def has_svm_launchers(components, fatalIfMissing=False):
 
 def has_svm_polyglot_lib():
     return _get_svm_support().is_supported() and _with_polyglot_lib_project()
+
+
+def get_native_image_locations(name, image_name):
+    libgraal_libs = [l for l in _get_library_configs(get_component(name)) if image_name in basename(l.destination)]
+    if libgraal_libs:
+        assert len(libgraal_libs) == 1, "Ambiguous image name '{}' matches '{}'".format(image_name, libgraal_libs)
+        p = mx.project(GraalVmLibrary.project_name(libgraal_libs[0]))
+        return p.output_file()
+    return None
 
 
 def get_component(name, fatalIfMissing=False):
@@ -1805,6 +1837,7 @@ mx.add_argument('--extra-image-builder-argument', action='append', help='Add ext
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly', 'vvm'])
 register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'poly', 'vvm'])
+register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'poly', 'polynative', 'rgx', 'svm', 'tfl', 'bnative-image', 'bpolyglot'])
 
 
 def _debug_images():
