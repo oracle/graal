@@ -81,7 +81,7 @@ public final class SulongEngineOption {
     @Option(name = "llvm.lazyParsing", category = OptionCategory.EXPERT, help = "Enable lazy parsing of LLVM bitcode files.")
     public static final OptionKey<Boolean> LAZY_PARSING = new OptionKey<>(true);
 
-    @Option(name = "llvm.llDbug", category = OptionCategory.EXPERT, help = "Enable IR-level debugging of LLVM bitcode files.")
+    @Option(name = "llvm.llDebug", category = OptionCategory.EXPERT, help = "Enable IR-level debugging of LLVM bitcode files.")
     public static final OptionKey<Boolean> LL_DEBUG = new OptionKey<>(false);
 
     @Option(name = "llvm.llDebug.sources", category = OptionCategory.EXPERT, help = "Provide the locations of *.ll files for debugging. The expected format is <bc-path>=<ll-path>{:<bc-path>=<ll-path>}.")
