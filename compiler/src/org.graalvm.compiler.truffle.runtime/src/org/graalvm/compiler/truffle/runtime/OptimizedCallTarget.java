@@ -70,7 +70,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
  */
 @SuppressWarnings("deprecation")
-public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
+public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
     static final String CALL_BOUNDARY_METHOD_NAME = "callProxy";
@@ -564,14 +564,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     final void onLoopCount(int count) {
-        getCompilationProfile().reportLoopCount(count);
-    }
-
-    /*
-     * For compatibility of Graal runtime with older Truffle runtime. Remove after 0.12.
-     */
-    @Override
-    public void reportLoopCount(int count) {
         getCompilationProfile().reportLoopCount(count);
     }
 

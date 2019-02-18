@@ -83,10 +83,6 @@ meth public java.lang.String toString()
 supr java.lang.Object
 hfds id,name,version,vmObject
 
-CLSS public abstract interface com.oracle.truffle.api.LoopCountReceiver
- anno 0 java.lang.Deprecated()
-meth public abstract void reportLoopCount(int)
-
 CLSS public com.oracle.truffle.api.OptimizationFailedException
 cons public init(java.lang.Throwable,com.oracle.truffle.api.RootCallTarget)
 meth public com.oracle.truffle.api.RootCallTarget getCallTarget()

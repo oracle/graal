@@ -731,16 +731,6 @@ public abstract class Accessor {
     protected void onLoopCount(Node source, int iterations) {
         if (SUPPORT != null) {
             SUPPORT.onLoopCount(source, iterations);
-        } else {
-            // needs an additional compatibility check so older graal runtimes
-            // still run with newer truffle versions
-            RootNode root = source.getRootNode();
-            if (root != null) {
-                RootCallTarget target = root.getCallTarget();
-                if (target instanceof com.oracle.truffle.api.LoopCountReceiver) {
-                    ((com.oracle.truffle.api.LoopCountReceiver) target).reportLoopCount(iterations);
-                }
-            }
         }
     }
 
