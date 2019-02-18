@@ -49,6 +49,8 @@ void __guarantee_fail(const char *test, const char *file, unsigned int line, con
 void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz,
         const char *function, const char *result, va_list args);
 
+#define TRACE_NEXT_ARG_UNQUOTED_TAG "\a\b"
+
 #ifdef __cplusplus
 }
 #endif

@@ -125,14 +125,25 @@ void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, const char *f
   if (result != NULL) {
     sbuf_printf(&e, ", \"result\":\"%s\"", result);
   }
-  char *arg0 = va_arg(args, char*);
-  if (arg0 != NULL) {
-    sbuf_printf(&e, ", \"args\":[\"%s\"", arg0);
-    char *arg = va_arg(args, char*);
-    while (arg != NULL) {
-      sbuf_printf(&e, ",\"%s\"", arg);
+  char *arg = va_arg(args, char*);
+  if (arg != NULL) {
+    sbuf_printf(&e, ", \"args\":", result);
+    char c0 = '[';
+    bool quote_next = true;
+    do {
+      if (strncmp(arg, TRACE_NEXT_ARG_UNQUOTED_TAG, sizeof(TRACE_NEXT_ARG_UNQUOTED_TAG)-1) == 0) {
+        quote_next = false;
+      } else {
+        if (quote_next) {
+          sbuf_printf(&e, "%c\"%s\"", c0, arg);
+        } else {
+          sbuf_printf(&e, "%c%s", c0, arg);
+          quote_next = true;
+        }
+        c0 = ',';
+      }
       arg = va_arg(args, char*);
-    }
+    } while (arg != NULL);
     sbuf_printf(&e, "]");
   }
   sbuf_printf(&e, "},\n");

@@ -100,7 +100,7 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
   struct sbuf b;
   if (param_types_len > 0) {
     sbuf_new(&b);
-    sbuf_printf(&b, "[");
+    char c0 = '[';
     for (jint i = 0; i < param_types_len; i++) {
       jclass arg;
       guarantee((arg = jnifun->GetObjectArrayElement(jni, param_types, i)) != NULL);
@@ -108,15 +108,12 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
       guarantee((class_name = jnifun->CallObjectMethod(jni, arg, java_lang_Class_getName)) != NULL);
       const char *class_cname;
       guarantee((class_cname = jnifun->GetStringUTFChars(jni, class_name, NULL)) != NULL);
-      if (i == 0) {
-        sbuf_printf(&b, ", \"%s\"", class_cname);
-      } else {
-        sbuf_printf(&b, "\"%s\"", class_cname);
-      }
+      sbuf_printf(&b, "%c\"%s\"", c0, class_cname);
+      c0 = ',';
       jnifun->ReleaseStringUTFChars(jni, class_name, class_cname);
     }
     sbuf_printf(&b, "]");
-    reflect_trace(jni, self, bp->name, method_cname, sbuf_as_cstr(&b), NULL);
+    reflect_trace(jni, self, bp->name, method_cname, TRACE_NEXT_ARG_UNQUOTED_TAG, sbuf_as_cstr(&b), NULL);
     sbuf_destroy(&b);
   } else {
     reflect_trace(jni, self, bp->name, method_cname, NULL);
@@ -135,7 +132,7 @@ static void OnBreakpoint_requestProxy(jvmtiEnv *jvmti, JNIEnv* jni, jthread thre
   struct sbuf b;
   if (ifaces_len > 0) {
     sbuf_new(&b);
-    sbuf_printf(&b, "[");
+    char c0 = '[';
     for (jint i = 0; i < ifaces_len; i++) {
       jclass arg;
       guarantee((arg = jnifun->GetObjectArrayElement(jni, ifaces, i)) != NULL);
@@ -143,15 +140,12 @@ static void OnBreakpoint_requestProxy(jvmtiEnv *jvmti, JNIEnv* jni, jthread thre
       guarantee((class_name = jnifun->CallObjectMethod(jni, arg, java_lang_Class_getName)) != NULL);
       const char *class_cname;
       guarantee((class_cname = jnifun->GetStringUTFChars(jni, class_name, NULL)) != NULL);
-      if (i == 0) {
-        sbuf_printf(&b, ", \"%s\"", class_cname);
-      } else {
-        sbuf_printf(&b, "\"%s\"", class_cname);
-      }
+      sbuf_printf(&b, "%c\"%s\"", c0, class_cname);
+      c0 = ',';
       jnifun->ReleaseStringUTFChars(jni, class_name, class_cname);
     }
     sbuf_printf(&b, "]");
-    reflect_trace(jni, NULL, bp->name, class_loader, sbuf_as_cstr(&b), invoke_handler, NULL);
+    reflect_trace(jni, NULL, bp->name, class_loader, TRACE_NEXT_ARG_UNQUOTED_TAG, sbuf_as_cstr(&b), invoke_handler, NULL);
     sbuf_destroy(&b);
   } else {
     reflect_trace(jni, NULL, bp->name, class_loader, "[]", invoke_handler, NULL);
