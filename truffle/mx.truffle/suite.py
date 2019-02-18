@@ -981,5 +981,13 @@ suite = {
         "native-image.properties" : "file:mx.truffle/tools-truffle.properties",
       },
     },
+
+    "TRUFFLE_NFI_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle NFI support distribution for the GraalVM",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/tools-nfi.properties",
+      },
+    },
   },
 }

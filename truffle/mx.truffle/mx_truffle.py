@@ -704,7 +704,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     suite=_suite,
-    name='Truffle NFI',
+    name='Truffle',
     short_name='tfl',
     dir_name='truffle',
     license_files=[],
@@ -712,6 +712,19 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     truffle_jars=['truffle:TRUFFLE_NFI'],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT']
 ))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    suite=_suite,
+    name='Truffle NFI',
+    short_name='nfi',
+    dir_name='nfi',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=[],
+    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT']
+))
+
 
 mx.update_commands(_suite, {
     'check-filename-length' : [check_filename_length, ""],
