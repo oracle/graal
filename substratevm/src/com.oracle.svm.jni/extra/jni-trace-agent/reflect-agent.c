@@ -126,6 +126,38 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
   }
 }
 
+static void OnBreakpoint_requestProxy(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, struct reflect_breakpoint_entry *bp) {
+  const char *class_loader = "?";   // not important
+  const char *invoke_handler = "?"; // not important
+  jobjectArray ifaces;
+  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 1, &ifaces) == JVMTI_ERROR_NONE);
+  jint ifaces_len = (ifaces == NULL) ? 0 : jnifun->GetArrayLength(jni, ifaces);
+  struct sbuf b;
+  if (ifaces_len > 0) {
+    sbuf_new(&b);
+    sbuf_printf(&b, "[");
+    for (jint i = 0; i < ifaces_len; i++) {
+      jclass arg;
+      guarantee((arg = jnifun->GetObjectArrayElement(jni, ifaces, i)) != NULL);
+      jstring class_name;
+      guarantee((class_name = jnifun->CallObjectMethod(jni, arg, java_lang_Class_getName)) != NULL);
+      const char *class_cname;
+      guarantee((class_cname = jnifun->GetStringUTFChars(jni, class_name, NULL)) != NULL);
+      if (i == 0) {
+        sbuf_printf(&b, ", \"%s\"", class_cname);
+      } else {
+        sbuf_printf(&b, "\"%s\"", class_cname);
+      }
+      jnifun->ReleaseStringUTFChars(jni, class_name, class_cname);
+    }
+    sbuf_printf(&b, "]");
+    reflect_trace(jni, NULL, bp->name, class_loader, sbuf_as_cstr(&b), invoke_handler, NULL);
+    sbuf_destroy(&b);
+  } else {
+    reflect_trace(jni, NULL, bp->name, class_loader, "[]", invoke_handler, NULL);
+  }
+}
+
 #define REFLECTION_BREAKPOINT(class_name, name, signature, handler) \
   { (jmethodID)0, (jlocation)0, (class_name), (name), (signature), (handler) }
 
@@ -145,6 +177,9 @@ static struct reflect_breakpoint_entry reflect_breakpoints[] = {
   REFLECTION_BREAKPOINT("java/lang/Class", "getConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", &OnBreakpoint_getSingleMethod),
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", &OnBreakpoint_getSingleMethod),
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", &OnBreakpoint_getSingleMethod),
+
+  REFLECTION_BREAKPOINT("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", &OnBreakpoint_requestProxy),
+  REFLECTION_BREAKPOINT("java/lang/reflect/Proxy", "newProxyInstance", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", &OnBreakpoint_requestProxy),
 
   /* These two methods call getDeclaredMethods() and getDeclaredConstructors() and find
    * the enclosing method in the result. Therefore, we already record the enclosing method
