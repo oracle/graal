@@ -54,8 +54,6 @@ hfds disposed,element,instrumenter
 hcls Allocation,Source
 
 CLSS public final com.oracle.truffle.api.instrumentation.EventContext
-meth public !varargs com.oracle.truffle.api.CallTarget parseInContext(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
- anno 0 java.lang.Deprecated()
 meth public boolean hasTag(java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>)
 meth public boolean isLanguageContextInitialized()
 meth public com.oracle.truffle.api.instrumentation.ExecutionEventNode lookupExecutionEventNode(com.oracle.truffle.api.instrumentation.EventBinding<? extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory>)
