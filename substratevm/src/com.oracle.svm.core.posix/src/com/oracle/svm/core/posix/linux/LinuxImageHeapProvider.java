@@ -82,8 +82,10 @@ import jdk.vm.ci.code.MemoryBarriers;
 @Platforms(Platform.LINUX.class)
 class LinuxImageHeapProviderFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ImageHeapProvider.class, new LinuxImageHeapProvider());
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
+            ImageSingletons.add(ImageHeapProvider.class, new LinuxImageHeapProvider());
+        }
     }
 }
 

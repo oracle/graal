@@ -53,8 +53,10 @@ import com.oracle.svm.core.util.UnsignedUtils;
 @Platforms(Platform.DARWIN.class)
 class DarwinImageHeapProviderFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ImageHeapProvider.class, new DarwinImageHeapProvider());
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
+            ImageSingletons.add(ImageHeapProvider.class, new DarwinImageHeapProvider());
+        }
     }
 }
 
