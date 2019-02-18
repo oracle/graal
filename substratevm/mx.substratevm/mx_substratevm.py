@@ -152,6 +152,7 @@ else:
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
 svmSuites = [suite]
+clibraryDists = ['SVM_HOSTED_NATIVE']
 
 
 def _host_os_supported():
@@ -172,7 +173,7 @@ def classpath(args):
     return mx.classpath(args, jdk=mx_compiler.jdk)
 
 def clibrary_paths():
-    return (join(suite.dir, 'clibraries') for suite in svmSuites)
+    return (mx._get_dependency_path(d) for d in clibraryDists)
 
 def platform_name():
     return mx.get_os() + "-" + mx.get_arch()
