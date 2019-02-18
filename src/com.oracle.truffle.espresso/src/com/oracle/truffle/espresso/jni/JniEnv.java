@@ -64,7 +64,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.VmNativeNode;
+import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
@@ -1641,7 +1641,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode spawnNode(Method method) {
-                return new EspressoRootNode(method, new VmNativeNode(boundNative, true, method));
+                return new EspressoRootNode(method, new NativeRootNode(boundNative, method, true));
             }
         };
 
