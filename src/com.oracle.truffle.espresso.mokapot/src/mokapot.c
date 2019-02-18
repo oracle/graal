@@ -679,8 +679,8 @@ jint JVM_ConstantPoolGetIntAt(JNIEnv *env, jobject unused, jobject jcpool, jint 
 }
 
 jlong JVM_ConstantPoolGetLongAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
-  UNIMPLEMENTED(JVM_ConstantPoolGetLongAt);
-  return 0;
+  IMPLEMENTED(JVM_ConstantPoolGetLongAt);
+  return (*getEnv())->JVM_ConstantPoolGetLongAt(env, unused, jcpool, index);
 }
 
 jfloat JVM_ConstantPoolGetFloatAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {

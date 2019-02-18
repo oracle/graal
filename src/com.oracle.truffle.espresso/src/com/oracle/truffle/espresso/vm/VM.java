@@ -576,6 +576,12 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    public static long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool, int index) {
+        return jcpool.getMirrorKlass().getConstantPool().longAt(index);
+    }
+
+    @VmImpl
+    @JniImpl
     public @Host(Class.class) StaticObject JVM_DefineClass(String name, @Host(ClassLoader.class) StaticObject loader, long bufPtr, int len,
                     @SuppressWarnings("unused") @Host(ProtectionDomain.class) Object pd) {
         // TODO(peterssen): The protection domain is unused.
