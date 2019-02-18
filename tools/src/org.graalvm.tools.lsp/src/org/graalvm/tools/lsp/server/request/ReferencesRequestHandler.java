@@ -106,11 +106,9 @@ public final class ReferencesRequestHandler extends AbstractRequestHandler {
 
     private List<? extends Location> referencesForVariableNode(TextDocumentSurrogate surrogate, InstrumentableNode nodeAtCaret) {
         List<? extends DocumentHighlight> readOrWrites = highlightHandler.findOtherReadOrWrites(surrogate, nodeAtCaret);
-        //@formatter:off
-        return readOrWrites.stream()
-                        .map(highlight -> new Location(surrogate.getUri().toString(), highlight.getRange()))
+        return readOrWrites.stream() //
+                        .map(highlight -> new Location(surrogate.getUri().toString(), highlight.getRange())) //
                         .collect(Collectors.toList());
-        //@formatter:on
     }
 
 }

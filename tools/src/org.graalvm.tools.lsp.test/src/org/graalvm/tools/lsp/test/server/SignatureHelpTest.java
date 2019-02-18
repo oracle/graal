@@ -43,7 +43,7 @@ public class SignatureHelpTest extends TruffleLSPTest {
 
         Future<SignatureHelp> futureSignatureHelp = truffleAdapter.signatureHelp(uri, 1, 7);
         SignatureHelp signatureHelp = futureSignatureHelp.get();
-        // SL is not supporting GET_SIGNATURE message yet
+        // TODO: SL is not supporting GET_SIGNATURE message yet
         assertEquals(0, signatureHelp.getSignatures().size());
     }
 }

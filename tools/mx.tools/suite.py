@@ -158,7 +158,7 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API"
             ],
-            "checkstyle": "org.graalvm.tools.lsp",
+            "checkstyle": "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance": "1.8",
             "workingSets": "LSP"
         },
@@ -170,8 +170,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "LSP4J"
             ],
-            "checkstyleVersion" : "8.8",
-            "checkstyle": "org.graalvm.tools.lsp",
+            "checkstyle": "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance": "1.8",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "LSP",
@@ -184,7 +183,7 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
-            "checkstyle": "org.graalvm.tools.lsp",
+            "checkstyle": "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance": "1.8",
             "workingSets": "LSP"
         },
@@ -198,7 +197,7 @@ suite = {
                 "truffle:TRUFFLE_SL",
                 "mx:JUNIT"
             ],
-            "checkstyle": "org.graalvm.tools.lsp",
+            "checkstyle": "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance": "1.8",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "LSP",
@@ -505,6 +504,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "LSP4J"
             ],
+            "description" : "Language Server Protocol backend implementation.",
         },
         "LSP_LAUNCHER": {
             "dependencies": ["org.graalvm.tools.lsp.launcher"],

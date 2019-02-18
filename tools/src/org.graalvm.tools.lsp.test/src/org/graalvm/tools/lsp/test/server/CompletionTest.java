@@ -27,10 +27,13 @@ package org.graalvm.tools.lsp.test.server;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -39,6 +42,7 @@ import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
@@ -67,129 +71,52 @@ public class CompletionTest extends TruffleLSPTest {
 
         int numberOfGlobalsItems = -1;
 
-        {
-            int line = 0;
-            int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
-            CompletionList completionList = futureCompletions.get();
-            assertFalse(completionList.isIncomplete());
+        numberOfGlobalsItems = checkGlobalsAndLocals(uri, 0, 0, numberOfGlobalsItems, "p1", false);
+        checkGlobalsAndLocals(uri, 1, 12, numberOfGlobalsItems, "p1", false);
+        checkGlobalsAndLocals(uri, 5, 0, numberOfGlobalsItems + 3, "p1", true, "p2", true, "varA", true, "varB", false);
+        checkGlobalsAndLocals(uri, 7, 2, numberOfGlobalsItems + 4, "p1", true, "varA", true, "varB", true);
+        checkGlobalsAndLocals(uri, 9, 0, numberOfGlobalsItems, "p1", false, "varA", false, "varB", false);
+        // if line is out of range -> show nothing
+        checkEmpty(uri, 100, 0);
+        // if column is out of range -> show nothing
+        checkEmpty(uri, 8, 5);
+    }
 
-            List<CompletionItem> items = completionList.getItems();
-            assertFalse(items.isEmpty());
+    private int checkGlobalsAndLocals(URI uri, int line, int column, int numberOfGlobalsItems, Object... vars) throws InterruptedException, ExecutionException {
+        Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
+        CompletionList completionList = futureCompletions.get();
+        assertFalse(completionList.isIncomplete());
 
-            NodeInfo nodeInfo = SLContext.lookupNodeInfo(SLHelloEqualsWorldBuiltin.class);
-            assertNotNull(nodeInfo);
+        List<CompletionItem> items = completionList.getItems();
+        assertFalse(items.isEmpty());
 
-            String shortName = nodeInfo.shortName();
-            assertTrue("Built-in function " + shortName + " not found.", items.stream().anyMatch(item -> item.getLabel().startsWith(shortName)));
-            assertTrue("p1 should not be found in main-function scope", items.stream().noneMatch(item -> item.getLabel().startsWith("p1")));
+        NodeInfo nodeInfo = SLContext.lookupNodeInfo(SLHelloEqualsWorldBuiltin.class);
+        assertNotNull(nodeInfo);
 
-            numberOfGlobalsItems = items.size();
+        String shortName = nodeInfo.shortName();
+        assertTrue("Built-in function " + shortName + " not found.", items.stream().anyMatch(item -> item.getLabel().startsWith(shortName)));
+        for (int i = 0; i < vars.length; i += 2) {
+            String var = (String) vars[i];
+            boolean present = (boolean) vars[i + 1];
+            if (present) {
+                assertTrue(var + " should be found in function scope", items.stream().anyMatch(item -> item.getLabel().startsWith(var)));
+            } else {
+                assertTrue(var + " should not be found in main-function scope", items.stream().noneMatch(item -> item.getLabel().startsWith(var)));
+            }
         }
-
-        {
-            int line = 1;
-            int column = 12;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
-            CompletionList completionList = futureCompletions.get();
-            assertFalse(completionList.isIncomplete());
-
-            List<CompletionItem> items = completionList.getItems();
-            assertFalse(items.isEmpty());
-
-            NodeInfo nodeInfo = SLContext.lookupNodeInfo(SLHelloEqualsWorldBuiltin.class);
-            assertNotNull(nodeInfo);
-
-            String shortName = nodeInfo.shortName();
-            assertTrue("Built-in function " + shortName + " not found.", items.stream().anyMatch(item -> item.getLabel().startsWith(shortName)));
-            assertTrue("p1 should not be found in main-function scope", items.stream().noneMatch(item -> item.getLabel().startsWith("p1")));
+        if (numberOfGlobalsItems != -1) {
             assertEquals(numberOfGlobalsItems, items.size());
         }
+        return items.size();
+    }
 
-        {
-            int line = 5;
-            int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
-            CompletionList completionList = futureCompletions.get();
-            assertFalse(completionList.isIncomplete());
+    private void checkEmpty(URI uri, int line, int column) throws InterruptedException, ExecutionException {
+        Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
+        CompletionList completionList = futureCompletions.get();
+        assertFalse(completionList.isIncomplete());
 
-            List<CompletionItem> items = completionList.getItems();
-            assertFalse(items.isEmpty());
-
-            NodeInfo nodeInfo = SLContext.lookupNodeInfo(SLHelloEqualsWorldBuiltin.class);
-            assertNotNull(nodeInfo);
-
-            String shortName = nodeInfo.shortName();
-            assertTrue("Built-in function " + shortName + " not found.", items.stream().anyMatch(item -> item.getLabel().startsWith(shortName)));
-            assertTrue("p1 should be found in abc-function scope", items.stream().anyMatch(item -> item.getLabel().startsWith("p1")));
-            assertTrue("varA should be found in abc-function scope", items.stream().anyMatch(item -> item.getLabel().startsWith("varA")));
-            assertTrue("varB should not be found in main-function scope", items.stream().noneMatch(item -> item.getLabel().startsWith("varB")));
-            assertEquals(numberOfGlobalsItems + 3, items.size());
-        }
-
-        {
-            int line = 7;
-            int column = 2;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
-            CompletionList completionList = futureCompletions.get();
-            assertFalse(completionList.isIncomplete());
-
-            List<CompletionItem> items = completionList.getItems();
-            assertFalse(items.isEmpty());
-
-            NodeInfo nodeInfo = SLContext.lookupNodeInfo(SLHelloEqualsWorldBuiltin.class);
-            assertNotNull(nodeInfo);
-
-            String shortName = nodeInfo.shortName();
-            assertTrue("Built-in function " + shortName + " not found.", items.stream().anyMatch(item -> item.getLabel().startsWith(shortName)));
-            assertTrue("p1 should be found in abc-function scope", items.stream().anyMatch(item -> item.getLabel().startsWith("p1")));
-            assertTrue("varA should be found in abc-function scope", items.stream().anyMatch(item -> item.getLabel().startsWith("varA")));
-            assertTrue("varB should be found in main-function scope", items.stream().anyMatch(item -> item.getLabel().startsWith("varB")));
-            assertEquals(numberOfGlobalsItems + 4, items.size());
-        }
-
-        {
-            int line = 9;
-            int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
-            CompletionList completionList = futureCompletions.get();
-            assertFalse(completionList.isIncomplete());
-
-            List<CompletionItem> items = completionList.getItems();
-            assertFalse(items.isEmpty());
-
-            NodeInfo nodeInfo = SLContext.lookupNodeInfo(SLHelloEqualsWorldBuiltin.class);
-            assertNotNull(nodeInfo);
-
-            String shortName = nodeInfo.shortName();
-            assertTrue("Built-in function " + shortName + " not found.", items.stream().anyMatch(item -> item.getLabel().startsWith(shortName)));
-            assertTrue("p1 should not be found in main-function scope", items.stream().noneMatch(item -> item.getLabel().startsWith("p1")));
-            assertEquals(numberOfGlobalsItems, items.size());
-        }
-
-        {
-            // if line is out of range -> show nothing
-            int line = 100;
-            int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
-            CompletionList completionList = futureCompletions.get();
-            assertFalse(completionList.isIncomplete());
-
-            List<CompletionItem> items = completionList.getItems();
-            assertTrue(items.isEmpty());
-        }
-
-        {
-            // if column is out of range -> show nothing
-            int line = 8;
-            int column = 5;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
-            CompletionList completionList = futureCompletions.get();
-            assertFalse(completionList.isIncomplete());
-
-            List<CompletionItem> items = completionList.getItems();
-            assertTrue(items.isEmpty());
-        }
+        List<CompletionItem> items = completionList.getItems();
+        assertTrue(items.isEmpty());
     }
 
     @Test
@@ -198,59 +125,38 @@ public class CompletionTest extends TruffleLSPTest {
         Future<?> future = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         future.get();
 
-        {
-            String replacement = ".";
-            Range range = new Range(new Position(2, 12), new Position(2, 12));
-            TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
-            boolean thrown = false;
-            try {
-                Future<?> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
-                future2.get();
-            } catch (ExecutionException e) {
-                thrown = true;
-                assertTrue(e.getCause() instanceof DiagnosticsNotification);
-            }
-            assertTrue(thrown);
+        replace(uri, new Range(new Position(2, 12), new Position(2, 12)), ".", "extraneous input '.'");
+        Future<CompletionList> futureC = truffleAdapter.completion(uri, 2, 13, null);
+        CompletionList completionList = futureC.get();
+        assertEquals(1, completionList.getItems().size());
+        CompletionItem item = completionList.getItems().get(0);
+        assertEquals("p", item.getLabel());
+        assertEquals("Number", item.getDetail());
+        assertEquals(CompletionItemKind.Property, item.getKind());
+        replace(uri, new Range(new Position(2, 12), new Position(2, 13)), "", null);
 
-            Future<CompletionList> future3 = truffleAdapter.completion(uri, 2, 13, null);
-            CompletionList completionList = future3.get();
-            assertEquals(1, completionList.getItems().size());
-            CompletionItem item = completionList.getItems().get(0);
-            assertEquals("p", item.getLabel());
-            assertEquals("Number", item.getDetail());
-            assertEquals(CompletionItemKind.Property, item.getKind());
+        replace(uri, new Range(new Position(12, 7), new Position(12, 7)), ".", "missing IDENTIFIER");
+        futureC = truffleAdapter.completion(uri, 12, 8, null);
+        try {
+            futureC.get();
+            fail();
+        } catch (ExecutionException e) {
+            assertTrue(e.getCause() instanceof DiagnosticsNotification);
         }
+    }
 
-        {
-            String replacement1 = "";
-            Range range1 = new Range(new Position(2, 12), new Position(2, 13));
-            TextDocumentContentChangeEvent event1 = new TextDocumentContentChangeEvent(range1, replacement1.length(), replacement1);
-            Future<?> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event1), uri);
-            future2.get();
-
-            String replacement2 = ".";
-            Range range2 = new Range(new Position(12, 7), new Position(12, 7));
-            TextDocumentContentChangeEvent event2 = new TextDocumentContentChangeEvent(range2, replacement2.length(), replacement2);
-            boolean thrown = false;
-            try {
-                Future<?> future3 = truffleAdapter.processChangesAndParse(Arrays.asList(event2), uri);
-                future3.get();
-            } catch (ExecutionException e) {
-                thrown = true;
-                assertTrue(e.getCause() instanceof DiagnosticsNotification);
-            }
-            assertTrue(thrown);
-
-            thrown = false;
-            try {
-                Future<CompletionList> future4 = truffleAdapter.completion(uri, 12, 8, null);
-                CompletionList completionList = future4.get();
-                assertEquals(0, completionList.getItems().size());
-            } catch (ExecutionException e) {
-                thrown = true;
-                assertTrue(e.getCause() instanceof DiagnosticsNotification);
-            }
-            assertTrue(thrown);
+    private void replace(URI uri, Range range, String replacement, String diagMessage) throws InterruptedException {
+        TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
+        Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
+        try {
+            future.get();
+            assertNull(diagMessage);
+        } catch (ExecutionException e) {
+            assertFalse(diagMessage, diagMessage.isEmpty());
+            Collection<PublishDiagnosticsParams> diagnosticParamsCollection = ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection();
+            assertEquals(1, diagnosticParamsCollection.size());
+            String message = diagnosticParamsCollection.iterator().next().getDiagnostics().get(0).getMessage();
+            assertTrue(message, message.contains(diagMessage));
         }
     }
 
@@ -263,27 +169,13 @@ public class CompletionTest extends TruffleLSPTest {
         Future<Boolean> futureCoverage = truffleAdapter.runCoverageAnalysis(uri);
         futureCoverage.get();
 
-        {
-            String replacement = ".";
-            Range range = new Range(new Position(8, 12), new Position(8, 12));
-            TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
-            boolean thrown = false;
-            try {
-                Future<?> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
-                future2.get();
-            } catch (ExecutionException e) {
-                thrown = true;
-                assertTrue(e.getCause() instanceof DiagnosticsNotification);
-            }
-            assertTrue(thrown);
-
-            Future<CompletionList> future3 = truffleAdapter.completion(uri, 8, 13, null);
-            CompletionList completionList = future3.get();
-            assertEquals(1, completionList.getItems().size());
-            CompletionItem item = completionList.getItems().get(0);
-            assertEquals("p", item.getLabel());
-            assertEquals("Number", item.getDetail());
-            assertEquals(CompletionItemKind.Property, item.getKind());
-        }
+        replace(uri, new Range(new Position(8, 12), new Position(8, 12)), ".", "extraneous input '.'");
+        Future<CompletionList> futureC = truffleAdapter.completion(uri, 8, 13, null);
+        CompletionList completionList = futureC.get();
+        assertEquals(1, completionList.getItems().size());
+        CompletionItem item = completionList.getItems().get(0);
+        assertEquals("p", item.getLabel());
+        assertEquals("Number", item.getDetail());
+        assertEquals(CompletionItemKind.Property, item.getKind());
     }
 }

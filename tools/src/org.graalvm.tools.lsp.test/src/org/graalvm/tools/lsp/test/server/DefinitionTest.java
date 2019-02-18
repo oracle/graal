@@ -47,83 +47,28 @@ public class DefinitionTest extends TruffleLSPTest {
         Range abcRange = new Range(new Position(5, 9), new Position(9, 1));
 
         int line = 1;
-        {
-            for (int i = 4; i <= 9; i++) {
-                Future<List<? extends Location>> future = truffleAdapter.definition(uri, line, i);
-                List<? extends Location> definitions = future.get();
-                assertEquals(1, definitions.size());
-                Location location = definitions.get(0);
-                assertEquals(abcRange, location.getRange());
-            }
+        for (int i = 4; i <= 9; i++) {
+            checkDefinitions(uri, line, i, 1, abcRange);
         }
-
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, line, 3);
-            List<? extends Location> definitions = future.get();
-            assertEquals(0, definitions.size());
-        }
-
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, line, 10);
-            List<? extends Location> definitions = future.get();
-            assertEquals(0, definitions.size());
-        }
+        checkNoDefinitions(uri, line, 3);
+        checkNoDefinitions(uri, line, 10);
 
         line = 2;
-        {
-            for (int i = 8; i <= 13; i++) {
-                Future<List<? extends Location>> future = truffleAdapter.definition(uri, line, i);
-                List<? extends Location> definitions = future.get();
-                assertEquals(1, definitions.size());
-                Location location = definitions.get(0);
-                assertEquals(abcRange, location.getRange());
-            }
+        for (int i = 8; i <= 13; i++) {
+            checkDefinitions(uri, line, i, 1, abcRange);
         }
-
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, line, 7);
-            List<? extends Location> definitions = future.get();
-            assertEquals(0, definitions.size());
-        }
-
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, line, 14);
-            List<? extends Location> definitions = future.get();
-            assertEquals(0, definitions.size());
-        }
+        checkNoDefinitions(uri, line, 7);
+        checkNoDefinitions(uri, line, 14);
 
         line = 6;
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, line, 9);
-            List<? extends Location> definitions = future.get();
-            // new() is built-in and has no SourceSection
-            assertEquals(0, definitions.size());
-        }
+        // new() is built-in and has no SourceSection
+        checkNoDefinitions(uri, line, 9);
 
         // check edge-cases / out-of bounds
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, 0, 0);
-            List<? extends Location> definitions = future.get();
-            assertEquals(0, definitions.size());
-        }
-
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, 10, 0);
-            List<? extends Location> definitions = future.get();
-            assertEquals(0, definitions.size());
-        }
-
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, 10, 1);
-            List<? extends Location> definitions = future.get();
-            assertEquals(0, definitions.size());
-        }
-
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, 11, 1);
-            List<? extends Location> definitions = future.get();
-            assertEquals(0, definitions.size());
-        }
+        checkNoDefinitions(uri, 0, 0);
+        checkNoDefinitions(uri, 10, 0);
+        checkNoDefinitions(uri, 10, 1);
+        checkNoDefinitions(uri, 11, 1);
     }
 
     @Test
@@ -132,12 +77,20 @@ public class DefinitionTest extends TruffleLSPTest {
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         futureOpen.get();
 
-        {
-            Future<List<? extends Location>> future = truffleAdapter.definition(uri, 12, 3);
-            List<? extends Location> definitions = future.get();
-            assertEquals(1, definitions.size());
+        checkDefinitions(uri, 12, 3, 1, new Range(new Position(5, 9), new Position(9, 1)));
+    }
+
+    private void checkNoDefinitions(URI uri, int line, int character) throws InterruptedException, ExecutionException {
+        checkDefinitions(uri, line, character, 0, null);
+    }
+
+    private void checkDefinitions(URI uri, int line, int character, int defSize, Range locationRange) throws InterruptedException, ExecutionException {
+        Future<List<? extends Location>> future = truffleAdapter.definition(uri, line, character);
+        List<? extends Location> definitions = future.get();
+        assertEquals(defSize, definitions.size());
+        if (defSize != 0) {
             Location location = definitions.get(0);
-            assertEquals(new Range(new Position(5, 9), new Position(9, 1)), location.getRange());
+            assertEquals(locationRange, location.getRange());
         }
     }
 }

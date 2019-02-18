@@ -25,6 +25,7 @@
 package org.graalvm.tools.lsp.test.server;
 
 import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 import java.util.Arrays;
 
@@ -32,7 +33,6 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
-import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 

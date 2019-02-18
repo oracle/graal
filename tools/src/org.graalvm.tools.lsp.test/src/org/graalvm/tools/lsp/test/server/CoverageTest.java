@@ -26,6 +26,7 @@ package org.graalvm.tools.lsp.test.server;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.net.URI;
 import java.util.Collection;
@@ -46,53 +47,45 @@ public class CoverageTest extends TruffleLSPTest {
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         futureOpen.get();
 
-        {
-            Future<?> showCoverage = truffleAdapter.showCoverage(uri);
-            boolean caught = false;
-            try {
-                showCoverage.get();
-            } catch (ExecutionException e) {
-                DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
-                Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
-                assertEquals(1, diagnosticParamsCollection.size());
-                PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
-                assertEquals(uri.toString(), diagnosticsParams.getUri());
-                List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
-                assertEquals(7, diagnostics.size());
-                assertEquals(range(1, 4, 1, 13), diagnostics.get(0).getRange());
-                assertEquals(range(2, 4, 2, 12), diagnostics.get(1).getRange());
-                assertEquals(range(6, 2, 6, 13), diagnostics.get(2).getRange());
-                assertEquals(range(7, 2, 7, 11), diagnostics.get(3).getRange());
-                assertEquals(range(8, 2, 8, 12), diagnostics.get(4).getRange());
-                assertEquals(range(12, 2, 12, 7), diagnostics.get(5).getRange());
-                assertEquals(range(13, 2, 13, 14), diagnostics.get(6).getRange());
-                caught = true;
-            }
-            assertTrue(caught);
+        Future<?> showCoverage = truffleAdapter.showCoverage(uri);
+        try {
+            showCoverage.get();
+            fail();
+        } catch (ExecutionException e) {
+            DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
+            Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
+            assertEquals(1, diagnosticParamsCollection.size());
+            PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
+            assertEquals(uri.toString(), diagnosticsParams.getUri());
+            List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
+            assertEquals(7, diagnostics.size());
+            assertEquals(range(1, 4, 1, 13), diagnostics.get(0).getRange());
+            assertEquals(range(2, 4, 2, 12), diagnostics.get(1).getRange());
+            assertEquals(range(6, 2, 6, 13), diagnostics.get(2).getRange());
+            assertEquals(range(7, 2, 7, 11), diagnostics.get(3).getRange());
+            assertEquals(range(8, 2, 8, 12), diagnostics.get(4).getRange());
+            assertEquals(range(12, 2, 12, 7), diagnostics.get(5).getRange());
+            assertEquals(range(13, 2, 13, 14), diagnostics.get(6).getRange());
         }
 
-        {
-            Future<Boolean> future = truffleAdapter.runCoverageAnalysis(uri);
-            Boolean result = future.get();
-            assertTrue(result);
+        Future<Boolean> future = truffleAdapter.runCoverageAnalysis(uri);
+        Boolean result = future.get();
+        assertTrue(result);
 
-            Future<?> showCoverage = truffleAdapter.showCoverage(uri);
-            boolean caught = false;
-            try {
-                showCoverage.get();
-            } catch (ExecutionException e) {
-                DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
-                Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
-                assertEquals(1, diagnosticParamsCollection.size());
-                PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
-                assertEquals(uri.toString(), diagnosticsParams.getUri());
-                List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
-                assertEquals(2, diagnostics.size());
-                assertEquals(range(12, 2, 12, 7), diagnostics.get(0).getRange());
-                assertEquals(range(13, 2, 13, 14), diagnostics.get(1).getRange());
-                caught = true;
-            }
-            assertTrue(caught);
+        showCoverage = truffleAdapter.showCoverage(uri);
+        try {
+            showCoverage.get();
+            fail();
+        } catch (ExecutionException e) {
+            DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
+            Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
+            assertEquals(1, diagnosticParamsCollection.size());
+            PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
+            assertEquals(uri.toString(), diagnosticsParams.getUri());
+            List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
+            assertEquals(2, diagnostics.size());
+            assertEquals(range(12, 2, 12, 7), diagnostics.get(0).getRange());
+            assertEquals(range(13, 2, 13, 14), diagnostics.get(1).getRange());
         }
     }
 }

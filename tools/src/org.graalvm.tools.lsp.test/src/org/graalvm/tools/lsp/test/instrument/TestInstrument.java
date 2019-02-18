@@ -45,6 +45,7 @@ public class TestInstrument extends TruffleInstrument implements TruffleAdapterP
     static final OptionKey<Boolean> LspTestInstrument = new OptionKey<>(true);
 
     @Override
+    @SuppressWarnings("deprecation")
     protected void onCreate(Env env) {
         truffleAdapter = new TruffleAdapter(env);
         env.getOptions().set(LSOptions.DeveloperMode, true);

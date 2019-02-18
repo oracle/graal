@@ -53,26 +53,35 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.Map;
+import org.eclipse.lsp4j.MarkupContent;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
 public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
+
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, SignatureHelpRequestHandler.class);
+    private static final String PROP_DOCUMENTATION = "documentation";
+    private static final String PROP_PARAMETERS = "parameters";
+    private static final String PROP_LABEL = "label";
 
     private final MessageNodes messageNodes;
     private final Node nodeGetSignature = LSPMessage.GET_SIGNATURE.createNode();
-    private final Node nodeInvoke = Message.INVOKE.createNode();
     private final SourceCodeEvaluator sourceCodeEvaluator;
+    private final CompletionRequestHandler completionHandler;
 
-    public SignatureHelpRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator, MessageNodes messageNodes) {
+    public SignatureHelpRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator,
+                    CompletionRequestHandler completionHandler, MessageNodes messageNodes) {
         super(env, surrogateMap, contextAwareExecutor);
         this.messageNodes = messageNodes;
         this.sourceCodeEvaluator = sourceCodeEvaluator;
+        this.completionHandler = completionHandler;
     }
 
     public SignatureHelp signatureHelpWithEnteredContext(URI uri, int line, int originalCharacter) throws DiagnosticsNotification {
@@ -87,28 +96,41 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
             SourceSectionFilter eventFilter = builder.tagIs(StandardTags.CallTag.class).build();
             SourceSectionFilter inputFilter = SourceSectionFilter.ANY;
             EvaluationResult evalResult = sourceCodeEvaluator.runToSectionAndEval(surrogate, signatureSection, eventFilter, inputFilter);
+            // TODO: Are we asking for the signature on the correct object?
             if (evalResult.isEvaluationDone() && !evalResult.isError()) {
                 Object result = evalResult.getResult();
                 if (result instanceof TruffleObject) {
                     try {
                         Object signature = ForeignAccess.send(nodeGetSignature, (TruffleObject) result);
-                        if (signature == null) {
-                            return new SignatureHelp();
-                        }
-                        String formattedSignature = ForeignAccess.sendInvoke(nodeInvoke, (TruffleObject) signature, "format").toString();
-                        List<Object> params = ObjectStructures.asList((TruffleObject) signature, messageNodes);
-                        SignatureInformation info = new SignatureInformation(formattedSignature);
-                        List<ParameterInformation> paramInfos = new ArrayList<>();
-                        for (Object param : params) {
-                            if (param instanceof TruffleObject) {
-                                Object formattedParam = ForeignAccess.sendInvoke(nodeInvoke, (TruffleObject) param, "format");
-                                paramInfos.add(new ParameterInformation(formattedParam.toString()));
+                        LanguageInfo langInfo = surrogate.getLanguageInfo();
+                        String label = env.toString(langInfo, signature);
+                        SignatureInformation info = new SignatureInformation(label);
+                        if (signature instanceof TruffleObject) {
+                            Map<Object, Object> signatureMap = ObjectStructures.asMap((TruffleObject) signature, messageNodes);
+                            Object doc = signatureMap.get(PROP_DOCUMENTATION);
+                            Either<String, MarkupContent> documentation = completionHandler.getDocumentation(doc, langInfo);
+                            if (documentation != null) {
+                                info.setDocumentation(documentation);
+                            }
+                            Object paramsObject = signatureMap.get(PROP_PARAMETERS);
+                            if (paramsObject instanceof TruffleObject) {
+                                List<Object> params = ObjectStructures.asList((TruffleObject) paramsObject, messageNodes);
+                                List<ParameterInformation> paramInfos = new ArrayList<>(params.size());
+                                for (Object param : params) {
+                                    if (param instanceof TruffleObject) {
+                                        ParameterInformation paramInfo = getParameterInformation((TruffleObject) param, label, langInfo);
+                                        if (paramInfo != null) {
+                                            paramInfos.add(paramInfo);
+                                        }
+                                    }
+                                }
+                                info.setParameters(paramInfos);
                             }
                         }
-                        info.setParameters(paramInfos);
                         Object nodeObject = nodeAtCaret.getNodeObject();
                         Integer numberOfArguments = InteropUtils.getNumberOfArguments(nodeObject, messageNodes);
-
+                        // TODO: Support multiple signatures, the active one and find the active
+                        // parameter
                         return new SignatureHelp(Arrays.asList(info), 0, numberOfArguments != null ? numberOfArguments - 1 : 0);
                     } catch (UnsupportedMessageException | UnsupportedTypeException e) {
                         LOG.log(Level.FINEST, "GET_SIGNATURE message not supported for TruffleObject: {0}", result);
@@ -119,6 +141,39 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
             }
         }
         return new SignatureHelp();
+    }
+
+    private ParameterInformation getParameterInformation(TruffleObject param, String label, LanguageInfo langInfo) {
+        Map<Object, Object> paramMap = ObjectStructures.asMap(param, messageNodes);
+        Object paramLabelObject = paramMap.get(PROP_LABEL);
+        String paramLabel;
+        if (paramLabelObject instanceof String) {
+            paramLabel = (String) paramLabelObject;
+        } else if (paramLabelObject instanceof TruffleObject) {
+            List<Object> labelIndexes = ObjectStructures.asList((TruffleObject) paramLabelObject, messageNodes);
+            if (labelIndexes.size() < 2) {
+                LOG.fine("ERROR: Insufficient number of label indexes: " + labelIndexes.size() + " from " + paramLabelObject);
+                return null;
+            }
+            Object i1Obj = labelIndexes.get(0);
+            Object i2Obj = labelIndexes.get(1);
+            if (!(i1Obj instanceof Number) || !(i2Obj instanceof Number)) {
+                LOG.fine("ERROR: Label indexes of " + paramLabelObject + " are not numbers: " + i1Obj + ", " + i2Obj);
+                return null;
+            }
+            // TODO: pass the indexes after https://github.com/eclipse/lsp4j/issues/300 is fixed.
+            paramLabel = label.substring(((Number) i1Obj).intValue(), ((Number) i2Obj).intValue());
+        } else {
+            LOG.fine("ERROR: Unknown label object: " + paramLabelObject);
+            return null;
+        }
+        Object doc = paramMap.get(PROP_DOCUMENTATION);
+        Either<String, MarkupContent> documentation = completionHandler.getDocumentation(doc, langInfo);
+        if (documentation.isLeft()) {
+            return new ParameterInformation(paramLabel, documentation.getLeft());
+        } else {
+            return new ParameterInformation(paramLabel, documentation.getRight());
+        }
     }
 
     private boolean isSignatureHelpTriggerCharOfLanguage(TextDocumentSurrogate surrogate, int line, int charOffset) {
@@ -132,12 +187,10 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
     }
 
     public List<String> getSignatureHelpTriggerCharactersWithEnteredContext() {
-        //@formatter:off
-        return env.getLanguages().values().stream()
-                        .filter(lang -> !lang.isInternal())
-                        .flatMap(info -> env.getSignatureHelpTriggerCharacters(info).stream())
-                        .distinct()
+        return env.getLanguages().values().stream() //
+                        .filter(lang -> !lang.isInternal()) //
+                        .flatMap(info -> env.getSignatureHelpTriggerCharacters(info).stream()) //
+                        .distinct() //
                         .collect(Collectors.toList());
-        //@formatter:on
     }
 }

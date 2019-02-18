@@ -44,6 +44,7 @@ import org.eclipse.lsp4j.CompletionTriggerKind;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.MarkupContent;
+import org.eclipse.lsp4j.MarkupKind;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
@@ -103,10 +104,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     private final MessageNodes messageNodes;
     private final Node nodeIsInstantiable = Message.IS_INSTANTIABLE.createNode();
     private final Node nodeIsExecutable = Message.IS_EXECUTABLE.createNode();
+    private final Node nodeInvoke = Message.INVOKE.createNode();
     private final Node nodeGetSignature = LSPMessage.GET_SIGNATURE.createNode();
     private final Node nodeGetDocumentation = LSPMessage.GET_DOCUMENTATION.createNode();
     private final Node nodeIsNull = Message.IS_NULL.createNode();
-    private final Node nodeInvoke = Message.INVOKE.createNode();
 
     private static final int SORTING_PRIORITY_LOCALS = 1;
     private static final int SORTING_PRIORITY_GLOBALS = 2;
@@ -121,13 +122,11 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     public List<String> getCompletionTriggerCharactersWithEnteredContext() {
-        //@formatter:off
-        return env.getLanguages().values().stream()
-                        .filter(lang -> !lang.isInternal())
-                        .flatMap(info -> env.getCompletionTriggerCharacters(info).stream())
-                        .distinct()
+        return env.getLanguages().values().stream() //
+                        .filter(lang -> !lang.isInternal()) //
+                        .flatMap(info -> env.getCompletionTriggerCharacters(info).stream()) //
+                        .distinct() //
                         .collect(Collectors.toList());
-        //@formatter:on
     }
 
     public CompletionList completionWithEnteredContext(final URI uri, int line, int originalCharacter, CompletionContext completionContext) throws DiagnosticsNotification {
@@ -374,7 +373,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         if (object == null) {
             return false;
         }
-        Object metaObject = getMetaObject(langInfo, object);
+        String metaObject = getMetaObject(langInfo, object);
         if (metaObject == null) {
             return false;
         }
@@ -412,7 +411,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             CompletionItemKind kind = findCompletionItemKind(value);
             completion.setKind(kind != null ? kind : CompletionItemKind.Property);
             completion.setDetail(createCompletionDetail(entry.getKey(), value, langInfo));
-            completion.setDocumentation(createDocumentation(value, langInfo, "of meta object: `" + metaObject.toString() + "`"));
+            completion.setDocumentation(createDocumentation(value, langInfo, "of meta object: `" + metaObject + "`"));
 
             completions.getItems().add(completion);
         }
@@ -421,34 +420,23 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     private Either<String, MarkupContent> createDocumentation(Object value, LanguageInfo langInfo, String scopeInformation) {
-        MarkupContent markup = new MarkupContent();
-        String documentation = null;
-
-        if (value instanceof TruffleObject && !ForeignAccess.sendIsNull(nodeIsNull, (TruffleObject) value)) {
-            documentation = getDocumentation((TruffleObject) value);
-            return Either.forLeft(documentation);
-        }
-
+        Either<String, MarkupContent> documentation = getDocumentation(value, langInfo);
         if (documentation == null) {
-            Object metaObject = getMetaObject(langInfo, value);
-            documentation = LanguageSpecificHacks.getDocumentation(metaObject, langInfo.getId());
-
-            if (documentation == null) {
-                documentation = escapeMarkdown(scopeInformation);
-            }
+            MarkupContent markup = new MarkupContent();
+            String markupStr = escapeMarkdown(scopeInformation);
 
             SourceSection section = env.findSourceLocation(langInfo, value);
             if (section != null) {
                 String code = section.getCharacters().toString();
                 if (!code.isEmpty()) {
-                    documentation += "\n\n```\n" + section.getCharacters().toString() + "\n```";
+                    markupStr += "\n\n```\n" + section.getCharacters().toString() + "\n```";
                 }
             }
-            markup.setKind("markdown");
+            markup.setKind(MarkupKind.MARKDOWN);
+            markup.setValue(markupStr);
+            documentation = Either.forRight(markup);
         }
-
-        markup.setValue(documentation);
-        return Either.forRight(markup);
+        return documentation;
     }
 
     public static String escapeMarkdown(String original) {
@@ -474,7 +462,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         }
 
         if (truffleObj != null && key != null) {
-            String formattedSignature = getFormattedSignature(truffleObj);
+            String formattedSignature = getFormattedSignature(truffleObj, langInfo);
             detailText = formattedSignature != null ? formattedSignature : "";
         }
 
@@ -489,15 +477,28 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return detailText;
     }
 
-    public String getDocumentation(TruffleObject truffleObj) {
+    public Either<String, MarkupContent> getDocumentation(Object value, LanguageInfo langInfo) {
+        if (!(value instanceof TruffleObject) || ForeignAccess.sendIsNull(nodeIsNull, (TruffleObject) value)) {
+            return null;
+        }
+        TruffleObject truffleObj = (TruffleObject) value;
         try {
             Object docu = ForeignAccess.send(nodeGetDocumentation, truffleObj);
             if (docu instanceof String && !((String) docu).isEmpty()) {
-                return (String) docu;
-            }
-            if (docu instanceof TruffleObject) {
-                if (!ForeignAccess.sendIsNull(nodeIsNull, (TruffleObject) docu)) {
-                    return docu.toString();
+                return Either.forLeft((String) docu);
+            } else {
+                if (docu instanceof TruffleObject) {
+                    TruffleObject markup = (TruffleObject) docu;
+                    MarkupContent content = new MarkupContent();
+                    try {
+                        docu = ForeignAccess.sendInvoke(nodeInvoke, markup, MarkupKind.MARKDOWN);
+                        content.setKind(MarkupKind.MARKDOWN);
+                    } catch (InteropException e) {
+                        docu = ForeignAccess.sendInvoke(nodeInvoke, markup, MarkupKind.PLAINTEXT);
+                        content.setKind(MarkupKind.PLAINTEXT);
+                    }
+                    content.setValue(env.toString(langInfo, docu));
+                    return Either.forRight(content);
                 }
             }
         } catch (UnsupportedMessageException | UnsupportedTypeException e) {
@@ -508,25 +509,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return null;
     }
 
-    public String getFormattedSignature(TruffleObject truffleObj) {
+    public String getFormattedSignature(TruffleObject truffleObj, LanguageInfo langInfo) {
         try {
             Object signature = ForeignAccess.send(nodeGetSignature, truffleObj);
-            if (signature instanceof TruffleObject) {
-                try {
-                    Object formattedString = ForeignAccess.sendInvoke(nodeInvoke, (TruffleObject) signature, "format");
-                    return formattedString.toString();
-                } catch (InteropException e) {
-                    // Fallback if no format method is provided. Simply create a comma separated
-                    // list of parameters.
-                    boolean hasSize = ForeignAccess.sendHasSize(messageNodes.hasSize, (TruffleObject) signature);
-                    if (hasSize) {
-                        List<Object> params = ObjectStructures.asList((TruffleObject) signature, messageNodes);
-                        if (params != null) {
-                            return "Parameters: " + params.stream().reduce("", (a, b) -> a.toString() + (a.toString().isEmpty() ? "" : ", ") + b.toString());
-                        }
-                    }
-                }
-            }
+            return env.toString(langInfo, signature);
         } catch (UnsupportedMessageException | UnsupportedTypeException e) {
             // GET_SIGNATURE message is not supported
         } catch (InteropException e) {
@@ -544,9 +530,14 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return langInfo;
     }
 
-    private Object getMetaObject(LanguageInfo defaultInfo, Object object) {
+    private String getMetaObject(LanguageInfo defaultInfo, Object object) {
         LanguageInfo langInfo = getObjectLanguageInfo(defaultInfo, object);
-        return env.findMetaObject(langInfo, object);
+        Object metaObject = env.findMetaObject(langInfo, object);
+        if (metaObject == null) {
+            return null;
+        } else {
+            return env.toString(langInfo, metaObject);
+        }
     }
 
     private LinkedHashMap<Scope, Map<Object, Object>> scopesToObjectMap(Iterable<Scope> scopes) {

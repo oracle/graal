@@ -386,14 +386,12 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
      * @return a builder to add further filter options
      */
     static SourceSectionFilter.Builder createSourceSectionFilter(URI uri, SourceSection sourceSection) {
-        // @formatter:off
-        return SourceSectionFilter.newBuilder()
-                        .lineStartsIn(IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1))
-                        .lineEndsIn(IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1))
-                        .columnStartsIn(IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1))
-                        .columnEndsIn(IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1))
+        return SourceSectionFilter.newBuilder() //
+                        .lineStartsIn(IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1)) //
+                        .lineEndsIn(IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1)) //
+                        .columnStartsIn(IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1)) //
+                        .columnEndsIn(IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1)) //
                         .sourceIs(SourcePredicateBuilder.newBuilder().uriOrTruffleName(uri).build());
-        // @formatter:on
     }
 
     static List<CoverageData> findCoverageDataBeforeNode(TextDocumentSurrogate surrogate, Node targetNode) {

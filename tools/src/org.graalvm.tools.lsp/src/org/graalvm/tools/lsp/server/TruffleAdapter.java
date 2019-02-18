@@ -125,7 +125,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
         this.symbolHandler = new SymbolRequestHandler(env, surrogateMap, contextAwareExecutor, messageNodes);
         this.definitionHandler = new DefinitionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, symbolHandler, messageNodes);
         this.hoverHandler = new HoverRequestHandler(env, surrogateMap, contextAwareExecutor, completionHandler);
-        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, messageNodes);
+        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionHandler, messageNodes);
         this.coverageHandler = new CoverageRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
         this.highlightHandler = new HighlightRequestHandler(env, surrogateMap, contextAwareExecutor, messageNodes);
         this.referencesHandler = new ReferencesRequestHandler(env, surrogateMap, contextAwareExecutor, highlightHandler, messageNodes);

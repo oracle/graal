@@ -142,6 +142,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
 
     @Override
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
+        // TODO: Read params.getCapabilities();
         truffleAdapter.initialize();
 
         List<String> signatureTriggerChars = waitForResultAndHandleExceptions(truffleAdapter.getSignatureHelpTriggerCharactersOfAllLanguages());
@@ -220,7 +221,6 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     @Override
     public CompletableFuture<SignatureHelp> signatureHelp(TextDocumentPositionParams position) {
         Future<SignatureHelp> future = truffleAdapter.signatureHelp(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
-
         return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(future, emptySignatureHelp));
     }
 

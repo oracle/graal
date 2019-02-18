@@ -32,6 +32,8 @@ import java.util.logging.Level;
 
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.MarkedString;
+import org.eclipse.lsp4j.MarkupContent;
+import org.eclipse.lsp4j.MarkupKind;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.instrument.LSOptions;
@@ -88,11 +90,12 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
                 }
             } else if (env.getOptions().get(LSOptions.DeveloperMode)) {
                 String sourceText = hoverSection.getCharacters().toString();
-                List<Either<String, MarkedString>> contents = new ArrayList<>();
-                contents.add(Either.forRight(new MarkedString(surrogate.getLanguageId(), sourceText)));
-                contents.add(Either.forLeft("Node class: " + nodeAtCaret.getClass().getSimpleName()));
-                contents.add(Either.forLeft("Tags: " + getTags(nodeAtCaret)));
-                return new Hover(contents, SourceUtils.sourceSectionToRange(hoverSection));
+                MarkupContent content = new MarkupContent();
+                content.setKind(MarkupKind.PLAINTEXT);
+                content.setValue("Language: " + surrogate.getLanguageId() + ", Section: " + sourceText + "\n" +
+                                "Node class: " + nodeAtCaret.getClass().getSimpleName() + "\n" +
+                                "Tags: " + getTags(nodeAtCaret));
+                return new Hover(content, SourceUtils.sourceSectionToRange(hoverSection));
             }
         }
         return new Hover(new ArrayList<>());
@@ -162,7 +165,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
             }
 
             if (evalResult instanceof TruffleObject) {
-                Hover signatureHover = trySignature(hoverSection, langInfo.getId(), (TruffleObject) evalResult);
+                Hover signatureHover = trySignature(hoverSection, langInfo, (TruffleObject) evalResult);
                 if (signatureHover != null) {
                     return signatureHover;
                 }
@@ -173,15 +176,24 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
         return getFutureResultOrHandleExceptions(future);
     }
 
-    private Hover trySignature(SourceSection hoverSection, String langId, TruffleObject evalResult) {
-        String formattedSignature = completionHandler.getFormattedSignature(evalResult);
+    private Hover trySignature(SourceSection hoverSection, LanguageInfo langInfo, TruffleObject evalResult) {
+        String formattedSignature = completionHandler.getFormattedSignature(evalResult, langInfo);
         if (formattedSignature != null) {
             List<Either<String, MarkedString>> contents = new ArrayList<>();
-            contents.add(Either.forRight(new MarkedString(langId, formattedSignature)));
+            contents.add(Either.forRight(new MarkedString(langInfo.getId(), formattedSignature)));
 
-            String documentation = completionHandler.getDocumentation(evalResult);
+            Either<String, MarkupContent> documentation = completionHandler.getDocumentation(evalResult, langInfo);
             if (documentation != null) {
-                contents.add(Either.forLeft(documentation));
+                if (documentation.isLeft()) {
+                    contents.add(Either.forLeft(documentation.getLeft()));
+                } else {
+                    MarkupContent markup = documentation.getRight();
+                    if (markup.getKind().equals(MarkupKind.PLAINTEXT)) {
+                        contents.add(Either.forLeft(markup.getValue()));
+                    } else {
+                        contents.add(Either.forRight(new MarkedString(langInfo.getId(), markup.getValue())));
+                    }
+                }
             }
             return new Hover(contents, SourceUtils.sourceSectionToRange(hoverSection));
         }
@@ -201,18 +213,25 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
     private List<Either<String, MarkedString>> createDefaultHoverInfos(String textAtHoverPosition, Object evalResultObject, LanguageInfo langInfo) {
         List<Either<String, MarkedString>> contents = new ArrayList<>();
         contents.add(Either.forRight(new MarkedString(langInfo.getId(), textAtHoverPosition)));
-        String result = evalResultObject != null ? evalResultObject.toString() : "";
+        String result = evalResultObject != null ? env.toString(langInfo, evalResultObject) : "";
         if (!textAtHoverPosition.equals(result)) {
             String resultObjectString = evalResultObject instanceof String ? "\"" + result + "\"" : result;
-            contents.add(Either.forRight(new MarkedString(langInfo.getId(), resultObjectString)));
+            contents.add(Either.forLeft(resultObjectString));
         }
         String detailText = completionHandler.createCompletionDetail(textAtHoverPosition, evalResultObject, langInfo);
         contents.add(Either.forLeft("meta-object: " + detailText));
 
-        if (evalResultObject instanceof TruffleObject) {
-            String documentation = completionHandler.getDocumentation((TruffleObject) evalResultObject);
-            if (documentation != null) {
-                contents.add(Either.forLeft(documentation));
+        Either<String, MarkupContent> documentation = completionHandler.getDocumentation(evalResultObject, langInfo);
+        if (documentation != null) {
+            if (documentation.isLeft()) {
+                contents.add(Either.forLeft(documentation.getLeft()));
+            } else {
+                MarkupContent markup = documentation.getRight();
+                if (markup.getKind().equals(MarkupKind.PLAINTEXT)) {
+                    contents.add(Either.forLeft(markup.getValue()));
+                } else {
+                    contents.add(Either.forRight(new MarkedString(langInfo.getId(), markup.getValue())));
+                }
             }
         }
         return contents;

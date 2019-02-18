@@ -25,8 +25,9 @@
 package org.graalvm.tools.lsp.test.server;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-import org.junit.Assert;
+import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import java.net.URI;
@@ -67,7 +68,7 @@ public class ParsingTest extends TruffleLSPTest {
         }
     }
 
-    @Test()
+    @Test
     public void unknownlanguageIdButMIMETypeFound() throws InterruptedException, ExecutionException {
         URI uri = createDummyFileUriForSL();
 
@@ -76,143 +77,104 @@ public class ParsingTest extends TruffleLSPTest {
     }
 
     @Test
-    public void parse() throws InterruptedException, ExecutionException {
-        {
-            URI uri = createDummyFileUriForSL();
-            String text = "function main() {return 3+3;}";
-            Future<?> future = truffleAdapter.parse(text, "sl", uri);
+    public void parseOK() throws InterruptedException, ExecutionException {
+        URI uri = createDummyFileUriForSL();
+        String text = "function main() {return 3+3;}";
+        Future<?> future = truffleAdapter.parse(text, "sl", uri);
+        future.get();
+    }
+
+    @Test
+    public void parseEOF() throws InterruptedException {
+        URI uri = createDummyFileUriForSL();
+        String text = "function main";
+        Future<?> future = truffleAdapter.parse(text, "sl", uri);
+        try {
             future.get();
-        }
-
-        {
-            URI uri = createDummyFileUriForSL();
-            String text = "function main";
-            Future<?> future = truffleAdapter.parse(text, "sl", uri);
-            try {
-                future.get();
-                Assert.fail();
-            } catch (ExecutionException ex) {
-                Collection<PublishDiagnosticsParams> diagnosticParams = ((DiagnosticsNotification) ex.getCause()).getDiagnosticParamsCollection();
-                assertEquals(1, diagnosticParams.size());
-                PublishDiagnosticsParams param = diagnosticParams.iterator().next();
-                assertEquals(uri.toString(), param.getUri());
-                List<Diagnostic> diagnostics = param.getDiagnostics();
-                assertTrue(diagnostics.get(0).getMessage().contains("EOF"));
-            }
-        }
-
-        {
-            TextDocumentSurrogate surrogate;
-            URI uri = createDummyFileUriForSL();
-
-            {
-                String text = "function main() {return 3+3;}";
-                Future<?> future = truffleAdapter.parse(text, "sl", uri);
-                future.get();
-            }
-
-            {
-                String textToInsert = "+4";
-                TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(new Range(new Position(0, 27), new Position(0, 27)), textToInsert.length(), textToInsert);
-                Future<TextDocumentSurrogate> future = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
-                surrogate = future.get();
-
-                assertEquals("function main() {return 3+3+4;}", surrogate.getEditorText());
-                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
-            }
-
-            {
-                String textToDelete = "";
-                TextDocumentContentChangeEvent deletionEvent = new TextDocumentContentChangeEvent(new Range(new Position(0, 24), new Position(0, 26)), textToDelete.length(), textToDelete);
-                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(deletionEvent), uri);
-                future.get();
-
-                assertEquals("function main() {return 3+4;}", surrogate.getEditorText());
-                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
-            }
-
-            {
-                String textToReplaceSingleLine = "\n  return 42;\n}";
-                TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(0, 17), new Position(0, 29)), textToReplaceSingleLine.length(),
-                                textToReplaceSingleLine);
-                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
-                future.get();
-
-                assertEquals("function main() {\n  return 42;\n}", surrogate.getEditorText());
-                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
-            }
-
-            {
-                String textToInsertAtEnd = "\n";
-                TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(2, 1), new Position(2, 1)), textToInsertAtEnd.length(), textToInsertAtEnd);
-                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
-                future.get();
-
-                assertEquals("function main() {\n  return 42;\n}\n", surrogate.getEditorText());
-                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
-            }
-
-            {
-                String textToInsertAtNewLineTerminatedLine = " ";
-                TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(3, 0), new Position(3, 0)), textToInsertAtNewLineTerminatedLine.length(),
-                                textToInsertAtNewLineTerminatedLine);
-                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
-                future.get();
-
-                assertEquals("function main() {\n  return 42;\n}\n ", surrogate.getEditorText());
-                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
-            }
-
-            {
-                String textToReplaceMultiLine = "{return 1;}";
-                TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(0, 16), new Position(3, 1)), textToReplaceMultiLine.length(),
-                                textToReplaceMultiLine);
-                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
-                future.get();
-
-                assertEquals("function main() {return 1;}", surrogate.getEditorText());
-                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
-            }
-
-            {
-                String textToReplaceEmpty = "";
-                TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(0, 0), new Position(0, 30)),
-                                textToReplaceEmpty.length(), textToReplaceEmpty);
-                Future<TextDocumentSurrogate> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
-                try {
-                    surrogate = future.get();
-                    Assert.fail();
-                } catch (ExecutionException e) {
-                    Collection<PublishDiagnosticsParams> diagnosticParamsCollection = ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection();
-                    assertEquals(1, diagnosticParamsCollection.size());
-                    PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
-                    List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
-                    assertTrue(diagnostics.get(0).getMessage().contains("EOF"));
-                }
-                assertEquals("", surrogate.getEditorText());
-            }
-
+            fail();
+        } catch (ExecutionException ex) {
+            Collection<PublishDiagnosticsParams> diagnosticParams = ((DiagnosticsNotification) ex.getCause()).getDiagnosticParamsCollection();
+            assertEquals(1, diagnosticParams.size());
+            PublishDiagnosticsParams param = diagnosticParams.iterator().next();
+            assertEquals(uri.toString(), param.getUri());
+            List<Diagnostic> diagnostics = param.getDiagnostics();
+            assertTrue(diagnostics.get(0).getMessage().contains("EOF"));
         }
     }
 
     @Test
-    public void parseingWithSyntaxErrors() throws InterruptedException {
-        {
-            URI uri = createDummyFileUriForSL();
-            String text = "function main() {return 3+;}";
+    public void changeAndParse() throws InterruptedException, ExecutionException {
+        TextDocumentSurrogate surrogate;
+        URI uri = createDummyFileUriForSL();
 
-            Future<?> future = truffleAdapter.parse(text, "sl", uri);
-            try {
-                future.get();
-                Assert.fail();
-            } catch (ExecutionException e) {
-                DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
-                Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
-                assertEquals(1, diagnosticParamsCollection.size());
-                PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
-                assertEquals(1, diagnosticsParams.getDiagnostics().size());
-                assertEquals(new Range(new Position(0, 26), new Position(0, 27)), diagnosticsParams.getDiagnostics().get(0).getRange());
-            }
+        String text = "function main() {return 3+3;}";
+        Future<?> futureParse = truffleAdapter.parse(text, "sl", uri);
+        futureParse.get();
+
+        // Insert +4
+        checkChange(uri, new Range(new Position(0, 27), new Position(0, 27)), "+4",
+                        "function main() {return 3+3+4;}");
+
+        // Delete
+        checkChange(uri, new Range(new Position(0, 24), new Position(0, 26)), "",
+                        "function main() {return 3+4;}");
+
+        // Replace
+        checkChange(uri, new Range(new Position(0, 17), new Position(0, 29)), "\n  return 42;\n}",
+                        "function main() {\n  return 42;\n}");
+
+        // Insert at the end
+        checkChange(uri, new Range(new Position(2, 1), new Position(2, 1)), "\n",
+                        "function main() {\n  return 42;\n}\n");
+        checkChange(uri, new Range(new Position(3, 0), new Position(3, 0)), " ",
+                        "function main() {\n  return 42;\n}\n ");
+
+        // Multiline replace
+        checkChange(uri, new Range(new Position(0, 16), new Position(3, 1)), "{return 1;}",
+                        "function main() {return 1;}");
+
+        // No change
+        surrogate = checkChange(uri, new Range(new Position(0, 1), new Position(0, 1)), "",
+                        "function main() {return 1;}");
+        // Replace to empty
+        try {
+            checkChange(uri, new Range(new Position(0, 0), new Position(0, 30)), "", null);
+            fail();
+        } catch (ExecutionException e) {
+            Collection<PublishDiagnosticsParams> diagnosticParamsCollection = ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection();
+            assertEquals(1, diagnosticParamsCollection.size());
+            PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
+            List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
+            assertTrue(diagnostics.get(0).getMessage().contains("EOF"));
+        }
+        assertEquals("", surrogate.getEditorText());
+    }
+
+    private TextDocumentSurrogate checkChange(URI uri, Range range, String change, String editorText) throws InterruptedException, ExecutionException {
+        TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, change.length(), change);
+        Future<TextDocumentSurrogate> future = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
+        TextDocumentSurrogate surrogate = future.get();
+        assertEquals(editorText, surrogate.getEditorText());
+        assertSame(surrogate.getEditorText(), surrogate.getEditorText());
+        return surrogate;
+    }
+
+    @Test
+    public void parseingWithSyntaxErrors() throws InterruptedException {
+        URI uri = createDummyFileUriForSL();
+        String text = "function main() {return 3+;}";
+
+        Future<?> future = truffleAdapter.parse(text, "sl", uri);
+        try {
+            future.get();
+            fail();
+        } catch (ExecutionException e) {
+            DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
+            Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
+            assertEquals(1, diagnosticParamsCollection.size());
+            PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
+            assertEquals(1, diagnosticsParams.getDiagnostics().size());
+            assertEquals(new Range(new Position(0, 26), new Position(0, 27)), diagnosticsParams.getDiagnostics().get(0).getRange());
         }
     }
 }

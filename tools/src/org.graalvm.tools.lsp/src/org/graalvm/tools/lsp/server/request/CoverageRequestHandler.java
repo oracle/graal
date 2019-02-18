@@ -155,10 +155,9 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
         final TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         assert surrogate != null;
         if (surrogate.getSourceWrapper() != null && surrogate.getSourceWrapper().isParsingSuccessful()) {
-            // @formatter:off
-            SourceSectionFilter filter = SourceSectionFilter.newBuilder()
-                            .sourceIs(surrogate.getSourceWrapper().getSource())
-                            .tagIs(StatementTag.class)
+            SourceSectionFilter filter = SourceSectionFilter.newBuilder() //
+                            .sourceIs(surrogate.getSourceWrapper().getSource()) //
+                            .tagIs(StatementTag.class) //
                             .build();
             Set<SourceSection> duplicateFilter = new HashSet<>();
             Map<URI, PublishDiagnosticsParams> mapDiagnostics = new HashMap<>();
@@ -169,16 +168,15 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
                     if (!surrogate.isLocationCovered(SourceSectionReference.from(section)) && !duplicateFilter.contains(section)) {
                         duplicateFilter.add(section);
                         Diagnostic diag = new Diagnostic(SourceUtils.sourceSectionToRange(section),
-                                                         "Not covered",
-                                                         DiagnosticSeverity.Warning,
-                                                         "Coverage Analysis");
+                                        "Not covered",
+                                        DiagnosticSeverity.Warning,
+                                        "Coverage Analysis");
                         PublishDiagnosticsParams params = mapDiagnostics.computeIfAbsent(uri, _uri -> new PublishDiagnosticsParams(_uri.toString(), new ArrayList<>()));
                         params.getDiagnostics().add(diag);
                     }
                 }
             }, true).dispose();
             throw new DiagnosticsNotification(mapDiagnostics.values());
-            // @formatter:on
         } else {
             throw DiagnosticsNotification.create(uri,
                             new Diagnostic(new Range(new Position(), new Position()), "No coverage information available", DiagnosticSeverity.Error, "Coverage Analysis"));

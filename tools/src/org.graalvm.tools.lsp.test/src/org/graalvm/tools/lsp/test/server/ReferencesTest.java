@@ -42,13 +42,11 @@ public class ReferencesTest extends TruffleLSPTest {
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ, "sl", uri);
         futureOpen.get();
 
-        {
-            Future<List<? extends Location>> future = truffleAdapter.references(uri, 1, 4);
-            List<? extends Location> definitions = future.get();
-            assertEquals(2, definitions.size());
-            assertEquals(range(1, 4, 1, 9), definitions.get(0).getRange());
-            assertEquals(range(2, 8, 2, 13), definitions.get(1).getRange());
-        }
+        Future<List<? extends Location>> future = truffleAdapter.references(uri, 1, 4);
+        List<? extends Location> definitions = future.get();
+        assertEquals(2, definitions.size());
+        assertEquals(range(1, 4, 1, 9), definitions.get(0).getRange());
+        assertEquals(range(2, 8, 2, 13), definitions.get(1).getRange());
     }
 
     @Test
@@ -57,13 +55,11 @@ public class ReferencesTest extends TruffleLSPTest {
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         futureOpen.get();
 
-        {
-            Future<List<? extends Location>> future = truffleAdapter.references(uri, 13, 10);
-            List<? extends Location> definitions = future.get();
-            assertEquals(3, definitions.size());
-            assertEquals(range(1, 8, 1, 13), definitions.get(0).getRange());
-            assertEquals(range(12, 2, 12, 7), definitions.get(1).getRange());
-            assertEquals(range(13, 9, 13, 14), definitions.get(2).getRange());
-        }
+        Future<List<? extends Location>> future = truffleAdapter.references(uri, 13, 10);
+        List<? extends Location> definitions = future.get();
+        assertEquals(3, definitions.size());
+        assertEquals(range(1, 8, 1, 13), definitions.get(0).getRange());
+        assertEquals(range(12, 2, 12, 7), definitions.get(1).getRange());
+        assertEquals(range(13, 9, 13, 14), definitions.get(2).getRange());
     }
 }
