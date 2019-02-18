@@ -38,7 +38,7 @@ public final class Target_java_lang_System {
     @Substitution
     public static int identityHashCode(@Host(Object.class) StaticObject self) {
         identityHashCodeCount.inc();
-        return System.identityHashCode(MetaUtil.unwrap(self));
+        return System.identityHashCode(MetaUtil.maybeUnwrapNull(self));
     }
 
     @Substitution
