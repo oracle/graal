@@ -47,7 +47,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Binding;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 
@@ -555,23 +555,23 @@ public class CheckGraalIntrinsics extends GraalTest {
     }
 
     private static boolean isJDK9OrHigher() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION >= 9;
+        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 9;
     }
 
     private static boolean isJDK10OrHigher() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION >= 10;
+        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 10;
     }
 
     private static boolean isJDK11OrHigher() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION >= 11;
+        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 11;
     }
 
     private static boolean isJDK12OrHigher() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION >= 12;
+        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 12;
     }
 
     private static boolean isJDK13OrHigher() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION >= 13;
+        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 13;
     }
 
     public interface Refiner {

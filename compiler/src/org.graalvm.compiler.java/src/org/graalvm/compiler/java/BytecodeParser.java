@@ -426,7 +426,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BailoutException;
@@ -3996,7 +3996,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private String unresolvedMethodAssertionMessage(JavaMethod result) {
         String message = result.format("%H.%n(%P)%R");
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             JavaType declaringClass = result.getDeclaringClass();
             String className = declaringClass.getName();
             switch (className) {

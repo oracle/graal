@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -36,7 +36,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 public class Package_jdk_internal_reflect implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.reflect." + annotation.className();
         } else {
             return "jdk.internal.reflect." + annotation.className();

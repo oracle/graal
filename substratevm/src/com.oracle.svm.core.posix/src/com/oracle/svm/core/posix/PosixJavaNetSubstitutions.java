@@ -48,7 +48,7 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
@@ -3341,7 +3341,7 @@ final class Target_java_net_Inet6AddressImpl {
 
                     ret = new InetAddress[retLen];
 
-                    if (GraalServices.Java8OrEarlier) {
+                    if (JavaVersionUtil.Java8OrEarlier) {
                         if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
                             /* AF_INET addresses will be offset by inet6Count */
                             inetIndex = inet6Count;
@@ -3408,7 +3408,7 @@ final class Target_java_net_Inet6AddressImpl {
                             // 474 inet6Index++;
                             inet6Index++;
                         }
-                        if (!GraalServices.Java8OrEarlier) {
+                        if (!JavaVersionUtil.Java8OrEarlier) {
                             if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
                                 originalIndex++;
                                 inetIndex = 0;
@@ -3514,7 +3514,7 @@ final class Util_java_net_Inet6AddressImpl {
                 /* Create and fill the Java array. */
                 int arraySize = addrs4 + addrs6 - (includeLoopback ? 0 : (numV4Loopbacks + numV6Loopbacks));
                 result = new InetAddress[arraySize];
-                if (GraalServices.Java8OrEarlier) {
+                if (JavaVersionUtil.Java8OrEarlier) {
                     if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
                         i = includeLoopback ? addrs6 : (addrs6 - numV6Loopbacks);
                         j = 0;

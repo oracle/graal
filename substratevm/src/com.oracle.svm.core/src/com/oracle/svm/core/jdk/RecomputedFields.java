@@ -51,7 +51,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -433,7 +433,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
         /** Ensure that the common pool variables are initialized. */
         protected static void ensureCommonPoolIsInitialized() {
             if (injectedCommon.get() == null) {
-                if (GraalServices.Java8OrEarlier) {
+                if (JavaVersionUtil.Java8OrEarlier) {
                     initializeCommonPool_JDK8OrEarlier();
                 } else {
                     initializeCommonPool_JDK9OrLater();

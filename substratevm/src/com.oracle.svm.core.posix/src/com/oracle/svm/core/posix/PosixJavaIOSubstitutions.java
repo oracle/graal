@@ -89,7 +89,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -723,7 +723,7 @@ final class Target_java_io_Console {
     // 050                           jboolean on) {
     @Substitute
     static boolean echo(boolean on) throws IOException {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             /* Initialize the echo shut down hook, once. */
             Util_java_io_Console_JDK8OrEarlier.addShutdownHook();
         }
