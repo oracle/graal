@@ -33,6 +33,8 @@ extern "C" {
 #include <malloc.h>
 
 static jmethodID java_lang_Class_getName;
+static jmethodID java_lang_Class_getConstructor;
+static jmethodID java_lang_Class_getDeclaredConstructor;
 
 static void reflect_trace(JNIEnv *env, jclass clazz, const char *function, ...) {
   va_list ap;
@@ -80,15 +82,21 @@ static void OnBreakpoint_getSingleField(jvmtiEnv *jvmti, JNIEnv* jni, jthread th
 }
 
 static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, struct reflect_breakpoint_entry *bp) {
+  bool is_ctor = (bp->methodID == java_lang_Class_getConstructor || bp->methodID == java_lang_Class_getDeclaredConstructor);
   jclass self;
   guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 0, &self) == JVMTI_ERROR_NONE);
-  jstring method_name;
-  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 1, &method_name) == JVMTI_ERROR_NONE);
+  jstring method_name = NULL;
   const char *method_cname;
-  guarantee((method_cname = jnifun->GetStringUTFChars(jni, method_name, NULL)) != NULL);
   jobjectArray param_types;
-  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 2, &param_types) == JVMTI_ERROR_NONE);
-  jint param_types_len = jnifun->GetArrayLength(jni, param_types);
+  if (is_ctor) {
+    method_cname = "<init>";
+    guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 1, &param_types) == JVMTI_ERROR_NONE);
+  } else {
+    guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 1, &method_name) == JVMTI_ERROR_NONE);
+    guarantee((method_cname = jnifun->GetStringUTFChars(jni, method_name, NULL)) != NULL);
+    guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 2, &param_types) == JVMTI_ERROR_NONE);
+  }
+  jint param_types_len = (param_types == NULL) ? 0 : jnifun->GetArrayLength(jni, param_types);
   struct sbuf b;
   if (param_types_len > 0) {
     sbuf_new(&b);
@@ -113,7 +121,9 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
   } else {
     reflect_trace(jni, self, bp->name, method_cname, NULL);
   }
-  jnifun->ReleaseStringUTFChars(jni, method_name, method_cname);
+  if (!is_ctor) {
+    jnifun->ReleaseStringUTFChars(jni, method_name, method_cname);
+  }
 }
 
 #define REFLECTION_BREAKPOINT(class_name, name, signature, handler) \
@@ -210,6 +220,8 @@ void OnVMStart_Reflection(jvmtiEnv *jvmti, JNIEnv *jni) {
   jclass java_lang_Class;
   guarantee((java_lang_Class = jnifun->FindClass(jni, "java/lang/Class")) != NULL);
   guarantee((java_lang_Class_getName = jnifun->GetMethodID(jni, java_lang_Class, "getName", "()Ljava/lang/String;")) != NULL);
+  guarantee((java_lang_Class_getConstructor = jnifun->GetMethodID(jni, java_lang_Class, "getConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;")) != NULL);
+  guarantee((java_lang_Class_getDeclaredConstructor = jnifun->GetMethodID(jni, java_lang_Class, "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;")) != NULL);
 }
 
 #ifdef __cplusplus
