@@ -709,11 +709,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=[],
-    support_distributions=[
-        'truffle:TRUFFLE_GRAALVM_SUPPORT',
-        'truffle:TRUFFLE_NFI_NATIVE',
-    ]
+    truffle_jars=['truffle:TRUFFLE_NFI'],
+    support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT']
 ))
 
 mx.update_commands(_suite, {

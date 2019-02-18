@@ -1345,7 +1345,7 @@ _base_graalvm_layout = {
     "<jdk_base>/": [
         "file:GRAALVM-README.md",
     ],
-    "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
+    "<jdk_base>/include/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*"],
     "<jdk_base>/jre/lib/boot/": [
         "dependency:sdk:GRAAL_SDK",
         "dependency:sdk:GRAAL_SDK/*.src.zip",
@@ -1355,20 +1355,17 @@ _base_graalvm_layout = {
         "dependency:sdk:LAUNCHER_COMMON/*.src.zip",
     ],
     "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
-        "string:../truffle/truffle-api.jar:../truffle/locator.jar:../truffle/truffle-nfi.jar",
+        "string:../truffle/truffle-api.jar:../truffle/locator.jar",
     ],
     "<jdk_base>/jre/lib/truffle/": [
         "dependency:truffle:TRUFFLE_API",
         "dependency:truffle:TRUFFLE_API/*.src.zip",
         "dependency:truffle:TRUFFLE_DSL_PROCESSOR",
         "dependency:truffle:TRUFFLE_DSL_PROCESSOR/*.src.zip",
-        "dependency:truffle:TRUFFLE_NFI",
-        "dependency:truffle:TRUFFLE_NFI/*.src.zip",
         "dependency:truffle:TRUFFLE_TCK",
         "dependency:truffle:TRUFFLE_TCK/*.src.zip",
         "dependency:LOCATOR",
         "dependency:LOCATOR/*.src.zip",
-        "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include",
     ],
 }
 
