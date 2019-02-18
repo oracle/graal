@@ -1,37 +1,36 @@
 # :coffee: Espresso²
 A Java bytecode meta-interpreter on top of [Truffle](https://github.com/oracle/graal/tree/master/truffle).
 
-**Note:** Espresso is a work in progress.
+Espresso can run way past HelloWorld; it can run a toy web server, terminal Tetris, a ray-tracer written in Scala and much more.  
+**Espresso is written entirely in Java, it can run `javac` and compile itself.**  
+**It can interpret itself, on top of itself... any number of layers deep.**
+
 
 ### Features
-  - Bytecode interpreter passing _100%_ of the JTT bytecode tests
-  - Working PE
-  - Uses guest class loaders
-  - `.class` file parser
-  - JNI support
+  - Meta-interpreter, fully self-hosted, able to compile itself and run on top of itself
+  - PE-friendly bytecode interpreter
+  - Single-pass `.class` file parser
+  - JNI-in-Java implementation (libnespresso)
+  - libjvm-in-Java implementation (libmokapot)
   - Standalone native-image via SubstrateVM
 
-### Not supported/implemented (yet)
+### Not supported (yet)
   - Threads
   - InvokeDynamic
   - Modules
   - Interop
   - Class/bytecode verification/access-checks/error-reporting
   - Full Java spec compliance (e.g. class loading and initialization, access checks)
-  
-Espresso can run `javac` and compile itself.
-**It can execute itself, it's effectively a meta-interpreter.**
-It can run a toy web server, console Tetris, a ray-tracer written in Scala and much more.
 
-### _Espresso_ setup
-Espresso needs some tweaks to run; checkout the `mokapot` branch on the graal repo:
+## _Espresso_ setup
+Espresso needs some patches to run; checkout the `mokapot` branch on the graal repo (internal branch not available on GitHub):
 ```bash
 cd ../graal
 git checkout mokapot
 ```
-Always use the `master` branch on Espresso, `mokapot` on graal (for Espresso ad-hoc patches). 
+Always use `master` for Espresso and the `mokapot` branch on the graal repo. 
 
-### Run _Espresso_
+## _Espresso_ interpreter
 Use `mx espresso` which mimics the `java` (8) command.
 ```bash
 mx espresso -help
@@ -40,46 +39,42 @@ mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.
 mx espresso-playground HelloWorld
 ```
 
-### Run _Espresso_ + Truffle PE
+## _Espresso_ + compilation enabled
 ```bash
-# Runs a simple prime-sieve
+# Executes a prime-sieve
 mx --dy /compiler --jdk jvmci espresso-playground TestMain
+mx --dy /compiler --jdk jvmci espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
 ```
 
-### Terminal tetris
+## Terminal tetris
 `mx espresso-playground` is a handy shortcut to run test programs bundled with Espresso.
 ```bash
 mx espresso-playground Tetris
 ```
 
-### Fast(er?) factorial
-```bash
-mx espresso-playground Fastorial 100
-```
-
-### Dumping IGV graphs
+## Dumping IGV graphs
 ```bash
 mx -v --dy /compiler --jdk jvmci -J"-Dgraal.Dump=:4 -Dgraal.TraceTruffleCompilation=true -Dgraal.TruffleBackgroundCompilation=false" espresso -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
 ```
 
-### Run _Espresso_ unit tests
+## _Espresso_ unit tests
 Most unit tests are executed in the same context.
 ```bash
 mx unittest --suite espresso
 ```
 
-## _Espresso_ + SVM
+## _Espresso_ + SubstrateVM
 ```bash
 # Build Espresso native image
 mx --env espresso.svm build
 export ESPRESSO_NATIVE=`mx --env espresso.svm graalvm-home`/bin/espresso
+# Run HelloWorld
 time $ESPRESSO_NATIVE -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
 ```
 The Espresso native image assumes it's part of the GraalVM to derive the boot classpath and other essential parameters needed to boot the VM.
 
-
 ## Espressoⁿ Java-ception
-**Self-hosting requires a Linux distro with an up-to-date libc. It works only on HotSpot (no SVM support yet).**  
+**Self-hosting requires a Linux distro with an up-to-date libc. Works on HotSpot (no SVM support yet)**  
 Use `mx espresso-meta` to run programs on Espresso². Be sure to preprend `LD_DEBUG=unused` to overcome a known libc bug.  
 To run Tetris on Espresso² execute the following:
 ```bash
