@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
+import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -122,6 +123,10 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
         if (isAnnotation(method.getDeclaringClass())) {
             AnnotationSubstitutionType declaringClass = getSubstitution(method.getDeclaringClass());
             AnnotationSubstitutionMethod result = declaringClass.getSubstitutionMethod(method);
+            System.err.println("substitute method "+method+" with "+result+" for declaringClass = "+declaringClass);
+            if (result == null) {
+                Thread.dumpStack();
+            }
             assert result != null && result.original.equals(method);
             return result;
         }
@@ -159,8 +164,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 result.addSubstitutionMethod(originalMethod, substitutionMethod);
             }
             for (ResolvedJavaMethod originalMethod : type.getDeclaredConstructors()) {
-                AnnotationSubstitutionMethod substitutionMethod = new AnnotationAccessorMethod(originalMethod);
-                result.addSubstitutionField(new AnnotationSubstitutionField(result, originalMethod, snippetReflection, metaAccess));
+                AnnotationSubstitutionMethod substitutionMethod = new AnnotationConstructorMethod(originalMethod);
                 result.addSubstitutionMethod(originalMethod, substitutionMethod);
             }
 
@@ -447,6 +451,20 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             String returnValue = "@" + annotationInterfaceType.toJavaName(true);
             ValueNode returnConstant = kit.unique(ConstantNode.forConstant(SubstrateObjectConstant.forObject(returnValue), providers.getMetaAccess()));
             kit.append(new ReturnNode(returnConstant));
+            return graph;
+        }
+    }
+
+    static class AnnotationConstructorMethod extends AnnotationSubstitutionMethod {
+        AnnotationConstructorMethod(ResolvedJavaMethod original) {
+            super(original);
+        }
+
+        @Override
+        public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+            GraphKit kit = new HostedGraphKit(debug, providers, method);
+            StructuredGraph graph = kit.getGraph();
+            graph.add(new DeadEndNode());
             return graph;
         }
     }
