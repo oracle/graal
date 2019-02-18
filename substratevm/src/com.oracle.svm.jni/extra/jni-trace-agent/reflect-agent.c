@@ -152,6 +152,29 @@ static void OnBreakpoint_requestProxy(jvmtiEnv *jvmti, JNIEnv* jni, jthread thre
   }
 }
 
+static void OnBreakpoint_getResource(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, struct reflect_breakpoint_entry *bp) {
+  jobject self;
+  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 0, &self) == JVMTI_ERROR_NONE);
+  guarantee(self != NULL);
+  jclass clazz;
+  guarantee((clazz = jnifun->GetObjectClass(jni, self)) != NULL);
+  jstring name;
+  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 1, &name) == JVMTI_ERROR_NONE);
+  const char *cname;
+  guarantee((cname = jnifun->GetStringUTFChars(jni, name, NULL)) != NULL);
+  reflect_trace(jni, clazz, bp->name, cname, NULL);
+  jnifun->ReleaseStringUTFChars(jni, name, cname);
+}
+
+static void OnBreakpoint_getSystemResource(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, struct reflect_breakpoint_entry *bp) {
+  jstring name;
+  guarantee((*jvmti)->GetLocalObject(jvmti, thread, 0, 0, &name) == JVMTI_ERROR_NONE);
+  const char *cname;
+  guarantee((cname = jnifun->GetStringUTFChars(jni, name, NULL)) != NULL);
+  reflect_trace(jni, NULL, bp->name, cname, NULL);
+  jnifun->ReleaseStringUTFChars(jni, name, cname);
+}
+
 #define REFLECTION_BREAKPOINT(class_name, name, signature, handler) \
   { (jmethodID)0, (jlocation)0, (class_name), (name), (signature), (handler) }
 
@@ -171,6 +194,15 @@ static struct reflect_breakpoint_entry reflect_breakpoints[] = {
   REFLECTION_BREAKPOINT("java/lang/Class", "getConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", &OnBreakpoint_getSingleMethod),
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", &OnBreakpoint_getSingleMethod),
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", &OnBreakpoint_getSingleMethod),
+
+  REFLECTION_BREAKPOINT("java/lang/Class", "getResource", "(Ljava/lang/String;)Ljava/net/URL;", &OnBreakpoint_getResource),
+  REFLECTION_BREAKPOINT("java/lang/Class", "getResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", &OnBreakpoint_getResource),
+  REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResource", "(Ljava/lang/String;)Ljava/net/URL;", &OnBreakpoint_getResource),
+  REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", &OnBreakpoint_getResource),
+  REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", &OnBreakpoint_getResource),
+  REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getSystemResource", "(Ljava/lang/String;)Ljava/net/URL;", &OnBreakpoint_getSystemResource),
+  REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getSystemResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", &OnBreakpoint_getSystemResource),
+  REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getSystemResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", &OnBreakpoint_getSystemResource),
 
   REFLECTION_BREAKPOINT("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", &OnBreakpoint_requestProxy),
   REFLECTION_BREAKPOINT("java/lang/reflect/Proxy", "newProxyInstance", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", &OnBreakpoint_requestProxy),
