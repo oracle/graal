@@ -74,6 +74,7 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
             protected void closeCompilationResult() {
                 CompilationResult result = this.compilationResult;
                 result.setMethods(graph.method(), graph.getMethods());
+                result.setSpeculationLog(graph.getSpeculationLog());
                 result.setBytecodeSize(graph.getBytecodeSize());
 
                 Set<Assumption> newAssumptions = new HashSet<>();

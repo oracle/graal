@@ -2831,8 +2831,25 @@ public final class PosixJavaNIOSubstitutions {
             return handle(munmap(a, WordFactory.unsigned(len)), "Unmap failed");
         }
 
+        /**
+         * {@code FileChannelImpl.position0} was removed by
+         * https://bugs.openjdk.java.net/browse/JDK-8202261.
+         */
+        static class ContainsPosition0 implements Predicate<Class<?>> {
+
+            @Override
+            public boolean test(Class<?> t) {
+                for (java.lang.reflect.Method m : t.getDeclaredMethods()) {
+                    if (m.getName().equals("position0")) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
         @Substitute
-        @TargetElement(onlyWith = JDK8OrEarlier.class)
+        @TargetElement(onlyWith = {JDK8OrEarlier.class, ContainsPosition0.class})
         private long position0(FileDescriptor fdo, long offset) throws IOException {
             int fd = fdval(fdo);
             long result = 0;

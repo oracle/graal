@@ -72,6 +72,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -99,6 +100,8 @@ public class OnStackReplacementPhase extends Phase {
     private static boolean supportOSRWithLocks(OptionValues options) {
         return Options.SupportOSRWithLocks.getValue(options);
     }
+
+    private static final SpeculationReasonGroup OSR_LOCAL_SPECULATIONS = new SpeculationReasonGroup("OSRLocal", int.class, Stamp.class, int.class);
 
     @Override
     @SuppressWarnings("try")
@@ -204,7 +207,7 @@ public class OnStackReplacementPhase extends Phase {
                         osrLocal = graph.addOrUnique(new OSRLocalNode(i, unrestrictedStamp));
                     }
                     // Speculate on the OSRLocal stamps that could be more precise.
-                    OSRLocalSpeculationReason reason = new OSRLocalSpeculationReason(osrState.bci, narrowedStamp, i);
+                    SpeculationReason reason = OSR_LOCAL_SPECULATIONS.createSpeculationReason(osrState.bci, narrowedStamp, i);
                     if (graph.getSpeculationLog().maySpeculate(reason) && osrLocal instanceof OSRLocalNode && value.getStackKind().equals(JavaKind.Object) && !narrowedStamp.isUnrestricted()) {
                         // Add guard.
                         LogicNode check = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) narrowedStamp, osrLocal, null, null));
@@ -307,31 +310,5 @@ public class OnStackReplacementPhase extends Phase {
     @Override
     public float codeSizeIncrease() {
         return 5.0f;
-    }
-
-    private static class OSRLocalSpeculationReason implements SpeculationReason {
-        private int bci;
-        private Stamp speculatedStamp;
-        private int localIndex;
-
-        OSRLocalSpeculationReason(int bci, Stamp speculatedStamp, int localIndex) {
-            this.bci = bci;
-            this.speculatedStamp = speculatedStamp;
-            this.localIndex = localIndex;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof OSRLocalSpeculationReason) {
-                OSRLocalSpeculationReason that = (OSRLocalSpeculationReason) obj;
-                return this.bci == that.bci && this.speculatedStamp.equals(that.speculatedStamp) && this.localIndex == that.localIndex;
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return (bci << 16) ^ speculatedStamp.hashCode() ^ localIndex;
-        }
     }
 }
