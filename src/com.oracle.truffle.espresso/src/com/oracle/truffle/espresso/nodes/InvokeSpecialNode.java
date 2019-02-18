@@ -42,8 +42,18 @@ public final class InvokeSpecialNode extends QuickNode {
         // TODO(peterssen): IsNull Node?
         nullCheck(root.peekReceiver(frame, top, method));
         Object[] args = root.peekArguments(frame, top, true, method.getParsedSignature());
-        Object result = directCallNode.call(args);
+        Object result = callSpecial(args);
         int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
+    }
+
+    private final Object callSpecial(Object[] args) {
+        if (method.isSynchronized()) {
+            synchronized (/* this */ args[0]) {
+                return directCallNode.call(args);
+            }
+        } else {
+            return directCallNode.call(args);
+        }
     }
 }

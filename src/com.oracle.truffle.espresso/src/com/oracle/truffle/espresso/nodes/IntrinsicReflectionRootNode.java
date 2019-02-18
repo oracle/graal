@@ -62,6 +62,18 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
 
     @TruffleBoundary
     private Object callIntrinsic(Object... args) throws InvocationTargetException, IllegalAccessException {
-        return reflectMethod.invoke(null, args);
+        if (getMethod().isSynchronized()) {
+            if (getMethod().isStatic()) {
+                synchronized (getMethod().getDeclaringKlass().mirror()) {
+                    return reflectMethod.invoke(null, args);
+                }
+            } else {
+                synchronized (/* this */ args[0]) { // synchronize on receiver
+                    return reflectMethod.invoke(null, args);
+                }
+            }
+        } else {
+            return reflectMethod.invoke(null, args);
+        }
     }
 }
