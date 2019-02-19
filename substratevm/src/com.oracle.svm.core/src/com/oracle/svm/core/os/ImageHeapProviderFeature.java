@@ -29,14 +29,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
-/**
- * Ensures that after the {@link #duringSetup(DuringSetupAccess)} stage, an
- * {@link ImageHeapProvider} is registered with {@link ImageSingletons}.
- */
 @AutomaticFeature
 public class ImageHeapProviderFeature implements Feature {
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(ImageHeapProvider.class)) {
             ImageSingletons.add(ImageHeapProvider.class, new CopyingImageHeapProvider());
         }

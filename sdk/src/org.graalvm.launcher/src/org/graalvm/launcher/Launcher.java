@@ -101,7 +101,7 @@ public abstract class Launcher {
     private final boolean verbose;
 
     private boolean help;
-    private boolean helpDebug;
+    private boolean helpInternal;
     private boolean helpExpert;
     private boolean helpTools;
     private boolean helpLanguages;
@@ -453,7 +453,7 @@ public abstract class Launcher {
 
     @SuppressWarnings("fallthrough")
     final boolean runPolyglotAction() {
-        OptionCategory helpCategory = helpDebug ? OptionCategory.DEBUG : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
+        OptionCategory helpCategory = helpInternal ? OptionCategory.INTERNAL : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
 
         switch (versionAction) {
             case PrintAndContinue:
@@ -465,7 +465,7 @@ public abstract class Launcher {
                 printPolyglotVersions();
                 return true;
         }
-        boolean printDefaultHelp = help || ((helpExpert || helpDebug) && !helpTools && !helpLanguages);
+        boolean printDefaultHelp = help || ((helpExpert || helpInternal) && !helpTools && !helpLanguages);
         if (printDefaultHelp) {
             printHelp(helpCategory);
             // @formatter:off
@@ -484,8 +484,8 @@ public abstract class Launcher {
             printOption("--help:languages",              "Print options for all installed languages.");
             printOption("--help:tools",                  "Print options for all installed tools.");
             printOption("--help:expert",                 "Print additional options for experts.");
-            if (helpExpert || helpDebug) {
-                printOption("--help:debug",              "Print additional options for debugging.");
+            if (helpExpert || helpInternal) {
+                printOption("--help:internal",           "Print internal options for debugging language implementations and instruments.");
             }
             printOption("--version:graalvm",             "Print GraalVM version information and exit.");
             printOption("--show-version:graalvm",        "Print GraalVM version information and continue execution.");
@@ -497,7 +497,7 @@ public abstract class Launcher {
                 if (!descriptor.getName().startsWith("engine.") && !descriptor.getName().startsWith("compiler.")) {
                     continue;
                 }
-                if (!descriptor.isDeprecated() && descriptor.getCategory().ordinal() == helpCategory.ordinal()) {
+                if (!descriptor.isDeprecated() && sameCategory(descriptor, helpCategory)) {
                     engineOptions.add(asPrintableOption(descriptor));
                 }
             }
@@ -528,7 +528,7 @@ public abstract class Launcher {
         for (Instrument instrument : instruments) {
             List<PrintableOption> options = new ArrayList<>();
             for (OptionDescriptor descriptor : instrument.getOptions()) {
-                if (!descriptor.isDeprecated() && descriptor.getCategory().ordinal() == optionCategory.ordinal()) {
+                if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
                     options.add(asPrintableOption(descriptor));
                 }
             }
@@ -554,7 +554,7 @@ public abstract class Launcher {
         for (Language language : languages) {
             List<PrintableOption> options = new ArrayList<>();
             for (OptionDescriptor descriptor : language.getOptions()) {
-                if (!descriptor.isDeprecated() && descriptor.getCategory().ordinal() == optionCategory.ordinal()) {
+                if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
                     options.add(asPrintableOption(descriptor));
                 }
             }
@@ -574,13 +574,24 @@ public abstract class Launcher {
         }
     }
 
+    @SuppressWarnings("deprecation")
+    private static boolean sameCategory(OptionDescriptor descriptor, OptionCategory optionCategory) {
+        return descriptor.getCategory().ordinal() == optionCategory.ordinal() ||
+                        (optionCategory.ordinal() == OptionCategory.INTERNAL.ordinal() &&
+                                        descriptor.getCategory().ordinal() == OptionCategory.DEBUG.ordinal());
+    }
+
     boolean parsePolyglotOption(String defaultOptionPrefix, Map<String, String> options, String arg) {
         switch (arg) {
             case "--help":
                 help = true;
                 return true;
             case "--help:debug":
-                helpDebug = true;
+                System.err.println("Warning: --help:debug is deprecated, use --help:internal instead.");
+                helpInternal = true;
+                return true;
+            case "--help:internal":
+                helpInternal = true;
                 return true;
             case "--help:expert":
                 helpExpert = true;
@@ -710,8 +721,8 @@ public abstract class Launcher {
         options.add("--help:expert");
         options.add("--version:graalvm");
         options.add("--show-version:graalvm");
-        if (helpExpert || helpDebug) {
-            options.add("--help:debug");
+        if (helpExpert || helpInternal) {
+            options.add("--help:internal");
         }
         addOptions(engine.getOptions(), options);
         for (Language language : engine.getLanguages().values()) {
@@ -781,7 +792,7 @@ public abstract class Launcher {
     }
 
     static void printOption(OptionCategory optionCategory, OptionDescriptor descriptor) {
-        if (!descriptor.isDeprecated() && descriptor.getCategory().ordinal() == optionCategory.ordinal()) {
+        if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
             printOption(asPrintableOption(descriptor));
         }
     }

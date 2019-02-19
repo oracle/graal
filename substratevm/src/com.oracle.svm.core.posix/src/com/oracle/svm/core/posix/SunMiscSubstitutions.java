@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
@@ -58,7 +58,7 @@ import com.oracle.svm.core.util.VMError;
 class Package_jdk_internal_misc implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.misc." + annotation.className();

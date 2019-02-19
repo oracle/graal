@@ -33,7 +33,7 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
@@ -99,7 +99,7 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
 
     /** Track classes in the `reflect` package across JDK versions. */
     private static Class<?> packageJdkInternalReflectClassForName(String className) {
-        final String packageName = (GraalServices.Java8OrEarlier ? "sun.reflect." : "jdk.internal.reflect.");
+        final String packageName = (JavaVersionUtil.Java8OrEarlier ? "sun.reflect." : "jdk.internal.reflect.");
         try {
             /* { Allow reflection in hosted code. Checkstyle: stop. */
             return Class.forName(packageName + className);
@@ -115,7 +115,7 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         /* { Allow reflection in hosted code. Checkstyle: stop. */
         try {
             if (generateProxyMethod == null) {
-                final String packageName = (GraalServices.Java8OrEarlier ? "sun.misc." : "java.lang.reflect.");
+                final String packageName = (JavaVersionUtil.Java8OrEarlier ? "sun.misc." : "java.lang.reflect.");
                 generateProxyMethod = Class.forName(packageName + "ProxyGenerator").getDeclaredMethod("generateProxyClass", String.class, Class[].class);
                 generateProxyMethod.setAccessible(true);
             }

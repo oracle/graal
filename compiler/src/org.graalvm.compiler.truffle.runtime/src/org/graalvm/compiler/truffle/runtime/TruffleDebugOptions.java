@@ -73,6 +73,6 @@ final class TruffleDebugOptions {
     }
 
     // Initialized by the options of the same name in org.graalvm.compiler.debug.DebugOptions
-    @Option(help = "", category = OptionCategory.DEBUG) public static final OptionKey<Boolean> PrintGraph = new OptionKey<>(true);
-    @Option(help = "", category = OptionCategory.DEBUG) public static final OptionKey<Boolean> PrintTruffleTrees = new OptionKey<>(true);
+    @Option(help = "", category = OptionCategory.INTERNAL) public static final OptionKey<Boolean> PrintGraph = new OptionKey<>(true);
+    @Option(help = "", category = OptionCategory.INTERNAL) public static final OptionKey<Boolean> PrintTruffleTrees = new OptionKey<>(true);
 }

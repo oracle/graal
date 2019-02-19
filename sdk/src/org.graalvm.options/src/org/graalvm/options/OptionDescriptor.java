@@ -192,7 +192,7 @@ public final class OptionDescriptor {
 
         /**
          * Defines the user category for this option. The default value is
-         * {@link OptionCategory#DEBUG}.
+         * {@link OptionCategory#INTERNAL}.
          *
          * @since 1.0
          */
@@ -230,7 +230,7 @@ public final class OptionDescriptor {
          * @since 1.0
          */
         public OptionDescriptor build() {
-            return new OptionDescriptor(key, name, help == null ? "" : help, category == null ? OptionCategory.DEBUG : category, deprecated);
+            return new OptionDescriptor(key, name, help == null ? "" : help, category == null ? OptionCategory.INTERNAL : category, deprecated);
         }
 
     }

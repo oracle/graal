@@ -186,7 +186,7 @@ suite = {
     "org.graalvm.compiler.serviceprovider" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["JVMCI_SERVICES"],
+      "dependencies" : ["JVMCI_SERVICES", "JVMCI_API"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "API,Graal",
@@ -195,7 +195,7 @@ suite = {
     "org.graalvm.compiler.serviceprovider.jdk8" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["JVMCI_SERVICES"],
+      "dependencies" : ["JVMCI_SERVICES", "JVMCI_API"],
       "overlayTarget" : "org.graalvm.compiler.serviceprovider",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8",

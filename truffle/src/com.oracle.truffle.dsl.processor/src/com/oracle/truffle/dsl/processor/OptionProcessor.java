@@ -82,6 +82,7 @@ import org.graalvm.options.OptionKey;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -277,7 +278,7 @@ public class OptionProcessor extends AbstractProcessor {
         OptionCategory category = annotation.category();
 
         if (category == null) {
-            category = OptionCategory.DEBUG;
+            category = OptionCategory.INTERNAL;
         }
 
         for (String group : groupPrefixStrings) {
@@ -343,6 +344,7 @@ public class OptionProcessor extends AbstractProcessor {
         CodeTypeElement descriptors = new CodeTypeElement(typeModifiers, ElementKind.CLASS, pack, optionsClassName);
         DeclaredType optionDescriptorsType = context.getDeclaredType(OptionDescriptors.class);
         descriptors.getImplements().add(optionDescriptorsType);
+        GeneratorUtils.addGeneratedBy(context, descriptors, (TypeElement) element);
 
         ExecutableElement get = ElementUtils.findExecutableElement(optionDescriptorsType, "get");
         CodeExecutableElement getMethod = CodeExecutableElement.clone(processingEnv, get);

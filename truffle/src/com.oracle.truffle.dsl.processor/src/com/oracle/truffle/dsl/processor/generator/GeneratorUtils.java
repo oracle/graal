@@ -150,6 +150,16 @@ public class GeneratorUtils {
         return clazz;
     }
 
+    public static void addGeneratedBy(ProcessorContext context, CodeTypeElement generatedType, TypeElement generatedByType) {
+        DeclaredType generatedBy = (DeclaredType) context.getType(GeneratedBy.class);
+        // only do this if generatedBy is on the classpath.
+        if (generatedBy != null) {
+            CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror(generatedBy);
+            generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("value"), new CodeAnnotationValue(generatedByType.asType()));
+            generatedType.addAnnotationMirror(generatedByAnnotation);
+        }
+    }
+
     static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
         List<ExecutableElement> constructors = new ArrayList<>();
         for (ExecutableElement constructor : ElementFilter.constructorsIn(ElementUtils.fromTypeMirror(nodeType).getEnclosedElements())) {

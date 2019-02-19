@@ -39,7 +39,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.RuntimeReflection;
@@ -96,7 +96,7 @@ public class SecurityServicesFeature implements Feature {
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SeedGenerator"));
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"));
 
-        if (!GraalServices.Java8OrEarlier) {
+        if (!JavaVersionUtil.Java8OrEarlier) {
             RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.FileInputStreamPool"));
         }
 

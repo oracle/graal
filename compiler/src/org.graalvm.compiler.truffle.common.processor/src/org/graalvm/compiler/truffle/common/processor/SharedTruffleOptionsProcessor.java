@@ -141,7 +141,12 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         }
                         out.printf("    @Option(help = \"%s\", category = OptionCategory.%s)\n", help, option.category);
                     } else {
-                        String optionType = option.category.charAt(0) + option.category.substring(1).toLowerCase();
+                        String optionType;
+                        if (option.category.equals("INTERNAL")) {
+                            optionType = "Debug";
+                        } else {
+                            optionType = option.category.charAt(0) + option.category.substring(1).toLowerCase();
+                        }
                         out.printf("    /**\n");
                         for (int i = 0; i < option.help.length; i++) {
                             String line = option.help[i];
