@@ -596,28 +596,9 @@ public final class Engine implements AutoCloseable {
                             throw new InternalError(e);
                         }
                     }
-                } else {
-                    // As of JDK9, the JVMCI Services class should only be used for service
-                    // types
-                    // defined by JVMCI. Other services types should use ServiceLoader directly.
-                    engine = searchServiceLoader();
                 }
 
                 if (engine == null) {
-                    try {
-                        Class<? extends AbstractPolyglotImpl> polyglotClass = Class.forName("com.oracle.truffle.polyglot.PolyglotImpl").asSubclass(AbstractPolyglotImpl.class);
-                        Constructor<? extends AbstractPolyglotImpl> constructor = polyglotClass.getDeclaredConstructor();
-                        constructor.setAccessible(true);
-                        engine = constructor.newInstance();
-                    } catch (ClassNotFoundException e) {
-                    } catch (Exception e1) {
-                        throw new InternalError(e1);
-                    }
-                }
-
-                if (engine == null) {
-                    // try service loader as last attempt to support
-                    // environments like OSGi and NetBeans Runtime Container
                     engine = searchServiceLoader();
                 }
                 if (engine == null) {
