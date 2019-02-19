@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -131,10 +132,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      */
     volatile boolean cancelling;
     private volatile Thread closingThread;
+    private final Semaphore closingSemaphore = new Semaphore(1);
     /*
      * If the context is closed all operations should fail with IllegalStateException.
      */
     volatile boolean closed;
+    volatile boolean disposing;
     final PolyglotEngineImpl engine;
     @CompilationFinal(dimensions = 1) final PolyglotLanguageContext[] contexts;
 
@@ -905,10 +908,32 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     boolean closeImpl(boolean cancelIfExecuting, boolean waitForPolyglotThreads) {
         boolean success = false;
         Thread[] remainingThreads = null;
-        PolyglotContextImpl[] childrenToClose = null;
+        PolyglotContextImpl[] childrenToClose;
         try {
-            synchronized (this) {
-                if (!closed) {
+            boolean waitForClose = false;
+            while (true) {
+                if (waitForClose) {
+                    closingSemaphore.acquireUninterruptibly();
+                    closingSemaphore.release();
+                    waitForClose = false;
+                }
+                synchronized (this) {
+                    if (closed) {
+                        // already cancelled
+                        return true;
+                    }
+                    Thread localClosingThread = closingThread;
+                    if (localClosingThread != null) {
+                        if (localClosingThread == Thread.currentThread()) {
+                            // currently canceling recursively -> just complete
+                            return true;
+                        } else {
+                            // currently canceling on another thread -> wait for other thread to
+                            // complete closing
+                            waitForClose = true;
+                            continue;
+                        }
+                    }
                     PolyglotThreadInfo threadInfo = getCurrentThreadInfo();
 
                     // triggers a thread changed event which requires slow path enter
@@ -936,85 +961,92 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                          */
                         return false;
                     }
+                    closingSemaphore.acquireUninterruptibly();
                     closingThread = Thread.currentThread();
+                    break;
                 }
             }
-            if (childrenToClose != null) {
-                Object prev = enter();
-                try {
-                    for (PolyglotContextImpl childContext : childrenToClose) {
-                        childContext.closeImpl(cancelIfExecuting, waitForPolyglotThreads);
-                    }
+            assert !closed;
+            Object prev = enter();
+            try {
+                for (PolyglotContextImpl childContext : childrenToClose) {
+                    childContext.closeImpl(cancelIfExecuting, waitForPolyglotThreads);
+                }
 
-                    // we need to run finalization at least twice in case a finalization run has
-                    // initialized a new contexts
-                    boolean finalizationPerformed;
-                    do {
-                        finalizationPerformed = false;
-                        // inverse context order is already the right order for context
-                        // disposal/finalization
+                // we need to run finalization at least twice in case a finalization run has
+                // initialized a new contexts
+                boolean finalizationPerformed;
+                do {
+                    finalizationPerformed = false;
+                    // inverse context order is already the right order for context
+                    // disposal/finalization
+                    for (int i = contexts.length - 1; i >= 0; i--) {
+                        PolyglotLanguageContext context = contexts[i];
+                        if (context.isInitialized()) {
+                            try {
+                                finalizationPerformed |= context.finalizeContext();
+                            } catch (Exception | Error ex) {
+                                throw PolyglotImpl.wrapGuestException(context, ex);
+                            }
+                        }
+                    }
+                } while (finalizationPerformed);
+
+                // finalization performed commit close -> no actions allowed on dispose
+                disposing = true;
+
+                List<PolyglotLanguageContext> disposedContexts = new ArrayList<>(contexts.length);
+                try {
+                    synchronized (this) {
                         for (int i = contexts.length - 1; i >= 0; i--) {
                             PolyglotLanguageContext context = contexts[i];
-                            if (context.isInitialized()) {
-                                try {
-                                    finalizationPerformed |= context.finalizeContext();
-                                } catch (Exception | Error ex) {
-                                    throw PolyglotImpl.wrapGuestException(context, ex);
+                            try {
+                                boolean disposed = context.dispose();
+                                if (disposed) {
+                                    disposedContexts.add(context);
                                 }
+                            } catch (Exception | Error ex) {
+                                throw PolyglotImpl.wrapGuestException(context, ex);
                             }
-                        }
-                    } while (finalizationPerformed);
-
-                    // finalization performed commit close -> no actions allowed on dispose
-                    closed = true;
-
-                    List<PolyglotLanguageContext> disposedContexts = new ArrayList<>(contexts.length);
-                    try {
-                        synchronized (this) {
-                            for (int i = contexts.length - 1; i >= 0; i--) {
-                                PolyglotLanguageContext context = contexts[i];
-                                try {
-                                    boolean disposed = context.dispose();
-                                    if (disposed) {
-                                        disposedContexts.add(context);
-                                    }
-                                } catch (Exception | Error ex) {
-                                    throw PolyglotImpl.wrapGuestException(context, ex);
-                                }
-                            }
-                        }
-                    } finally {
-                        for (PolyglotLanguageContext context : disposedContexts) {
-                            context.notifyDisposed();
                         }
                     }
-                    assert childContexts.isEmpty();
-                    success = true;
                 } finally {
+                    for (PolyglotLanguageContext context : disposedContexts) {
+                        context.notifyDisposed();
+                    }
+                }
+                assert childContexts.isEmpty();
+                success = true;
+            } finally {
+                if (success) {
+                    if (parent != null) {
+                        synchronized (parent) {
+                            parent.childContexts.remove(this);
+                        }
+                    } else {
+                        engine.removeContext(this);
+                    }
+                }
+                synchronized (this) {
                     leave(prev);
                     if (success) {
-                        if (parent != null) {
-                            synchronized (parent) {
-                                parent.childContexts.remove(this);
-                            }
-                        } else {
-                            engine.removeContext(this);
-                        }
-                        synchronized (this) {
-                            remainingThreads = threads.keySet().toArray(new Thread[0]);
-                        }
-                    }
-                    closed = success;
-                    if (success) {
-                        if (engine.boundEngine) {
-                            disposeStaticContext(this);
-                        }
+                        remainingThreads = threads.keySet().toArray(new Thread[0]);
                     }
                     cancelling = false;
+                    if (success) {
+                        closed = true;
+                    }
+                    // triggers a thread changed event which requires slow path enter
+                    setCachedThreadInfo(PolyglotThreadInfo.NULL);
                 }
+                if (success && engine.boundEngine) {
+                    disposeStaticContext(this);
+                }
+                this.disposing = false;
             }
         } finally {
             closingThread = null;
+            closingSemaphore.release();
         }
         if (success) {
             for (Thread thread : remainingThreads) {

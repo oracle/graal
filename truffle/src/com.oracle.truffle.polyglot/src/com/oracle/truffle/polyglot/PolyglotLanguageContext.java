@@ -223,7 +223,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 LANGUAGE.disposeThread(localEnv, threadInfo.thread);
             }
             LANGUAGE.dispose(localEnv);
-            language.freeInstance(lazy.languageInstance);
             return true;
         }
         return false;
@@ -233,6 +232,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (eventsEnabled) {
             VMAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.truffleContext, language.info);
         }
+        language.freeInstance(lazy.languageInstance);
     }
 
     Object enterThread(PolyglotThread thread) {
@@ -366,7 +366,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void checkAccess(PolyglotLanguage accessingLanguage) {
         context.engine.checkState();
-        if (context.closed) {
+        if (context.closed || context.disposing) {
             throw new PolyglotIllegalStateException("The Context is already closed.");
         }
         boolean accessPermitted = language.isHost() || language.cache.isInternal() || context.config.allowedPublicLanguages.contains(language.info.getId()) ||
