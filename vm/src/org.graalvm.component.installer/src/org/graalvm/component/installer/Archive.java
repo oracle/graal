@@ -84,6 +84,8 @@ public interface Archive extends Iterable<Archive.FileEntry>, AutoCloseable {
         boolean isDirectory();
 
         /**
+         * True, if the entry is a symbolic link.
+         * 
          * @return True, if the entry represents a symbolic link
          */
         boolean isSymbolicLink();
@@ -92,8 +94,10 @@ public interface Archive extends Iterable<Archive.FileEntry>, AutoCloseable {
          * Link target for symbolic links.
          * 
          * @return target path
+         * @throws java.io.IOException if the link's target could not be read
+         * @throws IllegalStateException if the entry is not {@link #isSymbolicLink()}.
          */
-        String getLinkTarget();
+        String getLinkTarget() throws IOException;
 
         /**
          * @return size of the content, only valid for regular files.

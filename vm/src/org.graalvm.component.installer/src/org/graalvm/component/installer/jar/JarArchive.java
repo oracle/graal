@@ -141,8 +141,8 @@ public class JarArchive implements Archive {
         }
 
         @Override
-        public String getLinkTarget() {
-            return null;
+        public String getLinkTarget() throws IOException {
+            throw new IllegalStateException("Not a symbolic link");
         }
     }
 }

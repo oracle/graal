@@ -434,7 +434,13 @@ public class DirectoryStorage implements ComponentStorage {
         }
         String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, licenseID, info.getId());
         Path listFile = registryPath.resolve(SystemUtils.fromCommonString(fn));
+        if (listFile == null) {
+            throw new IllegalArgumentException(licenseID);
+        }
         Path dir = listFile.getParent();
+        if (dir == null) {
+            throw new IllegalArgumentException(licenseID);
+        }
         if (!Files.isDirectory(dir)) {
             // create the directory
             Files.createDirectories(dir);
