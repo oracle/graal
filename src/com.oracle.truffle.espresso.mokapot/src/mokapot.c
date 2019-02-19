@@ -397,8 +397,8 @@ jint JVM_ClassLoaderDepth(JNIEnv *env) {
 }
 
 jstring JVM_GetSystemPackage(JNIEnv *env, jstring name) {
-  UNIMPLEMENTED(JVM_GetSystemPackage);
-  return NULL;
+  IMPLEMENTED(JVM_GetSystemPackage);
+  return (*getEnv())->JVM_GetSystemPackage(env, name);
 }
 
 jobjectArray JVM_GetSystemPackages(JNIEnv *env) {

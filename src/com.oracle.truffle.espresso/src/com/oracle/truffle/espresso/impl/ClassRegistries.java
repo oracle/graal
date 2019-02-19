@@ -116,4 +116,7 @@ public final class ClassRegistries {
         return registry.defineKlass(type, bytes);
     }
 
+    public final BootClassRegistry getBootClassRegistry() {
+        return (BootClassRegistry) bootClassRegistry;
+    }
 }

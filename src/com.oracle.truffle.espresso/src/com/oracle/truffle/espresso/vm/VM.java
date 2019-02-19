@@ -966,4 +966,15 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         throw EspressoError.shouldNotReachHere("Not a boxed type " + elem);
     }
+
+    @VmImpl
+    @JniImpl
+    public @Host(String.class) StaticObject JVM_GetSystemPackage(@Host(String.class) StaticObject name) {
+        String hostPkgName = Meta.toHostString(name);
+        if (hostPkgName.endsWith("/")) {
+            hostPkgName = hostPkgName.substring(0, hostPkgName.length() - 1);
+        }
+        String fileName = getRegistries().getBootClassRegistry().getPackagePath(hostPkgName);
+        return getMeta().toGuestString(fileName);
+    }
 }

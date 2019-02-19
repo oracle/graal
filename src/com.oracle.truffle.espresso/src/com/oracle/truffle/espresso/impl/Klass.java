@@ -479,7 +479,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return InterpreterToVM.newObject(this);
     }
 
-    public String getRuntimePackage() {
+    // TODO(peterssen): Cache package.
+    public final String getRuntimePackage() {
+
         assert !isArray();
         String typeString = getType().toString();
         int lastSlash = typeString.lastIndexOf('/');
