@@ -155,6 +155,21 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     }
 
     @Test
+    public void classToStatic() {
+        TruffleObject expected = asTruffleHostSymbol(Class.class);
+        TruffleObject computed = toJavaSymbol(asTruffleObject(Class.class));
+        assertEquals("Both host symbol objects are the same", expected, computed);
+    }
+
+    private static TruffleObject toJavaSymbol(TruffleObject obj) {
+        try {
+            return (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), obj, "static");
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
     public void nullAsJavaObject() {
         TruffleObject nullObject = asTruffleObject(null);
         assertTrue(env.isHostObject(nullObject));

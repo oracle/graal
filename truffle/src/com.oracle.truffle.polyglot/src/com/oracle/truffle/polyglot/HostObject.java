@@ -479,13 +479,15 @@ class HostObjectMR {
             }
             if (isStatic) {
                 LookupInnerClassNode lookupInnerClassNode = lookupInnerClass();
-                if ("class".equals(name)) {
+                if (HostInteropReflect.STATIC_TO_CLASS.equals(name)) {
                     return HostObject.forClass(lookupClass, object.languageContext);
                 }
                 Class<?> innerclass = lookupInnerClassNode.execute(lookupClass, name);
                 if (innerclass != null) {
                     return HostObject.forStaticClass(innerclass, object.languageContext);
                 }
+            } else if (object.isClass() && HostInteropReflect.CLASS_TO_STATIC.equals(name)) {
+                return HostObject.forStaticClass(object.asClass(), object.languageContext);
             }
             throw UnknownIdentifierException.raise(name);
         }
@@ -920,7 +922,7 @@ class HostObjectMR {
             if (receiver.isNull()) {
                 throw UnsupportedMessageException.raise(Message.KEYS);
             }
-            String[] fields = HostInteropReflect.findUniquePublicMemberNames(receiver.getLookupClass(), receiver.isStaticClass(), includeInternal);
+            String[] fields = HostInteropReflect.findUniquePublicMemberNames(receiver.getLookupClass(), receiver.isStaticClass(), receiver.isClass(), includeInternal);
             return HostObject.forObject(fields, receiver.languageContext);
         }
     }
@@ -931,22 +933,23 @@ class HostObjectMR {
         KeyInfoCacheNode() {
         }
 
-        public abstract int execute(Class<?> clazz, String name, boolean onlyStatic);
+        public abstract int execute(Class<?> clazz, String name, boolean isStatic, boolean isClass);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"onlyStatic == cachedStatic", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static int doCached(Class<?> clazz, String name, boolean onlyStatic,
-                        @Cached("onlyStatic") boolean cachedStatic,
+        @Specialization(guards = {"isStatic == cachedStatic", "isClass == cachedIsClass", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
+        static int doCached(Class<?> clazz, String name, boolean isStatic, boolean isClass,
+                        @Cached("isStatic") boolean cachedStatic,
+                        @Cached("isClass") boolean cachedIsClass,
                         @Cached("clazz") Class<?> cachedClazz,
                         @Cached("name") String cachedName,
-                        @Cached("doUncached(clazz, name, onlyStatic)") int cachedKeyInfo) {
-            assert cachedKeyInfo == doUncached(clazz, name, onlyStatic);
+                        @Cached("doUncached(clazz, name, isStatic, isClass)") int cachedKeyInfo) {
+            assert cachedKeyInfo == doUncached(clazz, name, isStatic, isClass);
             return cachedKeyInfo;
         }
 
         @Specialization(replaces = "doCached")
-        static int doUncached(Class<?> clazz, String name, boolean onlyStatic) {
-            return HostInteropReflect.findKeyInfo(clazz, name, onlyStatic);
+        static int doUncached(Class<?> clazz, String name, boolean isStatic, boolean isClass) {
+            return HostInteropReflect.findKeyInfo(clazz, name, isStatic, isClass);
         }
     }
 
@@ -994,7 +997,7 @@ class HostObjectMR {
             if (receiver.isNull()) {
                 throw UnsupportedMessageException.raise(Message.KEY_INFO);
             }
-            return keyInfoCache().execute(receiver.getLookupClass(), name, receiver.isStaticClass());
+            return keyInfoCache().execute(receiver.getLookupClass(), name, receiver.isStaticClass(), receiver.isClass());
         }
 
         private KeyInfoCacheNode keyInfoCache() {
