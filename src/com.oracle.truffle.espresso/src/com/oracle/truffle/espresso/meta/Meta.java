@@ -380,6 +380,14 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
+    public StaticObject initExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
+        assert Throwable.isAssignableFrom(exKlass);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        StaticObject ex = exKlass.allocateInstance();
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
+        return ex;
+    }
+
     @TruffleBoundary
     public EspressoException throwEx(ObjectKlass exKlass) {
         assert Throwable.isAssignableFrom(exKlass);
@@ -415,7 +423,7 @@ public final class Meta implements ContextAccess {
     public EspressoException throwExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.isAssignableFrom(exKlass);
         assert Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initEx(exKlass));
+        throw new EspressoException(initExWithCause(exKlass, cause));
     }
 
     @TruffleBoundary
