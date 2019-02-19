@@ -11,7 +11,7 @@ x52.default : ${linux-amd64} {
 
 x52.default-libgraal : ${x52.default} {
   environment : {
-    MX_PRIMARY_SUITE_PATH: "../vm"
+    MX_PRIMARY_SUITE_PATH: "../"${vm_subdir}
     MX_ENV_PATH: ${libgraal_env}
     JVM_CONFIG  : ${jvm-config.default}"-libgraal"
   }

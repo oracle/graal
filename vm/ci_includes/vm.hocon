@@ -1,4 +1,3 @@
-vm_subdir: vm
 vm_env: ce
 vm_java: ${openjdk8}
 svm_suite: /substratevm

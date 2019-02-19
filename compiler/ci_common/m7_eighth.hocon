@@ -13,7 +13,7 @@ m7_eighth.default : ${solaris-sparcv9} {
 
 m7_eighth.default-libgraal : ${m7_eighth.default} {
   environment : {
-    MX_PRIMARY_SUITE_PATH: "../vm"
+    MX_PRIMARY_SUITE_PATH: "../"${vm_subdir}
     MX_ENV_PATH: ${libgraal_env}
     JVM_CONFIG  : ${jvm-config.default}"-libgraal"
   }
