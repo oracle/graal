@@ -28,7 +28,6 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.jni.Utf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.object.DebugCounter;
 
 /**
  * Modified-UTF8 byte string (symbol) for internal use in Espresso.
@@ -50,8 +49,6 @@ import com.oracle.truffle.object.DebugCounter;
 public final class Symbol<T> extends ByteSequence {
 
     @SuppressWarnings("rawtypes") public static final Symbol[] EMPTY_ARRAY = new Symbol[0];
-    static final DebugCounter ByteString_equalsCount = DebugCounter.create("ByteString_equalsCount");
-    static final DebugCounter ByteString_equalsSameRefCount = DebugCounter.create("ByteString_equalsSameRefCount");
 
     Symbol(byte[] bytes, int hashCode) {
         super(bytes, hashCode);

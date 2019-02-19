@@ -51,13 +51,15 @@ public final class Target_java_security_AccessController {
     }
 
     @Substitution(methodName = "doPrivileged")
-    public static @Host(Object.class) StaticObject doPrivileged_PrivilegedExceptionAction(@Host(PrivilegedExceptionAction.class) StaticObject action) {
-        return doPrivileged_PrivilegedExceptionAction_AccessControlContext(action, StaticObject.NULL);
+    public static @Host(Object.class) StaticObject doPrivileged_PrivilegedAction_AccessControlContext(
+                    @Host(PrivilegedAction.class) StaticObject action,
+                    @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
+        return doPrivileged(action);
     }
 
-    @Substitution
-    public static @Host(AccessControlContext.class) StaticObject getStackAccessControlContext() {
-        return StaticObject.NULL;
+    @Substitution(methodName = "doPrivileged")
+    public static @Host(Object.class) StaticObject doPrivileged_PrivilegedExceptionAction(@Host(PrivilegedExceptionAction.class) StaticObject action) {
+        return doPrivileged_PrivilegedExceptionAction_AccessControlContext(action, StaticObject.NULL);
     }
 
     @Substitution(methodName = "doPrivileged")
@@ -78,10 +80,9 @@ public final class Target_java_security_AccessController {
         }
     }
 
-    @Substitution(methodName = "doPrivileged")
-    public static @Host(Object.class) StaticObject doPrivileged_PrivilegedAction_AccessControlContext(
-                    @Host(PrivilegedAction.class) StaticObject action,
-                    @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
-        return doPrivileged(action);
+    @Substitution
+    public static @Host(AccessControlContext.class) StaticObject getStackAccessControlContext() {
+        return StaticObject.NULL;
     }
+
 }

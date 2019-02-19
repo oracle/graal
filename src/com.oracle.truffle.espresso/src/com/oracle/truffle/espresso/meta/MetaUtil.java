@@ -167,12 +167,19 @@ public class MetaUtil {
         return obj.getClass().getName() + "@" + System.identityHashCode(obj);
     }
 
-    public static Object unwrap(StaticObject object) {
+    public static Object unwrapArrayOrNull(StaticObject object) {
         if (StaticObject.isNull(object)) {
             return null;
         }
         if (object instanceof StaticObjectArray) {
             return ((StaticObjectArray) object).unwrap();
+        }
+        return object;
+    }
+
+    public static Object maybeUnwrapNull(StaticObject object) {
+        if (StaticObject.isNull(object)) {
+            return null;
         }
         return object;
     }

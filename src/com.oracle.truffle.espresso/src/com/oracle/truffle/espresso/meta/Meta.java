@@ -24,8 +24,6 @@ package com.oracle.truffle.espresso.meta;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
-import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -382,6 +380,14 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
+    public StaticObject initExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
+        assert Throwable.isAssignableFrom(exKlass);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        StaticObject ex = exKlass.allocateInstance();
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
+        return ex;
+    }
+
     @TruffleBoundary
     public EspressoException throwEx(ObjectKlass exKlass) {
         assert Throwable.isAssignableFrom(exKlass);
@@ -417,7 +423,7 @@ public final class Meta implements ContextAccess {
     public EspressoException throwExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.isAssignableFrom(exKlass);
         assert Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initEx(exKlass));
+        throw new EspressoException(initExWithCause(exKlass, cause));
     }
 
     @TruffleBoundary
@@ -497,17 +503,18 @@ public final class Meta implements ContextAccess {
         if (hostObject instanceof String) {
             return toGuestString((String) hostObject);
         }
-        if (hostObject instanceof StaticObject || (hostObject.getClass().isArray() && hostObject.getClass().getComponentType().isPrimitive())) {
+        if (hostObject instanceof StaticObject) {
             return hostObject;
         }
 
-        if (Arrays.stream(JavaKind.values()).anyMatch(new Predicate<JavaKind>() {
-            @Override
-            public boolean test(JavaKind c) {
-                return c.toBoxedJavaClass() == hostObject.getClass();
-            }
-        })) {
-            // boxed value
+        if (hostObject instanceof Boolean ||
+                        hostObject instanceof Byte ||
+                        hostObject instanceof Character ||
+                        hostObject instanceof Short ||
+                        hostObject instanceof Integer ||
+                        hostObject instanceof Long ||
+                        hostObject instanceof Float ||
+                        hostObject instanceof Double) {
             return hostObject;
         }
 

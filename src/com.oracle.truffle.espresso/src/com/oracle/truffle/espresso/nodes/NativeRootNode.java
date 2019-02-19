@@ -40,9 +40,10 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
-public abstract class NativeRootNode extends EspressoBaseNode {
+public final class NativeRootNode extends EspressoBaseNode {
 
     private final TruffleObject boundNative;
+    private final boolean isJni;
 
     @Child Node execute = Message.EXECUTE.createNode();
 
@@ -50,12 +51,13 @@ public abstract class NativeRootNode extends EspressoBaseNode {
 
     public final static DebugCounter nativeCalls = DebugCounter.create("Native calls");
 
-    public NativeRootNode(TruffleObject boundNative, Method method) {
+    public NativeRootNode(TruffleObject boundNative, Method method, boolean isJni) {
         super(method);
         this.boundNative = boundNative;
+        this.isJni = isJni;
     }
 
-    public Object[] preprocessArgs(Object[] args) {
+    protected final Object[] preprocessArgs(Object[] args) {
         int paramCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
         // Meta.Klass[] params = getOriginalMethod().getParameterTypes();
         // TODO(peterssen): Static method does not get the clazz in the arguments,
@@ -71,11 +73,21 @@ public abstract class NativeRootNode extends EspressoBaseNode {
             }
             ++argIndex;
         }
-        return args;
+
+        Object[] argsWithEnv = getMethod().isStatic()
+                        ? prepend1(getMethod().getDeclaringKlass().mirror(), args)
+                        : args;
+
+        if (isJni) {
+            JniEnv jniEnv = getContext().getJNI();
+            argsWithEnv = prepend1(jniEnv.getNativePointer(), argsWithEnv);
+        }
+
+        return argsWithEnv;
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public final Object executeNaked(VirtualFrame frame) {
         try {
             nativeCalls.inc();
             // TODO(peterssen): Inject JNIEnv properly, without copying.
@@ -85,13 +97,17 @@ public abstract class NativeRootNode extends EspressoBaseNode {
             Object[] argsWithEnv = preprocessArgs(frame.getArguments());
             // System.err.println("Calling native " + originalMethod.getName() +
             // Arrays.toString(argsWithEnv));
-            Object result = ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
+            Object result = callNative(argsWithEnv);
             // System.err.println("Return from native " + originalMethod.getName() +
             // Arrays.toString(argsWithEnv) + " -> " + result);
             return processResult(result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+    }
+
+    private final Object callNative(Object[] argsWithEnv) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        return ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
     }
 
     @TruffleBoundary
@@ -103,7 +119,7 @@ public abstract class NativeRootNode extends EspressoBaseNode {
         }
     }
 
-    public Object processResult(Object result) {
+    protected final Object processResult(Object result) {
         JniEnv jniEnv = getMethod().getContext().getJNI();
         assert jniEnv.getNativePointer() != 0;
 

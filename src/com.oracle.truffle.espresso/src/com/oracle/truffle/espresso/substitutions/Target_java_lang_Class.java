@@ -30,6 +30,7 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -70,8 +71,11 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean desiredAssertionStatus(@SuppressWarnings("unused") Object self) {
-        return false;
+    public static boolean desiredAssertionStatus(@Host(Class.class) StaticObjectClass self) {
+        if (StaticObject.isNull(self.getMirrorKlass().getDefiningClassLoader())) {
+            return EspressoOptions.EnableSystemAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());
+        }
+        return EspressoOptions.EnableAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());
     }
 
     @Substitution
@@ -540,7 +544,7 @@ public final class Target_java_lang_Class {
      * @since JDK1.1
      */
     @Substitution(hasReceiver = true)
-    public static boolean isInstance(StaticObjectClass self, StaticObject obj) {
+    public static boolean isInstance(@Host(Class.class) StaticObjectClass self, @Host(Object.class) StaticObject obj) {
         return InterpreterToVM.instanceOf(obj, self.getMirrorKlass());
     }
 
@@ -555,7 +559,7 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(byte[].class) StaticObject getRawAnnotations(StaticObjectClass self) {
+    public static @Host(byte[].class) StaticObject getRawAnnotations(@Host(Class.class) StaticObjectClass self) {
         Klass klass = self.getMirrorKlass();
         if (klass instanceof ObjectKlass) {
             Attribute annotations = ((ObjectKlass) klass).getAttribute(Name.RuntimeVisibleAnnotations);

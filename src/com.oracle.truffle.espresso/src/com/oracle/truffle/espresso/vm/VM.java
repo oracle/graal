@@ -267,7 +267,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public static int JVM_IHashCode(@Host(Object.class) StaticObject object) {
-        return System.identityHashCode(MetaUtil.unwrap(object));
+        return System.identityHashCode(MetaUtil.maybeUnwrapNull(object));
     }
 
     @VmImpl
@@ -389,7 +389,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return;
         }
         try {
-            MetaUtil.unwrap(self).notifyAll();
+            self.notifyAll();
         } catch (IllegalMonitorStateException e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
@@ -403,7 +403,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return;
         }
         try {
-            MetaUtil.unwrap(self).notify();
+            self.notify();
         } catch (IllegalMonitorStateException e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
@@ -417,7 +417,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return;
         }
         try {
-            MetaUtil.unwrap(self).wait(timeout);
+            self.wait(timeout);
         } catch (InterruptedException | IllegalMonitorStateException | IllegalArgumentException e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
@@ -576,6 +576,12 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    public static long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") Object unused, StaticObjectClass jcpool, int index) {
+        return jcpool.getMirrorKlass().getConstantPool().longAt(index);
+    }
+
+    @VmImpl
+    @JniImpl
     public @Host(Class.class) StaticObject JVM_DefineClass(String name, @Host(ClassLoader.class) StaticObject loader, long bufPtr, int len,
                     @SuppressWarnings("unused") @Host(ProtectionDomain.class) Object pd) {
         // TODO(peterssen): The protection domain is unused.
@@ -727,7 +733,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public int JVM_GetArrayLength(@Host(Object.class) StaticObject array) {
         try {
-            return Array.getLength(MetaUtil.unwrap(array));
+            return Array.getLength(MetaUtil.unwrapArrayOrNull(array));
         } catch (IllegalArgumentException | NullPointerException e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
@@ -959,5 +965,16 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         throw EspressoError.shouldNotReachHere("Not a boxed type " + elem);
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Host(String.class) StaticObject JVM_GetSystemPackage(@Host(String.class) StaticObject name) {
+        String hostPkgName = Meta.toHostString(name);
+        if (hostPkgName.endsWith("/")) {
+            hostPkgName = hostPkgName.substring(0, hostPkgName.length() - 1);
+        }
+        String fileName = getRegistries().getBootClassRegistry().getPackagePath(hostPkgName);
+        return getMeta().toGuestString(fileName);
     }
 }

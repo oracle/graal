@@ -82,6 +82,16 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     versionAction = VersionAction.PrintAndContinue;
                     break;
 
+                case "-ea":
+                case "-enableassertions":
+                    polyglotOptions.put("java.EnableAssertions", "true");
+                    break;
+
+                case "-esa":
+                case "-enablesystemassertions":
+                    polyglotOptions.put("java.EnableSystemAssertions", "true");
+                    break;
+
                 case "-?":
                 case "-help":
                     unrecognized.add("--help");
@@ -163,7 +173,11 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                "    -D<name>=<value>" + nl +
                "                  set a system property" + nl +
                "    -version      print product version and exit" + nl +
-               "    -showversion  print product version and contin\n" + nl +
+               "    -showversion  print product version and continue" + nl +
+               "    -ea | -enableassertions" + nl +
+               "                  enable assertions" + nl +
+               "    -esa | -enablesystemassertions" + nl +
+               "                  enable system assertions" + nl +
                "    -? -help      print this help message";
         // @formatter:on
     }
@@ -265,6 +279,10 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         options.add("-classpath");
         options.add("-version");
         options.add("-showversion");
+        options.add("-ea");
+        options.add("-enableassertions");
+        options.add("-esa");
+        options.add("-enablesystemassertions");
         options.add("-?");
         options.add("-help");
     }
