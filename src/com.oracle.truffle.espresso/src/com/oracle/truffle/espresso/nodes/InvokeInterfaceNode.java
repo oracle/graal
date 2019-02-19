@@ -49,13 +49,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(resolutionSeed, receiver)") Method resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
-        if (resolvedMethod.isSynchronized()) {
-            synchronized (receiver) {
-                return directCallNode.call(args);
-            }
-        } else {
-            return directCallNode.call(args);
-        }
+        return directCallNode.call(args);
     }
 
     @Specialization(replaces = "callVirtualDirect")

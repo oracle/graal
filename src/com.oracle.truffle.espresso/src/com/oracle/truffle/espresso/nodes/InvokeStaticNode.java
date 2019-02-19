@@ -47,19 +47,9 @@ public final class InvokeStaticNode extends QuickNode {
         }
         BytecodeNode root = (BytecodeNode) getParent();
         Object[] args = root.peekArguments(frame, top, false, method.getParsedSignature());
-        Object result = callStatic(args);
+        Object result = directCallNode.call(args);
         int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
                                                                                          // receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
-    }
-
-    private final Object callStatic(Object[] args) {
-        if (method.isSynchronized()) {
-            synchronized (method.getDeclaringKlass().mirror()) {
-                return directCallNode.call(args);
-            }
-        } else {
-            return directCallNode.call(args);
-        }
     }
 }

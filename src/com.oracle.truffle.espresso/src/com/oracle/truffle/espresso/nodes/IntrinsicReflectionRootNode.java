@@ -41,7 +41,7 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeNaked(VirtualFrame frame) {
         try {
             return callIntrinsic(frame.getArguments());
         } catch (InvocationTargetException e) {
@@ -62,18 +62,6 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
 
     @TruffleBoundary
     private Object callIntrinsic(Object... args) throws InvocationTargetException, IllegalAccessException {
-        if (getMethod().isSynchronized()) {
-            if (getMethod().isStatic()) {
-                synchronized (getMethod().getDeclaringKlass().mirror()) {
-                    return reflectMethod.invoke(null, args);
-                }
-            } else {
-                synchronized (/* this */ args[0]) { // synchronize on receiver
-                    return reflectMethod.invoke(null, args);
-                }
-            }
-        } else {
-            return reflectMethod.invoke(null, args);
-        }
+        return reflectMethod.invoke(null, args);
     }
 }

@@ -24,11 +24,11 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -58,7 +58,20 @@ public abstract class EspressoBaseNode extends Node implements ContextAccess, In
         return method.getContext();
     }
 
-    public abstract Object execute(VirtualFrame frame);
+    public abstract Object executeNaked(VirtualFrame frame);
+
+    public final Object execute(VirtualFrame frame) {
+        if (method.isSynchronized()) {
+            Object monitor = method.isStatic()
+                            ? /* class */ method.getDeclaringKlass().mirror()
+                            : /* receiver */ frame.getArguments()[0];
+            synchronized (monitor) {
+                return executeNaked(frame);
+            }
+        } else {
+            return executeNaked(frame);
+        }
+    }
 
     @TruffleBoundary
     @Override

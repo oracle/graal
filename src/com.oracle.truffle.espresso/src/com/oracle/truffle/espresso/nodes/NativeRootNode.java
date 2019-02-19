@@ -87,7 +87,7 @@ public final class NativeRootNode extends EspressoBaseNode {
     }
 
     @Override
-    public final Object execute(VirtualFrame frame) {
+    public final Object executeNaked(VirtualFrame frame) {
         try {
             nativeCalls.inc();
             // TODO(peterssen): Inject JNIEnv properly, without copying.
@@ -107,16 +107,7 @@ public final class NativeRootNode extends EspressoBaseNode {
     }
 
     private final Object callNative(Object[] argsWithEnv) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        if (getMethod().isSynchronized()) {
-            Object monitor = getMethod().isStatic()
-                            ? getMethod().getDeclaringKlass().mirror()
-                            : (isJni ? argsWithEnv[1] : argsWithEnv[0]);
-            synchronized (monitor) {
-                return ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
-            }
-        } else {
-            return ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
-        }
+        return ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
     }
 
     @TruffleBoundary

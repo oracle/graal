@@ -484,7 +484,7 @@ public class BytecodeNode extends EspressoBaseNode {
 
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object execute(VirtualFrame frame) {
+    public Object executeNaked(VirtualFrame frame) {
         int curBCI = 0;
         int top = 0;
 
