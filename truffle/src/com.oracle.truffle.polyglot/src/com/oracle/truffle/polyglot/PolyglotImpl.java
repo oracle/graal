@@ -993,7 +993,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (language == null) {
                 return LanguageCache.languageMimes().keySet();
             } else {
-                LanguageCache lang = LanguageCache.languages().get(language);
+                LanguageCache lang = LanguageCache.languages(false, null).get(language);
                 if (lang != null) {
                     return lang.getMimeTypes();
                 } else {
@@ -1004,7 +1004,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public boolean isCharacterBasedSource(String language, String mimeType) {
-            LanguageCache cache = LanguageCache.languages().get(language);
+            LanguageCache cache = LanguageCache.languages(false, null).get(language);
             if (cache == null) {
                 return true;
             }

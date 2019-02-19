@@ -500,7 +500,7 @@ final class FileSystems {
                     res = languageHomes;
                     if (res == null) {
                         res = new HashSet<>();
-                        for (LanguageCache cache : LanguageCache.languages().values()) {
+                        for (LanguageCache cache : LanguageCache.languages(false, null).values()) {
                             final String languageHome = cache.getLanguageHome();
                             if (languageHome != null) {
                                 res.add(Paths.get(languageHome));

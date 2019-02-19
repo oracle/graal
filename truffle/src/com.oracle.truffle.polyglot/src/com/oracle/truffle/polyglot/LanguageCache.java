@@ -181,7 +181,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static Map<String, LanguageCache> createMimes() {
         Map<String, LanguageCache> mimes = new LinkedHashMap<>();
-        for (LanguageCache cache : languages().values()) {
+        for (LanguageCache cache : languages(false, null).values()) {
             for (String mime : cache.getMimeTypes()) {
                 mimes.put(mime, cache);
             }
@@ -189,7 +189,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return mimes;
     }
 
-    static Map<String, LanguageCache> languages() {
+    static Map<String, LanguageCache> languages(boolean generateCache, ClassLoader additionalLoader) {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
         }
@@ -198,7 +198,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
             synchronized (LanguageCache.class) {
                 cache = runtimeCache;
                 if (cache == null) {
-                    runtimeCache = cache = createLanguages(null);
+                    cache = createLanguages(additionalLoader);
+                    if (generateCache) {
+                        runtimeCache = cache;
+                    }
                 }
             }
         }
@@ -434,7 +437,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     static void resetNativeImageCacheLanguageHomes() {
-        for (LanguageCache languageCache : languages().values()) {
+        for (LanguageCache languageCache : languages(false, null).values()) {
             languageCache.languageHome = null;
         }
     }

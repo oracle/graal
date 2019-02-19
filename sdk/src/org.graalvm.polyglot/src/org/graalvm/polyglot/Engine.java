@@ -60,7 +60,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
@@ -493,6 +492,17 @@ public final class Engine implements AutoCloseable {
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
+        private final boolean useContextClassLoader;
+
+        APIAccessImpl(boolean useContextClassLoader) {
+            this.useContextClassLoader = useContextClassLoader;
+        }
+
+        @Override
+        public boolean useContextClassLoader() {
+            return useContextClassLoader;
+        }
+
         @Override
         public Engine newEngine(AbstractEngineImpl impl) {
             return new Engine(impl);
@@ -581,6 +591,7 @@ public final class Engine implements AutoCloseable {
             public AbstractPolyglotImpl run() {
                 AbstractPolyglotImpl engine = null;
                 Class<?> servicesClass = null;
+                boolean useContextClassLoader = false;
 
                 if (JDK8_OR_EARLIER) {
                     try {
@@ -600,13 +611,14 @@ public final class Engine implements AutoCloseable {
 
                 if (engine == null) {
                     engine = searchServiceLoader();
+                    useContextClassLoader = true;
                 }
                 if (engine == null) {
                     engine = createInvalidPolyglotImpl();
                 }
 
                 if (engine != null) {
-                    engine.setConstructors(new APIAccessImpl());
+                    engine.setConstructors(new APIAccessImpl(useContextClassLoader));
                 }
                 return engine;
             }
