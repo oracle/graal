@@ -43,7 +43,7 @@ x52.tmpfs10g-g1gc: ${x52.tmpfs10g} {
   }
 }
 
-x52.tmpfs10g-libgraal-g1gc: ${x52.tmpfs10g} {
+x52.tmpfs10g-libgraal-g1gc: ${x52.tmpfs10g-libgraal} {
   environment : {
     JVM_CONFIG  : ${jvm-config.default}"-libgraal-g1gc"
   }
