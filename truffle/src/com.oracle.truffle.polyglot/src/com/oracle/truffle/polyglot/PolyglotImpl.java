@@ -1141,5 +1141,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return (PolyglotLanguageInstance) VMAccessor.LANGUAGE.getLanguageInstance(sourceLanguageSPI);
         }
 
+        public FileSystem getFileSystem(Object contextVMObject) {
+            return ((PolyglotContextImpl) contextVMObject).config.fileSystem;
+        }
+
+        @Override
+        public FileSystem getDefaultFileSystem() {
+            return FileSystems.newDefaultFileSystem();
+        }
     }
 }

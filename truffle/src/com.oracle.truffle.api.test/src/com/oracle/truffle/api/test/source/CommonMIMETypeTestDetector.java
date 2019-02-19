@@ -40,21 +40,54 @@
  */
 package com.oracle.truffle.api.test.source;
 
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleFileTypeDetector;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public final class CommonMIMETypeTestDetector extends FileTypeDetector {
+@TruffleFileTypeDetector.Registration
+public final class CommonMIMETypeTestDetector implements TruffleFileTypeDetector {
+
+    private static final Pattern DOC_TYPE_PATTERN = Pattern.compile("<!DOCTYPE\\s+(\\S+)\\s+");
+    private static final Pattern ENCODING_PATTERN = Pattern.compile("<\\?xml version=\"1.0\" encoding=\"(.*)\"\\?>");
+
     @Override
-    public String probeContentType(Path path) throws IOException {
-        if (path.getFileName().toString().endsWith(".java")) {
-            return "text/x-java";
+    public String findMimeType(TruffleFile file) throws IOException {
+        String name = file.getName();
+        if (name != null) {
+            if (name.endsWith(".java")) {
+                return "text/x-java";
+            }
+            if (name.endsWith(".tjs")) {
+                return "application/test-js";
+            }
+            if (name.endsWith(".txt")) {
+                return "text/plain";
+            }
+            if (name.endsWith(".xml")) {
+                String content = new String(file.readAllBytes(), "UTF-8");
+                Matcher m = DOC_TYPE_PATTERN.matcher(content);
+                if (m.find()) {
+                    String docType = m.group(1);
+                    return "text/" + docType + "+xml";
+                }
+                return "text/xml";
+            }
         }
-        if (path.getFileName().toString().endsWith(".tjs")) {
-            return "application/test-js";
-        }
-        if (path.getFileName().toString().endsWith(".txt")) {
-            return "text/plain";
+        return null;
+    }
+
+    @Override
+    public String findEncoding(TruffleFile file) throws IOException {
+        String name = file.getName();
+        if (name.endsWith(".xml")) {
+            String content = new String(file.readAllBytes(), "UTF-8");
+            Matcher m = ENCODING_PATTERN.matcher(content);
+            if (m.find()) {
+                String encoding = m.group(1);
+                return encoding;
+            }
         }
         return null;
     }

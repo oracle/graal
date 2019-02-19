@@ -62,6 +62,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
 
 /*
  * Legacy tests are necessary to make sure deprecated APIs don't change behavior.
@@ -69,6 +72,24 @@ import com.oracle.truffle.api.source.Source;
  */
 @SuppressWarnings("deprecation")
 public class SourceBuilderLegacyTest {
+
+    private Context context;
+
+    @Before
+    public void setUp() {
+        this.context = Context.newBuilder().allowIO(true).build();
+        this.context.enter();
+    }
+
+    @After
+    public void tearDown() {
+        if (context != null) {
+            context.leave();
+            context.close();
+            context = null;
+        }
+    }
+
     @Test
     public void assignMimeTypeAndIdentity() {
         Source.Builder<RuntimeException, com.oracle.truffle.api.source.MissingMIMETypeException, RuntimeException> builder = Source.newBuilder("// a comment\n").name("Empty comment");

@@ -53,17 +53,8 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystemAlreadyExistsException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.spi.FileSystemProvider;
-import java.nio.file.spi.FileTypeDetector;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Objects;
-import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.graalvm.polyglot.Context;
@@ -73,7 +64,6 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
@@ -843,8 +833,14 @@ public abstract class Source {
      * @param language the language id, must not be <code>null</code>
      * @param url the URL to use and load, must not be <code>null</code>
      * @since 1.0
+     * @deprecated as it breaks sand boxing.
      */
+    @Deprecated
     public static SourceBuilder newBuilder(String language, URL url) {
+        return newBuilderForURL(language, url);
+    }
+
+    static SourceBuilder newBuilderForURL(String language, URL url) {
         return EMPTY.new LiteralBuilder(language, url);
     }
 
@@ -959,7 +955,11 @@ public abstract class Source {
      * @since 1.0
      */
     public static String findMimeType(TruffleFile file) throws IOException {
-        return findMimeType(SourceAccessor.getPath(file), null);
+        try {
+            return file.getMimeType();
+        } catch (SecurityException se) {
+            return null;
+        }
     }
 
     /**
@@ -972,9 +972,11 @@ public abstract class Source {
      * @throws IOException if an error opening the url occurred.
      * @see #findLanguage(URL)
      * @since 1.0
+     * @deprecated as it breaks sand boxing.
      */
+    @Deprecated
     public static String findMimeType(URL url) throws IOException {
-        return findMimeType(url, url.openConnection(), null);
+        return findMimeType(url, url.openConnection(), null, false);
     }
 
     /**
@@ -1033,7 +1035,7 @@ public abstract class Source {
             }
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? file.getPath() : usePath;
-            useMimeType = useMimeType == null ? findMimeType(SourceAccessor.getPath(file), getValidMimeTypes(language)) : useMimeType;
+            useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
             if (useContent == CONTENT_UNSET) {
                 if (isCharacterBased(language, useMimeType)) {
                     useContent = new String(file.readAllBytes(), StandardCharsets.UTF_8);
@@ -1047,7 +1049,13 @@ public abstract class Source {
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? absoluteFile.getPath() : usePath;
             useUri = useUri == null ? absoluteFile.toPath().toUri() : useUri;
-            useMimeType = useMimeType == null ? findMimeType(absoluteFile.toPath(), getValidMimeTypes(language)) : useMimeType;
+            try {
+                useMimeType = useMimeType == null ? SourceAccessor.getMimeType(SourceAccessor.getTruffleFile(absoluteFile.toPath(), !legacy), getValidMimeTypes(language)) : useMimeType;
+            } catch (SecurityException se) {
+                if (!legacy) {
+                    throw se;
+                }
+            }
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
                 useContent = useContent == CONTENT_UNSET ? read(file) : useContent;
@@ -1079,7 +1087,7 @@ public abstract class Source {
             usePath = usePath == null ? url.toExternalForm() : usePath;
             URLConnection connection = url.openConnection();
             if (legacy) {
-                useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language)) : useMimeType;
+                useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language), false) : useMimeType;
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
                 useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream())) : useContent;
             } else {
@@ -1332,60 +1340,21 @@ public abstract class Source {
         }
     }
 
-    static String findMimeType(final Path filePath, Set<String> validMimeTypes) throws IOException {
-        if (!TruffleOptions.AOT) {
-            Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
-            for (ClassLoader l : loaders) {
-                for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {
-                    String mimeType = detector.probeContentType(filePath);
-                    if (mimeType != null && (validMimeTypes == null || validMimeTypes.contains(mimeType))) {
-                        return mimeType;
-                    }
-                }
-            }
-        }
-        String contentType = Files.probeContentType(filePath);
-        if (contentType != null && (validMimeTypes == null || validMimeTypes.contains(contentType))) {
-            return contentType;
-        }
-        return null;
-    }
-
-    static String findMimeType(final URL url, URLConnection connection, Set<String> validMimeTypes) throws IOException {
-        Path path;
+    static String findMimeType(final URL url, URLConnection connection, Set<String> validMimeTypes, boolean embedder) throws IOException {
         try {
             URI uri = url.toURI();
-            FileSystemProvider fsProvider = null;
-            String scheme = uri.getScheme();
-            if (scheme != null && !scheme.equals("file")) {
-                for (FileSystemProvider fsp : FileSystemProvider.installedProviders()) {
-                    if (scheme.equals(fsp.getScheme())) {
-                        fsProvider = fsp;
-                        break;
-                    }
-                }
-            }
-            FileSystem fs = null;
-            if (fsProvider != null) {
-                try {
-                    fs = fsProvider.newFileSystem(uri, Collections.emptyMap());
-                } catch (FileSystemAlreadyExistsException | IOException | IllegalArgumentException e) {
-                    // continue with null fs, newFileSystem may not be needed
-                }
-            }
-            try {
-                path = Paths.get(uri);
-                String firstGuess = findMimeType(path, validMimeTypes);
-                if (firstGuess != null) {
-                    return firstGuess;
-                }
-            } finally {
-                if (fs != null) {
-                    fs.close();
-                }
+            TruffleFile file = SourceAccessor.getTruffleFile(uri, embedder);
+            String firstGuess = SourceAccessor.getMimeType(file, validMimeTypes);
+            if (firstGuess != null) {
+                return firstGuess;
             }
         } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException ex) {
             // swallow and go on
+        } catch (SecurityException se) {
+            // when FileSytem denied the operation don't return result of
+            // URLConnection.getContentType,
+            // custom URLStreamHandler may perform IO
+            return null;
         }
         String contentType = connection.getContentType();
         if (contentType != null && (validMimeTypes == null || validMimeTypes.contains(contentType))) {
@@ -1931,6 +1900,7 @@ class SourceSnippets {
         return source;
     }
 
+    @SuppressWarnings("deprecation")
     public static Source fromURL(Class<?> relativeClass) throws IOException, URISyntaxException {
         // BEGIN: SourceSnippets#fromURL
         URL resource = relativeClass.getResource("sample.js");
@@ -1943,6 +1913,7 @@ class SourceSnippets {
         return source;
     }
 
+    @SuppressWarnings("deprecation")
     public static Source fromURLWithOwnContent(Class<?> relativeClass) {
         // BEGIN: SourceSnippets#fromURLWithOwnContent
         URL resource = relativeClass.getResource("sample.js");

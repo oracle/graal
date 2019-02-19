@@ -44,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -164,6 +165,8 @@ public abstract class Accessor {
         public abstract boolean isLegacySource(Source soure);
 
         public abstract SourceBuilder newBuilder(String language, File origin);
+
+        public abstract SourceBuilder newBuilder(String language, URL origin);
 
     }
 
@@ -363,6 +366,9 @@ public abstract class Accessor {
 
         public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> getDirectContextReference(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
 
+        public abstract FileSystem getFileSystem(Object contextVMObject);
+
+        public abstract FileSystem getDefaultFileSystem();
     }
 
     public abstract static class LanguageSupport {
@@ -459,7 +465,11 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
-        public abstract Path getPath(TruffleFile file);
+        public abstract TruffleFile getTruffleFile(Path path, boolean embedder);
+
+        public abstract TruffleFile getTruffleFile(URI uri, boolean embedder);
+
+        public abstract String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException;
 
         public abstract TruffleFile getTruffleFile(FileSystem fs, String path);
 

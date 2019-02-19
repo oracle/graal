@@ -306,14 +306,14 @@ public class SourceSectionLegacyTest {
         try (FileWriter w = new FileWriter(sample)) {
             w.write("Hello world!");
         }
-        Source complexHello = Source.newBuilder(sample).build();
+        Source complexHello = Source.newBuilder(sample).mimeType("").build();
         SourceSection helloTo = complexHello.createSection(6, 5);
         assertEquals("world", helloTo.getCharacters());
 
         try (FileWriter w = new FileWriter(sample)) {
             w.write("Hi world!");
         }
-        Source simpleHi = Source.newBuilder(sample).build();
+        Source simpleHi = Source.newBuilder(sample).mimeType("").build();
         SourceSection hiTo = simpleHi.createSection(3, 5);
         assertEquals("world", hiTo.getCharacters());
 

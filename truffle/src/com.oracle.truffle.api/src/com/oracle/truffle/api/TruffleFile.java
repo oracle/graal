@@ -95,6 +95,9 @@ import java.util.Set;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.impl.TruffleLocator;
+import java.util.List;
+import java.util.ServiceLoader;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -104,6 +107,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public final class TruffleFile {
     private static final int MAX_BUFFER_SIZE = Integer.MAX_VALUE - 8;
     private static final int BUFFER_SIZE = 8192;
+    private static Iterable<TruffleFileTypeDetector> detectors;
 
     private final FileSystem fileSystem;
     private final Path path;
@@ -1399,6 +1403,88 @@ public final class TruffleFile {
         }
     }
 
+    /**
+     * Returns the {@link TruffleFile file} MIME type.
+     *
+     * @return the MIME type or {@code null} if the MIME type is not recognized
+     * @throws IOException in case of IO error
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public String getMimeType() throws IOException {
+        return getMimeType(null);
+    }
+
+    @TruffleBoundary
+    String getMimeType(Set<String> validMimeTypes) throws IOException {
+        try {
+            String result = fileSystem.getMimeType(normalizedPath);
+            if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
+                return result;
+            }
+            for (TruffleFileTypeDetector detector : getTruffleFileDetectors()) {
+                result = detector.findMimeType(this);
+                if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
+                    return result;
+                }
+            }
+            return null;
+        } catch (IOException | SecurityException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
+    /**
+     * Returns the {@link TruffleFile file} encoding. For a file containing an encoding information
+     * returns the encoding.
+     *
+     * @return the file encoding or {@code null} if the file does not provide encoding
+     * @throws IOException in case of IO error
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public String getEncoding() throws IOException {
+        try {
+            String result = fileSystem.getEncoding(normalizedPath);
+            if (result != null) {
+                return result;
+            }
+            for (TruffleFileTypeDetector detector : getTruffleFileDetectors()) {
+                result = detector.findEncoding(this);
+                if (result != null) {
+                    return result;
+                }
+            }
+            return null;
+        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
+    private static Iterable<TruffleFileTypeDetector> getTruffleFileDetectors() {
+        Iterable<TruffleFileTypeDetector> res = detectors;
+        if (res == null) {
+            if (TruffleOptions.AOT) {
+                res = ServiceLoader.load(TruffleFileTypeDetector.class);
+                detectors = res;
+            } else {
+                List<Iterable<TruffleFileTypeDetector>> collector = new ArrayList<>();
+                for (ClassLoader l : TruffleLocator.loaders()) {
+                    collector.add(ServiceLoader.load(TruffleFileTypeDetector.class, l));
+                }
+                res = new ChainedIterable<>(collector);
+                detectors = res;
+            }
+        }
+        return res;
+    }
+
     private boolean isNormalized() {
         return path == normalizedPath || path.equals(normalizedPath);
     }
@@ -1499,6 +1585,52 @@ public final class TruffleFile {
         @Override
         public boolean accept(Path entry) throws IOException {
             return true;
+        }
+    }
+
+    private static final class ChainedIterable<T> implements Iterable<T> {
+
+        private final List<Iterable<T>> delegates;
+
+        ChainedIterable(List<Iterable<T>> delegates) {
+            Objects.requireNonNull(delegates, "Delegates must be non null.");
+            this.delegates = delegates;
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            return new ChainedIterator<>(delegates);
+        }
+
+        private static final class ChainedIterator<T> implements Iterator<T> {
+            private final Iterator<Iterable<T>> iterables;
+            private Iterator<T> currentIterator;
+
+            ChainedIterator(Iterable<Iterable<T>> iterables) {
+                this.iterables = iterables.iterator();
+            }
+
+            @Override
+            public boolean hasNext() {
+                Iterator<T> it = getCurrentIterator();
+                return it == null ? false : it.hasNext();
+            }
+
+            @Override
+            public T next() {
+                Iterator<T> it = getCurrentIterator();
+                if (it == null) {
+                    throw new NoSuchElementException();
+                }
+                return it.next();
+            }
+
+            private Iterator<T> getCurrentIterator() {
+                if (currentIterator == null || !currentIterator.hasNext()) {
+                    currentIterator = iterables.hasNext() ? iterables.next().iterator() : null;
+                }
+                return currentIterator;
+            }
         }
     }
 

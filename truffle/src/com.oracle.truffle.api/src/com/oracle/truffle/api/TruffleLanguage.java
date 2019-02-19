@@ -57,6 +57,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionCategory;
@@ -2653,8 +2654,32 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Path getPath(TruffleFile file) {
-            return file.getSPIPath();
+        public TruffleFile getTruffleFile(Path path, boolean embedder) {
+            FileSystem fileSystem = getFileSystem(embedder);
+            return new TruffleFile(fileSystem, fileSystem.parsePath(path.toString()));
+        }
+
+        @Override
+        public TruffleFile getTruffleFile(URI uri, boolean embedder) {
+            FileSystem fileSystem = getFileSystem(embedder);
+            return new TruffleFile(fileSystem, fileSystem.parsePath(uri));
+        }
+
+        private static FileSystem getFileSystem(boolean embedder) {
+            if (embedder) {
+                return AccessAPI.engineAccess().getDefaultFileSystem();
+            } else {
+                Object polyglotContextImpl = AccessAPI.engineAccess().getCurrentOuterContext();
+                if (polyglotContextImpl == null) {
+                    throw new IllegalStateException("No current context");
+                }
+                return AccessAPI.engineAccess().getFileSystem(polyglotContextImpl);
+            }
+        }
+
+        @Override
+        public String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
+            return file.getMimeType(validMimeTypes);
         }
 
         @Override

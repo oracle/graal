@@ -76,6 +76,7 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 public class SourceInternalizationTest extends AbstractPolyglotTest {
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testSourceIdentity() throws RuntimeException, URISyntaxException, IOException {
         setupEnv();
         assertNotSame(Source.newBuilder("", "1", "").build(),

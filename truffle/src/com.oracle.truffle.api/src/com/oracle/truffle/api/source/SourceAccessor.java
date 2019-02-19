@@ -48,7 +48,9 @@ import java.util.Collection;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
+import java.net.URI;
 import java.nio.file.Path;
+import java.util.Set;
 
 final class SourceAccessor extends Accessor {
 
@@ -76,8 +78,26 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.loaders();
     }
 
-    static Path getPath(TruffleFile file) {
-        return ACCESSOR.languageSupport().getPath(file);
+    /**
+     * Returns the probed MIME type for a given file, or {@code null} if no MIME type could be
+     * resolved.
+     *
+     * @param file the file to find a MIME type for
+     * @param validMimeTypes MIME types which can be used for file
+     * @return the file MIME type or {@code null} if no MIME type could be resolved
+     * @throws IOException in case of IO error
+     * @throws SecurityException if {@code FileSystem} denied the IO operation
+     */
+    static String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
+        return ACCESSOR.languageSupport().getMimeType(file, validMimeTypes);
+    }
+
+    static TruffleFile getTruffleFile(Path path, boolean embedder) {
+        return ACCESSOR.languageSupport().getTruffleFile(path, embedder);
+    }
+
+    static TruffleFile getTruffleFile(URI uri, boolean embedder) {
+        return ACCESSOR.languageSupport().getTruffleFile(uri, embedder);
     }
 
     static final class SourceSupportImpl extends Accessor.SourceSupport {
@@ -104,17 +124,22 @@ final class SourceAccessor extends Accessor {
 
         @Override
         public String findMimeType(File file) throws IOException {
-            return Source.findMimeType(file.toPath(), null);
+            return Source.findMimeType(SourceAccessor.getTruffleFile(file.toPath(), true));
         }
 
         @Override
         public String findMimeType(URL url) throws IOException {
-            return Source.findMimeType(url);
+            return Source.findMimeType(url, url.openConnection(), null, true);
         }
 
         @Override
         public SourceBuilder newBuilder(String language, File origin) {
             return Source.newBuilder(language, origin);
+        }
+
+        @Override
+        public SourceBuilder newBuilder(String language, URL origin) {
+            return Source.newBuilderForURL(language, origin);
         }
 
         @Override
