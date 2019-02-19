@@ -417,6 +417,7 @@ class CodeInfoVerifier extends CodeInfoDecoder {
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
                     ReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), codeInfo.getReferenceMapEncoding(), codeInfo.getReferenceMapIndex(), visitor);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
+                    visitor.result.verify();
                     assert expected.equals(visitor.result);
 
                     if (codeInfo.frameInfo != CodeInfoQueryResult.NO_FRAME_INFO) {
@@ -587,9 +588,13 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
 
     @Override
     public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-        int offset = NumUtil.safeToInt(objRef.rawValue());
-        assert !result.isOffsetMarked(offset);
-        result.markReferenceAtOffset(offset, compressed);
+        return visitObjectReferenceInline(objRef, 0, compressed);
+    }
+
+    @Override
+    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed) {
+        int derivedOffset = NumUtil.safeToInt(objRef.rawValue());
+        result.markReferenceAtOffset(derivedOffset, derivedOffset - innerOffset, compressed);
         return true;
     }
 }

@@ -192,16 +192,20 @@ public class SnippetRuntime {
         throw VMError.unsupportedFeature("Unresolved element found " + (sourcePosition != null ? sourcePosition : ""));
     }
 
-    static class ExceptionStackFrameVisitor implements StackFrameVisitor {
+    /*
+     * The stack walking objects must be stateless (no instance fields), because multiple threads
+     * can use them simultaneously. All state must be in separate VMThreadLocals.
+     */
+    public static class ExceptionStackFrameVisitor implements StackFrameVisitor {
         @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
         @Override
         public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
-            CodePointer continueIP;
+            CodePointer handlerPointer;
             if (deoptFrame != null) {
                 /* Deoptimization entry points always have an exception handler. */
                 deoptFrame.takeException();
-                continueIP = ip;
+                handlerPointer = ip;
 
             } else {
                 long handler = CodeInfoTable.lookupExceptionOffset(ip);
@@ -209,7 +213,8 @@ public class SnippetRuntime {
                     /* No handler found in this frame, walk to caller frame. */
                     return true;
                 }
-                continueIP = (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handler));
+
+                handlerPointer = getExceptionHandlerPointer(ip, sp, handler);
             }
 
             Throwable exception = currentException.get();
@@ -217,20 +222,18 @@ public class SnippetRuntime {
 
             StackOverflowCheck.singleton().protectYellowZone();
 
-            KnownIntrinsics.farReturn(exception, sp, continueIP);
+            KnownIntrinsics.farReturn(exception, sp, handlerPointer);
             /*
              * The intrinsic performs a jump to the specified instruction pointer, so this code is
              * unreachable.
              */
             return false;
         }
-    }
 
-    /*
-     * The stack walking objects must be stateless (no instance fields), because multiple threads
-     * can use them simultaneously. All state must be in separate VMThreadLocals.
-     */
-    private static final ExceptionStackFrameVisitor exceptionStackFrameVisitor = new ExceptionStackFrameVisitor();
+        public CodePointer getExceptionHandlerPointer(CodePointer ip, @SuppressWarnings("unused") Pointer sp, long handlerOffset) {
+            return (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handlerOffset));
+        }
+    }
 
     protected static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
 
@@ -264,7 +267,7 @@ public class SnippetRuntime {
          * exception. So we can start looking for the exception handler immediately in that frame,
          * without skipping any frames in between.
          */
-        JavaStackWalker.walkCurrentThread(callerSP, callerIP, exceptionStackFrameVisitor);
+        JavaStackWalker.walkCurrentThread(callerSP, callerIP, ImageSingletons.lookup(ExceptionStackFrameVisitor.class));
 
         /*
          * The stack walker does not return if an exception handler is found, but instead performs a
