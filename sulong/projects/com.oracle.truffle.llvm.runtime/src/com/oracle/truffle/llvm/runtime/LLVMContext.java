@@ -778,7 +778,11 @@ public final class LLVMContext {
         }
 
         private static String extractName(Path path) {
-            String nameWithExt = path.getFileName().toString();
+            Path filename = path.getFileName();
+            if (filename == null) {
+                throw new IllegalArgumentException("Path " + path + " is empty");
+            }
+            String nameWithExt = filename.toString();
             int lengthWithoutExt = nameWithExt.lastIndexOf(".");
             if (lengthWithoutExt > 0) {
                 return nameWithExt.substring(0, lengthWithoutExt);

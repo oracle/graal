@@ -145,7 +145,8 @@ public final class GraalVMLocator extends TruffleLocator
     }
 
     private static void addJar(List<URL> classPath, Path jar) {
-        if (jar.getFileName().toString().endsWith(".jar") && Files.exists(jar)) {
+        Path filename = jar.getFileName();
+        if (filename != null && filename.toString().endsWith(".jar") && Files.exists(jar)) {
             try {
                 classPath.add(jar.toUri().toURL());
             } catch (MalformedURLException ex) {

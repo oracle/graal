@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.176.0",
+  "mxversion" : "5.210.2",
 
   "name" : "regex",
 
@@ -51,6 +51,7 @@ suite = {
       "checkstyleVersion" : "8.8",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
+      "spotbugsIgnoresGenerated" : True,
     },
 
     "com.oracle.truffle.regex.test" : {

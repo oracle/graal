@@ -264,11 +264,19 @@ public final class DefaultHomeFinder extends HomeFinder {
             try (DirectoryStream<Path> dirContent = Files.newDirectoryStream(folder, new DirectoryStream.Filter<Path>() {
                 @Override
                 public boolean accept(Path entry) throws IOException {
-                    return !entry.getFileName().toString().startsWith(".");
+                    Path fileName = entry.getFileName();
+                    if (fileName == null) {
+                        return false;
+                    } else {
+                        return !fileName.toString().startsWith(".");
+                    }
                 }
             })) {
                 for (Path home : dirContent) {
-                    res.put(home.getFileName().toString(), home);
+                    Path filename = home.getFileName();
+                    if (filename != null) {
+                        res.put(filename.toString(), home);
+                    }
                 }
             } catch (IOException ioe) {
                 throw new RuntimeException(ioe);
@@ -367,7 +375,10 @@ public final class DefaultHomeFinder extends HomeFinder {
     private static Path getGraalVMHomeFromLanguageHome(Path languageHome) {
         // jre/<languages_or_tools>/<comp_id>
         Path languagesOrTools = languageHome.getParent();
-        String languagesOrToolsString = languagesOrTools != null ? getFileName(languagesOrTools) : null;
+        if (languagesOrTools == null) {
+            return null;
+        }
+        String languagesOrToolsString = getFileName(languagesOrTools);
         if (!"languages".equals(languagesOrToolsString) && !"tools".equals(languagesOrToolsString)) {
             return null;
         }
@@ -381,7 +392,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         } else {
             home = jreOrJdk;
         }
-        return isJreHome(home) || isJdkHome(home) ? home : null;
+        return home != null && (isJreHome(home) || isJdkHome(home)) ? home : null;
     }
 
     /**
@@ -392,7 +403,7 @@ public final class DefaultHomeFinder extends HomeFinder {
      */
     private static Path getGraalVmHomeFallBack(Path executable) {
         Path bin = executable.getParent();
-        if (!"bin".equals(getFileName(bin))) {
+        if (bin == null || !"bin".equals(getFileName(bin))) {
             return null;
         }
         Path jreOrJdk = bin.getParent();
@@ -470,7 +481,8 @@ public final class DefaultHomeFinder extends HomeFinder {
             if (result == null) {
                 return null;
             }
-            if (!result.getFileName().equals(p.getFileName())) {
+            Path filename = result.getFileName();
+            if (filename == null || !filename.equals(p.getFileName())) {
                 return null;
             }
             result = result.getParent();

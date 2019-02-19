@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.210.1",
+  "mxversion" : "5.210.2",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -795,7 +795,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,LIR",
-      "findbugs" : "false",
+      "spotbugs" : "false",
       "testProject" : True,
     },
 
@@ -1084,7 +1084,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : ["mx:JMH_1_21"],
-      "findbugsIgnoresGenerated" : True,
+      "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
       "testProject" : True,
     },
@@ -1102,7 +1102,7 @@ suite = {
       "javaCompliance" : "8+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
-      "findbugsIgnoresGenerated" : True,
+      "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
       "testProject" : True,
     },
@@ -1373,7 +1373,7 @@ suite = {
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Test",
       "jacoco" : "exclude",
-      "findbugs" : "false",
+      "spotbugs" : "false",
       "testProject" : True,
     },
 
@@ -1755,7 +1755,7 @@ suite = {
       "javaCompliance" : "8+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
-      "findbugsIgnoresGenerated" : True,
+      "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
       "testProject" : True,
     },
