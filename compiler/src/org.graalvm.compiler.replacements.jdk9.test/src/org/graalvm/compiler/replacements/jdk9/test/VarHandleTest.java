@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements.jdk9.test;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import jdk.vm.ci.aarch64.AArch64;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -38,6 +39,7 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -114,6 +116,24 @@ public class VarHandleTest extends GraalCompilerTest {
         Assert.assertEquals(expectedAnyKill, countAnyKill(graph));
     }
 
+    void testAArch64VolatileAccess(String name, int expectedReads, int expectedWrites, int expectedMembars, int expectedAnyKill) {
+        ResolvedJavaMethod method = getResolvedJavaMethod(name);
+        StructuredGraph graph = parseForCompile(method);
+        compile(method, graph);
+        Assert.assertEquals(expectedReads, graph.getNodes().filter(ReadNode.class).count());
+        Assert.assertEquals(expectedWrites, graph.getNodes().filter(WriteNode.class).count());
+        Assert.assertEquals(expectedMembars, graph.getNodes().filter(MembarNode.class).count());
+        Assert.assertEquals(expectedAnyKill, countAnyKill(graph));
+        for (Node n : graph.getNodes().filter(ReadNode.class)) {
+            String clazzname = n.getClass().getSimpleName();
+            Assert.assertTrue(clazzname.equals("AArch64VolatileReadNode") || clazzname.equals("AArch64VolatileExtendingReadNode"));
+        }
+        for (Node n : graph.getNodes().filter(WriteNode.class)) {
+            String clazzname = n.getClass().getSimpleName();
+            Assert.assertTrue(clazzname.equals("AArch64VolatileWriteNode"));
+        }
+    }
+
     @Test
     public void testRead1() {
         testAccess("testRead1Snippet", 1, 0, 0, 0);
@@ -121,7 +141,16 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testRead2() {
+        // ignore this test on AArch64
+        Assume.assumeFalse(getTarget().arch instanceof AArch64);
         testAccess("testRead2Snippet", 1, 0, 2, 2);
+    }
+
+    @Test
+    public void testRead2AArch64() {
+        // run this test on AArch64
+        Assume.assumeTrue(getTarget().arch instanceof AArch64);
+        testAArch64VolatileAccess("testRead2Snippet", 1, 0, 0, 0);
     }
 
     @Test
@@ -131,7 +160,16 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testRead4() {
+        // ignore this test on AArch64
+        Assume.assumeFalse(getTarget().arch instanceof AArch64);
         testAccess("testRead4Snippet", 1, 0, 2, 2);
+    }
+
+    @Test
+    public void testRead4AArch64() {
+        // run this test on AArch64
+        Assume.assumeTrue(getTarget().arch instanceof AArch64);
+        testAArch64VolatileAccess("testRead4Snippet", 1, 0, 0, 0);
     }
 
     @Test
@@ -141,7 +179,16 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testWrite2() {
+        // ignore this test on AArch64
+        Assume.assumeFalse(getTarget().arch instanceof AArch64);
         testAccess("testWrite2Snippet", 0, 1, 2, 2);
+    }
+
+    @Test
+    public void testWrite2AArch64() {
+        // run this test on AArch64
+        Assume.assumeTrue(getTarget().arch instanceof AArch64);
+        testAArch64VolatileAccess("testWrite2Snippet", 0, 1, 0, 0);
     }
 
     @Test
@@ -151,7 +198,16 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testWrite4() {
+        // ignore this test on AArch64
+        Assume.assumeFalse(getTarget().arch instanceof AArch64);
         testAccess("testWrite4Snippet", 0, 1, 2, 2);
+    }
+
+    @Test
+    public void testWrite4AArch64() {
+        // run this test on AArch64
+        Assume.assumeTrue(getTarget().arch instanceof AArch64);
+        testAArch64VolatileAccess("testWrite4Snippet", 0, 1, 0, 0);
     }
 
     private static int countAnyKill(StructuredGraph graph) {
