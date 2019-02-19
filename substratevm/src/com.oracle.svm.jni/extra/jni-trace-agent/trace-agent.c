@@ -47,6 +47,10 @@ static jmethodID java_lang_Class_getName;
 
 static FILE *trace_file;
 static pthread_mutex_t trace_mtx;
+const jclass TRACE_OBJECT_NULL = (jclass) -1; // unlikely to be a valid jclass
+const char * const TRACE_VALUE_NULL = "null";
+const char * const TRACE_VALUE_UNKNOWN = "?";
+const char * const TRACE_NEXT_ARG_UNQUOTED_TAG = "@next_unquoted@";
 
 void JNICALL OnVMStart(jvmtiEnv *jvmti, JNIEnv *jni) {
   guarantee((*jvmti)->GetJNIFunctionTable(jvmti, &jnifun) == JVMTI_ERROR_NONE);
@@ -105,42 +109,49 @@ static void mtx_trace_print(const char *s) {
   pthread_mutex_unlock(&trace_mtx);
 }
 
+static bool should_quote(const char *s) {
+  return (s != TRACE_VALUE_NULL && s != TRACE_VALUE_UNKNOWN);
+}
+
+#define SBUF_PRINT_OPTIONAL_QUOTE(condition, sbuf, fmt, ...) \
+  sbuf_printf((sbuf), ((condition) ? (fmt "\"%s\"") : (fmt "%s")), __VA_ARGS__)
+
 void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, const char *function, const char *result, va_list args) {
   struct sbuf e;
   sbuf_new(&e);
   sbuf_printf(&e, "{\"tracer\":\"%s\"", tracer);
   if (function != NULL) {
-    sbuf_printf(&e, ", \"function\":\"%s\"", function);
+    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(function), &e, ", \"function\":", function);
   }
   if (clazz != NULL) {
-    jclass clazzclass;
-    guarantee((clazzclass = jnifun->GetObjectClass(env, clazz)) != NULL);
-    jstring class_name = NULL;
-    guarantee((class_name = jnifun->CallObjectMethod(env, clazz, java_lang_Class_getName)) != NULL);
-    const char *class_cname;
-    guarantee((class_cname = jnifun->GetStringUTFChars(env, class_name, NULL)) != NULL);
-    sbuf_printf(&e, ", \"class\":\"%s\"", class_cname);
-    jnifun->ReleaseStringUTFChars(env, class_name, class_cname);
+    jstring clazz_name = NULL;
+    const char *clazz_name_cstr = NULL;
+    if (clazz != TRACE_OBJECT_NULL) {
+      jclass clazz_class = jnifun->GetObjectClass(env, clazz);
+      clazz_name = (clazz_class != NULL) ? jnifun->CallObjectMethod(env, clazz, java_lang_Class_getName) : NULL;
+      clazz_name_cstr = (clazz_name != NULL) ? jnifun->GetStringUTFChars(env, clazz_name, NULL) : NULL;
+    }
+    clazz_name_cstr = (clazz_name_cstr != NULL) ? clazz_name_cstr : TRACE_VALUE_NULL;
+    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(clazz_name_cstr), &e, ", \"class\":", clazz_name_cstr);
+    if (clazz_name_cstr != TRACE_VALUE_NULL) {
+      jnifun->ReleaseStringUTFChars(env, clazz_name, clazz_name_cstr);
+    }
   }
   if (result != NULL) {
-    sbuf_printf(&e, ", \"result\":\"%s\"", result);
+    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(result), &e, ", \"function\":", result);
   }
   char *arg = va_arg(args, char*);
   if (arg != NULL) {
-    sbuf_printf(&e, ", \"args\":", result);
-    char c0 = '[';
+    sbuf_printf(&e, ", \"args\":");
+    char prefix = '[';
     bool quote_next = true;
     do {
-      if (strncmp(arg, TRACE_NEXT_ARG_UNQUOTED_TAG, sizeof(TRACE_NEXT_ARG_UNQUOTED_TAG)-1) == 0) {
+      if (arg == TRACE_NEXT_ARG_UNQUOTED_TAG) {
         quote_next = false;
       } else {
-        if (quote_next) {
-          sbuf_printf(&e, "%c\"%s\"", c0, arg);
-        } else {
-          sbuf_printf(&e, "%c%s", c0, arg);
-          quote_next = true;
-        }
-        c0 = ',';
+        SBUF_PRINT_OPTIONAL_QUOTE(quote_next && should_quote(arg), &e, "%c", prefix, arg);
+        quote_next = true;
+        prefix = ',';
       }
       arg = va_arg(args, char*);
     } while (arg != NULL);

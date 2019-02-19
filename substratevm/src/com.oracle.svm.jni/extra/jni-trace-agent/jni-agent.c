@@ -38,33 +38,41 @@ static void jni_trace(JNIEnv *env, char *function, jclass clazz, ...) {
   va_end(ap);
 }
 
+static jclass nn_class(jclass clazz) {
+  return (clazz != NULL) ? clazz : TRACE_OBJECT_NULL;
+}
+
+static const char * nn_str(const char *cstr) {
+  return (cstr != NULL) ? cstr : TRACE_VALUE_NULL;
+}
+
 static jclass JNICALL DefineClass(JNIEnv *env, const char *name, jobject loader, const jbyte *buf, jsize bufLen) {
-  jni_trace(env, "DefineClass", NULL, name, NULL);
+  jni_trace(env, "DefineClass", NULL, nn_str(name), NULL);
   return jnifun->DefineClass(env, name, loader, buf, bufLen);
 }
 
 static jclass JNICALL FindClass(JNIEnv *env, const char *name) {
-  jni_trace(env, "FindClass", NULL, name, NULL);
+  jni_trace(env, "FindClass", NULL, nn_str(name), NULL);
   return jnifun->FindClass(env, name);
 }
 
 static jmethodID JNICALL GetMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
-  jni_trace(env, "GetMethodID", clazz, name, sig, NULL);
+  jni_trace(env, "GetMethodID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
   return jnifun->GetMethodID(env, clazz, name, sig);
 }
 
 static jmethodID JNICALL GetStaticMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
-  jni_trace(env, "GetStaticMethodID", clazz, name, sig, NULL);
+  jni_trace(env, "GetStaticMethodID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
   return jnifun->GetStaticMethodID(env, clazz, name, sig);
 }
 
 static jfieldID JNICALL GetFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
-  jni_trace(env, "GetFieldID", clazz, name, sig, NULL);
+  jni_trace(env, "GetFieldID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
   return jnifun->GetFieldID(env, clazz, name, sig);
 }
 
 static jfieldID JNICALL GetStaticFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
-  jni_trace(env, "GetStaticFieldID", clazz, name, sig, NULL);
+  jni_trace(env, "GetStaticFieldID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
   return jnifun->GetStaticFieldID(env, clazz, name, sig);
 }
 
