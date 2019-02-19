@@ -73,8 +73,6 @@ import jdk.vm.ci.meta.Signature;
  * handles and for unboxing an object return value.
  */
 class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
-    private int maxLocals = -1;
-
     private final JNINativeLinkage linkage;
 
     JNINativeCallWrapperMethod(ResolvedJavaMethod method) {
@@ -90,25 +88,6 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         String className = unwrapped.getDeclaringClass().getName();
         String descriptor = unwrapped.getSignature().toMethodDescriptor();
         return JNIAccessFeature.singleton().makeLinkage(className, unwrapped.getName(), descriptor);
-    }
-
-    @Override
-    public int getMaxLocals() {
-        if (maxLocals == -1) {
-            maxLocals = 0;
-            Signature sig = getOriginal().getSignature();
-            int count = sig.getParameterCount(false);
-            if (!getOriginal().isStatic()) {
-                maxLocals++;
-            }
-            for (int i = 0; i < count; i++) {
-                maxLocals++;
-                if (sig.getParameterKind(i).needsTwoSlots()) {
-                    maxLocals++;
-                }
-            }
-        }
-        return maxLocals;
     }
 
     @Override
