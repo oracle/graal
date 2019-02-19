@@ -31,16 +31,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
-import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputAccess;
 
 public final class TRegexDFAExecutorNode extends Node {
 
     public static final int NO_MATCH = -2;
     private final TRegexDFAExecutorProperties props;
     private final int maxNumberOfNFAStates;
-    @Child private InputLengthNode lengthNode = InputLengthNode.create();
-    @Child private InputCharAtNode charAtNode = InputCharAtNode.create();
     @Children private final DFAAbstractStateNode[] states;
     @Children private final DFACaptureGroupLazyTransitionNode[] cgTransitions;
     private final TRegexDFAExecutorDebugRecorder debugRecorder;
@@ -289,11 +286,11 @@ public final class TRegexDFAExecutorNode extends Node {
      *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
      */
     public int getInputLength(VirtualFrame frame) {
-        return lengthNode.execute(getInput(frame));
+        return InputAccess.length(getInput(frame));
     }
 
     public char getChar(VirtualFrame frame) {
-        return charAtNode.execute(getInput(frame), getIndex(frame));
+        return InputAccess.charAt(getInput(frame), getIndex(frame));
     }
 
     public void advance(VirtualFrame frame) {
