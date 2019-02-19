@@ -52,8 +52,8 @@ public final class Target_java_security_AccessController {
 
     @Substitution(methodName = "doPrivileged")
     public static @Host(Object.class) StaticObject doPrivileged_PrivilegedAction_AccessControlContext(
-            @Host(PrivilegedAction.class) StaticObject action,
-            @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
+                    @Host(PrivilegedAction.class) StaticObject action,
+                    @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
         return doPrivileged(action);
     }
 
@@ -64,8 +64,8 @@ public final class Target_java_security_AccessController {
 
     @Substitution(methodName = "doPrivileged")
     public static @Host(Object.class) StaticObject doPrivileged_PrivilegedExceptionAction_AccessControlContext(
-            @Host(PrivilegedExceptionAction.class) StaticObject action,
-            @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
+                    @Host(PrivilegedExceptionAction.class) StaticObject action,
+                    @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
         try {
             return doPrivileged(action);
         } catch (EspressoException e) {
