@@ -422,7 +422,7 @@ public abstract class TruffleLanguage<C> {
          * createContext} method and instantiate and {@link Env#registerService(java.lang.Object)
          * register} all here in defined services.
          * <p>
-         * Languages automatically get created when their registered
+         * Languages automatically get created but not yet initialized when their registered
          * {@link Env#lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class) service is
          * requested}.
          *
@@ -485,6 +485,9 @@ public abstract class TruffleLanguage<C> {
      * for instrumentation, the instruments cannot receive any meta data about code executed during
      * context creation. Should there be a need to perform complex initialization, do it by
      * overriding the {@link #initializeContext(java.lang.Object)} method.
+     * <p>
+     * Additional services provided by the language should be
+     * {@link Env#registerService(java.lang.Object) registered} by this method.
      * <p>
      * May return {@code null} if the language does not need any per-{@linkplain Context context}
      * state. Otherwise it should return a new object instance every time it is called.
@@ -1889,10 +1892,7 @@ public abstract class TruffleLanguage<C> {
         /**
          * Returns an additional service provided by the given language, specified by type. For
          * services registered by {@link Registration#services()} the service lookup will ensure
-         * that language is loaded and services are registered. For services extending the
-         * {@link TruffleLanguage} class if an language is not loaded, it will not be automatically
-         * loaded by requesting a service. In order to ensure a language to be loaded at least one
-         * {@link Source} must be {@link #parse(Source, String...) parsed} first.
+         * that the language is loaded and services are registered.
          *
          * @param <S> the requested type
          * @param language the language to query
@@ -1908,7 +1908,7 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
 
-            S result = AccessAPI.engineAccess().lookupService(vmObject, language, type);
+            S result = AccessAPI.engineAccess().lookupService(vmObject, language, this.getSpi().languageInfo, type);
             if (result != null) {
                 return result;
             }
@@ -2048,18 +2048,16 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Registers additional service. This method can be called multiple time, but only in
-         * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) createContext method}.
-         * These services are made available to users via
+         * Registers additional services provided by the language. The registered services are made
+         * available to users via
          * {@link #lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class)} query method.
          * <p>
-         * This method can only be called from
-         * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) } method - then the
-         * services are collected and cannot be changed anymore.
+         * For each service interface enumerated in {@link Registration#services() language
+         * registration} the language has to register a single service implementation.
          * <p>
-         * The registered services must be enumerated in {@link Registration#services() language
-         * registration} to initialize the language by
-         * {@link #lookup(com.oracle.truffle.api.InstrumentInfo, java.lang.Class) service lookup}.
+         * This method can be called only during the execution of the
+         * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) createContext method},
+         * then the services are collected and cannot be changed anymore.
          *
          * @param service a service to be returned from associated
          *            {@link Env#lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class)
@@ -2070,7 +2068,7 @@ public abstract class TruffleLanguage<C> {
          */
         public void registerService(Object service) {
             if (languageServicesCollector == null) {
-                throw new IllegalStateException("The registerService can be called only from Env.createContext method.");
+                throw new IllegalStateException("The registerService method can only be called during the execution of the Env.createContext method.");
             }
             languageServicesCollector.add(service);
         }

@@ -68,6 +68,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
@@ -304,8 +305,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         try {
                             List<Object> languageServicesCollector = new ArrayList<>();
                             LANGUAGE.createEnvContext(localEnv, languageServicesCollector);
-                            String errorMessage;
-                            assert (errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.serices())) == null : errorMessage;
+                            String errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.getServices());
+                            if (errorMessage != null) {
+                                throw new PolyglotIllegalStateException(errorMessage);
+                            }
                             this.languageServices = languageServicesCollector;
                             lang.language.profile.notifyContextCreate(this, localEnv);
                             if (eventsEnabled) {
@@ -331,38 +334,20 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    private static String verifyServices(LanguageInfo info, List<Object> registeredServices, String[] expectedServices) {
-        for (String expectedServiceClass : expectedServices) {
+    private static String verifyServices(LanguageInfo info, List<Object> registeredServices, Collection<Class<?>> expectedServices) {
+        for (Class<?> expectedService : expectedServices) {
             boolean found = false;
             for (Object registeredService : registeredServices) {
-                if (isSubType(registeredService.getClass(), expectedServiceClass)) {
+                if (expectedService.isAssignableFrom(registeredService.getClass())) {
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                return String.format("Language %s declares service %s but doesn't register it", info.getName(), expectedServiceClass);
+                return String.format("Language %s declares service %s but doesn't register it", info.getName(), expectedService);
             }
         }
         return null;
-    }
-
-    private static boolean isSubType(Class<?> clazz, String serviceClass) {
-        if (clazz == null) {
-            return false;
-        }
-        if (serviceClass.equals(clazz.getName()) || serviceClass.equals(clazz.getCanonicalName())) {
-            return true;
-        }
-        if (isSubType(clazz.getSuperclass(), serviceClass)) {
-            return true;
-        }
-        for (Class<?> implementedInterface : clazz.getInterfaces()) {
-            if (isSubType(implementedInterface, serviceClass)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     boolean ensureInitialized(PolyglotLanguage accessingLanguage) {

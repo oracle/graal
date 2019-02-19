@@ -1041,13 +1041,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public <S> S lookupService(Object languageContextVMObject, LanguageInfo language, Class<S> type) {
+        public <S> S lookupService(Object languageContextVMObject, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type) {
             PolyglotLanguage lang = (PolyglotLanguage) NODES.getEngineObject(language);
             if (!lang.cache.supportsService(type)) {
                 return null;
             }
             PolyglotLanguageContext context = ((PolyglotLanguageContext) languageContextVMObject).context.getContext(lang);
-            context.ensureCreated(null);
+            context.ensureCreated((PolyglotLanguage) NODES.getEngineObject(accessingLanguage));
             return context.lookupService(type);
         }
     }
