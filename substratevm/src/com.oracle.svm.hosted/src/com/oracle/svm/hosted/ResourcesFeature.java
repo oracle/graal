@@ -120,7 +120,7 @@ public final class ResourcesFeature implements Feature {
             if (matches(patterns, relativePath)) {
                 try (FileInputStream is = new FileInputStream(f)) {
                     try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-                        debugContext.log("ResourcesFeature: registerResource: " + relativePath.substring(1));
+                        debugContext.log("ResourcesFeature: registerResource: " + relativePath);
                     }
                     Resources.registerResource(relativePath, is);
                 }
