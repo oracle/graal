@@ -116,8 +116,8 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
     }
 
     @TruffleBoundary
-    private static Boolean isEntered() {
-        return ENTERED.get();
+    private static boolean isEntered() {
+        return Boolean.TRUE == ENTERED.get();
     }
 
     private class InlineScriptFactory implements ExecutionEventNodeFactory {
