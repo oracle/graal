@@ -89,6 +89,7 @@ public class HostedUniverse implements Universe {
      * Number of allocated bits for instanceof checks.
      */
     protected int numInterfaceBits;
+    private boolean postParseCanonicalized;
 
     public HostedUniverse(Inflation bb) {
         this.bb = bb;
@@ -276,5 +277,13 @@ public class HostedUniverse implements Universe {
     @Override
     public HostedType objectType() {
         return types.get(bb.getUniverse().objectType());
+    }
+
+    public boolean isPostParseCanonicalized() {
+        return postParseCanonicalized;
+    }
+
+    public void setPostParseCanonicalized() {
+        postParseCanonicalized = true;
     }
 }

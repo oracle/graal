@@ -166,7 +166,6 @@ public class CompileQueue {
     protected CompletionExecutor executor;
     private final ConcurrentMap<HostedMethod, CompileTask> compilations;
     protected final RuntimeConfiguration runtimeConfig;
-    private final OptimisticOptimizations optimisticOpts;
     private final Suites regularSuites;
     private final Suites deoptTargetSuites;
     private final LIRSuites regularLIRSuites;
@@ -314,13 +313,12 @@ public class CompileQueue {
         this.universe = universe;
         this.compilations = new ConcurrentHashMap<>();
         this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
-        this.optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService);
 
-        regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
-        deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true, !universe.isPostParseCanonicalized());
+        deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true, !universe.isPostParseCanonicalized());
         removeDeoptTargetOptimizations(deoptTargetSuites);
         regularLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
         deoptTargetLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
@@ -328,6 +326,10 @@ public class CompileQueue {
 
         // let aotjs override the replacements registration
         callForReplacements(debug, featureHandler, runtimeConfig, snippetReflection);
+    }
+
+    public static OptimisticOptimizations getOptimisticOpts() {
+        return OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
     }
 
     protected void callForReplacements(DebugContext debug, FeatureHandler featureHandler, @SuppressWarnings("hiding") RuntimeConfiguration runtimeConfig, SnippetReflectionProvider snippetReflection) {
@@ -365,6 +367,16 @@ public class CompileQueue {
         if (NativeImageOptions.PrintMethodHistogram.getValue()) {
             printMethodHistogram();
         }
+    }
+
+    public static PhaseSuite<HighTierContext> afterParseCanonicalization() {
+        PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
+        phaseSuite.appendPhase(new DeadStoreRemovalPhase());
+        phaseSuite.appendPhase(new DevirtualizeCallsPhase());
+        phaseSuite.appendPhase(new CanonicalizerPhase());
+        phaseSuite.appendPhase(new StrengthenStampsPhase(false));
+        phaseSuite.appendPhase(new CanonicalizerPhase());
+        return phaseSuite;
     }
 
     private void printMethodHistogram() {
@@ -501,15 +513,26 @@ public class CompileQueue {
 
     @SuppressWarnings("try")
     private void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
+        PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
         for (HostedMethod method : universe.getMethods()) {
             try (DebugContext.Scope s = debug.scope("InlineTrivial", method.compilationInfo.getGraph(), method, this)) {
                 if (method.compilationInfo.getGraph() != null) {
+                    HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(method).getProviders();
+                    if (!universe.isPostParseCanonicalized()) {
+                        afterParseSuite.apply(method.compilationInfo.getGraph(), new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
+
+                        /* Check that graph is in good shape after parsing. */
+                        assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
+                    }
+
                     checkTrivial(method);
                 }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
         }
+
+        universe.setPostParseCanonicalized();
 
         int round = 0;
         do {
@@ -687,33 +710,11 @@ public class CompileQueue {
             try {
                 if (needParsing) {
                     GraphBuilderConfiguration gbConf = createHostedGraphBuilderConfiguration(providers, method);
-                    new HostedGraphBuilderPhase(providers, gbConf, optimisticOpts, null, providers.getWordTypes()).apply(graph);
+                    new HostedGraphBuilderPhase(providers, gbConf, getOptimisticOpts(), null, providers.getWordTypes()).apply(graph);
 
                 } else {
                     graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
                 }
-
-                new DeadStoreRemovalPhase().apply(graph);
-                new DevirtualizeCallsPhase().apply(graph);
-                new CanonicalizerPhase().apply(graph, new PhaseContext(providers));
-
-                /*
-                 * The StrengthenStampsPhase may not insert type check nodes for specialized
-                 * methods, because we would get type state mismatches regarding Const<Type> !=
-                 * <Type>
-                 */
-                /*
-                 * cwimmer: the old, commented out, condition always disabled checking of static
-                 * analysis results. Therefore, the checks are broken right now.
-                 */
-                // new StrengthenStampsPhase(BootImageOptions.CheckStaticAnalysisResults.getValue()
-                // && method.compilationInfo.deoptTarget != null &&
-                // !method.compilationInfo.isDeoptTarget).apply(graph);
-                new StrengthenStampsPhase(false).apply(graph);
-                new CanonicalizerPhase().apply(graph, new PhaseContext(providers));
-
-                /* Check that graph is in good shape after parsing. */
-                assert GraphOrder.assertSchedulableGraph(graph);
 
                 method.compilationInfo.graph = graph;
 
@@ -847,6 +848,10 @@ public class CompileQueue {
         if (method.compilationInfo.specializedArguments != null) {
             // Do the specialization: replace the argument locals with the constant arguments.
             StructuredGraph graph = method.compilationInfo.graph;
+
+            /* Check that graph is in good shape before compilation. */
+            assert GraphOrder.assertSchedulableGraph(graph);
+
             int idx = 0;
             for (ConstantNode argument : method.compilationInfo.specializedArguments) {
                 ParameterNode local = graph.getParameter(idx++);
@@ -909,7 +914,7 @@ public class CompileQueue {
             CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
 
             try (Indent indent = debug.logAndIndent("compile %s", method)) {
-                GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, method.getProfilingInfo(), suites, lirSuites, result,
+                GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
                                 new HostedCompilationResultBuilderFactory(), false);
             }
             method.getProfilingInfo().setCompilerIRSize(StructuredGraph.class, method.compilationInfo.graph.getNodeCount());
