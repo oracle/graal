@@ -78,7 +78,6 @@ public final class Substitutions implements ContextAccess {
                     Target_java_lang_Class.class,
                     Target_java_lang_ClassLoader.class,
                     Target_java_lang_Object.class,
-                    Target_java_lang_Package.class,
                     Target_java_lang_Runtime.class,
                     Target_java_lang_System.class,
                     Target_java_lang_Thread.class,
