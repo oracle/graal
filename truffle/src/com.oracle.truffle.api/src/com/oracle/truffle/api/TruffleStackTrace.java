@@ -115,15 +115,13 @@ public final class TruffleStackTrace extends Exception {
 
     /**
      * Returns the guest language frames that are stored in this throwable or <code>null</code> if
-     * no guest language frames are available. Guest language frames are automatically added by the
-     * Truffle runtime the first time the exception is passed through a {@link CallTarget call
-     * target} and the frames are not yet set. Therefore no guest language frames are available
-     * immediately after the exception was constructed. The returned list is not modifiable. The
-     * number stack trace elements that are filled in can be customized by implementing
-     * {@link TruffleException#getStackTraceElementLimit()} .
+     * no guest language frames can ever be stored in this throwable. This method fills in the
+     * stacktrace by calling {@link #fillIn(Throwable)}, so it is not necessary to call
+     * {@link #fillIn(Throwable)} before. The returned list is not modifiable. The number of stack
+     * trace elements that are filled in can be customized by implementing
+     * {@link TruffleException#getStackTraceElementLimit()}.
      *
      * @param throwable the throwable instance to look for guest language frames
-     * @see #fillIn(Throwable) To force early filling of guest language stack frames.
      * @since 0.27
      */
     @TruffleBoundary
