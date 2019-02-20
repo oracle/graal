@@ -264,9 +264,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     private static final LazyFinalReference<Target_java_lang_Module> singleModule = new LazyFinalReference<>(Target_java_lang_Module::new);
 
-    private final LazyFinalReference<String> packageName = new LazyFinalReference<>(()  -> {
-        return computePackageName();
-    });
+    private final LazyFinalReference<String> packageName = new LazyFinalReference<>(this::computePackageName);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
