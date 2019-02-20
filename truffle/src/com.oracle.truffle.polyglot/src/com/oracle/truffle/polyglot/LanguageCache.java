@@ -441,6 +441,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         for (LanguageCache languageCache : languages(null).values()) {
             languageCache.languageHome = null;
         }
+        final ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        for (LanguageCache languageCache : languages(loader).values()) {
+            languageCache.languageHome = null;
+        }
     }
 
     /**
