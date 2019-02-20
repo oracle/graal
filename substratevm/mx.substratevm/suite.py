@@ -155,7 +155,9 @@ suite = {
         "com.oracle.svm.core.posix": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
             "annotationProcessors": [
@@ -268,9 +270,33 @@ suite = {
             },
         },
 
-        "com.oracle.svm.native.jvm": {
+        "com.oracle.svm.native.jvm.posix": {
             "subDir": "src",
             "native": "static_lib",
+            "deliverable" : "jvm",
+            "os_arch" : {
+                "darwin": {
+                    "amd64" : {
+                        "cflags": ["-g", "-fPIC", "-O2"],
+                    },
+                },
+                "linux": {
+                    "amd64" : {
+                        "cflags": ["-g", "-fPIC", "-O2"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only darwin and linux are supported",
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.jvm.windows": {
+            "subDir": "src",
+            "native": "static_lib",
+            "deliverable" : "jvm",
             "os_arch" : {
                 "windows": {
                     "amd64" : {
@@ -715,7 +741,8 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.native.libchelper",
                 "com.oracle.svm.native.strictmath",
-                "com.oracle.svm.native.jvm",
+                "com.oracle.svm.native.jvm.posix",
+                "com.oracle.svm.native.jvm.windows",
                 "com.oracle.svm.libffi"
             ],
             "native": True,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringRef;
 
-@Platforms({Platform.DARWIN.class})
+@Platforms({Platform.DARWIN_AND_JNI.class})
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
@@ -99,7 +99,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
     }
 }
 
-@Platforms({Platform.DARWIN.class})
+@Platforms({Platform.DARWIN_AND_JNI.class})
 @AutomaticFeature
 class DarwinSystemPropertiesFeature implements Feature {
     @Override

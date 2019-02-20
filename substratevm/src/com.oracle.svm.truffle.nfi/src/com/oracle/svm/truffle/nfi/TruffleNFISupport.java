@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,8 @@ import java.nio.charset.Charset;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
+import org.graalvm.nativeimage.Platform.DARWIN_AND_JNI;
+import org.graalvm.nativeimage.Platform.LINUX_AND_JNI;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.SignedWord;
@@ -63,9 +63,9 @@ public final class TruffleNFISupport {
         closureHandles = ObjectHandles.create();
         contextHandles = ObjectHandles.create();
 
-        if (Platform.includedIn(LINUX.class)) {
+        if (Platform.includedIn(LINUX_AND_JNI.class)) {
             errnoGetterFunctionName = "__errno_location";
-        } else if (Platform.includedIn(DARWIN.class)) {
+        } else if (Platform.includedIn(DARWIN_AND_JNI.class)) {
             errnoGetterFunctionName = "__error";
         } else {
             throw VMError.unsupportedFeature("unsupported platform for TruffleNFIFeature");

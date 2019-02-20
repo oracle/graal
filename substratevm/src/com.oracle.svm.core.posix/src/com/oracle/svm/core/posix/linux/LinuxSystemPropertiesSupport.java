@@ -37,7 +37,7 @@ import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Paths;
 import com.oracle.svm.core.posix.headers.Utsname;
 
-@Platforms({Platform.LINUX.class})
+@Platforms({Platform.LINUX_AND_JNI.class})
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
@@ -55,7 +55,7 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
     }
 }
 
-@Platforms({Platform.LINUX.class})
+@Platforms({Platform.LINUX_AND_JNI.class})
 @AutomaticFeature
 class LinuxSystemPropertiesFeature implements Feature {
     @Override

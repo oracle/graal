@@ -32,7 +32,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.windows.headers.LibC;
 
 @TargetClass(java.lang.System.class)
 @Platforms(Platform.WINDOWS.class)
@@ -55,16 +54,6 @@ final class Target_java_lang_System {
     @Substitute
     public static String mapLibraryName(String libname) {
         return libname + ".dll";
-    }
-}
-
-@TargetClass(className = "java.lang.Shutdown")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_lang_Shutdown {
-
-    @Substitute
-    static void halt0(int status) {
-        LibC.exit(status);
     }
 }
 

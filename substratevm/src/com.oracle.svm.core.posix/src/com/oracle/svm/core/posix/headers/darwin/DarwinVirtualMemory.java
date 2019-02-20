@@ -37,7 +37,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 //Checkstyle: stop
 
 @CContext(PosixDirectives.class)
-@Platforms(Platform.DARWIN.class)
+@Platforms(Platform.DARWIN_AND_JNI.class)
 public class DarwinVirtualMemory {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)

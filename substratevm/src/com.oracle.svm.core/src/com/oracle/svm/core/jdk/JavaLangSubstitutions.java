@@ -231,6 +231,7 @@ final class Target_java_lang_Throwable {
 }
 
 @TargetClass(java.lang.Runtime.class)
+@SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
 
     @Substitute
@@ -247,6 +248,16 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     public void runFinalization() {
+    }
+
+    @Substitute
+    @Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class, Platform.WINDOWS.class})
+    private int availableProcessors() {
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            return Jvm.JVM_ActiveProcessorCount();
+        } else {
+            return 1;
+        }
     }
 
     // Checkstyle: stop

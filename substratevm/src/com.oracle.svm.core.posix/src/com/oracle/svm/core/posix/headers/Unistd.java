@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -659,7 +659,7 @@ public class Unistd {
     public static native int _SC_NPROCESSORS_ONLN();
 
     @CConstant
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_AND_JNI.class)
     public static native int _SC_PHYS_PAGES();
 
     @CConstant
@@ -1343,7 +1343,7 @@ public class Unistd {
     // public static native int _CS_V7_ENV();
 
     @CConstant
-    @Platforms(Platform.DARWIN.class)
+    @Platforms(Platform.DARWIN_AND_JNI.class)
     public static native int _CS_DARWIN_USER_TEMP_DIR();
 
     /** Get file-specific configuration information about PATH. */
