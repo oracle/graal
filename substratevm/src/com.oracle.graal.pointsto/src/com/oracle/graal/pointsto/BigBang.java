@@ -57,6 +57,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
+import com.oracle.graal.pointsto.ObjectScanner.ReusableSet;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -592,10 +593,13 @@ public abstract class BigBang {
     public void checkUnsupportedSynchronization(AnalysisMethod method, int bci, AnalysisType aType) {
     }
 
+    private ReusableSet scannedObjects = new ReusableSet();
+
     @SuppressWarnings("try")
     private void checkObjectGraph() {
+        scannedObjects.reset();
         // scan constants
-        ObjectScanner objectScanner = new AnalysisObjectScanner(this);
+        ObjectScanner objectScanner = new AnalysisObjectScanner(this, scannedObjects);
         checkObjectGraph(objectScanner);
         objectScanner.scanBootImageHeapRoots();
 

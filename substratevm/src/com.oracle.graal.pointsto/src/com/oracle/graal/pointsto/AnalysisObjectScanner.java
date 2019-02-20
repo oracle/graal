@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto;
 
+import com.oracle.graal.pointsto.ObjectScanner.ReusableSet;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
@@ -35,8 +36,8 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public class AnalysisObjectScanner extends ObjectScanner {
 
-    public AnalysisObjectScanner(BigBang bigbang) {
-        super(bigbang);
+    public AnalysisObjectScanner(BigBang bigbang, ReusableSet scannedObjects) {
+        super(bigbang, scannedObjects);
     }
 
     @Override
@@ -58,7 +59,7 @@ public class AnalysisObjectScanner extends ObjectScanner {
     @Override
     public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
         AnalysisType fieldType = bb.getMetaAccess().lookupJavaType(bb.getSnippetReflectionProvider().asObject(Object.class, fieldValue).getClass());
-        assert fieldType.isInstantiated();
+        assert fieldType.isInstantiated() : fieldType;
 
         /*
          * *ALL* constants are scanned after each analysis iteration, thus the fieldType will
