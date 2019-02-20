@@ -70,6 +70,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -558,4 +559,28 @@ public class ContextAPITest {
         assertEquals(3, depth.get());
     }
 
+    @Test
+    public void testContextBuilderAllAccess() {
+        Context.Builder builder = Context.newBuilder();
+        builder.allowAllAccess(true);
+        try (Context context = builder.build()) {
+            context.initialize(ProxyLanguage.ID);
+            context.enter();
+            TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
+            assertTrue("all access implies host access allowed", env.isHostLookupAllowed());
+            assertTrue("all access implies native access allowed", env.isNativeAccessAllowed());
+            assertTrue("all access implies create thread allowed", env.isCreateThreadAllowed());
+            context.leave();
+        }
+        builder.allowAllAccess(false);
+        try (Context context = builder.build()) {
+            context.initialize(ProxyLanguage.ID);
+            context.enter();
+            TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
+            assertFalse("host access is disallowed by default", env.isHostLookupAllowed());
+            assertFalse("native access is disallowed by default", env.isNativeAccessAllowed());
+            assertFalse("thread creation is disallowed by default", env.isCreateThreadAllowed());
+            context.leave();
+        }
+    }
 }
