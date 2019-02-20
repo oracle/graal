@@ -56,6 +56,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 
@@ -257,8 +258,12 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
     @Test
     public void testLoadSourceSectionException() throws IOException {
         assureEnabled(engine.getInstruments().get("testLoadSourceSectionException"));
-        run("STATEMENT");
-        Assert.assertTrue(getErr().contains("TestLoadSourceSectionExceptionClass"));
+        try {
+            run("STATEMENT");
+            Assert.fail("No exception was thrown.");
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("TestLoadSourceSectionExceptionClass"));
+        }
     }
 
     private static class TestLoadSourceSectionExceptionClass extends RuntimeException {

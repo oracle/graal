@@ -426,12 +426,14 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestInstrumentException2.returnedExceptional = 0;
         TestInstrumentException2.returnedValue = 0;
         assureEnabled(engine.getInstruments().get("testInstrumentException2"));
-        run("ROOT(EXPRESSION)");
-        String errorText = getErr();
-        Assert.assertTrue(errorText, errorText.contains("MyLanguageException"));
-
-        Assert.assertEquals(0, TestInstrumentException2.returnedExceptional);
-        Assert.assertEquals(1, TestInstrumentException2.returnedValue);
+        try {
+            run("ROOT(EXPRESSION)");
+            Assert.fail("No exception was thrown.");
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
+        }
+        Assert.assertEquals(1, TestInstrumentException2.returnedExceptional);
+        Assert.assertEquals(0, TestInstrumentException2.returnedValue);
     }
 
     @Registration(name = "", version = "", id = "testInstrumentException2", services = Object.class)
@@ -474,8 +476,12 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestInstrumentException3.returnedExceptional = 0;
         TestInstrumentException3.onEnter = 0;
         assureEnabled(engine.getInstruments().get("testInstrumentException3"));
-        run("ROOT(EXPRESSION)");
-        Assert.assertTrue(getErr().contains("MyLanguageException"));
+        try {
+            run("ROOT(EXPRESSION)");
+            Assert.fail("No exception was thrown.");
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
+        }
         Assert.assertEquals(0, TestInstrumentException3.returnedExceptional);
         Assert.assertEquals(1, TestInstrumentException3.onEnter);
     }
@@ -982,7 +988,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                             }
                             InstrumentableNode node = (InstrumentableNode) evt.getNode();
                             SourceSection ss = evt.getNode().getSourceSection();
-                            if (ss == null) {
+                            if (ss == null || ss.getCharacters().toString().startsWith("ROOT(DEFINE")) {
+                                // No SourceSection, or the outer function
                                 return;
                             }
                             Class<? extends Tag> tag = tester.getTag();

@@ -99,6 +99,9 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                             SourceSectionFilter.newBuilder().tagIs(StatementTag.class, CallTag.class).build(),
                             inlineScriptFactory);
         } else if (inlineBinding != null) {
+            if (!inlineScriptFactory.snippetExecuted) {
+                Assert.fail("Inline snippet was not executed.");
+            }
             inlineBinding.dispose();
             inlineBinding = null;
             inlineScriptFactory = null;
@@ -125,6 +128,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         private final Source snippet;
         private final Predicate<SourceSection> predicate;
         private final InlineVerifier.ResultVerifier resultVerifier;
+        volatile boolean snippetExecuted = false;
 
         InlineScriptFactory(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
             CharSequence code = inlineSnippet.getCode();
@@ -184,6 +188,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                         throw t;
                     }
                     insert(inlineNode);
+                    snippetExecuted = true;
                 }
                 enter();
                 try {
