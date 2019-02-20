@@ -293,6 +293,7 @@ public final class Engine implements AutoCloseable {
         private boolean boundEngine;
         private MessageTransport messageTransport;
         private Object customLogHandler;
+        private SafetyConf conf = SafetyConf.DEFAULT;
 
         Builder() {
         }
@@ -338,6 +339,16 @@ public final class Engine implements AutoCloseable {
         public Builder in(InputStream in) {
             Objects.requireNonNull(in);
             this.in = in;
+            return this;
+        }
+
+        /** Associates new safety configuration with the builder.
+         *
+         * @param conf the config
+         * @return
+         */
+        public Builder safety(SafetyConf conf) {
+            this.conf = conf;
             return this;
         }
 
@@ -500,7 +511,9 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties, allowExperimentalOptions, boundEngine, messageTransport, customLogHandler);
+                            false, 0, useSystemProperties, allowExperimentalOptions, boundEngine, messageTransport, customLogHandler 
+                //, pass in safety conf
+            );
         }
 
     }
