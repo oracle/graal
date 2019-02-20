@@ -66,7 +66,7 @@ final class InstrumentCache {
     private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     private static final List<InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new ArrayList<>() : null;
-    private static Map<ClassLoader, List<InstrumentCache>> runtimeCaches =new WeakHashMap<>();
+    private static Map<ClassLoader, List<InstrumentCache>> runtimeCaches = new WeakHashMap<>();
 
     private Class<? extends TruffleInstrument> instrumentClass;
     private final String className;
