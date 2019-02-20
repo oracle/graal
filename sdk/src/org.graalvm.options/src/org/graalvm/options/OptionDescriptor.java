@@ -53,13 +53,15 @@ public final class OptionDescriptor {
     private final String name;
     private final String help;
     private final OptionCategory kind;
+    private final OptionStability stability;
     private final boolean deprecated;
 
-    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory kind, boolean deprecated) {
+    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory kind, OptionStability stability, boolean deprecated) {
         this.key = key;
         this.name = name;
         this.help = help;
         this.kind = kind;
+        this.stability = stability;
         this.deprecated = deprecated;
     }
 
@@ -98,6 +100,15 @@ public final class OptionDescriptor {
      */
     public OptionCategory getCategory() {
         return kind;
+    }
+
+    /**
+     * Returns the stability of this option.
+     *
+     * @since 1.0
+     */
+    public OptionStability getStability() {
+        return stability;
     }
 
     /**
@@ -170,7 +181,7 @@ public final class OptionDescriptor {
         return EMPTY.new Builder(key, name);
     }
 
-    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, false);
+    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false);
 
     /**
      * Represents an option descriptor builder.
@@ -181,9 +192,10 @@ public final class OptionDescriptor {
 
         private final OptionKey<?> key;
         private final String name;
-        private boolean deprecated;
-        private OptionCategory category;
-        private String help;
+        private boolean deprecated = false;
+        private OptionCategory category = OptionCategory.INTERNAL;
+        private OptionStability stability = OptionStability.EXPERIMENTAL;
+        private String help = "";
 
         Builder(OptionKey<?> key, String name) {
             this.key = key;
@@ -199,6 +211,18 @@ public final class OptionDescriptor {
         public Builder category(@SuppressWarnings("hiding") OptionCategory category) {
             Objects.requireNonNull(category);
             this.category = category;
+            return this;
+        }
+
+        /**
+         * Defines the stability of this option. The default value is
+         * {@link OptionStability#EXPERIMENTAL}.
+         *
+         * @since 1.0
+         */
+        public Builder stability(@SuppressWarnings("hiding") OptionStability stability) {
+            Objects.requireNonNull(stability);
+            this.stability = stability;
             return this;
         }
 
@@ -230,7 +254,7 @@ public final class OptionDescriptor {
          * @since 1.0
          */
         public OptionDescriptor build() {
-            return new OptionDescriptor(key, name, help == null ? "" : help, category == null ? OptionCategory.INTERNAL : category, deprecated);
+            return new OptionDescriptor(key, name, help, category, stability, deprecated);
         }
 
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,20 +38,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage;
-
-import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.word.PointerBase;
+package org.graalvm.options;
 
 /**
- * Pointer to the runtime data structure for a thread. The size and actual layout of the data
- * structure is unspecified, client code must not make any assumptions about it.
- * <p>
- * The {@link IsolateThread} points to a thread-local data structure. Therefore, the pointer must
- * not be shared between threads.
+ * Categorizes options according to their stability.
  *
  * @since 1.0
  */
-@CStruct(value = "graal_isolatethread_t", isIncomplete = true)
-public interface IsolateThread extends PointerBase {
+public enum OptionStability {
+
+    /**
+     * A stable option is expected to remain available for many releases. End users can rely on such
+     * an option being present. A stable option can still be removed but will go through a clear
+     * deprecating process before being removed.
+     *
+     * @since 1.0
+     */
+    STABLE,
+
+    /**
+     * An experimental option has no guarantees of stability and might be removed at any point.
+     *
+     * @since 1.0
+     */
+    EXPERIMENTAL
+
 }

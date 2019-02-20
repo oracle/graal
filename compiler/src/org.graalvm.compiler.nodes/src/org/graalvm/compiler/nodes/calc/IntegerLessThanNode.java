@@ -226,7 +226,6 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
                             }
                         }
                     }
-
                 }
             }
 

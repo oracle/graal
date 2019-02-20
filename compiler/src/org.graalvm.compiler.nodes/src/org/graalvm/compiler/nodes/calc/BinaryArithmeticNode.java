@@ -90,6 +90,26 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         if (result != null) {
             return result;
         }
+        if (forX instanceof ConditionalNode && forY.isConstant() && forX.hasExactlyOneUsage()) {
+            ConditionalNode conditionalNode = (ConditionalNode) forX;
+            BinaryOp<OP> arithmeticOp = getArithmeticOp();
+            ConstantNode trueConstant = tryConstantFold(arithmeticOp, conditionalNode.trueValue(), forY, this.stamp(view), view);
+            if (trueConstant != null) {
+                ConstantNode falseConstant = tryConstantFold(arithmeticOp, conditionalNode.falseValue(), forY, this.stamp(view), view);
+                if (falseConstant != null) {
+                    // @formatter:off
+                    /* The arithmetic is folded into a constant on both sides of the conditional.
+                     * Example:
+                     *            (cond ? -5 : 5) + 100
+                     * canonicalizes to:
+                     *            (cond ? 95 : 105)
+                     */
+                    // @formatter:on
+                    return ConditionalNode.create(conditionalNode.condition, trueConstant,
+                                    falseConstant, view);
+                }
+            }
+        }
         return this;
     }
 
