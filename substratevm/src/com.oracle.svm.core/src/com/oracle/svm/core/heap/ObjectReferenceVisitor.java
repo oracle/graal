@@ -61,6 +61,11 @@ public interface ObjectReferenceVisitor {
         return visitObjectReference(objRef, compressed);
     }
 
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
+    default boolean visitObjectReferenceInline(Pointer objRef, @SuppressWarnings("unused") int innerOffset, boolean compressed) {
+        return visitObjectReference(objRef, compressed);
+    }
+
     /**
      * Called after all Object references have been visited. If visiting terminates because a
      * visitor returned false, this method might not be called.

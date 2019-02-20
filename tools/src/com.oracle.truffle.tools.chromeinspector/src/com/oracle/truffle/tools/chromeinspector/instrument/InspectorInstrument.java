@@ -157,7 +157,7 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(name = "", help = "Start the Chrome inspector on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Inspect = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
-    @com.oracle.truffle.api.Option(help = "Attach to an existing endpoint instead of creating a new one. (default:false)", category = OptionCategory.DEBUG) //
+    @com.oracle.truffle.api.Option(help = "Attach to an existing endpoint instead of creating a new one. (default:false)", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> Attach = new OptionKey<>(false);
 
     @com.oracle.truffle.api.Option(help = "Suspend the execution at first executed source line. (default:true)", category = OptionCategory.USER) //
@@ -175,10 +175,10 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "Path to the chrome inspect. (default: randomly generated)", category = OptionCategory.EXPERT) //
     static final OptionKey<String> Path = new OptionKey<>("");
 
-    @com.oracle.truffle.api.Option(help = "Inspect internal sources. (default:false)", category = OptionCategory.DEBUG) //
+    @com.oracle.truffle.api.Option(help = "Inspect internal sources. (default:false)", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> Internal = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(help = "Inspect language initialization. (default:false)", category = OptionCategory.DEBUG) //
+    @com.oracle.truffle.api.Option(help = "Inspect language initialization. (default:false)", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> Initialization = new OptionKey<>(false);
 
     @com.oracle.truffle.api.Option(help = "Use TLS/SSL. (default:false)", category = OptionCategory.EXPERT) //

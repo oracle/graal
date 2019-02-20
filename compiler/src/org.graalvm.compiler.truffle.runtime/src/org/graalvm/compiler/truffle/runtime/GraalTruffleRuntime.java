@@ -27,12 +27,12 @@ package org.graalvm.compiler.truffle.runtime;
 import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClass;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClassName;
-import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getValue;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilation;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleUseFrameWithoutBoxing;
+import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getValue;
 
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
@@ -54,11 +54,13 @@ import java.util.function.Consumer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
+import org.graalvm.compiler.truffle.common.TruffleOutputGroup;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceASTCompilationListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceCallTreeListener;
@@ -69,6 +71,7 @@ import org.graalvm.compiler.truffle.runtime.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -77,7 +80,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExactMath;
-import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
@@ -117,8 +119,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.compiler.truffle.common.TruffleCompilation;
-import org.graalvm.compiler.truffle.common.TruffleOutputGroup;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal.
@@ -752,6 +752,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return queue.submitCompilationRequest(this, optimizedCallTarget, lastTierCompilation);
     }
 
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert enabled = true;
+        return enabled;
+    }
+
     public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task, boolean mayBeAsynchronous) {
         getListener().onCompilationQueued(optimizedCallTarget);
 
@@ -762,7 +769,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (TruffleRuntimeOptions.getValue(TruffleCompilationExceptionsAreThrown) && !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
                     throw new RuntimeException(e.getCause());
                 } else {
-                    // silently ignored
+                    if (assertionsEnabled()) {
+                        e.printStackTrace();
+                    } else {
+                        // silently ignored
+                    }
                 }
             }
         }

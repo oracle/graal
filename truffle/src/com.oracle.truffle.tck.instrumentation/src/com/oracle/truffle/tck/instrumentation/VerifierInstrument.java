@@ -80,6 +80,8 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
     private InlineScriptFactory inlineScriptFactory;
     private EventBinding<InlineScriptFactory> inlineBinding;
 
+    private static final ThreadLocal<Boolean> ENTERED = new ThreadLocal<>();
+
     @Override
     protected void onCreate(Env instrumentEnv) {
         this.env = instrumentEnv;
@@ -103,6 +105,21 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         }
     }
 
+    @TruffleBoundary
+    private static void leave() {
+        ENTERED.set(Boolean.FALSE);
+    }
+
+    @TruffleBoundary
+    private static void enter() {
+        ENTERED.set(Boolean.TRUE);
+    }
+
+    @TruffleBoundary
+    private static boolean isEntered() {
+        return Boolean.TRUE == ENTERED.get();
+    }
+
     private class InlineScriptFactory implements ExecutionEventNodeFactory {
 
         private final Source snippet;
@@ -118,11 +135,12 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
 
         @Override
         public ExecutionEventNode create(EventContext context) {
-            if (predicate == null || canRunAt(context.getInstrumentedSourceSection())) {
-                return new InlineScriptNode(context);
-            } else {
-                return null;
+            if (!isEntered()) {
+                if (predicate == null || canRunAt(context.getInstrumentedSourceSection())) {
+                    return new InlineScriptNode(context);
+                }
             }
+            return null;
         }
 
         private boolean canRunAt(com.oracle.truffle.api.source.SourceSection ss) {
@@ -167,6 +185,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                     }
                     insert(inlineNode);
                 }
+                enter();
                 try {
                     Object ret = inlineNode.execute(frame);
                     if (resultVerifier != null) {
@@ -178,6 +197,8 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                     CompilerDirectives.transferToInterpreter();
                     verify(t);
                     throw t;
+                } finally {
+                    leave();
                 }
             }
 

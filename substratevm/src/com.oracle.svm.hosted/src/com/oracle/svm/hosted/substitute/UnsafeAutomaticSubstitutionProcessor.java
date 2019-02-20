@@ -67,7 +67,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -163,7 +163,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             Class<?> unsafeClass;
 
             try {
-                if (GraalServices.Java8OrEarlier) {
+                if (JavaVersionUtil.Java8OrEarlier) {
                     unsafeClass = Class.forName("sun.misc.Unsafe");
                 } else {
                     unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
@@ -177,7 +177,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             noCheckedExceptionsSet.add(unsafeObjectFieldOffsetFieldMethod);
             neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
 
-            if (!GraalServices.Java8OrEarlier) {
+            if (!JavaVersionUtil.Java8OrEarlier) {
                 /* JDK-9 introduced Unsafe.objectFieldOffset(Class, String). */
                 Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
                 unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);

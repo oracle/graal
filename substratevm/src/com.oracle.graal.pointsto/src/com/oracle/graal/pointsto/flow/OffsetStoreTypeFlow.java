@@ -30,6 +30,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
+import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
@@ -37,8 +39,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.typestate.TypeState;
-
-import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 
 /**
  * The abstract class for offset store flows (i.e. indexed stores, unsafe stores at offset, java
@@ -182,14 +182,14 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<ValueNode> {
             return super.addState(bb, add, true);
         }
 
-        protected void handleUnsafeAccessedFields(BigBang bb, List<AnalysisField> unsafeAccessedFields, AnalysisObject object) {
+        void handleUnsafeAccessedFields(BigBang bb, List<AnalysisField> unsafeAccessedFields, AnalysisObject object) {
             for (AnalysisField field : unsafeAccessedFields) {
                 /* Write through the field filter flow. */
                 if (field.hasUnsafeFrozenTypeState()) {
-                    UnsafeWriteSinkTypeFlow unsafeWriteSink = object.getUnsafeWriteSinkFrozenFilterFlow(bb, field);
+                    UnsafeWriteSinkTypeFlow unsafeWriteSink = object.getUnsafeWriteSinkFrozenFilterFlow(bb, this.method(), field);
                     this.addUse(bb, unsafeWriteSink);
                 } else {
-                    FieldFilterTypeFlow fieldFilterFlow = object.getInstanceFieldFilterFlow(bb, field);
+                    FieldFilterTypeFlow fieldFilterFlow = object.getInstanceFieldFilterFlow(bb, this.method(), field);
                     this.addUse(bb, fieldFilterFlow);
                 }
 

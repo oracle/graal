@@ -22,11 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk9.posix;
+package com.oracle.svm.core.posix;
 
 import java.io.IOException;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,9 +36,7 @@ import org.graalvm.nativeimage.RuntimeClassInitialization;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK9OrLater;
-import com.oracle.svm.core.posix.Java_lang_Process_Supplement;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature
@@ -45,7 +44,7 @@ class JavaLangSubstitutionsJDK9OrLaterFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !GraalServices.Java8OrEarlier;
+        return !JavaVersionUtil.Java8OrEarlier;
     }
 
     @Override

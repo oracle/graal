@@ -918,7 +918,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
                     if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode || node instanceof FullInfopointNode || node instanceof ParameterNode)) {
                         if (node instanceof ConstantNode) {
                             if (checkConstants) {
-                                String name = checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
+                                String name = node.toString(Verbosity.Name);
                                 if (excludeVirtual) {
                                     constantsLines.add(name);
                                 } else {

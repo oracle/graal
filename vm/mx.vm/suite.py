@@ -3,7 +3,7 @@ suite = {
     "version" : "1.0.0-rc13",
     "release" : False,
     "groupId" : "org.graalvm",
-    "mxversion": "5.197.0",
+    "mxversion": "5.210.2",
     "defaultLicense" : "GPLv2-CPE",
     "imports": {
         "suites": [

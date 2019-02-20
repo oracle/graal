@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -156,7 +157,7 @@ public abstract class LoadFieldTypeFlow extends TypeFlow<LoadFieldNode> {
             /* Iterate over the receiver objects. */
             for (AnalysisObject object : objectState.objects()) {
                 /* Get the field flow corresponding to the receiver object. */
-                FieldTypeFlow fieldFlow = object.getInstanceFieldFlow(bb, field, false);
+                FieldTypeFlow fieldFlow = object.getInstanceFieldFlow(bb, this.method(), field, false);
 
                 /* Add the load field flow as a use to the heap sensitive field flow. */
                 fieldFlow.addUse(bb, this);

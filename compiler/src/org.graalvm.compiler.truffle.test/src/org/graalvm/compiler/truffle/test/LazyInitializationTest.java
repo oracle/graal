@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
+import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 

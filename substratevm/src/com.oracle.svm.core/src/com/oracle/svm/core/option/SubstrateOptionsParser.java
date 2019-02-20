@@ -147,7 +147,7 @@ public class SubstrateOptionsParser {
             if (eqIndex != -1) {
                 return OptionParseResult.error("Cannot mix +/- with <name>=<value> format: '" + optionPrefix + option + "'");
             }
-            optionName = option.substring(1, eqIndex == -1 ? option.length() : eqIndex);
+            optionName = option.substring(1, option.length());
             if (booleanOptionFormat == BooleanOptionFormat.NAME_VALUE) {
                 return OptionParseResult.error("Option '" + optionName + "' must use <name>=<value> format, not +/- prefix");
             }
