@@ -56,7 +56,22 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * @see TruffleStackTraceElement To lookup the stack trace.
+ * Represents a guest language stack trace.
+ *
+ * A TruffleStackTrace is automatically added when a {@link Throwable} passes through a
+ * {@link CallTarget call target}. {@link ControlFlowException} and {@link PolyglotException} do not
+ * get a TruffleStackTrace. Other {@link Throwable} are added a TruffleStackTrace, as long as there
+ * is a {@code null} {@link Throwable#getCause() cause} available to insert the TruffleStackTrace.
+ * <p>
+ * A guest language stack trace element is automatically added by the Truffle runtime every time the
+ * {@link Throwable} passes through a {@link CallTarget call target}. This is incremental and
+ * therefore efficient if the exception is later caught in the same compilation unit.
+ * <p>
+ * Note that if the Throwable is caught, its stack trace should be filled eagerly with
+ * {@link #fillIn(Throwable)}, unless it can be guaranteed to be re-thrown in the same
+ * {@link CallTarget call target}, or that the stack trace will not be used.
+ *
+ * @see #getStackTrace() getStackTrace() to retrieve the stacktrace from a {@link Throwable}.
  */
 @SuppressWarnings("serial")
 public final class TruffleStackTrace extends Exception {
