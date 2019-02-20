@@ -458,7 +458,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
         Map<String, PolyglotInstrument> instruments = new LinkedHashMap<>();
-        List<InstrumentCache> cachedInstruments = InstrumentCache.load(VMAccessor.allLoaders());
+        ClassLoader loader = getAPIAccess().useContextClassLoader() ? Thread.currentThread().getContextClassLoader() : null;
+        List<InstrumentCache> cachedInstruments = InstrumentCache.load(VMAccessor.allLoaders(), loader);
         for (InstrumentCache instrumentCache : cachedInstruments) {
             PolyglotInstrument instrumentImpl = new PolyglotInstrument(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());
