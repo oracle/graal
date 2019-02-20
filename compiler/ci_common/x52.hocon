@@ -9,7 +9,7 @@ x52.default : ${linux-amd64} {
 
 x52.default-libgraal : ${x52.default} {
   environment : {
-    MX_PRIMARY_SUITE_PATH: "../vm"
+    MX_PRIMARY_SUITE_PATH: "../"${vm_subdir}
     MX_ENV_PATH: ${libgraal_env}
     JVM_CONFIG  : ${jvm-config.default}"-libgraal"
   }
@@ -41,7 +41,7 @@ x52.tmpfs10g-g1gc: ${x52.tmpfs10g} {
   }
 }
 
-x52.tmpfs10g-libgraal-g1gc: ${x52.tmpfs10g} {
+x52.tmpfs10g-libgraal-g1gc: ${x52.tmpfs10g-libgraal} {
   environment : {
     JVM_CONFIG  : ${jvm-config.default}"-libgraal-g1gc"
   }

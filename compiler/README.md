@@ -141,49 +141,23 @@ or following this symlink:
 ```
 For more information about building GraalVM images, see the [README file of the vm suite](../vm/README.md).
 
-Without leaving the `graal/vm` directory, you can now run libgraal in four ways:
+Without leaving the `graal/vm` directory, you can now run libgraal as follows:
 
-1. using the GraalVM image that you just built:
+1. Use the GraalVM image that you just built:
 
     ```
     ./latest_graalvm_home/bin/java -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
     ```
 
-2. copying libgraal to your JVMCI JDK8 installation:
-    - on linux:
-        ```
-        cp ./latest_graalvm_home/jre/lib/amd64/libjvmcicompiler.so $JAVA_HOME/jre/lib/amd64/
-        ```
-    - on macOS:
-        ```
-        cp ./latest_graalvm_home/jre/lib/libjvmcicompiler.dylib $JAVA_HOME/jre/lib/
-        ```
-
-    then:
-     ```
-     $JAVA_HOME/bin/java -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
-     ```
-
-3. specifying the path to the library as the value to `-XX:JVMCILibPath=`:
-    - on linux:
-        ```
-        $JAVA_HOME/bin/java -XX:JVMCILibPath=latest_graalvm_home/jre/lib/amd64 -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
-        ```
-    - on macOS:
-        ```
-        $JAVA_HOME/bin/java -XX:JVMCILibPath=latest_graalvm_home/jre/lib -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
-        ```
-
-4. using `mx`:
-    - on linux:
+2. Use `mx`:
+    - On linux:
         ```
         mx -p ../compiler vm -XX:JVMCILibPath=latest_graalvm_home/jre/lib/amd64 -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
         ```
-    - on macOS:
+    - On macOS:
         ```
         mx -p ../compiler vm -XX:JVMCILibPath=latest_graalvm_home/jre/lib -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
         ```
-
 
 ## Publications and Presentations
 
