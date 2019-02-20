@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -116,7 +117,7 @@ public class RootNodeTest {
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call(marker);
         } catch (TestException e) {
-            List<TruffleStackTraceElement> stackTrace = TruffleStackTraceElement.getStackTrace(e);
+            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStacktrace(e);
             Assert.assertEquals(1, stackTrace.size());
             Assert.assertNull(stackTrace.get(0).getLocation());
             Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
@@ -132,7 +133,7 @@ public class RootNodeTest {
             Truffle.getRuntime().createCallTarget(rootNode).call(marker);
         } catch (TestException e) {
             MaterializedFrame frame = e.frame;
-            List<TruffleStackTraceElement> stackTrace = TruffleStackTraceElement.getStackTrace(e);
+            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStacktrace(e);
             Assert.assertEquals(1, stackTrace.size());
             Assert.assertNull(stackTrace.get(0).getLocation());
             Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());

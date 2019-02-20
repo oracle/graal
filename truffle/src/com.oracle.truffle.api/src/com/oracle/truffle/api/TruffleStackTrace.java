@@ -59,7 +59,7 @@ import com.oracle.truffle.api.nodes.Node;
  * @see TruffleStackTraceElement To lookup the stack trace.
  */
 @SuppressWarnings("serial")
-final class TruffleStackTrace extends Exception {
+public final class TruffleStackTrace extends Exception {
     private static final TruffleStackTrace EMPTY = new TruffleStackTrace(Collections.emptyList(), 0);
 
     private List<TruffleStackTraceElement> frames;
@@ -113,8 +113,21 @@ final class TruffleStackTrace extends Exception {
         return "Attached Guest Language Frames (" + frames.size() + ")";
     }
 
+    /**
+     * Returns the guest language frames that are stored in this throwable or <code>null</code> if
+     * no guest language frames are available. Guest language frames are automatically added by the
+     * Truffle runtime the first time the exception is passed through a {@link CallTarget call
+     * target} and the frames are not yet set. Therefore no guest language frames are available
+     * immediately after the exception was constructed. The returned list is not modifiable. The
+     * number stack trace elements that are filled in can be customized by implementing
+     * {@link TruffleException#getStackTraceElementLimit()} .
+     *
+     * @param throwable the throwable instance to look for guest language frames
+     * @see #fillIn(Throwable) To force early filling of guest language stack frames.
+     * @since 0.27
+     */
     @TruffleBoundary
-    static List<TruffleStackTraceElement> find(Throwable t) {
+    public static List<TruffleStackTraceElement> getStacktrace(Throwable t) {
         TruffleStackTrace stack = fillIn(t);
         if (stack != null) {
             return stack.frames;
@@ -166,8 +179,18 @@ final class TruffleStackTrace extends Exception {
         }
     }
 
+    /**
+     * Fills in the guest language stack frames from the current frames on the stack. If the stack
+     * was already filled before then this method has no effect. The implementation attaches a
+     * lightweight exception object to the last location in the {@link Throwable#getCause() cause}
+     * chain of the exception. The number stack trace elements that are filled in can be customized
+     * by implementing {@link TruffleException#getStackTraceElementLimit()}.
+     *
+     * @param throwable the Throwable to fill
+     * @since 1.0
+     */
     @TruffleBoundary
-    static TruffleStackTrace fillIn(Throwable t) {
+    public static TruffleStackTrace fillIn(Throwable t) {
         if (t instanceof ControlFlowException) {
             return EMPTY;
         }

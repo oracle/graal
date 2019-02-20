@@ -63,6 +63,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
@@ -107,7 +108,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         this.engine = engine;
         this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
-        this.guestFrames = TruffleStackTraceElement.getStackTrace(original);
+        this.guestFrames = TruffleStackTrace.getStacktrace(original);
 
         if (exception instanceof TruffleException) {
             TruffleException truffleException = (TruffleException) exception;

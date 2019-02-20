@@ -34,6 +34,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -68,8 +69,8 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
 
     private static SulongStackTrace getStackTrace(LLVMNode node, String message, boolean filterCurrentLocation) {
         Throwable t = new CThrowable(node, message);
-        TruffleStackTraceElement.fillIn(t);
-        List<TruffleStackTraceElement> ctrace = TruffleStackTraceElement.getStackTrace(t);
+        TruffleStackTrace.fillIn(t);
+        List<TruffleStackTraceElement> ctrace = TruffleStackTrace.getStacktrace(t);
 
         SulongStackTrace trace = new SulongStackTrace(message);
         for (int i = 0; i < ctrace.size(); i++) {
