@@ -979,12 +979,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
         /*
          * If we reach here then we can continue with the close. This means that no other concurrent
-         * close is running and no other thread is currently executing.
+         * close is running and no other thread is currently executing. Note that only the context
+         * and closing lock should be acquired in this area to avoid deadlocks.
          */
         assert closingThread == Thread.currentThread();
         assert closingLock.isHeldByCurrentThread() : "lock is acquired";
         assert !closed;
         Thread[] remainingThreads = null;
+        List<PolyglotLanguageContext> disposedContexts = null;
         boolean success = false;
         try {
             Object prev = enter();
@@ -995,20 +997,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
                 // finalization performed commit close -> no reinitialization allowed
 
-                disposeContext();
+                disposedContexts = disposeContext();
 
                 assert childContexts.isEmpty();
                 success = true;
             } finally {
-                if (success) {
-                    if (parent != null) {
-                        synchronized (parent) {
-                            parent.childContexts.remove(this);
-                        }
-                    } else {
-                        engine.removeContext(this);
-                    }
-                }
                 synchronized (this) {
                     leave(prev);
                     if (success) {
@@ -1029,7 +1022,25 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             closingThread = null;
             closingLock.unlock();
         }
+
+        /*
+         * No longer any lock is held. So we can acquire other locks to cleanup.
+         */
+        if (disposedContexts != null) {
+            for (PolyglotLanguageContext context : disposedContexts) {
+                context.notifyDisposed();
+            }
+        }
+
         if (success) {
+            if (parent != null) {
+                synchronized (parent) {
+                    parent.childContexts.remove(this);
+                }
+            } else {
+                engine.removeContext(this);
+            }
+
             for (Thread thread : remainingThreads) {
                 VMAccessor.INSTRUMENT.notifyThreadFinished(engine, truffleContext, thread);
             }
@@ -1056,11 +1067,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    private void disposeContext() {
+    private List<PolyglotLanguageContext> disposeContext() {
         assert !this.disposing;
         this.disposing = true;
-        List<PolyglotLanguageContext> disposedContexts = new ArrayList<>(contexts.length);
         try {
+            List<PolyglotLanguageContext> disposedContexts = new ArrayList<>(contexts.length);
             synchronized (this) {
                 for (int i = contexts.length - 1; i >= 0; i--) {
                     PolyglotLanguageContext context = contexts[i];
@@ -1074,10 +1085,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     }
                 }
             }
+            return disposedContexts;
         } finally {
-            for (PolyglotLanguageContext context : disposedContexts) {
-                context.notifyDisposed();
-            }
             this.disposing = false;
         }
     }
