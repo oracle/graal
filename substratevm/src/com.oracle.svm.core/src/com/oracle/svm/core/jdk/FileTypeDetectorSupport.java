@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -108,7 +108,7 @@ final class FileTypeDetectorFeature implements Feature {
         if (FileTypeDetectorSupport.Options.AddAllFileTypeDetectors.getValue()) {
             Class<?> jdkClass = access.findClassByName("java.nio.file.Files$FileTypeDetectors");
             /* Note the typo in the JDK field name on JDK 8. */
-            String installedDetectorsFieldName = GraalServices.Java8OrEarlier ? "installeDetectors" : "installedDetectors";
+            String installedDetectorsFieldName = JavaVersionUtil.Java8OrEarlier ? "installeDetectors" : "installedDetectors";
             installedDetectors.addAll(readStaticField(jdkClass, installedDetectorsFieldName));
             defaultFileTypeDetector = readStaticField(jdkClass, "defaultFileTypeDetector");
         } else {
