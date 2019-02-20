@@ -131,7 +131,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      * closed state.
      */
     volatile boolean cancelling;
-    private volatile Thread closingThread;
+    volatile Thread closingThread;
     private final ReentrantLock closingLock = new ReentrantLock();
     /*
      * If the context is closed all operations should fail with IllegalStateException.
@@ -1024,6 +1024,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         /*
          * No longer any lock is held. So we can acquire other locks to cleanup.
          */
+
         if (disposedContexts != null) {
             for (PolyglotLanguageContext context : disposedContexts) {
                 context.notifyDisposed();
