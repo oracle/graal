@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 
 /* Do not reformat commented-out code: @formatter:off */
 
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public final class PosixSunNioSubstitutions {
 
     /** Translations of jdk/src/solaris/native/sun/nio/ch/PollArrayWrapper.c?v=Java_1.8.0_40_b10. */

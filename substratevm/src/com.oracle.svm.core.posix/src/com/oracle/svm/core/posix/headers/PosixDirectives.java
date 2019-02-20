@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,15 +102,15 @@ public class PosixDirectives implements CContext.Directives {
 
     @Override
     public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+        return Platform.includedIn(Platform.LINUX_AND_JNI.class) || Platform.includedIn(Platform.DARWIN_AND_JNI.class);
     }
 
     @Override
     public List<String> getHeaderFiles() {
         List<String> result = new ArrayList<>(Arrays.asList(commonLibs));
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(Platform.LINUX_AND_JNI.class)) {
             result.addAll(Arrays.asList(linuxLibs));
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+        } else if (Platform.includedIn(Platform.DARWIN_AND_JNI.class)) {
             result.addAll(Arrays.asList(darwinLibs));
         } else {
             throw VMError.shouldNotReachHere("Unsupported OS");

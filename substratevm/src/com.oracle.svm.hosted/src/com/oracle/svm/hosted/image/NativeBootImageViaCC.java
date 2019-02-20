@@ -114,7 +114,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                     throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
-                    if (Platform.includedIn(Platform.DARWIN.class)) {
+                    if (Platform.includedIn(Platform.DARWIN_AND_JNI.class)) {
                         cmd.add("-undefined");
                         cmd.add("dynamic_lookup");
                     }
@@ -212,6 +212,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
             inv.addLibPath(libraryPath);
         }
+
         for (String rPath : OptionUtils.flatten(",", SubstrateOptions.LinkerRPath.getValue())) {
             inv.addRPath(rPath);
         }

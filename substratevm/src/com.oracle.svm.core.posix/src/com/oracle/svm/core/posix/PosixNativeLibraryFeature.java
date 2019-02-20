@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,11 +34,12 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 
 @AutomaticFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
 class PosixNativeLibraryFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -54,6 +55,18 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
 
     @Override
     public boolean initializeBuiltinLibraries() {
+        if (Platform.includedIn(Platform.LINUX_JNI.class) ||
+                        Platform.includedIn(Platform.DARWIN_JNI.class)) {
+            if (!PosixJavaIOSubstitutions.initIDs()) {
+                return false;
+            }
+            if (!PosixJavaLangSubstitutions.initIDs()) {
+                return false;
+            }
+            if (!PosixJavaNetSubstitutions.initIDs()) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -69,16 +82,6 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
         }
     }
 
-    @Override
-    public boolean isBuiltinLibrary(String name) {
-        return false;
-    }
-
-    @Override
-    public boolean isBuiltinPkgNative(String name) {
-        return false;
-    }
-
     class PosixNativeLibrary implements NativeLibrary {
 
         private final String canonicalIdentifier;
@@ -86,6 +89,13 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
         private PointerBase dlhandle = WordFactory.nullPointer();
 
         PosixNativeLibrary(String canonicalIdentifier, boolean builtin) {
+            // Make sure the jvm.lib is available for linking
+            // Need a better place to put this.
+            if (Platform.includedIn(Platform.LINUX_JNI.class) ||
+                            Platform.includedIn(Platform.DARWIN_JNI.class)) {
+                Jvm.initialize();
+            }
+
             this.canonicalIdentifier = canonicalIdentifier;
             this.builtin = builtin;
         }

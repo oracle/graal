@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime.MachTimebaseInfo;
 
-@Platforms(Platform.DARWIN.class)
+@Platforms(Platform.DARWIN_AND_JNI.class)
 @TargetClass(java.lang.System.class)
 final class Target_java_lang_System {
 
@@ -86,7 +86,7 @@ final class Target_java_lang_System {
 }
 
 /** Additional static-like fields for {@link Target_java_lang_System}. */
-@Platforms(Platform.DARWIN.class)
+@Platforms(Platform.DARWIN_AND_JNI.class)
 final class Util_java_lang_System {
     boolean timeBaseValid = false;
     boolean fastTime = false;
@@ -97,7 +97,7 @@ final class Util_java_lang_System {
     }
 }
 
-@Platforms(Platform.DARWIN.class)
+@Platforms(Platform.DARWIN_AND_JNI.class)
 @AutomaticFeature
 class DarwinSubsitutionsFeature implements Feature {
 

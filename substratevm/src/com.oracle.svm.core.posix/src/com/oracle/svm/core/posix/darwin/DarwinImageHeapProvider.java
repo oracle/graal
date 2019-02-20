@@ -50,7 +50,7 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
-@Platforms(Platform.DARWIN.class)
+@Platforms(Platform.DARWIN_AND_JNI.class)
 class DarwinImageHeapProviderFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
