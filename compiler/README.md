@@ -113,7 +113,7 @@ The advantage of this mode is that Graal can be debugged with a Java debugger.
 
 However, it has some disadvantages. Firstly, since Graal uses the object heap, it can
 reduce application object locality and increase GC pause times. Additionally, it can
-complicate fine tuning options such as `-Xmx` and `Xms` which now need to take the
+complicate fine tuning options such as `-Xmx` and `-Xms` which now need to take the
 heap usage of Graal needs to be taken into account. Secondly, Graal will initially be executed
 in the interpreter and only get faster over time as its hot methods are JIT
 compiled. This is mitigated to some degree by forcing Graal (and JVMCI)
@@ -125,25 +125,65 @@ Graal uses memory separate from the HotSpot heap and it runs compiled
 from the start. That is, it has execution properties similar to other native HotSpot
 compilers such as C1 and C2.
 
-To build libgraal, you need to use the `native-image` tool in the `substratevm` suite.
+To build a GraalVM image with libgraal:
 
 ```
-cd graal/substratevm
-mx build
-mx buildlibgraal
+cd graal/vm
+mx --env libgraal build
 ```
+The newly built GraalVM image is available at:
+```
+mx --env libgraal graalvm-home
+```
+or following this symlink:
+```
+./latest_graalvm_home
+```
+For more information about building GraalVM images, see the [README file of the vm suite](../vm/README.md).
 
-This will produce a shared library in the current working directory whose name is
-compliant with the shared library naming conventions for the platform;
-`libjvmcicompiler.dylib` (macOS), `libjvmcicompiler.so` (Linux, Solaris, etc), `graal.dll` (Windows).
+Without leaving the `graal/vm` directory, you can now run libgraal in four ways:
 
-To use this library, copy it to the same directory as `libjava.dylib`/`libjava.so`/`java.dll`
-in your JVMCI JDK8 installation and use the options `-XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary`. Alternatively,
-you can directly specify the path to the library as the value to `-XX:JVMCILibPath=`.
-For example:
-```
-mx vm -XX:JVMCILibPath=/path/to/libjvmcicompiler.dylib -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
-```
+1. using the GraalVM image that you just built:
+
+    ```
+    ./latest_graalvm_home/bin/java -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+    ```
+
+2. copying libgraal to your JVMCI JDK8 installation:
+    - on linux:
+        ```
+        cp ./latest_graalvm_home/jre/lib/amd64/libjvmcicompiler.so $JAVA_HOME/jre/lib/amd64/
+        ```
+    - on macOS:
+        ```
+        cp ./latest_graalvm_home/jre/lib/libjvmcicompiler.dylib $JAVA_HOME/jre/lib/
+        ```
+
+    then:
+     ```
+     $JAVA_HOME/bin/java -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+     ```
+
+3. specifying the path to the library as the value to `-XX:JVMCILibPath=`:
+    - on linux:
+        ```
+        $JAVA_HOME/bin/java -XX:JVMCILibPath=latest_graalvm_home/jre/lib/amd64 -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+        ```
+    - on macOS:
+        ```
+        $JAVA_HOME/bin/java -XX:JVMCILibPath=latest_graalvm_home/jre/lib -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+        ```
+
+4. using `mx`:
+    - on linux:
+        ```
+        mx -p ../compiler vm -XX:JVMCILibPath=latest_graalvm_home/jre/lib/amd64 -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+        ```
+    - on macOS:
+        ```
+        mx -p ../compiler vm -XX:JVMCILibPath=latest_graalvm_home/jre/lib -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+        ```
+
 
 ## Publications and Presentations
 

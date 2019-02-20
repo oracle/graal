@@ -43,6 +43,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.net.URL;
+import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.IdentityHashMap;
@@ -76,6 +77,7 @@ import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -254,7 +256,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
 
-    private static java.security.ProtectionDomain allPermDomain;
+    private static final LazyFinalReference<java.security.ProtectionDomain> allPermDomain = new LazyFinalReference<>(() -> {
+        java.security.Permissions perms = new java.security.Permissions();
+        perms.add(SecurityConstants.ALL_PERMISSION);
+        return new java.security.ProtectionDomain(null, perms);
+    });
+
+    private static final LazyFinalReference<Target_java_lang_Module> singleModule = new LazyFinalReference<>(Target_java_lang_Module::new);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
@@ -796,6 +804,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         final Constructor<?> nullaryConstructor;
         final Field[] declaredPublicFields;
         final Method[] declaredPublicMethods;
+        final Class<?>[] declaredClasses;
+        final Class<?>[] publicClasses;
 
         /**
          * The result of {@link Class#getEnclosingMethod()} or
@@ -804,7 +814,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         final Executable enclosingMethodOrConstructor;
 
         public ReflectionData(Field[] declaredFields, Field[] publicFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
-                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Executable enclosingMethodOrConstructor) {
+                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods,
+                        Class<?>[] declaredClasses, Class<?>[] publicClasses,
+                        Executable enclosingMethodOrConstructor) {
             this.declaredFields = declaredFields;
             this.publicFields = publicFields;
             this.declaredMethods = declaredMethods;
@@ -814,6 +826,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             this.nullaryConstructor = nullaryConstructor;
             this.declaredPublicFields = declaredPublicFields;
             this.declaredPublicMethods = declaredPublicMethods;
+            this.declaredClasses = declaredClasses;
+            this.publicClasses = publicClasses;
             this.enclosingMethodOrConstructor = enclosingMethodOrConstructor;
         }
     }
@@ -823,7 +837,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     private static final ReflectionData NO_REFLECTION_DATA = new ReflectionData(new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0], null,
-                    new Field[0], new Method[0], null);
+                    new Field[0], new Method[0], new Class<?>[0], new Class<?>[0], null);
 
     private ReflectionData rd = NO_REFLECTION_DATA;
 
@@ -850,11 +864,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private native Constructor<?> getConstructor(Class<?>... parameterTypes);
 
-    @KeepOriginal
-    private native Class<?>[] getDeclaredClasses();
+    @Substitute
+    private Class<?>[] getDeclaredClasses() {
+        return rd.declaredClasses;
+    }
 
-    @KeepOriginal
-    public native Class<?>[] getClasses();
+    @Substitute
+    private Class<?>[] getClasses() {
+        return rd.publicClasses;
+    }
 
     @KeepOriginal
     private native Field[] getDeclaredFields();
@@ -1059,13 +1077,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    public Object getProtectionDomain() {
-        if (allPermDomain == null) {
-            java.security.Permissions perms = new java.security.Permissions();
-            perms.add(SecurityConstants.ALL_PERMISSION);
-            allPermDomain = new java.security.ProtectionDomain(null, perms);
-        }
-        return allPermDomain;
+    public ProtectionDomain getProtectionDomain() {
+        return allPermDomain.get();
     }
 
     @Substitute
@@ -1076,7 +1089,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public Target_java_lang_Module getModule() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getModule()");
+        return singleModule.get();
     }
 
     @Substitute //

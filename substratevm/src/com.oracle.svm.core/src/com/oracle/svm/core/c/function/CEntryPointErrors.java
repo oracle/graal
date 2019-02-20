@@ -72,6 +72,9 @@ public final class CEntryPointErrors {
     @Description("Locating the image file failed.") //
     public static final int LOCATE_IMAGE_FAILED = 6;
 
+    @Description("Locating the image file failed.") //
+    public static final int LOCATE_IMAGE_IDENTITY_MISMATCH = 601;
+
     @Description("Opening the located image file failed.") //
     public static final int OPEN_IMAGE_FAILED = 7;
 

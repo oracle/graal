@@ -76,7 +76,7 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     static final String Option3_HELP = "Option2_HELP";
     static final boolean Option3_DEPRECATED = true;
-    static final OptionCategory Option3_CATEGORY = OptionCategory.DEBUG;
+    static final OptionCategory Option3_CATEGORY = OptionCategory.INTERNAL;
     static final String Option3_NAME = EngineAPITestLanguage.ID + ".Option3";
     static final String Option3_DEFAULT = EngineAPITestLanguage.ID + "Option3_Default";
 
@@ -86,7 +86,7 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
     @Option(category = OptionCategory.EXPERT, name = "", help = Option2_HELP, deprecated = Option2_DEPRECATED) //
     static final OptionKey<String> Option2 = new OptionKey<>(Option2_DEFAULT);
 
-    @Option(category = OptionCategory.DEBUG, help = Option3_HELP, deprecated = Option3_DEPRECATED) //
+    @Option(category = OptionCategory.INTERNAL, help = Option3_HELP, deprecated = Option3_DEPRECATED) //
     static final OptionKey<String> Option3 = new OptionKey<>(Option3_DEFAULT);
 
     static class LanguageContext {

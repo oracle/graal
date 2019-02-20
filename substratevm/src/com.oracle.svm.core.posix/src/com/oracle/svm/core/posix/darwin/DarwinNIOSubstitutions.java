@@ -40,6 +40,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Time;
@@ -154,7 +155,7 @@ public final class DarwinNIOSubstitutions {
             // 066     if (kqfd < 0) {
             if (kqfd < 0) {
                 // 067         JNU_ThrowIOExceptionWithLastError(env, "kqueue failed");
-                throw new IOException("kqueue failed");
+                throw PosixUtils.newIOExceptionWithLastError("kqueue failed");
             }
             // 069     return kqfd;
             return kqfd;
@@ -182,10 +183,8 @@ public final class DarwinNIOSubstitutions {
             DarwinEvent.EV_SET(changes.addressOf(0), WordFactory.unsigned(fd), (short) filter, (short) flags, 0, WordFactory.signed(0), WordFactory.nullPointer());
             // 082     RESTARTABLE(kevent(kqfd, &changes[0], 1, NULL, 0, &timeout), res);
             do {
-                do {
-                    res = DarwinEvent.kevent(kqfd, changes, 1, WordFactory.nullPointer(), 0, timeout);
-                } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
-            } while (false);
+                res = DarwinEvent.kevent(kqfd, changes, 1, WordFactory.nullPointer(), 0, timeout);
+            } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
             // 083     return (res == -1) ? errno : 0;
             return (res == -1) ? Errno.errno() : 0;
         }
@@ -204,14 +203,12 @@ public final class DarwinNIOSubstitutions {
             int res;
             // 093     RESTARTABLE(kevent(kqfd, NULL, 0, events, nevents, NULL), res);
             do {
-                do {
-                    res = DarwinEvent.kevent(kqfd, WordFactory.nullPointer(), 0, events, nevents, WordFactory.nullPointer());
-                } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
-            } while (false);
+                res = DarwinEvent.kevent(kqfd, WordFactory.nullPointer(), 0, events, nevents, WordFactory.nullPointer());
+            } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
             // 094     if (res < 0) {
             if (res < 0) {
                 // 095         JNU_ThrowIOExceptionWithLastError(env, "kqueue failed");
-                throw new IOException("kqueue failed");
+                throw PosixUtils.newIOExceptionWithLastError("kqueue failed");
             }
             // 097     return res;
             return res;
@@ -236,7 +233,7 @@ public final class DarwinNIOSubstitutions {
             // 101     if (kq < 0) {
             if (kq < 0) {
                 // 102         JNU_ThrowIOExceptionWithLastError(env, "KQueueArrayWrapper: kqueue() failed");
-                throw new IOException("KQueueArrayWrapper: kqueue() failed");
+                throw PosixUtils.newIOExceptionWithLastError("KQueueArrayWrapper: kqueue() failed");
             }
             // 104     return kq;
             return kq;
@@ -327,7 +324,7 @@ public final class DarwinNIOSubstitutions {
 
                 } else {
                     // 155             JNU_ThrowIOExceptionWithLastError(env, "KQueueArrayWrapper: kqueue failed");
-                    throw new IOException("KQueueArrayWrapper: kqueue failed");
+                    throw PosixUtils.newIOExceptionWithLastError("KQueueArrayWrapper: kqueue failed");
                 }
             }
             // 159     return result;
@@ -345,7 +342,7 @@ public final class DarwinNIOSubstitutions {
             // 167     if (1 != write(fd, &c, 1)) {
             if (1 != (int) Unistd.write(fd, cPointer, WordFactory.unsigned(1)).rawValue()) {
                 // 168         JNU_ThrowIOExceptionWithLastError(env, "KQueueArrayWrapper: interrupt failed");
-                throw new IOException("KQueueArrayWrapper: interrupt failed");
+                throw PosixUtils.newIOExceptionWithLastError("KQueueArrayWrapper: interrupt failed");
             }
         }
     }
@@ -367,7 +364,7 @@ public final class DarwinNIOSubstitutions {
             // 041     if (socketpair(PF_UNIX, SOCK_STREAM, 0, sp) == -1) {
             if (Socket.socketpair(Socket.PF_UNIX(), Socket.SOCK_STREAM(), 0, sp) == -1) {
                 // 042         JNU_ThrowIOExceptionWithLastError(env, "socketpair failed");
-                throw new IOException("socketpair failed");
+                throw PosixUtils.newIOExceptionWithLastError("socketpair failed");
             } else {
                 // 044         jint res[2];
                 // 045         res[0] = (jint)sp[0];
@@ -391,14 +388,12 @@ public final class DarwinNIOSubstitutions {
             buf.write(0, 1);
             // 056     RESTARTABLE(write(fd, buf, 1), res);
             do {
-                do {
-                    res = (int) Unistd.write(fd, buf, WordFactory.unsigned(1)).rawValue();
-                } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
-            } while (false);
+                res = (int) Unistd.write(fd, buf, WordFactory.unsigned(1)).rawValue();
+            } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
             // 057     if (res < 0) {
             if (res < 0) {
                 // 058         JNU_ThrowIOExceptionWithLastError(env, "write failed");
-                throw new IOException("write failed");
+                throw PosixUtils.newIOExceptionWithLastError("write failed");
             }
         }
 
@@ -413,14 +408,12 @@ public final class DarwinNIOSubstitutions {
             CIntPointer buf = StackValue.get(1, CIntPointer.class);
             // 066     RESTARTABLE(read(fd, buf, 1), res);
             do {
-                do {
-                    res = (int) Unistd.read(fd, buf, WordFactory.unsigned(1)).rawValue();
-                } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
-            } while (false);
+                res = (int) Unistd.read(fd, buf, WordFactory.unsigned(1)).rawValue();
+            } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
             // 067     if (res < 0) {
             if (res < 0) {
                 // 068         JNU_ThrowIOExceptionWithLastError(env, "drain1 failed");
-                throw new IOException("drain1 failed");
+                throw PosixUtils.newIOExceptionWithLastError("drain1 failed");
             }
         }
 
@@ -433,10 +426,8 @@ public final class DarwinNIOSubstitutions {
             int res;
             // 075     RESTARTABLE(close(fd), res);
             do {
-                do {
-                    res = Unistd.close(fd);
-                } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
-            } while (false);
+                res = Unistd.close(fd);
+            } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
         }
     }
     /* } @formatter:on */

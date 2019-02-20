@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -140,11 +140,12 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 case EXECUTABLE:
                 case STATIC_EXECUTABLE:
                     // cmd.add("/MT");
-                    // Must use /MD in order to link with JDK native libraries build that way
+                    // Must use /MD in order to link with JDK native libraries built that way
                     cmd.add("/MD");
                     break;
                 case SHARED_LIBRARY:
                     cmd.add("/MD");
+                    cmd.add("/LD");
                     break;
                 default:
                     VMError.shouldNotReachHere();
@@ -155,6 +156,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         public List<String> getCommand() {
             ArrayList<String> cmd = new ArrayList<>();
             cmd.add(compilerCommand);
+
+            setOutputKind(cmd);
 
             // Add debugging info
             cmd.add("/Zi");

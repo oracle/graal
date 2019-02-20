@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -118,11 +118,11 @@ public final class SulongEngineOption {
         options.add(OptionDescriptor.newBuilder(NATIVE_CALL_STATS, NATIVE_CALL_STATS_NAME).help(NATIVE_CALL_STATS_INFO).category(OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(PRINT_LIFE_TIME_ANALYSIS_STATS, PRINT_LIFE_TIME_ANALYSIS_STATS_NAME).help(PRINT_LIFE_TIME_ANALYSIS_STATS_INFO).category(OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).help(PARSE_ONLY_INFO).category(OptionCategory.EXPERT).build());
-        options.add(OptionDescriptor.newBuilder(ENABLE_LVI, ENABLE_LVI_NAME).help(ENABLE_LVI_INFO).category(OptionCategory.DEBUG).build());
+        options.add(OptionDescriptor.newBuilder(ENABLE_LVI, ENABLE_LVI_NAME).help(ENABLE_LVI_INFO).category(OptionCategory.INTERNAL).build());
         options.add(OptionDescriptor.newBuilder(LAZY_PARSING, LAZY_PARSING_NAME).help(LAZY_PARSING_INFO).category(OptionCategory.EXPERT).build());
-        options.add(OptionDescriptor.newBuilder(LL_DEBUG, LL_DEBUG_NAME).help(LL_DEBUG_INFO).category(OptionCategory.DEBUG).build());
-        options.add(OptionDescriptor.newBuilder(LL_DEBUG_SOURCES, LL_DEBUG_SOURCES_NAME).help(LL_DEBUG_SOURCES_INFO).category(OptionCategory.DEBUG).build());
-        options.add(OptionDescriptor.newBuilder(STACKTRACE_ON_ABORT, STACKTRACE_ON_ABORT_NAME).help(STACKTRACE_ON_ABORT_INFO).category(OptionCategory.DEBUG).build());
+        options.add(OptionDescriptor.newBuilder(LL_DEBUG, LL_DEBUG_NAME).help(LL_DEBUG_INFO).category(OptionCategory.INTERNAL).build());
+        options.add(OptionDescriptor.newBuilder(LL_DEBUG_SOURCES, LL_DEBUG_SOURCES_NAME).help(LL_DEBUG_SOURCES_INFO).category(OptionCategory.INTERNAL).build());
+        options.add(OptionDescriptor.newBuilder(STACKTRACE_ON_ABORT, STACKTRACE_ON_ABORT_NAME).help(STACKTRACE_ON_ABORT_INFO).category(OptionCategory.INTERNAL).build());
         return options;
     }
 
@@ -135,7 +135,7 @@ public final class SulongEngineOption {
     }
 
     public static boolean isTrue(String option) {
-        return "true".equals(option.toLowerCase()) || "stdout".equals(option.toLowerCase()) || "stderr".equals(option.toLowerCase());
+        return "true".equalsIgnoreCase(option) || "stdout".equalsIgnoreCase(option) || "stderr".equalsIgnoreCase(option);
     }
 
     public static List<String> getPolyglotOptionSearchPaths(TruffleLanguage.Env env) {

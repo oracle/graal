@@ -32,6 +32,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -49,13 +50,22 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 
 public class HostedConfiguration {
 
+    private ClassInitializationSupport classInitializationSupport;
+
+    public HostedConfiguration(ClassInitializationSupport classInitializationSupport) {
+        this.classInitializationSupport = classInitializationSupport;
+    }
+
     public static HostedConfiguration instance() {
         return ImageSingletons.lookup(HostedConfiguration.class);
     }
 
-    public static void setDefaultIfEmpty() {
+    static void setDefaultIfEmpty(FeatureImpl.AfterRegistrationAccessImpl access) {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
-            ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration());
+            ClassInitializationSupport classInitializationSupport = new ClassInitializationSupportImpl(access.getMetaAccess());
+            ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
+            ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration(classInitializationSupport));
+            ClassInitializationFeature.processClassInitializationOptions(access, classInitializationSupport);
 
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
@@ -99,5 +109,9 @@ public class HostedConfiguration {
 
     public boolean isUsingAOTProfiles() {
         return false;
+    }
+
+    public ClassInitializationSupport getClassInitializationSupport() {
+        return classInitializationSupport;
     }
 }

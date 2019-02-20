@@ -411,6 +411,14 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertFalse(context.asValue(new Object()).isNull());
     }
 
+    @Test
+    public void testClassStaticMembers() {
+        Value stringClass = context.asValue(String.class);
+        Value stringStatic = stringClass.getMember("static");
+        assertEquals("concatenated", stringStatic.getMember("join").execute("cat", "con", "enated").asString());
+        assertEquals(String.class, stringStatic.getMember("class").asHostObject());
+    }
+
     @FunctionalInterface
     public interface FunctionalWithDefaults {
         Object call(Object... args);

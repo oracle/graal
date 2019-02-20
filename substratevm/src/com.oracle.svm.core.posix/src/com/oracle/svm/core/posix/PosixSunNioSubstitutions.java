@@ -49,6 +49,10 @@ public final class PosixSunNioSubstitutions {
     @TargetClass(className = "sun.nio.ch.PollArrayWrapper", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_ch_PollArrayWrapper {
 
+        /* The translation of RESTARTABLE is to expand the body without the wrapper
+         *     do { .... } while (0)
+         * whose purpose is to make the macro expansion into a single C statement.
+         */
         // 035 #define RESTARTABLE(_cmd, _result) do { \
         // 036   do { \
         // 037     _result = _cmd; \
@@ -74,16 +78,9 @@ public final class PosixSunNioSubstitutions {
             // 081     if (timeout <= 0) {           /* Indefinite or no wait */
             if (timeout <= 0) {
                 // 082         RESTARTABLE (poll(a, numfds, timeout), err);
-                // 035 #define RESTARTABLE(_cmd, _result) do { \
                 do {
-                // 036   do { \
-                    do {
-                // 037     _result = _cmd; \
-                        err = Poll.poll(a, numfds, (int) timeout);
-                // 038   } while((_result == -1) && (errno == EINTR)); \
-                    } while ((err == -1) && (Errno.errno() == Errno.EINTR()));
-                // 039 } while(0)
-                } while (false);
+                    err = Poll.poll(a, numfds, (int) timeout);
+                } while ((err == -1) && (Errno.errno() == Errno.EINTR()));
             } else {                     /* Bounded wait; bounded restarts */
                 // 084         err = ipoll(a, numfds, timeout);
                 err = Util_sun_nio_ch_PollArrayWrapper.ipoll(a, numfds, (int) timeout);
@@ -92,7 +89,7 @@ public final class PosixSunNioSubstitutions {
             // 087     if (err < 0) {
             if (err < 0) {
                 // 088         JNU_ThrowIOExceptionWithLastError(env, "Poll failed");
-                throw new IOException("Poll failed");
+                throw PosixUtils.newIOExceptionWithLastError("Poll failed");
             }
             // 090     return (jint)err;
             return err;
@@ -111,7 +108,7 @@ public final class PosixSunNioSubstitutions {
             if (Unistd.write(fd, fakebuf, WordFactory.unsigned(1)).lessThan(0)) {
                 // 099          JNU_ThrowIOExceptionWithLastError(env,
                 // 100                                           "Write to interrupt fd failed");
-                throw new IOException("Write to interrupt fd failed");
+                throw PosixUtils.newIOExceptionWithLastError("Write to interrupt fd failed");
             }
         }
     }

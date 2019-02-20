@@ -71,6 +71,26 @@ poly_isolate poly_get_isolate(poly_thread thread);
  */
 poly_status poly_detach_thread(poly_thread thread);
 
+/**
+ * Using the context of the isolate thread from the first argument, detaches the
+ * threads in an array pointed to by the second argument, with the length of the
+ * array given in the third argument. All of the passed threads must be in the
+ * same isolate, including the first argument. None of the threads to detach may
+ * execute Java code at the time of the call or later without reattaching first,
+ * or their behavior will be entirely undefined. The current thread may be part of
+ * the array, however, using detach_thread() should be preferred for detaching only
+ * the current thread.
+ *
+ * @param thread current thread
+ * @param threads array of threads to detach
+ * @param length number of threads in the array
+ * @return poly_ok success, or poly_generic_failure on failure.
+ *
+ * @see graal_detach_threads
+ * @since 1.0
+ */
+poly_status poly_detach_threads(poly_thread thread, poly_thread* threads, int length);
+
 /*
  * Tears down the passed isolate, waiting for any attached threads to detach from
  * it, then discards the isolate's objects, threads, and any other state or context

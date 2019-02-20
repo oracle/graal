@@ -67,9 +67,8 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -96,7 +95,7 @@ class AutomaticSubstitutionFeature implements Feature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         DuringAnalysisAccessImpl accessImpl = (DuringAnalysisAccessImpl) access;
-        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = ImageSingletons.lookup(UnsafeAutomaticSubstitutionProcessor.class);
+        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = accessImpl.getHostVM().getAutomaticSubstitutionProcessor();
         automaticSubstitutions.processComputedValueFields(accessImpl);
     }
 
@@ -164,7 +163,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             Class<?> unsafeClass;
 
             try {
-                if (GraalServices.Java8OrEarlier) {
+                if (JavaVersionUtil.Java8OrEarlier) {
                     unsafeClass = Class.forName("sun.misc.Unsafe");
                 } else {
                     unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
@@ -178,7 +177,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             noCheckedExceptionsSet.add(unsafeObjectFieldOffsetFieldMethod);
             neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
 
-            if (!GraalServices.Java8OrEarlier) {
+            if (!JavaVersionUtil.Java8OrEarlier) {
                 /* JDK-9 introduced Unsafe.objectFieldOffset(Class, String). */
                 Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
                 unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
@@ -234,7 +233,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         Plugins plugins = new Plugins(new InvocationPlugins());
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
 
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, plugins.getInvocationPlugins(), false, false);
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), false, false);
 
         builderPhase = new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins));
 

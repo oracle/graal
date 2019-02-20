@@ -45,7 +45,7 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 
@@ -161,7 +161,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
 
     /** Unless the check should be ignored, check that I am running on JDK-8. */
     public static boolean isValidJavaVersion() {
-        return (Boolean.getBoolean("substratevm.IgnoreGraalVersionCheck") || GraalServices.Java8OrEarlier);
+        return (Boolean.getBoolean("substratevm.IgnoreGraalVersionCheck") || JavaVersionUtil.Java8OrEarlier);
     }
 
     private static void reportToolUserError(String msg) {
@@ -282,7 +282,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             compilationExecutor = Inflation.createExecutor(debug, maxConcurrentThreads);
             generator = new NativeImageGenerator(imageClassLoader, optionParser);
             generator.run(entryPoints, mainEntryPoint, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
-                            analysisExecutor, compilationExecutor, optionParser.getRuntimeOptionNames());
+                            compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames());
         } catch (InterruptImageBuilding e) {
             if (analysisExecutor != null) {
                 analysisExecutor.shutdownNow();

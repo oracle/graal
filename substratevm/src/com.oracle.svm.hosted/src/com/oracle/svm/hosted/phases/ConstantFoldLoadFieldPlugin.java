@@ -32,13 +32,19 @@ import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.hosted.ClassInitializationFeature;
+import com.oracle.svm.hosted.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
+
+    private ClassInitializationSupport classInitializationSupport;
+
+    public ConstantFoldLoadFieldPlugin(ClassInitializationSupport classInitializationSupport) {
+        this.classInitializationSupport = classInitializationSupport;
+    }
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
@@ -54,10 +60,11 @@ public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
         return tryConstantFold(b, staticField, null);
     }
 
-    private static boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
+    private boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
         ConstantNode result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, receiver, b.getOptions());
 
         if (result != null) {
+            assert result.asJavaConstant() != null;
             JavaConstant value = result.asJavaConstant();
             if (b.getMetaAccess() instanceof AnalysisMetaAccess && value.getJavaKind() == JavaKind.Object && value.isNonNull()) {
 
@@ -80,8 +87,7 @@ public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
                 }
                 sValue.setRoot(root);
             }
-
-            assert !ClassInitializationFeature.singleton().shouldInitializeAtRuntime(field.getDeclaringClass()) ||
+            assert !classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass()) ||
                             value.isDefaultForKind() : "Fields in classes that are marked for initialization at run time must not be constant folded, unless they are not written in the static initializer, i.e., have the default value";
 
             result = b.getGraph().unique(result);

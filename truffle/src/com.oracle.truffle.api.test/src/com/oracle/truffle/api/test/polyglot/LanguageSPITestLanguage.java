@@ -55,7 +55,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
 @TruffleLanguage.Registration(id = LanguageSPITestLanguage.ID, name = LanguageSPITestLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED)
-public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
+public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> implements LanguageSPITestLanguageService {
 
     static final String ID = "LanguageSPITest";
 
@@ -133,5 +133,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     protected boolean isObjectOfLanguage(Object object) {
         return false;
     }
+}
 
+interface LanguageSPITestLanguageService {
 }

@@ -36,10 +36,12 @@ import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -179,35 +181,43 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     }
 
     /** Returns the filter field flow corresponding to an unsafe accessed filed. */
-    public FieldFilterTypeFlow getInstanceFieldFilterFlow(BigBang bb, AnalysisField field) {
+    public FieldFilterTypeFlow getInstanceFieldFilterFlow(BigBang bb, AnalysisMethod context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed();
 
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
         return fieldTypeStore.filterFlow(bb);
     }
 
-    public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(BigBang bb, AnalysisField field) {
+    public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(BigBang bb, AnalysisMethod context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.hasUnsafeFrozenTypeState();
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
         return fieldTypeStore.unsafeWriteSinkFlow(bb);
     }
 
     /** Returns the instance field flow corresponding to a filed of the object's type. */
     public FieldTypeFlow getInstanceFieldFlow(BigBang bb, AnalysisField field, boolean isStore) {
+        return getInstanceFieldFlow(bb, null, field, isStore);
+    }
+
+    public FieldTypeFlow getInstanceFieldFlow(BigBang bb, AnalysisMethod context, AnalysisField field, boolean isStore) {
         assert !Modifier.isStatic(field.getModifiers());
 
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
 
         return isStore ? fieldTypeStore.writeFlow() : fieldTypeStore.readFlow();
     }
 
-    protected final FieldTypeStore getInstanceFieldTypeStore(BigBang bb, AnalysisField field) {
+    final FieldTypeStore getInstanceFieldTypeStore(BigBang bb, AnalysisMethod context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers());
         assert bb != null && !bb.getUniverse().sealed();
 
         if (instanceFieldsTypeStore == null) {
             AnalysisField[] fields = type.getInstanceFields(true);
             INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(fields.length));
+        }
+
+        if (field.getPosition() < 0 || field.getPosition() >= instanceFieldsTypeStore.length()) {
+            throw AnalysisError.fieldNotPresentError(context, field, type);
         }
 
         FieldTypeStore fieldStore = instanceFieldsTypeStore.get(field.getPosition());

@@ -28,7 +28,6 @@ import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COM
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.nodes.FrameState;
@@ -41,17 +40,13 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
-import org.junit.Assume;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -61,22 +56,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public abstract class PartialEvaluationTest extends GraalCompilerTest {
-    protected final TruffleCompilerImpl truffleCompiler;
+public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     private final PhaseSuite<HighTierContext> suite;
 
     public PartialEvaluationTest() {
-        beforeInitialization();
-        TruffleCompiler compiler = GraalTruffleRuntime.getRuntime().newTruffleCompiler();
-        Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", compiler instanceof TruffleCompilerImpl);
-        this.truffleCompiler = (TruffleCompilerImpl) compiler;
         this.suite = truffleCompiler.createGraphBuilderSuite();
-    }
-
-    /**
-     * Executed before initialization. This hook can be used to override specific flags.
-     */
-    protected void beforeInitialization() {
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root) {

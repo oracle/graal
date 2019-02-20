@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -64,7 +65,7 @@ public class ReferenceMapDecoder {
              */
             int shift;
             long b;
-            // Size of gap in bytes
+            // Size of gap in bytes (negative means the next pointer has derived pointers)
             long gap = 0;
             shift = 0;
             do {
@@ -73,6 +74,9 @@ public class ReferenceMapDecoder {
                 shift += 7;
                 idx++;
             } while ((b & 0x80) != 0);
+            if ((b & 0x40) != 0 && shift < 64) {
+                gap |= -1L << shift;
+            }
             // Number of pointers (sign distinguishes between compression and uncompression)
             long count = 0;
             shift = 0;
@@ -90,16 +94,71 @@ public class ReferenceMapDecoder {
                 break; // reached end of table
             }
 
+            boolean derived = false;
+            if (gap < 0) {
+                /* Derived pointer run */
+                gap = -(gap + 1);
+                derived = true;
+            }
+
             objRef = objRef.add(WordFactory.unsigned(gap));
             boolean compressed = (count < 0);
             UnsignedWord refSize = compressed ? compressedSize : uncompressedSize;
             count = (count < 0) ? -count : count;
-            for (long c = 0; c < count; c += 1) {
-                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, compressed);
+
+            if (derived) {
+                /*
+                 * To correctly relocate a derived pointer, we need to know the value pointed to by
+                 * the base reference and the derived reference before either one is relocated. This
+                 * allows us to compute the inner offset, i.e. how much into the actual object does
+                 * the derived reference point to.
+                 */
+                Pointer basePtr = baseAddress.isNull() ? objRef : objRef.readWord(0);
+
+                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
                 if (!visitResult) {
                     return false;
                 }
+
+                /* count in this case is the number of derived references for this base pointer */
+                for (long d = 0; d < count; d++) {
+                    /* Offset in words from the base reference to the derived reference */
+                    long refOffset = 0;
+                    shift = 0;
+                    do {
+                        b = ByteArrayReader.getU1(referenceMapEncoding, idx);
+                        refOffset |= (b & 0x7f) << shift;
+                        shift += 7;
+                        idx++;
+                    } while ((b & 0x80) != 0);
+                    if ((b & 0x40) != 0 && shift < 64) {
+                        refOffset |= -1L << shift;
+                    }
+
+                    Pointer derivedRef;
+                    if (refOffset >= 0) {
+                        derivedRef = objRef.add(WordFactory.unsigned(refOffset).multiply(refSize));
+                    } else {
+                        derivedRef = objRef.subtract(WordFactory.unsigned(-refOffset).multiply(refSize));
+                    }
+
+                    Pointer derivedPtr = baseAddress.isNull() ? derivedRef : derivedRef.readWord(0);
+                    int innerOffset = NumUtil.safeToInt(derivedPtr.subtract(basePtr).rawValue());
+
+                    final boolean derivedVisitResult = visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed);
+                    if (!derivedVisitResult) {
+                        return false;
+                    }
+                }
                 objRef = objRef.add(refSize);
+            } else {
+                for (long c = 0; c < count; c += 1) {
+                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
+                    if (!visitResult) {
+                        return false;
+                    }
+                    objRef = objRef.add(refSize);
+                }
             }
         }
         return true;

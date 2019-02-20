@@ -584,8 +584,8 @@ class LibffiBuilderProject(mx.AbstractNativeProject):
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
                                                            mx.join(self.out_dir, 'libffi-3.2.1'),
-                                                           None,
-                                                           'static_lib',
+                                                           theLicense=None,
+                                                           kind='static_lib',
                                                            cflags=['-MD', '-O2'])
             self.delegate._source = dict(tree=['include',
                                                'src',

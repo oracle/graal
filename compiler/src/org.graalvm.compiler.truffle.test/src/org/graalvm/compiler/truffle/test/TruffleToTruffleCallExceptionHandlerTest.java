@@ -24,23 +24,14 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
-
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
-import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -50,18 +41,15 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
-import jdk.vm.ci.meta.SpeculationLog;
-
 /**
  * A simple test class verifying that a truffle-2-truffle call never results in the compilation of
  * an exception handler edge if the exception was not seen in the interpreter.
  */
-public class TruffleToTruffleCallExceptionHandlerTest {
+public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationTest {
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-    private static final TruffleCompilerImpl truffleCompiler = (TruffleCompilerImpl) runtime.newTruffleCompiler();
 
-    private final OptimizedCallTarget calleeNoException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+    private final OptimizedCallTarget calleeNoException = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(new RootNode(null) {
         @Override
         public Object execute(VirtualFrame frame) {
             return null;
@@ -123,22 +111,6 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         }
     });
 
-    @SuppressWarnings("try")
-    private static StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, AllowAssumptions allowAssumptions) {
-        compilable.call(arguments);
-        compilable.call(arguments);
-        compilable.call(arguments);
-        OptionValues options = TruffleCompilerOptions.getOptions();
-        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
-        try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
-            SpeculationLog speculationLog = compilable.getSpeculationLog();
-            return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, INVALID_COMPILATION_ID, speculationLog, null);
-        } catch (Throwable e) {
-            throw debug.handle(e);
-        }
-    }
-
     @Test
     @SuppressWarnings("try")
     public void testNeverSeenExceptionHandlerSkipped() {
@@ -146,7 +118,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
          * We disable truffle AST inlining to not inline the callee
          */
         try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TruffleFunctionInlining, false)) {
-            StructuredGraph graph = partialEval(callerNoException, new Object[0], AllowAssumptions.YES);
+            StructuredGraph graph = partialEval(callerNoException, new Object[0], AllowAssumptions.YES, truffleCompiler.createCompilationIdentifier(callerNoException));
             Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
         }
     }
@@ -170,7 +142,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
          * We disable truffle AST inlining to not inline the callee
          */
         try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TruffleFunctionInlining, false)) {
-            StructuredGraph graph = partialEval(callerWithException, new Object[0], AllowAssumptions.YES);
+            StructuredGraph graph = partialEval(callerWithException, new Object[0], AllowAssumptions.YES, truffleCompiler.createCompilationIdentifier(callerWithException));
             Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
         }
     }

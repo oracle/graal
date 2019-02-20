@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.196.3",
+    "mxversion": "5.210.2",
     "name": "substratevm",
     "version" : "1.0.0-rc13",
     "release" : False,
@@ -84,7 +84,7 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.jdk9.posix": {
+        "com.oracle.svm.core.posix.jdk9": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -164,7 +164,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.core.windows": {
@@ -181,7 +181,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.graal.pointsto": {
@@ -299,7 +299,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.driver": {
@@ -321,7 +321,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.junit": {
@@ -337,7 +337,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.test": {
@@ -353,7 +353,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.reflect": {
@@ -368,7 +368,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.tutorial" : {
@@ -383,7 +383,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets" : "SVM",
-            "findbugs" : "false",
+            "spotbugs" : "false",
         },
 
         "com.oracle.objectfile" : {
@@ -394,7 +394,7 @@ suite = {
             "javaCompliance" : "8+",
             "annotationProcessors" : ["compiler:GRAAL_OPTIONS_PROCESSOR"],
             "workingSets" : "SVM",
-            "findbugs" : "false",
+            "spotbugs" : "false",
         },
 
         "com.oracle.svm.graal": {
@@ -501,7 +501,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.polyglot": {
@@ -518,7 +518,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "org.graalvm.polyglot.nativeapi" : {
@@ -543,7 +543,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets" : "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "org.graalvm.polyglot.nativeapi.native" : {
@@ -612,7 +612,7 @@ suite = {
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",
-                "com.oracle.svm.core.jdk9.posix",
+                "com.oracle.svm.core.posix.jdk9",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
             ],

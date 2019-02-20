@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.206.0",
+  "mxversion" : "5.210.2",
   "name" : "truffle",
   "version" : "1.0.0-rc13",
   "release" : False,
@@ -198,7 +198,7 @@ suite = {
       "imports" : ["jdk.internal.loader"],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
-      "findbugsIgnoresGenerated" : True,
+      "spotbugsIgnoresGenerated" : True,
       "testProject" : True,
       "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",

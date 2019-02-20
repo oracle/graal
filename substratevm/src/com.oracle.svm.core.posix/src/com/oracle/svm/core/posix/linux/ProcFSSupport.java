@@ -24,16 +24,12 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import static com.oracle.svm.core.posix.headers.Errno.errno;
-import static com.oracle.svm.core.posix.headers.Unistd.NoTransitions.read;
-
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.PosixUtils;
 
 class ProcFSSupport {
     private static final int ST_ADDR_START = 1;
@@ -45,16 +41,6 @@ class ProcFSSupport {
     private static final int ST_SPACE = 7;
     private static final int ST_FILENAME = 8;
     private static final int ST_SKIP = 9;
-
-    /** The Linux 64-bit makedev() implementation. This is a macro in C, so we cannot call it. */
-    @Uninterruptible(reason = "Called during isolate initialization.")
-    private static long makedev(int major, int minor) {
-        long dev = (major & 0x00000fffL) << 8;
-        dev |= (major & 0xfffff000L) << 32;
-        dev |= (minor & 0x000000ffL);
-        dev |= (minor & 0xffffff00L) << 12;
-        return dev;
-    }
 
     /**
      * Find a mapping in /proc/self/maps format which encloses the specified address range. The
@@ -71,7 +57,6 @@ class ProcFSSupport {
      * @param endAddress the end address of the address range to find within a mapping
      * @param startAddrPtr the start address range for a found mapping
      * @param fileOffsetPtr the file offset of the found mapping in its backing file
-     * @param devPtr the device id of the matching mapping's backing file
      * @param inodePtr the inode of the matching mapping's backing file
      * @param needName whether the matching path name is required and should be returned in buffer
      * @return true if a mapping is found and no errors occurred, false otherwise.
@@ -79,7 +64,7 @@ class ProcFSSupport {
     @Uninterruptible(reason = "Called during isolate initialization.")
     @SuppressWarnings("fallthrough")
     static boolean findMapping(int fd, CCharPointer buffer, int bufferLen, WordBase beginAddress, WordBase endAddress, CLongPointer startAddrPtr,
-                    CLongPointer fileOffsetPtr, CLongPointer devPtr, CLongPointer inodePtr, boolean needName) {
+                    CLongPointer fileOffsetPtr, CLongPointer inodePtr, boolean needName) {
         int readOffset = 0;
         int endOffset = 0;
         int position = 0;
@@ -89,18 +74,12 @@ class ProcFSSupport {
         long start = 0;
         long end = 0;
         long fileOffset = 0;
-        int devToken = 0;
-        int devMajor = 0;
-        int devMinor = 0;
         long inode = 0;
         OUT: for (;;) {
             while (position == endOffset) { // fill buffer
-                int readBytes;
-                do {
-                    readBytes = (int) read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
-                } while (readBytes == -1 && errno() == Errno.EINTR());
-                if (readBytes == -1 || readBytes == 0) {
-                    return false; // read failure or EOF == not matched
+                int readBytes = PosixUtils.readBytes(fd, buffer, bufferLen, readOffset);
+                if (readBytes <= 0) {
+                    return false; // read failure or 0 == EOF -> not matched
                 }
                 position = readOffset;
                 endOffset = readOffset + readBytes;
@@ -140,7 +119,6 @@ class ProcFSSupport {
                 }
                 case ST_OFFSET: {
                     if (b == ' ') {
-                        devToken = 0;
                         state = ST_DEV;
                     } else if ('0' <= b && b <= '9') {
                         fileOffset = (fileOffset << 4) + (b - '0');
@@ -151,19 +129,11 @@ class ProcFSSupport {
                     }
                     break;
                 }
-                case ST_DEV: { // format is major:minor
+                case ST_DEV: {
                     if (b == ' ') {
-                        devMinor = devToken;
                         inode = 0;
                         state = ST_INODE;
-                    } else if (b == ':') {
-                        devMajor = devToken;
-                        devToken = 0;
-                    } else if ('0' <= b && b <= '9') {
-                        devToken = (devToken << 4) + (b - '0');
-                    } else if ('a' <= b && b <= 'f') {
-                        devToken = (devToken << 4) + (b - 'a' + 10);
-                    }
+                    } // ignore anything else
                     break;
                 }
                 case ST_INODE: {
@@ -217,9 +187,6 @@ class ProcFSSupport {
         }
         if (fileOffsetPtr.isNonNull()) {
             fileOffsetPtr.write(fileOffset);
-        }
-        if (devPtr.isNonNull()) {
-            devPtr.write(makedev(devMajor, devMinor));
         }
         if (inodePtr.isNonNull()) {
             inodePtr.write(inode);

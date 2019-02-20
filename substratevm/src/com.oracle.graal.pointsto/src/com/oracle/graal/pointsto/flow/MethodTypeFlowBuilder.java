@@ -174,7 +174,7 @@ public class MethodTypeFlowBuilder {
 
     @SuppressWarnings("try")
     private boolean parse() {
-        OptionValues options = bb.getOptions();
+        OptionValues options = bb.getUniverse().adjustCompilerOptions(bb.getOptions(), method);
         GraalJVMCICompiler compiler = (GraalJVMCICompiler) JVMCI.getRuntime().getCompiler();
         SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
         // Use the real SnippetReflectionProvider for dumping
@@ -197,7 +197,6 @@ public class MethodTypeFlowBuilder {
                 if (!method.hasBytecodes()) {
                     return false;
                 }
-
                 needParsing = true;
                 graph = new StructuredGraph.Builder(options, debug).method(method).build();
             }

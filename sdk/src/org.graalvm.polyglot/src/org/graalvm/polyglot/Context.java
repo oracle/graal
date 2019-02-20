@@ -478,6 +478,10 @@ public final class Context implements AutoCloseable {
      * provided as {@link Value#getMember(String) members}. Methods and fields are grouped by name,
      * so only one member is exposed for each name.
      * <p>
+     * {@link Class} objects have a member named {@code static} referring to the class's companion
+     * object containing the static methods of the class. Likewise, the companion object has a
+     * member named {@code class} that points back to the class object.
+     * <p>
      * When an argument value needs to be mapped to match a required Java method parameter type,
      * then the semantics of {@link Value#as(Class) host value mapping} is used. The result of the
      * mapping is equivalent of calling {@link Value#as(Class)} with the parameter type. Therefore,

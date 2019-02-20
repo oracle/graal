@@ -27,8 +27,6 @@ package com.oracle.svm.hosted.phases;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Arrays;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -38,7 +36,6 @@ import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -63,7 +60,6 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.LocationIdentity;
@@ -76,8 +72,6 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.CInterfaceError;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -92,10 +86,10 @@ import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointJavaCallStubMethod;
+import com.oracle.svm.hosted.code.CFunctionPointerCallStubSupport;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -137,10 +131,9 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         } else if (methodInfo instanceof ConstantInfo) {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
         } else if (method.getAnnotation(InvokeCFunctionPointer.class) != null) {
-            boolean needsTransition = (method.getAnnotation(InvokeCFunctionPointer.class).transition() != Transition.NO_TRANSITION);
-            return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.NativeCall, needsTransition);
+            return replaceCFunctionPointerInvoke(b, method, args);
         } else if (method.getAnnotation(InvokeJavaFunctionPointer.class) != null) {
-            return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.JavaCall, false);
+            return replaceJavaFunctionPointerInvoke(b, method, args);
         } else if (method.getAnnotation(CEntryPoint.class) != null) {
             AnalysisMethod aMethod = (AnalysisMethod) (method instanceof HostedMethod ? ((HostedMethod) method).getWrapped() : method);
             assert !(aMethod.getWrapped() instanceof CEntryPointJavaCallStubMethod) : "Call stub should never have a @CEntryPoint annotation";
@@ -501,29 +494,33 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return true;
     }
 
-    private boolean replaceFunctionPointerInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, CallingConvention.Type callType, boolean needsTransition) {
+    private boolean replaceCFunctionPointerInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        boolean hosted = method instanceof HostedMethod;
+        AnalysisMethod aMethod = (AnalysisMethod) (hosted ? ((HostedMethod) method).getWrapped() : method);
+        if (CFunctionPointerCallStubSupport.singleton().isStub(aMethod)) {
+            return false;
+        }
         if (!functionPointerType.isAssignableFrom(method.getDeclaringClass())) {
-            throw UserError.abort(new CInterfaceError("function pointer invocation method " + method.format("%H.%n(%p)") +
+            throw UserError.abort(new CInterfaceError("Function pointer invocation method " + method.format("%H.%n(%p)") +
+                            " must be in a type that extends " + CFunctionPointer.class.getSimpleName(), method).getMessage());
+        }
+        assert b.getInvokeKind() == InvokeKind.Interface;
+        ResolvedJavaMethod stub = CFunctionPointerCallStubSupport.singleton().getOrCreateStubForMethod(aMethod);
+        if (hosted) {
+            stub = ((HostedMetaAccess) b.getMetaAccess()).getUniverse().lookup(stub);
+        }
+        b.handleReplacedInvoke(InvokeKind.Static, stub, args, false);
+        return true;
+    }
+
+    private boolean replaceJavaFunctionPointerInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        if (!functionPointerType.isAssignableFrom(method.getDeclaringClass())) {
+            throw UserError.abort(new CInterfaceError("Function pointer invocation method " + method.format("%H.%n(%p)") +
                             " must be in a type that extends " + CFunctionPointer.class.getSimpleName(), method).getMessage());
         }
         assert b.getInvokeKind() == InvokeKind.Interface;
 
         JavaType[] parameterTypes = method.getSignature().toParameterTypes(null);
-        if (callType == SubstrateCallingConventionType.NativeCall) {
-            Predicate<JavaType> isValid = t -> t.getJavaKind().isPrimitive() || wordTypes.isWord(t);
-            UserError.guarantee(Stream.of(parameterTypes).allMatch(isValid) && isValid.test(method.getSignature().getReturnType(null)),
-                            "C function pointer invocation method must have only primitive types or word types for its parameters and return value: " + method.format("%H.%n(%p)"));
-            /*
-             * We currently do not support automatic conversions for @CEnum because it entails
-             * introducing additional invokes without real BCIs in a BytecodeParser context, which
-             * does not work too well.
-             */
-
-            if (needsTransition) {
-                b.append(new CFunctionPrologueNode());
-            }
-        }
-
         // We "discard" the receiver from the signature by pretending we are a static method
         assert args.length >= 1;
         ValueNode methodAddress = args[0];
@@ -536,26 +533,10 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         } else {
             returnStamp = b.getInvokeReturnStamp(null).getTrustedStamp();
         }
-
         CallTargetNode indirectCallTargetNode = b.add(new IndirectCallTargetNode(methodAddress, argsWithoutReceiver,
-                        StampPair.createSingle(returnStamp), parameterTypes, null, callType, InvokeKind.Static));
+                        StampPair.createSingle(returnStamp), parameterTypes, null, SubstrateCallingConventionType.JavaCall, InvokeKind.Static));
 
-        if (callType == SubstrateCallingConventionType.JavaCall) {
-            b.handleReplacedInvoke(indirectCallTargetNode, b.getInvokeReturnType().getJavaKind());
-        } else if (callType == SubstrateCallingConventionType.NativeCall) {
-            // Native code cannot throw exceptions, omit exception edge
-            InvokeNode invokeNode = new InvokeNode(indirectCallTargetNode, b.bci());
-            if (pushKind(method) != JavaKind.Void) {
-                b.addPush(pushKind(method), invokeNode);
-            } else {
-                b.add(invokeNode);
-            }
-            if (needsTransition) {
-                b.append(new CFunctionEpilogueNode());
-            }
-        } else {
-            throw shouldNotReachHere("Unsupported type of call: " + callType);
-        }
+        b.handleReplacedInvoke(indirectCallTargetNode, b.getInvokeReturnType().getJavaKind());
         return true;
     }
 

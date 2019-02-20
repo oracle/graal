@@ -43,6 +43,7 @@ import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
 import static org.graalvm.word.WordFactory.signed;
 import static org.graalvm.word.WordFactory.unsigned;
 
+import com.oracle.svm.core.posix.PosixUtils;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
@@ -71,6 +72,7 @@ import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Stat;
 import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 
@@ -80,8 +82,10 @@ import jdk.vm.ci.code.MemoryBarriers;
 @Platforms(Platform.LINUX.class)
 class LinuxImageHeapProviderFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ImageHeapProvider.class, new LinuxImageHeapProvider());
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
+            ImageSingletons.add(ImageHeapProvider.class, new LinuxImageHeapProvider());
+        }
     }
 }
 
@@ -101,6 +105,8 @@ class LinuxImageHeapProviderFeature implements Feature {
  */
 public class LinuxImageHeapProvider implements ImageHeapProvider {
     private static final CGlobalData<CCharPointer> PROC_SELF_MAPS = CGlobalDataFactory.createCString("/proc/self/maps");
+    private static final CGlobalData<CCharPointer> PROC_VERSION = CGlobalDataFactory.createCString("/proc/version");
+    private static final CGlobalData<CCharPointer> PROC_VERSION_WSL_SUBSTRING = CGlobalDataFactory.createCString("Microsoft");
 
     private static final SignedWord FIRST_ISOLATE_FD = signed(-2);
     private static final SignedWord UNASSIGNED_FD = signed(-1);
@@ -158,29 +164,50 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
              */
             int mapfd = open(PROC_SELF_MAPS.get(), Fcntl.O_RDONLY(), 0);
             if (mapfd == -1) {
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
             final CCharPointer buffer = malloc(WordFactory.unsigned(MAX_PATHLEN));
             final CLongPointer startAddr = StackValue.get(CLongPointer.class);
             final CLongPointer offset = StackValue.get(CLongPointer.class);
-            final CLongPointer dev = StackValue.get(CLongPointer.class);
             final CLongPointer inode = StackValue.get(CLongPointer.class);
-            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, dev, inode, true);
+            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, inode, true);
             close(mapfd);
             if (!found) {
                 free(buffer);
-                return CEntryPointErrors.MAP_HEAP_FAILED;
+                return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
             Stat.stat stat = StackValue.get(Stat.stat.class);
             int opened = open(buffer, Fcntl.O_RDONLY(), 0);
-            free(buffer);
             if (opened < 0) {
+                free(buffer);
                 return CEntryPointErrors.OPEN_IMAGE_FAILED;
             }
-            if (fstat_no_transition(opened, stat) != 0 || stat.st_ino() != inode.read() || stat.st_dev() != dev.read()) {
+            if (fstat_no_transition(opened, stat) != 0) {
+                free(buffer);
                 close(opened);
-                return CEntryPointErrors.OPEN_IMAGE_FAILED;
+                return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
+            if (stat.st_ino() != inode.read()) {
+                boolean ignore = false;
+                int versionfd = open(PROC_VERSION.get(), Fcntl.O_RDONLY(), 0);
+                if (versionfd != -1) {
+                    if (PosixUtils.readEntirely(versionfd, buffer, MAX_PATHLEN)) {
+                        /*
+                         * The Windows Subsystem for Linux (WSL) reports incorrect inodes via /proc
+                         * that don't match those returned by fstat. If we are running under WSL,
+                         * ignore when the comparison fails.
+                         */
+                        ignore = LibC.strstr(buffer, PROC_VERSION_WSL_SUBSTRING.get()).isNonNull();
+                    }
+                    close(versionfd);
+                }
+                if (!ignore) {
+                    free(buffer);
+                    close(opened);
+                    return CEntryPointErrors.LOCATE_IMAGE_IDENTITY_MISMATCH;
+                }
+            }
+            free(buffer);
             Word imageHeapRelocsOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
             Word imageHeapOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(unsigned(startAddr.read())).subtract(imageHeapRelocsOffset);
             long fileOffset = offset.read() + imageHeapOffset.rawValue();

@@ -147,7 +147,7 @@ public class SubstrateOptionsParser {
             if (eqIndex != -1) {
                 return OptionParseResult.error("Cannot mix +/- with <name>=<value> format: '" + optionPrefix + option + "'");
             }
-            optionName = option.substring(1, eqIndex == -1 ? option.length() : eqIndex);
+            optionName = option.substring(1, option.length());
             if (booleanOptionFormat == BooleanOptionFormat.NAME_VALUE) {
                 return OptionParseResult.error("Option '" + optionName + "' must use <name>=<value> format, not +/- prefix");
             }
@@ -402,10 +402,12 @@ public class SubstrateOptionsParser {
                 if (helpLen != 0) {
                     helpMsg += ' ';
                 }
-                if (val == null || !((boolean) val)) {
-                    helpMsg += "Default: - (disabled).";
-                } else {
-                    helpMsg += "Default: + (enabled).";
+                if (val != null) {
+                    if (val) {
+                        helpMsg += "Default: + (enabled).";
+                    } else {
+                        helpMsg += "Default: - (disabled).";
+                    }
                 }
                 printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg);
             } else {

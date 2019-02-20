@@ -30,7 +30,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -49,9 +48,11 @@ import org.graalvm.compiler.nodes.java.MonitorIdNode;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.access.JNINativeLinkage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -72,8 +73,6 @@ import jdk.vm.ci.meta.Signature;
  * handles and for unboxing an object return value.
  */
 class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
-    private int maxLocals = -1;
-
     private final JNINativeLinkage linkage;
 
     JNINativeCallWrapperMethod(ResolvedJavaMethod method) {
@@ -89,25 +88,6 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         String className = unwrapped.getDeclaringClass().getName();
         String descriptor = unwrapped.getSignature().toMethodDescriptor();
         return JNIAccessFeature.singleton().makeLinkage(className, unwrapped.getName(), descriptor);
-    }
-
-    @Override
-    public int getMaxLocals() {
-        if (maxLocals == -1) {
-            maxLocals = 0;
-            Signature sig = getOriginal().getSignature();
-            int count = sig.getParameterCount(false);
-            if (!getOriginal().isStatic()) {
-                maxLocals++;
-            }
-            for (int i = 0; i < count; i++) {
-                maxLocals++;
-                if (sig.getParameterKind(i).needsTwoSlots()) {
-                    maxLocals++;
-                }
-            }
-        }
-        return maxLocals;
     }
 
     @Override
@@ -190,7 +170,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
         kit.getFrameState().clearLocals();
 
-        Signature jniSignature = new JNISignature(jniArgumentTypes, jniReturnType);
+        Signature jniSignature = new SimpleSignature(jniArgumentTypes, jniReturnType);
         ValueNode returnValue = kit.createCFunctionCall(callAddress, jniArguments, jniSignature, true, false);
 
         if (getOriginal().isSynchronized()) {

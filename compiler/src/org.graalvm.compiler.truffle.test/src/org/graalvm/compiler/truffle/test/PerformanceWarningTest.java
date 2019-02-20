@@ -52,7 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class PerformanceWarningTest {
+public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
     // Marker object indicating that no performance warnings are expected.
     private static final String[] EMPTY_PERF_WARNINGS = new String[0];
@@ -64,46 +64,46 @@ public class PerformanceWarningTest {
 
     @Test
     public void testVirtualCall() {
-        testHelper(new RootNodeVirtualCall(), true, "perf warn", "execute");
+        testHelper(truffleCompiler, new RootNodeVirtualCall(), true, "perf warn", "execute");
     }
 
     @Test
     public void testDeepStack() {
-        testHelper(new RootNodeDeepStack(), true, "perf warn", "foo", "bar", "execute");
+        testHelper(truffleCompiler, new RootNodeDeepStack(), true, "perf warn", "foo", "bar", "execute");
     }
 
     @Test
     public void testInstanceOf() {
-        testHelper(new RootNodeInstanceOf(), false, "perf info", "foo", "bar", "execute");
+        testHelper(truffleCompiler, new RootNodeInstanceOf(), false, "perf info", "foo", "bar", "execute");
     }
 
     @Test
     public void testCombined() {
-        testHelper(new RootNodeCombined(), true, "perf info", "perf warn", "foo", "bar", "execute");
+        testHelper(truffleCompiler, new RootNodeCombined(), true, "perf info", "perf warn", "foo", "bar", "execute");
     }
 
     @Test
     public void testBoundaryCall() {
-        testHelper(new RootNodeBoundaryCall(), false, EMPTY_PERF_WARNINGS);
+        testHelper(truffleCompiler, new RootNodeBoundaryCall(), false, EMPTY_PERF_WARNINGS);
     }
 
     @Test
     public void testBoundaryVirtualCall() {
-        testHelper(new RootNodeBoundaryVirtualCall(), false, EMPTY_PERF_WARNINGS);
+        testHelper(truffleCompiler, new RootNodeBoundaryVirtualCall(), false, EMPTY_PERF_WARNINGS);
     }
 
     @Test
     public void testCast() {
-        testHelper(new RootNodeCast(), false, "perf info", "foo", "bar", "execute");
+        testHelper(truffleCompiler, new RootNodeCast(), false, "perf info", "foo", "bar", "execute");
     }
 
     @Test
     public void testSingleImplementor() {
-        testHelper(new RootNodeInterfaceSingleImplementorCall(), false, "perf info", "type check", "foo");
+        testHelper(truffleCompiler, new RootNodeInterfaceSingleImplementorCall(), false, "perf info", "type check", "foo");
     }
 
     @SuppressWarnings("try")
-    private static void testHelper(RootNode rootNode, boolean expectException, String... outputStrings) {
+    private static void testHelper(TruffleCompilerImpl compiler, RootNode rootNode, boolean expectException, String... outputStrings) {
 
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -119,7 +119,6 @@ public class PerformanceWarningTest {
                 DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
                 try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                     final OptimizedCallTarget compilable = target;
-                    TruffleCompilerImpl compiler = (TruffleCompilerImpl) runtime.newTruffleCompiler();
                     CompilationIdentifier compilationId = compiler.createCompilationIdentifier(compilable);
                     TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
                     compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null);

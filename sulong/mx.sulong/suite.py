@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.195.1",
+  "mxversion" : "5.210.2",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -71,6 +71,8 @@ suite = {
       },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "com.oracle.truffle.llvm.test.native" : {
       "subDir" : "projects",
@@ -98,6 +100,8 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.llvm.spi" : {
@@ -242,6 +246,7 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "defaultBuild" : False,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.llvm.pipe.native" : {
@@ -263,6 +268,7 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "defaultBuild" : False,
+      "jacoco" : "exclude",
     },
     "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
@@ -439,6 +445,33 @@ suite = {
       ],
       "testProject" : True,
       "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.bitcodeformat": {
+      "subDir": "tests",
+      "native": True,
+      "vpath": True,
+      "results": [
+        "bitcodeformat/hello-linux-emit-llvm.bc",
+        "bitcodeformat/hello-linux-compile-fembed-bitcode.o",
+        "bitcodeformat/hello-linux-link-fembed-bitcode",
+        "bitcodeformat/hello-linux-link-fembed-bitcode.so",
+        "bitcodeformat/hello-darwin-emit-llvm.bc",
+        "bitcodeformat/hello-darwin-compile-fembed-bitcode.o",
+        "bitcodeformat/hello-darwin-link-fembed-bitcode",
+        "bitcodeformat/hello-darwin-link-fembed-bitcode.dylib",
+      ],
+      "buildEnv": {
+        "SUITE_CFLAGS": "<clangImplicitArgs>",
+        "SUITE_CPPFLAGS": "-I<sulong_include> -I<path:SULONG_LIBS>",
+      },
+      "dependencies": [
+        "SULONG_TEST",
+      ],
+      "buildDependencies": [
+        "SULONG_LIBS",
+      ],
+      "testProject": True,
+      "defaultBuild": False,
     },
     "gcc_c" : {
       "subDir" : "tests/gcc",
@@ -704,6 +737,7 @@ suite = {
       "platformDependent" : True,
       "output" : "mxbuild/<os>-<arch>/sulong-test-suites",
       "dependencies" : [
+        "com.oracle.truffle.llvm.tests.bitcodeformat",
         "com.oracle.truffle.llvm.tests.debug",
         "com.oracle.truffle.llvm.tests.irdebug",
         "com.oracle.truffle.llvm.tests.interop",

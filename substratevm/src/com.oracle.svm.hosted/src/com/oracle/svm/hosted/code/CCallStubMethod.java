@@ -78,13 +78,10 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         boolean deoptimizationTarget = method instanceof SharedMethod && ((SharedMethod) method).isDeoptTarget();
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
-        ValueNode callAddress = createTargetAddressNode(kit, providers);
-        JavaType[] parameterTypes = method.toParameterTypes();
-        if (method.hasReceiver()) {
-            parameterTypes = Arrays.copyOfRange(parameterTypes, 1, parameterTypes.length);
-        }
-        List<ValueNode> arguments = kit.loadArguments(parameterTypes);
-        Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method.getSignature(), arguments);
+        List<ValueNode> arguments = kit.loadArguments(getParameterTypesForLoad(method));
+        ValueNode callAddress = createTargetAddressNode(kit, providers, arguments);
+        Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit,
+                        method.getSignature().getReturnType(null), method.toParameterTypes(), arguments);
         state.clearLocals();
         ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, needsTransition, deoptimizationTarget);
         returnValue = adaptReturnValue(method, providers, nativeLibraries, kit, returnValue);
@@ -94,19 +91,20 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         return kit.getGraph();
     }
 
-    protected abstract ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers);
+    protected abstract ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers, List<ValueNode> arguments);
 
-    private static boolean isPrimitiveOrWord(HostedProviders providers, JavaType type) {
+    protected static boolean isPrimitiveOrWord(HostedProviders providers, JavaType type) {
         return type.getJavaKind().isPrimitive() || providers.getWordTypes().isWord(type);
     }
 
-    private Signature adaptSignatureAndConvertArguments(HostedProviders providers, NativeLibraries nativeLibraries,
-                    HostedGraphKit kit, Signature signature, List<ValueNode> arguments) {
+    protected JavaType[] getParameterTypesForLoad(ResolvedJavaMethod method) {
+        return method.getSignature().toParameterTypes(/* exclude receiver parameter */ null);
+    }
+
+    protected Signature adaptSignatureAndConvertArguments(HostedProviders providers, NativeLibraries nativeLibraries,
+                    HostedGraphKit kit, JavaType returnType, JavaType[] parameterTypes, List<ValueNode> arguments) {
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        JavaType returnType = signature.getReturnType(null);
-        JavaType[] parameterTypes = signature.toParameterTypes(null);
-
         for (int i = 0; i < parameterTypes.length; i++) {
             if (!isPrimitiveOrWord(providers, parameterTypes[i])) {
                 ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) parameterTypes[i]);
@@ -142,29 +140,9 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
                 }
             }
         }
-
-        if (!isPrimitiveOrWord(providers, returnType)) {
-            // Assume enum: actual checks and conversion are in adaptReturnValue()
-            returnType = providers.getWordTypes().getWordImplType();
-        }
-        JavaType actualReturnType = returnType;
-
-        return new Signature() {
-            @Override
-            public int getParameterCount(boolean receiver) {
-                return parameterTypes.length;
-            }
-
-            @Override
-            public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
-                return parameterTypes[index];
-            }
-
-            @Override
-            public JavaType getReturnType(ResolvedJavaType accessingClass) {
-                return actualReturnType;
-            }
-        };
+        /* Actual checks and conversion are in adaptReturnValue() */
+        JavaType actualReturnType = isPrimitiveOrWord(providers, returnType) ? returnType : providers.getWordTypes().getWordImplType();
+        return new SimpleSignature(parameterTypes, actualReturnType);
     }
 
     private ValueNode adaptReturnValue(ResolvedJavaMethod method, HostedProviders providers, NativeLibraries nativeLibraries, HostedGraphKit kit, ValueNode invokeValue) {

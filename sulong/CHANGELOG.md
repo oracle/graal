@@ -1,3 +1,16 @@
+# Version 1.0.0 RC13
+
+New features:
+
+* Support for embedded bitcode in Mach-O files.
+  We support bitcode in the `__bitcode` section of Mach-O object files,
+  as well as bitcode files in an embedded xar archive in the `__bundle` section of
+  executables or dylibs.
+
+Changes:
+
+* Update libc++/libc++abi imports to 5.0.2 (no actual code changes).
+
 # Version 1.0.0 RC12
 
 Removed:

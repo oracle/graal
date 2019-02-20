@@ -150,7 +150,7 @@ public final class TruffleOptions {
                 objs[2] = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToCost"));
                 values[1] = Boolean.getBoolean("truffle.DetailedRewriteReasons");
                 values[2] = Boolean.getBoolean("truffle.TraceASTJSON");
-                values[3] = Boolean.getBoolean("com.oracle.truffle.aot");
+                values[3] = Boolean.getBoolean("com.oracle.graalvm.isaot");
                 return null;
             }
         });

@@ -146,7 +146,7 @@ public class PolyglotCachingTest {
         for (int i = 0; i < GCUtils.GC_TEST_ITERATIONS; i++) {
             // cache should stay valid and never be collected as long as the source is alive.
             assertCachedEval(context, source);
-            System.gc();
+            GCUtils.gc();
         }
         assertNotNull(parsedRef.get());
         context.close();

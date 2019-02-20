@@ -24,13 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -45,6 +39,10 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.Map;
+import org.graalvm.compiler.truffle.common.TruffleCompilation;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 
 public class TransferToInterpreterTest {
 
@@ -85,13 +83,14 @@ public class TransferToInterpreterTest {
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         target.call(0);
         Assert.assertFalse(target.isValid());
-        OptionValues options = TruffleCompilerOptions.getOptions();
-        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
         final OptimizedCallTarget compilable = target;
-        TruffleCompilerImpl compiler = (TruffleCompilerImpl) runtime.newTruffleCompiler();
-        CompilationIdentifier compilationId = compiler.createCompilationIdentifier(compilable);
-        TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
-        compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null);
+        TruffleCompiler compiler = runtime.newTruffleCompiler();
+        Map<String, Object> options = runtime.getOptions();
+        try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
+            TruffleDebugContext debug = compiler.openDebugContext(options, compilation);
+            TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
+            compiler.doCompile(debug, compilation, options, inliningPlan, null, null);
+        }
         Assert.assertTrue(target.isValid());
         target.call(0);
         Assert.assertTrue(target.isValid());

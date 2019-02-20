@@ -79,7 +79,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.word.WordOperationPlugin;
-import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -87,6 +86,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
+import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
@@ -295,7 +295,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         /* We do all the word type rewriting because parameters to the lambda can be word types. */
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, new WordTypes(originalProviders.getMetaAccess(), FrameAccess.getWordKind()));
+        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, new SubstrateWordTypes(originalProviders.getMetaAccess(), FrameAccess.getWordKind()));
         graphBuilderPlugins.appendInlineInvokePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(new TrustedInterfaceTypePlugin());

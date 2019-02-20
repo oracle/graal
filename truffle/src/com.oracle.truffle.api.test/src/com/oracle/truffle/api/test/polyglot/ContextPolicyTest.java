@@ -454,7 +454,7 @@ public class ContextPolicyTest {
             languageInstances.add(this);
         }
 
-        @Option(help = "", category = OptionCategory.DEBUG) //
+        @Option(help = "", category = OptionCategory.INTERNAL) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
         @Override
@@ -488,7 +488,7 @@ public class ContextPolicyTest {
 
     @Registration(id = SINGLE_REUSE_LANGUAGE, name = SINGLE_REUSE_LANGUAGE, contextPolicy = ContextPolicy.REUSE)
     public static class SingleReusePolicyLanguage extends SingleContextPolicyLanguage {
-        @Option(help = "", category = OptionCategory.DEBUG) //
+        @Option(help = "", category = OptionCategory.INTERNAL) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
         @Override
@@ -504,7 +504,7 @@ public class ContextPolicyTest {
 
     @Registration(id = MULTIPLE_LANGUAGE, name = MULTIPLE_LANGUAGE, contextPolicy = ContextPolicy.SHARED)
     public static class MultipleContextPolicyLanguage extends SingleContextPolicyLanguage {
-        @Option(help = "", category = OptionCategory.DEBUG) //
+        @Option(help = "", category = OptionCategory.INTERNAL) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
         @Override

@@ -44,6 +44,8 @@ import com.oracle.truffle.llvm.parser.elf.ElfFile;
 import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
 import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
+import com.oracle.truffle.llvm.parser.macho.MachOFile;
+import com.oracle.truffle.llvm.parser.macho.Xar;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -55,9 +57,51 @@ public final class LLVMScanner {
 
     private static final int DEFAULT_ID_SIZE = 2;
 
-    private static final long BC_MAGIC_WORD = 0xdec04342L; // 'BC' c0de
-    private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;
-    private static final long ELF_MAGIC_WORD = 0x464C457FL;
+    public enum Magic {
+        BC_MAGIC_WORD(0xdec04342L), // 'BC' c0de
+        WRAPPER_MAGIC_WORD(0x0B17C0DEL),
+        ELF_MAGIC_WORD(0x464C457FL),
+        MH_MAGIC(0xFEEDFACEL),
+        MH_CIGAM(0xCEFAEDFEL),
+        MH_MAGIC_64(0xFEEDFACFL),
+        MH_CIGAM_64(0xCFFAEDFEL),
+        XAR_MAGIC(0x21726178L),
+        UNKNOWN(0);
+
+        public final long magic;
+
+        Magic(long magic) {
+            this.magic = magic;
+        }
+
+        private static final Magic[] VALUES = values();
+
+        public static Magic get(long magic) {
+            for (Magic m : VALUES) {
+                if (m.magic == magic) {
+                    return m;
+                }
+            }
+            return UNKNOWN;
+        }
+
+        public static Magic get(BitStream b) {
+            try {
+                return get(Integer.toUnsignedLong((int) b.read(0, Integer.SIZE)));
+            } catch (Exception e) {
+                /*
+                 * An exception here means we can't read at least 4 bytes from the file. That means
+                 * it is definitely not a bitcode or ELF file.
+                 */
+                return UNKNOWN;
+            }
+        }
+
+        public static Magic get(ByteSequence bytes) {
+            return get(BitStream.create(bytes));
+        }
+
+    }
 
     private static final int MAX_BLOCK_DEPTH = 3;
 
@@ -89,62 +133,71 @@ public final class LLVMScanner {
 
     public static ModelModule parse(ByteSequence bytes, Source bcSource, LLVMContext context) {
         assert bytes != null;
-        if (!isSupportedFile(bytes)) {
-            return null;
-        }
 
         final ModelModule model = new ModelModule();
-
-        BitStream b = BitStream.create(bytes);
-        ByteSequence bitcode;
-        // 0: magic word
-        long magicWord = Integer.toUnsignedLong((int) b.read(0, Integer.SIZE));
-        if (Long.compareUnsigned(magicWord, BC_MAGIC_WORD) == 0) {
-            bitcode = bytes;
-        } else if (magicWord == WRAPPER_MAGIC_WORD) {
-            // 32: version
-            // 64: offset32
-            long offset = b.read(64, Integer.SIZE);
-            // 96: size32
-            long size = b.read(96, Integer.SIZE);
-            bitcode = bytes.subSequence((int) offset, (int) (offset + size));
-        } else if (magicWord == ELF_MAGIC_WORD) {
-            ElfFile elfFile = ElfFile.create(bytes);
-            Entry llvmbc = elfFile.getSectionHeaderTable().getEntry(".llvmbc");
-            if (llvmbc == null) {
-                // ELF File does not contain an .llvmbc section
-                return null;
-            }
-            ElfDynamicSection dynamicSection = elfFile.getDynamicSection();
-            if (dynamicSection != null) {
-                List<String> libraries = dynamicSection.getDTNeeded();
-                List<String> paths = dynamicSection.getDTRPath();
-                model.addLibraries(libraries);
-                model.addLibraryPaths(paths);
-            }
-            long offset = llvmbc.getOffset();
-            long size = llvmbc.getSize();
-            bitcode = bytes.subSequence((int) offset, (int) (offset + size));
-        } else {
-            throw new LLVMParserException("Not a valid input file!");
+        ByteSequence bitcode = parseBitcode(bytes, model);
+        if (bitcode == null) {
+            // unsupported file
+            return null;
         }
-
         parseBitcodeBlock(bitcode, model, bcSource, context);
-
         return model;
     }
 
-    private static boolean isSupportedFile(ByteSequence bytes) {
-        BitStream bs = BitStream.create(bytes);
-        try {
-            long magicWord = bs.read(0, Integer.SIZE);
-            return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD;
-        } catch (Exception e) {
-            /*
-             * An exception here means we can't read at least 4 bytes from the file. That means it
-             * is definitely not a bitcode or ELF file.
-             */
-            return false;
+    private static ByteSequence parseBitcode(ByteSequence bytes, ModelModule model) {
+        BitStream b = BitStream.create(bytes);
+        Magic magicWord = Magic.get(b);
+        switch (magicWord) {
+            case BC_MAGIC_WORD:
+                return bytes;
+            case WRAPPER_MAGIC_WORD:
+                // 0: magic word
+                // 32: version
+                // 64: offset32
+                long offset = b.read(64, Integer.SIZE);
+                // 96: size32
+                long size = b.read(96, Integer.SIZE);
+                return bytes.subSequence((int) offset, (int) (offset + size));
+            case ELF_MAGIC_WORD:
+                ElfFile elfFile = ElfFile.create(bytes);
+                Entry llvmbc = elfFile.getSectionHeaderTable().getEntry(".llvmbc");
+                if (llvmbc == null) {
+                    // ELF File does not contain an .llvmbc section
+                    return null;
+                }
+                ElfDynamicSection dynamicSection = elfFile.getDynamicSection();
+                if (dynamicSection != null) {
+                    List<String> libraries = dynamicSection.getDTNeeded();
+                    List<String> paths = dynamicSection.getDTRPath();
+                    model.addLibraries(libraries);
+                    model.addLibraryPaths(paths);
+                }
+                long elfOffset = llvmbc.getOffset();
+                long elfSize = llvmbc.getSize();
+                return bytes.subSequence((int) elfOffset, (int) (elfOffset + elfSize));
+            case MH_MAGIC:
+            case MH_CIGAM:
+            case MH_MAGIC_64:
+            case MH_CIGAM_64:
+                MachOFile machOFile = MachOFile.create(bytes);
+
+                List<String> libraries = machOFile.getDyLibs();
+                model.addLibraries(libraries);
+
+                ByteSequence machoBitcode = machOFile.extractBitcode();
+                if (machoBitcode == null) {
+                    return null;
+                }
+                return parseBitcode(machoBitcode, model);
+            case XAR_MAGIC:
+                Xar xarFile = Xar.create(bytes);
+                ByteSequence xarBitcode = xarFile.extractBitcode();
+                if (xarBitcode == null) {
+                    return null;
+                }
+                return parseBitcode(xarBitcode, model);
+            default:
+                return null;
         }
     }
 
@@ -153,7 +206,7 @@ public final class LLVMScanner {
         final BCFileRoot fileParser = new BCFileRoot(model, bcSource);
         final LLVMScanner scanner = new LLVMScanner(bitstream, fileParser);
         final long actualMagicWord = scanner.read(Integer.SIZE);
-        if (actualMagicWord != BC_MAGIC_WORD) {
+        if (actualMagicWord != Magic.BC_MAGIC_WORD.magic) {
             throw new LLVMParserException("Not a valid Bitcode File!");
         }
 

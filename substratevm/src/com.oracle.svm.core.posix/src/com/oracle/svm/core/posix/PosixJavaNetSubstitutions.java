@@ -48,11 +48,13 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -64,6 +66,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
@@ -398,7 +401,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                         throw new PortUnreachableException("ICMP Port Unreachable");
                     } else {
                         //   473                      NET_ThrowByNameWithLastError(env, "java/io/IOException", "sendto failed");
-                        throw new IOException(PosixUtils.lastErrorString("sendto failed"));
+                        throw PosixUtils.newIOExceptionWithLastError("sendto failed");
                     }
                     //   477              case JVM_IO_INTR:
                 } else if (ret == Target_jvm.JVM_IO_INTR()) {
@@ -3338,7 +3341,7 @@ final class Target_java_net_Inet6AddressImpl {
 
                     ret = new InetAddress[retLen];
 
-                    if (GraalServices.Java8OrEarlier) {
+                    if (JavaVersionUtil.Java8OrEarlier) {
                         if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
                             /* AF_INET addresses will be offset by inet6Count */
                             inetIndex = inet6Count;
@@ -3405,7 +3408,7 @@ final class Target_java_net_Inet6AddressImpl {
                             // 474 inet6Index++;
                             inet6Index++;
                         }
-                        if (!GraalServices.Java8OrEarlier) {
+                        if (!JavaVersionUtil.Java8OrEarlier) {
                             if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
                                 originalIndex++;
                                 inetIndex = 0;
@@ -3511,7 +3514,7 @@ final class Util_java_net_Inet6AddressImpl {
                 /* Create and fill the Java array. */
                 int arraySize = addrs4 + addrs6 - (includeLoopback ? 0 : (numV4Loopbacks + numV6Loopbacks));
                 result = new InetAddress[arraySize];
-                if (GraalServices.Java8OrEarlier) {
+                if (JavaVersionUtil.Java8OrEarlier) {
                     if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
                         i = includeLoopback ? addrs6 : (addrs6 - numV6Loopbacks);
                         j = 0;
@@ -4367,6 +4370,59 @@ final class Target_java_net_PlainSocketImpl {
 
     /* Substitutions for native methods. */
 
+    /**
+     * This method is called by the static initializer for java.net.PlainSocketImpl. It is called
+     * again at runtime to get a new file descriptor to use as the marker_fd.
+     */
+    // 129 /*
+    // 130 * The initroto function is called whenever PlainSocketImpl is
+    // 131 * loaded, to cache field IDs for efficiency. This is called every time
+    // 132 * the Java class is loaded.
+    // 133 *
+    // 134 * Class: java_net_PlainSocketImpl
+    // 135 * Method: initProto
+    // 136 * Signature: ()V
+    // 137 */
+    // 138 JNIEXPORT void JNICALL
+    // 139 Java_java_net_PlainSocketImpl_initProto(JNIEnv *env, jclass cls) {
+    /* { Do not re-format commented-out code: @formatter:off */
+    @Substitute
+    static void initProto() {
+        // 140      psi_fdID = (*env)->GetFieldID(env, cls , "fd",
+        // 141                                    "Ljava/io/FileDescriptor;");
+        // 142      CHECK_NULL(psi_fdID);
+        // 143      psi_addressID = (*env)->GetFieldID(env, cls, "address",
+        // 144                                            "Ljava/net/InetAddress;");
+        // 145      CHECK_NULL(psi_addressID);
+        // 146      psi_portID = (*env)->GetFieldID(env, cls, "port", "I");
+        // 147      CHECK_NULL(psi_portID);
+        // 148      psi_localportID = (*env)->GetFieldID(env, cls, "localport", "I");
+        // 149      CHECK_NULL(psi_localportID);
+        // 150      psi_timeoutID = (*env)->GetFieldID(env, cls, "timeout", "I");
+        // 151      CHECK_NULL(psi_timeoutID);
+        // 152      psi_trafficClassID = (*env)->GetFieldID(env, cls, "trafficClass", "I");
+        // 153      CHECK_NULL(psi_trafficClassID);
+        // 154      psi_serverSocketID = (*env)->GetFieldID(env, cls, "serverSocket",
+        // 155                          "Ljava/net/ServerSocket;");
+        // 156      CHECK_NULL(psi_serverSocketID);
+        // 157      psi_fdLockID = (*env)->GetFieldID(env, cls, "fdLock",
+        // 158                                        "Ljava/lang/Object;");
+        // 159      CHECK_NULL(psi_fdLockID);
+        // 160      psi_closePendingID = (*env)->GetFieldID(env, cls, "closePending", "Z");
+        // 161      CHECK_NULL(psi_closePendingID);
+        // 162      IO_fd_fdID = NET_GetFileDescriptorID(env);
+        // 163      CHECK_NULL(IO_fd_fdID);
+        // 164
+        // 165      initInetAddressIDs(env);
+        // 166      JNU_CHECK_EXCEPTION(env);
+        // 167
+        // 168      /* Create the marker fd used for dup2 */
+        // 169      marker_fd = getMarkerFD();
+        Util_java_net_PlainSocketImpl.marker_fd = Util_java_net_PlainSocketImpl.getMarkerFD();
+        return;
+    }
+    /* } Do not re-format commented-out code: @formatter:on */
+
     /* Do not re-format commented-out code: @formatter:off */
     @Substitute
     // 176 /*
@@ -5127,145 +5183,144 @@ final class Target_java_net_PlainSocketImpl {
             // 684         return;
             throw new NullPointerException("socket is null");
         }
-        try {
-            // 686
-            // 687     /*
-            // 688      * accept connection but ignore ECONNABORTED indicating that
-            // 689      * connection was eagerly accepted by the OS but was reset
-            // 690      * before accept() was called.
-            // 691      *
-            // 692      * If accept timeout in place and timeout is adjusted with
-            // 693      * each ECONNABORTED or EWOULDBLOCK to ensure that semantics
-            // 694      * of timeout are preserved.
-            // 695      */
-            // 696     for (;;) {
-            for (;;) {
-                // 697         int ret;
-                int ret;
-                // 698
-                // 699         /* first usage pick up current time */
-                // 700         if (prevTime == 0 && timeout > 0) {
-                if (prevTime == 0 && timeout > 0) {
-                    // 701             prevTime = JVM_CurrentTimeMillis(env, 0);
-                    prevTime = System.currentTimeMillis();
+        // 686
+        // 687     /*
+        // 688      * accept connection but ignore ECONNABORTED indicating that
+        // 689      * connection was eagerly accepted by the OS but was reset
+        // 690      * before accept() was called.
+        // 691      *
+        // 692      * If accept timeout in place and timeout is adjusted with
+        // 693      * each ECONNABORTED or EWOULDBLOCK to ensure that semantics
+        // 694      * of timeout are preserved.
+        // 695      */
+        // 696     for (;;) {
+        for (;;) {
+            // 697         int ret;
+            int ret;
+            // 698
+            // 699         /* first usage pick up current time */
+            // 700         if (prevTime == 0 && timeout > 0) {
+            if (prevTime == 0 && timeout > 0) {
+                // 701             prevTime = JVM_CurrentTimeMillis(env, 0);
+                prevTime = System.currentTimeMillis();
+            }
+            // 703
+            // 704         /* passing a timeout of 0 to poll will return immediately,
+            // 705            but in the case of ServerSocket 0 means infinite. */
+            // 706         if (timeout <= 0) {
+            if (timeout <= 0) {
+                // 707             ret = NET_Timeout(fd, -1);
+                ret = JavaNetNetUtilMD.NET_Timeout(fd, -1);
+            } else {
+                // 709             ret = NET_Timeout(fd, timeout);
+                ret = JavaNetNetUtilMD.NET_Timeout(fd, timeout);
+            }
+            // 711         if (ret == 0) {
+            if (ret == 0) {
+                // 712             JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
+                // 713                             "Accept timed out");
+                // 714             return;
+                throw new SocketTimeoutException("Accept timed out");
+                // 715         } else if (ret == JVM_IO_ERR) {
+            } else if (ret == Target_jvm.JVM_IO_ERR()) {
+                // 716             if (errno == EBADF) {
+                if (Errno.errno() == Errno.EBADF()) {
+                    // 717                JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
+                    throw new SocketException("Socket closed");
+                    // 718             } else if (errno == ENOMEM) {
+                } else if (Errno.errno() == Errno.ENOMEM()) {
+                    // 719                JNU_ThrowOutOfMemoryError(env, "NET_Timeout native heap allocation failed");
+                    throw new OutOfMemoryError("NET_Timeout native heap allocation failed");
+                } else {
+                    // 721                NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
+                    throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
                 }
-                // 703
-                // 704         /* passing a timeout of 0 to poll will return immediately,
-                // 705            but in the case of ServerSocket 0 means infinite. */
-                // 706         if (timeout <= 0) {
+                /* The previous if-then-else blocks all throw exceptions, which abruptly returns from this method. */
+                // 723             return;
+                // 724         } else if (ret == JVM_IO_INTR) {
+            } else if (ret == Target_jvm.JVM_IO_INTR()) {
+                // 725             JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
+                // 726                             "operation interrupted");
+                throw new InterruptedIOException("operation interrupted");
+                // 727             return;
+            }
+            // 729
+            // 730         newfd = NET_Accept(fd, (struct sockaddr *)&him, (jint*)&len);
+            newfd = JavaNetNetUtilMD.NET_Accept(fd, him, len_Pointer);
+            // 731
+            // 732         /* connection accepted */
+            // 733         if (newfd >= 0) {
+            if (newfd >= 0) {
+                // 734             SET_BLOCKING(newfd);
+                Util_java_net_PlainSocketImpl.SET_BLOCKING(newfd);
+                // 735             break;
+                break;
+            }
+            // 737
+            // 738         /* non (ECONNABORTED or EWOULDBLOCK) error */
+            // 739         if (!(errno == ECONNABORTED || errno == EWOULDBLOCK)) {
+            if (!(Errno.errno() == Errno.ECONNABORTED() || Errno.errno() == Errno.EWOULDBLOCK())) {
+                // 740             break;
+                break;
+            }
+            // 742
+            // 743         /* ECONNABORTED or EWOULDBLOCK error so adjust timeout if there is one. */
+            // 744         if (timeout) {
+            if (CTypeConversion.toBoolean(timeout)) {
+                // 745             jlong currTime = JVM_CurrentTimeMillis(env, 0);
+                long currTime = System.currentTimeMillis();
+                // 746             timeout -= (currTime - prevTime);
+                timeout -= (currTime - prevTime);
+                // 747
+                // 748             if (timeout <= 0) {
                 if (timeout <= 0) {
-                    // 707             ret = NET_Timeout(fd, -1);
-                    ret = JavaNetNetUtilMD.NET_Timeout(fd, -1);
-                } else {
-                    // 709             ret = NET_Timeout(fd, timeout);
-                    ret = JavaNetNetUtilMD.NET_Timeout(fd, timeout);
-                }
-                // 711         if (ret == 0) {
-                if (ret == 0) {
-                    // 712             JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
-                    // 713                             "Accept timed out");
-                    // 714             return;
+                    // 749                 JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
+                    // 750                                 "Accept timed out");
                     throw new SocketTimeoutException("Accept timed out");
-                    // 715         } else if (ret == JVM_IO_ERR) {
-                } else if (ret == Target_jvm.JVM_IO_ERR()) {
-                    // 716             if (errno == EBADF) {
-                    if (Errno.errno() == Errno.EBADF()) {
-                        // 717                JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
-                        throw new SocketException("Socket closed");
-                        // 718             } else if (errno == ENOMEM) {
-                    } else if (Errno.errno() == Errno.ENOMEM()) {
-                        // 719                JNU_ThrowOutOfMemoryError(env, "NET_Timeout native heap allocation failed");
-                        throw new OutOfMemoryError("NET_Timeout native heap allocation failed");
-                    } else {
-                        // 721                NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
-                        throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
-                    }
-                    // 723             return;
-                    // 724         } else if (ret == JVM_IO_INTR) {
-                } else if (ret == Target_jvm.JVM_IO_INTR()) {
-                    // 725             JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
-                    // 726                             "operation interrupted");
-                    // 727             return;
-                    throw new InterruptedIOException("operation interrupted");
+                    // 751                 return;
                 }
-                // 729
-                // 730         newfd = NET_Accept(fd, (struct sockaddr *)&him, (jint*)&len);
-                newfd = JavaNetNetUtilMD.NET_Accept(fd, him, len_Pointer);
-                // 731
-                // 732         /* connection accepted */
-                // 733         if (newfd >= 0) {
-                if (newfd >= 0) {
-                    // 734             SET_BLOCKING(newfd);
-                    Util_java_net_PlainSocketImpl.SET_BLOCKING(newfd);
-                    // 735             break;
-                    break;
-                }
-                // 737
-                // 738         /* non (ECONNABORTED or EWOULDBLOCK) error */
-                // 739         if (!(errno == ECONNABORTED || errno == EWOULDBLOCK)) {
-                if (!(Errno.errno() == Errno.ECONNABORTED() || Errno.errno() == Errno.EWOULDBLOCK())) {
-                    // 740             break;
-                    break;
-                }
-                // 742
-                // 743         /* ECONNABORTED or EWOULDBLOCK error so adjust timeout if there is one. */
-                // 744         if (timeout) {
-                if (CTypeConversion.toBoolean(timeout)) {
-                    // 745             jlong currTime = JVM_CurrentTimeMillis(env, 0);
-                    long currTime = System.currentTimeMillis();
-                    // 746             timeout -= (currTime - prevTime);
-                    timeout -= (currTime - prevTime);
-                    // 747
-                    // 748             if (timeout <= 0) {
-                    if (timeout <= 0) {
-                        // 749                 JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
-                        // 750                                 "Accept timed out");
-                        // 751                 return;
-                        throw new SocketTimeoutException("Accept timed out");
-                    }
-                    // 753             prevTime = currTime;
-                    prevTime = currTime;
-                }
+                // 753             prevTime = currTime;
+                prevTime = currTime;
             }
-            // 756
-            // 757     if (newfd < 0) {
-            if (newfd < 0) {
-                // 758         if (newfd == -2) {
-                if (newfd == -2) {
-                    // 759             JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
-                    // 760                             "operation interrupted");
-                    throw new InterruptedIOException("operation interrupted");
+        }
+        // 756
+        // 757     if (newfd < 0) {
+        if (newfd < 0) {
+            // 758         if (newfd == -2) {
+            if (newfd == -2) {
+                // 759             JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
+                // 760                             "operation interrupted");
+                throw new InterruptedIOException("operation interrupted");
+            } else {
+                // 762             if (errno == EINVAL) {
+                if (Errno.errno() == Errno.EINVAL()) {
+                    // 763                 errno = EBADF;
+                    Errno.set_errno(Errno.EBADF());
+                }
+                // 765             if (errno == EBADF) {
+                if (Errno.errno() == Errno.EBADF()) {
+                    // 766                 JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
+                    throw new SocketException("Socket closed");
                 } else {
-                    // 762             if (errno == EINVAL) {
-                    if (Errno.errno() == Errno.EINVAL()) {
-                        // 763                 errno = EBADF;
-                        Errno.set_errno(Errno.EBADF());
-                    }
-                    // 765             if (errno == EBADF) {
-                    if (Errno.errno() == Errno.EBADF()) {
-                        // 766                 JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
-                        throw new SocketException("Socket closed");
-                    } else {
-                        // 768                 NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
-                        throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
-                    }
+                    // 768                 NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
+                    throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
                 }
-                // 771         return;
             }
-        } finally {
-            // 773
-            // 774     /*
-            // 775      * fill up the remote peer port and address in the new socket structure.
-            // 776      */
-            // 777     socketAddressObj = NET_SockaddrToInetAddress(env, (struct sockaddr *)&him, &port);
-            socketAddressObj = JavaNetNetUtil.NET_SockaddrToInetAddress(him, port_Pointer);
-            // 778     if (socketAddressObj == NULL) {
-            if (socketAddressObj == null) {
-                // 779         /* should be pending exception */
-                // 780         close(newfd);
-                Unistd.close(newfd);
-                // 781         return;
-            }
+            /* The previous if-then-else blocks all end with throws, which abruptly return from this method. */
+            // 771         return;
+        }
+        // 773
+        // 774     /*
+        // 775      * fill up the remote peer port and address in the new socket structure.
+        // 776      */
+        // 777     socketAddressObj = NET_SockaddrToInetAddress(env, (struct sockaddr *)&him, &port);
+        socketAddressObj = JavaNetNetUtil.NET_SockaddrToInetAddress(him, port_Pointer);
+        // 778     if (socketAddressObj == NULL) {
+        if (socketAddressObj == null) {
+            // 779         /* should be pending exception */
+            // 780         close(newfd);
+            Unistd.close(newfd);
+            // 781         return;
         }
         // 783
         // 784     /*
@@ -5330,12 +5385,6 @@ final class Target_java_net_PlainSocketImpl {
         VmPrimsJVM.JVM_SocketShutdown(fd, howto);
     }
     /* @formatter:on */
-
-    @Substitute
-    static void initProto() {
-        VMError.unimplemented();
-        return;
-    }
 
     /* Do not re-format commented-out code: @formatter:off */
     // 886 /*
@@ -5697,6 +5746,63 @@ final class Util_java_net_PlainSocketImpl {
         Fcntl.fcntl(fd, Fcntl.F_SETFL(), flags);
     }
     /* @formatter:on */
+
+    /* { Do not re-format commented-out code: @formatter:off */
+    // 93  /*
+    // 94   * Create the marker file descriptor by establishing a loopback connection
+    // 95   * which we shutdown but do not close the fd. The result is an fd that
+    // 96   * can be used for read/write.
+    // 97   */
+    // 98  static int getMarkerFD()
+    // 99  {
+    static int getMarkerFD() {
+        // 100      int sv[2];
+        CIntPointer sv = StackValue.get(2, CIntPointer.class);
+        // 101
+        // 102  #ifdef AF_UNIX
+        if (IsDefined.socket_AF_UNIX()) {
+            // 103      if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1) {
+            if (Socket.socketpair(Socket.AF_UNIX(), Socket.SOCK_STREAM(), 0, sv) == -1) {
+                // 104          return -1;
+                return -1;
+            }
+            // 106  #else
+        } else {
+            // 107      return -1;
+            return -1;
+            // 108  #endif
+        }
+        // 109
+        // 110      /*
+        // 111       * Finally shutdown sv[0] (any reads to this fd will get
+        // 112       * EOF; any writes will get an error).
+        // 113       */
+        // 114      JVM_SocketShutdown(sv[0], 2);
+        VmPrimsJVM.JVM_SocketShutdown(sv.read(0), 2);
+        // 115      JVM_SocketClose(sv[1]);
+        VmPrimsJVM.JVM_SocketClose(sv.read(1));
+        // 116
+        // 117      return sv[0];
+        return sv.read(0);
+    }
+    /* } Do not re-format commented-out code: @formatter:on */
+}
+
+/**
+ * Re-run the class initialization for {@code java.net.PlainSocketImpl} so that static fields are
+ * re-initialized from the platform running the image.
+ * <p>
+ * The static initializer for {@code java.net.PlainSocketImpl} captures a file descriptor that is
+ * used as a marker fd when sockets are closed. The file descriptor must be re-initialized at
+ * runtime.
+ */
+@AutomaticFeature
+final class JavaNetPlainSocketImplFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.PlainSocketImpl"));
+    }
 }
 
 @TargetClass(sun.net.spi.DefaultProxySelector.class)
@@ -5785,7 +5891,7 @@ final class Target_sun_net_sdp_SdpSupport {
             if (res < 0) {
                 /* FIXME: Not implementing JNU_ThrowIOExceptionWithLastError. */
                 // 120             JNU_ThrowIOExceptionWithLastError(env, "dup2");
-                throw new IOException("dup2");
+                throw PosixUtils.newIOExceptionWithLastError("dup2");
             }
             // 121         RESTARTABLE(close(s), res);
             do {
@@ -5812,11 +5918,18 @@ final class Util_sun_net_sdp_SdpSupport {
         return 27;
     }
 
+    /* { Do not re-format commented-out code: @formatter:off */
+    /*
+     * The translation of RESTARTABLE is to expand the body without the wrapper
+     *     do { ... } while (0)
+     * whose purpose is to make the macro expansion in to a single C statement.
+     */
     // 044 #define RESTARTABLE(_cmd, _result) do { \
-    // 045 do { \
-    // 046 _result = _cmd; \
-    // 047 } while((_result == -1) && (errno == EINTR)); \
+    // 045   do { \
+    // 046     _result = _cmd; \
+    // 047   } while((_result == -1) && (errno == EINTR)); \
     // 048 } while(0)
+    /* } Do not re-format commented-out code: @formatter:on */
 
     /* Do not re-format commented-out code: @formatter:off */
     // 051 /**
@@ -5861,7 +5974,7 @@ final class Util_sun_net_sdp_SdpSupport {
         if (s < 0) {
             /* FIXME: Not implementing JNU_ThrowIOExceptionWithLastError. */
             // 081         JNU_ThrowIOExceptionWithLastError(env, "socket");
-            throw new IOException("socket");
+            throw PosixUtils.newIOExceptionWithLastError("socket");
         }
         // 082     return s;
         return s;
