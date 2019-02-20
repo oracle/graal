@@ -107,7 +107,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private void assertNotInCompilation() {
-                for (; i < 100_000; i++) {
+                for (; globalI < 100_000; globalI++) {
                     global++;
                 }
                 CompilerAsserts.neverPartOfCompilation();
@@ -120,7 +120,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     // Used as a black hole for filler code
     @SuppressWarnings("unused") private static int global;
-    @SuppressWarnings("unused") private static int i;
+    @SuppressWarnings("unused") private static int globalI;
 
     private static RootNode createRootNodeFillerOnly() {
         return new RootNode(null) {
@@ -132,8 +132,8 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private void foo() {
-                for (; i < 1000; i++) {
-                    global += i;
+                for (; globalI < 1000; globalI++) {
+                    global += globalI;
                 }
 
             }
@@ -150,8 +150,8 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private void foo() {
-                for (; i < 1000; i++) {
-                    global += i;
+                for (; globalI < 1000; globalI++) {
+                    global += globalI;
                 }
                 testMethod();
             }
@@ -174,8 +174,8 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private int foo() {
-                for (; i < 1000; i++) {
-                    global += i;
+                for (; globalI < 1000; globalI++) {
+                    global += globalI;
                 }
                 return global;
             }
@@ -196,8 +196,8 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private int foo() {
-                for (; i < 1000; i++) {
-                    global += i;
+                for (; globalI < 1000; globalI++) {
+                    global += globalI;
                 }
                 return global;
             }
@@ -239,7 +239,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleMaximumGraalNodeCount, nodeLimit)) {
             RootCallTarget target = runtime.createCallTarget(rootNode);
             final Object[] arguments = {1};
-            i = 0;
+            globalI = 0;
             partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
         }
     }
@@ -257,8 +257,8 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private void foo() {
-                for (; i < 1000; i++) {
-                    global += i;
+                for (; globalI < 1000; globalI++) {
+                    global += globalI;
                 }
 
             }
