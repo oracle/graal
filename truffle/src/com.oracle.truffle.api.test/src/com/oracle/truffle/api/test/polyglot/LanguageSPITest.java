@@ -454,10 +454,14 @@ public class LanguageSPITest {
                     boolean assertions = false;
                     assert (assertions = true) == true;
                     if (assertions) {
+                        boolean leaveFailed = false;
                         try {
                             innerContext.leave("foo");
-                            fail("no assertion error for leaving with the wrong object");
                         } catch (AssertionError e) {
+                            leaveFailed = true;
+                        }
+                        if (!leaveFailed) {
+                            fail("no assertion error for leaving with the wrong object");
                         }
                     }
                 } finally {
