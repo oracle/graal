@@ -29,11 +29,13 @@ import java.util.function.Function;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -57,10 +59,17 @@ public class NodeLimitTest extends PartialEvaluationTest {
         runtime = Truffle.getRuntime();
     }
 
+    static TruffleCompilerOptions.TruffleOptionsOverrideScope performanceWarningsAreFatalScope;
+
     @BeforeClass
-    public static void before() {
-        // Cannot run with compile immediately because overriding TrufflePENodeLimit does not work.
+    public static void beforeClass() {
         Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
+        performanceWarningsAreFatalScope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, false);
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        performanceWarningsAreFatalScope.close();
     }
 
     @Test
@@ -203,9 +212,9 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             void testMethod(VirtualFrame frame) {
-                CompilerAsserts.neverPartOfCompilation();
                 global += (int) frame.getArguments()[0];
                 global += FrameUtil.getIntSafe(frame, slot);
+                CompilerAsserts.neverPartOfCompilation();
             }
         };
     }
@@ -217,7 +226,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     private void expectNeverPartOfCompilation(RootNode fillerOnly, RootNode fillerAndTest) {
         try {
-            peRootNodeWithFillerAndTest(getBaselineGraphNodeCount(fillerOnly), fillerAndTest);
+            peRootNodeWithFillerAndTest(getBaselineGraphNodeCount(fillerOnly) + 50, fillerAndTest);
             throw new AssertionError("Expected to throw but did not.");
         } catch (GraalBailoutException e) {
             Assert.assertEquals("CompilerAsserts.neverPartOfCompilation()", e.getMessage());
