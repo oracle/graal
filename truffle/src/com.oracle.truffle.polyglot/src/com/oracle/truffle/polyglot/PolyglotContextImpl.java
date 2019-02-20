@@ -969,8 +969,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                      */
                     return false;
                 }
-                closingLock.lock();
                 closingThread = Thread.currentThread();
+                closingLock.lock();
                 break;
             }
         }
@@ -980,13 +980,13 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
          * close is running and no other thread is currently executing. Note that only the context
          * and closing lock should be acquired in this area to avoid deadlocks.
          */
-        assert closingThread == Thread.currentThread();
-        assert closingLock.isHeldByCurrentThread() : "lock is acquired";
-        assert !closed;
         Thread[] remainingThreads = null;
         List<PolyglotLanguageContext> disposedContexts = null;
         boolean success = false;
         try {
+            assert closingThread == Thread.currentThread();
+            assert closingLock.isHeldByCurrentThread() : "lock is acquired";
+            assert !closed;
             Object prev = enter();
             try {
                 closeChildContexts(cancelIfExecuting, waitForPolyglotThreads);
@@ -1024,7 +1024,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         /*
          * No longer any lock is held. So we can acquire other locks to cleanup.
          */
-
         if (disposedContexts != null) {
             for (PolyglotLanguageContext context : disposedContexts) {
                 context.notifyDisposed();
