@@ -82,7 +82,6 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
         }
     }
 
-
     class PosixNativeLibrary implements NativeLibrary {
 
         private final String canonicalIdentifier;

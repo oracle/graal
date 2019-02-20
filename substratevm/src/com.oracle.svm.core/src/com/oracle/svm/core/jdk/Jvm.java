@@ -34,9 +34,9 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 /**
  * Definitions for Hotspot JVM internal functions
  *
- * We declare an initialize function in order to ensure that the jvm lib is on the link line.
- * This allows the core library dependencies on JVM_ functions to be satisfied by our jvm
- * library (jvm.lib or libjvm.a).
+ * We declare an initialize function in order to ensure that the jvm lib is on the link line. This
+ * allows the core library dependencies on JVM_ functions to be satisfied by our jvm library
+ * (jvm.lib or libjvm.a).
  *
  */
 @Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class, Platform.WINDOWS.class})
