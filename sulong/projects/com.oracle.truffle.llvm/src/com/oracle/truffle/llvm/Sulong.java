@@ -122,6 +122,11 @@ public final class Sulong extends LLVMLanguage {
     }
 
     @Override
+    protected void initializeContext(LLVMContext context) {
+        context.initialize();
+    }
+
+    @Override
     protected void disposeContext(LLVMContext context) {
         LLVMMemory memory = getCapability(LLVMMemory.class);
         context.dispose(memory);
@@ -205,7 +210,9 @@ public final class Sulong extends LLVMLanguage {
     @Override
     protected void disposeThread(LLVMContext context, Thread thread) {
         super.disposeThread(context, thread);
-        context.getThreadingStack().freeStack(getCapability(LLVMMemory.class), thread);
+        if (context.isInitialized()) {
+            context.getThreadingStack().freeStack(getCapability(LLVMMemory.class), thread);
+        }
     }
 
     @Override
