@@ -532,7 +532,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private Map<String, LanguageCache> languages() {
         ClassLoader loader = getAPIAccess().useContextClassLoader() ? Thread.currentThread().getContextClassLoader() : null;
-        final Map<String, LanguageCache> languages = LanguageCache.languages(true, loader);
+        final Map<String, LanguageCache> languages = LanguageCache.languages(loader);
         return languages;
     }
 
