@@ -307,7 +307,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             LANGUAGE.createEnvContext(localEnv, languageServicesCollector);
                             String errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.getServices());
                             if (errorMessage != null) {
-                                throw new PolyglotIllegalStateException(errorMessage);
+                                throw new IllegalStateException(errorMessage);
                             }
                             this.languageServices = languageServicesCollector;
                             lang.language.profile.notifyContextCreate(this, localEnv);
@@ -334,11 +334,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    private static String verifyServices(LanguageInfo info, List<Object> registeredServices, Collection<Class<?>> expectedServices) {
-        for (Class<?> expectedService : expectedServices) {
+    private static String verifyServices(LanguageInfo info, List<Object> registeredServices, Collection<String> expectedServices) {
+        for (String expectedService : expectedServices) {
             boolean found = false;
             for (Object registeredService : registeredServices) {
-                if (expectedService.isAssignableFrom(registeredService.getClass())) {
+                if (isSubType(registeredService.getClass(), expectedService)) {
                     found = true;
                     break;
                 }
@@ -348,6 +348,24 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
         }
         return null;
+    }
+
+    private static boolean isSubType(Class<?> clazz, String serviceClass) {
+        if (clazz == null) {
+            return false;
+        }
+        if (serviceClass.equals(clazz.getName()) || serviceClass.equals(clazz.getCanonicalName())) {
+            return true;
+        }
+        if (isSubType(clazz.getSuperclass(), serviceClass)) {
+            return true;
+        }
+        for (Class<?> implementedInterface : clazz.getInterfaces()) {
+            if (isSubType(implementedInterface, serviceClass)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     boolean ensureInitialized(PolyglotLanguage accessingLanguage) {

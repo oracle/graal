@@ -107,6 +107,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 public class LanguageSPITest {
 
@@ -1829,12 +1831,45 @@ public class LanguageSPITest {
         }
         // Non registered service
         langContext = null;
+        resetLoadedLanguage(LanguageSPITestLanguage.ID);
         try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
             Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService4.class.getName());
+            assertFalse(isLanguageLoaded(LanguageSPITestLanguage.ID));
             assertNull(langContext);
             assertTrue(result.isBoolean());
             assertFalse(result.asBoolean());
         }
+    }
+
+    private static boolean isLanguageLoaded(String languageId) {
+        try {
+            Object languageCache = findLanguageCache(languageId);
+            Field field = languageCache.getClass().getDeclaredField("languageClass");
+            field.setAccessible(true);
+            return field.get(languageCache) != null;
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Cannot reflectively read LanguageCache.languageClass field.", e);
+        }
+    }
+
+    private static void resetLoadedLanguage(String languageId) {
+        try {
+            Object languageCache = findLanguageCache(languageId);
+            Field field = languageCache.getClass().getDeclaredField("languageClass");
+            field.setAccessible(true);
+            field.set(languageCache, null);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Cannot reflectively read LanguageCache.languageClass field.", e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object findLanguageCache(String languageId) throws ReflectiveOperationException {
+        Class<?> clazz = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
+        Method m = clazz.getDeclaredMethod("languages");
+        m.setAccessible(true);
+        Map<String, Object> map = (Map<String, Object>) m.invoke(null);
+        return map.get(languageId);
     }
 
     @Test

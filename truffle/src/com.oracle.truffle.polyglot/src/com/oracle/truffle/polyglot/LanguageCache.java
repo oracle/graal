@@ -65,7 +65,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
-import java.util.Arrays;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -94,7 +93,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private String languageHome;
     private volatile ContextPolicy policy;
     private volatile Class<? extends TruffleLanguage<?>> languageClass;
-    private volatile Collection<Class<?>> serviceClasses;
 
     private LanguageCache(String id, String prefix, Properties info, ClassLoader loader, String url) {
         this.loader = loader;
@@ -125,20 +123,20 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
         this.languageHome = url;
 
-        this.services = new TreeSet<>();
+        Set<String> servicesClassNames = new TreeSet<>();
         for (int servicesCounter = 0;; servicesCounter++) {
             String nth = prefix + "service" + servicesCounter;
             String serviceName = info.getProperty(nth);
             if (serviceName == null) {
                 break;
             }
-            this.services.add(serviceName);
+            servicesClassNames.add(serviceName);
         }
+        this.services = Collections.unmodifiableSet(servicesClassNames);
 
         if (TruffleOptions.AOT) {
             initializeLanguageClass();
             assert languageClass != null;
-            assert serviceClasses != null;
             assert policy != null;
         }
         this.globalInstance = null;
@@ -158,7 +156,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     @SuppressWarnings("unchecked")
     LanguageCache(String id, String name, String implementationName, String version, boolean interactive, boolean internal,
-                    TruffleLanguage<?> instance, Class<?>... services) {
+                    TruffleLanguage<?> instance, String... services) {
         this.id = id;
         this.className = instance.getClass().getName();
         this.mimeTypes = Collections.emptySet();
@@ -178,13 +176,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.globalInstance = instance;
         if (services.length == 0) {
             this.services = Collections.emptySet();
-            this.serviceClasses = Collections.emptySet();
         } else {
-            this.serviceClasses = Collections.unmodifiableCollection(Arrays.<Class<?>> asList(services));
-            this.services = new TreeSet<>();
-            for (Class<?> service : services) {
-                this.services.add(service.getName());
-            }
+            Set<String> servicesClassNames = new TreeSet<>();
+            Collections.addAll(servicesClassNames, services);
+            this.services = Collections.unmodifiableSet(servicesClassNames);
         }
     }
 
@@ -429,19 +424,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return policy;
     }
 
-    Collection<Class<?>> getServices() {
-        initializeLanguageClass();
-        assert serviceClasses != null;
-        return serviceClasses;
+    Collection<String> getServices() {
+        return services;
     }
 
     boolean supportsService(Class<?> clazz) {
-        for (Class<?> serviceClass : getServices()) {
-            if (clazz.equals(serviceClass)) {
-                return true;
-            }
-        }
-        return false;
+        return services.contains(clazz.getName()) || services.contains(clazz.getCanonicalName());
     }
 
     @SuppressWarnings("unchecked")
@@ -463,16 +451,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     } catch (ClassNotFoundException e) {
                         throw new IllegalStateException("Cannot load language " + name + ". Language implementation class " + className + " failed to load.", e);
                     }
-                    assert serviceClasses == null;
-                    List<Class<?>> serviceClassesCollector = new ArrayList<>(services.size());
-                    for (String serviceClassName : services) {
-                        try {
-                            serviceClassesCollector.add(Class.forName(serviceClassName, true, loader));
-                        } catch (ClassNotFoundException e) {
-                            throw new IllegalStateException("Cannot load language " + name + ". Language service class " + serviceClassName + " failed to load.", e);
-                        }
-                    }
-                    serviceClasses = Collections.unmodifiableCollection(serviceClassesCollector);
                 }
             }
         }

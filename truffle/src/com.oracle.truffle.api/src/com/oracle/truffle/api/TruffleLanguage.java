@@ -486,8 +486,9 @@ public abstract class TruffleLanguage<C> {
      * context creation. Should there be a need to perform complex initialization, do it by
      * overriding the {@link #initializeContext(java.lang.Object)} method.
      * <p>
-     * Additional services provided by the language should be
-     * {@link Env#registerService(java.lang.Object) registered} by this method.
+     * Additional services provided by the language must be
+     * {@link Env#registerService(java.lang.Object) registered} by this method otherwise
+     * {@link IllegalStateException} is thrown.
      * <p>
      * May return {@code null} if the language does not need any per-{@linkplain Context context}
      * state. Otherwise it should return a new object instance every time it is called.
