@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime;
 import java.nio.file.Path;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
@@ -59,7 +60,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class NFIContextExtension implements ContextExtension {
-    private final TruffleObject defaultLibraryHandle;
+    @CompilerDirectives.CompilationFinal private TruffleObject defaultLibraryHandle;
     private final ExternalLibrary defaultLibrary;
     // we use an EconomicMap because iteration order must match the insertion order
     private final EconomicMap<ExternalLibrary, TruffleObject> libraryHandles = EconomicMap.create();
@@ -68,9 +69,18 @@ public final class NFIContextExtension implements ContextExtension {
 
     public NFIContextExtension(Env env) {
         this.env = env;
-        this.defaultLibraryHandle = loadDefaultLibrary();
         this.defaultLibrary = ExternalLibrary.external("NativeDefault", true);
         this.nativeFunctions = new LLVMNativeFunctions(this);
+    }
+
+    @Override
+    public void initialize() {
+        assert !isInitialized();
+        this.defaultLibraryHandle = loadDefaultLibrary();
+    }
+
+    public boolean isInitialized() {
+        return defaultLibraryHandle != null;
     }
 
     public static class UnsupportedNativeTypeException extends Exception {
@@ -303,6 +313,7 @@ public final class NFIContextExtension implements ContextExtension {
         }
         TruffleObject symbol = getNativeFunctionOrNull(defaultLibraryHandle, name);
         if (symbol != null) {
+            assert isInitialized();
             return new NativeLookupResult(defaultLibrary, symbol);
         }
         return null;
@@ -322,6 +333,7 @@ public final class NFIContextExtension implements ContextExtension {
         }
         TruffleObject symbol = getNativeDataObjectOrNull(defaultLibraryHandle, realName);
         if (symbol != null) {
+            assert isInitialized();
             return new NativeLookupResult(defaultLibrary, symbol);
         }
         return null;
