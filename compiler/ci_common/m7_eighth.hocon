@@ -3,8 +3,6 @@
 m7_eighth.default : ${solaris-sparcv9} {
   capabilities: ${solaris-sparcv9.capabilities} [m7_eighth]
   environment : {
-    XMX         : "16g"
-    XMS         : "16g"
     JVM_CONFIG  : ${jvm-config.default}
     JVM         : "server"
     MACHINE_NAME: "m7_eighth"

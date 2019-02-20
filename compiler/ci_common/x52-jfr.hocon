@@ -1,4 +1,4 @@
-bench-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
+bench-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "dacapo"
   }
@@ -9,7 +9,7 @@ bench-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
   teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
 }
 
-bench-scala-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
+bench-scala-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "scala-dacapo"
   }
@@ -20,7 +20,7 @@ bench-scala-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
   teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
 }
 
-bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${jfr-bench-notifications} {
+bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${large-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "specjvm2008"
   }
@@ -36,7 +36,7 @@ bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${jfr-bench-notifications} {
   timelimit: "3:30:00"
 }
 
-bench-specjbb2015-jfr: ${bench-common} ${jfr-bench-notifications} {
+bench-specjbb2015-jfr: ${bench-common} ${large-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "specjbb2015"
   }
@@ -51,7 +51,7 @@ bench-specjbb2015-jfr: ${bench-common} ${jfr-bench-notifications} {
   timelimit: "3:00:00"
 }
 
-bench-renaissance-jfr: ${bench-common} ${jfr-bench-notifications} {
+bench-renaissance-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "renaissance"
   }
@@ -66,7 +66,7 @@ bench-renaissance-jfr: ${bench-common} ${jfr-bench-notifications} {
   timelimit: "3:45:00"
 }
 
-bench-spark-sql-perf-jfr: ${bench-common} ${jfr-bench-notifications} {
+bench-spark-sql-perf-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "spark-sql-perf"
   }
@@ -84,8 +84,6 @@ bench-spark-sql-perf-jfr: ${bench-common} ${jfr-bench-notifications} {
 x52.default-jfr : ${linux-amd64} {
   capabilities: ${linux-amd64.capabilities} [x52, no_frequency_scaling]
   environment : {
-    XMX         : "64g"
-    XMS         : "64g"
     JVM_CONFIG  : ${jvm-config.default}
     JVM         : "server"
     MACHINE_NAME: "x52"
