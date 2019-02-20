@@ -68,6 +68,12 @@ class Console extends AbstractInspectorObject {
                     METHOD_CLEAR, METHOD_COUNT, METHOD_COUNT_RESET, METHOD_ASSERT, METHOD_MARK_TIMELINE, METHOD_PROFILE, METHOD_PROFILE_END,
                     METHOD_TIMELINE, METHOD_TIMELINE_END, METHOD_TIME, METHOD_TIME_END, METHOD_TIME_STAMP};
     private static final TruffleObject KEYS = new Keys();
+    private static final Object UNKNOWN = new Object() {
+        @Override
+        public String toString() {
+            return "unknown";
+        }
+    };
 
     private InspectorServerConnection connection;
     private final Map<Object, Long> time = new ConcurrentHashMap<>();
@@ -137,7 +143,7 @@ class Console extends AbstractInspectorObject {
     protected Object invokeMethod(String name, Object[] arguments) {
         Object arg;
         if (arguments.length < 1) {
-            arg = null;
+            arg = UNKNOWN;
         } else {
             if (!(arguments[0] instanceof String || arguments[0] instanceof Number)) {
                 throw UnsupportedTypeException.raise(arguments);
@@ -198,7 +204,7 @@ class Console extends AbstractInspectorObject {
             case METHOD_TIME_END:
                 long t2 = System.nanoTime();
                 Long t1 = time.remove(arg);
-                String timer = (arg == null) ? "default" : arg.toString();
+                String timer = arg.toString();
                 if (t1 == null) {
                     arg = "Timer '" + timer + "' does not exist";
                     type = "warning";

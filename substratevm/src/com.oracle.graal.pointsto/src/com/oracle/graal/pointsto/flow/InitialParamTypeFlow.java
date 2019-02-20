@@ -41,6 +41,7 @@ public class InitialParamTypeFlow extends TypeFlow<AnalysisMethod> {
         this.position = position;
     }
 
+    @Override
     public AnalysisMethod method() {
         return super.getSource();
     }

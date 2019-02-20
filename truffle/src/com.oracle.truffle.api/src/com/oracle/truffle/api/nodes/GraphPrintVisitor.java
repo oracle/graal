@@ -495,7 +495,7 @@ public class GraphPrintVisitor implements Closeable {
     final void createElementForNode(Object node) {
         boolean exists = nodeMap.containsKey(node);
         if (!exists) {
-            int nodeId = !exists ? oldOrNextId(node) : nextId();
+            int nodeId = oldOrNextId(node);
             nodeMap.put(node, new NodeElement(nodeId));
 
             String className = NodeUtil.className(node.getClass());

@@ -81,7 +81,7 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
 
     @Override
     public int getMaxLocals() {
-        return getSignature().getParameterCount(true) + 2;
+        return getSignature().getParameterCount(!isStatic()) * 2;
     }
 
     @Override

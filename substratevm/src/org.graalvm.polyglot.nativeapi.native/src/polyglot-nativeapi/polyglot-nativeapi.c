@@ -88,6 +88,8 @@ extern graal_isolate_t* graal_get_isolate(graal_isolatethread_t* thread);
  */
 extern int graal_detach_thread(graal_isolatethread_t* thread);
 
+extern int graal_detach_threads(graal_isolatethread_t* thread, graal_isolatethread_t** threads, int length);
+
 /*
  * Tears down the passed isolate, waiting for any attached threads to detach from
  * it, then discards the isolate's objects, threads, and any other state or context
@@ -124,6 +126,14 @@ graal_isolate_t* poly_get_isolate(graal_isolatethread_t* thread) {
 
 poly_status poly_detach_thread(graal_isolatethread_t* thread) {
    if (graal_detach_thread(thread)) {
+    return poly_generic_failure;
+  } else {
+    return poly_ok;
+  }
+};
+
+poly_status poly_detach_threads(graal_isolatethread_t* thread, graal_isolatethread_t** threads, int length) {
+  if (graal_detach_threads(thread, threads, length)) {
     return poly_generic_failure;
   } else {
     return poly_ok;

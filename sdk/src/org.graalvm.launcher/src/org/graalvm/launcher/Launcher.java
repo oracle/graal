@@ -1344,7 +1344,11 @@ public abstract class Launcher {
             }
             String[] argv = new String[command.size() + 1];
             int i = 0;
-            argv[i++] = executable.getFileName().toString();
+            Path filename = executable.getFileName();
+            if (filename == null) {
+                throw abort(String.format("Cannot determine execute filename from path %s", filename));
+            }
+            argv[i++] = filename.toString();
             for (String arg : command) {
                 argv[i++] = arg;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -158,7 +159,11 @@ public final class NFIContextExtension implements ContextExtension {
     }
 
     private boolean handleSpecialLibraries(ExternalLibrary lib) {
-        String fileName = lib.getPath().getFileName().toString().trim();
+        Path fileNamePath = lib.getPath().getFileName();
+        if (fileNamePath == null) {
+            throw new IllegalArgumentException("Filename path of " + lib.getPath() + " is null");
+        }
+        String fileName = fileNamePath.toString().trim();
         if (fileName.startsWith("libc.")) {
             // nothing to do, since libsulong.so already links against libc.so
             return true;
