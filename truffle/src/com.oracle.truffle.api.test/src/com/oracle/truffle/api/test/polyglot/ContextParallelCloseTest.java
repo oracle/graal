@@ -52,6 +52,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.polyglot.PolyglotCachingTest.ReuseLanguage;
@@ -62,33 +63,50 @@ public class ContextParallelCloseTest {
     public void testCloseDeadlock() throws InterruptedException, ExecutionException {
         final int threads = 10;
         ExecutorService service = Executors.newFixedThreadPool(threads);
-        for (int iteration = 0; iteration < 100; iteration++) {
-            Context context = Context.create();
-            context.initialize(ReuseLanguage.ID);
-            final CountDownLatch latch = new CountDownLatch(threads);
-            List<Future<?>> futures = new ArrayList<>();
-            for (int i = 0; i < threads; i++) {
-                futures.add(service.submit(() -> {
-                    latch.countDown();
-                    try {
-                        latch.await();
-                    } catch (InterruptedException e) {
-                    }
-                    context.close();
-                }));
+        try {
+            for (int iteration = 0; iteration < 100; iteration++) {
+                Engine engine;
+                Context context;
+                if (iteration % 2 == 0) {
+                    engine = Engine.create();
+                    context = Context.newBuilder().engine(engine).build();
+                } else {
+                    context = Context.newBuilder().build();
+                    engine = context.getEngine();
+                }
+                context.initialize(ReuseLanguage.ID);
+                final CountDownLatch latch = new CountDownLatch(threads);
+                List<Future<?>> futures = new ArrayList<>();
+                for (int i = 0; i < threads; i++) {
+                    final int innerIteration = i;
+                    futures.add(service.submit(() -> {
+                        latch.countDown();
+                        try {
+                            latch.await();
+                        } catch (InterruptedException e) {
+                        }
+                        if (innerIteration % 3 == 0) {
+                            context.close();
+                            engine.close();
+                        } else {
+                            engine.close();
+                        }
+                    }));
+                }
+                for (Future<?> future : futures) {
+                    future.get();
+                }
+                try {
+                    // context must be closed successfully by at least one thread
+                    context.eval(ReuseLanguage.ID, "");
+                    fail();
+                } catch (IllegalStateException e) {
+                    assertEquals("Engine is already closed.", e.getMessage());
+                }
             }
-            for (Future<?> future : futures) {
-                future.get();
-            }
-            try {
-                // context must be closed successfully by at least one thread
-                context.eval(ReuseLanguage.ID, "");
-                fail();
-            } catch (IllegalStateException e) {
-                assertEquals("Engine is already closed.", e.getMessage());
-            }
+        } finally {
+            service.shutdown();
         }
-        service.shutdown();
     }
 
 }
