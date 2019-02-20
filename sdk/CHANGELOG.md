@@ -5,6 +5,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 ## Version 1.0.0 RC13
 * [OptionCategory.DEBUG](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionCategory.html) has been renamed to `OptionCategory.INTERNAL` for clarity.
 * Added `"static"` member to class objects that provides access to the class's static members.
+* [OptionStability](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionStability.html) has been added for specifying the stability of an option.
 
 ## Version 1.0 RC11
 * Added [SourceSection.hasLines()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasLines--), [SourceSection.hasColumns()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasColumns--) and [SourceSection.hasCharIndex()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasCharIndex--) to distinguish which positions are defined and which are not.
@@ -32,19 +33,19 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 	* Byte based sources may be constructed using a `ByteSequence` or from a `File` or `URL`. Whether sources are interpreted as character or byte based sources depends on the specified language.
 	* `Source.hasBytes()` and `Source.hasCharacters()` may be used to find out whether a source is character or byte based.
 	* Byte based sources throw an `UnsupportedOperationException` if methods that access characters, line numbers or column numbers.
-	* Added `Source.getBytes()` to access the contents of byte based sources. 
-* Added support for MIME types to sources: 
+	* Added `Source.getBytes()` to access the contents of byte based sources.
+* Added support for MIME types to sources:
 	* MIME types can now be assigned using `Source.Builder.mimeType(String)` to sources in addition to the target language.
 	* The MIME type of a source allows languages support different kinds of input.
 	* `Language` instances allow access to the default and supported MIME types using `Language.getMimeTypes()` and `Language.getDefaultMimeType()`.
-	* MIME types are automatically detected if the source is constructed from a `File` or `URL` if it is not specified explicitly. 
+	* MIME types are automatically detected if the source is constructed from a `File` or `URL` if it is not specified explicitly.
 	* Deprecated `Source.getInputStream()`. Use `Source.getCharacters()` or `Source.getBytes()` instead.
 * Context methods now consistently throw `IllegalArgumentException` instead of `IllegalStateException` for unsupported sources or missing / inaccessible languages.
 * Added `Engine.findHome()` to find the GraalVM home folder.
 
 ## Version 1.0 RC5
 * `PolyglotException.getGuestObject()` now returns `null` to indicate that no exception object is available instead of returning a `Value` instance that returns `true` for `isNull()`.
-* Added new [execution listener](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html) API that allows for simple, efficient and fine grained introspection of executed code. 
+* Added new [execution listener](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html) API that allows for simple, efficient and fine grained introspection of executed code.
 
 ## Version 1.0 RC3
 
