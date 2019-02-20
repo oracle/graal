@@ -322,10 +322,6 @@ hfds disposed,frame,node,source
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$ParsingRequest
  outer com.oracle.truffle.api.TruffleLanguage
-meth public com.oracle.truffle.api.frame.MaterializedFrame getFrame()
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.nodes.Node getLocation()
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.source.Source getSource()
 meth public java.util.List<java.lang.String> getArgumentNames()
 supr java.lang.Object
