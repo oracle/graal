@@ -537,26 +537,6 @@ public class ExportMethodTest extends AbstractLibraryTest {
         }
     }
 
-    @ExportLibrary(ExportsTestLibrary4.class)
-    static class ExportsTestObjectError17 {
-        @ExportMessage
-        public int intArg(int arg,
-                        @ExpectError("Failed to generate code for @GenerateUncached: %")//
-                        @Cached DSLNode node) {
-            return 42;
-        }
-
-        @ExportMessage
-        static class IntArg {
-
-            @Specialization
-            static int intArg(ExportsTestObjectError17 receiver, int arg,
-                            @Cached DSLNode node) {
-                return arg;
-            }
-        }
-    }
-
     @ExpectError("@ExportLibrary is not supported for interfaces at the moment.")
     @ExportLibrary(ExportsTestLibrary4.class)
     interface ExportsTestObjectError18 {

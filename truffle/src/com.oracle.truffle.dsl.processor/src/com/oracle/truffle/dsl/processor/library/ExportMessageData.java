@@ -45,45 +45,35 @@ import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 
 public class ExportMessageData extends MessageContainer {
 
-    private final ExportsLibrary library;
+    private final ExportsLibrary exports;
     private final LibraryMessage resolvedMessage;
-    private ExportMessageElement exportedClass;
-    private ExportMessageElement exportedMethod;
 
-    ExportMessageData(ExportsLibrary library, LibraryMessage resolvedMessage) {
-        this.library = library;
+    private final Element element;
+    private final AnnotationMirror annotation;
+    private NodeData specializedNode;
+
+    ExportMessageData(ExportsLibrary exports, LibraryMessage resolvedMessage, Element element, AnnotationMirror annotation) {
+        this.exports = exports;
         this.resolvedMessage = resolvedMessage;
-    }
-
-    public void setExportedClass(ExportMessageElement exportedClass) {
-        this.exportedClass = exportedClass;
-    }
-
-    public void setExportedMethod(ExportMessageElement exportedMethod) {
-        this.exportedMethod = exportedMethod;
-    }
-
-    public ExportMessageElement getExportedMethod() {
-        return exportedMethod;
-    }
-
-    public ExportMessageElement getExportedClass() {
-        return exportedClass;
+        this.element = element;
+        this.annotation = annotation;
     }
 
     @Override
     protected List<MessageContainer> findChildContainers() {
         List<MessageContainer> children = new ArrayList<>();
-        if (exportedClass != null) {
-            children.add(exportedClass);
-        }
-        if (exportedMethod != null) {
-            children.add(exportedMethod);
+        if (specializedNode != null) {
+            children.add(specializedNode);
         }
         return children;
     }
@@ -93,17 +83,51 @@ public class ExportMessageData extends MessageContainer {
     }
 
     public ExportsLibrary getExportsLibrary() {
-        return library;
+        return exports;
     }
 
-    @Override
-    public AnnotationMirror getMessageAnnotation() {
-        return null;
+    public boolean isClass() {
+        return element == null ? false : element.getKind().isClass();
+    }
+
+    public boolean isMethod() {
+        return !isClass();
+    }
+
+    public TypeMirror getReceiverType() {
+        if (element == null || exports.isExplicitReceiver()) {
+            return exports.getReceiverType();
+        }
+        if (element instanceof ExecutableElement) {
+            ExecutableElement method = ((ExecutableElement) element);
+            if (element.getModifiers().contains(Modifier.STATIC)) {
+                return method.getParameters().get(0).asType();
+            } else {
+                return method.getEnclosingElement().asType();
+            }
+        } else if (element instanceof TypeElement) {
+            return element.getEnclosingElement().asType();
+        } else {
+            throw new AssertionError(element.getClass().getName());
+        }
+    }
+
+    public void setSpecializedNode(NodeData specializedNode) {
+        this.specializedNode = specializedNode;
+    }
+
+    public NodeData getSpecializedNode() {
+        return specializedNode;
     }
 
     @Override
     public Element getMessageElement() {
-        return library.getMessageElement();
+        return element;
+    }
+
+    @Override
+    public AnnotationMirror getMessageAnnotation() {
+        return annotation;
     }
 
 }

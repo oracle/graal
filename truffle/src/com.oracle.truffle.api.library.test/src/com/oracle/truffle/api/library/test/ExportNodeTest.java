@@ -78,18 +78,14 @@ public class ExportNodeTest extends AbstractLibraryTest {
         int nodeCalled = 0;
 
         @ExportMessage
-        void foo() {
-            uncachedCalled++;
-        }
-
-        @ExportMessage
-        abstract static class Foo {
-
-            @Specialization
-            static void doFoo(ExportNodeTestObject1 receiver) {
-                receiver.nodeCalled++;
+        void foo(@Cached(value = "0", uncached = "1") int cached) {
+            if (cached == 0) {
+                nodeCalled++;
+            } else {
+                uncachedCalled++;
             }
         }
+
     }
 
     @Test
@@ -112,33 +108,12 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
     }
 
-    // valid DSL node with explicit uncached version
-    @ExportLibrary(ExportNodeLibrary1.class)
-    static class ExportNodeTestObject2 {
-
-        @ExportMessage
-        void foo() {
-        }
-
-        @ExportMessage
-        abstract static class Foo {
-
-            @Specialization
-            static void doFoo(ExportNodeTestObject2 receiver) {
-            }
-        }
-    }
-
     // binding any static method should be valid
     // methods in the enclosing class should not be bound if available in the inner class
     @ExportLibrary(ExportNodeLibrary1.class)
     static class ExportNodeTestObject3 {
 
         int cachedExecute = 0;
-
-        @ExportMessage
-        void foo() {
-        }
 
         static boolean guard0() {
             return false;
@@ -182,14 +157,14 @@ public class ExportNodeTest extends AbstractLibraryTest {
             @Specialization(guards = {"guard0()", "guard1", "!receiver.equals(c0)"}, limit = " limit()")
             static void s0(ExportNodeTestObject3 receiver,
                             @Cached("cache0") Object c0, //
-                            @Cached("cache1()") Object c1) {
+                            @Cached(value = "cache1()", allowUncached = true) Object c1) {
                 receiver.cachedExecute++;
             }
 
             @Specialization(guards = {"guard0()", "guard1", "!receiver.equals(c0)"}, limit = " limit")
             static void s1(ExportNodeTestObject3 receiver,
                             @Cached("cache0") Object c0, //
-                            @Cached("cache1()") Object c1) {
+                            @Cached(value = "cache1()", allowUncached = true) Object c1) {
             }
         }
     }
@@ -208,10 +183,6 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class ExportNodeTestObject4 {
 
         int cachedExecute = 0;
-
-        @ExportMessage
-        void foo() {
-        }
 
         static boolean guard0() {
             return true;
@@ -237,14 +208,14 @@ public class ExportNodeTest extends AbstractLibraryTest {
             @Specialization(guards = {"guard0()", "guard1", "!receiver.equals(c0)"}, limit = " limit()")
             static void s0(ExportNodeTestObject4 receiver,
                             @Cached("cache0") Object c0, //
-                            @Cached("cache1()") Object c1) {
+                            @Cached(value = "cache1()", allowUncached = true) Object c1) {
                 receiver.cachedExecute++;
             }
 
             @Specialization(guards = {"guard0()", "guard1", "!receiver.equals(c0)"}, limit = " limit")
             static void s1(ExportNodeTestObject4 receiver,
                             @Cached("cache0") Object c0, //
-                            @Cached("cache1()") Object c1) {
+                            @Cached(value = "cache1()", allowUncached = true) Object c1) {
             }
         }
     }
@@ -564,10 +535,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError14 {
 
         @ExportMessage
-        void foo() {
-        }
-
-        @ExportMessage
+        @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any instance variables. Found instance variable Foo.instanceVar. Remove instance variable to resolve this.")
         abstract static class Foo {
 
             Object instanceVar;
@@ -586,10 +554,6 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError15 {
 
         @ExportMessage
-        void foo() {
-        }
-
-        @ExportMessage
         abstract static class Foo {
 
             Object instanceMethod() {
@@ -598,8 +562,9 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
             @Specialization
             static void doFoo(TestObjectError15 receiver,
-                            @ExpectError("@ExportMessage annotated nodes must only refer to static cache initializer methods or fields. Add a static modifier to the bound cache initializer method or field to resolve this.") //
-                            @Cached("instanceMethod()") Object c) {
+                            @ExpectError("@ExportMessage annotated nodes must only refer to static cache initializer methods or fields. " +
+                                            "Add a static modifier to the bound cache initializer method or field to resolve this.") //
+                            @Cached(value = "instanceMethod()", allowUncached = true) Object c) {
             }
         }
 
@@ -610,10 +575,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError16 {
 
         @ExportMessage
-        void foo() {
-        }
-
-        @ExportMessage
+        @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any instance variables. Found instance variable Foo.guard. Remove instance variable to resolve this.")
         abstract static class Foo {
 
             boolean guard;
@@ -629,10 +591,6 @@ public class ExportNodeTest extends AbstractLibraryTest {
     // guards must not bind instance methods
     @ExportLibrary(ExportNodeLibrary1.class)
     static class TestObjectError17 {
-
-        @ExportMessage
-        void foo() {
-        }
 
         @ExportMessage
         abstract static class Foo {
@@ -654,10 +612,6 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError18 {
 
         @ExportMessage
-        void foo() {
-        }
-
-        @ExportMessage
         abstract static class Foo {
 
             int limit = 42;
@@ -673,10 +627,6 @@ public class ExportNodeTest extends AbstractLibraryTest {
     // limit must not bind instance methods
     @ExportLibrary(ExportNodeLibrary1.class)
     static class TestObjectError19 {
-
-        @ExportMessage
-        void foo() {
-        }
 
         @ExportMessage
         abstract static class Foo {

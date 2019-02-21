@@ -346,6 +346,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeSpecializations(members, node);
         initializeExecutableTypeHierarchy(node);
         initializeReceiverBound(node);
+        if (node.hasErrors()) {
+            return node;  // error sync point
+        }
         initializeUncachable(node, members);
 
         if (mode == ParseMode.DEFAULT) {
@@ -495,6 +498,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private void initializeReceiverBound(NodeData node) {
         boolean requireNodeUnbound = mode == ParseMode.EXPORTED_MESSAGE;
         boolean nodeBound = false;
+
         for (SpecializationData specialization : node.getSpecializations()) {
             if (!specialization.isReachable() || specialization.getMethod() == null) {
                 continue;
@@ -2180,12 +2184,17 @@ public final class NodeParser extends AbstractParser<NodeData> {
             } else if (allowUncached) {
                 cache.setUncachedExpression(cache.getDefaultExpression());
             } else {
-                cache.setUncachedExpression(parseCachedExpression(resolver, cache, parameter.getType(), uncached));
+                if (!uncachedSpecified && cache.getDefaultExpression() != null && !cache.getDefaultExpression().mayAllocate()) {
+                    cache.setUncachedExpression(cache.getDefaultExpression());
+                } else {
+                    cache.setUncachedExpression(parseCachedExpression(resolver, cache, parameter.getType(), uncached));
 
-                if (!uncachedSpecified && cache.hasErrors()) {
-                    cache.setUncachedExpressionError(cache.getMessages().iterator().next());
-                    cache.getMessages().clear();
+                    if (!uncachedSpecified && cache.hasErrors()) {
+                        cache.setUncachedExpressionError(cache.getMessages().iterator().next());
+                        cache.getMessages().clear();
+                    }
                 }
+
             }
 
         }

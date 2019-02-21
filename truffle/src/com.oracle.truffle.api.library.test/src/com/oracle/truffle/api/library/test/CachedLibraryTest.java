@@ -103,23 +103,18 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        static final String call(Something s) {
-            if (s.name != null) {
-                return s.name + "_uncached";
-            } else {
-                return "uncached";
-            }
-
-        }
-
-        @ExportMessage
-        static class Call {
-            @Specialization
-            static final String call(Something s) {
+        static final String call(Something s, @Cached(value = "0", uncached = "1") int cached) {
+            if (cached == 0) {
                 if (s.name != null) {
                     return s.name + "_cached";
                 } else {
                     return "cached";
+                }
+            } else {
+                if (s.name != null) {
+                    return s.name + "_uncached";
+                } else {
+                    return "uncached";
                 }
             }
         }

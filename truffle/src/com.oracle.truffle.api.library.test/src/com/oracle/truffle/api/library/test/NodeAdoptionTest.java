@@ -68,17 +68,17 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
     static final class NodeAdoptionObject {
 
         @ExportMessage
-        String m0() {
-            return "uncached";
-        }
-
-        @ExportMessage
         static class M0 {
             @Specialization(guards = "innerNode.execute(receiver)")
             static String doM0(NodeAdoptionObject receiver,
-                            @Cached InnerNode innerNode) {
-                assertNotNull(innerNode.getRootNode());
-                return "cached";
+                            @Cached(allowUncached = true) InnerNode innerNode,
+                            @Cached(value = "0", uncached = "1") int cached) {
+                if (cached == 0) {
+                    assertNotNull(innerNode.getRootNode());
+                    return "cached";
+                } else {
+                    return "uncached";
+                }
             }
         }
     }

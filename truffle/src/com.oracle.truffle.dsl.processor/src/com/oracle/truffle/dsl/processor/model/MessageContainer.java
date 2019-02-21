@@ -45,6 +45,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -115,6 +116,22 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         }
         for (MessageContainer container : findChildContainers()) {
             container.redirectMessages(to);
+        }
+    }
+
+    public final void redirectMessagesNotEnclosedIn(MessageContainer to) {
+        if (!getMessages().isEmpty()) {
+            Element baseElement = to.getMessageElement();
+            ListIterator<Message> messageIterator = getMessages().listIterator();
+            while (messageIterator.hasNext()) {
+                Message message = messageIterator.next();
+                if (!ElementUtils.isEnclosedIn(baseElement, message.getEnclosedElement())) {
+                    messageIterator.set(message.redirect("", baseElement));
+                }
+            }
+        }
+        for (MessageContainer container : findChildContainers()) {
+            container.redirectMessagesNotEnclosedIn(to);
         }
     }
 

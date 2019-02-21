@@ -246,8 +246,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
                 if (message.getName().equals("accepts")) {
                     continue;
                 }
-                ExportMessageData exportMessage = new ExportMessageData(objectExports, message);
-                exportMessage.setExportedMethod(new ExportMessageElement(exportMessage, null, null));
+                ExportMessageData exportMessage = new ExportMessageData(objectExports, message, null, null);
                 objectExports.getExportedMessages().put(message.getName(), exportMessage);
             }
 

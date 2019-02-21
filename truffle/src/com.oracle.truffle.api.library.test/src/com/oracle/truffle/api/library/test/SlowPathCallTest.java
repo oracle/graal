@@ -43,7 +43,7 @@ package com.oracle.truffle.api.library.test;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -62,18 +62,12 @@ public class SlowPathCallTest extends AbstractLibraryTest {
     static class MyObject {
 
         @ExportMessage
-        Object someCall() {
-            return "uncached";
-        }
-
-        @ExportMessage
-        static class SomeCall {
-
-            @Specialization
-            static Object s0(@SuppressWarnings("unused") MyObject receiver) {
+        Object someCall(@Cached(value = "0", uncached = "1") int cached) {
+            if (cached == 0) {
                 return "cached";
+            } else {
+                return "uncached";
             }
-
         }
 
     }

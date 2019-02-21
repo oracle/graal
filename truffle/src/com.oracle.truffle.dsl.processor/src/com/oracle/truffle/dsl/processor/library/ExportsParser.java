@@ -68,7 +68,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -171,7 +170,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         /*
          * First pass: element creation
          */
-        List<ExportMessageElement> exportedElements = new ArrayList<>();
+        List<ExportMessageData> exportedElements = new ArrayList<>();
         for (Element member : members) {
             List<AnnotationMirror> exportedMessageMirrors = getRepeatedAnnotation(member.getAnnotationMirrors(), ExportMessage.class);
             if (exportedMessageMirrors.isEmpty()) {
@@ -197,33 +196,26 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         }
 
         /*
-         * Second pass: duplication and visibility checks.
+         * Second pass: duplication checks and resolve rexports in subclasses.
          */
-        for (ExportMessageElement exportedElement : exportedElements) {
-            Element member = exportedElement.getMessageElement();
-            if (isMethodElement(member)) {
-                if (exportedElement.getExport().getExportedMethod() != null) {
-                    // duplicate
-                    String error = String.format("Duplicate exported method for library message %s.", exportedElement.getExport().getResolvedMessage().getSimpleName());
+        for (ExportMessageData exportedMessage : exportedElements) {
+            Element member = exportedMessage.getMessageElement();
+            String messageName = exportedMessage.getResolvedMessage().getName();
+            Map<String, ExportMessageData> exportedMessages = exportedMessage.getExportsLibrary().getExportedMessages();
+            ExportMessageData existing = exportedMessages.get(messageName);
+            if (existing != null) {
+                Element existingEnclosingElement = existing.getMessageElement().getEnclosingElement();
+                Element currentEnclosingElement = exportedMessage.getMessageElement().getEnclosingElement();
+                if (ElementUtils.elementEquals(existingEnclosingElement, currentEnclosingElement)) {
+                    String error = String.format("Duplicate exported library message %s.", messageName);
                     model.addError(member, error);
-                    model.addError(exportedElement.getExport().getExportedMethod().getMessageElement(), error);
-                } else {
-                    exportedElement.getExport().setExportedMethod(exportedElement);
+                    model.addError(existing.getMessageElement(), error);
+                } else if (ElementUtils.isSubtype(currentEnclosingElement.asType(), existingEnclosingElement.asType())) {
+                    // message overrides current one
+                    exportedMessages.put(messageName, exportedMessage);
                 }
-            } else if (isNodeElement(member)) {
-                if (exportedElement.getExport().getExportedClass() != null) {
-                    if (ElementUtils.elementEquals(exportedElement.getExport().getExportedClass().getMessageElement(), member.getEnclosingElement())) {
-                        // duplicate
-                        String error = String.format("Duplicate exported class for library message %s.", exportedElement.getExport().getResolvedMessage().getSimpleName());
-                        model.addError(member, error);
-                        model.addError(exportedElement.getExport().getExportedClass().getMessageElement(), error);
-                    }
-                } else {
-                    exportedElement.getExport().setExportedClass(exportedElement);
-                }
-
             } else {
-                throw new AssertionError("should not be reachable");
+                exportedMessages.put(messageName, exportedMessage);
             }
         }
 
@@ -231,9 +223,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
          * Third pass: initialize and further parsing that need both method and node to be
          * available.
          */
-        for (
-
-        ExportMessageElement exportedElement : exportedElements) {
+        for (ExportMessageData exportedElement : exportedElements) {
             Element member = exportedElement.getMessageElement();
             if (isMethodElement(member)) {
                 initializeExportedMethod(model, exportedElement);
@@ -314,16 +304,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
             List<NodeData> cachedSharedNodes = new ArrayList<>();
-            List<ExportMessageElement> exportedMessages = new ArrayList<>();
+            List<ExportMessageData> exportedMessages = new ArrayList<>();
             for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
-                ExportMessageElement nodeExport = export.getExportedClass();
-                ExportMessageElement methodExport = export.getExportedMethod();
-                if (nodeExport != null && nodeExport.getSpecializedNode() != null) {
-                    cachedSharedNodes.add(nodeExport.getSpecializedNode());
-                    exportedMessages.add(nodeExport);
-                } else if (methodExport != null && methodExport.getSpecializedNode() != null) {
-                    cachedSharedNodes.add(methodExport.getSpecializedNode());
-                    exportedMessages.add(methodExport);
+                if (export.getSpecializedNode() != null) {
+                    cachedSharedNodes.add(export.getSpecializedNode());
+                    exportedMessages.add(export);
                 }
             }
             libraryExports.setSharedExpressions(NodeParser.computeSharing(cachedSharedNodes, true));
@@ -332,7 +317,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             // JDT will otherwise just ignore those messages and not display anything.
             for (int i = 0; i < cachedSharedNodes.size(); i++) {
                 NodeData nodeData = cachedSharedNodes.get(i);
-                ExportMessageElement exportedMessage = exportedMessages.get(i);
+                ExportMessageData exportedMessage = exportedMessages.get(i);
                 if (nodeData.hasErrorsOrWarnings()) {
                     nodeData.redirectMessagesOnGeneratedElements(exportedMessage);
                 }
@@ -340,15 +325,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
-        for (ExportMessageElement message : exportedElements) {
+        for (ExportMessageData message : exportedElements) {
             if (!elementEquals(message.getMessageElement().getEnclosingElement(),
                             model.getTemplateType())) {
-                message.redirectMessages(message.getExport().getExportsLibrary());
+                message.redirectMessages(message.getExportsLibrary());
             }
-        }
-
-        if (model.hasErrors()) {
-            return model;
         }
 
         return model;
@@ -521,7 +502,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         return model;
     }
 
-    private List<ExportMessageElement> parseExportedMessage(ExportsData model, Element member, AnnotationMirror exportAnnotation) throws AssertionError {
+    private List<ExportMessageData> parseExportedMessage(ExportsData model, Element member, AnnotationMirror exportAnnotation) throws AssertionError {
         AnnotationValue nameValue = getAnnotationValue(exportAnnotation, "name", false);
         String name = getAnnotationValue(String.class, exportAnnotation, "name");
         String error = null;
@@ -539,7 +520,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         AnnotationValue libraryValue = getAnnotationValue(exportAnnotation, "library", false);
         TypeMirror library = getAnnotationValue(TypeMirror.class, exportAnnotation, "library");
-        List<ExportMessageElement> exportMessages;
+        List<ExportMessageData> exportMessages;
         if (libraryValue == null) {
             List<LibraryMessage> messages = model.getLibraryMessages().get(name);
             if (messages == null || messages.size() == 0) {
@@ -606,7 +587,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             exportMessages = new ArrayList<>(messages.size());
             for (LibraryMessage message : messages) {
                 ExportsLibrary exportsLibrary = model.getExportedLibraries().get(getTypeId(((TypeElement) message.getLibrary().getMessageElement()).asType()));
-                exportMessages.add(new ExportMessageElement(findOrCreateExport(exportsLibrary, message), member, exportAnnotation));
+                exportMessages.add(new ExportMessageData(exportsLibrary, message, member, exportAnnotation));
             }
         } else {
             ExportsLibrary exportsLibrary = model.getExportedLibraries().get(getTypeId(library));
@@ -645,12 +626,12 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     errorValue = nameValue;
                 }
                 exportMessages = new ArrayList<>(1);
-                exportMessages.add(new ExportMessageElement(findOrCreateExport(exportsLibrary, message), member, exportAnnotation));
+                exportMessages.add(new ExportMessageData(exportsLibrary, message, member, exportAnnotation));
             }
         }
 
         if (error != null) {
-            for (ExportMessageElement export : exportMessages) {
+            for (ExportMessageData export : exportMessages) {
                 export.addError(errorValue, error);
                 // one time is enough. its the only element
                 break;
@@ -659,11 +640,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         return exportMessages;
     }
 
-    private static ExportMessageData findOrCreateExport(ExportsLibrary exportsLibrary, LibraryMessage message) {
-        return exportsLibrary.getExportedMessages().computeIfAbsent(message.getName(), (n) -> new ExportMessageData(exportsLibrary, message));
-    }
-
-    private void initializeExportedNode(ExportMessageElement exportElement) {
+    private void initializeExportedNode(ExportMessageData exportElement) {
         TypeElement exportedTypeElement = (TypeElement) exportElement.getMessageElement();
         if (exportedTypeElement.getModifiers().contains(Modifier.PRIVATE)) {
             exportElement.addError("Exported message node class must not be private.");
@@ -696,7 +673,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         }
 
         if (!hasSpecialization) {
-            ExecutableElement signature = exportElement.getExport().getResolvedMessage().getExecutable();
+            ExecutableElement signature = exportElement.getResolvedMessage().getExecutable();
             StringBuilder fix = new StringBuilder();
             fix.append("@").append(Specialization.class.getSimpleName()).append(" ");
             fix.append("static ");
@@ -707,7 +684,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 fix.append(sep);
                 TypeMirror type;
                 if (sep.length() == 0) { // if receiver
-                    type = exportElement.getExport().getExportsLibrary().getReceiverType();
+                    type = exportElement.getExportsLibrary().getReceiverType();
                 } else {
                     type = var.asType();
                 }
@@ -748,10 +725,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         exportElement.setSpecializedNode(parsedNodeData);
     }
 
-    private void initializeExportedMethod(ExportsData model, ExportMessageElement exportedElement) {
+    private void initializeExportedMethod(ExportsData model, ExportMessageData exportedElement) {
         ExecutableElement exportedMethod = (ExecutableElement) exportedElement.getMessageElement();
-        LibraryMessage message = exportedElement.getExport().getResolvedMessage();
-        ExportsLibrary exportsLibrary = exportedElement.getExport().getExportsLibrary();
+        LibraryMessage message = exportedElement.getResolvedMessage();
+        ExportsLibrary exportsLibrary = exportedElement.getExportsLibrary();
 
         if (ElementUtils.getVisibility(exportedMethod.getModifiers()) == Modifier.PRIVATE) {
             exportedElement.addError("The exported method must not be private. " +
@@ -834,7 +811,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
     // we only want to generate code for this once.
     final Map<String, NodeData> parsedNodeCache = new HashMap<>();
 
-    private NodeData parseNode(TypeElement nodeType, ExportMessageElement exportedMessage, List<Element> members) {
+    private NodeData parseNode(TypeElement nodeType, ExportMessageData exportedMessage, List<Element> members) {
         String nodeTypeId = ElementUtils.getTypeId(nodeType.asType());
         NodeData cachedData = parsedNodeCache.get(nodeTypeId);
         if (cachedData != null) {
@@ -855,7 +832,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             return null;
         }
 
-        LibraryMessage message = exportedMessage.getExport().getResolvedMessage();
+        LibraryMessage message = exportedMessage.getResolvedMessage();
         CodeExecutableElement syntheticExecute = null;
         CodeTypeElement clonedType = CodeTypeElement.cloneShallow(nodeType);
         // make the node parser happy
@@ -869,9 +846,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         syntheticExecute.setVarArgs(false);
         clonedType.add(syntheticExecute);
 
-        boolean requireUncached = (isNodeElement(exportedMessage.getMessageElement()) && exportedMessage.getExport().getExportedMethod() == null) ||
-                        isMethodElement(exportedMessage.getMessageElement());
-
         // add enclosing type to static imports. merge with existing static imports
         AnnotationMirror generateUncached = findAnnotationMirror(nodeType, GenerateUncached.class);
         AnnotationMirror importStatic = findAnnotationMirror(nodeType, ImportStatic.class);
@@ -882,7 +856,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
         DeclaredType importStaticType = context.getDeclaredType(ImportStatic.class);
-        staticImports.add(new CodeAnnotationValue(exportedMessage.getExport().getExportsLibrary().getTemplateType().asType()));
+        staticImports.add(new CodeAnnotationValue(exportedMessage.getExportsLibrary().getTemplateType().asType()));
         CodeAnnotationMirror newImports = new CodeAnnotationMirror(importStaticType);
         newImports.setElementValue(ElementUtils.findExecutableElement(importStaticType, "value"), new CodeAnnotationValue(staticImports));
 
@@ -890,13 +864,13 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         clonedType.getAnnotationMirrors().add(newImports);
         if (generateUncached != null) {
             clonedType.getAnnotationMirrors().add(generateUncached);
-        } else if (requireUncached) {
+        } else {
             clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(GenerateUncached.class)));
         }
 
         NodeData parsedNodeData = NodeParser.createExportParser(
-                        exportedMessage.getExport().getExportsLibrary().getLibrary().getTemplateType().asType(),
-                        exportedMessage.getExport().getExportsLibrary().getTemplateType()).parse(clonedType, false);
+                        exportedMessage.getExportsLibrary().getLibrary().getTemplateType().asType(),
+                        exportedMessage.getExportsLibrary().getTemplateType()).parse(clonedType, false);
 
         parsedNodeCache.put(nodeTypeId, parsedNodeData);
 
@@ -917,12 +891,12 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         return firstLetterLowerCase(name);
     }
 
-    private static boolean verifyMethodSignature(TypeElement type, LibraryMessage message, ExportMessageElement exportedMessage, ExecutableElement exportedMethod, TypeMirror receiverType,
+    private static boolean verifyMethodSignature(TypeElement type, LibraryMessage message, ExportMessageData exportedMessage, ExecutableElement exportedMethod, TypeMirror receiverType,
                     int realParameterCount,
                     boolean emitErrors) {
         ExecutableElement libraryMethod = message.getExecutable();
 
-        if (exportedMessage.getExport().getExportsLibrary().isExplicitReceiver() && !exportedMethod.getModifiers().contains(Modifier.STATIC)) {
+        if (exportedMessage.getExportsLibrary().isExplicitReceiver() && !exportedMethod.getModifiers().contains(Modifier.STATIC)) {
             if (emitErrors) {
                 exportedMessage.addError("Exported methods with explicit receiver must be static.");
             }
@@ -934,7 +908,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         List<? extends VariableElement> expectedParameters = libraryMethod.getParameters().subList(paramOffset, libraryMethod.getParameters().size());
         List<? extends VariableElement> exportedParameters = exportedMethod.getParameters().subList(0, realParameterCount);
 
-        TypeMirror expectedStaticReceiverType = explicitReceiver || exportedMessage.getExport().getExportsLibrary().isExplicitReceiver() ? receiverType : null;
+        TypeMirror expectedStaticReceiverType = explicitReceiver || exportedMessage.getExportsLibrary().isExplicitReceiver() ? receiverType : null;
         if (exportedParameters.size() != expectedParameters.size()) {
             if (emitErrors) {
                 exportedMessage.addError(exportedMethod,

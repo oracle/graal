@@ -267,41 +267,28 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         Set<NodeData> cachedSharedNodes = new LinkedHashSet<>();
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
-            ExportMessageElement nodeExport = export.getExportedClass();
-            ExportMessageElement methodExport = export.getExportedMethod();
-            if (nodeExport != null && nodeExport.getSpecializedNode() != null) {
-                cachedSharedNodes.add(nodeExport.getSpecializedNode());
-            } else if (methodExport != null && methodExport.getSpecializedNode() != null) {
-                cachedSharedNodes.add(methodExport.getSpecializedNode());
+            if (export.getSpecializedNode() != null) {
+                cachedSharedNodes.add(export.getSpecializedNode());
             }
         }
         Map<NodeData, CodeTypeElement> sharedNodes = new HashMap<>();
 
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
             LibraryMessage message = export.getResolvedMessage();
-            ExportMessageElement methodExport = export.getExportedMethod();
-            ExportMessageElement nodeExport = export.getExportedClass();
 
             TypeMirror libraryReceiverType = export.getResolvedMessage().getLibrary().getExportsReceiverType();
-            TypeMirror cachedExportReceiverType = nodeExport != null ? nodeExport.getReceiverType() : methodExport.getReceiverType();
+            TypeMirror cachedExportReceiverType = export.getReceiverType();
             CodeTree cachedReceiverAccess = CodeTreeBuilder.createBuilder().maybeCast(libraryReceiverType, cachedExportReceiverType, "receiver").build();
 
             // cached execute
-            NodeData cachedSpecializedNode;
-            if (nodeExport != null && nodeExport.getSpecializedNode() != null) {
-                cachedSpecializedNode = nodeExport.getSpecializedNode();
-            } else if (methodExport != null && methodExport.getSpecializedNode() != null) {
-                cachedSpecializedNode = methodExport.getSpecializedNode();
-            } else {
-                cachedSpecializedNode = null;
-            }
+            NodeData cachedSpecializedNode = export.getSpecializedNode();
 
             CodeExecutableElement cachedExecute = null;
             if (cachedSpecializedNode == null) {
-                if (methodExport == null) {
+                if (!export.isMethod()) {
                     throw new AssertionError("Missing method export. Missed validation for " + export.getResolvedMessage().getSimpleName());
                 }
-                ExecutableElement exportMethod = (ExecutableElement) methodExport.getMessageElement();
+                ExecutableElement exportMethod = (ExecutableElement) export.getMessageElement();
                 cachedExecute = cacheClass.add(createDirectCall(cachedReceiverAccess, message, exportMethod));
             } else {
                 CodeTypeElement dummyNodeClass = sharedNodes.get(cachedSpecializedNode);
@@ -493,27 +480,18 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
             LibraryMessage message = export.getResolvedMessage();
-            ExportMessageElement methodExport = export.getExportedMethod();
-            ExportMessageElement nodeExport = export.getExportedClass();
 
             // uncached execute
-            TypeMirror uncachedReceiverType = methodExport != null ? methodExport.getReceiverType() : nodeExport.getReceiverType();
+            TypeMirror uncachedReceiverType = export.getReceiverType();
             CodeTree uncachedReceiverExport = CodeTreeBuilder.createBuilder().maybeCast(libraryReceiverType, uncachedReceiverType, "receiver").build();
             CodeExecutableElement uncachedExecute;
-            NodeData uncachedSpecializedNode;
-            if (methodExport != null && methodExport.getSpecializedNode() != null && methodExport.getSpecializedNode().isUncachable()) {
-                uncachedSpecializedNode = methodExport.getSpecializedNode();
-            } else if (methodExport == null && nodeExport != null && nodeExport.getSpecializedNode() != null && nodeExport.getSpecializedNode().isUncachable()) {
-                uncachedSpecializedNode = nodeExport.getSpecializedNode();
-            } else {
-                uncachedSpecializedNode = null;
-            }
+            NodeData uncachedSpecializedNode = export.getSpecializedNode();
 
             if (uncachedSpecializedNode == null) {
-                if (methodExport == null) {
+                if (!export.isMethod()) {
                     throw new AssertionError("Missing method export. Missed validation for " + export.getResolvedMessage().getSimpleName());
                 }
-                ExecutableElement exportMethod = (ExecutableElement) methodExport.getMessageElement();
+                ExecutableElement exportMethod = (ExecutableElement) export.getMessageElement();
                 CodeExecutableElement directCall = createDirectCall(uncachedReceiverExport, message, exportMethod);
                 uncachedExecute = uncachedClass.add(directCall);
                 if (message.getName().equals(ACCEPTS)) {

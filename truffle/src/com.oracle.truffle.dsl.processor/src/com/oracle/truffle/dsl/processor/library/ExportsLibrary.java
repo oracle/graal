@@ -153,19 +153,10 @@ public final class ExportsLibrary extends Template {
 
     public boolean needsRewrites() {
         for (ExportMessageData message : exportedMessages.values()) {
-            if (needsRewrites(message.getExportedClass())) {
-                return true;
-            } else if (message.getExportedClass() == null && needsRewrites(message.getExportedMethod())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean needsRewrites(ExportMessageElement clazz) {
-        if (clazz != null && clazz.getSpecializedNode() != null) {
-            if (clazz.getSpecializedNode().needsRewrites(ProcessorContext.getInstance())) {
-                return true;
+            if (message.getSpecializedNode() != null) {
+                if (message.getSpecializedNode().needsRewrites(ProcessorContext.getInstance())) {
+                    return true;
+                }
             }
         }
         return false;

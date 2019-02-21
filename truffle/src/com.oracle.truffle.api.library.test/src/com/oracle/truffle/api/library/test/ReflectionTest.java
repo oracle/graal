@@ -47,6 +47,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -89,18 +90,12 @@ public class ReflectionTest extends AbstractParametrizedLibraryTest {
         static int voidReturnUncachedCount = 0;
 
         @ExportMessage
-        static class VoidReturn {
-
-            @Specialization
-            static void doDefault(@SuppressWarnings("unused") ReflectiveObject arg) {
+        protected void voidReturn(@Cached(value = "0", uncached = "1") int cached) {
+            if (cached == 1) {
+                voidReturnUncachedCount++;
+            } else {
                 voidReturnCount++;
             }
-
-        }
-
-        @ExportMessage
-        protected void voidReturn() {
-            voidReturnUncachedCount++;
         }
 
         @ExportMessage

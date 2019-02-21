@@ -44,6 +44,8 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -71,90 +73,50 @@ public class ExportSubclassTest extends AbstractLibraryTest {
     @ExportLibrary(ExportSubclassLibrary.class)
     static class BaseClass {
 
+        // directly inherit to SubClass1 and SubClass2
         @ExportMessage
-        String m1() {
-            return "uncached_base_m1";
-        }
-
-        protected String m1Cached() {
-            return "cached_base_m1";
+        String m0() {
+            return "base_m0";
         }
 
         @ExportMessage
         static class M1 {
             @Specialization
-            static String doDefault(BaseClass receiver) {
-                return receiver.m1Cached();
-            }
-        }
-
-        // directly inheritec to SubClass1 and SubClass2
-        @ExportMessage
-        String m0() {
-            return "uncached_base_m0";
-        }
-
-        @ExportMessage
-        static class M0 {
-            @Specialization
             static String doDefault(@SuppressWarnings("unused") BaseClass receiver) {
-                return "cached_base_m0";
+                return "base_m1";
             }
         }
+
     }
 
     // subclass that re-exports
     @ExportLibrary(ExportSubclassLibrary.class)
     static class SubClass1 extends BaseClass {
-        @Override
-        @ExportMessage
-        final String m1() {
-            return "uncached_sub1_m1";
-        }
 
         @ExportMessage
-        static class M1 {
+        static class M0 {
             @Specialization
             static String doDefault(@SuppressWarnings("unused") SubClass1 receiver) {
-                return "cached_sub1_m1";
+                return "sub1_m0";
             }
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final String m1() {
+            return "sub1_m1";
         }
 
     }
 
     // subclass that does not re-export
     static class SubClass2 extends BaseClass {
-        @Override
-        final String m1() {
-            return "uncached_sub2_m1";
-        }
 
         @Override
-        protected String m1Cached() {
-            return "cached_sub2_m1";
+        String m0() {
+            return "sub2_m0";
         }
-    }
 
-    @Test
-    public void testSubclass() {
-        for (int i = 0; i < 4; i++) {
-            ExportSubclassLibrary lib = createCachedDispatch(ExportSubclassLibrary.class, i);
-            String prefix;
-            prefix = i >= 1 ? "cached" : "uncached";
-            assertEquals(prefix + "_base_m1", lib.m1(new BaseClass()));
-            prefix = i >= 2 ? "cached" : "uncached";
-            assertEquals(prefix + "_sub1_m1", lib.m1(new SubClass1()));
-            prefix = i >= 3 ? "cached" : "uncached";
-            assertEquals(prefix + "_sub2_m1", lib.m1(new SubClass2()));
-
-            lib = createCachedDispatch(ExportSubclassLibrary.class, i);
-            prefix = i >= 1 ? "cached" : "uncached";
-            assertEquals(prefix + "_base_m0", lib.m0(new BaseClass()));
-            prefix = i >= 2 ? "cached" : "uncached";
-            assertEquals(prefix + "_base_m0", lib.m0(new SubClass1()));
-            prefix = i >= 3 ? "cached" : "uncached";
-            assertEquals(prefix + "_base_m0", lib.m0(new SubClass2()));
-        }
     }
 
     @ExportLibrary(ExportSubclassLibrary.class)
@@ -226,6 +188,34 @@ public class ExportSubclassTest extends AbstractLibraryTest {
         assertEquals("m3_base", lib.m3(baseClass));
         assertEquals("m4_default", lib.m4(baseClass));
         assertEquals("m5_default", lib.m5(baseClass));
+    }
+
+    @ExportLibrary(ExportSubclassLibrary.class)
+    static class SubClass3 extends BaseClass {
+
+        @ExportMessage(library = ExportSubclassLibrary.class, name = "m0")
+        @ExportMessage(library = ExportSubclassLibrary.class, name = "m1")
+        String m01(@SuppressWarnings("unused") @Exclusive @Cached("42") int subValue) {
+            return "sub3_m01";
+        }
 
     }
+
+    @Test
+    public void testSubclass() {
+        for (int i = 0; i < 4; i++) {
+            ExportSubclassLibrary lib = createCachedDispatch(ExportSubclassLibrary.class, i);
+
+            assertEquals("base_m0", lib.m0(new BaseClass()));
+            assertEquals("sub1_m0", lib.m0(new SubClass1()));
+            assertEquals("sub2_m0", lib.m0(new SubClass2()));
+            assertEquals("sub3_m01", lib.m0(new SubClass3()));
+
+            assertEquals("base_m1", lib.m1(new BaseClass()));
+            assertEquals("sub1_m1", lib.m1(new SubClass1()));
+            assertEquals("base_m1", lib.m1(new SubClass2()));
+            assertEquals("sub3_m01", lib.m0(new SubClass3()));
+        }
+    }
+
 }

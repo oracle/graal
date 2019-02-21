@@ -122,6 +122,35 @@ public abstract class DSLExpression {
     @Override
     public abstract int hashCode();
 
+    public boolean mayAllocate() {
+        final AtomicBoolean mayAllocate = new AtomicBoolean(false);
+        accept(new DSLExpressionVisitor() {
+
+            public void visitVariable(Variable var) {
+            }
+
+            public void visitClassLiteral(ClassLiteral classLiteral) {
+            }
+
+            public void visitNegate(Negate negate) {
+            }
+
+            public void visitIntLiteral(IntLiteral binary) {
+            }
+
+            public void visitCall(Call binary) {
+                mayAllocate.set(true);
+            }
+
+            public void visitBooleanLiteral(BooleanLiteral binary) {
+            }
+
+            public void visitBinary(Binary binary) {
+            }
+        });
+        return mayAllocate.get();
+    }
+
     public boolean isNodeReceiverBound() {
         final AtomicBoolean bindsReceiver = new AtomicBoolean(false);
         accept(new DSLExpressionVisitor() {
