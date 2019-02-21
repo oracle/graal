@@ -45,6 +45,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -156,7 +157,7 @@ public class DirectoryStorage implements ComponentStorage {
         for (String key : Collections.list((Enumeration<String>) props.propertyNames())) {
             String val = props.getProperty(key, ""); // MOI18N
 
-            String lowerKey = key.toLowerCase();
+            String lowerKey = key.toLowerCase(Locale.ENGLISH);
             if (val.charAt(0) == '"' && val.length() > 1 && val.charAt(val.length() - 1) == '"') { // MOI18N
                 val = val.substring(1, val.length() - 1).trim();
             }
