@@ -27,11 +27,13 @@ package org.graalvm.compiler.nodes.calc;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -117,24 +119,32 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             return NegateNode.create(forX, view);
         }
         long abs = Math.abs(c);
-        if (CodeUtil.isPowerOf2(abs) && forX.stamp(view) instanceof IntegerStamp) {
-            ValueNode dividend = forX;
+        if (forX.stamp(view) instanceof IntegerStamp) {
             IntegerStamp stampX = (IntegerStamp) forX.stamp(view);
-            int log2 = CodeUtil.log2(abs);
-            // no rounding if dividend is positive or if its low bits are always 0
-            if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
-                int bits = PrimitiveStamp.getBits(forX.stamp(view));
-                RightShiftNode sign = new RightShiftNode(forX, ConstantNode.forInt(bits - 1));
-                UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));
-                dividend = BinaryArithmeticNode.add(dividend, round, view);
+            if (CodeUtil.isPowerOf2(abs)) {
+                ValueNode dividend = forX;
+                int log2 = CodeUtil.log2(abs);
+                // no rounding if dividend is positive or if its low bits are always 0
+                if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
+                    int bits = PrimitiveStamp.getBits(forX.stamp(view));
+                    RightShiftNode sign = new RightShiftNode(forX, ConstantNode.forInt(bits - 1));
+                    UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));
+                    dividend = BinaryArithmeticNode.add(dividend, round, view);
+                }
+                RightShiftNode shift = new RightShiftNode(dividend, ConstantNode.forInt(log2));
+                if (c < 0) {
+                    return NegateNode.create(shift, view);
+                }
+                return shift;
+            } else {
+                ValueNode canonicalized = canonicalizeSignedDivConstant(forX, c, view);
+                if (canonicalized != null) {
+                    Stamp newStamp = IntegerStamp.OPS.getDiv().foldStamp(forX.stamp(NodeView.DEFAULT), StampFactory.forInteger(stampX.getBits(), c, c));
+                    return PiNode.create(canonicalized, newStamp);
+                }
             }
-            RightShiftNode shift = new RightShiftNode(dividend, ConstantNode.forInt(log2));
-            if (c < 0) {
-                return NegateNode.create(shift, view);
-            }
-            return shift;
         }
-        return canonicalizeSignedDivConstant(forX, c, view);
+        return null;
     }
 
     @Override
