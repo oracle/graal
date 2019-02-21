@@ -57,6 +57,8 @@ import java.util.TreeSet;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
@@ -64,7 +66,7 @@ final class InstrumentCache {
     private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     private static final List<InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new ArrayList<>() : null;
-    private static List<InstrumentCache> runtimeCache;
+    private static Map<ClassLoader, List<InstrumentCache>> runtimeCaches = new WeakHashMap<>();
 
     private Class<? extends TruffleInstrument> instrumentClass;
     private final String className;
@@ -84,7 +86,7 @@ final class InstrumentCache {
      */
     @SuppressWarnings("unused")
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
-        nativeImageCache.addAll(doLoad(Collections.singletonList(imageClassLoader)));
+        nativeImageCache.addAll(doLoad(Collections.emptyList(), imageClassLoader));
     }
 
     /**
@@ -95,7 +97,7 @@ final class InstrumentCache {
     @SuppressWarnings("unused")
     private static void resetNativeImageState() {
         nativeImageCache.clear();
-        runtimeCache = null;
+        runtimeCaches.clear();
     }
 
     private InstrumentCache(String prefix, Properties info, ClassLoader loader) {
@@ -134,26 +136,33 @@ final class InstrumentCache {
         return internal;
     }
 
-    static List<InstrumentCache> load(Collection<ClassLoader> loaders) {
+    static List<InstrumentCache> load(Collection<ClassLoader> loaders, ClassLoader additionalLoader) {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
         }
-        if (runtimeCache != null) {
-            return runtimeCache;
+        synchronized (InstrumentCache.class) {
+            List<InstrumentCache> cache = runtimeCaches.get(additionalLoader);
+            if (cache == null) {
+                cache = doLoad(loaders, additionalLoader);
+                runtimeCaches.put(additionalLoader, cache);
+            }
+            return cache;
         }
-        return doLoad(loaders);
     }
 
-    private static List<InstrumentCache> doLoad(Collection<ClassLoader> loaders) {
+    private static List<InstrumentCache> doLoad(Collection<ClassLoader> loaders, ClassLoader additionalLoader) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
         for (ClassLoader loader : loaders) {
             loadForOne(loader, list, classNamesUsed);
         }
+        if (additionalLoader != null) {
+            loadForOne(additionalLoader, list, classNamesUsed);
+        }
         if (!JDK8OrEarlier) {
             loadForOne(ModuleResourceLocator.createLoader(), list, classNamesUsed);
         }
-        return runtimeCache = list;
+        return list;
     }
 
     private static void loadForOne(ClassLoader loader, List<InstrumentCache> list, Set<String> classNamesUsed) {

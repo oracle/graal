@@ -28,6 +28,7 @@ include "sulong/ci.hocon"
 
 jvm-config.default = "graal-core"
 libgraal_env = "libgraal"
+vm_subdir = "vm"
 
 include "compiler/ci_common/common.hocon"
 include "compiler/ci_common/gate.hocon"

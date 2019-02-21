@@ -214,7 +214,8 @@ Security Manager
 What: `java.lang.SecurityManager`
 
 Since there is no dynamic class loading, there is also no need to sandbox "untrusted" code.
-The method `System.getSecurityManager` alsways returns `null`, i.e., there are no runtime security manager checks performed.
+The method `System.getSecurityManager` always returns `null`, i.e., there are no runtime security manager checks performed.
+Attemps to install a `SecurityManager` using `System.setSecurityManager` are reported as a fatal error.
 
 
 JVMTI, JMX, other native VM interfaces

@@ -107,6 +107,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 public class LanguageSPITest {
 
@@ -1798,22 +1800,115 @@ public class LanguageSPITest {
             protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
                 Env env = ProxyLanguage.getCurrentContext().env;
                 LanguageInfo languageInfo = env.getLanguages().get(LanguageSPITestLanguage.ID);
-                boolean found = env.lookup(languageInfo, LanguageSPITestLanguageService.class) != null;
+                String className = request.getSource().getCharacters().toString();
+                boolean found = env.lookup(languageInfo, Class.forName(className)) != null;
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(found));
             }
         });
         // Not loaded language
         try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
-            Value result = context.eval(ProxyLanguage.ID, "");
+            Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService.class.getName());
             assertTrue(result.isBoolean());
             assertFalse(result.asBoolean());
         }
         // Loaded language
         try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
             context.initialize(LanguageSPITestLanguage.ID);
-            Value result = context.eval(ProxyLanguage.ID, "");
+            Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService.class.getName());
             assertTrue(result.isBoolean());
             assertTrue(result.asBoolean());
+        }
+        // Registered service
+        langContext = null;
+        try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
+            Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService2.class.getName());
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+            result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService3.class.getName());
+            assertNotNull(langContext);
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+        }
+        // Non registered service
+        langContext = null;
+        resetLoadedLanguage(LanguageSPITestLanguage.ID);
+        try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
+            Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService4.class.getName());
+            assertFalse(isLanguageLoaded(LanguageSPITestLanguage.ID));
+            assertNull(langContext);
+            assertTrue(result.isBoolean());
+            assertFalse(result.asBoolean());
+        }
+    }
+
+    private static boolean isLanguageLoaded(String languageId) {
+        try {
+            Object languageCache = findLanguageCache(languageId);
+            Field field = languageCache.getClass().getDeclaredField("languageClass");
+            field.setAccessible(true);
+            return field.get(languageCache) != null;
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Cannot reflectively read LanguageCache.languageClass field.", e);
+        }
+    }
+
+    private static void resetLoadedLanguage(String languageId) {
+        try {
+            Object languageCache = findLanguageCache(languageId);
+            Field field = languageCache.getClass().getDeclaredField("languageClass");
+            field.setAccessible(true);
+            field.set(languageCache, null);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Cannot reflectively read LanguageCache.languageClass field.", e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object findLanguageCache(String languageId) throws ReflectiveOperationException {
+        Class<?> clazz = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
+        Method m = clazz.getDeclaredMethod("languages", ClassLoader.class);
+        m.setAccessible(true);
+        Map<String, Object> map = (Map<String, Object>) m.invoke(null, (Object) null);
+        return map.get(languageId);
+    }
+
+    @Test
+    public void testRegisterService() {
+        ProxyLanguage registerServiceLanguage = new ProxyLanguage() {
+            @Override
+            protected ProxyLanguage.LanguageContext createContext(Env env) {
+                env.registerService(new LanguageSPITestLanguageService2() {
+                });
+                return super.createContext(env);
+            }
+
+            @Override
+            protected void initializeContext(ProxyLanguage.LanguageContext context) throws Exception {
+                try {
+                    context.env.registerService(new LanguageSPITestLanguageService3() {
+                    });
+                    fail("Illegal state exception should be thrown when calling Env.registerService outside createContext");
+                } catch (IllegalStateException e) {
+                    // expected
+                }
+                super.initializeContext(context);
+            }
+
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                try {
+                    getContextReference().get().env.registerService(new LanguageSPITestLanguageService4() {
+                    });
+                    fail("Illegal state exception should be thrown when calling Env.registerService outside createContext");
+                } catch (IllegalStateException e) {
+                    // expected
+                }
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+            }
+        };
+        ProxyLanguage.setDelegate(registerServiceLanguage);
+        try (Context context = Context.create(ProxyLanguage.ID)) {
+            context.eval(ProxyLanguage.ID, "");
         }
     }
 

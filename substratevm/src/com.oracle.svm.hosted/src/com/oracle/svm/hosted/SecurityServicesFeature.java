@@ -58,6 +58,9 @@ import sun.security.x509.OIDMap;
 public class SecurityServicesFeature implements Feature {
 
     static class Options {
+        @Option(help = "Enable the feature that provides support for security services.")//
+        public static final HostedOptionKey<Boolean> EnableSecurityServicesFeature = new HostedOptionKey<>(true);
+
         @Option(help = "Enable trace logging for the security services feature.")//
         static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
     }
@@ -79,6 +82,11 @@ public class SecurityServicesFeature implements Feature {
     private static final String SIGNATURE_SERVICE = "Signature";
     private static final String CIPHER_SERVICE = "Cipher";
     private static final String KEY_AGREEMENT_SERVICE = "KeyAgreement";
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return Options.EnableSecurityServicesFeature.getValue();
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {

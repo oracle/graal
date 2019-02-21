@@ -54,7 +54,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
-@TruffleLanguage.Registration(id = LanguageSPITestLanguage.ID, name = LanguageSPITestLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED)
+@TruffleLanguage.Registration(id = LanguageSPITestLanguage.ID, name = LanguageSPITestLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED, services = {
+                LanguageSPITestLanguageService2.class, LanguageSPITestLanguageService3.class})
 public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> implements LanguageSPITestLanguageService {
 
     static final String ID = "LanguageSPITest";
@@ -64,7 +65,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> im
     static final AtomicInteger instanceCount = new AtomicInteger();
 
     static class LanguageContext {
-
+        private volatile boolean initialized;
         int disposeCalled;
         Env env;
         Map<String, Object> config;
@@ -111,20 +112,31 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> im
         LanguageSPITest.langContext = new LanguageContext();
         LanguageSPITest.langContext.env = env;
         LanguageSPITest.langContext.config = env.getConfig();
+        env.registerService(new LanguageSPITestLanguageService2() {
+        });
+        env.registerService(new LanguageSPITestLanguageService3() {
+        });
         return LanguageSPITest.langContext;
     }
 
     @Override
-    protected void disposeContext(LanguageContext context) {
-        assertSame(getContext(), context);
-        assertSame(context, getContextReference().get());
+    protected void initializeContext(LanguageContext context) throws Exception {
+        context.initialized = true;
+    }
 
-        assertSame(context, new RootNode(this) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return null;
-            }
-        }.getLanguage(LanguageSPITestLanguage.class).getContextReference().get());
+    @Override
+    protected void disposeContext(LanguageContext context) {
+        if (context.initialized) {
+            assertSame(getContext(), context);
+            assertSame(context, getContextReference().get());
+
+            assertSame(context, new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return null;
+                }
+            }.getLanguage(LanguageSPITestLanguage.class).getContextReference().get());
+        }
 
         context.disposeCalled++;
     }
@@ -136,4 +148,13 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> im
 }
 
 interface LanguageSPITestLanguageService {
+}
+
+interface LanguageSPITestLanguageService2 {
+}
+
+interface LanguageSPITestLanguageService3 {
+}
+
+interface LanguageSPITestLanguageService4 {
 }

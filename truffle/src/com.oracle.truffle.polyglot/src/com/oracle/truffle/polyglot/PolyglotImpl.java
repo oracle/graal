@@ -993,7 +993,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (language == null) {
                 return LanguageCache.languageMimes().keySet();
             } else {
-                LanguageCache lang = LanguageCache.languages().get(language);
+                LanguageCache lang = LanguageCache.languages(null).get(language);
                 if (lang != null) {
                     return lang.getMimeTypes();
                 } else {
@@ -1004,7 +1004,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public boolean isCharacterBasedSource(String language, String mimeType) {
-            LanguageCache cache = LanguageCache.languages().get(language);
+            LanguageCache cache = LanguageCache.languages(null).get(language);
             if (cache == null) {
                 return true;
             }
@@ -1040,5 +1040,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return HostObject.isStaticClass(obj);
         }
 
+        @Override
+        public <S> S lookupService(Object languageContextVMObject, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type) {
+            PolyglotLanguage lang = (PolyglotLanguage) NODES.getEngineObject(language);
+            if (!lang.cache.supportsService(type)) {
+                return null;
+            }
+            PolyglotLanguageContext context = ((PolyglotLanguageContext) languageContextVMObject).context.getContext(lang);
+            context.ensureCreated((PolyglotLanguage) NODES.getEngineObject(accessingLanguage));
+            return context.lookupService(type);
+        }
     }
 }

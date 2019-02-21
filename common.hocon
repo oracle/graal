@@ -1,5 +1,5 @@
 # overlay version
-overlay = a84dd00c92041dfcd04b34c8d3f4d9e8c047d510
+overlay = d0a64ff32d27517b0683ae6ce9cf9614a7fb51d3
 
 # oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
@@ -90,6 +90,9 @@ linux-sparcv9 : ${linux} {
 linux-aarch64 : ${linux} {
   capabilities : [linux, aarch64]
 }
+
+DEFAULT_HEAP_SIZE : "8G"
+LARGE_HEAP_SIZE : "31G"
 
 eclipse : {
   downloads : {

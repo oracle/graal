@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,20 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage;
+package com.oracle.truffle.api.test.polyglot;
 
-import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.word.PointerBase;
+import com.oracle.truffle.api.Truffle;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.security.ProtectionDomain;
+import org.graalvm.polyglot.Engine;
+import org.junit.After;
+import static org.junit.Assert.assertNotNull;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * Pointer to the runtime data structure for a thread. The size and actual layout of the data
- * structure is unspecified, client code must not make any assumptions about it.
- * <p>
- * The {@link IsolateThread} points to a thread-local data structure. Therefore, the pointer must
- * not be shared between threads.
- *
- * @since 1.0
- */
-@CStruct(value = "graal_isolatethread_t", isIncomplete = true)
-public interface IsolateThread extends PointerBase {
+public class SeparatedClassLoadersTest {
+    private ClassLoader loader;
+
+    @Before
+    public void storeLoader() {
+        loader = Thread.currentThread().getContextClassLoader();
+    }
+
+    @Test
+    public void sdkAndTruffleAPIInSeparateClassLoaders() throws Exception {
+        final ProtectionDomain sdkDomain = Engine.class.getProtectionDomain();
+        Assume.assumeNotNull(sdkDomain);
+        Assume.assumeNotNull(sdkDomain.getCodeSource());
+        URL sdkURL = sdkDomain.getCodeSource().getLocation();
+        Assume.assumeNotNull(sdkURL);
+
+        URL truffleURL = Truffle.class.getProtectionDomain().getCodeSource().getLocation();
+        Assume.assumeNotNull(truffleURL);
+
+        ClassLoader parent = Engine.class.getClassLoader().getParent();
+
+        URLClassLoader sdkLoader = new URLClassLoader(new URL[]{sdkURL}, parent);
+        URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL}, sdkLoader);
+        Thread.currentThread().setContextClassLoader(truffleLoader);
+
+        Class<?> engineClass = sdkLoader.loadClass(Engine.class.getName());
+        Object engine = engineClass.getMethod("create").invoke(null);
+
+        assertNotNull("Engine has been created", engine);
+    }
+
+    @After
+    public void resetLoader() {
+        Thread.currentThread().setContextClassLoader(loader);
+    }
 }
