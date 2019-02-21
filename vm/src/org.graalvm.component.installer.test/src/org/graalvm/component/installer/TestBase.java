@@ -476,7 +476,7 @@ public class TestBase implements Feedback {
         }
 
         @Override
-        public String acceptPassword() {
+        public char[] acceptPassword() {
             return TestBase.this.acceptPassword();
         }
 
@@ -574,7 +574,7 @@ public class TestBase implements Feedback {
         }
 
         @Override
-        public String acceptPassword() {
+        public char[] acceptPassword() {
             return TestBase.this.doAcceptPassword();
         }
 
@@ -620,15 +620,15 @@ public class TestBase implements Feedback {
     }
 
     @Override
-    public String acceptPassword() {
+    public char[] acceptPassword() {
         if (feedbackDelegate != null) {
             return feedbackDelegate.acceptPassword();
         }
-        return password;
+        return doAcceptPassword();
     }
 
-    String doAcceptPassword() {
-        return password;
+    public char[] doAcceptPassword() {
+        return password == null ? null : password.toCharArray();
     }
 
     @Override
