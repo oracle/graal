@@ -1308,14 +1308,6 @@ public class BytecodeNode extends EspressoBaseNode {
 
     // endregion Arithmetic/binary operations
 
-    // region Type checks
-
-    private StaticObject checkCast(StaticObject instance, Klass typeToCheck) {
-        return getInterpreterToVM().checkCast(instance, typeToCheck);
-    }
-
-    // endregion Type checks
-
     // region Comparisons
 
     private static int compareLong(long y, long x) {
