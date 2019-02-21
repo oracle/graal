@@ -78,7 +78,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
 
 anyjdk_version_regex = re.compile(r'(openjdk|java) version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\n(OpenJDK|Java\(TM\) SE) Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
 openjdk_version_regex = re.compile(r'openjdk version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\nOpenJDK Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
-graalvm_version_regex = re.compile(r'.*\n.*\nGraalVM (?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
+graalvm_version_regex = re.compile(r'.*\n.*\n[a-zA-Z() ]+GraalVM[a-zA-Z ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
 
 class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
@@ -1817,7 +1817,7 @@ def check_versions(jdk_dir, jdk_version_regex, graalvm_version_regex, expect_gra
 
     match = graalvm_version_regex.match(out)
     if expect_graalvm and match is None:
-        mx.abort("'{}' is not a GraalVM. Its version string:\n{}\ndoes not match:\n{}").format(jdk_dir, out, graalvm_version_regex.pattern)
+        mx.abort("'{}' is not a GraalVM. Its version string:\n{}\ndoes not match:\n{}".format(jdk_dir, out, graalvm_version_regex.pattern))
     elif expect_graalvm and match.group('graalvm_version') != _suite.release_version():
         mx.abort("'{}' has a wrong GraalVM version:\n{}\nexpected:\n{}".format(match.group('graalvm_version'), _suite.release_version()))
     elif not expect_graalvm and match:
