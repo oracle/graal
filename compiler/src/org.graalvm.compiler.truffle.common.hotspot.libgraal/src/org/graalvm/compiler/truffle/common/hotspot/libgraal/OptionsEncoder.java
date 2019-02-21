@@ -45,7 +45,7 @@ public final class OptionsEncoder {
         }
         Class<?> valueClass = value.getClass();
         return valueClass == Boolean.class || valueClass == Byte.class || valueClass == Short.class || valueClass == Character.class || valueClass == Integer.class || valueClass == Long.class ||
-                        valueClass == Float.class || valueClass == Double.class || valueClass == String.class;
+                        valueClass == Float.class || valueClass == Double.class || valueClass == String.class || value.getClass().isEnum();
     }
 
     public static byte[] encode(final Map<String, Object> options) {
@@ -84,6 +84,9 @@ public final class OptionsEncoder {
                     } else if (valueClz == String.class) {
                         out.writeByte('U');
                         out.writeUTF((String) value);
+                    } else if (valueClz.isEnum()) {
+                        out.writeByte('U');
+                        out.writeUTF(((Enum<?>) value).name());
                     } else {
                         throw new IllegalArgumentException(String.format("Key: %s, Value: %s, Value type: %s", key, value, valueClz));
                     }

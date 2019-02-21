@@ -32,6 +32,8 @@ import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.T
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleUseFrameWithoutBoxing;
+import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
+import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getValue;
 
 import java.io.CharArrayWriter;
@@ -684,7 +686,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TruffleInlining inlining = createInliningPlan(callTarget, task);
         try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
             // Open the "Truffle::methodName" dump group if dumping is enabled.
-            try (TruffleOutputGroup o = TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
+            try (TruffleOutputGroup o = TruffleDebugOptions.getValue(PrintGraph) == Disable ? null : TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
                 // Create "AST" and "Call Tree" groups if dumping is enabled.
                 maybeDumpTruffleTree(debug, callTarget, inlining);
                 // Compile the method (puts dumps in "Graal Graphs" group if dumping is enabled).
