@@ -1,77 +1,102 @@
-/*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
- */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class CheckCastNode extends QuickNode {
+public final class CheckCastNode extends QuickNode {
+    // private final Klass typeToCheck;
+    private static final int CACHE_SIZE = 5;
+    private CastCache cache;
 
-    final Klass typeToCheck;
-
-    static final int INLINE_CACHE_SIZE_LIMIT = 8;
-
-    protected abstract boolean executeCheckCast(Klass instanceKlass);
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "instanceKlass == cachedKlass")
-    boolean checkCastCached(Klass instanceKlass,
-                    @Cached("instanceKlass") Klass cachedKlass,
-                    @Cached("instanceOf(typeToCheck, cachedKlass)") boolean cachedAnswer) {
-        return cachedAnswer;
-    }
-
-    @Specialization(replaces = "checkCastCached")
-    boolean instanceOfSlow(Klass instanceKlass) {
-        // Brute instanceof checks, walk the whole klass hierarchy.
-        return instanceOf(typeToCheck, instanceKlass);
+    private boolean executeCheckCast(Klass instanceKlass) {
+        CastCacheItem item = cache.get_item(instanceKlass);
+        if (item == null) {
+            item = cache.add_item(instanceKlass);
+        }
+        return item.answer();
     }
 
     CheckCastNode(Klass typeToCheck) {
         assert !typeToCheck.isPrimitive();
-        this.typeToCheck = typeToCheck;
+        // this.typeToCheck = typeToCheck;
+        this.cache = new CastCache(typeToCheck);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    static boolean instanceOf(Klass typeToCheck, Klass instanceKlass) {
-        // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
+    @TruffleBoundary
+    private static boolean CheckCast(Klass typeToCheck, Klass instanceKlass) {
         return typeToCheck.isAssignableFrom(instanceKlass);
     }
 
     @Override
     public final int invoke(final VirtualFrame frame, int top) {
-        // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = (BytecodeNode) getParent();
         StaticObject receiver = root.peekObject(frame, top - 1);
         boolean result = StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass());
         if (!result) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ClassCastException.class);
         }
-        return 0; // stack effect -> pop receiver, push boolean
+        root.putKind(frame, top - 1, receiver, JavaKind.Object);
+        return 0;
+    }
+
+    private static final class CastCacheItem {
+        Klass cached;
+        Boolean answer;
+
+        CastCacheItem(Klass klass, Boolean result) {
+            this.cached = klass;
+            this.answer = result;
+        }
+
+        Boolean answer() {
+            return answer;
+        }
+    }
+
+    private static final class CastCache {
+        private CastCacheItem[] cache = new CastCacheItem[CACHE_SIZE];
+        private Klass typeToCheck;
+        private int size = 1;
+        private int pos = 0;
+
+        CastCache(Klass toCheck) {
+            this.typeToCheck = toCheck;
+            cache[0] = new CastCacheItem(toCheck, true);
+        }
+
+        @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        private CastCacheItem get_item(Klass item) {
+            int i = pos;
+            int size = this.size;
+            do {
+                CastCacheItem tested = cache[i];
+                if (tested.cached == item) {
+                    pos = i;
+                    return tested;
+                }
+                i = (i == 0) ? size - 1 : i - 1;
+            } while (i != pos);
+            return null;
+        }
+
+        private CastCacheItem add_item(Klass item) {
+            int new_size = size;
+            if (size < CACHE_SIZE) {
+                pos = size - 1;
+                new_size++;
+            }
+            pos = (pos + 1) % new_size;
+            Boolean answer = CheckCast(typeToCheck, item);
+            CastCacheItem new_item = new CastCacheItem(item, answer);
+            // Needs to be atomic
+            cache[pos] = new_item;
+            size = new_size;
+            return new_item;
+        }
     }
 }
