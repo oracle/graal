@@ -91,7 +91,7 @@ public class Installer extends AbstractInstaller {
                 feedback.verboseOutput("INSTALL_CleanupFile", p);
                 Files.deleteIfExists(p);
             } catch (IOException ex) {
-                feedback.error("INSTALL_CannotCleanupFile", ex, p, ex.getMessage());
+                feedback.error("INSTALL_CannotCleanupFile", ex, p, ex.getLocalizedMessage());
             }
         }
         // reverse the contents of directories, last created first:
@@ -102,7 +102,7 @@ public class Installer extends AbstractInstaller {
                 feedback.verboseOutput("INSTALL_CleanupDirectory", p);
                 Files.deleteIfExists(p);
             } catch (IOException ex) {
-                feedback.error("INSTALL_CannotCleanupFile", ex, p, ex.getMessage());
+                feedback.error("INSTALL_CannotCleanupFile", ex, p, ex.getLocalizedMessage());
             }
         }
     }
@@ -112,6 +112,10 @@ public class Installer extends AbstractInstaller {
     }
 
     Path translateTargetPath(String n) {
+        return translateTargetPath(null, n);
+    }
+    
+    Path translateTargetPath(Path base, String n) {
         Path rel;
         if (BundleConstants.PATH_LICENSE.equals(n)) {
             rel = getLicenseRelativePath();
@@ -119,9 +123,16 @@ public class Installer extends AbstractInstaller {
                 rel = Paths.get(n);
             }
         } else {
-            rel = SystemUtils.fromCommonString(n);
+            // assert relative path
+            rel = SystemUtils.fromCommonRelative(base, n);
         }
-        return getInstallPath().resolve(rel);
+        Path p = getInstallPath().resolve(rel).normalize();
+        // confine into graalvm subdir
+        if (!p.startsWith(getInstallPath())) {
+            throw new IllegalStateException(
+                            feedback.l10n("INSTALL_WriteOutsideGraalvm", p));
+        }
+        return p;
     }
 
     /**
@@ -164,14 +175,16 @@ public class Installer extends AbstractInstaller {
             Path target = translateTargetPath(sl);
             if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
                 checkLinkReplacement(target,
-                                translateTargetPath(processSymlinks.get(sl)));
+                                translateTargetPath(target, processSymlinks.get(sl)));
             }
         }
     }
 
     boolean validateOneEntry(Path target, Archive.FileEntry entry) throws IOException {
         if (entry.isDirectory()) {
-            Path dirPath = getInstallPath().resolve(SystemUtils.fromCommonString(entry.getName()));
+            // assert relative path
+            Path dirPath = getInstallPath().resolve(SystemUtils.fromCommonRelative(entry.getName()));
+            // confine into graalvm subdir
             if (Files.exists(dirPath)) {
                 if (!Files.isDirectory(dirPath)) {
                     throw new IOException(
@@ -229,8 +242,12 @@ public class Installer extends AbstractInstaller {
         if (!visitedPaths.add(targetPath)) {
             return;
         }
-        Path relative = getInstallPath().relativize(targetPath);
         Path parent = getInstallPath();
+        if (!targetPath.normalize().startsWith(parent)) {
+            throw new IllegalStateException(
+                            feedback.l10n("INSTALL_WriteOutsideGraalvm", targetPath));
+        }
+        Path relative = getInstallPath().relativize(targetPath);
         Path relativeSubpath;
         int count = 0;
         for (Path n : relative) {
@@ -306,7 +323,8 @@ public class Installer extends AbstractInstaller {
         List<String> paths = new ArrayList<>(setPermissions.keySet());
         Collections.sort(paths);
         for (String s : paths) {
-            Path p = getInstallPath().resolve(SystemUtils.fromCommonString(s));
+            // assert relative path
+            Path p = getInstallPath().resolve(SystemUtils.fromCommonRelative(s));
             if (Files.exists(p)) {
                 String permissionString = setPermissions.get(s);
                 Set<PosixFilePermission> perms;
@@ -333,9 +351,16 @@ public class Installer extends AbstractInstaller {
         try {
             List<String> paths = new ArrayList<>(makeSymlinks.keySet());
             Collections.sort(paths);
+            Path instDir = getInstallPath();
             for (String s : paths) {
-                Path source = getInstallPath().resolve(SystemUtils.fromCommonString(s));
+                // assert relative path
+                Path source = getInstallPath().resolve(SystemUtils.fromCommonRelative(s));
                 Path target = SystemUtils.fromCommonString(makeSymlinks.get(s));
+                Path result = source.getParent().resolve(target).normalize();
+                if (!result.startsWith(getInstallPath())) {
+                    throw new IllegalStateException(
+                            feedback.l10n("INSTALL_SymlinkOutsideGraalvm", source, result));
+                }
                 ensurePathExists(source.getParent());
                 createdRelativeLinks.add(s);
                 addTrackedPath(s);

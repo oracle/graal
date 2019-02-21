@@ -86,7 +86,7 @@ public class InstallerTest extends TestBase {
         loader.loadPaths();
         installer = new Installer(fb(), componentInfo, registry, componentJarFile);
         installer.setInstallPath(targetPath);
-        installer.setLicenseRelativePath(SystemUtils.fromCommonString(loader.getLicensePath()));
+        installer.setLicenseRelativePath(SystemUtils.fromCommonRelative(loader.getLicensePath()));
     }
 
     private Feedback fb() {
