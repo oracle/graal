@@ -38,10 +38,12 @@ import org.graalvm.compiler.phases.tiers.Suites;
 
 public class AArch64SuitesCreator extends DefaultSuitesCreator {
     private final Class<? extends Phase> insertReadReplacementBefore;
+    private final boolean useBarriersForVolatile;
 
-    public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins, Class<? extends Phase> insertReadReplacementBefore) {
+    public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins, Class<? extends Phase> insertReadReplacementBefore, boolean useBarriersForVolatile) {
         super(compilerConfiguration, plugins);
         this.insertReadReplacementBefore = insertReadReplacementBefore;
+        this.useBarriersForVolatile = useBarriersForVolatile;
     }
 
     @Override
@@ -54,7 +56,9 @@ public class AArch64SuitesCreator extends DefaultSuitesCreator {
             // Search for last occurrence of SchedulePhase
         }
         findPhase.previous();
-        findPhase.add(new AArch64MembarElisionPhase());
+        if (!useBarriersForVolatile) {
+            findPhase.add(new AArch64MembarElisionPhase());
+        }
         findPhase.add(new AArch64ExtendingReadReplacementPhase());
         return suites;
     }

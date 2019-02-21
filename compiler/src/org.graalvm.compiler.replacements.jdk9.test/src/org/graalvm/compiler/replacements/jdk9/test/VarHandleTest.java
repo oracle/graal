@@ -24,10 +24,8 @@
  */
 package org.graalvm.compiler.replacements.jdk9.test;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -42,7 +40,8 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
 public class VarHandleTest extends GraalCompilerTest {
 
