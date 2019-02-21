@@ -723,7 +723,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             if (!cancelIfExecuting) {
                 for (PolyglotContextImpl context : localContexts) {
                     synchronized (context) {
-                        if (context.hasActiveOtherThread(false)) {
+                        if (context.hasActiveOtherThread(false) && context.closingThread == null) {
                             if (!ignoreCloseFailure) {
                                 throw new IllegalStateException(String.format("One of the context instances is currently executing. " +
                                                 "Set cancelIfExecuting to true to stop the execution on this thread."));
