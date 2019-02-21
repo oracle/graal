@@ -11,15 +11,12 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public abstract class CheckCastNode extends QuickNode {
 
     final Klass typeToCheck;
+
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
     protected abstract boolean executeCheckCast(Klass instanceKlass);
 
-    CheckCastNode(Klass typeToCheck) {
-        assert !typeToCheck.isPrimitive();
-        this.typeToCheck = typeToCheck;
-    }
-
+    @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "instanceKlass == cachedKlass")
     boolean checkCastCached(Klass instanceKlass,
                     @Cached("instanceKlass") Klass cachedKlass,
@@ -33,6 +30,11 @@ public abstract class CheckCastNode extends QuickNode {
         return checkCast(typeToCheck, instanceKlass);
     }
 
+    CheckCastNode(Klass typeToCheck) {
+        assert !typeToCheck.isPrimitive();
+        this.typeToCheck = typeToCheck;
+    }
+
     @TruffleBoundary
     static boolean checkCast(Klass typeToCheck, Klass instanceKlass) {
         return typeToCheck.isAssignableFrom(instanceKlass);
@@ -42,12 +44,10 @@ public abstract class CheckCastNode extends QuickNode {
     public final int invoke(final VirtualFrame frame, int top) {
         BytecodeNode root = (BytecodeNode) getParent();
         StaticObject receiver = root.peekObject(frame, top - 1);
-        // boolean result = StaticObject.isNull(receiver) || handCacheCall(receiver.getKlass());
         boolean result = StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass());
         if (!result) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ClassCastException.class);
         }
-        // root.putKind(frame, top - 1, receiver, JavaKind.Object);
         return 0;
     }
 
