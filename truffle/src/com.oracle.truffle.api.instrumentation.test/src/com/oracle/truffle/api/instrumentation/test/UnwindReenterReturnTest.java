@@ -1038,6 +1038,9 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
             bindingExec = env.getInstrumenter().attachExecutionEventListener(
                             SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.CallTag.class).build(),
                             new ExecutionEventListener() {
+
+                                boolean unwound = false;
+
                                 @Override
                                 public void onEnter(EventContext context, VirtualFrame frame) {
                                     onEnter(context);
@@ -1063,7 +1066,10 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
 
                                 @TruffleBoundary
                                 private void onReturnValue() {
-                                    lock.unlock();
+                                    if (unwound && lock.isHeldByCurrentThread()) {
+                                        unwound = false;
+                                        lock.unlock();
+                                    }
                                 }
 
                                 @Override
@@ -1072,6 +1078,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
 
                                 @Override
                                 public Object onUnwind(EventContext context, VirtualFrame frame, Object info) {
+                                    unwound = true;
                                     return 1;
                                 }
                             });

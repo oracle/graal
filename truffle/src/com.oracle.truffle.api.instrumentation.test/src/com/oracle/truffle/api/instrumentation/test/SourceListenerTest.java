@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -253,8 +254,12 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     @Test
     public void testLoadSourceException() throws IOException {
         assureEnabled(engine.getInstruments().get("testLoadSourceException"));
-        run("");
-        Assert.assertTrue(getErr().contains("TestLoadSourceExceptionClass"));
+        try {
+            run("");
+            Assert.fail("No exception was thrown.");
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("TestLoadSourceExceptionClass"));
+        }
     }
 
     private static class TestLoadSourceExceptionClass extends RuntimeException {
