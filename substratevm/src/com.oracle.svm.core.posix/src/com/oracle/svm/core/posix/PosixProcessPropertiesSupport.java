@@ -70,7 +70,7 @@ public abstract class PosixProcessPropertiesSupport implements ProcessProperties
 
     @Override
     public int waitForProcessExit(long processID) {
-        return Java_lang_Process_Supplement.waitForProcessExit(Math.toIntExact(processID));
+        return PosixUtils.waitForProcessExit(Math.toIntExact(processID));
     }
 
     @Override
