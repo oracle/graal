@@ -1866,9 +1866,9 @@ public class LanguageSPITest {
     @SuppressWarnings("unchecked")
     private static Object findLanguageCache(String languageId) throws ReflectiveOperationException {
         Class<?> clazz = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
-        Method m = clazz.getDeclaredMethod("languages");
+        Method m = clazz.getDeclaredMethod("languages", ClassLoader.class);
         m.setAccessible(true);
-        Map<String, Object> map = (Map<String, Object>) m.invoke(null);
+        Map<String, Object> map = (Map<String, Object>) m.invoke(null, (Object) null);
         return map.get(languageId);
     }
 

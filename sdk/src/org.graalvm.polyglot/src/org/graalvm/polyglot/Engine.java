@@ -60,7 +60,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
@@ -493,6 +492,17 @@ public final class Engine implements AutoCloseable {
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
+        private final boolean useContextClassLoader;
+
+        APIAccessImpl(boolean useContextClassLoader) {
+            this.useContextClassLoader = useContextClassLoader;
+        }
+
+        @Override
+        public boolean useContextClassLoader() {
+            return useContextClassLoader;
+        }
+
         @Override
         public Engine newEngine(AbstractEngineImpl impl) {
             return new Engine(impl);
@@ -581,6 +591,7 @@ public final class Engine implements AutoCloseable {
             public AbstractPolyglotImpl run() {
                 AbstractPolyglotImpl engine = null;
                 Class<?> servicesClass = null;
+                boolean useContextClassLoader = false;
 
                 if (JDK8_OR_EARLIER) {
                     try {
@@ -596,40 +607,32 @@ public final class Engine implements AutoCloseable {
                             throw new InternalError(e);
                         }
                     }
-                } else {
-                    // As of JDK9, the JVMCI Services class should only be used for service
-                    // types
-                    // defined by JVMCI. Other services types should use ServiceLoader directly.
-                    Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
-                    if (providers.hasNext()) {
-                        engine = providers.next();
-                        if (providers.hasNext()) {
-
-                            throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
-                        }
-                    }
                 }
 
                 if (engine == null) {
-                    try {
-                        Class<? extends AbstractPolyglotImpl> polyglotClass = Class.forName("com.oracle.truffle.polyglot.PolyglotImpl").asSubclass(AbstractPolyglotImpl.class);
-                        Constructor<? extends AbstractPolyglotImpl> constructor = polyglotClass.getDeclaredConstructor();
-                        constructor.setAccessible(true);
-                        engine = constructor.newInstance();
-                    } catch (ClassNotFoundException e) {
-                    } catch (Exception e1) {
-                        throw new InternalError(e1);
-                    }
+                    engine = searchServiceLoader();
+                    useContextClassLoader = true;
                 }
-
                 if (engine == null) {
                     engine = createInvalidPolyglotImpl();
                 }
 
                 if (engine != null) {
-                    engine.setConstructors(new APIAccessImpl());
+                    engine.setConstructors(new APIAccessImpl(useContextClassLoader));
                 }
                 return engine;
+            }
+
+            private AbstractPolyglotImpl searchServiceLoader() throws InternalError {
+                Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+                if (providers.hasNext()) {
+                    AbstractPolyglotImpl found = providers.next();
+                    if (providers.hasNext()) {
+                        throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
+                    }
+                    return found;
+                }
+                return null;
             }
         });
     }
