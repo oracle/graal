@@ -608,6 +608,23 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
         },
+
+        "com.oracle.svm.configtool": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "com.oracle.svm.thirdparty",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
     },
 
     "distributions": {

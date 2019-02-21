@@ -106,7 +106,7 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
   const char *method_name_cstr;
   jobjectArray param_types;
   if (is_ctor) {
-    method_name_cstr = "<init>";
+    method_name_cstr = TRACE_ARG_IGNORE;
     param_types = get_arg(jvmti, thread, 1);
   } else {
     method_name = get_arg(jvmti, thread, 1);
@@ -131,7 +131,7 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
     sbuf_destroy(&b);
   } else {
     const char *param_types_cstr = (param_types != NULL) ? "[]" : TRACE_VALUE_NULL;
-    reflect_trace(jni, self, bp->name, method_name_cstr, param_types_cstr, NULL);
+    reflect_trace(jni, self, bp->name, method_name_cstr, TRACE_NEXT_ARG_UNQUOTED_TAG, param_types_cstr, NULL);
   }
   if (!is_ctor) {
     release_cstr(jni, method_name, method_name_cstr);
@@ -189,6 +189,7 @@ static struct reflect_breakpoint_entry reflect_breakpoints[] = {
 
   REFLECTION_BREAKPOINT("java/lang/Class", "getFields", "()[Ljava/lang/reflect/Field;", &OnBreakpoint_bulkGetMembers),
   REFLECTION_BREAKPOINT("java/lang/Class", "getMethods", "()[Ljava/lang/reflect/Method;", &OnBreakpoint_bulkGetMembers),
+  REFLECTION_BREAKPOINT("java/lang/Class", "getConstructors", "()[Ljava/lang/reflect/Constructor;", &OnBreakpoint_bulkGetMembers),
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredFields", "()[Ljava/lang/reflect/Field;", &OnBreakpoint_bulkGetMembers),
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredMethods", "()[Ljava/lang/reflect/Method;", &OnBreakpoint_bulkGetMembers),
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredConstructors", "()[Ljava/lang/reflect/Constructor;", &OnBreakpoint_bulkGetMembers),
@@ -200,8 +201,6 @@ static struct reflect_breakpoint_entry reflect_breakpoints[] = {
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", &OnBreakpoint_getSingleMethod),
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", &OnBreakpoint_getSingleMethod),
 
-  REFLECTION_BREAKPOINT("java/lang/Class", "getResource", "(Ljava/lang/String;)Ljava/net/URL;", &OnBreakpoint_getResource),
-  REFLECTION_BREAKPOINT("java/lang/Class", "getResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", &OnBreakpoint_getResource),
   REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResource", "(Ljava/lang/String;)Ljava/net/URL;", &OnBreakpoint_getResource),
   REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", &OnBreakpoint_getResource),
   REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", &OnBreakpoint_getResource),

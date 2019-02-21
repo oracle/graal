@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef TRACE_AGENT_H
-#define TRACE_AGENT_H
+package com.oracle.svm.configtool.config;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-#include <stdbool.h>
-#include <stdarg.h>
+import com.oracle.svm.configtool.json.JsonPrintable;
+import com.oracle.svm.configtool.json.JsonWriter;
 
-#include <jvmti.h>
+public class JniConfiguration implements JsonPrintable {
+    private final Map<String, JniType> jniTypes = new HashMap<>();
 
-#define MAX_PATH_LEN 4096
+    public JniType getOrCreateType(String clazz) {
+        return jniTypes.computeIfAbsent(clazz, JniType::new);
+    }
 
-// A copy of the initial JNI function table before any modifications
-extern jniNativeInterface *jnifun;
-
-// Non-debug assertion
-void __guarantee_fail(const char *test, const char *file, unsigned int line, const char *funcname);
-#define guarantee(expr) \
-  ((expr) \
-   ? (void) (0) \
-   : __guarantee_fail (#expr, __FILE__, __LINE__, __func__))
-
-void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz,
-        const char *function, const char *result, va_list args);
-
-extern const jobject TRACE_OBJECT_NULL;
-extern const char * const TRACE_VALUE_NULL;
-extern const char * const TRACE_VALUE_UNKNOWN;
-extern const char * const TRACE_ARG_IGNORE;
-extern const char * const TRACE_NEXT_ARG_UNQUOTED_TAG;
-
-#ifdef __cplusplus
+    @Override
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.append('[');
+        String prefix = "\n";
+        List<JniType> list = new ArrayList<>(jniTypes.values());
+        list.sort(Comparator.comparing(JniType::getQualifiedName));
+        for (JniType value : list) {
+            writer.append(prefix);
+            value.printJson(writer);
+            prefix = ",\n";
+        }
+        writer.newline().append(']').newline();
+    }
 }
-#endif
-
-#endif /* TRACE_AGENT_H */

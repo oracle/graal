@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.json;
+package com.oracle.svm.configtool.trace;
 
-@SuppressWarnings("serial")
-public final class JSONParserException extends RuntimeException {
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
-    public JSONParserException(final String msg) {
-        super(msg);
+public abstract class AbstractProcessor {
+    abstract void processEntry(Map<String, ?> entry);
+
+    static void logWarning(String warning) {
+        System.err.println("WARNING: " + warning);
+    }
+
+    @SuppressWarnings("unchecked")
+    static <T> T singleElement(List<?> list) {
+        expectSize(list, 1);
+        return (T) list.get(0);
+    }
+
+    static void expectSize(Collection<?> collection, int size) {
+        if (collection.size() != size) {
+            throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
+        }
     }
 }

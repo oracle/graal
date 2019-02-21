@@ -47,9 +47,11 @@ static jmethodID java_lang_Class_getName;
 
 static FILE *trace_file;
 static pthread_mutex_t trace_mtx;
+const char * trace_sep = "";
 const jclass TRACE_OBJECT_NULL = (jclass) -1; // unlikely to be a valid jclass
 const char * const TRACE_VALUE_NULL = "null";
-const char * const TRACE_VALUE_UNKNOWN = "?";
+const char * const TRACE_VALUE_UNKNOWN = "\"\\u0000\"";
+const char * const TRACE_ARG_IGNORE = "@ignore@";
 const char * const TRACE_NEXT_ARG_UNQUOTED_TAG = "@next_unquoted@";
 
 void JNICALL OnVMStart(jvmtiEnv *jvmti, JNIEnv *jni) {
@@ -98,14 +100,19 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
 }
 
 JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
-  fputs("]", trace_file);
+  fputs("\n]\n", trace_file);
   fclose(trace_file);
   pthread_mutex_destroy(&trace_mtx);
 }
 
 static void mtx_trace_print(const char *s) {
   pthread_mutex_lock(&trace_mtx);
+
+  fputs(trace_sep, trace_file);
+  trace_sep = ",\n";
+
   fputs(s, trace_file);
+
   pthread_mutex_unlock(&trace_mtx);
 }
 
@@ -149,15 +156,17 @@ void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, const char *f
       if (arg == TRACE_NEXT_ARG_UNQUOTED_TAG) {
         quote_next = false;
       } else {
-        SBUF_PRINT_OPTIONAL_QUOTE(quote_next && should_quote(arg), &e, "%c", prefix, arg);
+        if (arg != TRACE_ARG_IGNORE) {
+          SBUF_PRINT_OPTIONAL_QUOTE(quote_next && should_quote(arg), &e, "%c", prefix, arg);
+          prefix = ',';
+        }
         quote_next = true;
-        prefix = ',';
       }
       arg = va_arg(args, char*);
     } while (arg != NULL);
     sbuf_printf(&e, "]");
   }
-  sbuf_printf(&e, "},\n");
+  sbuf_printf(&e, "}");
   mtx_trace_print(sbuf_as_cstr(&e));
   sbuf_destroy(&e);
 }
