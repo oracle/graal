@@ -66,7 +66,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * </pre>
  *
  * @since 0.27
- * @see TruffleStackTraceElement#getStackTrace(Throwable) To access the stack trace of an exception.
+ * @see TruffleStackTrace TruffleStackTrace to access the stack trace of an exception.
  */
 public interface TruffleException {
 
