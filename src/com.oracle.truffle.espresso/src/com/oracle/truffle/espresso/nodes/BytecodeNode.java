@@ -830,7 +830,6 @@ public class BytecodeNode extends EspressoBaseNode {
                     case ATHROW                : CompilerDirectives.transferToInterpreter(); throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
 
                     case CHECKCAST             : top += quickenCheckCast(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
-                    //case CHECKCAST             : putObject(frame, top - 1, checkCast(peekObject(frame, top - 1), resolveType(curOpcode, bs.readCPI(curBCI)))); break;
                     case INSTANCEOF            : top += quickenInstanceOf(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
 
                     case MONITORENTER          : InterpreterToVM.monitorEnter(nullCheck(peekObject(frame, top - 1))); break;
@@ -847,15 +846,6 @@ public class BytecodeNode extends EspressoBaseNode {
                     case INVOKEDYNAMIC         :
                         CompilerAsserts.neverPartOfCompilation();
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
-                        /**
-                         * - Obtain invokedynamic in the constant pool. It maps to a bootstrap method in the bootstrap pool, and its signature.
-                         * - the bootstrap method contains 4 things:
-                         *      a ref in the constant pool for the metafactory invoke. We will need to pop its argumenty to craft our own callsite
-                         *
-                         *
-                         */
-
-
 
                     case QUICK                 : top += nodes[bs.readCPI(curBCI)].invoke(frame, top); break;
                     default                    :
