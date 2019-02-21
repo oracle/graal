@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows.headers;
+package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 
@@ -35,17 +34,18 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 /**
  * Definitions for Hotspot JVM internal functions
  *
- * We only declare an initialize function in order to ensure that the jvm.lib is on the link line.
- * This allows and core library dependencies on JVM_ functions to be satisfied by our jvm.lib
- * library.
+ * We declare an initialize function in order to ensure that the jvm lib is on the link line. This
+ * allows the core library dependencies on JVM_ functions to be satisfied by our jvm library
+ * (jvm.lib or libjvm.a).
  *
  */
-@CContext(WindowsDirectives.class)
-@Platforms(Platform.WINDOWS.class)
+@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class, Platform.WINDOWS.class})
 @CLibrary("jvm")
 public class Jvm {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native void initialize();
 
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native int JVM_ActiveProcessorCount();
 }

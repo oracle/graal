@@ -36,7 +36,7 @@ import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 
-@Platforms({Platform.DARWIN.class})
+@Platforms({Platform.DARWIN_AND_JNI.class})
 class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
 
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
@@ -49,7 +49,7 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
     }
 }
 
-@Platforms({Platform.DARWIN.class})
+@Platforms({Platform.DARWIN_AND_JNI.class})
 @AutomaticFeature
 class DarwinStackOverflowSupportFeature implements Feature {
     @Override

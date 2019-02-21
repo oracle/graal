@@ -35,7 +35,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.file.spi.FileTypeDetector;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -96,8 +95,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.FilesFeature;
-import com.oracle.svm.core.jdk.FilesSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -107,7 +104,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.graal.hosted.GraalFeature.CallTreeNode;
 import com.oracle.svm.graal.hosted.GraalFeature.RuntimeBytecodeParser;
-import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.code.InliningUtilities;
@@ -204,7 +200,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(GraalFeature.class, NodeClassFeature.class, FilesFeature.class);
+        return Arrays.asList(GraalFeature.class, NodeClassFeature.class);
     }
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
@@ -258,20 +254,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             truffleRuntime.resetHosted();
         }
 
-        /* sun.nio.fs.GnomeFileTypeDetector is currently not supported (GR-4863) */
-        AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) a;
-        access.findSubclasses(FileTypeDetector.class).stream().filter(detector -> !detector.getClass().getName().equals("sun.nio.fs.GnomeFileTypeDetector")).filter(
-                        detector -> !Modifier.isAbstract(detector.getModifiers())).forEach(this::safeLoadFileDetector);
-
         initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
-    }
-
-    private void safeLoadFileDetector(Class<? extends FileTypeDetector> detector) {
-        try {
-            ImageSingletons.lookup(FilesSupport.class).addFileTypeDetector(detector.getDeclaredConstructor().newInstance());
-        } catch (Exception ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
     }
 
     @Override

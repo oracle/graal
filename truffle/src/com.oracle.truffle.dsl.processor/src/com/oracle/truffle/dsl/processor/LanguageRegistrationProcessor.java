@@ -135,6 +135,17 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             }
             p.setProperty(prefix + "interactive", Boolean.toString(annotation.interactive()));
             p.setProperty(prefix + "internal", Boolean.toString(annotation.internal()));
+
+            int serviceCounter = 0;
+            TypeMirror registrationType = ProcessorContext.getInstance().getType(Registration.class);
+            for (AnnotationMirror anno : l.getAnnotationMirrors()) {
+                TypeMirror annoType = anno.getAnnotationType();
+                if (ElementUtils.typeEquals(registrationType, annoType)) {
+                    for (TypeMirror serviceTypeMirror : ElementUtils.getAnnotationValueList(TypeMirror.class, anno, "services")) {
+                        p.setProperty(prefix + "service" + serviceCounter++, ElementUtils.getQualifiedName(serviceTypeMirror));
+                    }
+                }
+            }
         }
         if (cnt > 0) {
             try {

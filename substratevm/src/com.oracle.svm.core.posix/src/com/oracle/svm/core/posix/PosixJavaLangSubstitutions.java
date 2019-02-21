@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.core.posix.headers.Time.gettimeofday;
-
 import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,10 +41,10 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LibCHelper;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -54,11 +52,23 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.PointerUtils;
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
+
+@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@AutomaticFeature
+class PosixJavaLangSubstituteFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.lang.UNIXProcess"));
+    }
+}
 
 @TargetClass(className = "java.lang.ProcessEnvironment")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -312,7 +322,7 @@ final class Target_java_lang_ProcessBuilder_NullOutputStream {
 }
 
 @TargetClass(java.lang.System.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.LINUX_JNI.class, Platform.DARWIN.class, Platform.DARWIN_JNI.class})
 final class Target_java_lang_System {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
@@ -323,7 +333,7 @@ final class Target_java_lang_System {
     public static long currentTimeMillis() {
         timeval timeval = StackValue.get(timeval.class);
         timezone timezone = WordFactory.nullPointer();
-        gettimeofday(timeval, timezone);
+        Time.gettimeofday(timeval, timezone);
         return timeval.tv_sec() * 1_000L + timeval.tv_usec() / 1_000L;
     }
 }
@@ -338,26 +348,21 @@ final class Target_java_lang_Shutdown {
     }
 }
 
-@TargetClass(java.lang.Runtime.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@SuppressWarnings({"static-method"})
-final class Target_java_lang_Runtime {
-
-    @Substitute
-    private int availableProcessors() {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return (int) Unistd.sysconf(Unistd._SC_NPROCESSORS_ONLN());
-        } else {
-            return 1;
-        }
-    }
-}
-
 /** Dummy class to have a class with the file's name. */
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
 public final class PosixJavaLangSubstitutions {
 
     /** Private constructor: No instances. */
     private PosixJavaLangSubstitutions() {
+    }
+
+    @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    public static boolean initIDs() {
+        // The JDK uses posix_spawn on the Mac to launch executables.
+        // This requires a separate process "jspawnhelper" which we
+        // don't want to have to rely on. Force the use of FORK on
+        // Linux and Mac.
+        System.setProperty("jdk.lang.Process.launchMechanism", "FORK");
+        return true;
     }
 }

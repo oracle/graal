@@ -23,7 +23,7 @@ bench-jvmci : {
 
 bench-common : ${compilerCommon} {
   environment: {
-    BENCH_RESULTS_FILE_PATH: "bench-results.json"
+    BENCH_RESULTS_FILE_PATH : "bench-results.json"
   }
   setup: ${compilerCommon.setup} [
     ["mx", "build"]
@@ -33,21 +33,35 @@ bench-common : ${compilerCommon} {
   ]
 }
 
-bench-dacapo: ${bench-common} ${dacapo-bench-notifications} {
+large-heap: {
+  environment : {
+    XMS: ${LARGE_HEAP_SIZE}
+    XMX: ${LARGE_HEAP_SIZE}
+  }
+}
+
+default-heap: {
+  environment : {
+    XMS: ${DEFAULT_HEAP_SIZE}
+    XMX: ${DEFAULT_HEAP_SIZE}
+  }
+}
+
+bench-dacapo: ${bench-common} ${default-heap} ${dacapo-bench-notifications} {
   targets : [bench, post-merge]
   run: [
     ${bench-jvmci.mx-dacapo} ${bench-arguments}
   ]
 }
 
-bench-dacapo-timing: ${bench-common} ${dacapo-bench-notifications} {
+bench-dacapo-timing: ${bench-common} ${default-heap} ${dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-dacapo-timing} ${bench-arguments}
   ]
 }
 
-bench-dacapo-move-profiling: ${bench-common} ${dacapo-bench-notifications} {
+bench-dacapo-move-profiling: ${bench-common} ${default-heap} ${dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments}
@@ -56,21 +70,21 @@ bench-dacapo-move-profiling: ${bench-common} ${dacapo-bench-notifications} {
 
 # Scala DaCapo-related targets
 
-bench-scala-dacapo: ${bench-common} ${scala-dacapo-bench-notifications} {
+bench-scala-dacapo: ${bench-common} ${default-heap} ${scala-dacapo-bench-notifications} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
   ]
 }
 
-bench-scala-dacapo-timing: ${bench-common} ${scala-dacapo-bench-notifications} {
+bench-scala-dacapo-timing: ${bench-common} ${default-heap} ${scala-dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
   ]
 }
 
-bench-scala-dacapo-move-profiling: ${bench-common} ${scala-dacapo-bench-notifications} {
+bench-scala-dacapo-move-profiling: ${bench-common} ${default-heap} ${scala-dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-scala-dacapo-move-profiling} ${bench-arguments}
@@ -79,7 +93,7 @@ bench-scala-dacapo-move-profiling: ${bench-common} ${scala-dacapo-bench-notifica
 
 # SPECjbb2005-related targets
 
-bench-specjbb2005: ${bench-common} ${specjbb-bench-notifications} {
+bench-specjbb2005: ${bench-common} ${large-heap} ${specjbb-bench-notifications} {
   targets: [bench, post-merge]
   downloads: {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
@@ -91,7 +105,7 @@ bench-specjbb2005: ${bench-common} ${specjbb-bench-notifications} {
 }
 
 # SPECJvm2008-related targets
-bench-specjvm2008: ${bench-common} ${specjvm-bench-notifications} {
+bench-specjvm2008: ${bench-common} ${large-heap} ${specjvm-bench-notifications} {
   downloads: {
     SPECJVM2008: { name: specjvm2008, version: "1.01" }
   }
@@ -121,7 +135,7 @@ bench-specjvm2008-OneVM: ${bench-specjvm2008} ${specjvm-bench-notifications} {
 
 # SPECjbb2015-related targets
 
-bench-specjbb2015: ${bench-common} ${specjbb-bench-notifications} {
+bench-specjbb2015: ${bench-common} ${large-heap} ${specjbb-bench-notifications} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
@@ -134,7 +148,7 @@ bench-specjbb2015: ${bench-common} ${specjbb-bench-notifications} {
 
 # JMH micros graal
 
-bench-micros-graal-whitebox: ${bench-common} ${micros-bench-notifications} {
+bench-micros-graal-whitebox: ${bench-common} ${default-heap} ${micros-bench-notifications} {
   targets: [bench, weekly]
   run: [
     ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments}
@@ -142,7 +156,7 @@ bench-micros-graal-whitebox: ${bench-common} ${micros-bench-notifications} {
   timelimit: "3:00:00"
 }
 
-bench-micros-graal-dist: ${bench-common} ${micros-bench-notifications} {
+bench-micros-graal-dist: ${bench-common} ${default-heap} ${micros-bench-notifications} {
   targets: [bench, weekly]
   run: [
     ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments}
@@ -152,7 +166,7 @@ bench-micros-graal-dist: ${bench-common} ${micros-bench-notifications} {
 
 # Renaissance-related targets
 
-bench-renaissance: ${bench-common} ${renaissance-bench-notifications} {
+bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-renaissance} ${bench-arguments}
@@ -165,7 +179,7 @@ bench-renaissance: ${bench-common} ${renaissance-bench-notifications} {
 
 # spark-sql-perf-related targets
 
-bench-spark-sql-perf: ${bench-common} {
+bench-spark-sql-perf: ${bench-common} ${default-heap} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments}

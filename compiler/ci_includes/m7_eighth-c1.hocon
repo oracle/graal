@@ -4,8 +4,6 @@ m7_eighth.c1 : ${labsjdk8} {
   targets: [weekly]
   capabilities: [solaris, m7_eighth]
   environment : {
-    XMX          : "16g"
-    XMS          : "16g"
     JVM_CONFIG   : "default"
     JVM          : "client"
     MACHINE_NAME : "m7_eighth"

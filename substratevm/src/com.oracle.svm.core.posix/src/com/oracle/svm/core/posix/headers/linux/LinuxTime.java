@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ import com.oracle.svm.core.posix.headers.Time;
  * Definitions manually translated from the C header file sys/time.h.
  */
 @CContext(PosixDirectives.class)
-@Platforms(Platform.LINUX.class)
+@Platforms(Platform.LINUX_AND_JNI.class)
 public class LinuxTime extends Time {
 
     /** Identifier for system-wide realtime clock. */

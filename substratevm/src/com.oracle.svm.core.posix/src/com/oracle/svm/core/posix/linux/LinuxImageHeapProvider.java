@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,7 +79,7 @@ import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 import jdk.vm.ci.code.MemoryBarriers;
 
 @AutomaticFeature
-@Platforms(Platform.LINUX.class)
+@Platforms(Platform.LINUX_AND_JNI.class)
 class LinuxImageHeapProviderFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

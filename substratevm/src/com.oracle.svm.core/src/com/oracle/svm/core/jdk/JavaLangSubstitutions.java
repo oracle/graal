@@ -28,12 +28,7 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.unsafeCast;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
@@ -54,7 +49,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -69,7 +63,6 @@ import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -231,6 +224,7 @@ final class Target_java_lang_Throwable {
 }
 
 @TargetClass(java.lang.Runtime.class)
+@SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
 
     @Substitute
@@ -249,49 +243,22 @@ final class Target_java_lang_Runtime {
     public void runFinalization() {
     }
 
+    @Substitute
+    @Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class, Platform.WINDOWS.class})
+    private int availableProcessors() {
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            return Jvm.JVM_ActiveProcessorCount();
+        } else {
+            return 1;
+        }
+    }
+
     // Checkstyle: stop
     @Alias
     synchronized native void loadLibrary0(Class<?> fromClass, String libname);
 
     @Alias
     synchronized native void load0(Class<?> fromClass, String libname);
-    // Checkstyle: resume
-}
-
-/**
- * Provides replacement values for the {@link System#out}, {@link System#err}, and {@link System#in}
- * streams at run time. We want a fresh set of objects, so that any buffers filled during image
- * generation, as well as any redirection of the streams to new values, do not change the behavior
- * at run time.
- *
- * We use an {@link Feature.DuringSetupAccess#registerObjectReplacer object replacer} because the
- * streams can be cached in other instance and static fields in addition to the fields in
- * {@link System}. We do not know all these places, so we do now know where to place
- * {@link RecomputeFieldValue} annotations.
- */
-@AutomaticFeature
-class SystemFeature implements Feature {
-    private static final PrintStream newOut = new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.out), 128), true);
-    private static final PrintStream newErr = new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.err), 128), true);
-    private static final InputStream newIn = new BufferedInputStream(new FileInputStream(FileDescriptor.in));
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(SystemFeature::replaceStreams);
-    }
-
-    // Checkstyle: stop
-    private static Object replaceStreams(Object object) {
-        if (object == System.out) {
-            return newOut;
-        } else if (object == System.err) {
-            return newErr;
-        } else if (object == System.in) {
-            return newIn;
-        } else {
-            return object;
-        }
-    }
     // Checkstyle: resume
 }
 
@@ -391,6 +358,24 @@ final class Target_java_lang_System {
         // Substituted because the original is caller-sensitive, which we don't support
         Runtime.getRuntime().load(filename);
     }
+
+    /*
+     * Note that there is no substitution for getSecurityManager, but instead getSecurityManager it
+     * is intrinsified in SubstrateGraphBuilderPlugins to always return null. This allows better
+     * constant folding of SecurityManager code already during static analysis.
+     */
+    @Substitute
+    private static void setSecurityManager(SecurityManager s) {
+        if (s != null) {
+            /*
+             * We deliberately treat this as a non-recoverable fatal error. We want to prevent bugs
+             * where an exception is silently ignored by an application and then necessary security
+             * checks are not in place.
+             */
+            throw VMError.shouldNotReachHere("Installing a SecurityManager is not yet supported");
+        }
+    }
+
 }
 
 @TargetClass(java.lang.StrictMath.class)

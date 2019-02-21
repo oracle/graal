@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,13 +37,13 @@ import org.graalvm.nativeimage.c.function.CFunction;
 public class NativeImageServerHelper {
     @Fold
     public static boolean isInConfiguration() {
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+        return Platform.includedIn(Platform.LINUX_AND_JNI.class) || Platform.includedIn(Platform.DARWIN_AND_JNI.class);
     }
 
     /*
      * Ensures started server keeps running even after native-image completes.
      */
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
     static int daemonize(Runnable runnable) {
         int pid = Unistd.fork();
         switch (pid) {
@@ -62,7 +62,7 @@ public class NativeImageServerHelper {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
 class UnistdDirectives implements CContext.Directives {
     @Override
     public boolean isInConfiguration() {
@@ -80,7 +80,7 @@ class UnistdDirectives implements CContext.Directives {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
 @CContext(UnistdDirectives.class)
 class Unistd {
     /**
