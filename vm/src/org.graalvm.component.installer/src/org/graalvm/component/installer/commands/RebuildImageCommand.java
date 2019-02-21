@@ -34,6 +34,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.Feedback;
@@ -84,8 +90,7 @@ public class RebuildImageCommand implements InstallerCommand {
                         line = line.substring(0, i) + substProcessName +
                                         line.substring(i + processName.length());
                     }
-                    System.out.println(line);
-                    System.out.flush();
+                    feedback.verbatimOut(line, false);
                 }
             } catch (IOException ex) {
                 terminated = ex;
@@ -97,6 +102,7 @@ public class RebuildImageCommand implements InstallerCommand {
     public int execute() throws IOException {
         ProcessBuilder pb = new ProcessBuilder();
         List<String> commandLine = new ArrayList<>();
+        // enforce relative path
         Path toolPath = input.getGraalHomePath().resolve(SystemUtils.fromCommonString(feedback.l10n("REBUILD_ToolRelativePath")));
         String procName = toolPath.toAbsolutePath().toString();
         commandLine.add(procName);
@@ -111,21 +117,24 @@ public class RebuildImageCommand implements InstallerCommand {
         pb.directory(input.getGraalHomePath().toFile());
         pb.redirectInput(Redirect.INHERIT);
         pb.redirectError(Redirect.INHERIT);
+        
+        ExecutorService connectors = Executors.newCachedThreadPool();
         try {
             int exitCode;
             Process p = pb.start();
-
             OutputRewriter rw = new OutputRewriter(p.getInputStream(), procName,
                             feedback.l10n("REBUILD_RewriteRebuildToolName")); // NOI18N
-            Thread rwThread = new Thread(rw);
-            rwThread.start();
+            Future<?> ioWriter = connectors.submit(rw);
             exitCode = p.waitFor();
-            rwThread.join(1000);
+            ioWriter.get(1000, TimeUnit.MILLISECONDS);
             if (rw.terminated != null) {
                 feedback.error("REBUILD_ImageToolInterrupted", rw.terminated);
             }
             return exitCode;
-        } catch (InterruptedException ex) {
+        } catch (ExecutionException ex) {
+            feedback.error("REBUILD_ErrorCommunicatingImageTool", ex, ex.getLocalizedMessage());
+            return 3;
+        } catch (TimeoutException | InterruptedException ex) {
             feedback.error("REBUILD_ImageToolInterrupted", ex);
             return 1;
         }

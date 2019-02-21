@@ -208,7 +208,7 @@ public class HeaderParser {
                 case 0:
                     throw metaEx("ERROR_InvalidQuotedString");
                 case '\\':
-                    c = next();
+                    next();
                     break;
             }
         }
