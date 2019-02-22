@@ -38,17 +38,19 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
+import org.graalvm.nativeimage.Platform.DARWIN_AND_JNI;
+import org.graalvm.nativeimage.Platform.LINUX_AND_JNI;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 //Checkstyle: stop
 
 /**
- * Definitions manually translated from the C header file dlfcn.h.
+ * Definitions manually translated from the C header file zlib.h.
+ *
+ * We only include this class in the JNI implementation in order to add -lz to the link line.
  */
-@Platforms({DARWIN.class, LINUX.class})
+@Platforms({DARWIN_AND_JNI.class, LINUX_AND_JNI.class})
 @CContext(PosixDirectives.class)
 @CLibrary("z")
 public class ZLib {

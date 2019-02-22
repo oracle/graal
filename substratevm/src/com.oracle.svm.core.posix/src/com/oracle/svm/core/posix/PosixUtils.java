@@ -39,12 +39,20 @@ import java.io.SyncFailedException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.posix.headers.Dlfcn;
+import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Locale;
+import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.Wait;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
@@ -58,12 +66,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK9OrLater;
-import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.posix.headers.Errno;
-import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Locale;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -268,6 +270,28 @@ public class PosixUtils {
     public static int getpid(Process process) {
         Target_java_lang_UNIXProcess instance = KnownIntrinsics.unsafeCast(process, Target_java_lang_UNIXProcess.class);
         return instance.pid;
+    }
+
+    public static int waitForProcessExit(int ppid) {
+        CIntPointer statusptr = StackValue.get(CIntPointer.class);
+        while (Wait.waitpid(ppid, statusptr, 0) < 0) {
+            if (Errno.errno() == Errno.ECHILD()) {
+                return 0;
+            } else if (Errno.errno() == Errno.EINTR()) {
+                break;
+            } else {
+                return -1;
+            }
+        }
+
+        int status = statusptr.read();
+        if (Wait.WIFEXITED(status)) {
+            return Wait.WEXITSTATUS(status);
+        } else if (Wait.WIFSIGNALED(status)) {
+            // Exited because of signal: return 0x80 + signal number like shells do
+            return 0x80 + Wait.WTERMSIG(status);
+        }
+        return status;
     }
 
     static int readSingle(FileDescriptor fd) throws IOException {

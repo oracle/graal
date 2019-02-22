@@ -191,12 +191,12 @@ final class Target_java_lang_ProcessEnvironment_Value {
 }
 
 @TargetClass(className = "java.lang.UNIXProcess", onlyWith = JDK8OrEarlier.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
 final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
     // reaper threads individually (with the only difference being that threads are not recycled)
-    @Delete static Executor processReaperExecutor;
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class}) @Delete static Executor processReaperExecutor;
 
     @Alias int pid;
     @Alias OutputStream stdin;
@@ -213,6 +213,7 @@ final class Target_java_lang_UNIXProcess {
      */
 
     @Substitute
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     @SuppressWarnings({"unused", "static-method"})
     int forkAndExec(int mode, byte[] helperpath,
                     byte[] file,
@@ -226,6 +227,7 @@ final class Target_java_lang_UNIXProcess {
     }
 
     @Substitute
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     void initStreams(int[] fds) {
         Object in = Target_java_lang_ProcessBuilder_NullOutputStream.INSTANCE;
         if (fds[0] != -1) {
@@ -275,12 +277,14 @@ final class Target_java_lang_UNIXProcess {
     }
 
     @Substitute
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     @SuppressWarnings({"static-method"})
     int waitForProcessExit(int ppid) {
-        return Java_lang_Process_Supplement.waitForProcessExit(ppid);
+        return PosixUtils.waitForProcessExit(ppid);
     }
 
     @Substitute
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static void destroyProcess(int ppid, boolean force) {
         int sig = force ? Signal.SignalEnum.SIGKILL.getCValue() : Signal.SignalEnum.SIGTERM.getCValue();
         Signal.kill(ppid, sig);
