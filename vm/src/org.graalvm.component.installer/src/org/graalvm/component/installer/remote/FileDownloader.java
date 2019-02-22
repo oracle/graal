@@ -22,43 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.component.installer.persist;
+package org.graalvm.component.installer.remote;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.ConnectException;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.URLConnectionFactory;
 
-public class FileDownloader {
-    String envHttpProxy = System.getenv("http_proxy"); // NOI18N
-    String envHttpsProxy = System.getenv("https_proxy"); // NOI18N
-
+/**
+ * Downloads file to local, optionally checks its integrity using digest.
+ * 
+ * @author sdedic
+ */
+public final class FileDownloader {
     private static final int TRANSFER_LENGTH = 2048;
     private static final long MIN_PROGRESS_THRESHOLD = Long.getLong("org.graalvm.component.installer.minDownloadFeedback", 1024 * 1024);
-    private static final int DEFAULT_CONNECT_DELAY = Integer.getInteger("org.graalvm.component.installer.connectDelaySec", 5);
     private final String fileDescription;
     private final URL sourceURL;
     private final Feedback feedback;
@@ -70,13 +64,20 @@ public class FileDownloader {
     private static volatile File tempDir;
     private boolean displayProgress;
     private byte[] shaDigest;
-    private int connectDelay = DEFAULT_CONNECT_DELAY;
     long sizeThreshold = MIN_PROGRESS_THRESHOLD;
+    private final Map<String, String> requestHeaders = new HashMap<>();
+    private Consumer<SeekableByteChannel> dataInterceptor;
+    private URLConnectionFactory connectionFactory;
+
+    /**
+     * Algorithm to compute file digest. By default SHA-256 is used.
+     */
+    private String digestAlgorithm = "SHA-256";
 
     public FileDownloader(String fileDescription, URL sourceURL, Feedback feedback) {
         this.fileDescription = fileDescription;
         this.sourceURL = sourceURL;
-        this.feedback = feedback;
+        this.feedback = feedback.withBundle(FileDownloader.class);
     }
 
     public void setShaDigest(byte[] shaDigest) {
@@ -93,6 +94,18 @@ public class FileDownloader {
 
     public void setDisplayProgress(boolean displayProgress) {
         this.displayProgress = displayProgress;
+    }
+
+    public void addRequestHeader(String header, String val) {
+        requestHeaders.put(header, val);
+    }
+
+    public String getDigestAlgorithm() {
+        return digestAlgorithm;
+    }
+
+    public void setDigestAlgorithm(String digestAlgorithm) {
+        this.digestAlgorithm = digestAlgorithm;
     }
 
     public static synchronized File createTempDir() throws IOException {
@@ -171,11 +184,15 @@ public class FileDownloader {
         }
     }
 
-    void stopProgress() {
+    void stopProgress(boolean success) {
         if (displayProgress) {
             feedback.verbatimPart(backspaceString, false);
         }
-        feedback.verboseOutput("MSG_DownloadingDone");
+        if (success) {
+            feedback.verboseOutput("MSG_DownloadingDone");
+        } else {
+            feedback.output("MSG_DownloadingTerminated");
+        }
     }
 
     void updateFileDigest(ByteBuffer input) throws IOException {
@@ -184,7 +201,7 @@ public class FileDownloader {
         }
         if (fileDigest == null) {
             try {
-                fileDigest = MessageDigest.getInstance("SHA-256"); // NOI18N
+                fileDigest = MessageDigest.getInstance(getDigestAlgorithm()); // NOI18N
             } catch (NoSuchAlgorithmException ex) {
                 throw new IOException(
                                 feedback.l10n("ERR_ComputeDigest", ex.getLocalizedMessage()),
@@ -194,7 +211,7 @@ public class FileDownloader {
         fileDigest.update(input);
     }
 
-    String fingerPrint(byte[] digest) {
+    static String fingerPrint(byte[] digest) {
         StringBuilder sb = new StringBuilder(digest.length * 3);
         for (int i = 0; i < digest.length; i++) {
             if (i > 0) {
@@ -221,102 +238,21 @@ public class FileDownloader {
                         fingerPrint(shaDigest), fingerPrint(computed)));
     }
 
-    private URLConnection openConnectionWithProxies(URL url) throws IOException {
-        final URLConnection[] conn = {null};
-        final CountDownLatch connected = new CountDownLatch(1);
-        ExecutorService connectors = Executors.newFixedThreadPool(3);
-        AtomicReference<IOException> ex3 = new AtomicReference<>();
-        AtomicReference<IOException> ex2 = new AtomicReference<>();
-        String httpProxy;
-        String httpsProxy;
-
-        synchronized (this) {
-            httpProxy = envHttpProxy;
-            httpsProxy = envHttpsProxy;
+    void configureHeaders(URLConnection con) {
+        for (String h : requestHeaders.keySet()) {
+            con.addRequestProperty(h, requestHeaders.get(h));
         }
+    }
 
-        class Connector implements Runnable {
-            private final String proxySpec;
-            private final boolean directConnect;
-
-            Connector() {
-                directConnect = true;
-                proxySpec = null;
-            }
-
-            Connector(String proxySpec) {
-                this.proxySpec = proxySpec;
-                this.directConnect = false;
-            }
-
-            @Override
-            public void run() {
-                final Proxy proxy;
-                if (directConnect) {
-                    proxy = null;
-                } else {
-                    if (proxySpec == null || proxySpec.isEmpty()) {
-                        return;
-                    }
-                    try {
-                        URI uri = new URI(httpsProxy);
-                        InetSocketAddress address = InetSocketAddress.createUnresolved(uri.getHost(), uri.getPort());
-                        proxy = new Proxy(Proxy.Type.HTTP, address);
-                    } catch (URISyntaxException ex) {
-                        return;
-                    }
-                }
-                try {
-                    URLConnection test = directConnect ? url.openConnection() : url.openConnection(proxy);
-                    test.connect();
-                    if (test instanceof HttpURLConnection) {
-                        HttpURLConnection htest = (HttpURLConnection) test;
-                        int rcode = htest.getResponseCode();
-                        if (rcode >= 400) {
-                            // force the exception, should fail with IOException
-                            InputStream stm = test.getInputStream();
-                            try {
-                                stm.close();
-                            } catch (IOException ex) {
-                                // swallow, we want to report just proxy failed.
-                            }
-                            throw new IOException(feedback.l10n("EXC_ProxyFailed", rcode));
-                        }
-                    }
-                    conn[0] = test;
-                    connected.countDown();
-                } catch (IOException ex) {
-                    if (directConnect) {
-                        ex3.set(ex);
-                    } else {
-                        ex2.set(ex);
-                    }
-                }
-            }
-
+    protected void dataDownloaded(SeekableByteChannel ch) {
+        if (dataInterceptor != null) {
+            dataInterceptor.accept(ch);
         }
-        connectors.submit(new Connector(httpProxy));
-        connectors.submit(new Connector(httpsProxy));
-        connectors.submit(new Connector());
-        try {
-            if (!connected.await(connectDelay, TimeUnit.SECONDS)) {
-                if (ex3.get() != null) {
-                    throw ex3.get();
-                }
-                throw new ConnectException("Timeout while connecting to " + url);
-            }
-            if (conn[0] == null) {
-                if (ex3.get() != null) {
-                    throw ex3.get();
-                } else if (ex2.get() != null) {
-                    throw ex2.get();
-                }
-                throw new ConnectException("Cannot connect to " + url);
-            }
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-        }
-        return conn[0];
+    }
+
+    public FileDownloader setDataInterceptor(Consumer<SeekableByteChannel> interceptor) {
+        this.dataInterceptor = interceptor;
+        return this;
     }
 
     public void download() throws IOException {
@@ -327,7 +263,14 @@ public class FileDownloader {
         } else {
             feedback.output("MSG_DownloadingFrom", getSourceURL());
         }
-        URLConnection conn = openConnectionWithProxies(sourceURL);
+
+        Path localCache = feedback.getLocalCache(sourceURL);
+        if (localCache != null) {
+            localFile = localCache.toFile();
+            return;
+        }
+
+        URLConnection conn = getConnectionFactory().createConnection(sourceURL, this::configureHeaders);
         size = conn.getContentLengthLong();
         verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
         if (verbose) {
@@ -340,13 +283,11 @@ public class FileDownloader {
         setupProgress();
         ByteBuffer bb = ByteBuffer.allocate(TRANSFER_LENGTH);
         localFile = deleteOnExit(File.createTempFile("download", "", createTempDir())); // NOI18N
-        if (fileDescription != null) {
-            feedback.bindFilename(localFile.toPath(), fileDescription);
-        }
         boolean first = displayProgress;
+        boolean success = false;
         try (
                         ReadableByteChannel rbc = Channels.newChannel(conn.getInputStream());
-                        WritableByteChannel wbc = Files.newByteChannel(localFile.toPath(),
+                        SeekableByteChannel wbc = Files.newByteChannel(localFile.toPath(),
                                         StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
             int read;
             while ((read = rbc.read(bb)) >= 0) {
@@ -356,6 +297,9 @@ public class FileDownloader {
                 bb.flip();
                 while (bb.hasRemaining()) {
                     wbc.write(bb);
+                    long pos = wbc.position();
+                    dataDownloaded(wbc);
+                    wbc.position(pos);
                 }
                 bb.flip();
                 updateFileDigest(bb);
@@ -363,11 +307,27 @@ public class FileDownloader {
                 bb.clear();
                 first = false;
             }
+            success = true;
+        } catch (UncheckedIOException ex) {
+            throw ex.getCause();
         } catch (IOException ex) {
             // f.delete();
             throw ex;
+        } finally {
+            stopProgress(success);
         }
-        stopProgress();
         verifyDigest();
+        feedback.addLocalFileCache(sourceURL, localFile.toPath());
+    }
+
+    public void setConnectionFactory(URLConnectionFactory connFactory) {
+        this.connectionFactory = connFactory;
+    }
+
+    URLConnectionFactory getConnectionFactory() {
+        if (connectionFactory == null) {
+            connectionFactory = new ProxyConnectionFactory(feedback, sourceURL);
+        }
+        return connectionFactory;
     }
 }

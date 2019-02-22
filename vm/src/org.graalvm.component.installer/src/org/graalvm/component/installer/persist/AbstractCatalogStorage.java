@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,70 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package org.graalvm.component.installer.persist;
 
 import java.io.IOException;
 import java.net.URL;
-import java.text.MessageFormat;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.Date;
 import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.function.Function;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
 
-public class RemoteStorage implements ComponentStorage {
-    private final Properties catalogProperties;
-    private final String flavourPrefix;
-    private final ComponentRegistry localRegistry;
-    private final Feedback feedback;
-    private final URL baseURL;
+/**
+ * Base for different storage of remote component list. The default implementation uses properties
+ * resource reachable through the https.
+ * 
+ * @author sdedic
+ */
+public abstract class AbstractCatalogStorage implements ComponentStorage {
+    protected final ComponentRegistry localRegistry;
+    protected final Feedback feedback;
+    protected final URL baseURL;
 
-    private static final String PROPERTY_HASH = "hash"; // NOI18N
-    private static final String FORMAT_FLAVOUR = "Component.{0}."; // NOI18N
-
-    public RemoteStorage(Feedback fb, ComponentRegistry localReg, Properties catalogProperties, String graalVersion, URL baseURL) {
-        this.catalogProperties = catalogProperties;
-        this.localRegistry = localReg;
-        this.feedback = fb;
+    public AbstractCatalogStorage(ComponentRegistry localRegistry, Feedback feedback, URL baseURL) {
+        this.localRegistry = localRegistry;
+        this.feedback = feedback;
         this.baseURL = baseURL;
-        flavourPrefix = MessageFormat.format(FORMAT_FLAVOUR, graalVersion);
-    }
-
-    @Override
-    public Set<String> listComponentIDs() throws IOException {
-        Set<String> ret = new HashSet<>();
-        for (String s : catalogProperties.stringPropertyNames()) {
-            if (!s.startsWith(flavourPrefix)) {
-                continue;
-            }
-            String rest = s.substring(flavourPrefix.length());
-            if (rest.indexOf('-') == -1) {
-                // got a component ID
-                ret.add(rest.toLowerCase());
-            }
-        }
-        return ret;
-    }
-
-    @Override
-    public Map<String, String> loadGraalVersionInfo() {
-        return localRegistry.getGraalCapabilities();
-    }
-
-    @Override
-    public ComponentInfo loadComponentFiles(ComponentInfo ci) throws IOException {
-        // files are not supported, yet
-        return ci;
-    }
-
-    private byte[] toHashBytes(String comp, String hashS) {
-        return toHashBytes(comp, hashS, feedback);
     }
 
     public static byte[] toHashBytes(String comp, String hashS, Feedback fb) {
@@ -97,7 +62,6 @@ public class RemoteStorage implements ComponentStorage {
         boolean divided = !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')); // NOI18N
         boolean lenOK;
         int s;
-
         if (divided) {
             lenOK = (val.length() + 1) % 3 == 0;
             s = (val.length() + 1) / 3;
@@ -129,43 +93,18 @@ public class RemoteStorage implements ComponentStorage {
     }
 
     @Override
-    public ComponentInfo loadComponentMetadata(String id) throws IOException {
-        URL downloadURL;
-        String s = catalogProperties.getProperty(flavourPrefix + id.toLowerCase());
-        if (s == null) {
-            return null;
-        }
-        // try {
-        downloadURL = new URL(baseURL, s);
-        // } catch (MalformedURLException ex) {
-        // throw feedback.failure("REMOTE_InvalidDownloadURL", ex, s, ex.getLocalizedMessage());
-        // }
-        String prefix = flavourPrefix + id.toLowerCase() + "-"; // NOI18N
-        String hashS = catalogProperties.getProperty(prefix + PROPERTY_HASH);
-        byte[] hash = hashS == null ? null : toHashBytes(id, hashS);
-
-        ComponentPackageLoader ldr = new ComponentPackageLoader(
-                        new PrefixedPropertyReader(prefix, catalogProperties),
-                        feedback);
-        ComponentInfo info = ldr.createComponentInfo();
-        info.setRemoteURL(downloadURL);
-        info.setShaDigest(hash);
-        return info;
+    public Map<String, String> loadGraalVersionInfo() {
+        return localRegistry.getGraalCapabilities();
     }
 
-    static class PrefixedPropertyReader implements Function<String, String> {
-        private final String compPrefix;
-        private final Properties props;
+    @Override
+    public ComponentInfo loadComponentFiles(ComponentInfo ci) throws IOException {
+        // files are not supported, yet
+        return ci;
+    }
 
-        PrefixedPropertyReader(String compPrefix, Properties props) {
-            this.compPrefix = compPrefix;
-            this.props = props;
-        }
-
-        @Override
-        public String apply(String t) {
-            return props.getProperty(compPrefix + t);
-        }
+    protected byte[] toHashBytes(String comp, String hashS) {
+        return toHashBytes(comp, hashS, feedback);
     }
 
     @Override
@@ -181,6 +120,15 @@ public class RemoteStorage implements ComponentStorage {
     @Override
     public void saveComponent(ComponentInfo info) throws IOException {
         throw new UnsupportedOperationException("Should not be called."); // NOI18N
+    }
+
+    @Override
+    public Date licenseAccepted(ComponentInfo info, String licenseID) {
+        return null;
+    }
+
+    @Override
+    public void recordLicenseAccepted(ComponentInfo info, String licenseID, String licenseText) throws IOException {
     }
 
     @Override

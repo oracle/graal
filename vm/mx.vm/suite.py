@@ -80,8 +80,6 @@ suite = {
         ]
     },
 
-    "libraries": {},
-
     "projects": {
         "com.oracle.graalvm.locator": {
             "subDir": "src",
@@ -123,7 +121,10 @@ suite = {
         "INSTALLER": {
             "subDir": "src",
             "mainClass": "org.graalvm.component.installer.ComponentInstaller",
-            "dependencies": ["org.graalvm.component.installer"],
+            "dependencies": [
+                "org.graalvm.component.installer",
+            ],
+            "maven" : False,
         },
         "INSTALLER_TESTS": {
             "subDir": "src",
@@ -142,7 +143,9 @@ suite = {
             "platformDependent": True,
             "description": "GraalVM Installer support distribution for the GraalVM",
             "layout": {
-                "./": "dependency:vm:INSTALLER",
+                "./": [
+                    "dependency:vm:INSTALLER",
+                ],
                 "bin/": "file:mx.vm/gu",
                 "components/polyglot/.registry" : "string:",
             },

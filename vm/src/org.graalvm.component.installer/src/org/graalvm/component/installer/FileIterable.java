@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,12 @@ package org.graalvm.component.installer;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
-import java.util.jar.JarFile;
-import org.graalvm.component.installer.persist.ComponentPackageLoader;
+import java.util.ServiceLoader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 public class FileIterable implements ComponentIterable {
@@ -75,8 +78,7 @@ public class FileIterable implements ComponentIterable {
 
     public static class FileComponent implements ComponentParam {
         private final File localFile;
-        private ComponentPackageLoader loader;
-        private JarFile jf;
+        private MetadataLoader loader;
         private final boolean verifyJars;
         private final Feedback feedback;
 
@@ -88,37 +90,42 @@ public class FileIterable implements ComponentIterable {
 
         @Override
         public MetadataLoader createMetaLoader() throws IOException {
-            if (loader == null) {
-                if (jf == null) {
-                    jf = new JarFile(localFile, verifyJars);
-                }
-                loader = new ComponentPackageLoader(jf, feedback);
+            if (loader != null) {
+                return loader;
             }
-            return loader;
+            byte[] fileStart = null;
+
+            try (ReadableByteChannel ch = FileChannel.open(localFile.toPath(), StandardOpenOption.READ)) {
+                ByteBuffer bb = ByteBuffer.allocate(8);
+                ch.read(bb);
+                fileStart = bb.array();
+            }
+
+            for (ComponentArchiveReader provider : ServiceLoader.load(ComponentArchiveReader.class)) {
+                MetadataLoader ldr = provider.createLoader(localFile.toPath(), fileStart, feedback, verifyJars);
+                if (ldr != null) {
+                    loader = ldr;
+                    return ldr;
+                }
+            }
+            throw feedback.failure("ERROR_UnknownFileFormat", null, localFile.toString());
+        }
+
+        @Override
+        public MetadataLoader completeMetadata() throws IOException {
+            return createMetaLoader();
         }
 
         @Override
         public void close() throws IOException {
             if (loader != null) {
                 loader.close();
-            } else if (jf != null) {
-                jf.close();
             }
         }
 
         @Override
         public MetadataLoader createFileLoader() throws IOException {
             return createMetaLoader();
-        }
-
-        @Override
-        public JarFile getFile() throws IOException {
-            if (loader != null) {
-                return loader.getJarFile();
-            } else {
-                jf = new JarFile(localFile, verifyJars);
-                return jf;
-            }
         }
 
         @Override
@@ -145,6 +152,5 @@ public class FileIterable implements ComponentIterable {
         public String getShortName() {
             return localFile.getName();
         }
-
     }
 }

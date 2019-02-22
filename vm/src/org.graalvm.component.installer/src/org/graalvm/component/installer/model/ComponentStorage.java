@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.component.installer.model;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 
@@ -76,4 +77,22 @@ public interface ComponentStorage {
 
     void updateReplacedFiles(Map<String, Collection<String>> replacedFiles) throws IOException;
 
+    /**
+     * Checks that the license was already accepted.
+     * 
+     * @param info component for which the license should be checked
+     * @param licenseID the ID to check
+     * @return time when the license was accepted
+     */
+    Date licenseAccepted(ComponentInfo info, String licenseID);
+
+    /**
+     * Records that the license has been accepted. If id is {@code} null, then all license records
+     * are erased.
+     * 
+     * @param info the component for which the license is accepted
+     * @param licenseID the ID to accept or {@code null}
+     * @param licenseText text of the license, will be recoded.
+     */
+    void recordLicenseAccepted(ComponentInfo info, String licenseID, String licenseText) throws IOException;
 }

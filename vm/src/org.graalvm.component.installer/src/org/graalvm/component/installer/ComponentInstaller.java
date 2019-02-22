@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,11 @@
  */
 package org.graalvm.component.installer;
 
+import org.graalvm.component.installer.remote.CatalogIterable;
 import java.io.File;
 import java.io.IOError;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.AccessDeniedException;
@@ -41,10 +41,14 @@ import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
@@ -55,13 +59,15 @@ import org.graalvm.component.installer.commands.ListInstalledCommand;
 import org.graalvm.component.installer.commands.RebuildImageCommand;
 import org.graalvm.component.installer.commands.UninstallCommand;
 import org.graalvm.component.installer.persist.DirectoryStorage;
-import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
+import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 
 /**
  * The launcher.
  */
 public final class ComponentInstaller {
-    private static final String GRAAL_DEFAULT_RELATIVE_PATH = "../../..";
+    private static final Logger LOG = Logger.getLogger(ComponentInstaller.class.getName());
+
+    public static final String GRAAL_DEFAULT_RELATIVE_PATH = "../../..";
 
     private String[] mainArguments;
     private String command;
@@ -77,6 +83,10 @@ public final class ComponentInstaller {
 
     @SuppressWarnings("deprecation")
     static void initCommands() {
+        // not necessary except for tests to cleanup extra items
+        commands.clear();
+        globalOptions.clear();
+
         commands.put("install", new InstallCommand()); // NOI18N
         commands.put("uninstall", new UninstallCommand()); // NOI18N
         commands.put("list", new ListInstalledCommand()); // NOI18N
@@ -103,14 +113,38 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.LONG_OPTION_FOREIGN_CATALOG, Commands.OPTION_FOREIGN_CATALOG);
         globalOptions.put(Commands.LONG_OPTION_URLS, Commands.OPTION_URLS);
         globalOptions.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
-    }
 
-    static {
-        initCommands();
+        globalOptions.put(Commands.OPTION_AUTO_YES, "");
+        globalOptions.put(Commands.LONG_OPTION_AUTO_YES, Commands.OPTION_AUTO_YES);
+
+        globalOptions.put(Commands.OPTION_NON_INTERACTIVE, "");
+        globalOptions.put(Commands.LONG_OPTION_NON_INTERACTIVE, Commands.OPTION_NON_INTERACTIVE);
     }
 
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle"); // NOI18N
+
+    private static void forSoftwareChannels(boolean report, Consumer<SoftwareChannel> callback) {
+        ServiceLoader<SoftwareChannel> channels = ServiceLoader.load(SoftwareChannel.class);
+        for (Iterator<SoftwareChannel> it = channels.iterator(); it.hasNext();) {
+            try {
+                SoftwareChannel ch = it.next();
+                callback.accept(ch);
+            } catch (ServiceConfigurationError | Exception ex) {
+                if (report) {
+                    LOG.log(Level.SEVERE,
+                                    MessageFormat.format(BUNDLE.getString("ERROR_SoftwareChannelBroken"), ex.getLocalizedMessage()));
+                }
+            }
+        }
+    }
+
+    static {
+        initCommands();
+        forSoftwareChannels(true, (ch) -> {
+            globalOptions.putAll(ch.globalOptions());
+        });
+    }
 
     private ComponentInstaller(String[] args) {
         this.mainArguments = args;
@@ -122,7 +156,28 @@ public final class ComponentInstaller {
     }
 
     private static void printHelp() {
-        System.err.println(BUNDLE.getString("INFO_Usage")); // NOI18N
+        StringBuilder extra = new StringBuilder();
+        Environment[] env = new Environment[1];
+
+        forSoftwareChannels(false, (ch) -> {
+            if (env[0] == null) {
+                env[0] = new Environment("help", Collections.emptyList(), Collections.emptyMap());
+            }
+            ch.init(env[0], env[0]);
+            String s = ch.globalOptionsHelp();
+            if (s != null) {
+                extra.append(s);
+            }
+        });
+        String extraS;
+
+        if (extra.length() != 0) {
+            extraS = MessageFormat.format(BUNDLE.getString("INFO_UsageExtensions"), extra.toString());
+        } else {
+            extraS = ""; // NOI18N
+        }
+
+        System.err.println(MessageFormat.format(BUNDLE.getString("INFO_Usage"), extraS)); // NOI18N
     }
 
     static void printErr(String messageKey, Object... args) {
@@ -164,7 +219,7 @@ public final class ComponentInstaller {
         parameters = go.getPositionalParameters();
 
         try {
-            env = new Environment(command, null, parameters, optValues);
+            env = new Environment(command, parameters, optValues);
             finddGraalHome();
             env.setGraalHome(graalHomePath);
             env.setLocalRegistry(new ComponentRegistry(env, new DirectoryStorage(
@@ -187,6 +242,12 @@ public final class ComponentInstaller {
                 err("ERROR_MultipleSourcesUnsupported");
             }
 
+            if (env.hasOption(Commands.OPTION_AUTO_YES)) {
+                env.setAutoYesEnabled(true);
+            }
+            if (env.hasOption(Commands.OPTION_NON_INTERACTIVE)) {
+                env.setNonInteractive(true);
+            }
             if (optValues.containsKey(Commands.OPTION_FILES)) {
                 env.setFileIterable(new FileIterable(env, env));
             } else if (optValues.containsKey(Commands.OPTION_URLS)) {
@@ -195,9 +256,9 @@ public final class ComponentInstaller {
                 catalogURL = optValues.get(Commands.OPTION_FOREIGN_CATALOG);
                 RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
                                 env,
-                                env.getLocalRegistry(),
+                                env,
                                 getCatalogURL(env));
-                env.setComponentRegistry(downloader);
+                env.setComponentRegistry(downloader::openCatalog);
                 env.setFileIterable(new CatalogIterable(env, env, downloader));
             }
             cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));
@@ -220,6 +281,9 @@ public final class ComponentInstaller {
         } catch (MetadataException ex) {
             env.error("INSTALLER_InvalidMetadata", ex, ex.getMessage()); // NOI18N
             return 3;
+        } catch (UserAbortException ex) {
+            env.error("ERROR_Aborted", ex, ex.getMessage()); // NOI18N
+            return 4;
         } catch (InstallerStopException ex) {
             env.error("INSTALLER_Error", ex, ex.getMessage()); // NOI18N
             return 3;
@@ -276,6 +340,9 @@ public final class ComponentInstaller {
             cmdlineParams = new LinkedList<>(Arrays.asList(mainArguments));
 
             System.exit(processCommand());
+        } catch (UserAbortException ex) {
+            System.err.println(MessageFormat.format(
+                            BUNDLE.getString("ERROR_Aborted"), ex.getMessage())); // NOI18N
         } catch (Exception ex) {
             System.err.println(MessageFormat.format(
                             BUNDLE.getString("ERROR_InternalError"), ex.getMessage())); // NOI18N
@@ -285,7 +352,7 @@ public final class ComponentInstaller {
 
     }
 
-    private URL getCatalogURL(Feedback f) {
+    private String getCatalogURL(Feedback f) {
         String def;
         if (catalogURL != null) {
             def = catalogURL;
@@ -303,11 +370,7 @@ public final class ComponentInstaller {
             }
         }
         String s = System.getProperty(CommonConstants.SYSPROP_CATALOG_URL, def);
-        try {
-            return new URL(s);
-        } catch (MalformedURLException ex) {
-            throw f.failure("INSTALLER_InvalidCatalogURL", ex, s);
-        }
+        return s;
     }
 
     /**

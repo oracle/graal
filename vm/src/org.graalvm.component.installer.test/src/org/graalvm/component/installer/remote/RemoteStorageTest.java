@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.component.installer.persist;
+package org.graalvm.component.installer.remote;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,7 +50,7 @@ public class RemoteStorageTest extends TestBase {
     private static final String TEST_GRAAL_VERSION = "0.33-dev_linux_amd64";
     private static final String TEST_BASE_URL_DIR = "https://graalvm.io/";
     private static final String TEST_BASE_URL = TEST_BASE_URL_DIR + "download/catalog";
-    private RemoteStorage remStorage;
+    private RemotePropertiesStorage remStorage;
     private MockStorage storage;
     private ComponentRegistry localRegistry;
     private Properties catalogProps = new Properties();
@@ -61,7 +61,7 @@ public class RemoteStorageTest extends TestBase {
     public void setUp() throws Exception {
         storage = new MockStorage();
         localRegistry = new ComponentRegistry(this, storage);
-        remStorage = new RemoteStorage(this, localRegistry, catalogProps, TEST_GRAAL_VERSION,
+        remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_VERSION,
                         new URL(TEST_BASE_URL));
         try (InputStream is = getClass().getResourceAsStream("catalog")) {
             catalogProps.load(is);
@@ -163,13 +163,13 @@ public class RemoteStorageTest extends TestBase {
 
     @Test
     public void testHashString() throws Exception {
-        byte[] bytes = RemoteStorage.toHashBytes("test", truffleruby2HashString, this);
+        byte[] bytes = RemotePropertiesStorage.toHashBytes("test", truffleruby2HashString, this);
         assertArrayEquals(truffleruby2Hash, bytes);
     }
 
     @Test
     public void testHashStringDivided() throws Exception {
-        byte[] bytes = RemoteStorage.toHashBytes("test", truffleruby2HashString2, this);
+        byte[] bytes = RemotePropertiesStorage.toHashBytes("test", truffleruby2HashString2, this);
         assertArrayEquals(truffleruby2Hash, bytes);
     }
 

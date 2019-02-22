@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,9 +47,11 @@ public class SimpleGetoptTest extends TestBase {
     public void setUp() {
         Map<String, String> g = new HashMap<>(ComponentInstaller.globalOptions);
         g.put("8", "=C");
+        g.put("long-user", "U");
+        g.put("U", "s");
         getopt = new SimpleGetopt(g) {
             @Override
-            RuntimeException err(String messageKey, Object... args) {
+            public RuntimeException err(String messageKey, Object... args) {
                 errorKey = messageKey;
                 errorParams = args;
                 throw new FailedOperationException(messageKey);
@@ -326,7 +328,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testLongOptionWithParameterBeforeCommand() {
-        setParams("--user-catalog bubu install");
+        setParams("--custom-catalog bubu install");
 
         getopt.process();
 
@@ -336,7 +338,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testLongOptionWithParameterAfterCommand() {
-        setParams("install --user-catalog bubu ");
+        setParams("install --custom-catalog bubu ");
 
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
@@ -361,11 +363,11 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testLongOptionAbbreviation() {
-        setParams("install --user bubu");
+        setParams("install --long-user bubu");
 
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
-        assertEquals("bubu", opts.get("C"));
+        assertEquals("bubu", opts.get("U"));
     }
 
     @Test
@@ -391,5 +393,18 @@ public class SimpleGetoptTest extends TestBase {
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
         assertEquals("bubu", opts.get("C"));
+    }
+
+    @Test
+    public void testIgnoreUnknownCommands() {
+        setParams("-v bubak 1");
+        getopt.ignoreUnknownCommands(true);
+        getopt.process();
+        Map<String, String> opts = getopt.getOptValues();
+        assertEquals(1, opts.size());
+        assertNotNull(opts.get("v"));
+
+        assertEquals(2, getopt.getPositionalParameters().size());
+        assertEquals("bubak", getopt.getPositionalParameters().get(0));
     }
 }

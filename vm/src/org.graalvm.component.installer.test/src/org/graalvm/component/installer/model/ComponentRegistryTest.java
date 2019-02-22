@@ -36,6 +36,7 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.commands.MockStorage;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -83,7 +84,7 @@ public class ComponentRegistryTest extends TestBase {
         registry = new ComponentRegistry(this, mockStorage);
 
         try (JarFile jf = new JarFile(dataFile("truffleruby2.jar").toFile())) {
-            ComponentPackageLoader ldr = new ComponentPackageLoader(jf, this);
+            ComponentPackageLoader ldr = new JarMetaLoader(jf, this);
 
             rubyInfo = ldr.createComponentInfo();
             ldr.loadPaths();

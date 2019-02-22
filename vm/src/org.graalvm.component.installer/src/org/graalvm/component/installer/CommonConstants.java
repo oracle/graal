@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,4 +77,11 @@ public class CommonConstants {
      * Key in <code>release</code> file with catalog URL.
      */
     public static final String RELEASE_CATALOG_KEY = "component_catalog"; // NOI18N
+
+    /**
+     * Default installation dir encoded in RPM packages. The installer will strip this prefix to
+     * relocate the package contents.
+     */
+    public static final String BUILTIN_INSTALLATION_DIR = "/usr/lib/graalvm"; // NOI18N
+
 }
