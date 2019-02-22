@@ -90,6 +90,13 @@ public final class FileTypeDetectorSupport {
     public static void setDefault(FileTypeDetector detector) {
         ImageSingletons.lookup(FileTypeDetectorFeature.class).defaultFileTypeDetector = Objects.requireNonNull(detector);
     }
+
+    public static class AlwaysNullFileTypeDetector extends FileTypeDetector {
+        @Override
+        public String probeContentType(Path path) throws IOException {
+            return null;
+        }
+    }
 }
 
 @AutomaticFeature
@@ -111,12 +118,13 @@ final class FileTypeDetectorFeature implements Feature {
             String installedDetectorsFieldName = JavaVersionUtil.Java8OrEarlier ? "installeDetectors" : "installedDetectors";
             installedDetectors.addAll(readStaticField(jdkClass, installedDetectorsFieldName));
             defaultFileTypeDetector = readStaticField(jdkClass, "defaultFileTypeDetector");
-        } else {
+        }
+        if (defaultFileTypeDetector == null) {
             /*
              * The JDK does not allow a null value for the defaultFileTypeDetector, so we need an
              * implementation class that always returns null.
              */
-            defaultFileTypeDetector = new AlwaysNullFileTypeDetector();
+            defaultFileTypeDetector = new FileTypeDetectorSupport.AlwaysNullFileTypeDetector();
         }
     }
 
@@ -129,13 +137,6 @@ final class FileTypeDetectorFeature implements Feature {
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
-    }
-}
-
-final class AlwaysNullFileTypeDetector extends FileTypeDetector {
-    @Override
-    public String probeContentType(Path path) throws IOException {
-        return null;
     }
 }
 
