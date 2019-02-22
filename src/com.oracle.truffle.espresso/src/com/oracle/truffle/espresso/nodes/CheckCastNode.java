@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,10 +66,9 @@ public abstract class CheckCastNode extends QuickNode {
     public final int invoke(final VirtualFrame frame, int top) {
         BytecodeNode root = (BytecodeNode) getParent();
         StaticObject receiver = root.peekObject(frame, top - 1);
-        boolean result = StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass());
-        if (!result) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ClassCastException.class);
+        if (StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass())) {
+            return 0;
         }
-        return 0;
+        throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ClassCastException.class);
     }
 }
