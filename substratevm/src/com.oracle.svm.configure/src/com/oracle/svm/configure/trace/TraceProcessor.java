@@ -22,17 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.trace;
+package com.oracle.svm.configure.trace;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configtool.config.JniConfiguration;
-import com.oracle.svm.configtool.config.ProxyConfiguration;
-import com.oracle.svm.configtool.config.ReflectionConfiguration;
-import com.oracle.svm.configtool.config.ResourceConfiguration;
+import com.oracle.svm.configure.config.JniConfiguration;
+import com.oracle.svm.configure.config.ProxyConfiguration;
+import com.oracle.svm.configure.config.ReflectionConfiguration;
+import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.core.util.json.JSONParser;
 
 public class TraceProcessor extends AbstractProcessor {

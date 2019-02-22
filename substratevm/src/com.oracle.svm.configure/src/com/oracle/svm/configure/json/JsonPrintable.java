@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.json;
+package com.oracle.svm.configure.json;
 
 import java.io.IOException;
 

@@ -22,13 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.trace;
+package com.oracle.svm.configure.trace;
 
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configtool.config.JniConfiguration;
-import com.oracle.svm.configtool.config.JniMethod;
+import com.oracle.svm.configure.config.JniConfiguration;
+import com.oracle.svm.configure.config.JniMethod;
 
 import jdk.vm.ci.meta.MetaUtil;
 

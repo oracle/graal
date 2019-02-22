@@ -22,36 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.config;
+package com.oracle.svm.configure.trace;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configtool.json.JsonPrintable;
-import com.oracle.svm.configtool.json.JsonWriter;
+public abstract class AbstractProcessor {
+    abstract void processEntry(Map<String, ?> entry);
 
-public class JniConfiguration implements JsonPrintable {
-    private final Map<String, JniType> jniTypes = new HashMap<>();
-
-    public JniType getOrCreateType(String clazz) {
-        return jniTypes.computeIfAbsent(clazz, JniType::new);
+    static void logWarning(String warning) {
+        System.err.println("WARNING: " + warning);
     }
 
-    @Override
-    public void printJson(JsonWriter writer) throws IOException {
-        writer.append('[');
-        String prefix = "\n";
-        List<JniType> list = new ArrayList<>(jniTypes.values());
-        list.sort(Comparator.comparing(JniType::getQualifiedName));
-        for (JniType value : list) {
-            writer.append(prefix);
-            value.printJson(writer);
-            prefix = ",\n";
+    @SuppressWarnings("unchecked")
+    static <T> T singleElement(List<?> list) {
+        expectSize(list, 1);
+        return (T) list.get(0);
+    }
+
+    static void expectSize(Collection<?> collection, int size) {
+        if (collection.size() != size) {
+            throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
         }
-        writer.newline().append(']').newline();
     }
 }

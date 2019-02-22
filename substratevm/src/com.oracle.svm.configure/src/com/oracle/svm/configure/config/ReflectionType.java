@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.config;
+package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 
-import com.oracle.svm.configtool.json.JsonPrintable;
-import com.oracle.svm.configtool.json.JsonWriter;
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
 
 public class ReflectionType implements JsonPrintable {
 

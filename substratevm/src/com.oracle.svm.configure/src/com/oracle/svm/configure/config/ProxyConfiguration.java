@@ -22,52 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.json;
+package com.oracle.svm.configure.config;
 
 import java.io.IOException;
-import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-public class JsonWriter implements AutoCloseable {
-    private static final String WHITESPACE = "                                ";
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
 
-    private final String lineSep = System.lineSeparator();
-    private final Writer writer;
+public class ProxyConfiguration implements JsonPrintable {
+    private final Set<Set<String>> interfaceSets = new HashSet<>();
 
-    private int indentation = 0;
-
-    public JsonWriter(Writer writer) {
-        this.writer = writer;
-    }
-
-    public JsonWriter append(char c) throws IOException {
-        writer.write(c);
-        return this;
-    }
-
-    public JsonWriter append(String s) throws IOException {
-        writer.write(s);
-        return this;
-    }
-
-    public JsonWriter newline() throws IOException {
-        writer.write(lineSep);
-        writer.write(WHITESPACE, 0, Math.min(2 * indentation, WHITESPACE.length()));
-        return this;
-    }
-
-    public JsonWriter indent() {
-        indentation++;
-        return this;
-    }
-
-    public JsonWriter unindent() {
-        assert indentation > 0;
-        indentation--;
-        return this;
+    public void add(Set<String> interfaceSet) {
+        interfaceSets.add(interfaceSet);
     }
 
     @Override
-    public void close() throws IOException {
-        writer.close();
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.append('[');
+        writer.indent();
+        List<String> lines = new ArrayList<>(interfaceSets.size());
+        interfaceSets.forEach(set -> lines.add(set.stream().sorted().map(str -> '"' + str + '"')
+                        .collect(Collectors.joining(", ", "[", "]"))));
+        lines.sort(Comparator.naturalOrder());
+        String prefix = "";
+        for (String line : lines) {
+            writer.append(prefix).newline().append(line);
+            prefix = ",";
+        }
+        writer.unindent().newline();
+        writer.append(']');
     }
 }

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.config;
+package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,9 +31,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.svm.configtool.json.JsonPrintable;
-import com.oracle.svm.configtool.json.JsonPrinter;
-import com.oracle.svm.configtool.json.JsonWriter;
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonPrinter;
+import com.oracle.svm.configure.json.JsonWriter;
 
 public class MatchSet<T> implements JsonPrintable {
     private final Comparator<T> comparator;

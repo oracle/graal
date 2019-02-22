@@ -22,18 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.trace;
+package com.oracle.svm.configure.trace;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configtool.config.ProxyConfiguration;
-import com.oracle.svm.configtool.config.ReflectionConfiguration;
-import com.oracle.svm.configtool.config.ReflectionMemberSet;
-import com.oracle.svm.configtool.config.ReflectionMethod;
-import com.oracle.svm.configtool.config.ReflectionType;
-import com.oracle.svm.configtool.config.ResourceConfiguration;
+import com.oracle.svm.configure.config.ProxyConfiguration;
+import com.oracle.svm.configure.config.ReflectionConfiguration;
+import com.oracle.svm.configure.config.ReflectionMemberSet;
+import com.oracle.svm.configure.config.ReflectionMethod;
+import com.oracle.svm.configure.config.ReflectionType;
+import com.oracle.svm.configure.config.ResourceConfiguration;
 
 public class ReflectionProcessor extends AbstractProcessor {
     private final ReflectionConfiguration configuration = new ReflectionConfiguration();

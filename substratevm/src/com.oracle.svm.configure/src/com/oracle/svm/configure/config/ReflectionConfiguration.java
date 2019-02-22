@@ -22,40 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.config;
+package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Map;
 
-import com.oracle.svm.configtool.json.JsonPrintable;
-import com.oracle.svm.configtool.json.JsonWriter;
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
 
-public class ProxyConfiguration implements JsonPrintable {
-    private final Set<Set<String>> interfaceSets = new HashSet<>();
+public class ReflectionConfiguration implements JsonPrintable {
+    private Map<String, ReflectionType> reflectTypes = new HashMap<>();
 
-    public void add(Set<String> interfaceSet) {
-        interfaceSets.add(interfaceSet);
+    public ReflectionType getOrCreateType(String clazz) {
+        return reflectTypes.computeIfAbsent(clazz, ReflectionType::new);
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append('[');
-        writer.indent();
-        List<String> lines = new ArrayList<>(interfaceSets.size());
-        interfaceSets.forEach(set -> lines.add(set.stream().sorted().map(str -> '"' + str + '"')
-                        .collect(Collectors.joining(", ", "[", "]"))));
-        lines.sort(Comparator.naturalOrder());
+        writer.append('[').indent().newline();
         String prefix = "";
-        for (String line : lines) {
-            writer.append(prefix).newline().append(line);
+        List<ReflectionType> list = new ArrayList<>(reflectTypes.values());
+        list.sort(Comparator.comparing(ReflectionType::getQualifiedName));
+        for (ReflectionType value : list) {
+            writer.append(prefix).newline();
+            value.printJson(writer);
             prefix = ",";
         }
-        writer.unindent().newline();
-        writer.append(']');
+        writer.unindent().newline().append(']').newline();
     }
 }

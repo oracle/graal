@@ -1,4 +1,4 @@
-package com.oracle.svm.configtool.config;
+package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.io.Writer;

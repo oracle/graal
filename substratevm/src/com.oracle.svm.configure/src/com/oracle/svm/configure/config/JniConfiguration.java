@@ -22,10 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.json;
+package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-public interface JsonPrinter<T> {
-    void print(T t, JsonWriter writer) throws IOException;
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
+
+public class JniConfiguration implements JsonPrintable {
+    private final Map<String, JniType> jniTypes = new HashMap<>();
+
+    public JniType getOrCreateType(String clazz) {
+        return jniTypes.computeIfAbsent(clazz, JniType::new);
+    }
+
+    @Override
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.append('[');
+        String prefix = "\n";
+        List<JniType> list = new ArrayList<>(jniTypes.values());
+        list.sort(Comparator.comparing(JniType::getQualifiedName));
+        for (JniType value : list) {
+            writer.append(prefix);
+            value.printJson(writer);
+            prefix = ",\n";
+        }
+        writer.newline().append(']').newline();
+    }
 }

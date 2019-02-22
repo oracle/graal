@@ -22,36 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.config;
+package com.oracle.svm.configure.json;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
-import com.oracle.svm.configtool.json.JsonPrintable;
-import com.oracle.svm.configtool.json.JsonWriter;
-
-public class ReflectionConfiguration implements JsonPrintable {
-    private Map<String, ReflectionType> reflectTypes = new HashMap<>();
-
-    public ReflectionType getOrCreateType(String clazz) {
-        return reflectTypes.computeIfAbsent(clazz, ReflectionType::new);
-    }
-
-    @Override
-    public void printJson(JsonWriter writer) throws IOException {
-        writer.append('[').indent().newline();
-        String prefix = "";
-        List<ReflectionType> list = new ArrayList<>(reflectTypes.values());
-        list.sort(Comparator.comparing(ReflectionType::getQualifiedName));
-        for (ReflectionType value : list) {
-            writer.append(prefix).newline();
-            value.printJson(writer);
-            prefix = ",";
-        }
-        writer.unindent().newline().append(']').newline();
-    }
+public interface JsonPrinter<T> {
+    void print(T t, JsonWriter writer) throws IOException;
 }

@@ -609,14 +609,13 @@ suite = {
             ],
         },
 
-        "com.oracle.svm.configtool": {
+        "com.oracle.svm.configure": {
             "subDir": "src",
             "sourceDirs": [
                 "src",
-                "resources"
             ],
             "dependencies": [
-                "com.oracle.svm.thirdparty",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
@@ -782,6 +781,19 @@ suite = {
                 "LIBRARY_SUPPORT",
             ],
         },
+
+        "SVM_CONFIGURE": {
+            "subDir": "src",
+            "description" : "SubstrateVM native-image configuration tool",
+            "mainClass": "com.oracle.svm.configure.ConfigurationTool",
+            "dependencies": [
+                "com.oracle.svm.configure",
+            ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+            ],
+        },
+
 
         "POINTSTO": {
             "subDir": "src",

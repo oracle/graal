@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool;
+package com.oracle.svm.configure;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -32,8 +32,8 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import com.oracle.svm.configtool.json.JsonWriter;
-import com.oracle.svm.configtool.trace.TraceProcessor;
+import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.configure.trace.TraceProcessor;
 
 public class ConfigurationTool {
     private static void printUsage() {

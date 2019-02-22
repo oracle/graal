@@ -22,28 +22,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configtool.trace;
+package com.oracle.svm.configure.json;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.io.Writer;
 
-public abstract class AbstractProcessor {
-    abstract void processEntry(Map<String, ?> entry);
+public class JsonWriter implements AutoCloseable {
+    private static final String WHITESPACE = "                                ";
 
-    static void logWarning(String warning) {
-        System.err.println("WARNING: " + warning);
+    private final String lineSep = System.lineSeparator();
+    private final Writer writer;
+
+    private int indentation = 0;
+
+    public JsonWriter(Writer writer) {
+        this.writer = writer;
     }
 
-    @SuppressWarnings("unchecked")
-    static <T> T singleElement(List<?> list) {
-        expectSize(list, 1);
-        return (T) list.get(0);
+    public JsonWriter append(char c) throws IOException {
+        writer.write(c);
+        return this;
     }
 
-    static void expectSize(Collection<?> collection, int size) {
-        if (collection.size() != size) {
-            throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
-        }
+    public JsonWriter append(String s) throws IOException {
+        writer.write(s);
+        return this;
+    }
+
+    public JsonWriter newline() throws IOException {
+        writer.write(lineSep);
+        writer.write(WHITESPACE, 0, Math.min(2 * indentation, WHITESPACE.length()));
+        return this;
+    }
+
+    public JsonWriter indent() {
+        indentation++;
+        return this;
+    }
+
+    public JsonWriter unindent() {
+        assert indentation > 0;
+        indentation--;
+        return this;
+    }
+
+    @Override
+    public void close() throws IOException {
+        writer.close();
     }
 }
