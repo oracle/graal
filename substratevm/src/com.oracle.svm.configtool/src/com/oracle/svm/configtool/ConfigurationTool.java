@@ -37,7 +37,7 @@ import com.oracle.svm.configtool.trace.TraceProcessor;
 
 public class ConfigurationTool {
     private static void printUsage() {
-        System.err.println("Usage: --trace file [--reflect-output file] [--jni-output file] [--proxy-output file] [--resources-output file]");
+        System.err.println("Usage: --trace file [--reflect-output file] [--jni-output file] [--proxy-output file] [--resources-output file] [--no-filter]");
     }
 
     public static void main(String[] args) {
@@ -62,6 +62,7 @@ public class ConfigurationTool {
 
     private static void processTrace(Iterator<String> argsIter) throws IOException {
         Path traceInputPath;
+        boolean filter = true;
         Path reflectOutputPath = null;
         Path jniOutputPath = null;
         Path proxyOutputPath = null;
@@ -80,9 +81,11 @@ public class ConfigurationTool {
                     case "--proxy-output":
                         proxyOutputPath = Paths.get(argsIter.next());
                         break;
-
                     case "--resources-output":
                         resourcesOutputPath = Paths.get(argsIter.next());
+                        break;
+                    case "--no-filter":
+                        filter = false;
                         break;
                     default:
                         throw new IllegalArgumentException("Unknown argument: " + current);
@@ -95,6 +98,7 @@ public class ConfigurationTool {
         }
 
         TraceProcessor p = new TraceProcessor();
+        p.setFilterEnabled(filter);
         p.process(Files.newBufferedReader(traceInputPath));
         if (reflectOutputPath != null) {
             try (JsonWriter writer = new JsonWriter(Files.newBufferedWriter(reflectOutputPath))) {

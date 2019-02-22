@@ -42,6 +42,10 @@ public class TraceProcessor extends AbstractProcessor {
     public TraceProcessor() {
     }
 
+    public void setFilterEnabled(boolean enabled) {
+        reflectionProcessor.setFilterEnabled(enabled);
+    }
+
     public JniConfiguration getJniConfiguration() {
         return jniProcessor.getConfiguration();
     }

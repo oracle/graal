@@ -123,14 +123,7 @@ static bool should_quote(const char *s) {
 #define SBUF_PRINT_OPTIONAL_QUOTE(condition, sbuf, fmt, ...) \
   sbuf_printf((sbuf), ((condition) ? (fmt "\"%s\"") : (fmt "%s")), __VA_ARGS__)
 
-void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, const char *function, const char *result, va_list args) {
-  struct sbuf e;
-  sbuf_new(&e);
-  sbuf_printf(&e, "{\"tracer\":\"%s\"", tracer);
-  if (function != NULL) {
-    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(function), &e, ", \"function\":", function);
-  }
-  if (clazz != NULL) {
+void sbuf_append_jclass(JNIEnv *env, struct sbuf *s, const char *key, jclass clazz) {
     jstring clazz_name = NULL;
     const char *clazz_name_cstr = NULL;
     if (clazz != TRACE_OBJECT_NULL) {
@@ -139,13 +132,24 @@ void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, const char *f
       clazz_name_cstr = (clazz_name != NULL) ? jnifun->GetStringUTFChars(env, clazz_name, NULL) : NULL;
     }
     clazz_name_cstr = (clazz_name_cstr != NULL) ? clazz_name_cstr : TRACE_VALUE_NULL;
-    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(clazz_name_cstr), &e, ", \"class\":", clazz_name_cstr);
+    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(clazz_name_cstr), s, ", \"%s\":", key, clazz_name_cstr);
     if (clazz_name_cstr != TRACE_VALUE_NULL) {
       jnifun->ReleaseStringUTFChars(env, clazz_name, clazz_name_cstr);
     }
+}
+
+void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller_class, const char *function, va_list args) {
+  struct sbuf e;
+  sbuf_new(&e);
+  sbuf_printf(&e, "{\"tracer\":\"%s\"", tracer);
+  if (function != NULL) {
+    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(function), &e, ", \"function\":", function);
   }
-  if (result != NULL) {
-    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(result), &e, ", \"function\":", result);
+  if (clazz != NULL) {
+    sbuf_append_jclass(env, &e, "class", clazz);
+  }
+  if (caller_class != NULL) {
+    sbuf_append_jclass(env, &e, "caller_class", caller_class);
   }
   char *arg = va_arg(args, char*);
   if (arg != NULL) {

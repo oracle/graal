@@ -39,6 +39,11 @@ public class ReflectionProcessor extends AbstractProcessor {
     private final ReflectionConfiguration configuration = new ReflectionConfiguration();
     private final ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
     private final ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
+    private boolean filter = true;
+
+    public void setFilterEnabled(boolean enabled) {
+        filter = enabled;
+    }
 
     public ReflectionConfiguration getConfiguration() {
         return configuration;
@@ -58,6 +63,26 @@ public class ReflectionProcessor extends AbstractProcessor {
         String function = (String) entry.get("function");
         String clazz = (String) entry.get("class");
         List<?> args = (List<?>) entry.get("args");
+        switch (function) {
+            // These are called via java.lang.Class or via the class loader hierarchy, so we would
+            // always filter based on the caller class.
+            case "getResource":
+            case "getResourceAsStream":
+            case "getSystemResource":
+            case "getSystemResourceAsStream":
+                resourceConfiguration.add(singleElement(args));
+                return;
+
+            case "getResources":
+            case "getSystemResources":
+                resourceConfiguration.addLocationIndependent(singleElement(args));
+                return;
+        }
+        String callerClass = (String) entry.get("caller_class");
+        if (filter && (callerClass.startsWith("java.") || callerClass.startsWith("javax.") || callerClass.startsWith("sun.") ||
+                        callerClass.startsWith("com.sun.") || callerClass.startsWith("jdk."))) {
+            return;
+        }
         boolean declared = false;
         switch (function) {
             case "forName": {
@@ -119,18 +144,6 @@ public class ReflectionProcessor extends AbstractProcessor {
                 addDynamicProxy((List<?>) args.get(1));
                 break;
             }
-
-            case "getResource":
-            case "getResourceAsStream":
-            case "getSystemResource":
-            case "getSystemResourceAsStream":
-                resourceConfiguration.add(singleElement(args));
-                break;
-
-            case "getResources":
-            case "getSystemResources":
-                resourceConfiguration.addLocationIndependent(singleElement(args));
-                break;
         }
     }
 
