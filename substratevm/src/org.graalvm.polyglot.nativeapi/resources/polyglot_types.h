@@ -52,6 +52,8 @@ typedef struct {
 
 typedef void* poly_handle;
 
+typedef poly_handle poly_reference;
+
 typedef poly_handle poly_value;
 
 typedef poly_handle poly_engine;
