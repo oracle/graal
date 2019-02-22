@@ -146,12 +146,12 @@ deploy_daily_vm_darwin: ${vm_darwin} {
   targets: [deploy, daily]
 }
 
-deploy_vm_linux: ${vm_linux} {
-  targets: [deploy, post-merge]
+daily_vm_linux: ${vm_linux} {
+  targets: [daily]
 }
 
 daily_vm_darwin: ${vm_darwin} {
-  targets: [deploy, daily]
+  targets: [daily]
 }
 
 mx_vm_common: [mx, --strip-jars, --no-sources, --env, ${vm_env}]
@@ -182,7 +182,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-linux-amd64
   },
-  ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
+  ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
@@ -191,7 +191,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-installable-darwin-amd64
   },
-  ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
+  ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_vm}
