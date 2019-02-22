@@ -102,6 +102,10 @@ def gate_body(args, tasks):
             with Task('Test LibGraal', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false"])
+
+            with Task('LibGraal GraalVM smoke test', tasks, tags=[VmGateTasks.libgraal]) as t:
+                if t:
+                    mx.run([join(mx_vm.graalvm_home(), 'bin', 'java'), '-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-jar', mx.library('DACAPO').get_path(True), 'avrora'])
     else:
         mx.warn("Skipping libgraal tests: component not enabled")
 
