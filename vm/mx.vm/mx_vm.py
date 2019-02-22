@@ -78,7 +78,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
 
 anyjdk_version_regex = re.compile(r'(openjdk|java) version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\n(OpenJDK|Java\(TM\) SE) Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
 openjdk_version_regex = re.compile(r'openjdk version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\nOpenJDK Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
-graalvm_version_regex = re.compile(r'.*\n.*\nGraalVM (?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
+graalvm_version_regex = re.compile(r'.*\n.*\n[a-zA-Z() ]+GraalVM[a-zA-Z ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
 
 class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
@@ -215,13 +215,14 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
             # Add vm.properties
             # Add TRUFFLE_NFI_NATIVE (TODO: should be part of an other component?)
+            vm_name = graalvm_vm_name(self, join(_jdk_dir, _src_jdk_base))
             if mx.get_os() == 'darwin':
                 # on macOS the <arch> directory is not used
                 _add(layout, "<jdk_base>/jre/lib/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
-                _add(layout, "<jdk_base>/jre/lib/server/vm.properties", "string:name=GraalVM <version>")
+                _add(layout, "<jdk_base>/jre/lib/server/vm.properties", "string:name=" + vm_name)
             else:
                 _add(layout, "<jdk_base>/jre/lib/<arch>/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
-                _add(layout, "<jdk_base>/jre/lib/<arch>/server/vm.properties", "string:name=GraalVM <version>")
+                _add(layout, "<jdk_base>/jre/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
 
             # Add Polyglot launcher
             if with_polyglot_launcher:
@@ -1374,7 +1375,7 @@ def get_stage1_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
     global _stage1_graalvm_distribution
     if _stage1_graalvm_distribution == 'uninitialized':
-        _stage1_graalvm_distribution = GraalVmLayoutDistribution("GraalVM", _base_graalvm_layout, stage1=True)
+        _stage1_graalvm_distribution = GraalVmLayoutDistribution('GraalVM', _base_graalvm_layout, stage1=True)
         _stage1_graalvm_distribution.description = "GraalVM distribution (stage1)"
         _stage1_graalvm_distribution.maven = False
     return _stage1_graalvm_distribution
@@ -1384,7 +1385,7 @@ def get_final_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
     global _final_graalvm_distribution
     if _final_graalvm_distribution == 'uninitialized':
-        _final_graalvm_distribution = GraalVmLayoutDistribution("GraalVM", _base_graalvm_layout)
+        _final_graalvm_distribution = GraalVmLayoutDistribution('GraalVM', _base_graalvm_layout)
         _final_graalvm_distribution.description = "GraalVM distribution"
         _final_graalvm_distribution.maven = True
     return _final_graalvm_distribution
@@ -1816,11 +1817,33 @@ def check_versions(jdk_dir, jdk_version_regex, graalvm_version_regex, expect_gra
 
     match = graalvm_version_regex.match(out)
     if expect_graalvm and match is None:
-        mx.abort("'{}' is not a GraalVM. Its version string:\n{}\ndoes not match:\n{}").format(jdk_dir, out, graalvm_version_regex.pattern)
+        mx.abort("'{}' is not a GraalVM. Its version string:\n{}\ndoes not match:\n{}".format(jdk_dir, out, graalvm_version_regex.pattern))
     elif expect_graalvm and match.group('graalvm_version') != _suite.release_version():
         mx.abort("'{}' has a wrong GraalVM version:\n{}\nexpected:\n{}".format(match.group('graalvm_version'), _suite.release_version()))
     elif not expect_graalvm and match:
         mx.abort("GraalVM cannot be built using a GraalVM as base-JDK ('{}').\n{}.".format(jdk_dir, check_env))
+
+
+def log_graalvm_vm_name(args):
+    """Print the VM name of GraalVM"""
+    parser = ArgumentParser(prog='mx graalvm-vm-name', description='Print the VM name of GraalVM')
+    _ = parser.parse_args(args)
+    jdk_base, jdk_dir = _get_jdk_dir()
+    mx.log(graalvm_vm_name(get_final_graalvm_distribution(), join(jdk_dir, jdk_base)))
+
+
+def graalvm_vm_name(graalvm_dist, jdk_home):
+    """
+    :type jdk_home: str
+    :rtype str:
+    """
+    java = join(jdk_home, 'bin', 'java')
+    out = subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT).rstrip()
+    match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+)64-Bit Server VM', out.split('\n')[-1])
+    vm_name = match.group('base_vm_name') if match else ''
+    vm_name += '{} {}'.format(graalvm_dist.base_name, graalvm_dist.vm_config_name.upper()) if graalvm_dist.vm_config_name else graalvm_dist.base_name
+    vm_name += ' {}'.format(graalvm_version())
+    return vm_name
 
 
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
@@ -1910,5 +1933,6 @@ mx.update_commands(_suite, {
     'graalvm-version': [log_graalvm_version, ''],
     'graalvm-home': [log_graalvm_home, ''],
     'graalvm-show': [graalvm_show, ''],
+    'graalvm-vm-name': [log_graalvm_vm_name, ''],
     'standalone-home': [log_standalone_home, 'comp-dir-name'],
 })
