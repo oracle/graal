@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.210.2",
+    "mxversion": "5.210.5",
     "name": "substratevm",
     "version" : "1.0.0-rc13",
     "release" : False,
@@ -489,29 +489,6 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.libffi": {
-            "subDir": "src",
-            "native": True,
-            "vpath": True,
-            "results": [
-                "libffi.a",
-                "include/ffi.h",
-                "include/ffitarget.h",
-                "include/trufflenfi.h",
-                "include/svm_libffi.h",
-            ],
-            "buildEnv": {
-                "LIBFFI_DIST": "<path:truffle:LIBFFI_DIST>",
-                "TRUFFLE_NFI": "<path:truffle:TRUFFLE_NFI_NATIVE>",
-                "ARCH": "<arch>",
-                "OS": "<os>"
-            },
-            "buildDependencies": [
-                "truffle:LIBFFI_DIST",
-                "truffle:TRUFFLE_NFI_NATIVE",
-            ],
-        },
-
         "com.oracle.svm.jline": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -738,13 +715,6 @@ suite = {
         # Native Projects
         #
         "SVM_HOSTED_NATIVE": {
-            "dependencies": [
-                "com.oracle.svm.native.libchelper",
-                "com.oracle.svm.native.strictmath",
-                "com.oracle.svm.native.jvm.posix",
-                "com.oracle.svm.native.jvm.windows",
-                "com.oracle.svm.libffi"
-            ],
             "native": True,
             "platformDependent" : True,
             "platforms" : [
@@ -752,10 +722,20 @@ suite = {
                 "darwin-amd64",
                 "windows-amd64",
             ],
+            "layout": {
+                "<os>-<arch>/": [
+                    "dependency:com.oracle.svm.native.libchelper/*",
+                    "dependency:com.oracle.svm.native.strictmath/*",
+                    "dependency:com.oracle.svm.native.jvm.posix/*",
+                    "dependency:com.oracle.svm.native.jvm.windows/*",
+                    "extracted-dependency:truffle:LIBFFI_DIST",
+                ],
+                "<os>-<arch>/include/": [
+                    "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*",
+                    "file:src/com.oracle.svm.libffi/include/svm_libffi.h",
+                ]
+            },
             "description" : "SubstrateVM image builder native components",
-            "relpath": True,
-            "auto_prefix": True,
-            "output": "clibraries",
             "maven": True
         },
 
