@@ -49,6 +49,12 @@ public class ChunkedConnection extends HttpURLConnection {
 
     @Override
     public void connect() throws IOException {
+        original.connect();
+    }
+
+    @Override
+    public String getHeaderField(String name) {
+        return original.getHeaderField(name);
     }
 
     @Override
@@ -75,6 +81,11 @@ public class ChunkedConnection extends HttpURLConnection {
                 }
             }
         };
+    }
+
+    @Override
+    public long getContentLengthLong() {
+        return original.getContentLengthLong();
     }
 
     @Override
