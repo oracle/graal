@@ -1121,6 +1121,14 @@ public final class Context implements AutoCloseable {
         private boolean orAllAccess(Boolean optionalBoolean) {
             return optionalBoolean != null ? optionalBoolean : allowAllAccess;
         }
-    }
+        /** Associates new safety configuration with the builder.
+         *
+         * @param conf the config
+         * @return
+         */
+        public Builder safety(SafetyConf conf) {
+            return this;
+        }
 
+    }
 }
