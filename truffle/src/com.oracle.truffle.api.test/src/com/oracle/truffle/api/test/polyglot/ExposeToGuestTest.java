@@ -41,7 +41,12 @@
 package com.oracle.truffle.api.test.polyglot;
 
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.IamSafe;
 import org.graalvm.polyglot.SafetyConf;
 import org.graalvm.polyglot.Value;
@@ -87,6 +92,53 @@ public class ExposeToGuestTest {
         );
         Assert.assertEquals(42, readValue.execute(new PublicValue()).asInt());
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
+    }
+
+    @Test
+    public void customExportedAnnotation() {
+        SafetyConf accessMeConfig = SafetyConf.newConfig().safeToAccessIfAnnotatedBy(AccessMe.class).build();
+        Context context = Context.newBuilder().safety(accessMeConfig).build();
+        Value readValue = context.eval("sl", ""
+                + "function readValue(x) {\n"
+                + "  return x.value;\n"
+                + "}\n"
+                + "function main() {\n"
+                + "  return readValue;\n"
+                + "}\n"
+        );
+        Assert.assertEquals(42, readValue.execute(new AccessibleValue()).asInt());
+        Assert.assertTrue("Default annotation isn't enough", readValue.execute(new ExportedValue()).isNull());
+        Assert.assertTrue("Public isn't enough by default", readValue.execute(new PublicValue()).isNull());
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.METHOD, ElementType.FIELD})
+    public @interface AccessMe {
+    }
+
+    public static class AccessibleValue {
+        @AccessMe
+        public int value = 42;
+    }
+
+    @Test
+    public void explicitlyEnumeratingField() throws Exception {
+        SafetyConf explictConfig = SafetyConf.newConfig().
+                safeToAccess(AccessibleValue.class.getField("value")).
+                build();
+        Engine engine = Engine.newBuilder().safety(explictConfig).build();
+        Context context = Context.newBuilder().engine(engine).build();
+        Value readValue = context.eval("sl", ""
+                + "function readValue(x) {\n"
+                + "  return x.value;\n"
+                + "}\n"
+                + "function main() {\n"
+                + "  return readValue;\n"
+                + "}\n"
+        );
+        Assert.assertEquals(42, readValue.execute(new AccessibleValue()).asInt());
+        Assert.assertTrue("Default annotation isn't enough", readValue.execute(new ExportedValue()).isNull());
+        Assert.assertTrue("Public isn't enough by default", readValue.execute(new PublicValue()).isNull());
     }
 
 }
