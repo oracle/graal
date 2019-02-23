@@ -425,7 +425,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return (OptimizedCallTarget) runtime().createClonedCallTarget(this, clonedRoot);
     }
 
-    @Override
+    /**
+     * Gets the speculation log used to collect all failed speculations in the compiled code for
+     * this call target. Note that this may differ from the speculation log
+     * {@linkplain CompilableTruffleAST#getCompilationSpeculationLog() used for compilation}.
+     */
     public synchronized SpeculationLog getSpeculationLog() {
         if (speculationLog == null) {
             speculationLog = ((GraalTruffleRuntime) Truffle.getRuntime()).createSpeculationLog();

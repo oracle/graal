@@ -148,7 +148,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         DebugContext debug = getDebugContext(options);
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
             TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
-            SpeculationLog speculationLog = compilable.getSpeculationLog();
+            SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
             return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null);
         } catch (Throwable e) {
             throw debug.handle(e);

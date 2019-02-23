@@ -1568,7 +1568,6 @@ public final class PosixJavaNIOSubstitutions {
         }
 
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
         private static long seek0(FileDescriptor fd, long offset) throws IOException {
             int f = fdval(fd);
             long result = 0;
@@ -2911,37 +2910,6 @@ public final class PosixJavaNIOSubstitutions {
         private static int unmap0(long address, long len) throws IOException {
             PointerBase a = WordFactory.pointer(address);
             return handle(munmap(a, WordFactory.unsigned(len)), "Unmap failed");
-        }
-
-        /**
-         * {@code FileChannelImpl.position0} was removed by
-         * https://bugs.openjdk.java.net/browse/JDK-8202261.
-         */
-        static class ContainsPosition0 implements Predicate<Class<?>> {
-
-            @Override
-            public boolean test(Class<?> t) {
-                for (java.lang.reflect.Method m : t.getDeclaredMethods()) {
-                    if (m.getName().equals("position0")) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        }
-
-        @Substitute
-        @TargetElement(onlyWith = {JDK8OrEarlier.class, ContainsPosition0.class})
-        private long position0(FileDescriptor fdo, long offset) throws IOException {
-            int fd = fdval(fdo);
-            long result = 0;
-
-            if (offset < 0) {
-                result = lseek(fd, WordFactory.zero(), SEEK_CUR()).rawValue();
-            } else {
-                result = lseek(fd, WordFactory.signed(offset), SEEK_SET()).rawValue();
-            }
-            return handle(result, "Position failed");
         }
 
         // @Substitute

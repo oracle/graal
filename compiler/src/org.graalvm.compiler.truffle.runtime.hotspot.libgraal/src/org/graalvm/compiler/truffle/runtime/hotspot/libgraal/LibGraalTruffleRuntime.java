@@ -39,7 +39,6 @@ import com.oracle.truffle.api.TruffleRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * A {@link TruffleRuntime} that uses libgraal for compilation.
@@ -131,11 +130,6 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     public void log(String message) {
         HotSpotToSVMCalls.log(getIsolateThreadId(), message);
-    }
-
-    @Override
-    public SpeculationLog createSpeculationLog() {
-        return new SVMSpeculationLog(HotSpotToSVMCalls.createSpeculationLog(getIsolateThreadId()));
     }
 
     /**

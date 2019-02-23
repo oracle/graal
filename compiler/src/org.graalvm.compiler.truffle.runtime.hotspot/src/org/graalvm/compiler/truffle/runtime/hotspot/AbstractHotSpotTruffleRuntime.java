@@ -44,6 +44,7 @@ import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
@@ -174,6 +175,21 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         callTarget.setInstalledCode(installedCode);
     }
 
+    /**
+     * Creates a log that {@linkplain HotSpotSpeculationLog#managesFailedSpeculations() manages} a
+     * native failed speculations list. An important invariant is that an nmethod compiled with this
+     * log can never be executing once the log object dies. When the log object dies, it frees the
+     * failed speculations list thus invalidating the
+     * {@linkplain HotSpotSpeculationLog#getFailedSpeculationsAddress() failed speculations address}
+     * embedded in the nmethod. If the nmethod were to execute after this point and fail a
+     * speculation, it would append the failed speculation to the already freed list.
+     * <p>
+     * Truffle ensures this cannot happen as it only attaches managed speculation logs to
+     * {@link OptimizedCallTarget}s and {@link OptimizedOSRLoopNode}s. Executions of nmethods
+     * compiled for an {@link OptimizedCallTarget} or {@link OptimizedOSRLoopNode} object will have
+     * a strong reference to the object (i.e., as the receiver). This guarantees that such an
+     * nmethod cannot be executing after the object has died.
+     */
     @Override
     public SpeculationLog createSpeculationLog() {
         return new HotSpotSpeculationLog();
