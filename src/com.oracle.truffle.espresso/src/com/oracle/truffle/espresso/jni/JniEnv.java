@@ -784,6 +784,73 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     // endregion Get*Field
 
+    // region SetStatic*Field
+
+    @JniImpl
+    public void SetStaticObjectField(@Host(Class.class) StaticObject clazz, long fieldHandle, Object val) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        field.set(((StaticObjectClass) clazz).getMirrorKlass().getStatics(), val);
+    }
+
+    @JniImpl
+    public void SetStaticBooleanField(@Host(Class.class) StaticObject clazz, long fieldHandle, boolean val) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        field.set(((StaticObjectClass) clazz).getMirrorKlass().getStatics(), val);
+    }
+
+    @JniImpl
+    public void SetStaticByteField(@Host(Class.class) StaticObject clazz, long fieldHandle, byte val) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        field.set(((StaticObjectClass) clazz).getMirrorKlass().getStatics(), val);
+    }
+
+    @JniImpl
+    public void SetStaticCharField(@Host(Class.class) StaticObject clazz, long fieldHandle, char val) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        field.set(((StaticObjectClass) clazz).getMirrorKlass().getStatics(), val);
+    }
+
+    @JniImpl
+    public void SetStaticShortField(@Host(Class.class) StaticObject clazz, long fieldHandle, short val) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        field.set(((StaticObjectClass) clazz).getMirrorKlass().getStatics(), val);
+    }
+
+    @JniImpl
+    public void SetStaticIntField(@Host(Class.class) StaticObject clazz, long fieldHandle, int val) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        field.set(((StaticObjectClass) clazz).getMirrorKlass().getStatics(), val);
+    }
+
+    @JniImpl
+    public void SetStaticLongField(@Host(Class.class) StaticObject clazz, long fieldHandle, long val) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        field.set(((StaticObjectClass) clazz).getMirrorKlass().getStatics(), val);
+    }
+
+    @JniImpl
+    public void SetStaticFloatField(@Host(Class.class) StaticObject clazz, long fieldHandle, float val) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        field.set(((StaticObjectClass) clazz).getMirrorKlass().getStatics(), val);
+    }
+
+    @JniImpl
+    public void SetStaticDoubleField(@Host(Class.class) StaticObject clazz, long fieldHandle, double val) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.isStatic();
+        field.set(((StaticObjectClass) clazz).getMirrorKlass().getStatics(), val);
+    }
+
+    // endregion SetStatic*Field
+
     // region Set*Field
 
     @JniImpl
@@ -1310,13 +1377,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     // endregion New*Array
-
-    @JniImpl
-    public void SetStaticObjectField(StaticObjectClass clazz, long fieldHandle, Object value) {
-        Field field = fieldIds.getObject(fieldHandle);
-        assert field.isStatic();
-        field.set(clazz.getMirrorKlass().tryInitializeAndGetStatics(), value);
-    }
 
     @JniImpl
     public static StaticObject GetObjectClass(StaticObject self) {
