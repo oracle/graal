@@ -29,14 +29,21 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.UnreachableNode;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -123,10 +130,6 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
         if (isAnnotation(method.getDeclaringClass())) {
             AnnotationSubstitutionType declaringClass = getSubstitution(method.getDeclaringClass());
             AnnotationSubstitutionMethod result = declaringClass.getSubstitutionMethod(method);
-            System.err.println("substitute method "+method+" with "+result+" for declaringClass = "+declaringClass);
-            if (result == null) {
-                Thread.dumpStack();
-            }
             assert result != null && result.original.equals(method);
             return result;
         }
@@ -163,6 +166,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 }
                 result.addSubstitutionMethod(originalMethod, substitutionMethod);
             }
+
             for (ResolvedJavaMethod originalMethod : type.getDeclaredConstructors()) {
                 AnnotationSubstitutionMethod substitutionMethod = new AnnotationConstructorMethod(originalMethod);
                 result.addSubstitutionMethod(originalMethod, substitutionMethod);
@@ -171,6 +175,21 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             typeSubstitutions.put(type, result);
         }
         return result;
+    }
+
+    static class AnnotationConstructorMethod extends AnnotationSubstitutionMethod {
+        AnnotationConstructorMethod(ResolvedJavaMethod original) {
+            super(original);
+        }
+
+        @Override
+        public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+            HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+            StructuredGraph graph = kit.getGraph();
+            graph.addAfterFixed(graph.start(), graph.add(new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true)));
+            assert graph.verify();
+            return graph;
+        }
     }
 
     /* Used to check the type of fields that need special guarding against missing types. */
@@ -451,20 +470,6 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             String returnValue = "@" + annotationInterfaceType.toJavaName(true);
             ValueNode returnConstant = kit.unique(ConstantNode.forConstant(SubstrateObjectConstant.forObject(returnValue), providers.getMetaAccess()));
             kit.append(new ReturnNode(returnConstant));
-            return graph;
-        }
-    }
-
-    static class AnnotationConstructorMethod extends AnnotationSubstitutionMethod {
-        AnnotationConstructorMethod(ResolvedJavaMethod original) {
-            super(original);
-        }
-
-        @Override
-        public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-            GraphKit kit = new HostedGraphKit(debug, providers, method);
-            StructuredGraph graph = kit.getGraph();
-            graph.add(new DeadEndNode());
             return graph;
         }
     }
