@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -581,6 +582,19 @@ public final class Target_java_lang_Class {
             return cp;
         }
         // No constant pool for arrays and primitives.
+        return StaticObject.NULL;
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @Host(String.class) StaticObject getGenericSignature0(@Host(Class.class) StaticObjectClass self) {
+        if (self.getMirrorKlass() instanceof ObjectKlass) {
+            ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
+            SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Name.Signature);
+            if (signature != null) {
+                String sig = klass.getConstantPool().utf8At(signature.getSignatureIndex(), "signature").toString();
+                return klass.getMeta().toGuestString(sig);
+            }
+        }
         return StaticObject.NULL;
     }
 }
