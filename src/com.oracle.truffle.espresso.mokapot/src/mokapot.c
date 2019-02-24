@@ -12,7 +12,6 @@
 #include <sys/time.h>
 
 // Global
-JNIEnv *jniEnv = NULL;
 MokapotEnv *mokaEnv = NULL;
 
 void* getJavaVM(TruffleEnv *truffle_env) {
@@ -65,7 +64,7 @@ jlong initializeMokapotContext(TruffleEnv *truffle_env, jlong jniEnvPtr, void* (
   #undef INIT_
 
   mokaEnv = moka_env;
-  jniEnv = (JNIEnv*) jniEnvPtr;
+  // jniEnv = (JNIEnv*) jniEnvPtr;
 
   #define INIT_VM__(name) \
       fn_ptr = fetch_by_name(#name); \
@@ -1167,9 +1166,17 @@ int JVM_GetHostName(char *name, int namelen) {
   return gethostname(name, namelen);
 }
 
+static JNIEnv* getGuestJNI() {
+  JNIEnv *jniEnv = NULL;
+  JavaVM *vm = (*getEnv())->vm;
+  (*vm)->GetEnv(vm, (void **) &jniEnv, JNI_VERSION_1_6);
+  return jniEnv;
+}
+
 void *JVM_RawMonitorCreate(void) {
   NATIVE(JVM_RawMonitorCreate);
   // TODO(peterssen): Cache class and method.
+  JNIEnv* jniEnv = getGuestJNI();  
   jclass java_lang_Object = (*jniEnv)->FindClass(jniEnv, "java.lang.Object");
   jmethodID constructor = (*jniEnv)->GetMethodID(jniEnv, java_lang_Object, "<init>", "()V");
   jobject lock = (*jniEnv)->NewObject(jniEnv, java_lang_Object, constructor);
@@ -1179,16 +1186,19 @@ void *JVM_RawMonitorCreate(void) {
 void JVM_RawMonitorDestroy(void *mon) {
   NATIVE(JVM_RawMonitorDestroy);
   jobject lock = (jobject) mon;
+  JNIEnv* jniEnv = getGuestJNI();
   (*jniEnv)->DeleteGlobalRef(jniEnv, lock);
 }
 
 jint JVM_RawMonitorEnter(void *mon) {
   NATIVE(JVM_RawMonitorEnter);
+  JNIEnv* jniEnv = getGuestJNI();
   return (*jniEnv)->MonitorEnter(jniEnv, (jobject) mon);
 }
 
 void JVM_RawMonitorExit(void *mon) {
   NATIVE(JVM_RawMonitorExit);
+  JNIEnv* jniEnv = getGuestJNI();
   (*jniEnv)->MonitorExit(jniEnv, (jobject) mon);
 }
 
