@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -59,7 +60,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static int arrayBaseOffset(@SuppressWarnings("unused") Object self, @Host(Class.class) StaticObjectClass clazz) {
+    public static synchronized int arrayBaseOffset(@SuppressWarnings("unused") Object self, @Host(Class.class) StaticObjectClass clazz) {
         assert clazz.getMirrorKlass().isArray();
         if (clazz.getMirrorKlass().getComponentType().isPrimitive()) {
             Class<?> hostPrimitive = clazz.getMirrorKlass().getComponentType().getJavaKind().toJavaClass();
@@ -71,7 +72,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static int arrayIndexScale(@SuppressWarnings("unused") Object self, @Host(Class.class) StaticObjectClass clazz) {
+    public static synchronized int arrayIndexScale(@SuppressWarnings("unused") Object self, @Host(Class.class) StaticObjectClass clazz) {
         assert clazz.getMirrorKlass().isArray();
         if (clazz.getMirrorKlass().getComponentType().isPrimitive()) {
             Class<?> hostPrimitive = clazz.getMirrorKlass().getComponentType().getJavaKind().toJavaClass();
@@ -83,18 +84,18 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static int addressSize(@SuppressWarnings("unused") Object self) {
+    public static synchronized int addressSize(@SuppressWarnings("unused") Object self) {
         return 4;
     }
 
     @Substitution(hasReceiver = true)
-    public static long objectFieldOffset(@SuppressWarnings("unused") Object self, @Host(java.lang.reflect.Field.class) StaticObjectImpl field) {
+    public static synchronized long objectFieldOffset(@SuppressWarnings("unused") Object self, @Host(java.lang.reflect.Field.class) StaticObjectImpl field) {
         Field target = getReflectiveFieldRoot(field);
         return SAFETY_FIELD_OFFSET + target.getSlot();
     }
 
     @Substitution(hasReceiver = true)
-    public static final boolean compareAndSwapObject(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, Object before, Object after) {
+    public static synchronized final boolean compareAndSwapObject(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, Object before, Object after) {
         if (holder instanceof StaticObjectArray) {
             return U.compareAndSwapObject(((StaticObjectArray) holder).unwrap(), offset, before, after);
         }
@@ -136,19 +137,19 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static int getIntVolatile(@SuppressWarnings("unused") Object unsafe, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized int getIntVolatile(@SuppressWarnings("unused") Object unsafe, @Host(Object.class) StaticObject holder, long offset) {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (int) f.get(holder);
     }
 
     @Substitution(hasReceiver = true)
-    public static long getLongVolatile(@SuppressWarnings("unused") Object unsafe, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized long getLongVolatile(@SuppressWarnings("unused") Object unsafe, @Host(Object.class) StaticObject holder, long offset) {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (long) f.get(holder);
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") StaticObject self, @Host(String.class) StaticObject name,
+    public static synchronized @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") StaticObject self, @Host(String.class) StaticObject name,
                     @Host(byte[].class) StaticObject guestBuf, int offset, int len, @Host(ClassLoader.class) StaticObject loader,
                     @SuppressWarnings("unused") @Host(ProtectionDomain.class) StaticObject pd) {
         // TODO(peterssen): Protection domain is ignored.
@@ -158,7 +159,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean compareAndSwapInt(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, int before, int after) {
+    public static synchronized boolean compareAndSwapInt(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, int before, int after) {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         int inTheField = (int) f.get(holder);
         if (inTheField == before) {
@@ -170,7 +171,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean compareAndSwapLong(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, long before, long after) {
+    public static synchronized boolean compareAndSwapLong(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, long before, long after) {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         long inTheField = (long) f.get(holder);
         if (inTheField == before) {
@@ -182,33 +183,30 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution
-    public static void registerNatives() {
+    public static synchronized void registerNatives() {
         /* nop */
     }
 
     @Substitution(hasReceiver = true)
-    public static long allocateMemory(@SuppressWarnings("unused") Object self, long length) {
+    public static synchronized long allocateMemory(@SuppressWarnings("unused") Object self, long length) {
         return U.allocateMemory(length);
     }
 
     @Substitution(hasReceiver = true)
-    public static void freeMemory(@SuppressWarnings("unused") Object self, long address) {
+    public static synchronized void freeMemory(@SuppressWarnings("unused") Object self, long address) {
         U.freeMemory(address);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putLong(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, long x) {
+    public static synchronized void putLong(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, long x) {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         f.set(holder, x);
     }
 
-    @Substitution(hasReceiver = true)
-    public static void putLong(@SuppressWarnings("unused") Object self, long offset, long x) {
-        U.putLong(offset, x);
-    }
+
 
     @Substitution(hasReceiver = true)
-    public static byte getByte(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized byte getByte(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getByte(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -217,7 +215,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static byte getByteVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized byte getByteVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getByteVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -226,7 +224,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static short getShortVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized short getShortVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getShortVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -235,7 +233,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static char getCharVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized char getCharVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getCharVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -244,7 +242,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static float getFloatVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized float getFloatVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getFloatVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -253,7 +251,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static double getDoubleVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized double getDoubleVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getDoubleVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -262,7 +260,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean getBooleanVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized boolean getBooleanVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getBooleanVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -271,7 +269,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static int getInt(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized int getInt(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getInt(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -280,31 +278,64 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static byte getByte(@SuppressWarnings("unused") Object self, long offset) {
+    public static synchronized boolean getBoolean(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+        if (holder instanceof StaticObjectArray) {
+            return U.getBoolean(((StaticObjectArray) holder).unwrap(), offset);
+        }
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        return (boolean) f.get(holder);
+    }
+
+    // region get*(long offset)
+
+    @Substitution(hasReceiver = true)
+    public static synchronized byte getByte(@SuppressWarnings("unused") Object self, long offset) {
         return U.getByte(offset);
     }
 
     @Substitution(hasReceiver = true)
-    public static int getInt(@SuppressWarnings("unused") Object self, long offset) {
+    public static synchronized char getChar(@SuppressWarnings("unused") Object self, long offset) {
+        return U.getChar(offset);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized short getShort(@SuppressWarnings("unused") Object self, long offset) {
+        return U.getShort(offset);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized int getInt(@SuppressWarnings("unused") Object self, long offset) {
         return U.getInt(offset);
     }
 
     @Substitution(hasReceiver = true)
-    public static long getLong(@SuppressWarnings("unused") Object self, long offset) {
+    public static synchronized float getFloat(@SuppressWarnings("unused") Object self, long offset) {
+        return U.getFloat(offset);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized long getLong(@SuppressWarnings("unused") Object self, long offset) {
         return U.getLong(offset);
     }
 
     @Substitution(hasReceiver = true)
-    public static long getLong(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized double getDouble(@SuppressWarnings("unused") Object self, long offset) {
+        return U.getDouble(offset);
+    }
+
+    // endregion get*(long offset)
+
+    @Substitution(hasReceiver = true)
+    public static synchronized long getLong(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
-            return U.getLongVolatile(((StaticObjectArray) holder).unwrap(), offset);
+            return U.getLong(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (long) f.get(holder);
     }
 
     @Substitution(hasReceiver = true)
-    public static Object getObjectVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized Object getObjectVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getObjectVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -315,7 +346,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static Object getObject(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
+    public static synchronized Object getObject(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getObjectVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
@@ -326,7 +357,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putObjectVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, Object value) {
+    public static synchronized void putObjectVolatile(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, Object value) {
         if (holder instanceof StaticObjectArray) {
             U.putObjectVolatile(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
@@ -338,7 +369,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putObject(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, Object value) {
+    public static synchronized void putObject(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, Object value) {
         if (holder instanceof StaticObjectArray) {
             U.putObject(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
@@ -355,7 +386,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void copyMemory(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject srcBase, long srcOffset, @Host(Object.class) StaticObject destBase, long destOffset,
+    public static synchronized void copyMemory(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject srcBase, long srcOffset, @Host(Object.class) StaticObject destBase, long destOffset,
                     long bytes) {
         if (bytes == 0) {
             return;
@@ -363,23 +394,47 @@ public final class Target_sun_misc_Unsafe {
         U.copyMemory(MetaUtil.unwrapArrayOrNull(srcBase), srcOffset, MetaUtil.unwrapArrayOrNull(destBase), destOffset, bytes);
     }
 
+    // region put*(long offset, * value)
+
     @Substitution(hasReceiver = true)
-    public static void putByte(@SuppressWarnings("unused") Object self, long offset, byte value) {
+    public static synchronized void putByte(@SuppressWarnings("unused") Object self, long offset, byte value) {
         U.putByte(offset, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putChar(@SuppressWarnings("unused") Object self, long offset, char value) {
+    public static synchronized void putChar(@SuppressWarnings("unused") Object self, long offset, char value) {
         U.putChar(offset, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putInt(@SuppressWarnings("unused") Object self, long offset, int value) {
+    public static synchronized void putShort(@SuppressWarnings("unused") Object self, long offset, short value) {
+        U.putShort(offset, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized void putInt(@SuppressWarnings("unused") Object self, long offset, int value) {
         U.putInt(offset, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putByte(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, byte value) {
+    public static synchronized void putFloat(@SuppressWarnings("unused") Object self, long offset, float value) {
+        U.putFloat(offset, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized void putDouble(@SuppressWarnings("unused") Object self, long offset, double value) {
+        U.putDouble(offset, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized void putLong(@SuppressWarnings("unused") Object self, long offset, long x) {
+        U.putLong(offset, x);
+    }
+
+    // endregion put*(long offset, * value)
+
+    @Substitution(hasReceiver = true)
+    public static synchronized void putByte(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, byte value) {
         if (holder instanceof StaticObjectArray) {
             U.putByte(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
@@ -391,7 +446,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putShort(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, short value) {
+    public static synchronized void putShort(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, short value) {
         if (holder instanceof StaticObjectArray) {
             U.putShort(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
@@ -403,7 +458,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putInt(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, int value) {
+    public static synchronized void putInt(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, int value) {
         if (holder instanceof StaticObjectArray) {
             U.putInt(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
@@ -415,7 +470,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putFloat(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, float value) {
+    public static synchronized void putFloat(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, float value) {
         if (holder instanceof StaticObjectArray) {
             U.putFloat(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
@@ -427,7 +482,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putBoolean(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, boolean value) {
+    public static synchronized void putBoolean(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, boolean value) {
         if (holder instanceof StaticObjectArray) {
             U.putBoolean(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
@@ -439,7 +494,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putDouble(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, double value) {
+    public static synchronized void putDouble(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, double value) {
         if (holder instanceof StaticObjectArray) {
             U.putDouble(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
@@ -451,7 +506,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void putChar(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, char value) {
+    public static synchronized void putChar(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject holder, long offset, char value) {
         if (holder instanceof StaticObjectArray) {
             U.putChar(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
@@ -475,7 +530,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void setMemory(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject o, long offset, long bytes, byte value) {
+    public static synchronized void setMemory(@SuppressWarnings("unused") Object self, @Host(Object.class) StaticObject o, long offset, long bytes, byte value) {
         U.setMemory(StaticObject.isNull(o) ? null : o, offset, bytes, value);
     }
 
@@ -498,7 +553,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
+    public static synchronized Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
         Field target = getReflectiveFieldRoot(field);
         return target.getDeclaringKlass().tryInitializeAndGetStatics();
     }
@@ -513,5 +568,79 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
         U.monitorExit(object);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void throwException(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Throwable.class) StaticObject ee) {
+        throw new EspressoException(ee);
+    }
+
+
+    /**
+     * Block current thread, returning when a balancing
+     * <tt>unpark</tt> occurs, or a balancing <tt>unpark</tt> has
+     * already occurred, or the thread is interrupted, or, if not
+     * absolute and time is not zero, the given time nanoseconds have
+     * elapsed, or if absolute, the given deadline in milliseconds
+     * since Epoch has passed, or spuriously (i.e., returning for no
+     * "reason"). Note: This operation is in the Unsafe class only
+     * because <tt>unpark</tt> is, so it would be strange to place it
+     * elsewhere.
+     */
+    @Substitution(hasReceiver = true)
+    public static void park(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, boolean b, long l) {
+        U.park(b, l);
+    }
+
+    /**
+     * Unblock the given thread blocked on <tt>park</tt>, or, if it is
+     * not blocked, cause the subsequent call to <tt>park</tt> not to
+     * block.  Note: this operation is "unsafe" solely because the
+     * caller must somehow ensure that the thread has not been
+     * destroyed. Nothing special is usually required to ensure this
+     * when called from Java (in which there will ordinarily be a live
+     * reference to the thread) but this is not nearly-automatically
+     * so when calling from native code.
+     * @param thread the thread to unpark.
+     *
+     */
+    @Substitution(hasReceiver = true)
+    public static void unpark(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject thread) {
+        Thread hostThread = (Thread)((StaticObjectImpl) thread).getHiddenField(Target_java_lang_Thread.HIDDEN_HOST_THREAD);
+        U.unpark(hostThread);
+    }
+
+    /**
+     * Fetches a native pointer from a given memory address.  If the address is
+     * zero, or does not point into a block obtained from {@link
+     * #allocateMemory}, the results are undefined.
+     *
+     * <p> If the native pointer is less than 64 bits wide, it is extended as
+     * an unsigned number to a Java long.  The pointer may be indexed by any
+     * given byte offset, simply by adding that offset (as a simple integer) to
+     * the long representing the pointer.  The number of bytes actually read
+     * from the target address maybe determined by consulting {@link
+     * #addressSize}.
+     *
+     * @see #allocateMemory
+     */
+    @Substitution(hasReceiver = true)
+    public static long getAddress(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address) {
+        return U.getAddress(address);
+    }
+
+    /**
+     * Stores a native pointer into a given memory address.  If the address is
+     * zero, or does not point into a block obtained from {@link
+     * #allocateMemory}, the results are undefined.
+     *
+     * <p> The number of bytes actually written at the target address maybe
+     * determined by consulting {@link #addressSize}.
+     *
+     * @see #getAddress
+     */
+    @Substitution(hasReceiver = true)
+    public static void putAddress(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long x) {
+        U.putAddress(address, x);
     }
 }
