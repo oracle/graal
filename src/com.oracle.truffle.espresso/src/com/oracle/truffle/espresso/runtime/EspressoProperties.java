@@ -64,7 +64,7 @@ public interface EspressoProperties {
                 bootClasspath = bootClasspath + File.separator + options.get(EspressoOptions.BootClasspathAppend);
             }
             if (options.hasBeenSet(EspressoOptions.BootClasspathPrepend)) {
-                bootClasspath = options.get(EspressoOptions.BootClasspathPrepend) + File.separator + bootClasspath;
+                bootClasspath = options.get(EspressoOptions.BootClasspathPrepend) + File.pathSeparator + bootClasspath;
             }
             builder.setBootClasspath(bootClasspath);
         }
