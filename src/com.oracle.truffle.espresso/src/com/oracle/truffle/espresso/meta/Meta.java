@@ -181,11 +181,13 @@ public final class Meta implements ContextAccess {
 
         Thread = knownKlass(Type.Thread);
         ThreadGroup = knownKlass(Type.ThreadGroup);
+        ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
 
         Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
         Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
         Thread_priority = Thread.lookupDeclaredField(Name.priority, _int.getType());
         Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
+        Thread_daemon = Thread.lookupDeclaredField(Name.daemon, Type._boolean);
 
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
@@ -312,11 +314,13 @@ public final class Meta implements ContextAccess {
     public final Method ByteBuffer_wrap;
 
     public final ObjectKlass ThreadGroup;
+    public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;
     public final Field Thread_group;
     public final Field Thread_name;
     public final Field Thread_priority;
     public final Field Thread_blockerLock;
+    public final Field Thread_daemon;
 
     public final ObjectKlass System;
     public final Method System_initializeSystemClass;

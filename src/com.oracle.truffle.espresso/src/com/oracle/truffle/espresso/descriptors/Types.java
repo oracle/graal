@@ -53,7 +53,7 @@ public final class Types {
     }
 
     public static String internalFromClassName(String className) {
-        if (className.startsWith("[") || className.endsWith(";") || className.length() == 1) {
+        if (className.startsWith("[") || className.endsWith(";")) {
             return className.replace('.', '/');
         }
         // FIXME(peterssen): Remove "" string concat.
@@ -279,6 +279,9 @@ public final class Types {
 
     public static String checkType(String type) {
         // FIXME(peterssen): Do check.
+        if (type.length() <= 0) {
+            throw EspressoError.unimplemented("boom");
+        }
         return type;
         // throw EspressoError.unimplemented();
     }

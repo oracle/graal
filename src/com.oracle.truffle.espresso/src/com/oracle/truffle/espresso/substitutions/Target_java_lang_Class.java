@@ -79,6 +79,7 @@ public final class Target_java_lang_Class {
         return EspressoOptions.EnableAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());
     }
 
+    // TODO(peterssen): Remove substitution, use JVM_FindClassFromCaller.
     @Substitution
     public static @Host(Class.class) StaticObject forName0(
                     @Host(String.class) StaticObject name,

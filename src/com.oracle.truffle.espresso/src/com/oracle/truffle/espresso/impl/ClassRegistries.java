@@ -79,6 +79,8 @@ public final class ClassRegistries {
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
+        // System.err.println("loadKlass: " + type + " " + classLoader);
+
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader);
             if (elemental == null) {

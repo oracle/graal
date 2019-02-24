@@ -35,9 +35,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * Java. Regular (concrete) Java methods, native methods and intrinsics/substitutions.
  */
 public final class EspressoRootNode extends RootNode implements ContextAccess {
-    // TODO(peterssen): This could be ObjectKlass bar array methods. But those methods could be
-    // redirected e.g. arrays .clone method to Object.clone.
-    // private final /* ObjectKlass */ Klass declaringKlass;
     private final Method method;
 
     @Child EspressoBaseNode childNode;
@@ -71,6 +68,11 @@ public final class EspressoRootNode extends RootNode implements ContextAccess {
     @Override
     public String getName() {
         return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();
+    }
+
+    @Override
+    public String toString() {
+        return getName();
     }
 
     @Override

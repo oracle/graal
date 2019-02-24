@@ -23,9 +23,12 @@
 package com.oracle.truffle.espresso.meta;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.StringJoiner;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.impl.Method;
 
 /**
  * Indicates a condition in Espresso related code that should never occur during normal operation.
@@ -33,6 +36,27 @@ import com.oracle.truffle.api.CompilerDirectives;
 public final class EspressoError extends Error {
 
     private static final long serialVersionUID = 2625263796982958128L;
+
+    private static class Frame {
+        private final Method method;
+        private final int bci;
+
+        public Frame(Method method, int bci) {
+
+            this.method = method;
+            this.bci = bci;
+        }
+
+        @Override
+        public String toString() {
+            return "Frame{" +
+                    "method=" + method +
+                    ", bci=" + bci +
+                    '}';
+        }
+    }
+
+    private final List<Frame> frames = new ArrayList<>();
 
     public static RuntimeException unimplemented() {
         CompilerDirectives.transferToInterpreter();
@@ -132,5 +156,18 @@ public final class EspressoError extends Error {
         if (condition) {
             System.err.println(msg);
         }
+    }
+
+    public void appendFrame(Method method, int bci) {
+        frames.add(new Frame(method, bci));
+    }
+
+    @Override
+    public String toString() {
+        StringJoiner joiner = new StringJoiner("\n\t", super.toString(), "");
+        for (Frame frame : frames) {
+            joiner.add(frame.toString());
+        }
+        return joiner.toString();
     }
 }

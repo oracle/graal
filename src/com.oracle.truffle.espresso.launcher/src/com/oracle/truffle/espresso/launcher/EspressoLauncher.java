@@ -228,6 +228,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             contextBuilder.option("java.Properties." + propKey, properties.get(propKey));
         }
 
+        contextBuilder.allowCreateThread(true);
+
         int rc = 1;
         try (Context context = contextBuilder.build()) {
 
