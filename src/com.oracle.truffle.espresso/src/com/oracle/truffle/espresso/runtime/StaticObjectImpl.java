@@ -30,10 +30,26 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import sun.misc.Unsafe;
 
 public class StaticObjectImpl extends StaticObject {
+
+    private static final Unsafe U;
+
+    static {
+        try {
+            java.lang.reflect.Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            U = (Unsafe) f.get(null);
+
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
     private Map<String, Object> hiddenFields;
 
     private final Object[] fields;
@@ -87,15 +103,24 @@ public class StaticObjectImpl extends StaticObject {
     }
 
     public final Object getField(Field field) {
-        // TODO(peterssen): Klass check.
-        Object result = fields[field.getSlot()];
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        Object result;
+        if (field.isVolatile()) {
+            result = U.getObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getSlot());
+        } else {
+            result = fields[field.getSlot()];
+        }
         assert result != null;
         return result;
     }
 
     public final void setField(Field field, Object value) {
-        // TODO(peterssen): Klass check
-        fields[field.getSlot()] = value;
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        if (field.isVolatile()) {
+            U.putObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getSlot(), value);
+        } else {
+            fields[field.getSlot()] = value;
+        }
     }
 
     @TruffleBoundary
