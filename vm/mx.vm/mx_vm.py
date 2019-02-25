@@ -26,7 +26,6 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import fcntl
 import os
 import pprint
 import json
@@ -1006,16 +1005,6 @@ def _get_graalvm_archive_path(jdk_path, graal_vm=None):
         else:
             return graal_vm.jdk_base
     return jdk_path
-
-
-@contextmanager
-def lock_directory(path):
-    with open(join(path, '.lock'), 'w') as fd:
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX)
-            yield
-        finally:
-            fcntl.flock(fd, fcntl.LOCK_UN)
 
 
 # Those libraries are optional runtime dependencies of SVM
