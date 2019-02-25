@@ -145,26 +145,10 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
         throw new InternalError();
     }
 
-    // Graal does not currently work for jdk8-aarch64 but you never know ...
-    private static final boolean isJava8OrEarlier = GraalServices.Java8OrEarlier;
 
     private static boolean hasArg(String optionName) {
         if (optionName.equals("-cp") || optionName.equals("-classpath")) {
             return true;
-        }
-        if (!isJava8OrEarlier) {
-            if (optionName.equals("--version") ||
-                            optionName.equals("--show-version") ||
-                            optionName.equals("--dry-run") ||
-                            optionName.equals("--disable-@files") ||
-                            optionName.equals("--dry-run") ||
-                            optionName.equals("--help") ||
-                            optionName.equals("--help-extra")) {
-                return false;
-            }
-            if (optionName.startsWith("--")) {
-                return optionName.indexOf('=') == -1;
-            }
         }
         return false;
     }
