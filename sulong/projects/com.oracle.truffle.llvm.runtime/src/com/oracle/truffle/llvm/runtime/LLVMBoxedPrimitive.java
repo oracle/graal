@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,8 +32,12 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
 import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
@@ -46,9 +50,10 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
  * same pointer value.
  */
 @ExportLibrary(LLVMNativeLibrary.class)
-public final class LLVMBoxedPrimitive {
+@ExportLibrary(InteropLibrary.class)
+public final class LLVMBoxedPrimitive implements LLVMInternalTruffleObject {
 
-    private final Object value;
+    final Object value;
 
     public LLVMBoxedPrimitive(Object value) {
         this.value = value;
@@ -64,18 +69,93 @@ public final class LLVMBoxedPrimitive {
         return "<boxed value: " + getValue() + ">";
     }
 
-    @ExportMessage
+    @ExportMessage(library = LLVMNativeLibrary.class)
     final boolean isPointer() {
         return true;
     }
 
-    @ExportMessage
+    @ExportMessage(library = LLVMNativeLibrary.class)
     final long asPointer(@Shared("toLLVM") @Cached ToLLVM toLLVM) {
         return (long) toLLVM.executeWithType(getValue(), null, ForeignToLLVMType.I64);
     }
 
-    @ExportMessage
+    @ExportMessage(library = LLVMNativeLibrary.class)
     final LLVMNativePointer toNativePointer(@Shared("toLLVM") @Cached ToLLVM toLLVM) {
         return LLVMNativePointer.create(asPointer(toLLVM));
+    }
+
+    @ExportMessage(limit = "3")
+    boolean isBoolean(@CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.isBoolean(value);
+    }
+
+    @ExportMessage(limit = "3")
+    boolean asBoolean(@CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asBoolean(value);
+    }
+
+    @ExportMessage(limit = "3")
+    boolean isNumber(@CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.isNumber(value);
+    }
+
+    @ExportMessage(limit = "3")
+    boolean fitsInByte(@CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.fitsInByte(value);
+    }
+
+    @ExportMessage(limit = "3")
+    boolean fitsInShort(@CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.fitsInShort(value);
+    }
+
+    @ExportMessage(limit = "3")
+    boolean fitsInInt(@CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.fitsInInt(value);
+    }
+
+    @ExportMessage(limit = "3")
+    boolean fitsInLong(@CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.fitsInLong(value);
+    }
+
+    @ExportMessage(limit = "3")
+    boolean fitsInFloat(@CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.fitsInFloat(value);
+    }
+
+    @ExportMessage(limit = "3")
+    boolean fitsInDouble(@CachedLibrary("this.value") InteropLibrary interop) {
+        return interop.fitsInDouble(value);
+    }
+
+    @ExportMessage(limit = "3")
+    byte asByte(@CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asByte(value);
+    }
+
+    @ExportMessage(limit = "3")
+    short asShort(@CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asShort(value);
+    }
+
+    @ExportMessage(limit = "3")
+    int asInt(@CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asInt(value);
+    }
+
+    @ExportMessage(limit = "3")
+    long asLong(@CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asLong(value);
+    }
+
+    @ExportMessage(limit = "3")
+    float asFloat(@CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asFloat(value);
+    }
+
+    @ExportMessage(limit = "3")
+    double asDouble(@CachedLibrary("this.value") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asDouble(value);
     }
 }
