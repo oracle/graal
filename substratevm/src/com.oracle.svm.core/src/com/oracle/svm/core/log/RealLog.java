@@ -45,6 +45,10 @@ import com.oracle.svm.core.util.VMError;
 
 public class RealLog extends Log {
 
+    private static final long K = 1024 * 1;
+    private static final long M = 1024 * K;
+    private static final long G = 1024 * M;
+
     private boolean autoflush = false;
     private int indent = 0;
 
@@ -283,6 +287,23 @@ public class RealLog extends Log {
     @Override
     public Log unsigned(long value, int fill, int align) {
         return number(value, 10, false, fill, align);
+    }
+
+    @Override
+    public Log bytesInProperUnit(WordBase value) {
+        long val = value.rawValue();
+        char unit = ' ';
+        if (val >= 100 * G) {
+            val = val / G;
+            unit ='G';
+        } else if (val >= 100 * M) {
+            val = val / M;
+            unit = 'M';
+        } else if (val >= 100 * K) {
+            val = val / K;
+            unit = 'K';
+        }
+        return number(val, 10, false).character(unit);
     }
 
     /**

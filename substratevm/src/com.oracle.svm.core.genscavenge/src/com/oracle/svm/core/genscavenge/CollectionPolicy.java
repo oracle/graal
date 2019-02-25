@@ -247,13 +247,13 @@ public abstract class CollectionPolicy {
             final UnsignedWord expectedSize = youngSize.add(oldInUse).add(averagePromotion);
             final UnsignedWord maxHeapSize = HeapPolicy.getMaximumHeapSize();
             final boolean vote = maxHeapSize.belowThan(expectedSize);
-            trace.string("  youngSize: ").unsigned(youngSize)
-                            .string("  oldInUse: ").unsigned(oldInUse)
-                            .string("  averagePromotedUnpinnedChunkBytes: ").unsigned(getAccounting().averagePromotedUnpinnedChunkBytes())
-                            .string("  averagePromotedPinnedChunkBytes: ").unsigned(getAccounting().averagePromotedPinnedChunkBytes())
-                            .string("  averagePromotion: ").unsigned(averagePromotion)
-                            .string("  expectedSize: ").unsigned(expectedSize)
-                            .string("  maxHeapSize: ").unsigned(maxHeapSize)
+            trace.string("  youngSize: ").bytesInProperUnit(youngSize)
+                            .string("  oldInUse: ").bytesInProperUnit(oldInUse)
+                            .string("  averagePromotedUnpinnedChunkBytes: ").bytesInProperUnit(getAccounting().averagePromotedUnpinnedChunkBytes())
+                            .string("  averagePromotedPinnedChunkBytes: ").bytesInProperUnit(getAccounting().averagePromotedPinnedChunkBytes())
+                            .string("  averagePromotion: ").bytesInProperUnit(averagePromotion)
+                            .string("  expectedSize: ").bytesInProperUnit(expectedSize)
+                            .string("  maxHeapSize: ").bytesInProperUnit(maxHeapSize)
                             .string("  vote: ").bool(vote)
                             .newline();
             return vote;
@@ -266,9 +266,9 @@ public abstract class CollectionPolicy {
             final UnsignedWord heapInUse = youngSize.add(oldInUse);
             final UnsignedWord minHeapSize = HeapPolicy.getMinimumHeapSize();
             final boolean veto = heapInUse.belowThan(minHeapSize);
-            trace.string("  oldInUse: ").unsigned(oldInUse)
-                            .string("  heapInUse: ").unsigned(heapInUse)
-                            .string("  minHeapSize: ").unsigned(minHeapSize)
+            trace.string("  oldInUse: ").bytesInProperUnit(oldInUse)
+                            .string("  heapInUse: ").bytesInProperUnit(heapInUse)
+                            .string("  minHeapSize: ").bytesInProperUnit(minHeapSize)
                             .string("  veto: ").bool(veto)
                             .newline();
             return veto;

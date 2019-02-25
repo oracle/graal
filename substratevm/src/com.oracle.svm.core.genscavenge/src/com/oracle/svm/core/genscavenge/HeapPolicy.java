@@ -191,7 +191,7 @@ public class HeapPolicy {
         final Log trace = Log.noopLog().string("[HeapPolicy.getMaximumYoungGenerationSize:");
         if (maximumYoungGenerationSize.aboveThan(WordFactory.zero())) {
             /* If someone has set the young generation size, use that value. */
-            trace.string("  returns maximumYoungGenerationSize: ").unsigned(maximumYoungGenerationSize).string(" ]").newline();
+            trace.string("  returns maximumYoungGenerationSize: ").bytesInProperUnit(maximumYoungGenerationSize).string(" ]").newline();
             return maximumYoungGenerationSize;
         }
         final XOptions.XFlag xmn = XOptions.getXmn();
@@ -199,7 +199,7 @@ public class HeapPolicy {
             /* If `-Xmn` has been parsed from the command line, use that value. */
             trace.string("  -Xmn.epoch: ").unsigned(xmn.getEpoch()).string("  -Xmn.value: ").unsigned(xmn.getValue());
             setMaximumYoungGenerationSize(WordFactory.unsigned(xmn.getValue()));
-            trace.string("  returns: ").unsigned(maximumYoungGenerationSize)
+            trace.string("  returns: ").bytesInProperUnit(maximumYoungGenerationSize)
                             .string(" ]").newline();
             return maximumYoungGenerationSize;
         }
@@ -209,7 +209,7 @@ public class HeapPolicy {
         /* But not more than 256MB. */
         final UnsignedWord maxSize = m(256);
         final UnsignedWord youngSize = (youngSizeAsFraction.belowOrEqual(maxSize) ? youngSizeAsFraction : maxSize);
-        trace.string("  youngSize: ").unsigned(youngSize)
+        trace.string("  youngSize: ").bytesInProperUnit(youngSize)
                         .string(" ]").newline();
         /* But do not cache the result as it is based on values that might change. */
         return youngSize;
@@ -255,7 +255,7 @@ public class HeapPolicy {
         final Log trace = Log.noopLog().string("[HeapPolicy.setMaximumHeapSize:");
         final UnsignedWord result = maximumHeapSize;
         maximumHeapSize = value;
-        trace.string("  old: ").unsigned(result).string("  new: ").unsigned(maximumHeapSize).string(" ]").newline();
+        trace.string("  old: ").bytesInProperUnit(result).string("  new: ").bytesInProperUnit(maximumHeapSize).string(" ]").newline();
         return result;
     }
 
@@ -264,7 +264,7 @@ public class HeapPolicy {
         final Log trace = Log.noopLog().string("[HeapPolicy.getMinimumHeapSize:");
         if (minimumHeapSize.aboveThan(WordFactory.zero())) {
             /* If someone has set the minimum heap size, use that value. */
-            trace.string("  returns: ").unsigned(minimumHeapSize).string(" ]").newline();
+            trace.string("  returns: ").bytesInProperUnit(minimumHeapSize).string(" ]").newline();
             return minimumHeapSize;
         }
         final XOptions.XFlag xms = XOptions.getXms();
@@ -273,7 +273,7 @@ public class HeapPolicy {
             /* If `-Xms` has been parsed from the command line, use that value. */
             trace.string("  -Xms.epoch: ").unsigned(xms.getEpoch()).string("  -Xms.value: ").unsigned(xms.getValue());
             setMinimumHeapSize(WordFactory.unsigned(xms.getValue()));
-            trace.string("  returns: ").unsigned(minimumHeapSize).string(" ]").newline();
+            trace.string("  returns: ").bytesInProperUnit(minimumHeapSize).string(" ]").newline();
             return minimumHeapSize;
         }
         /* A default value chosen to delay the first full collection. */
@@ -283,7 +283,7 @@ public class HeapPolicy {
             result = getMaximumHeapSize();
         }
         /* But do not cache the result as it is based on values that might change. */
-        trace.string("  returns: ").unsigned(result).string(" ]").newline();
+        trace.string("  returns: ").bytesInProperUnit(result).string(" ]").newline();
         return result;
     }
 
@@ -432,6 +432,7 @@ public class HeapPolicy {
             @Override
             public void maybeCauseCollection() {
                 final HeapImpl heap = HeapImpl.getHeapImpl();
+                heap.getYoungGeneration().getSpace().getChunkBytes();
                 /* Has there been enough allocation to provoke a collection? */
                 if (bytesAllocatedSinceLastCollection.get().aboveOrEqual(getMaximumYoungGenerationSize())) {
                     heap.getGCImpl().collectWithoutAllocating("CollectOnAllocation.Sometimes");

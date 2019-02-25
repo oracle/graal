@@ -123,7 +123,7 @@ class HeapChunkProvider {
      */
     AlignedHeader produceAlignedChunk() {
         UnsignedWord chunkSize = HeapPolicy.getAlignedHeapChunkSize();
-        log().string("[HeapChunkProvider.produceAlignedChunk  chunk size: ").unsigned(chunkSize).newline();
+        log().string("[HeapChunkProvider.produceAlignedChunk  chunk size: ").bytesInProperUnit(chunkSize).newline();
 
         AlignedHeader result = popUnusedAlignedChunk();
         log().string("  unused chunk: ").hex(result).newline();
@@ -178,10 +178,10 @@ class HeapChunkProvider {
         /* If I am under the minimum heap size, then I can keep this chunk. */
         final boolean result = bytesInUse.belowThan(minimumHeapSize);
         trace
-                        .string("  minimumHeapSize: ").unsigned(minimumHeapSize)
-                        .string("  heapChunkBytes: ").unsigned(heapChunkBytes)
-                        .string("  unusedBytes: ").unsigned(unusedChunkBytes)
-                        .string("  bytesInUse: ").unsigned(bytesInUse)
+                        .string("  minimumHeapSize: ").bytesInProperUnit(minimumHeapSize)
+                        .string("  heapChunkBytes: ").bytesInProperUnit(heapChunkBytes)
+                        .string("  unusedBytes: ").bytesInProperUnit(unusedChunkBytes)
+                        .string("  bytesInUse: ").bytesInProperUnit(bytesInUse)
                         .string("  returns: ").bool(result)
                         .string(" ]").newline();
         return result;
@@ -273,7 +273,7 @@ class HeapChunkProvider {
      */
     UnalignedHeader produceUnalignedChunk(UnsignedWord objectSize) {
         UnsignedWord chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objectSize);
-        log().string("[HeapChunkProvider.produceUnalignedChunk  objectSize: ").unsigned(objectSize).string("  chunkSize: ").hex(chunkSize).newline();
+        log().string("[HeapChunkProvider.produceUnalignedChunk  objectSize: ").bytesInProperUnit(objectSize).string("  chunkSize: ").hex(chunkSize).newline();
 
         noteFirstAllocationTime();
         UnalignedHeader result = (UnalignedHeader) CommittedMemoryProvider.get().allocate(chunkSize, CommittedMemoryProvider.UNALIGNED, false);

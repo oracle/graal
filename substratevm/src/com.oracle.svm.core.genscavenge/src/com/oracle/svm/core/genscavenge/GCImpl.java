@@ -338,11 +338,11 @@ public class GCImpl implements GC {
         if (SubstrateOptions.VerboseGC.getValue() && getCollectionEpoch().equal(1)) {
             /* Print the command line options that shape the heap. */
             verboseGCLog.string("[Heap policy parameters: ").newline();
-            verboseGCLog.string("  YoungGenerationSize: ").unsigned(HeapPolicy.getMaximumYoungGenerationSize()).newline();
-            verboseGCLog.string("      MaximumHeapSize: ").unsigned(HeapPolicy.getMaximumHeapSize()).newline();
-            verboseGCLog.string("      MinimumHeapSize: ").unsigned(HeapPolicy.getMinimumHeapSize()).newline();
-            verboseGCLog.string("     AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
-            verboseGCLog.string("  LargeArrayThreshold: ").unsigned(HeapPolicy.getLargeArrayThreshold()).string("]").newline();
+            verboseGCLog.string("  YoungGenerationSize: ").bytesInProperUnit(HeapPolicy.getMaximumYoungGenerationSize()).newline();
+            verboseGCLog.string("      MaximumHeapSize: ").bytesInProperUnit(HeapPolicy.getMaximumHeapSize()).newline();
+            verboseGCLog.string("      MinimumHeapSize: ").bytesInProperUnit(HeapPolicy.getMinimumHeapSize()).newline();
+            verboseGCLog.string("     AlignedChunkSize: ").bytesInProperUnit(HeapPolicy.getAlignedHeapChunkSize()).newline();
+            verboseGCLog.string("  LargeArrayThreshold: ").bytesInProperUnit(HeapPolicy.getLargeArrayThreshold()).string("]").newline();
             if (HeapOptions.PrintHeapShape.getValue()) {
                 HeapImpl.getHeapImpl().bootImageHeapBoundariesToLog(verboseGCLog).newline();
             }
@@ -379,9 +379,9 @@ public class GCImpl implements GC {
                 }
                 printGCLog.string(completeCollection ? "Full GC" : "Incremental GC");
                 printGCLog.string(" (").string(cause).string(") ");
-                printGCLog.unsigned(sizeBefore.unsignedDivide(1024));
-                printGCLog.string("K->");
-                printGCLog.unsigned(sizeAfter.unsignedDivide(1024)).string("K, ");
+                printGCLog.bytesInProperUnit(sizeBefore);
+                printGCLog.string("->");
+                printGCLog.bytesInProperUnit(sizeAfter).string(", ");
                 printGCLog.rational(collectionTimer.getCollectedNanos(), TimeUtils.nanosPerSecond, DECIMALS_IN_TIME_PRINTING).string(" secs");
 
                 printGCLog.string("]").newline();
@@ -1382,9 +1382,9 @@ public class GCImpl implements GC {
                 pinnedObjectBytes = pinnedObjectBytes.add(allocatedPinnedObjectBytes);
                 normalObjectBytes = normalObjectBytes.add(youngObjectBytesBefore);
             }
-            trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
-                            .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore)
-                            .string("  pinnedChunkBytesBefore: ").unsigned(pinnedChunkBytesBefore);
+            trace.string("  youngChunkBytesBefore: ").bytesInProperUnit(youngChunkBytesBefore)
+                            .string("  oldChunkBytesBefore: ").bytesInProperUnit(oldChunkBytesBefore)
+                            .string("  pinnedChunkBytesBefore: ").bytesInProperUnit(pinnedChunkBytesBefore);
             trace.string("]").newline();
         }
 
@@ -1410,10 +1410,10 @@ public class GCImpl implements GC {
             promotedTotalChunkBytes = promotedTotalChunkBytes.add(getHistoryOf(promotedUnpinnedChunkBytes)).add(getHistoryOf(promotedPinnedChunkBytes));
             incrementalCollectionTotalNanos += collectionTimer.getCollectedNanos();
             trace.string("  incrementalCollectionCount: ").signed(incrementalCollectionCount)
-                            .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter)
-                            .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore)
-                            .string("  promotedUnpinnedChunkBytes: ").unsigned(getHistoryOf(promotedUnpinnedChunkBytes))
-                            .string("  promotedPinnedChunkBytes: ").unsigned(getHistoryOf(promotedPinnedChunkBytes));
+                            .string("  oldChunkBytesAfter: ").bytesInProperUnit(oldChunkBytesAfter)
+                            .string("  oldChunkBytesBefore: ").bytesInProperUnit(oldChunkBytesBefore)
+                            .string("  promotedUnpinnedChunkBytes: ").bytesInProperUnit(getHistoryOf(promotedUnpinnedChunkBytes))
+                            .string("  promotedPinnedChunkBytes: ").bytesInProperUnit(getHistoryOf(promotedPinnedChunkBytes));
             trace.string("]").newline();
         }
 
@@ -1427,8 +1427,8 @@ public class GCImpl implements GC {
             copiedTotalChunkBytes = copiedTotalChunkBytes.add(oldChunkBytesAfter).add(pinnedChunkBytesAfter);
             completeCollectionTotalNanos += collectionTimer.getCollectedNanos();
             trace.string("  completeCollectionCount: ").signed(completeCollectionCount)
-                            .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter)
-                            .string("  pinnedChunkBytesAfter: ").unsigned(pinnedChunkBytesAfter);
+                            .string("  oldChunkBytesAfter: ").bytesInProperUnit(oldChunkBytesAfter)
+                            .string("  pinnedChunkBytesAfter: ").bytesInProperUnit(pinnedChunkBytesAfter);
             trace.string("]").newline();
         }
 
@@ -1647,10 +1647,10 @@ public class GCImpl implements GC {
         final String prefix = "PrintGCSummary: ";
 
         /* Print GC configuration. */
-        log.string(prefix).string("YoungGenerationSize: ").unsigned(HeapPolicy.getMaximumYoungGenerationSize()).newline();
-        log.string(prefix).string("MinimumHeapSize: ").unsigned(HeapPolicy.getMinimumHeapSize()).newline();
-        log.string(prefix).string("MaximumHeapSize: ").unsigned(HeapPolicy.getMaximumHeapSize()).newline();
-        log.string(prefix).string("AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
+        log.string(prefix).string("YoungGenerationSize: ").bytesInProperUnit(HeapPolicy.getMaximumYoungGenerationSize()).newline();
+        log.string(prefix).string("MinimumHeapSize: ").bytesInProperUnit(HeapPolicy.getMinimumHeapSize()).newline();
+        log.string(prefix).string("MaximumHeapSize: ").bytesInProperUnit(HeapPolicy.getMaximumHeapSize()).newline();
+        log.string(prefix).string("AlignedChunkSize: ").bytesInProperUnit(HeapPolicy.getAlignedHeapChunkSize()).newline();
 
         /* Add in any young and pinned objects allocated since the last collection. */
         VMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableThreadLocalAllocation);
@@ -1671,14 +1671,14 @@ public class GCImpl implements GC {
         final UnsignedWord allocatedTotalObjectBytes = allocatedNormalObjectBytes.add(allocatedPinnedObjectBytes);
 
         /* Print the total bytes allocated and collected by chunks. */
-        log.string(prefix).string("CollectedTotalChunkBytes: ").signed(accounting.getCollectedTotalChunkBytes()).newline();
-        log.string(prefix).string("CollectedTotalObjectBytes: ").signed(accounting.getCollectedTotalObjectBytes()).newline();
-        log.string(prefix).string("AllocatedNormalChunkBytes: ").signed(allocatedNormalChunkBytes).newline();
-        log.string(prefix).string("AllocatedNormalObjectBytes: ").signed(allocatedNormalObjectBytes).newline();
-        log.string(prefix).string("AllocatedPinnedChunkBytes: ").signed(allocatedPinnedChunkBytes).newline();
-        log.string(prefix).string("AllocatedPinnedObjectBytes: ").signed(allocatedPinnedObjectBytes).newline();
-        log.string(prefix).string("AllocatedTotalChunkBytes: ").signed(allocatedTotalChunkBytes).newline();
-        log.string(prefix).string("AllocatedTotalObjectBytes: ").signed(allocatedTotalObjectBytes).newline();
+        log.string(prefix).string("CollectedTotalChunkBytes: ").bytesInProperUnit(accounting.getCollectedTotalChunkBytes()).newline();
+        log.string(prefix).string("CollectedTotalObjectBytes: ").bytesInProperUnit(accounting.getCollectedTotalObjectBytes()).newline();
+        log.string(prefix).string("AllocatedNormalChunkBytes: ").bytesInProperUnit(allocatedNormalChunkBytes).newline();
+        log.string(prefix).string("AllocatedNormalObjectBytes: ").bytesInProperUnit(allocatedNormalObjectBytes).newline();
+        log.string(prefix).string("AllocatedPinnedChunkBytes: ").bytesInProperUnit(allocatedPinnedChunkBytes).newline();
+        log.string(prefix).string("AllocatedPinnedObjectBytes: ").bytesInProperUnit(allocatedPinnedObjectBytes).newline();
+        log.string(prefix).string("AllocatedTotalChunkBytes: ").bytesInProperUnit(allocatedTotalChunkBytes).newline();
+        log.string(prefix).string("AllocatedTotalObjectBytes: ").bytesInProperUnit(allocatedTotalObjectBytes).newline();
 
         /* Print the collection counts and times. */
         final long incrementalNanos = accounting.getIncrementalCollectionTotalNanos();

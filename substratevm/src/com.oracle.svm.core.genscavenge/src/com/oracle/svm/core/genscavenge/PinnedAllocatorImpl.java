@@ -168,7 +168,7 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
 
         if (largestChunk.isNonNull()) {
             log().string("[PinnedAllocatorImpl.tryReuseExistingChunk:").string("  tlab: ").hex(tlab);
-            log().string("  available bytes: ").unsigned(largestAvailable);
+            log().string("  available bytes: ").bytesInProperUnit(largestAvailable);
             log().string("  re-using largestChunk: ").hex(largestChunk);
             log().string("  chunk space: ").string(largestChunk.getSpace().getName());
             log().string("]").newline();
@@ -177,7 +177,7 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
             reuseExistingChunkUninterruptibly(largestChunk, tlab);
 
         } else {
-            log().string("[PinnedAllocatorImpl.tryReuseExistingChunk:").string("  tlab: ").hex(tlab).string(" available bytes: ").unsigned(largestAvailable).string(
+            log().string("[PinnedAllocatorImpl.tryReuseExistingChunk:").string("  tlab: ").hex(tlab).string(" available bytes: ").bytesInProperUnit(largestAvailable).string(
                             " not reusing a chunk]").newline();
         }
     }

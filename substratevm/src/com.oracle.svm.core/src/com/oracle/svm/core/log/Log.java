@@ -236,6 +236,12 @@ public abstract class Log implements AutoCloseable {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log unsigned(long value, int fill, int align);
 
+    /**
+     * Prints the value, treated as an unsigned value, in decimal format.
+     */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public abstract Log bytesInProperUnit(WordBase value);
+
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log rational(long numerator, long denominator, long decimals);
 
@@ -451,6 +457,11 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log unsigned(long value, int fill, int align) {
+            return this;
+        }
+
+        @Override
+        public Log bytesInProperUnit(WordBase value) {
             return this;
         }
 

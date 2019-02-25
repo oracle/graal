@@ -454,15 +454,15 @@ public class HeapImpl extends Heap {
         final UnsignedWord result = fromBytes.add(toBytes).add(pinnedFromBytes).add(pinnedToBytes);
         if (trace.isEnabled()) {
             trace
-                            .string("  fromAligned: ").unsigned(from.getAlignedChunkBytes())
-                            .string("  fromUnaligned: ").signed(from.getUnalignedChunkBytes())
-                            .string("  toAligned: ").unsigned(to.getAlignedChunkBytes())
-                            .string("  toUnaligned: ").signed(to.getUnalignedChunkBytes())
-                            .string("  pinnedFromAligned: ").unsigned(pinnedFrom.getAlignedChunkBytes())
-                            .string("  pinnedFromUnaligned: ").signed(pinnedFrom.getUnalignedChunkBytes())
-                            .string("  pinnedToAligned: ").unsigned(pinnedTo.getAlignedChunkBytes())
-                            .string("  pinnedToUnaligned: ").signed(pinnedTo.getUnalignedChunkBytes())
-                            .string("  returns: ").unsigned(result).string(" ]").newline();
+                            .string("  fromAligned: ").bytesInProperUnit(from.getAlignedChunkBytes())
+                            .string("  fromUnaligned: ").bytesInProperUnit(from.getUnalignedChunkBytes())
+                            .string("  toAligned: ").bytesInProperUnit(to.getAlignedChunkBytes())
+                            .string("  toUnaligned: ").bytesInProperUnit(to.getUnalignedChunkBytes())
+                            .string("  pinnedFromAligned: ").bytesInProperUnit(pinnedFrom.getAlignedChunkBytes())
+                            .string("  pinnedFromUnaligned: ").bytesInProperUnit(pinnedFrom.getUnalignedChunkBytes())
+                            .string("  pinnedToAligned: ").bytesInProperUnit(pinnedTo.getAlignedChunkBytes())
+                            .string("  pinnedToUnaligned: ").bytesInProperUnit(pinnedTo.getUnalignedChunkBytes())
+                            .string("  returns: ").bytesInProperUnit(result).string(" ]").newline();
         }
         return result;
     }

@@ -529,7 +529,7 @@ public final class ThreadLocalAllocation {
             UnsignedWord aChunkUsedMemory = top.subtract(start);
             alignedUsedMemory = alignedUsedMemory.add(aChunkUsedMemory);
 
-            log.string("     aligned chunk: ").hex(aChunk).string(" | used memory: ").unsigned(aChunkUsedMemory).newline();
+            log.string("     aligned chunk: ").hex(aChunk).string(" | used memory: ").bytesInProperUnit(aChunkUsedMemory).newline();
             aChunk = next;
         }
 
@@ -541,16 +541,16 @@ public final class ThreadLocalAllocation {
             UnsignedWord uChunkUsedMemory = UnalignedHeapChunk.usedObjectMemoryOfUnalignedHeapChunk(uChunk);
             unalignedUsedMemory = unalignedUsedMemory.add(uChunkUsedMemory);
 
-            log.string("     unaligned chunk ").hex(uChunk).string(" | used memory: ").unsigned(uChunkUsedMemory).newline();
+            log.string("     unaligned chunk ").hex(uChunk).string(" | used memory: ").bytesInProperUnit(uChunkUsedMemory).newline();
             uChunk = next;
         }
 
         UnsignedWord tlabUsedMemory = alignedUsedMemory.add(unalignedUsedMemory);
 
         log.newline();
-        log.string("  aligned used memory: ").unsigned(alignedUsedMemory).newline();
-        log.string("  unaligned used memory: ").unsigned(unalignedUsedMemory).newline();
-        log.string("  TLAB used memory: ").unsigned(tlabUsedMemory).newline();
+        log.string("  aligned used memory: ").bytesInProperUnit(alignedUsedMemory).newline();
+        log.string("  unaligned used memory: ").bytesInProperUnit(unalignedUsedMemory).newline();
+        log.string("  TLAB used memory: ").bytesInProperUnit(tlabUsedMemory).newline();
 
         log.string("  ]").newline();
 
