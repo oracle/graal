@@ -25,6 +25,12 @@ mx : {
   }
 }
 
+download-hsdis : {
+  setup : [
+    ["mx", "hsdis", "||", "true"]
+  ]
+}
+
 labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
 labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
 

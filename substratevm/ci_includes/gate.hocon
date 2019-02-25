@@ -2,7 +2,7 @@ svm-common-gate: {
   targets: [gate]
   setup: [
     ["cd", "./substratevm"]
-  ]
+  ] ${download-hsdis.setup}
 }
 
 svm-common-linux-gate: ${svm-common-linux-amd64} ${svm-common-gate}
