@@ -169,12 +169,12 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest {
 
     private static boolean hasArg(String optionName) {
         if (optionName.equals("-cp") ||
-                optionName.equals("-classpath") ||
-                optionName.equals("--classpath" ) ||
-                optionName.equals("-p" ) ||
-                optionName.equals("--module-path" ) ||
-                optionName.equals("--ugrade-module-path" ) ||
-                optionName.equals("--add-modules" )) {
+                        optionName.equals("-classpath") ||
+                        optionName.equals("--classpath") ||
+                        optionName.equals("-p") ||
+                        optionName.equals("--module-path") ||
+                        optionName.equals("--ugrade-module-path") ||
+                        optionName.equals("--add-modules")) {
             return true;
         }
         return false;
