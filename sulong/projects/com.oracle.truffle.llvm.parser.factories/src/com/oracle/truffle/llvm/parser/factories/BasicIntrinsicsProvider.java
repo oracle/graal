@@ -29,13 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.DOUBLE;
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.FLOAT;
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I1;
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I16;
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I32;
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I64;
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I8;
 import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
 
 import java.util.AbstractList;
@@ -94,7 +87,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMMemIntrinsicFactory.LLVMLi
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignalNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSyscall;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMLoadLibraryNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotAsPrimitiveNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotAsPrimitive;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotAsString;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotBoxedPredicateNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEval;
@@ -405,13 +398,13 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
         add("@polyglot_remove_array_element", (args, context) -> LLVMPolyglotRemoveArrayElementNodeGen.create(args.get(1), args.get(2)));
 
-        add("@polyglot_as_i8", (args, context) -> LLVMPolyglotAsPrimitiveNodeGen.create(context.getNodeFactory().createForeignToLLVM(I8), args.get(1)));
-        add("@polyglot_as_i16", (args, context) -> LLVMPolyglotAsPrimitiveNodeGen.create(context.getNodeFactory().createForeignToLLVM(I16), args.get(1)));
-        add("@polyglot_as_i32", (args, context) -> LLVMPolyglotAsPrimitiveNodeGen.create(context.getNodeFactory().createForeignToLLVM(I32), args.get(1)));
-        add("@polyglot_as_i64", (args, context) -> LLVMPolyglotAsPrimitiveNodeGen.create(context.getNodeFactory().createForeignToLLVM(I64), args.get(1)));
-        add("@polyglot_as_float", (args, context) -> LLVMPolyglotAsPrimitiveNodeGen.create(context.getNodeFactory().createForeignToLLVM(FLOAT), args.get(1)));
-        add("@polyglot_as_double", (args, context) -> LLVMPolyglotAsPrimitiveNodeGen.create(context.getNodeFactory().createForeignToLLVM(DOUBLE), args.get(1)));
-        add("@polyglot_as_boolean", (args, context) -> LLVMPolyglotAsPrimitiveNodeGen.create(context.getNodeFactory().createForeignToLLVM(I1), args.get(1)));
+        add("@polyglot_as_i8", (args, context) -> LLVMPolyglotAsPrimitive.AsI8.create(args.get(1)));
+        add("@polyglot_as_i16", (args, context) -> LLVMPolyglotAsPrimitive.AsI16.create(args.get(1)));
+        add("@polyglot_as_i32", (args, context) -> LLVMPolyglotAsPrimitive.AsI32.create(args.get(1)));
+        add("@polyglot_as_i64", (args, context) -> LLVMPolyglotAsPrimitive.AsI64.create(args.get(1)));
+        add("@polyglot_as_float", (args, context) -> LLVMPolyglotAsPrimitive.AsFloat.create(args.get(1)));
+        add("@polyglot_as_double", (args, context) -> LLVMPolyglotAsPrimitive.AsDouble.create(args.get(1)));
+        add("@polyglot_as_boolean", (args, context) -> LLVMPolyglotAsPrimitive.AsBoolean.create(args.get(1)));
 
         add("@polyglot_new_instance", (args, context) -> LLVMPolyglotNewInstanceNodeGen.create(argumentsArray(args, 2, args.size() - 2), args.get(1)));
 

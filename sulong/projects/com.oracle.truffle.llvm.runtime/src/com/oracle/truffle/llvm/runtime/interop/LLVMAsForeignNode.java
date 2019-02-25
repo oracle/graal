@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMAsForeignNode extends LLVMNode {
 
     final boolean allowNonForeign;
@@ -44,14 +49,20 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
         this.allowNonForeign = allowNonForeign;
     }
 
+    public abstract TruffleObject execute(VirtualFrame frame);
+
     public abstract TruffleObject execute(LLVMManagedPointer pointer);
 
     public static LLVMAsForeignNode create() {
-        return LLVMAsForeignNodeGen.create(false);
+        return LLVMAsForeignNodeGen.create(false, null);
+    }
+
+    public static LLVMAsForeignNode create(LLVMExpressionNode arg) {
+        return LLVMAsForeignNodeGen.create(false, arg);
     }
 
     public static LLVMAsForeignNode createOptional() {
-        return LLVMAsForeignNodeGen.create(true);
+        return LLVMAsForeignNodeGen.create(true, null);
     }
 
     @Specialization(guards = "isForeign(pointer)")
@@ -60,15 +71,18 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
         return foreign.getForeign();
     }
 
-    @Specialization(guards = {"allowNonForeign", "!isForeign(pointer)"})
-    TruffleObject doOther(@SuppressWarnings("unused") LLVMManagedPointer pointer) {
-        return null;
+    @Specialization
+    TruffleObject doBoxed(LLVMBoxedPrimitive boxed) {
+        return boxed;
     }
 
-    @Specialization(guards = {"!allowNonForeign", "!isForeign(pointer)"})
-    @TruffleBoundary
-    TruffleObject doFail(@SuppressWarnings("unused") LLVMManagedPointer pointer) {
-        throw new LLVMPolyglotException(this, "Pointer does not point to a polyglot value.");
+    @Fallback
+    TruffleObject doOther(@SuppressWarnings("unused") Object pointer) {
+        if (allowNonForeign) {
+            return null;
+        } else {
+            throw new LLVMPolyglotException(this, "Pointer does not point to a polyglot value.");
+        }
     }
 
     protected static boolean isForeign(LLVMManagedPointer pointer) {
