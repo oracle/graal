@@ -23,17 +23,15 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
@@ -95,17 +93,13 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void start0(@Host(Thread.class) StaticObject self) {
-
-//        if (self.getKlass().getType().toString().contains("FinalizerThread") || self.getKlass().getType().toString().contains("ReferenceHandler")) {
-//            return ;
-//        }
-
         Thread hostThread = EspressoLanguage.getCurrentContext().getEnv().createThread(new Runnable() {
             @Override
             public void run() {
                 self.getKlass().lookupMethod(Name.run, Signature._void).invokeDirect(self);
             }
         });
+
         ((StaticObjectImpl) self).setHiddenField(HIDDEN_HOST_THREAD, hostThread);
         host2guest.put(hostThread, self);
 
@@ -121,7 +115,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution
-    public static boolean holdsLock(Object object) {
+    public static boolean holdsLock(@Host(Object.class) StaticObject object) {
         return Thread.holdsLock(object);
     }
 
