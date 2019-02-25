@@ -1062,22 +1062,26 @@ def makegraaljdk(args):
     parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
     parser.add_argument('-b', '--bootstrap', action='store_true', help='execute a bootstrap of the created GraalJDK')
     parser.add_argument('-l', '--license', action='store', help='path to the license file', metavar='<path>')
+    parser.add_argument('-o', '--overlay', action='store_true', help='Only write the Graal files into the destination')
     parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
     args = parser.parse_args(args)
     if isJDK8:
         dstJdk = os.path.abspath(args.dest)
-        srcJdk = jdk.home
-        if exists(dstJdk):
-            if args.force:
-                shutil.rmtree(dstJdk)
-            else:
-                mx.abort('Use --force to overwrite existing directory ' + dstJdk)
-        mx.log('Creating {} from {}'.format(dstJdk, srcJdk))
-        shutil.copytree(srcJdk, dstJdk)
+        if not args.overlay:
+            srcJdk = jdk.home
+            if exists(dstJdk):
+                if args.force:
+                    shutil.rmtree(dstJdk)
+                else:
+                    mx.abort('Use --force to overwrite existing directory ' + dstJdk)
+                    mx.log('Creating {} from {}'.format(dstJdk, srcJdk))
+            shutil.copytree(srcJdk, dstJdk)
 
         bootDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'boot'))
         truffleDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'truffle'))
         jvmciDir = join(dstJdk, 'jre', 'lib', 'jvmci')
+        if args.overlay:
+            mx.ensure_dir_exists(jvmciDir)
         assert exists(jvmciDir), jvmciDir + ' does not exist'
 
         if mx.get_os() == 'darwin':
@@ -1086,8 +1090,11 @@ def makegraaljdk(args):
             jvmlibDir = join(dstJdk, 'jre', 'bin', 'server')
         else:
             jvmlibDir = join(dstJdk, 'jre', 'lib', mx.get_arch(), 'server')
-        jvmlib = join(jvmlibDir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
-        assert exists(jvmlib), jvmlib + ' does not exist'
+        if args.overlay:
+            mx.ensure_dir_exists(jvmlibDir)
+        else:
+            jvmlib = join(jvmlibDir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
+            assert exists(jvmlib), jvmlib + ' does not exist'
 
         with open(join(jvmciDir, 'compiler-name'), 'w') as fp:
             print >> fp, 'graal'
