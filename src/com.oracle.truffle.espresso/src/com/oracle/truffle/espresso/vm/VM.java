@@ -389,9 +389,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notifyAll is just forwarded from the guest.")
     public void JVM_MonitorNotifyAll(@Host(Object.class) StaticObject self) {
-//        if (EspressoOptions.RUNNING_ON_SVM) {
-//            return;
-//        }
         try {
             self.notifyAll();
         } catch (IllegalMonitorStateException e) {
@@ -403,9 +400,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     public void JVM_MonitorNotify(@Host(Object.class) StaticObject self) {
-//        if (EspressoOptions.RUNNING_ON_SVM) {
-//            return;
-//        }
         try {
             self.notify();
         } catch (IllegalMonitorStateException e) {
@@ -417,9 +411,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
     public void JVM_MonitorWait(@Host(Object.class) StaticObject self, long timeout) {
-//        if (EspressoOptions.RUNNING_ON_SVM) {
-//            return;
-//        }
         try {
             self.wait(timeout);
         } catch (InterruptedException | IllegalMonitorStateException | IllegalArgumentException e) {
@@ -429,7 +420,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     public static void JVM_Halt(int code) {
-        // Runtime.getRuntime().halt(code);
         throw new EspressoExitException(code);
     }
 
@@ -790,7 +780,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         RootCallTarget callTarget = (RootCallTarget) caller;
         RootNode rootNode = callTarget.getRootNode();
         if (rootNode instanceof EspressoRootNode) {
-            // System.err.println(((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().getName().toString());
+            // System.err.println(((EspressoRootNode)
+            // rootNode).getMethod().getDeclaringKlass().getName().toString());
             return ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().mirror();
         }
 

@@ -88,7 +88,6 @@ public final class NativeRootNode extends EspressoBaseNode {
         return argsWithEnv;
     }
 
-
     @Override
     public final Object executeNaked(VirtualFrame frame) {
         try {
@@ -98,9 +97,9 @@ public final class NativeRootNode extends EspressoBaseNode {
             // constant.
             // Having a constant length would help PEA to skip the copying.
             Object[] argsWithEnv = preprocessArgs(frame.getArguments());
-            //logIn(argsWithEnv);
+            // logIn(argsWithEnv);
             Object result = callNative(argsWithEnv);
-            //logOut(argsWithEnv, result);
+            // logOut(argsWithEnv, result);
             return processResult(result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);

@@ -227,18 +227,13 @@ public final class InterpreterToVM implements ContextAccess {
     @TruffleBoundary
     public static void monitorEnter(Object obj) {
         // TODO(peterssen): Nop for single-threaded language + enable on SVM.
-//        if (!EspressoOptions.RUNNING_ON_SVM) {
-            hostUnsafe.monitorEnter(obj);
-//        }
+        hostUnsafe.monitorEnter(obj);
     }
 
     @SuppressWarnings({"deprecation"})
     @TruffleBoundary
     public static void monitorExit(Object obj) {
-        // TODO(peterssen): Nop for single-threaded language + enable on SVM.
-//        if (!EspressoOptions.RUNNING_ON_SVM) {
-            hostUnsafe.monitorExit(obj);
-//        }
+        hostUnsafe.monitorExit(obj);
     }
     // endregion
 

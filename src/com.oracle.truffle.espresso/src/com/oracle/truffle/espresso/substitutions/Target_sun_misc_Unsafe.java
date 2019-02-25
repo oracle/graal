@@ -164,6 +164,7 @@ public final class Target_sun_misc_Unsafe {
 
         throw EspressoError.shouldNotReachHere("Field with slot " + slot + " not found");
     }
+
     @Substitution(hasReceiver = true)
     public static synchronized @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(String.class) StaticObject name,
                     @Host(byte[].class) StaticObject guestBuf, int offset, int len, @Host(ClassLoader.class) StaticObject loader,
@@ -179,7 +180,7 @@ public final class Target_sun_misc_Unsafe {
     // FIXME(peterssen): None of the CAS operations is actually atomic.
     @Substitution(hasReceiver = true)
     public static synchronized boolean compareAndSwapObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                                                                  Object before, Object after) {
+                    Object before, Object after) {
         if (holder instanceof StaticObjectArray) {
             return U.compareAndSwapObject(((StaticObjectArray) holder).unwrap(), offset, before, after);
         }
@@ -649,7 +650,6 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         f.set(holder, value);
     }
-
 
     @Substitution(hasReceiver = true)
     public static synchronized void putLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long value) {

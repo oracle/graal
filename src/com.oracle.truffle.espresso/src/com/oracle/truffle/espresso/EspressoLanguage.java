@@ -195,10 +195,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return getLanguageHome();
     }
 
-
     @Override
     protected boolean isThreadAccessAllowed(Thread thread,
-                                            boolean singleThreaded) {
+                    boolean singleThreaded) {
         // allow access from any thread instead of just one
         return true;
     }
