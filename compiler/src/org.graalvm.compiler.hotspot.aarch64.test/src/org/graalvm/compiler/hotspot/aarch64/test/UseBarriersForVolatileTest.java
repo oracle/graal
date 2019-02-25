@@ -3,7 +3,6 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.nodes.StartNode;
@@ -20,10 +19,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.List;
 
@@ -84,9 +80,10 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
     public void testVarHandlesInSubJVM() throws IOException, InterruptedException
     {
         // the criterion for success is that all 4 tests finish ok
-        Probe successProbe = new Probe("OK (4 tests)", 1);
-        Probe testRunProbe = new Probe("Testing: ", 4);
-        List<Probe> probes = Arrays.asList(testRunProbe, successProbe);
+        Probe successProbe = new Probe("OK (2 tests)", 1);
+        Probe testReadProbe = new Probe("Testing: testReadSnippet", 1);
+        Probe testWriteProbe = new Probe("Testing: testWriteSnippet", 1);
+        List<Probe> probes = Arrays.asList(testReadProbe, testWriteProbe, successProbe);
         List<String> extraOpts =  Arrays.asList("-XX:+UseBarriersForVolatile");
         // run the tests belonging to inner class Internal in a subordinate test JVM
         testHelper(probes, extraOpts, Internal.class.getName());
@@ -219,43 +216,15 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
     public static class Internal extends GraalCompilerTest {
 
         static class Holder {
-            /* Field is declared volatile, but accessed with non-volatile semantics in the tests. */
             volatile int volatileField = 42;
-    
-            /* Field is declared non-volatile, but accessed with volatile semantics in the tests. */
-            int field = 2018;
-    
-            static final VarHandle VOLATILE_FIELD;
-            static final VarHandle FIELD;
-    
-            static {
-                try {
-                    VOLATILE_FIELD = MethodHandles.lookup().findVarHandle(Internal.Holder.class, "volatileField", int.class);
-                    FIELD = MethodHandles.lookup().findVarHandle(Internal.Holder.class, "field", int.class);
-                } catch (ReflectiveOperationException ex) {
-                    throw GraalError.shouldNotReachHere(ex);
-                }
-            }
+        }
+
+        public static int testReadSnippet(Internal.Holder h) {
+            return h.volatileField;
         }
     
-        public static int testRead1Snippet(Internal.Holder h) {
-            /* Explicitly access the volatile field with volatile access semantics. */
-            return (int) Internal.Holder.VOLATILE_FIELD.getVolatile(h);
-        }
-    
-        public static int testRead2Snippet(Internal.Holder h) {
-            /* Explicitly access the non-volatile field with volatile access semantics. */
-            return (int) Internal.Holder.FIELD.getVolatile(h);
-        }
-    
-        public static void testWrite1Snippet(Internal.Holder h) {
-            /* Explicitly access the volatile field with volatile access semantics. */
-            Internal.Holder.VOLATILE_FIELD.setVolatile(h, 123);
-        }
-    
-        public static void testWrite2Snippet(Internal.Holder h) {
-            /* Explicitly access the non-volatile field with volatile access semantics. */
-            Internal.Holder.FIELD.setVolatile(h, 123);
+        public static void testWriteSnippet(Internal.Holder h) {
+            h.volatileField = 123;
         }
     
         void testAccess(String name, int expectedReads, int expectedWrites, int expectedMembars, int expectedAnyKill) {
@@ -269,7 +238,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
         }
     
         @Test
-        public void testRead1AArch64() {
+        public void testReadAArch64() {
             // run this test on AArch64
             Assume.assumeTrue(getTarget().arch instanceof AArch64);
             // only run when enabled in subordinate JVM
@@ -277,12 +246,12 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
             RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
             HotSpotGraalRuntimeProvider hotSpotProvider = (HotSpotGraalRuntimeProvider) runtimeProvider;
             Assert.assertTrue(hotSpotProvider.getVMConfig().useBarriersForVolatile);
-            System.out.println("Testing: testRead1Snippet");
-            testAccess("testRead1Snippet", 1, 0, 2, 2);
+            System.out.println("Testing: testReadSnippet");
+            testAccess("testReadSnippet", 1, 0, 2, 2);
         }
     
         @Test
-        public void testRead2AArch64() {
+        public void testWriteAArch64() {
             // run this test on AArch64
             Assume.assumeTrue(getTarget().arch instanceof AArch64);
             // only run when enabled in subordinate JVM
@@ -290,34 +259,8 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
             RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
             HotSpotGraalRuntimeProvider hotSpotProvider = (HotSpotGraalRuntimeProvider) runtimeProvider;
             Assert.assertTrue(hotSpotProvider.getVMConfig().useBarriersForVolatile);
-            System.out.println("Testing: testRead2Snippet");
-            testAccess("testRead2Snippet", 1, 0, 2, 2);
-        }
-    
-        @Test
-        public void testWrite1AArch64() {
-            // run this test on AArch64
-            Assume.assumeTrue(getTarget().arch instanceof AArch64);
-            // only run when enabled in subordinate JVM
-            Assume.assumeTrue(System.getProperty(ENABLE_SUBORDINATE_TESTS_PROPERTY) != null);
-            RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
-            HotSpotGraalRuntimeProvider hotSpotProvider = (HotSpotGraalRuntimeProvider) runtimeProvider;
-            Assert.assertTrue(hotSpotProvider.getVMConfig().useBarriersForVolatile);
-            System.out.println("Testing: testWrite1Snippet");
-            testAccess("testWrite1Snippet", 0, 1, 2, 2);
-        }
-    
-        @Test
-        public void testWrite2AArch64() {
-            // run this test on AArch64
-            Assume.assumeTrue(getTarget().arch instanceof AArch64);
-            // only run when enabled in subordinate JVM
-            Assume.assumeTrue(System.getProperty(ENABLE_SUBORDINATE_TESTS_PROPERTY) != null);
-            RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
-            HotSpotGraalRuntimeProvider hotSpotProvider = (HotSpotGraalRuntimeProvider) runtimeProvider;
-            Assert.assertTrue(hotSpotProvider.getVMConfig().useBarriersForVolatile);
-            System.out.println("Testing: testWrite2Snippet");
-            testAccess("testWrite2Snippet", 0, 1, 2, 2);
+            System.out.println("Testing: testWriteSnippet");
+            testAccess("testWriteSnippet", 0, 1, 2, 2);
         }
     
         private static int countAnyKill(StructuredGraph graph) {
