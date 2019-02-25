@@ -258,7 +258,7 @@ public final class ComponentInstaller {
                                 env,
                                 env,
                                 getCatalogURL(env));
-                env.setComponentRegistry(downloader::openCatalog);
+                env.setComponentRegistry(downloader::get);
                 env.setFileIterable(new CatalogIterable(env, env, downloader));
             }
             cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));
