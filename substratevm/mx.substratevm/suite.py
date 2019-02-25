@@ -311,6 +311,30 @@ suite = {
             },
         },
 
+        "com.oracle.svm.native.agent": {
+            "subDir": "src",
+            "native": "shared_lib",
+            "use_jdk_headers": True,
+            "results" : ["<library:native-image-agent>"],
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                        "cflags": ["-g", "-fPIC", "-O2"],
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                        "cflags": ["-g", "-fPIC", "-O2"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "not supported",
+                    },
+                },
+            },
+        },
+
         "com.oracle.svm.jni": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -885,6 +909,28 @@ suite = {
                 "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
+            },
+        },
+
+        "SVM_GRAALVM_AGENT_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "SubstrateVM JVM agent support distribution for the GraalVM",
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                         "layout" : {
+                             "<arch>/<lib:native-image-agent>" : ["dependency:substratevm:com.oracle.svm.native.agent/<lib:agent>"],
+                         },
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                         "layout" : {
+                             "<arch>/<lib:native-image-agent>" : ["dependency:substratevm:com.oracle.svm.native.agent/<lib:agent>"],
+                         },
+                    },
+                },
             },
         },
 

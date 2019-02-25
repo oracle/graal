@@ -909,6 +909,17 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=suite,
+    name='SubstrateVM agent',
+    short_name='svmag',
+    dir_name='.',
+    license_files=[],
+    third_party_license_files=[],
+    support_distributions=['substratevm:SVM_GRAALVM_AGENT_SUPPORT'],
+))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+    suite=suite,
     name='Polyglot.Native',
     short_name='polynative',
     dir_name='polyglot',
