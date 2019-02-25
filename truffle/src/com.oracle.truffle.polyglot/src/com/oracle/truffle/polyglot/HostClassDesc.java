@@ -62,16 +62,9 @@ import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
 
 final class HostClassDesc {
-    private static final ClassValue<HostClassDesc> CACHED_DESCS = new ClassValue<HostClassDesc>() {
-        @Override
-        protected HostClassDesc computeValue(Class<?> type) {
-            return new HostClassDesc(type);
-        }
-    };
-
     @TruffleBoundary
-    static HostClassDesc forClass(Class<?> clazz) {
-        return CACHED_DESCS.get(clazz);
+    static HostClassDesc forClass(PolyglotEngineImpl impl, Class<?> clazz) {
+        return impl.conf.forClass(clazz);
     }
 
     private final Class<?> type;

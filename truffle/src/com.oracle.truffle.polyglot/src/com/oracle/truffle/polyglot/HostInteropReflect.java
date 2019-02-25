@@ -100,8 +100,8 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static HostMethodDesc findMethod(Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static HostMethodDesc findMethod(PolyglotEngineImpl impl, Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod == null && isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
@@ -110,15 +110,15 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static HostFieldDesc findField(Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static HostFieldDesc findField(PolyglotEngineImpl impl, Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
         return classDesc.lookupField(name, onlyStatic);
     }
 
     @TruffleBoundary
     static boolean isReadable(Class<?> clazz, String name, boolean onlyStatic, boolean isClass) {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
-        HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
+        HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
+        HostMethodDesc foundMethod = classDesc.lookupMethod(name, isStatic);
         if (foundMethod != null) {
             return true;
         } else if (isJNIName(name)) {
@@ -256,8 +256,8 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findUniquePublicMemberNames(Class<?> clazz, boolean isStatic, boolean isClass, boolean includeInternal) throws SecurityException {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static String[] findUniquePublicMemberNames(PolyglotEngineImpl impl, Class<?> clazz, boolean isStatic, boolean isClass, boolean includeInternal) throws SecurityException {
+        HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
         EconomicSet<String> names = EconomicSet.create();
         names.addAll(classDesc.getFieldNames(isStatic));
         names.addAll(classDesc.getMethodNames(isStatic, includeInternal));

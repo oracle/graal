@@ -185,8 +185,9 @@ final class HostObject implements TruffleObject {
         if (isNull()) {
             throw UnsupportedMessageException.create();
         }
-        String[] fields = HostInteropReflect.findUniquePublicMemberNames(getLookupClass(), isStaticClass(), isClass(), includeInternal);
-        return HostObject.forObject(fields, languageContext);
+        Object obj = VMAccessor.NODES.getSourceVM(getRootNode());
+        String[] fields = HostInteropReflect.findUniquePublicMemberNames((PolyglotEngineImpl) obj, receiver.getLookupClass(), receiver.isStaticClass(), receiver.isClass(), includeInternal);
+        return HostObject.forObject(fields, receiver.languageContext);
     }
 
     @ExportMessage
@@ -954,7 +955,7 @@ final class HostObject implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"clazz == cachedClazz"}, limit = "LIMIT")
-        static HostMethodDesc doCached(Class<?> clazz,
+        HostMethodDesc doCached(Class<?> clazz,
                         @Cached("clazz") Class<?> cachedClazz,
                         @Cached("doUncached(clazz)") HostMethodDesc cachedMethod) {
             assert cachedMethod == doUncached(clazz);
@@ -963,8 +964,9 @@ final class HostObject implements TruffleObject {
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static HostMethodDesc doUncached(Class<?> clazz) {
-            return HostClassDesc.forClass(clazz).lookupConstructor();
+        HostMethodDesc doUncached(Class<?> clazz) {
+            Object obj = VMAccessor.NODES.getSourceVM(getRootNode());
+            return HostClassDesc.forClass((PolyglotEngineImpl) obj, clazz).lookupConstructor();
         }
     }
 
@@ -979,19 +981,20 @@ final class HostObject implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"onlyStatic == cachedStatic", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static HostFieldDesc doCached(Class<?> clazz, String name, boolean onlyStatic,
+        HostFieldDesc doCached(Class<?> clazz, String name, boolean onlyStatic,
                         @Cached("onlyStatic") boolean cachedStatic,
                         @Cached("clazz") Class<?> cachedClazz,
                         @Cached("name") String cachedName,
                         @Cached("doUncached(clazz, name, onlyStatic)") HostFieldDesc cachedField) {
-            assert cachedField == HostInteropReflect.findField(clazz, name, onlyStatic);
+            assert cachedField == doUncached(clazz, name, onlyStatic);
             return cachedField;
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static HostFieldDesc doUncached(Class<?> clazz, String name, boolean onlyStatic) {
-            return HostInteropReflect.findField(clazz, name, onlyStatic);
+        HostFieldDesc doUncached(Class<?> clazz, String name, boolean onlyStatic) {
+            Object obj = VMAccessor.NODES.getSourceVM(getRootNode());
+            return HostInteropReflect.findField((PolyglotEngineImpl) obj, clazz, name, onlyStatic);
         }
     }
 
@@ -1006,7 +1009,7 @@ final class HostObject implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"clazz == cachedClazz"}, limit = "LIMIT")
-        static HostMethodDesc doCached(Class<?> clazz,
+        HostMethodDesc doCached(Class<?> clazz,
                         @Cached("clazz") Class<?> cachedClazz,
                         @Cached("doUncached(clazz)") HostMethodDesc cachedMethod) {
             assert cachedMethod == doUncached(clazz);
@@ -1016,7 +1019,8 @@ final class HostObject implements TruffleObject {
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         static HostMethodDesc doUncached(Class<?> clazz) {
-            return HostClassDesc.forClass(clazz).getFunctionalMethod();
+            Object obj = VMAccessor.NODES.getSourceVM(getRootNode());
+            return HostClassDesc.forClass((PolyglotEngineImpl) obj, clazz).getFunctionalMethod();
         }
     }
 
@@ -1031,17 +1035,18 @@ final class HostObject implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static Class<?> doCached(Class<?> clazz, String name,
+        Class<?> doCached(Class<?> clazz, String name,
                         @Cached("clazz") Class<?> cachedClazz,
                         @Cached("name") String cachedName,
                         @Cached("doUncached(clazz, name)") Class<?> cachedInnerClass) {
-            assert cachedInnerClass == HostInteropReflect.findInnerClass(clazz, name);
+            assert cachedInnerClass == doUncached(clazz, name);
             return cachedInnerClass;
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static Class<?> doUncached(Class<?> clazz, String name) {
+        Class<?> doUncached(Class<?> clazz, String name) {
+            Object obj = VMAccessor.NODES.getSourceVM(getRootNode());
             return HostInteropReflect.findInnerClass(clazz, name);
         }
     }
@@ -1057,19 +1062,20 @@ final class HostObject implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"onlyStatic == cachedStatic", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static HostMethodDesc doCached(Class<?> clazz, String name, boolean onlyStatic,
+        HostMethodDesc doCached(Class<?> clazz, String name, boolean onlyStatic,
                         @Cached("onlyStatic") boolean cachedStatic,
                         @Cached("clazz") Class<?> cachedClazz,
                         @Cached("name") String cachedName,
                         @Cached("doUncached(clazz, name, onlyStatic)") HostMethodDesc cachedMethod) {
-            assert cachedMethod == HostInteropReflect.findMethod(clazz, name, onlyStatic);
+            assert cachedMethod == doUncached(clazz, name, onlyStatic);
             return cachedMethod;
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static HostMethodDesc doUncached(Class<?> clazz, String name, boolean onlyStatic) {
-            return HostInteropReflect.findMethod(clazz, name, onlyStatic);
+         HostMethodDesc doUncached(Class<?> clazz, String name, boolean onlyStatic) {
+            Object obj = VMAccessor.NODES.getSourceVM(getRootNode());
+            return HostInteropReflect.findMethod((PolyglotEngineImpl) obj, clazz, name, onlyStatic);
         }
     }
 
