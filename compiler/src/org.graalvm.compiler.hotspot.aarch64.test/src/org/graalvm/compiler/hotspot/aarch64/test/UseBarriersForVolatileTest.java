@@ -84,7 +84,9 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
     public void testVarHandlesInSubJVM() throws IOException, InterruptedException
     {
         // the criterion for success is that all 4 tests finish ok
-        List<Probe> probes = Arrays.asList(new Probe("OK (4 tests)", 1));
+        Probe successProbe = new Probe("OK (4 tests)", 1);
+        Probe testRunProbe = new Probe("Testing: ", 4);
+        List<Probe> probes = Arrays.asList(testRunProbe, successProbe);
         List<String> extraOpts =  Arrays.asList("-XX:+UseBarriersForVolatile");
         // run the tests belonging to inner class Internal in a subordinate test JVM
         testHelper(probes, extraOpts, Internal.class.getName());
@@ -97,9 +99,9 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
 
     // the property used to inhibit execution of desired tests in the main
     // JVM and enable execution of desired tests in the subordinate JVM
-    private static final String ENABLE_SUBORDINATE_TESTS_PROPERTY = "enable.subordinate.tests." + System.currentTimeMillis();
+    private static final String ENABLE_SUBORDINATE_TESTS_PROPERTY = UseBarriersForVolatileTest.class.getName() + ".enable.subordinate.tests";
 
-    /**
+     /**
      * Gets the command line used to start the current tests, including all VM arguments,
      * the test runner class and its option flags. This can be used to spawn an identical
      * test run for the secondary test class.
@@ -275,6 +277,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
             RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
             HotSpotGraalRuntimeProvider hotSpotProvider = (HotSpotGraalRuntimeProvider) runtimeProvider;
             Assert.assertTrue(hotSpotProvider.getVMConfig().useBarriersForVolatile);
+            System.out.println("Testing: testRead1Snippet");
             testAccess("testRead1Snippet", 1, 0, 2, 2);
         }
     
@@ -287,6 +290,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
             RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
             HotSpotGraalRuntimeProvider hotSpotProvider = (HotSpotGraalRuntimeProvider) runtimeProvider;
             Assert.assertTrue(hotSpotProvider.getVMConfig().useBarriersForVolatile);
+            System.out.println("Testing: testRead2Snippet");
             testAccess("testRead2Snippet", 1, 0, 2, 2);
         }
     
@@ -299,6 +303,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
             RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
             HotSpotGraalRuntimeProvider hotSpotProvider = (HotSpotGraalRuntimeProvider) runtimeProvider;
             Assert.assertTrue(hotSpotProvider.getVMConfig().useBarriersForVolatile);
+            System.out.println("Testing: testWrite1Snippet");
             testAccess("testWrite1Snippet", 0, 1, 2, 2);
         }
     
@@ -311,6 +316,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
             RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
             HotSpotGraalRuntimeProvider hotSpotProvider = (HotSpotGraalRuntimeProvider) runtimeProvider;
             Assert.assertTrue(hotSpotProvider.getVMConfig().useBarriersForVolatile);
+            System.out.println("Testing: testWrite2Snippet");
             testAccess("testWrite2Snippet", 0, 1, 2, 2);
         }
     
