@@ -338,7 +338,7 @@ public abstract class InteropLibrary extends Library {
 
     // Array Messages
 
-    @Abstract(ifExported = {"readArrayElement", "writeArrayElement", "removeArrayElement", "isArrayElementModifiable", "isArrayElementRemovable", "isArrayElementReadable"})
+    @Abstract(ifExported = {"readArrayElement", "writeArrayElement", "removeArrayElement", "isArrayElementModifiable", "isArrayElementRemovable", "isArrayElementReadable", "getArraySize"})
     public boolean hasArrayElements(Object receiver) {
         return false;
     }
