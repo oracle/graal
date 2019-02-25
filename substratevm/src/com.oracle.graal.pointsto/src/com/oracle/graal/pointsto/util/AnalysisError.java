@@ -24,9 +24,6 @@
  */
 package com.oracle.graal.pointsto.util;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -87,7 +84,7 @@ public class AnalysisError extends Error {
         private final AnalysisMethod method;
 
         ParsingError(AnalysisMethod method, Throwable cause) {
-            super(message(method, cause));
+            super(message(method), cause);
             this.method = method;
         }
 
@@ -95,16 +92,9 @@ public class AnalysisError extends Error {
             return method;
         }
 
-        private static String message(AnalysisMethod method, Throwable original) {
-
+        private static String message(AnalysisMethod method) {
             String msg = String.format("Error encountered while parsing %s %n", method.format("%H.%n(%P)"));
             msg += parsingContext(method);
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            original.printStackTrace(pw);
-
-            msg += String.format("Original error: %s", sw.toString()); // no need for trailing %n
-
             return msg;
         }
 
