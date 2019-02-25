@@ -128,10 +128,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
-        runtime().getTvmci().setCallTarget(rootNode, this);
         uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
         RuntimeOptionsCache.reinitialize();
         knownCallNodes = RuntimeOptionsCache.isLegacySplitting() ? null : new ArrayList<>(1);
+        runtime().getTvmci().setCallTarget(rootNode, this);
     }
 
     public Assumption getNodeRewritingAssumption() {
