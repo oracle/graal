@@ -66,9 +66,9 @@ import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
  * The secondary test class is actually a static inner class of this class. This presents the
  * problem that test annotations on the inner class make it eligible for execution in the original
  * JVM as well as in the subordinate JVM. This problem is finessed by defining a system property
- * unique to each run and makeing the test succeed without executing when the property is not set.
- * Th e relevant system property is not setin the outer JVM but is set by the command line used to
- * create the subordinate JVM.
+ * whose name derives from the test class name and making the test succeed without executing when
+ * the property is not set. The relevant system property is not set in the outer JVM but is set by
+ * the command line used to create the subordinate JVM.
  */
 public class UseBarriersForVolatileTest extends GraalCompilerTest {
     /**
@@ -128,7 +128,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest {
     public static List<String> getVMTestCommandLine() {
         List<String> args = getProcessCommandLine();
         if (args == null) {
-            throw new InternalError();
+            throw new InternalError("empty command line not expected!");
         } else {
             int index = findJUnitTestFilesIndex(args);
             return args.subList(0, index);
@@ -149,7 +149,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest {
             }
         }
         if (i == commandLine.size()) {
-            throw new InternalError();
+            throw new InternalError("Could not find " + JUNIT_MAIN_CLASS_NAME + " on the command line for the current process");
         }
         i++;
         // skip all option args to the test runner class
@@ -164,11 +164,17 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest {
                 i++;
             }
         }
-        throw new InternalError();
+        throw new InternalError("Could not find index of test class or @file argument");
     }
 
     private static boolean hasArg(String optionName) {
-        if (optionName.equals("-cp") || optionName.equals("-classpath")) {
+        if (optionName.equals("-cp") ||
+                optionName.equals("-classpath") ||
+                optionName.equals("--classpath" ) ||
+                optionName.equals("-p" ) ||
+                optionName.equals("--module-path" ) ||
+                optionName.equals("--ugrade-module-path" ) ||
+                optionName.equals("--add-modules" )) {
             return true;
         }
         return false;
