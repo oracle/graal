@@ -130,8 +130,8 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             assert (address.getScaleFactor() == 1);
             return address;
         } else if ((addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET ||
-                addressingMode == AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET) &&
-                address.getOffset().equals(Value.ILLEGAL)) {
+                        addressingMode == AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET) &&
+                        address.getOffset().equals(Value.ILLEGAL)) {
             // this is equivalent to base register
             assert (address.getDisplacement() == 0);
             assert (address.getScaleFactor() == 1);
@@ -141,7 +141,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             // address
             AllocatableValue base = getLIRGen().emitMove(address);
             return new AArch64AddressValue(LIRKind.value(AArch64Kind.QWORD), base, Value.ILLEGAL,
-                                           0, 1, AArch64Address.AddressingMode.BASE_REGISTER_ONLY);
+                            0, 1, AArch64Address.AddressingMode.BASE_REGISTER_ONLY);
         }
     }
 
@@ -519,7 +519,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public void emitStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state) {
-         emitStore(lirKind, address, inputVal, state, false);
+        emitStore(lirKind, address, inputVal, state, false);
     }
 
     public void emitStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state, boolean isVolatile) {

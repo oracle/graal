@@ -47,7 +47,7 @@ import org.graalvm.word.LocationIdentity;
 
 @NodeInfo
 public class AArch64VolatileReadNode extends ReadNode {
-                   public static final NodeClass<AArch64VolatileReadNode> TYPE = NodeClass.create(AArch64VolatileReadNode.class);
+    public static final NodeClass<AArch64VolatileReadNode> TYPE = NodeClass.create(AArch64VolatileReadNode.class);
 
     public AArch64VolatileReadNode(AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
                     FrameState stateBefore) {

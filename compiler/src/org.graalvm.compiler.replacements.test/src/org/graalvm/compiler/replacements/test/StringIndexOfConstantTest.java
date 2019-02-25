@@ -87,6 +87,8 @@ public class StringIndexOfConstantTest extends StringIndexOfTestBase {
     @Override
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph0, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
         // Force recompile if constant binding should be done
-        return super.getCode(installedCodeOwner, graph0, /* forceCompile */true, /* installAsDefault */false, options);
+        return super.getCode(installedCodeOwner, graph0, /* forceCompile */true, /*
+                                                                                  * installAsDefault
+                                                                                  */false, options);
     }
 }

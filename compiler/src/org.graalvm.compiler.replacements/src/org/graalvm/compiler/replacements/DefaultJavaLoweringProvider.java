@@ -388,7 +388,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         ReadNode memoryRead = graph.add(new ReadNode(address, fieldLocationIdentity(field), loadStamp, fieldLoadBarrierType(field)));
         ValueNode readValue = implicitLoadConvert(graph, getStorageKind(field), memoryRead);
-         loadField.replaceAtUsages(InputType.Association, memoryRead);
+        loadField.replaceAtUsages(InputType.Association, memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
 
@@ -397,7 +397,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             graph.addBeforeFixed(memoryRead, preMembar);
             MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_READ));
             graph.addAfterFixed(memoryRead, postMembar);
-             // associate the memory barriers with the volatile read
+            // associate the memory barriers with the volatile read
             postMembar.setAccess(memoryRead);
             postMembar.setLeading(preMembar);
         }

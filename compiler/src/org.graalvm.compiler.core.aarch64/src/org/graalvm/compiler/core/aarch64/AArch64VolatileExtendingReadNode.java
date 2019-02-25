@@ -43,7 +43,7 @@ public class AArch64VolatileExtendingReadNode extends AArch64ExtendingReadNode {
     public static final NodeClass<AArch64VolatileExtendingReadNode> TYPE = NodeClass.create(AArch64VolatileExtendingReadNode.class);
 
     public AArch64VolatileExtendingReadNode(AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
-                                            FrameState stateBefore, IntegerStamp accessStamp, boolean isSigned) {
+                    FrameState stateBefore, IntegerStamp accessStamp, boolean isSigned) {
         super(TYPE, address, location, stamp, guard, barrierType, nullCheck, stateBefore, accessStamp, isSigned);
     }
 

@@ -1090,7 +1090,7 @@ public class StandardGraphBuilderPlugins {
             if (accessKind.emitBarriers) {
                 // link the unsafe node to its leading and trailing membars
                 final MembarNode pre = new MembarNode(accessKind.preReadBarriers);
-                final RawLoadNode[] rawLoadNodes = new  RawLoadNode[1];
+                final RawLoadNode[] rawLoadNodes = new RawLoadNode[1];
                 final MembarNode post = new MembarNode(accessKind.postReadBarriers);
                 b.add(pre);
                 createUnsafeAccess(object, b, (obj, loc) -> {
@@ -1147,7 +1147,7 @@ public class StandardGraphBuilderPlugins {
                 b.add(post);
                 post.setAccess(rawStoreNodes[0]);
                 post.setLeading(pre);
-            }  else {
+            } else {
                 createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
             }
             return true;

@@ -1,4 +1,5 @@
 package org.graalvm.compiler.hotspot.aarch64.test;
+
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.api.test.Graal;
@@ -27,27 +28,23 @@ import static org.graalvm.compiler.test.SubprocessUtil.getProcessCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
 /**
- * A test class to exercise AArch64 volatile reads and writes in a subordinate
- * JVM where OpenJDK config setting UseBarriersForVolatile is set to true.
+ * A test class to exercise AArch64 volatile reads and writes in a subordinate JVM where OpenJDK
+ * config setting UseBarriersForVolatile is set to true.
  *
- * The single test in this class creates a new JVM to run only the tests in
- * a specific secondary test class. It uses the same JVM configuration, test
- * runner and test configuration that it was started with, modulo a small set
- * of options added to the command line. The important changes are to reset the
- * OpenJDK option UseBarriersForVolatile from the default value false to true
- * amd to replace the original list of test classes with the secondary test
- * class.
+ * The single test in this class creates a new JVM to run only the tests in a specific secondary
+ * test class. It uses the same JVM configuration, test runner and test configuration that it was
+ * started with, modulo a small set of options added to the command line. The important changes are
+ * to reset the OpenJDK option UseBarriersForVolatile from the default value false to true amd to
+ * replace the original list of test classes with the secondary test class.
  *
- * The secondary test class is actually a static inner class of this class.
- * This presents the problem that test annotations on the inner class make it
- * eligible for execution in the original JVM as well as in the subordinate JVM.
- * This problem is finessed by defining a system property unique to each run
- * and makeing the test succeed without executing when the property is not set.
- * Th e relevant system property is not setin the outer JVM but is set by the
- * command line used to create the subordinate JVM.
+ * The secondary test class is actually a static inner class of this class. This presents the
+ * problem that test annotations on the inner class make it eligible for execution in the original
+ * JVM as well as in the subordinate JVM. This problem is finessed by defining a system property
+ * unique to each run and makeing the test succeed without executing when the property is not set.
+ * Th e relevant system property is not setin the outer JVM but is set by the command line used to
+ * create the subordinate JVM.
  */
-public class UseBarriersForVolatileTest extends GraalCompilerTest
-{
+public class UseBarriersForVolatileTest extends GraalCompilerTest {
     /**
      * Tests compilation requested by the VM.
      */
@@ -77,14 +74,13 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
     }
 
     @Test
-    public void testVarHandlesInSubJVM() throws IOException, InterruptedException
-    {
+    public void testVarHandlesInSubJVM() throws IOException, InterruptedException {
         // the criterion for success is that all 4 tests finish ok
         Probe successProbe = new Probe("OK (2 tests)", 1);
         Probe testReadProbe = new Probe("Testing: testReadSnippet", 1);
         Probe testWriteProbe = new Probe("Testing: testWriteSnippet", 1);
         List<Probe> probes = Arrays.asList(testReadProbe, testWriteProbe, successProbe);
-        List<String> extraOpts =  Arrays.asList("-XX:+UseBarriersForVolatile");
+        List<String> extraOpts = Arrays.asList("-XX:+UseBarriersForVolatile");
         // run the tests belonging to inner class Internal in a subordinate test JVM
         testHelper(probes, extraOpts, Internal.class.getName());
     }
@@ -92,16 +88,16 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
     private static final boolean VERBOSE = Boolean.getBoolean(UseBarriersForVolatileTest.class.getSimpleName() + ".verbose");
 
     // the name of the JUnit runner class we expect to find on the original command line
-    private static final String JUNIT_MAIN_CLASS_NAME =  "com.oracle.mxtool.junit.MxJUnitWrapper";
+    private static final String JUNIT_MAIN_CLASS_NAME = "com.oracle.mxtool.junit.MxJUnitWrapper";
 
     // the property used to inhibit execution of desired tests in the main
     // JVM and enable execution of desired tests in the subordinate JVM
     private static final String ENABLE_SUBORDINATE_TESTS_PROPERTY = UseBarriersForVolatileTest.class.getName() + ".enable.subordinate.tests";
 
-     /**
-     * Gets the command line used to start the current tests, including all VM arguments,
-     * the test runner class and its option flags. This can be used to spawn an identical
-     * test run for the secondary test class.
+    /**
+     * Gets the command line used to start the current tests, including all VM arguments, the test
+     * runner class and its option flags. This can be used to spawn an identical test run for the
+     * secondary test class.
      */
     public static List<String> getVMTestCommandLine() {
         List<String> args = getProcessCommandLine();
@@ -131,7 +127,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
         }
         i++;
         // skip all option args to the test runner class
-        while(i < commandLine.size()) {
+        while (i < commandLine.size()) {
             String s = commandLine.get(i);
             if (s.charAt(0) != '-') {
                 // this index identifies the first test class or an @file spec
@@ -145,7 +141,6 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
         throw new InternalError();
     }
 
-
     private static boolean hasArg(String optionName) {
         if (optionName.equals("-cp") || optionName.equals("-classpath")) {
             return true;
@@ -155,8 +150,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
 
     // run test on the provided class in a subordinate JVM with the extra
     // VM args provided and validate the output using the supplied probes
-    private static void testHelper(List<Probe> probes, List<String> extraVmArgs, String... mainClassAndArgs) throws IOException, InterruptedException
-    {
+    private static void testHelper(List<Probe> probes, List<String> extraVmArgs, String... mainClassAndArgs) throws IOException, InterruptedException {
         List<String> vmArgs = withoutDebuggerArguments(getVMTestCommandLine());
 
         int s = extraVmArgs.size();
@@ -171,20 +165,20 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
         vmArgs.add(idx + s, "-D" + ENABLE_SUBORDINATE_TESTS_PROPERTY);
 
         SubprocessUtil.Subprocess proc = SubprocessUtil.java(vmArgs, mainClassAndArgs);
-        if(VERBOSE) {
+        if (VERBOSE) {
             System.out.println(proc);
         }
 
         for (String line : proc.output) {
             for (UseBarriersForVolatileTest.Probe probe : probes) {
-                if(probe.matches(line)) {
+                if (probe.matches(line)) {
                     break;
                 }
             }
         }
         for (UseBarriersForVolatileTest.Probe probe : probes) {
             String error = probe.test();
-            if(error != null) {
+            if (error != null) {
                 Assert.fail(String.format("Did not find expected occurences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
             }
         }
@@ -193,9 +187,9 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
     /**
      * An inner class used as the target for test runs in the subordinate JVM.
      *
-     * The tests in this class are automatically added to the list of tests
-     * to be run in the main JVM. A system property is used to disable them
-     * in that JVM and enable them in the subordinate JVM
+     * The tests in this class are automatically added to the list of tests to be run in the main
+     * JVM. A system property is used to disable them in that JVM and enable them in the subordinate
+     * JVM
      */
     public static class Internal extends GraalCompilerTest {
 
@@ -206,11 +200,11 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
         public static int testReadSnippet(Internal.Holder h) {
             return h.volatileField;
         }
-    
+
         public static void testWriteSnippet(Internal.Holder h) {
             h.volatileField = 123;
         }
-    
+
         void testAccess(String name, int expectedReads, int expectedWrites, int expectedMembars, int expectedAnyKill) {
             ResolvedJavaMethod method = getResolvedJavaMethod(name);
             StructuredGraph graph = parseForCompile(method);
@@ -220,7 +214,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
             Assert.assertEquals(expectedMembars, graph.getNodes().filter(MembarNode.class).count());
             Assert.assertEquals(expectedAnyKill, countAnyKill(graph));
         }
-    
+
         @Test
         public void testReadAArch64() {
             // run this test on AArch64
@@ -233,7 +227,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
             System.out.println("Testing: testReadSnippet");
             testAccess("testReadSnippet", 1, 0, 2, 2);
         }
-    
+
         @Test
         public void testWriteAArch64() {
             // run this test on AArch64
@@ -246,7 +240,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest
             System.out.println("Testing: testWriteSnippet");
             testAccess("testWriteSnippet", 0, 1, 2, 2);
         }
-    
+
         private static int countAnyKill(StructuredGraph graph) {
             int anyKillCount = 0;
             int startNodes = 0;

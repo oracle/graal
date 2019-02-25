@@ -274,6 +274,7 @@ public class AArch64Move {
         public LoadOp(AArch64Kind kind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state) {
             this(kind, result, address, state, false);
         }
+
         public LoadOp(AArch64Kind kind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state, boolean isVolatile) {
             super(TYPE, kind, address, state, isVolatile);
             this.result = result;
@@ -308,6 +309,7 @@ public class AArch64Move {
         public StoreOp(AArch64Kind kind, AArch64AddressValue address, AllocatableValue input, LIRFrameState state) {
             this(kind, address, input, state, false);
         }
+
         public StoreOp(AArch64Kind kind, AArch64AddressValue address, AllocatableValue input, LIRFrameState state, boolean isVolatile) {
             super(TYPE, kind, address, state, isVolatile);
             this.input = input;
@@ -329,7 +331,7 @@ public class AArch64Move {
 
         protected final JavaConstant input;
 
-         public StoreConstantOp(AArch64Kind kind, AArch64AddressValue address, JavaConstant input, LIRFrameState state, boolean isVolatile) {
+        public StoreConstantOp(AArch64Kind kind, AArch64AddressValue address, JavaConstant input, LIRFrameState state, boolean isVolatile) {
             super(TYPE, kind, address, state, isVolatile);
             this.input = input;
             if (!input.isDefaultForKind()) {
@@ -340,12 +342,12 @@ public class AArch64Move {
         @Override
         public void emitMemAccess(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             AArch64Address address = addressValue.toAddress();
-           if (isVolatile) {
-               emitVolatileStore(crb, masm, kind, address, zr.asValue(LIRKind.combine(addressValue)));
-           } else {
-               emitStore(crb, masm, kind, address, zr.asValue(LIRKind.combine(addressValue)));
-           }
-       }
+            if (isVolatile) {
+                emitVolatileStore(crb, masm, kind, address, zr.asValue(LIRKind.combine(addressValue)));
+            } else {
+                emitStore(crb, masm, kind, address, zr.asValue(LIRKind.combine(addressValue)));
+            }
+        }
     }
 
     public static final class NullCheckOp extends AArch64LIRInstruction implements NullCheck {
