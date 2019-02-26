@@ -97,7 +97,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         }
     }
 
-    @TruffleBoundary(throwsControlFlowException = true)
+    @TruffleBoundary(transferToInterpreterOnException = false)
     static void boundary() {
     }
 

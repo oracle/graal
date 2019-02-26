@@ -105,6 +105,11 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
+    protected void setCallTarget(RootNode root, RootCallTarget callTarget) {
+        super.setCallTarget(root, callTarget);
+    }
+
+    @Override
     protected void markFrameMaterializeCalled(FrameDescriptor descriptor) {
         super.markFrameMaterializeCalled(descriptor);
     }

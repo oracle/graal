@@ -119,7 +119,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
         DefaultCallTarget target = new DefaultCallTarget(rootNode);
-        rootNode.setCallTarget(target);
         getTvmci().onLoad(target);
         return target;
     }
@@ -298,9 +297,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
         @SuppressWarnings("deprecation")
         public final Frame getFrame(FrameAccess access) {
-            if (access == FrameAccess.NONE) {
-                return null;
-            }
             Frame localFrame = this.frame;
             switch (access) {
                 case READ_ONLY:

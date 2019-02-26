@@ -535,7 +535,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             return false;
         }
         CompilerDirectives.TruffleBoundary truffleBoundary = method.getAnnotation(CompilerDirectives.TruffleBoundary.class);
-        return truffleBoundary != null && (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException());
+        return truffleBoundary != null && truffleBoundary.transferToInterpreterOnException();
     }
 
     private void initializeMethodBlacklist(MetaAccessProvider metaAccess) {

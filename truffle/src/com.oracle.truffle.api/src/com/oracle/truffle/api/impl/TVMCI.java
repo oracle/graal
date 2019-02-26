@@ -48,7 +48,6 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
@@ -150,6 +149,10 @@ public abstract class TVMCI {
         }
     }
 
+    protected void setCallTarget(RootNode root, RootCallTarget callTarget) {
+        Accessor.nodesAccess().setCallTarget(root, callTarget);
+    }
+
     /**
      * Makes sure the <code>rootNode</code> is initialized.
      *
@@ -161,20 +164,6 @@ public abstract class TVMCI {
         if (accessor != null) {
             accessor.onFirstExecution(rootNode);
         }
-    }
-
-    /**
-     * Finds the language associated with given root node.
-     *
-     * @param root the node
-     * @return the language of the node
-     * @since 0.12
-     * @deprecated no replacement
-     */
-    @SuppressWarnings({"rawtypes"})
-    @Deprecated
-    protected Class<? extends TruffleLanguage> findLanguageClass(RootNode root) {
-        return root.getLanguage(TruffleLanguage.class).getClass();
     }
 
     /**

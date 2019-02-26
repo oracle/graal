@@ -2,6 +2,46 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC14
+
+* Removed some deprecated elements:
+    - EventBinding.getFilter
+    - TruffleLanguage ParsingRequest.getFrame and ParsingRequest.getLocation
+    - LoopCountReceiver
+    - EventContext.parseInContext
+    - NativeLibraryDescriptor.getBindings
+    - Instrumenter.attachFactory and Instrumenter.attachListener
+    - SuppressFBWarnings
+    - TruffleBoundary.throwsControlFlowException
+    - DebuggerTester.startEval
+    - ExactMath.exact methods
+    - TruffleInstrument.toString
+    - TruffleInstrument.findMetaObject
+    - TruffleInstrument.findSourceLocation
+    - constructor of JSONStringBuilder
+    - constructor of JSONHelper
+    - constructor of CompilerDirectives
+    - constructor of ExactMath
+    - constructor of Truffle
+    - constructor of NodeUtil
+    - TruffleException.isTimeout
+    - TruffleGraphBuilderPlugins.registerUnsafeLoadStorePlugins
+    - TypedObject
+    - Node.getLanguage
+    - TVMCI.findLanguageClass
+    - ExecutionContext and RootNode.getExecutionContext
+    - FrameAccess.NONE
+    - RootNode.setCalltarget
+    - DirectCallNode.call and IndirectCallNode.call
+    - FrameInstance.getFrame
+    - Node.getAtomicLock
+    - ExplodeLoop.merge
+    - AcceptMessage
+    - RootNode.reportLoopCount
+    - GraalTruffleRuntime.getQueuedCallTargets
+    - PrimitiveValueProfile.exactCompare
+    - BranchProfile.isVisited
+
 ## Version 1.0.0 RC13
 * Added [Debugger.getSessionCount()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getSessionCount--) to return the number of active debugger sessions.
 * The [TruffleFile.getName()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getName--) returns `null` for root directory.

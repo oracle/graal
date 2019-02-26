@@ -719,16 +719,12 @@ public abstract class TruffleLanguage<C> {
      * @since 0.22
      */
     public static final class ParsingRequest {
-        private final Node node;
-        private final MaterializedFrame frame;
         private final Source source;
         private final String[] argumentNames;
         private boolean disposed;
 
-        ParsingRequest(Source source, Node node, MaterializedFrame frame, String... argumentNames) {
+        ParsingRequest(Source source, String... argumentNames) {
             Objects.requireNonNull(source);
-            this.node = node;
-            this.frame = frame;
             this.source = source;
             this.argumentNames = argumentNames;
         }
@@ -744,49 +740,6 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalStateException();
             }
             return source;
-        }
-
-        /**
-         * Specifies the code location for parsing. The location is specified as an instance of a
-         * {@link Node} in the AST. There doesn't have to be any specific location and in such case
-         * this method returns <code>null</code>. If the node is provided, it can be for example
-         * {@link com.oracle.truffle.api.instrumentation.EventContext#getInstrumentedNode()} when
-         * {@link com.oracle.truffle.api.instrumentation.EventContext#parseInContext} is called.
-         *
-         *
-         * @return a {@link Node} defining AST context for the parsing or <code>null</code>
-         * @since 0.22
-         * @deprecated {@link #parse(com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest)}
-         *             and {@link InlineParsingRequest#getLocation()} is the preferred approach to
-         *             parse a source at a {@link Node} location.
-         */
-        @Deprecated
-        public Node getLocation() {
-            if (disposed) {
-                throw new IllegalStateException();
-            }
-            return node;
-        }
-
-        /**
-         * Specifies the execution context for parsing. If the parsing request is used for
-         * evaluation during halted execution, for example as in
-         * {@link com.oracle.truffle.api.debug.DebugStackFrame#eval(String)} method, this method
-         * provides access to current {@link MaterializedFrame frame} with local variables, etc.
-         *
-         * @return a {@link MaterializedFrame} exposing the current execution state or
-         *         <code>null</code> if there is none
-         * @since 0.22
-         * @deprecated {@link #parse(com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest)}
-         *             and {@link InlineParsingRequest#getFrame()} is the preferred approach to
-         *             parse a source with a frame context.
-         */
-        @Deprecated
-        public MaterializedFrame getFrame() {
-            if (disposed) {
-                throw new IllegalStateException();
-            }
-            return frame;
         }
 
         /**
@@ -1245,8 +1198,8 @@ public abstract class TruffleLanguage<C> {
         this.reference = new ContextReference<>(vmObject);
     }
 
-    CallTarget parse(Source source, Node context, MaterializedFrame frame, String... argumentNames) {
-        ParsingRequest request = new ParsingRequest(source, context, frame, argumentNames);
+    CallTarget parse(Source source, String... argumentNames) {
+        ParsingRequest request = new ParsingRequest(source, argumentNames);
         CallTarget target;
         try {
             target = request.parse(this);
@@ -2467,8 +2420,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        @SuppressWarnings("unused")
         public CallTarget parse(Env env, Source code, Node context, String... argumentNames) {
-            return env.getSpi().parse(code, context, null, argumentNames);
+            return env.getSpi().parse(code, argumentNames);
         }
 
         @Override
@@ -2513,7 +2467,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Object evalInContext(Source source, Node node, final MaterializedFrame mFrame) {
-            CallTarget target = API.nodes().getLanguage(node.getRootNode()).parse(source, node, mFrame);
+            CallTarget target = API.nodes().getLanguage(node.getRootNode()).parse(source);
             try {
                 if (target instanceof RootCallTarget) {
                     RootNode exec = ((RootCallTarget) target).getRootNode();

@@ -55,7 +55,6 @@ import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
@@ -131,7 +130,7 @@ public abstract class RootNode extends ExecutableNode {
      * instead for compatibility.
      */
     final Object sourceVM;
-    private RootCallTarget callTarget;
+    private volatile RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     final ReentrantLock lock = new ReentrantLock();
 
@@ -334,15 +333,6 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link LoopNode#reportLoopCount(Node,int)} instead
-     */
-    @Deprecated
-    public final void reportLoopCount(int iterations) {
-        LoopNode.reportLoopCount(this, iterations);
-    }
-
-    /**
      * Executes this function using the specified frame and returns the result value.
      *
      * @param frame the frame of the currently executing guest language method
@@ -362,34 +352,9 @@ public abstract class RootNode extends ExecutableNode {
         return frameDescriptor;
     }
 
-    /**
-     * @since 0.8 or earlier
-     * @deprecated No replacement. Changing {@link CallTarget} of an existing {@link RootNode} isn't
-     *             a supported operation
-     */
-    @Deprecated
-    public final void setCallTarget(RootCallTarget callTarget) {
+    /** @since 1.0.0 */
+    protected final void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
-    }
-
-    /**
-     * Returns the {@link com.oracle.truffle.api.ExecutionContext} associated with this
-     * <code>RootNode</code>. This allows the correct <code>ExecutionContext</code> to be determined
-     * for a <code>RootNode</code> (and so also for a {@link RootCallTarget} and a
-     * {@link FrameInstance} obtained from the call stack) without prior knowledge of the language
-     * it has come from.
-     *
-     * Returns <code>null</code> by default.
-     *
-     * @since 0.8 or earlier
-     * @deprecated in 0.25 use {@link #getLanguage(Class) getLanguage(Language.class)}.
-     *             {@link TruffleLanguage#getCurrentContext(Class) getCurrentContext()} instead, and
-     *             {@link RootNode#getCompilerOptions()}.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public com.oracle.truffle.api.ExecutionContext getExecutionContext() {
-        return null;
     }
 
     /**
@@ -397,15 +362,8 @@ public abstract class RootNode extends ExecutableNode {
      *
      * @since 0.8 or earlier
      */
-    @SuppressWarnings("deprecation")
     public CompilerOptions getCompilerOptions() {
-        final com.oracle.truffle.api.ExecutionContext context = getExecutionContext();
-
-        if (context == null) {
-            return DefaultCompilerOptions.INSTANCE;
-        } else {
-            return context.getCompilerOptions();
-        }
+        return DefaultCompilerOptions.INSTANCE;
     }
 
     /**

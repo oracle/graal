@@ -55,7 +55,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * </p>
  *
  * {@inheritDoc}
- * 
+ *
  * @since 0.10
  */
 public abstract class PrimitiveValueProfile extends ValueProfile {
@@ -94,7 +94,7 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
     /**
      * Returns a {@link PrimitiveValueProfile} that speculates on the primitive equality or object
      * identity of a value.
-     * 
+     *
      * @since 0.10
      */
     public static PrimitiveValueProfile createEqualityProfile() {
@@ -103,32 +103,6 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
         } else {
             return Disabled.INSTANCE;
         }
-    }
-
-    /**
-     * @deprecated going to get removed without replacement
-     * @since 0.10
-     */
-    @Deprecated
-    public static boolean exactCompare(float a, float b) {
-        /*
-         * -0.0 == 0.0, but you can tell the difference through other means, so we need to
-         * differentiate.
-         */
-        return Float.floatToRawIntBits(a) == Float.floatToRawIntBits(b);
-    }
-
-    /**
-     * @deprecated going to get removed without replacement
-     * @since 0.10
-     */
-    @Deprecated
-    public static boolean exactCompare(double a, double b) {
-        /*
-         * -0.0 == 0.0, but you can tell the difference through other means, so we need to
-         * differentiate.
-         */
-        return Double.doubleToRawLongBits(a) == Double.doubleToRawLongBits(b);
     }
 
     static final class Enabled extends PrimitiveValueProfile {
@@ -165,11 +139,19 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
                         return (T) snapshot;
                     }
                 } else if (snapshot instanceof Float) {
-                    if (value instanceof Float && exactCompare((float) snapshot, (float) value)) {
+                    /*
+                     * -0.0 == 0.0, but you can tell the difference through other means, so we need
+                     * to differentiate.
+                     */
+                    if (value instanceof Float && Float.floatToRawIntBits((float) snapshot) == Float.floatToRawIntBits((float) value)) {
                         return (T) snapshot;
                     }
                 } else if (snapshot instanceof Double) {
-                    if (value instanceof Double && exactCompare((double) snapshot, (double) value)) {
+                    /*
+                     * -0.0 == 0.0, but you can tell the difference through other means, so we need
+                     * to differentiate.
+                     */
+                    if (value instanceof Double && Double.doubleToRawLongBits((double) snapshot) == Double.doubleToRawLongBits((double) value)) {
                         return (T) snapshot;
                     }
                 } else if (snapshot instanceof Boolean) {
@@ -254,7 +236,11 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
         public float profile(float value) {
             Object snapshot = this.cachedValue;
             if (snapshot != GENERIC) {
-                if (snapshot instanceof Float && exactCompare((float) snapshot, value)) {
+                /*
+                 * -0.0 == 0.0, but you can tell the difference through other means, so we need to
+                 * differentiate.
+                 */
+                if (snapshot instanceof Float && Float.floatToRawIntBits((float) snapshot) == Float.floatToRawIntBits(value)) {
                     return (float) snapshot;
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -269,7 +255,11 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
         public double profile(double value) {
             Object snapshot = this.cachedValue;
             if (snapshot != GENERIC) {
-                if (snapshot instanceof Double && exactCompare((double) snapshot, value)) {
+                /*
+                 * -0.0 == 0.0, but you can tell the difference through other means, so we need to
+                 * differentiate.
+                 */
+                if (snapshot instanceof Double && Double.doubleToRawLongBits((double) snapshot) == Double.doubleToRawLongBits(value)) {
                     return (double) snapshot;
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

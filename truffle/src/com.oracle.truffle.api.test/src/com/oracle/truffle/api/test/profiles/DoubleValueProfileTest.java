@@ -56,7 +56,6 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
-import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 
 @RunWith(Theories.class)
 public class DoubleValueProfileTest {
@@ -88,6 +87,14 @@ public class DoubleValueProfileTest {
         return (double) invoke(profile, "getCachedValue");
     }
 
+    public static boolean exactCompare(double a, double b) {
+        /*
+         * -0.0 == 0.0, but you can tell the difference through other means, so we need to
+         * differentiate.
+         */
+        return Double.doubleToRawLongBits(a) == Double.doubleToRawLongBits(b);
+    }
+
     @Test
     public void testInitial() {
         assertThat(isGeneric(profile), is(false));
@@ -114,7 +121,7 @@ public class DoubleValueProfileTest {
         assertEquals(result0, value0, FLOAT_DELTA);
         assertEquals(result1, value1, FLOAT_DELTA);
 
-        if (PrimitiveValueProfile.exactCompare(value0, value1)) {
+        if (exactCompare(value0, value1)) {
             assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
             assertThat(isGeneric(profile), is(false));
         } else {
@@ -135,7 +142,7 @@ public class DoubleValueProfileTest {
         assertEquals(result1, value1, FLOAT_DELTA);
         assertEquals(result2, value2, FLOAT_DELTA);
 
-        if (PrimitiveValueProfile.exactCompare(value0, value1) && PrimitiveValueProfile.exactCompare(value1, value2)) {
+        if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
             assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
             assertThat(isGeneric(profile), is(false));
         } else {

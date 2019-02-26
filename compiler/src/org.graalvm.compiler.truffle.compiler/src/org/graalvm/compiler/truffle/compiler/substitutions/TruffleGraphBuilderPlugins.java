@@ -636,11 +636,6 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    @Deprecated
-    public static void registerUnsafeLoadStorePlugins(Registration r, JavaConstant anyConstant, JavaKind... kinds) {
-        registerUnsafeLoadStorePlugins(r, true, anyConstant, kinds);
-    }
-
     public static void registerUnsafeLoadStorePlugins(Registration r, boolean canDelayIntrinsification, JavaConstant anyConstant, JavaKind... kinds) {
         for (JavaKind kind : kinds) {
             String kindName = kind.getJavaName();

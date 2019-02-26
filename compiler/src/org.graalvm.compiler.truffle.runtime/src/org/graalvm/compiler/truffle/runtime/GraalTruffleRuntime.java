@@ -42,7 +42,6 @@ import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
@@ -322,12 +321,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         ExplodeLoop explodeLoop = getAnnotation(ExplodeLoop.class, method);
         if (explodeLoop == null) {
             return LoopExplosionKind.NONE;
-        }
-
-        // Support for the deprecated Truffle property until it is removed in a future Truffle
-        // release.
-        if (explodeLoop.merge()) {
-            return LoopExplosionKind.MERGE_EXPLODE;
         }
 
         switch (explodeLoop.kind()) {
@@ -656,7 +649,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         CompilerAsserts.neverPartOfCompilation();
 
         OptimizedCallTarget target = createOptimizedCallTarget(source, rootNode);
-        rootNode.setCallTarget(target);
         tvmci.onLoad(target.getRootNode());
         return target;
     }
@@ -825,11 +817,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
         }
 
-    }
-
-    @Deprecated
-    public Collection<OptimizedCallTarget> getQueuedCallTargets() {
-        return Collections.emptyList();
     }
 
     public int getCompilationQueueSize() {
@@ -1008,7 +995,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 // by the partial evaluator, we want to prevent inlining across the boundary during
                 // partial evaluation,
                 // even if the TruffleBoundary allows inlining after partial evaluation.
-                if (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException()) {
+                if (truffleBoundary.transferToInterpreterOnException()) {
                     return InlineKind.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
                 } else {
                     return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;

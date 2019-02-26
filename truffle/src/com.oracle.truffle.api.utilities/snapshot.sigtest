@@ -35,8 +35,6 @@ supr java.lang.Object
 hfds ASSUMPTION_UPDATER,assumption,name
 
 CLSS public com.oracle.truffle.api.utilities.JSONHelper
-cons public init()
- anno 0 java.lang.Deprecated()
 innr public abstract static JSONStringBuilder
 innr public final static JSONArrayBuilder
 innr public final static JSONObjectBuilder
@@ -78,8 +76,6 @@ hfds contents
 
 CLSS public abstract static com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder
  outer com.oracle.truffle.api.utilities.JSONHelper
-cons protected init()
- anno 0 java.lang.Deprecated()
 meth protected abstract void appendTo(java.lang.StringBuilder)
 meth protected static void appendValue(java.lang.StringBuilder,java.lang.Object)
 meth public final java.lang.String toString()

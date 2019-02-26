@@ -74,13 +74,6 @@ public abstract class BranchProfile extends Profile {
     public abstract void enter();
 
     /**
-     * @deprecated it is not reliable when profiling is turned off.
-     * @since 0.10
-     */
-    @Deprecated
-    public abstract boolean isVisited();
-
-    /**
      * Call to create a new instance of a branch profile.
      * 
      * @since 0.10
@@ -105,12 +98,6 @@ public abstract class BranchProfile extends Profile {
             }
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isVisited() {
-            return visited;
-        }
-
         @Override
         public String toString() {
             return toString(BranchProfile.class, !visited, false, "VISITED");
@@ -133,12 +120,6 @@ public abstract class BranchProfile extends Profile {
 
         @Override
         public void enter() {
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isVisited() {
-            return true;
         }
 
         @Override
