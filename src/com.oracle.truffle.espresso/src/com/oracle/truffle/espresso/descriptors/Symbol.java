@@ -153,6 +153,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> parameterTypes = StaticSymbols.putName("parameterTypes");
         public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
+        public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
+        public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
+        public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
 
         // Attribute names
         public static final Symbol<Name> Code = StaticSymbols.putName("Code");
@@ -167,6 +170,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> RuntimeVisibleParameterAnnotations = StaticSymbols.putName("RuntimeVisibleParameterAnnotations");
         public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
         public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
+        public static final Symbol<Name> Signature = StaticSymbols.putName("Signature");
     }
 
     public static final class Type extends Descriptor {
@@ -225,6 +229,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> StackOverflowError = StaticSymbols.putType(StackOverflowError.class);
         public static final Symbol<Type> OutOfMemoryError = StaticSymbols.putType(OutOfMemoryError.class);
+        public static final Symbol<Type> AssertionError = StaticSymbols.putType(AssertionError.class);
 
         public static final Symbol<Type> NullPointerException = StaticSymbols.putType(NullPointerException.class);
         public static final Symbol<Type> ClassCastException = StaticSymbols.putType(ClassCastException.class);

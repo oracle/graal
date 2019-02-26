@@ -238,6 +238,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.CustomNodeCount;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -285,7 +286,7 @@ import com.oracle.truffle.object.DebugCounter;
  * bytecode is first processed/executed without growing or shinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public class BytecodeNode extends EspressoBaseNode {
+public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
 
@@ -484,7 +485,7 @@ public class BytecodeNode extends EspressoBaseNode {
 
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object executeNaked(VirtualFrame frame) {
+    public Object invokeNaked(VirtualFrame frame) {
         int curBCI = 0;
         int top = 0;
 
@@ -1025,12 +1026,12 @@ public class BytecodeNode extends EspressoBaseNode {
         Object v2 = peekValue(frame, top - 2);
         Object v3 = peekValue(frame, top - 3);
         Object v4 = peekValue(frame, top - 4);
-        putKindUnsafe1(frame, top - 3, v2, k2);
-        putKindUnsafe1(frame, top - 2, v1, k1);
-        putKindUnsafe1(frame, top - 1, v4, k4);
-        putKindUnsafe1(frame, top - 0, v3, k3);
-        putKindUnsafe1(frame, top + 1, v2, k2);
-        putKindUnsafe1(frame, top + 2, v1, k1);
+        putKindUnsafe1(frame, top - 4, v2, k2);
+        putKindUnsafe1(frame, top - 3, v1, k1);
+        putKindUnsafe1(frame, top - 2, v4, k4);
+        putKindUnsafe1(frame, top - 1, v3, k3);
+        putKindUnsafe1(frame, top + 0, v2, k2);
+        putKindUnsafe1(frame, top + 1, v1, k1);
     }
 
     // endregion Operand stack shuffling
@@ -1118,13 +1119,15 @@ public class BytecodeNode extends EspressoBaseNode {
         int oldBC = code[bci];
         assert Bytecodes.lengthOf(oldBC) >= 3 : "cannot patch slim bc";
 
-        code[bci] = opcode;
-        code[bci + 1] = (byte) ((nodeIndex >> 8) & 0xFF);
-        code[bci + 2] = (byte) ((nodeIndex) & 0xFF);
+        synchronized (this) {
+            code[bci] = opcode;
+            code[bci + 1] = (byte) ((nodeIndex >> 8) & 0xFF);
+            code[bci + 2] = (byte) ((nodeIndex) & 0xFF);
 
-        // NOP-padding.
-        for (int i = 3; i < Bytecodes.lengthOf(oldBC); ++i) {
-            code[bci + i] = (byte) NOP;
+            // NOP-padding.
+            for (int i = 3; i < Bytecodes.lengthOf(oldBC); ++i) {
+                code[bci + i] = (byte) NOP;
+            }
         }
     }
 
@@ -1533,4 +1536,9 @@ public class BytecodeNode extends EspressoBaseNode {
         return peekObject(frame, top - skipSlots - 1);
     }
 
+    @Override
+    public int customNodeCount() {
+        int codeSize = getMethod().getCodeSize();
+        return 2 * codeSize + 1;
+    }
 }

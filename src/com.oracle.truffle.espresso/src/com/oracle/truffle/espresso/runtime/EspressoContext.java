@@ -22,9 +22,12 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.HIDDEN_HOST_THREAD;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -42,11 +45,8 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -54,32 +54,26 @@ import com.oracle.truffle.espresso.vm.VM;
 public final class EspressoContext {
 
     private final EspressoLanguage language;
-
     private final TruffleLanguage.Env env;
-
-    // Must be initialized after the context instance creation.
-    @CompilationFinal //
-    private InterpreterToVM interpreterToVM;
-
     private final StringTable strings;
     private final ClassRegistries registries;
+    private final Substitutions substitutions;
+
+    // TODO(peterssen): Map host threads to guest threads, should not be public.
+    public final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
 
     private boolean initialized = false;
 
     private Classpath bootClasspath;
     private String[] mainArguments;
     private Source mainSourceFile;
-    private StaticObject mainThread;
 
-    @CompilationFinal //
-    private Meta meta;
-
-    @CompilationFinal //
-    private JniEnv jniEnv;
-
-    @CompilationFinal //
-    private VM vm;
-    private Substitutions substitutions;
+    // Must be initialized after the context instance creation.
+    @CompilationFinal private InterpreterToVM interpreterToVM;
+    @CompilationFinal private Meta meta;
+    @CompilationFinal private JniEnv jniEnv;
+    @CompilationFinal private VM vm;
+    @CompilationFinal private EspressoProperties vmProperties;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
@@ -137,9 +131,7 @@ public final class EspressoContext {
     }
 
     public EspressoProperties getVmProperties() {
-        if (vmProperties == null) {
-            throw EspressoError.shouldNotReachHere();
-        }
+        assert vmProperties != null;
         return vmProperties;
     }
 
@@ -166,18 +158,14 @@ public final class EspressoContext {
 
     private void spawnVM() {
 
-        System.err.println("Before spawnVM: " + BytecodeNode.bcCount.get());
-
         long ticks = System.currentTimeMillis();
-
-        // FIXME(peterssen): Contextualize the JniENv, even if shared libraries are isolated,
-        // currently we assume a singleton context.
 
         initVmProperties();
 
         this.meta = new Meta(this);
 
         this.interpreterToVM = new InterpreterToVM(this);
+
         // Spawn JNI first, then the VM.
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
@@ -200,6 +188,8 @@ public final class EspressoContext {
             initializeKnownClass(type);
         }
 
+        createMainThread();
+
         // Finalizer is not public.
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
@@ -219,10 +209,22 @@ public final class EspressoContext {
             initializeKnownClass(type);
         }
 
-        System.err.println("After spawnVM: " + (System.currentTimeMillis() - ticks) + " ms " + BytecodeNode.bcCount.get());
+        System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 
-    private EspressoProperties vmProperties;
+    private void createMainThread() {
+        StaticObjectImpl mainThread = (StaticObjectImpl) meta.Thread.allocateInstance();
+        StaticObject threadGroup = meta.ThreadGroup.allocateInstance();
+        meta.ThreadGroup_maxPriority.set(threadGroup, Thread.MAX_PRIORITY);
+        meta.Thread_group.set(mainThread, threadGroup);
+        meta.Thread_name.set(mainThread, meta.toGuestString("mainThread"));
+        meta.Thread_priority.set(mainThread, 5);
+        mainThread.setHiddenField(HIDDEN_HOST_THREAD, Thread.currentThread());
+        host2guest.put(Thread.currentThread(), mainThread);
+
+        // Lock object used by NIO.
+        meta.Thread_blockerLock.set(mainThread, meta.Object.allocateInstance());
+    }
 
     private void initVmProperties() {
         vmProperties = EspressoProperties.getDefault().processOptions(getEnv().getOptions());
@@ -243,14 +245,6 @@ public final class EspressoContext {
 
     public VM getVM() {
         return vm;
-    }
-
-    public @Host(Thread.class) StaticObject getMainThread() {
-        return mainThread;
-    }
-
-    public void setMainThread(@Host(Thread.class) StaticObject mainThread) {
-        this.mainThread = mainThread;
     }
 
     public Types getTypes() {

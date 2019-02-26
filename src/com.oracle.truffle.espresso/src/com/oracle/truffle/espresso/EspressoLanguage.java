@@ -52,7 +52,7 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @ProvidedTags(StandardTags.RootTag.class)
-@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE)
+@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String ID = "java";
@@ -194,4 +194,28 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public String getEspressoHome() {
         return getLanguageHome();
     }
+
+    @Override
+    protected boolean isThreadAccessAllowed(Thread thread,
+                    boolean singleThreaded) {
+        // allow access from any thread instead of just one
+        return true;
+    }
+
+    @Override
+    protected void initializeMultiThreading(EspressoContext context) {
+        // perform actions when the context is switched to multi-threading
+        // context.singleThreaded.invalidate();
+    }
+
+    @Override
+    protected void initializeThread(EspressoContext context, Thread thread) {
+        // perform initialization actions for threads
+    }
+
+    @Override
+    protected void disposeThread(EspressoContext context, Thread thread) {
+        // perform disposal actions for threads
+    }
+
 }

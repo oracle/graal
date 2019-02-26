@@ -48,16 +48,16 @@ $(shell mkdir -p bin/ >/dev/null)
 
 bin/${LIBTRUFFLENFI}: ${OBJECTFILES} ${LIBFFI_LIB}
 	@echo LINK $@
-	$(QUIETLY) gcc -shared ${LDFLAGS} $+ -o $@
+	$(QUIETLY) gcc -g -shared ${LDFLAGS} $+ -o $@
 	
 bin/%.o: src/%.c bin/%.d libffi-build/include/ffi.h
 	@echo CC $@
-	$(QUIETLY) gcc -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} -o $@ $<
+	$(QUIETLY) gcc -g -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} -o $@ $<
 	$(QUIETLY) mv -f bin/$*.Td bin/$*.d && touch $@
 	
 bin/%.o: src/%.cc bin/%.d libffi-build/include/ffi.h
 	@echo CC $@
-	$(QUIETLY) g++ -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} -o $@ $<
+	$(QUIETLY) g++ -g -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} -o $@ $<
 	$(QUIETLY) mv -f bin/$*.Td bin/$*.d && touch $@	
 
 ${LIBFFI_LIB}: libffi-build/Makefile

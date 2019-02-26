@@ -34,9 +34,9 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -47,7 +47,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -78,6 +77,7 @@ public final class Target_java_lang_Class {
         return EspressoOptions.EnableAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());
     }
 
+    // TODO(peterssen): Remove substitution, use JVM_FindClassFromCaller.
     @Substitution
     public static @Host(Class.class) StaticObject forName0(
                     @Host(String.class) StaticObject name,
@@ -93,10 +93,7 @@ public final class Target_java_lang_Class {
         Klass klass = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(Meta.toHostString(name)), loader);
 
         if (klass == null) {
-            StaticObject instance = meta.ClassNotFoundException.allocateInstance();
-            meta.ClassNotFoundException.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(instance);
-            // TODO(peterssen): Add class name to exception message.
-            throw new EspressoException(instance);
+            throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
         }
 
         if (initialize) {
@@ -581,6 +578,19 @@ public final class Target_java_lang_Class {
             return cp;
         }
         // No constant pool for arrays and primitives.
+        return StaticObject.NULL;
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @Host(String.class) StaticObject getGenericSignature0(@Host(Class.class) StaticObjectClass self) {
+        if (self.getMirrorKlass() instanceof ObjectKlass) {
+            ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
+            SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Name.Signature);
+            if (signature != null) {
+                String sig = klass.getConstantPool().utf8At(signature.getSignatureIndex(), "signature").toString();
+                return klass.getMeta().toGuestString(sig);
+            }
+        }
         return StaticObject.NULL;
     }
 }

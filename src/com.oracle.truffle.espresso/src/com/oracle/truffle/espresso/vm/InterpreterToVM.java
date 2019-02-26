@@ -28,7 +28,6 @@ import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -225,19 +224,15 @@ public final class InterpreterToVM implements ContextAccess {
     // region Monitor enter/exit
 
     @SuppressWarnings({"deprecation"})
+    @TruffleBoundary
     public static void monitorEnter(Object obj) {
-        // TODO(peterssen): Nop for single-threaded language + enable on SVM.
-        if (!EspressoOptions.RUNNING_ON_SVM) {
-            hostUnsafe.monitorEnter(obj);
-        }
+        hostUnsafe.monitorEnter(obj);
     }
 
     @SuppressWarnings({"deprecation"})
+    @TruffleBoundary
     public static void monitorExit(Object obj) {
-        // TODO(peterssen): Nop for single-threaded language + enable on SVM.
-        if (!EspressoOptions.RUNNING_ON_SVM) {
-            hostUnsafe.monitorExit(obj);
-        }
+        hostUnsafe.monitorExit(obj);
     }
     // endregion
 
