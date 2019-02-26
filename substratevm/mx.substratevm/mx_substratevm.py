@@ -327,7 +327,7 @@ class ToolDescriptor:
         self.native_deps = native_deps if native_deps else []
 
 tools_map = {
-    'truffle' : ToolDescriptor(),
+    'truffle' : ToolDescriptor(image_deps=['truffle:TRUFFLE_NFI']),
     'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
@@ -395,7 +395,7 @@ def layout_native_image_root(native_image_root):
 
     # Create native-image layout for truffle parts
     if mx.get_os() != 'windows':  # necessary until Truffle is fully supported (GR-7941)
-        native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])
+        native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API'])
 
     # Create native-image layout for tools parts
     for tool_name in tools_map:
@@ -412,6 +412,7 @@ def layout_native_image_root(native_image_root):
     clibraries_dest = join(native_image_root, join(svm_subdir, 'clibraries'))
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, clibraries_dest)
+    copy_tree(mx._get_dependency_path('TRUFFLE_NFI_NATIVE'), os.path.dirname(native_image_root))
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True):
     """
