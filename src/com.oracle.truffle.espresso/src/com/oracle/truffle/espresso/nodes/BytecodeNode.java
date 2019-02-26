@@ -1507,9 +1507,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     @ExplodeLoop
     public Object[] peekArgumentsWithCSO(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature, CallSiteObject cso) {
-        if (cso.getArgs().length == 0) {
-            return peekArguments(frame, top, hasReceiver, signature);
-        }
         Object[] CSOargs = cso.getArgs();
         int nCSOargs = CSOargs.length;
 
@@ -1546,6 +1543,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             // @formatter:on
             // Checkstyle: resume
             argAt -= kind.getSlotCount();
+        }
+        if (hasReceiver && nCSOargs == 0) {
+            args[0] = args[0] = peekObject(frame, argAt);
         }
         return args;
     }
