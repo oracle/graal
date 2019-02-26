@@ -64,8 +64,7 @@ public final class EspressoOptions {
     @Option(help = "Enable system assertions.", category = OptionCategory.USER) //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
-    @Option(help = "Enable experimental thread support.", category = OptionCategory.USER) //
-    public static final OptionKey<Boolean> EnableThreads = new OptionKey<>(false);
+    public static final boolean ENABLE_THREADS = Boolean.getBoolean("espresso.EnableThreads");
 
     public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
 
