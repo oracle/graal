@@ -23,16 +23,40 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 
-public interface InvokeDynamicConstant extends BootstrapMethodConstant {
+public interface InvokeDynamicConstant extends PoolConstant {
+
+    int getBootstrapMethodAttrIndex();
+
+    Symbol<Symbol.Signature> getSignature(ConstantPool pool);
 
     default Tag tag() {
         return Tag.INVOKEDYNAMIC;
     }
 
-    final class Indexes extends BootstrapMethodConstant.Indexes implements InvokeDynamicConstant {
+    final class Indexes implements InvokeDynamicConstant {
+        public int bootstrapMethodAttrIndex;
+        public int nameAndTypeIndex;
+
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
-            super(bootstrapMethodAttrIndex, nameAndTypeIndex);
+            this.bootstrapMethodAttrIndex = bootstrapMethodAttrIndex;
+            this.nameAndTypeIndex = nameAndTypeIndex;
         }
+
+        @Override
+        public int getBootstrapMethodAttrIndex() {
+            return bootstrapMethodAttrIndex;
+        }
+
+        @Override
+        public final Symbol<Symbol.Signature> getSignature(ConstantPool pool) {
+            return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
+        }
+    }
+    @Override
+    default String toString(ConstantPool pool) {
+        return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool);
     }
 }

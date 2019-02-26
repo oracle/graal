@@ -170,5 +170,10 @@ public final class StaticObjectArray extends StaticObject {
         return new StaticObjectArray(getKlass(), cloneWrapped());
     }
 
+    @Override
+    public boolean isCallSite() {
+        return false;
+    }
+
     // endregion
 }

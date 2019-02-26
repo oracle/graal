@@ -572,7 +572,7 @@ public final class Bytecodes {
         def(INVOKESPECIAL       , "invokespecial"   , "bjj"  , -1, TRAP | INVOKE);
         def(INVOKESTATIC        , "invokestatic"    , "bjj"  ,  0, TRAP | INVOKE);
         def(INVOKEINTERFACE     , "invokeinterface" , "bjja_", -1, TRAP | INVOKE);
-        def(INVOKEDYNAMIC       , "invokedynamic"   , "bjjjj",  0, TRAP | INVOKE);
+        def(INVOKEDYNAMIC       , "invokedynamic"   , "bjjjj",  1, TRAP | INVOKE);
         def(NEW                 , "new"             , "bii"  ,  1, TRAP);
         def(NEWARRAY            , "newarray"        , "bc"   ,  0, TRAP);
         def(ANEWARRAY           , "anewarray"       , "bii"  ,  0, TRAP);

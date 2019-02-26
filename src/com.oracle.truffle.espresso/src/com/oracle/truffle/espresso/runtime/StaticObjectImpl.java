@@ -49,6 +49,11 @@ public class StaticObjectImpl extends StaticObject {
         return this == getKlass().getStatics();
     }
 
+    @Override
+    public boolean isCallSite() {
+        return false;
+    }
+
     // Shallow copy.
     public StaticObject copy() {
         HashMap<String, Object> hiddenFieldsCopy = hiddenFields != null ? new HashMap<>(hiddenFields) : null;

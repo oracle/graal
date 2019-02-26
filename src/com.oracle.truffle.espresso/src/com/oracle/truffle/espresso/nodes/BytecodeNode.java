@@ -245,29 +245,19 @@ import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.ClassConstant;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.DoubleConstant;
-import com.oracle.truffle.espresso.classfile.FloatConstant;
-import com.oracle.truffle.espresso.classfile.IntegerConstant;
-import com.oracle.truffle.espresso.classfile.LongConstant;
-import com.oracle.truffle.espresso.classfile.PoolConstant;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.StringConstant;
+import com.oracle.truffle.espresso.classfile.*;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.ReturnAddress;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.runtime.*;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -321,6 +311,10 @@ public class BytecodeNode extends EspressoBaseNode {
 
     @ExplodeLoop
     private void initArguments(final VirtualFrame frame) {
+        if (this.toString().contains("lambda")) {
+            assert Boolean.TRUE;
+        }
+
         boolean hasReceiver = !getMethod().isStatic();
         int argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
 
@@ -843,9 +837,28 @@ public class BytecodeNode extends EspressoBaseNode {
                     case BREAKPOINT            :
                         CompilerAsserts.neverPartOfCompilation();
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
+
                     case INVOKEDYNAMIC         :
-                        CompilerAsserts.neverPartOfCompilation();
-                        throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
+                        //CompilerAsserts.neverPartOfCompilation();
+                        //throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
+                        RuntimeConstantPool pool = getConstantPool();
+                        InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
+                        BootstrapMethodsAttribute bms = getBootstrapMethods();
+                        assert(bms != null);
+                        BootstrapMethodsAttribute.Entry bsEntry = getBootstrapMethods().at(inDy.getBootstrapMethodAttrIndex());
+
+                        // TODO(garcia) add support for non-lambda invokedynamic
+                        assert(bsEntry.numBootstrapArguments() == 3);
+
+                        Symbol<Type>[] parsed = getMethod().getContext().getSignatures().parsed(inDy.getSignature(pool));
+                        Object[] args = peekArguments(frame, top, false, parsed);
+                        top -= Signatures.parameterCount(parsed, false);
+                        MethodHandleConstant mh = (MethodHandleConstant) pool.at(bsEntry.argAt(1));
+                        Method target = resolveMethod(curOpcode, mh.getRefIndex());
+
+                        CallSiteObject cso = new CallSiteObject(getMethod().getDeclaringKlass(), target, parsed, args, mh);
+                        putObject(frame, top, cso);
+                        break;
 
                     case QUICK                 : top += nodes[bs.readCPI(curBCI)].invoke(frame, top); break;
                     default                    :
@@ -1099,6 +1112,10 @@ public class BytecodeNode extends EspressoBaseNode {
         return getMethod().getRuntimeConstantPool();
     }
 
+    private BootstrapMethodsAttribute getBootstrapMethods() {
+        return (BootstrapMethodsAttribute) ((ObjectKlass) getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
+    }
+
     // region Bytecode quickening
 
     private char addQuickNode(QuickNode node) {
@@ -1151,7 +1168,8 @@ public class BytecodeNode extends EspressoBaseNode {
     private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, Method resolutionSeed, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opCode);
-        assert opCode != INVOKEDYNAMIC : "not supported";
+        //assert opCode != INVOKEDYNAMIC : "not supported";
+
         if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet())) {
             return quickenInvoke(frame, top, curBCI, resolutionSeed, INVOKESPECIAL);
         }
@@ -1480,6 +1498,51 @@ public class BytecodeNode extends EspressoBaseNode {
         }
         if (hasReceiver) {
             args[0] = peekObject(frame, argAt);
+        }
+        return args;
+    }
+
+    @ExplodeLoop
+    public Object[] peekArgumentsWithCSO(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature, CallSiteObject cso) {
+        if (cso.getArgs().length == 0) {
+            return peekArguments(frame, top, hasReceiver, signature);
+        }
+        Object[] CSOargs = cso.getArgs();
+        int nCSOargs = CSOargs.length;
+
+        int argCount = Signatures.parameterCount(signature, false);
+
+        int extraParam = hasReceiver ? 1 : 0;
+        final Object[] args = new Object[argCount + extraParam];
+
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(signature);
+        CompilerAsserts.partialEvaluationConstant(hasReceiver);
+
+        for (int j = 0; j < nCSOargs; j++) {
+            args[j] = CSOargs[j];
+        }
+
+        int argAt = top - 1;
+        for (int i = argCount - 1; i >= nCSOargs; --i) {
+            JavaKind kind = Signatures.parameterKind(signature, i);
+            // @formatter:off
+            // Checkstyle: stop
+            switch (kind) {
+                case Boolean : args[i + extraParam] = (peekInt(frame, argAt) != 0);  break;
+                case Byte    : args[i + extraParam] = (byte) peekInt(frame, argAt);  break;
+                case Short   : args[i + extraParam] = (short) peekInt(frame, argAt); break;
+                case Char    : args[i + extraParam] = (char) peekInt(frame, argAt);  break;
+                case Int     : args[i + extraParam] = peekInt(frame, argAt);         break;
+                case Float   : args[i + extraParam] = peekFloat(frame, argAt);       break;
+                case Long    : args[i + extraParam] = peekLong(frame, argAt);        break;
+                case Double  : args[i + extraParam] = peekDouble(frame, argAt);      break;
+                case Object  : args[i + extraParam] = peekObject(frame, argAt);      break;
+                default      : throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            // Checkstyle: resume
+            argAt -= kind.getSlotCount();
         }
         return args;
     }

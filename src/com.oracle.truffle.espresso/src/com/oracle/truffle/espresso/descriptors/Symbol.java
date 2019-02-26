@@ -167,6 +167,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> RuntimeVisibleParameterAnnotations = StaticSymbols.putName("RuntimeVisibleParameterAnnotations");
         public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
         public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
+        public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
     }
 
     public static final class Type extends Descriptor {
