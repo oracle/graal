@@ -2,11 +2,13 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC14
+* The [@Option](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html) annotation can now specify the [stability](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionStability.html) of an option.
+
 ## Version 1.0.0 RC13
 * Added [Debugger.getSessionCount()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getSessionCount--) to return the number of active debugger sessions.
 * The [TruffleFile.getName()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getName--) returns `null` for root directory.
 * `TruffleLanguage` can [register additional services](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#registerService-java.lang.Object-). This change also deprecates the automatic registration of the language class as a service.
-
 * Enabled the [experimental monomorphization heuristic](https://github.com/oracle/graal/blob/master/truffle/docs/splitting/) as default. Old heuristic still available as legacy, but will be removed soon.
 * Added [TypeDescriptor.instantiable(instanceType, vararg, parameterTypes)](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/TypeDescriptor.html#instantiable-org.graalvm.polyglot.tck.TypeDescriptor-boolean-org.graalvm.polyglot.tck.TypeDescriptor...-) into TCK to support instantiable types.
 * The name of an [@Option](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html) can now start with a lowercase letter.
