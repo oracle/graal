@@ -41,7 +41,7 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
     }
 
     @Override
-    public Object executeNaked(VirtualFrame frame) {
+    public Object invokeNaked(VirtualFrame frame) {
         try {
             return callIntrinsic(frame.getArguments());
         } catch (InvocationTargetException e) {

@@ -89,7 +89,7 @@ public final class NativeRootNode extends EspressoBaseNode {
     }
 
     @Override
-    public final Object executeNaked(VirtualFrame frame) {
+    public final Object invokeNaked(VirtualFrame frame) {
         try {
             nativeCalls.inc();
             // TODO(peterssen): Inject JNIEnv properly, without copying.
