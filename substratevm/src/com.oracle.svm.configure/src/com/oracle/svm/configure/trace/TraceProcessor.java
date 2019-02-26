@@ -43,6 +43,7 @@ public class TraceProcessor extends AbstractProcessor {
     }
 
     public void setFilterEnabled(boolean enabled) {
+        jniProcessor.setFilterEnabled(enabled);
         reflectionProcessor.setFilterEnabled(enabled);
     }
 
@@ -83,6 +84,15 @@ public class TraceProcessor extends AbstractProcessor {
     void processEntry(Map<String, ?> entry) {
         String tracer = (String) entry.get("tracer");
         switch (tracer) {
+            case "meta": {
+                String event = (String) entry.get("event");
+                if (event.equals("phase_change")) {
+                    setInLivePhase(entry.get("phase").equals("live"));
+                } else {
+                    logWarning("Unknown meta event, ignoring: " + event);
+                }
+                break;
+            }
             case "jni":
                 jniProcessor.processEntry(entry);
                 break;
@@ -90,8 +100,15 @@ public class TraceProcessor extends AbstractProcessor {
                 reflectionProcessor.processEntry(entry);
                 break;
             default:
-                logWarning("Unknown tracer: " + tracer);
+                logWarning("Unknown tracer, ignoring: " + tracer);
                 break;
         }
+    }
+
+    @Override
+    void setInLivePhase(boolean live) {
+        jniProcessor.setInLivePhase(live);
+        reflectionProcessor.setInLivePhase(live);
+        super.setInLivePhase(live);
     }
 }

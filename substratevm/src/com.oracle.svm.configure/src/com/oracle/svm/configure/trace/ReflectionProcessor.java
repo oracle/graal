@@ -35,7 +35,7 @@ import com.oracle.svm.configure.config.ReflectionMethod;
 import com.oracle.svm.configure.config.ReflectionType;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 
-public class ReflectionProcessor extends AbstractProcessor {
+class ReflectionProcessor extends AbstractProcessor {
     private final ReflectionConfiguration configuration = new ReflectionConfiguration();
     private final ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
     private final ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
@@ -80,8 +80,7 @@ public class ReflectionProcessor extends AbstractProcessor {
                 return;
         }
         String callerClass = (String) entry.get("caller_class");
-        if (filter && (callerClass.startsWith("java.") || callerClass.startsWith("javax.") || callerClass.startsWith("sun.") ||
-                        callerClass.startsWith("com.sun.") || callerClass.startsWith("jdk."))) {
+        if (filter && (!isInLivePhase() || isInternalClass(callerClass))) {
             return;
         }
         boolean declared = false;

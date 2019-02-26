@@ -31,10 +31,26 @@ extern "C" {
 #include <stdarg.h>
 #include <malloc.h>
 
-static void jni_trace(JNIEnv *env, char *function, jclass clazz, ...) {
+// JVMTI environments, unlike JNI, can be safely shared across threads
+static jvmtiEnv *global_jvmti = NULL;
+
+static jclass get_caller_class(JNIEnv *env) {
+  jvmtiFrameInfo info;
+  jint count;
+  if ((*global_jvmti)->GetStackTrace(global_jvmti, NULL, 0, 1, &info, &count) == JVMTI_ERROR_NONE && count == 1) {
+    jclass declaring;
+    if ((*global_jvmti)->GetMethodDeclaringClass(global_jvmti, info.method, &declaring) == JVMTI_ERROR_NONE) {
+      return declaring;
+    }
+  }
+  return NULL;
+}
+
+static void jni_trace_call(JNIEnv *env, char *function, jclass clazz, ...) {
+  jclass caller_class = get_caller_class(env);
   va_list ap;
   va_start(ap, clazz);
-  trace_append_v(env, "jni", clazz, NULL, function, NULL, ap);
+  trace_append_v(env, "jni", clazz, caller_class, function, NULL, ap);
   va_end(ap);
 }
 
@@ -47,36 +63,38 @@ static const char * nn_str(const char *cstr) {
 }
 
 static jclass JNICALL DefineClass(JNIEnv *env, const char *name, jobject loader, const jbyte *buf, jsize bufLen) {
-  jni_trace(env, "DefineClass", NULL, nn_str(name), NULL);
+  jni_trace_call(env, "DefineClass", NULL, nn_str(name), NULL);
   return jnifun->DefineClass(env, name, loader, buf, bufLen);
 }
 
 static jclass JNICALL FindClass(JNIEnv *env, const char *name) {
-  jni_trace(env, "FindClass", NULL, nn_str(name), NULL);
+  jni_trace_call(env, "FindClass", NULL, nn_str(name), NULL);
   return jnifun->FindClass(env, name);
 }
 
 static jmethodID JNICALL GetMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
-  jni_trace(env, "GetMethodID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
+  jni_trace_call(env, "GetMethodID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
   return jnifun->GetMethodID(env, clazz, name, sig);
 }
 
 static jmethodID JNICALL GetStaticMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
-  jni_trace(env, "GetStaticMethodID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
+  jni_trace_call(env, "GetStaticMethodID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
   return jnifun->GetStaticMethodID(env, clazz, name, sig);
 }
 
 static jfieldID JNICALL GetFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
-  jni_trace(env, "GetFieldID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
+  jni_trace_call(env, "GetFieldID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
   return jnifun->GetFieldID(env, clazz, name, sig);
 }
 
 static jfieldID JNICALL GetStaticFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
-  jni_trace(env, "GetStaticFieldID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
+  jni_trace_call(env, "GetStaticFieldID", nn_class(clazz), nn_str(name), nn_str(sig), NULL);
   return jnifun->GetStaticFieldID(env, clazz, name, sig);
 }
 
 void OnVMStart_JNI(jvmtiEnv *jvmti, JNIEnv *jni) {
+  global_jvmti = jvmti;
+
   jniNativeInterface *functions;
   guarantee((*jvmti)->GetJNIFunctionTable(jvmti, &functions) == JVMTI_ERROR_NONE);
   functions->DefineClass = &DefineClass;

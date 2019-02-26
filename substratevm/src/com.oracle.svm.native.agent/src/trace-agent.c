@@ -54,6 +54,8 @@ const char * const TRACE_VALUE_UNKNOWN = "\"\\u0000\"";
 const char * const TRACE_ARG_IGNORE = "@ignore@";
 const char * const TRACE_NEXT_ARG_UNQUOTED_TAG = "@next_unquoted@";
 
+void trace_phase_change(const char *phase);
+
 void JNICALL OnVMStart(jvmtiEnv *jvmti, JNIEnv *jni) {
   guarantee((*jvmti)->GetJNIFunctionTable(jvmti, &jnifun) == JVMTI_ERROR_NONE);
 
@@ -63,10 +65,13 @@ void JNICALL OnVMStart(jvmtiEnv *jvmti, JNIEnv *jni) {
 
   OnVMStart_JNI(jvmti, jni);
   OnVMStart_Reflection(jvmti, jni);
+
+  trace_phase_change("start");
 }
 
 void JNICALL OnVMInit(jvmtiEnv *jvmti, JNIEnv *jni, jthread thread) {
   OnVMInit_Reflection(jvmti, jni, thread);
+  trace_phase_change("live");
 }
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
@@ -100,6 +105,8 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
 }
 
 JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
+  trace_phase_change("unload");
+
   pthread_mutex_lock(&trace_mtx);
 
   fputs("\n]\n", trace_file);
@@ -192,6 +199,16 @@ void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller
     } while (arg != NULL);
     sbuf_printf(&e, "]");
   }
+  sbuf_printf(&e, "}");
+  mtx_trace_print(sbuf_as_cstr(&e));
+  sbuf_destroy(&e);
+}
+
+void trace_phase_change(const char *phase) {
+  struct sbuf e;
+  sbuf_new(&e);
+  sbuf_printf(&e, "{\"tracer\":\"meta\", \"event\":\"phase_change\", \"phase\":");
+  sbuf_quote(&e, phase);
   sbuf_printf(&e, "}");
   mtx_trace_print(sbuf_as_cstr(&e));
   sbuf_destroy(&e);

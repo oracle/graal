@@ -29,7 +29,17 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class AbstractProcessor {
+    private boolean inLivePhase = false;
+
     abstract void processEntry(Map<String, ?> entry);
+
+    void setInLivePhase(boolean live) {
+        inLivePhase = live;
+    }
+
+    public boolean isInLivePhase() {
+        return inLivePhase;
+    }
 
     static void logWarning(String warning) {
         System.err.println("WARNING: " + warning);
@@ -45,5 +55,11 @@ public abstract class AbstractProcessor {
         if (collection.size() != size) {
             throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
         }
+    }
+
+    static boolean isInternalClass(String qualifiedClass) {
+        assert qualifiedClass.indexOf('/') == -1 : "wrong format";
+        return qualifiedClass.startsWith("java.") || qualifiedClass.startsWith("javax.") || qualifiedClass.startsWith("sun.") ||
+                        qualifiedClass.startsWith("com.sun.") || qualifiedClass.startsWith("jdk.");
     }
 }
