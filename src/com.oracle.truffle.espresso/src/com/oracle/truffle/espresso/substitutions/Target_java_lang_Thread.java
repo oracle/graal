@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.substitutions;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -79,19 +80,24 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void start0(@Host(Thread.class) StaticObject self) {
-        Thread hostThread = EspressoLanguage.getCurrentContext().getEnv().createThread(new Runnable() {
-            @Override
-            public void run() {
-                self.getKlass().lookupMethod(Name.run, Signature._void).invokeDirect(self);
-            }
-        });
+        if (EspressoOptions.EnableThreads.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions())) {
+            Thread hostThread = EspressoLanguage.getCurrentContext().getEnv().createThread(new Runnable() {
+                @Override
+                public void run() {
+                    self.getKlass().lookupMethod(Name.run, Signature._void).invokeDirect(self);
+                }
+            });
 
-        ((StaticObjectImpl) self).setHiddenField(HIDDEN_HOST_THREAD, hostThread);
-        EspressoLanguage.getCurrentContext().host2guest.put(hostThread, self);
+            ((StaticObjectImpl) self).setHiddenField(HIDDEN_HOST_THREAD, hostThread);
+            EspressoLanguage.getCurrentContext().host2guest.put(hostThread, self);
 
-        System.err.println("Starting thread: " + self.getKlass());
-        hostThread.setDaemon((boolean) self.getKlass().getMeta().Thread_daemon.get(self));
-        hostThread.start();
+            System.err.println("Starting thread: " + self.getKlass());
+            hostThread.setDaemon((boolean) self.getKlass().getMeta().Thread_daemon.get(self));
+            hostThread.start();
+        } else {
+            System.err.println(
+                    "Thread.start() called on " + self.getKlass() + " but thread support is disabled, Use -Djava.EnableThreads=true to enable experimental thread support.");
+        }
     }
 
     @SuppressWarnings("unused")

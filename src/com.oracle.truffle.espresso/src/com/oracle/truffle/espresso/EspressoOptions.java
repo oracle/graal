@@ -55,14 +55,17 @@ public final class EspressoOptions {
     @Option(help = "Use MethodHandle(s) instead of reflection to call substitutions.", category = OptionCategory.USER) //
     public static final OptionKey<Boolean> IntrinsicsViaMethodHandles = new OptionKey<>(false);
 
+    @Option(help = "Installation directory for Java Runtime Environment (JRE)", category = OptionCategory.USER) //
+    public static final OptionKey<String> JavaHome = new OptionKey<>("");
+
     @Option(help = "Enable assertions.", category = OptionCategory.USER) //
     public static final OptionKey<Boolean> EnableAssertions = new OptionKey<>(false);
 
     @Option(help = "Enable system assertions.", category = OptionCategory.USER) //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
-    @Option(help = "Installation directory for Java Runtime Environment (JRE)", category = OptionCategory.USER) //
-    public static final OptionKey<String> JavaHome = new OptionKey<>("");
+    @Option(help = "Enable experimental thread support.", category = OptionCategory.USER) //
+    public static final OptionKey<Boolean> EnableThreads = new OptionKey<>(false);
 
     public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
 
