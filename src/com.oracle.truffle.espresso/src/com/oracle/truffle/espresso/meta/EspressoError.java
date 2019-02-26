@@ -50,9 +50,9 @@ public final class EspressoError extends Error {
         @Override
         public String toString() {
             return "Frame{" +
-                    "method=" + method +
-                    ", bci=" + bci +
-                    '}';
+                            "method=" + method +
+                            ", bci=" + bci +
+                            '}';
         }
     }
 

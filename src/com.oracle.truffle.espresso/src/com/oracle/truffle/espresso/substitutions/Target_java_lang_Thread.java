@@ -92,7 +92,7 @@ public final class Target_java_lang_Thread {
             hostThread.start();
         } else {
             System.err.println(
-                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled, Use -Djava.EnableThreads=true to enable experimental thread support.");
+                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use -Djava.EnableThreads=true to enable experimental thread support.");
         }
     }
 
