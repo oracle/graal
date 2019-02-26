@@ -22,9 +22,12 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.HIDDEN_HOST_THREAD;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -164,6 +167,8 @@ public final class EspressoContext {
         return meta;
     }
 
+    public final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
+
     private void spawnVM() {
 
         System.err.println("Before spawnVM: " + BytecodeNode.bcCount.get());
@@ -178,6 +183,7 @@ public final class EspressoContext {
         this.meta = new Meta(this);
 
         this.interpreterToVM = new InterpreterToVM(this);
+
         // Spawn JNI first, then the VM.
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
@@ -199,6 +205,24 @@ public final class EspressoContext {
                         Type.Method)) {
             initializeKnownClass(type);
         }
+
+
+        EspressoContext context = EspressoLanguage.getCurrentContext();
+
+        StaticObjectImpl mainThread = (StaticObjectImpl) meta.Thread.allocateInstance();
+        StaticObject threadGroup = meta.ThreadGroup.allocateInstance();
+        meta.ThreadGroup_maxPriority.set(threadGroup, Thread.MAX_PRIORITY);
+        meta.Thread_group.set(mainThread, threadGroup);
+        meta.Thread_name.set(mainThread, meta.toGuestString("mainThread"));
+        meta.Thread_priority.set(mainThread, 5);
+        mainThread.setHiddenField(HIDDEN_HOST_THREAD, Thread.currentThread());
+        // host2guest should be in the context
+        host2guest.put(Thread.currentThread(), mainThread);
+
+        // Lock object used by NIO.
+        meta.Thread_blockerLock.set(mainThread, meta.Object.allocateInstance());
+        context.setMainThread(mainThread);
+
 
         // Finalizer is not public.
         initializeKnownClass(Type.java_lang_ref_Finalizer);

@@ -226,7 +226,6 @@ public final class InterpreterToVM implements ContextAccess {
     @SuppressWarnings({"deprecation"})
     @TruffleBoundary
     public static void monitorEnter(Object obj) {
-        // TODO(peterssen): Nop for single-threaded language + enable on SVM.
         hostUnsafe.monitorEnter(obj);
     }
 

@@ -36,31 +36,13 @@ import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
 
-    static final String HIDDEN_HOST_THREAD = "$$host_thread";
-    private static final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
+
+    public static final String HIDDEN_HOST_THREAD = "$$host_thread";
 
     // TODO(peterssen): Remove single thread shim, support real threads.
     @Substitution
     public static @Host(Thread.class) StaticObject currentThread() {
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        if (context.getMainThread() == null) {
-            Meta meta = context.getMeta();
-            StaticObjectImpl mainThread = (StaticObjectImpl) meta.Thread.allocateInstance();
-            StaticObject threadGroup = meta.ThreadGroup.allocateInstance();
-            meta.ThreadGroup_maxPriority.set(threadGroup, Thread.MAX_PRIORITY);
-            meta.Thread_group.set(mainThread, threadGroup);
-            meta.Thread_name.set(mainThread, meta.toGuestString("mainThread"));
-            meta.Thread_priority.set(mainThread, 5);
-
-            mainThread.setHiddenField(HIDDEN_HOST_THREAD, Thread.currentThread());
-            // host2guest should be in the context
-            host2guest.put(Thread.currentThread(), mainThread);
-
-            // Lock object used by NIO.
-            meta.Thread_blockerLock.set(mainThread, meta.Object.allocateInstance());
-            context.setMainThread(mainThread);
-        }
-        return host2guest.get(Thread.currentThread());
+        return EspressoLanguage.getCurrentContext().host2guest.get(Thread.currentThread());
     }
 
     @Substitution
@@ -82,7 +64,11 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static boolean isAlive(@Host(Thread.class) StaticObject self) {
-        return false;
+        Thread hostThread = (Thread) ((StaticObjectImpl) self).getHiddenField(HIDDEN_HOST_THREAD);
+        if (hostThread == null) {
+            return false;
+        }
+        return hostThread.isAlive();
     }
 
     @SuppressWarnings("unused")
@@ -101,7 +87,7 @@ public final class Target_java_lang_Thread {
         });
 
         ((StaticObjectImpl) self).setHiddenField(HIDDEN_HOST_THREAD, hostThread);
-        host2guest.put(hostThread, self);
+        EspressoLanguage.getCurrentContext().host2guest.put(hostThread, self);
 
         System.err.println("Starting thread: " + self.getKlass());
         hostThread.setDaemon((boolean) self.getKlass().getMeta().Thread_daemon.get(self));
@@ -116,6 +102,10 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static boolean holdsLock(@Host(Object.class) StaticObject object) {
+        if (StaticObject.isNull(object)) {
+            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+            throw meta.throwEx(meta.NullPointerException);
+        }
         return Thread.holdsLock(object);
     }
 
@@ -127,5 +117,14 @@ public final class Target_java_lang_Thread {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw meta.throwExWithMessage(e.getClass(), e.getMessage());
         }
+    }
+
+    @Substitution
+    public static void interrupt0(@Host(Object.class) StaticObject self) {
+        Thread hostThread = (Thread) ((StaticObjectImpl) self).getHiddenField(HIDDEN_HOST_THREAD);
+        if (hostThread == null) {
+            return ;
+        }
+        hostThread.interrupt();
     }
 }
