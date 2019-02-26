@@ -53,6 +53,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
@@ -74,11 +75,13 @@ public class OptionProcessorTest {
         OptionDescriptor descriptor1;
         OptionDescriptor descriptor2;
         OptionDescriptor descriptor3;
+        OptionDescriptor descriptor4;
 
         descriptor1 = descriptor = descriptors.get("optiontestlang1.StringOption1");
         assertNotNull(descriptor);
         assertTrue(descriptor.isDeprecated());
         assertSame(OptionCategory.USER, descriptor.getCategory());
+        assertSame(OptionStability.EXPERIMENTAL, descriptor.getStability());
         assertEquals("StringOption1 help", descriptor.getHelp());
         assertSame(OptionTestLang1.StringOption1, descriptor.getKey());
 
@@ -96,7 +99,18 @@ public class OptionProcessorTest {
         assertSame(OptionCategory.INTERNAL, descriptor.getCategory());
         assertSame(OptionTestLang1.LOWER_CASE_OPTION, descriptor.getKey());
 
+        descriptor4 = descriptor = descriptors.get("optiontestlang1.StableOption");
+        assertNotNull(descriptor);
+        assertEquals("Stable Option Help", descriptor.getHelp());
+        assertFalse(descriptor.isDeprecated());
+        assertSame(OptionCategory.USER, descriptor.getCategory());
+        assertSame(OptionStability.STABLE, descriptor.getStability());
+        assertSame(OptionTestLang1.StableOption, descriptor.getKey());
+
+        // The options are sorted alphabetically
         Iterator<OptionDescriptor> iterator = descriptors.iterator();
+        assertTrue(iterator.hasNext());
+        assertEquals(descriptor4, iterator.next());
         assertTrue(iterator.hasNext());
         assertEquals(descriptor1, iterator.next());
         assertTrue(iterator.hasNext());
@@ -226,6 +240,9 @@ public class OptionProcessorTest {
         // The variable name differs from the option name on purpose, to test they can be different
         @Option(help = "Help for lowerCaseOption", name = "lowerCaseOption", deprecated = true, category = OptionCategory.INTERNAL) //
         static final OptionKey<String> LOWER_CASE_OPTION = new OptionKey<>("defaultValue");
+
+        @Option(help = "Stable Option Help", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+        static final OptionKey<String> StableOption = new OptionKey<>("stable");
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {
