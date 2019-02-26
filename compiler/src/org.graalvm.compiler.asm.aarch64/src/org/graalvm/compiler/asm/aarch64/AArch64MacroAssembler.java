@@ -266,9 +266,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @return AArch64Address pointing to memory at {@code base + displacement}.
      */
     public AArch64Address makeAddress(Register base, long displacement, int transferSize) {
-        return makeAddress(base, displacement, zr, /* signExtend */false, transferSize, zr, /*
-                                                                                             * allowOverwrite
-                                                                                             */false);
+        return makeAddress(base, displacement, zr, /* signExtend */false, transferSize, zr, /* allowOverwrite */false);
     }
 
     /**
@@ -1723,9 +1721,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public AArch64Address makeAddress(Register base, int displacement) {
-        return makeAddress(base, displacement, zr, /* signExtend */false, /* transferSize */0, zr, /*
-                                                                                                    * allowOverwrite
-                                                                                                    */false);
+        return makeAddress(base, displacement, zr, /* signExtend */false, /* transferSize */0, zr, /* allowOverwrite */false);
     }
 
     @Override

@@ -39,7 +39,6 @@ import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
