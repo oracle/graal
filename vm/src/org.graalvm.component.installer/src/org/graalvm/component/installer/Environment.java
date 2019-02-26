@@ -100,7 +100,7 @@ public final class Environment implements Feedback, CommandInput {
 
         this.fileIterable = new FileIterable(this, this);
     }
-    
+
     Environment enableStacktraces() {
         this.stacktraces = true;
         return this;

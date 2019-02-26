@@ -117,7 +117,7 @@ public class RebuildImageCommand implements InstallerCommand {
         pb.directory(input.getGraalHomePath().toFile());
         pb.redirectInput(Redirect.INHERIT);
         pb.redirectError(Redirect.INHERIT);
-        
+
         ExecutorService connectors = Executors.newCachedThreadPool();
         try {
             int exitCode;

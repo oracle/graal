@@ -224,7 +224,7 @@ public class DirectoryStorage implements ComponentStorage {
         String version = getRequiredProperty(BundleConstants.BUNDLE_VERSION);
 
         String license = loaded.getProperty(BundleConstants.BUNDLE_LICENSE_PATH);
-        
+
         ci = new ComponentInfo(id, name, version);
         if (license != null) {
             SystemUtils.checkCommonRelative(null, license);
@@ -417,8 +417,8 @@ public class DirectoryStorage implements ComponentStorage {
         Files.write(listFile, entries, StandardOpenOption.CREATE,
                         StandardOpenOption.TRUNCATE_EXISTING);
     }
-    
-    private void checkLicenseID(String licenseID) {
+
+    private static void checkLicenseID(String licenseID) {
         if (licenseID.contains("/")) {
             throw new IllegalArgumentException("Invalid license ID: " + licenseID);
         }

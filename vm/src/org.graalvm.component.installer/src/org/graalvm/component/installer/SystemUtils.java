@@ -47,7 +47,7 @@ public class SystemUtils {
     private static final String DOTDOT = ".."; // NOI18N
 
     private static final String SPLIT_DELIMITER = Pattern.quote(DELIMITER);
-    
+
     /**
      * Creates a proper {@link Path} from string representation. The string representation uses
      * <b>forward slashes</b> to delimit fileName components.
@@ -126,11 +126,10 @@ public class SystemUtils {
         String osName = System.getProperty("os.name"); // NOI18N
         return osName != null && osName.toLowerCase().contains("windows");
     }
-    
+
     /**
-     * Checks if the path is relative and does not go above its root. The path
-     * may contain {@code ..} components, but they must not traverse outside the relative
-     * subtree.
+     * Checks if the path is relative and does not go above its root. The path may contain
+     * {@code ..} components, but they must not traverse outside the relative subtree.
      * 
      * @param p the path, in common notation (slashes)
      * @return the path
@@ -142,7 +141,7 @@ public class SystemUtils {
         }
         return fromArray(checkRelativePath(null, p));
     }
-    
+
     private static Path fromArray(String[] comps) {
         if (comps.length == 1) {
             return Paths.get(comps[0]);
@@ -153,7 +152,7 @@ public class SystemUtils {
         comps[l] = ""; // NOI18N
         return Paths.get(s, comps);
     }
-    
+
     public static Path fromCommonRelative(Path base, String p) {
         if (p == null) {
             return null;
@@ -163,13 +162,12 @@ public class SystemUtils {
         String[] comps = checkRelativePath(base, p);
         return base.resolveSibling(fromArray(comps));
     }
-    
+
     /**
-     * Resolves a relative path against a base, does not allow the path
-     * to go above the base root.
+     * Resolves a relative path against a base, does not allow the path to go above the base root.
      * 
      * @param base base Path
-     * @param p path string 
+     * @param p path string
      * @throws IllegalArgumentException on invalid path
      */
     public static void checkCommonRelative(Path base, String p) {
@@ -178,7 +176,7 @@ public class SystemUtils {
         }
         checkRelativePath(base, p);
     }
-    
+
     private static String[] checkRelativePath(Path base, String p) {
         if (p.startsWith(DELIMITER)) {
             throw new IllegalArgumentException("Absolute path");

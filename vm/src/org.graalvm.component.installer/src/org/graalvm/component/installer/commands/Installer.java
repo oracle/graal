@@ -114,7 +114,7 @@ public class Installer extends AbstractInstaller {
     Path translateTargetPath(String n) {
         return translateTargetPath(null, n);
     }
-    
+
     Path translateTargetPath(Path base, String n) {
         Path rel;
         if (BundleConstants.PATH_LICENSE.equals(n)) {
@@ -354,12 +354,23 @@ public class Installer extends AbstractInstaller {
             Path instDir = getInstallPath();
             for (String s : paths) {
                 // assert relative path
-                Path source = getInstallPath().resolve(SystemUtils.fromCommonRelative(s));
+                Path source = instDir.resolve(SystemUtils.fromCommonRelative(s));
+                if (source == null) {
+                    continue;
+                }
+                Path parent = source.getParent();
+                if (parent == null) {
+                    continue;
+                }
                 Path target = SystemUtils.fromCommonString(makeSymlinks.get(s));
-                Path result = source.getParent().resolve(target).normalize();
+                Path result = parent.resolve(target);
+                if (result == null) {
+                    continue;
+                }
+                result = result.normalize();
                 if (!result.startsWith(getInstallPath())) {
                     throw new IllegalStateException(
-                            feedback.l10n("INSTALL_SymlinkOutsideGraalvm", source, result));
+                                    feedback.l10n("INSTALL_SymlinkOutsideGraalvm", source, result));
                 }
                 ensurePathExists(source.getParent());
                 createdRelativeLinks.add(s);

@@ -70,7 +70,7 @@ public final class ComponentInstaller {
     public static final String GRAAL_DEFAULT_RELATIVE_PATH = "../../.."; // NOI18N
 
     private static final Environment SIMPLE_ENV = new Environment("help", Collections.emptyList(), Collections.emptyMap()).enableStacktraces(); // NOI18N
-    
+
     private String[] mainArguments;
     private String command;
     private InstallerCommand cmdHandler;
@@ -151,8 +151,8 @@ public final class ComponentInstaller {
     private ComponentInstaller(String[] args) {
         this.mainArguments = args;
     }
-    
-    private void printUsage(CommandInput input, Feedback output) {
+
+    private static void printUsage(CommandInput input, Feedback output) {
         SIMPLE_ENV.error("INFO_InstallerVersion", null, CommonConstants.INSTALLER_VERSION); // NOI18N
         printHelp(input, output);
     }
@@ -179,7 +179,6 @@ public final class ComponentInstaller {
     }
 
     static void printErr(String messageKey, Object... args) {
-        String s;
         SIMPLE_ENV.message(messageKey, args);
     }
 
