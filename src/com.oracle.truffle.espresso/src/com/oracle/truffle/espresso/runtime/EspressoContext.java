@@ -206,7 +206,6 @@ public final class EspressoContext {
             initializeKnownClass(type);
         }
 
-
         EspressoContext context = EspressoLanguage.getCurrentContext();
 
         StaticObjectImpl mainThread = (StaticObjectImpl) meta.Thread.allocateInstance();
@@ -222,7 +221,6 @@ public final class EspressoContext {
         // Lock object used by NIO.
         meta.Thread_blockerLock.set(mainThread, meta.Object.allocateInstance());
         context.setMainThread(mainThread);
-
 
         // Finalizer is not public.
         initializeKnownClass(Type.java_lang_ref_Finalizer);

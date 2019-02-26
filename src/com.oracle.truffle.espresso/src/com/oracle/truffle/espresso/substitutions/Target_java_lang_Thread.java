@@ -37,7 +37,6 @@ import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
 
-
     public static final String HIDDEN_HOST_THREAD = "$$host_thread";
 
     // TODO(peterssen): Remove single thread shim, support real threads.
@@ -96,7 +95,7 @@ public final class Target_java_lang_Thread {
             hostThread.start();
         } else {
             System.err.println(
-                    "Thread.start() called on " + self.getKlass() + " but thread support is disabled, Use -Djava.EnableThreads=true to enable experimental thread support.");
+                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled, Use -Djava.EnableThreads=true to enable experimental thread support.");
         }
     }
 
@@ -129,7 +128,7 @@ public final class Target_java_lang_Thread {
     public static void interrupt0(@Host(Object.class) StaticObject self) {
         Thread hostThread = (Thread) ((StaticObjectImpl) self).getHiddenField(HIDDEN_HOST_THREAD);
         if (hostThread == null) {
-            return ;
+            return;
         }
         hostThread.interrupt();
     }

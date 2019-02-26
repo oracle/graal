@@ -703,7 +703,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     case IF_ACMPEQ   : // fall through
                     case IF_ACMPNE   : // fall through
 
-                        // TODO(peterssen): Order shuffled.
+                    // TODO(peterssen): Order shuffled.
                     case GOTO        : // fall through
                     case GOTO_W      : // fall through
                     case IFNULL      : // fall through
@@ -1381,8 +1381,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
         assert field.isStatic() == (opcode == PUTSTATIC);
         StaticObject receiver = field.isStatic()
-                ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                : nullCheck(peekObject(frame, top - field.getKind().getSlotCount() - 1)); // -receiver
+                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
+                        : nullCheck(peekObject(frame, top - field.getKind().getSlotCount() - 1)); // -receiver
         // @formatter:off
         // Checkstyle: stop
         switch (field.getKind()) {
@@ -1419,8 +1419,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         CompilerAsserts.partialEvaluationConstant(field);
 
         StaticObject receiver = field.isStatic()
-                ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                : nullCheck(peekObject(frame, top - 1));
+                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
+                        : nullCheck(peekObject(frame, top - 1));
 
         int resultAt = field.isStatic() ? top : (top - 1);
         // @formatter:off
