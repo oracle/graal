@@ -100,6 +100,7 @@ public class UseBarriersForVolatileTest extends GraalCompilerTest {
 
     @Test
     public void testVarHandlesInSubJVM() throws IOException, InterruptedException {
+        Assume.assumeTrue(getTarget().arch instanceof AArch64);
         // the criterion for success is that all 4 tests finish ok
         Probe successProbe = new Probe("OK (2 tests)", 1);
         Probe testReadProbe = new Probe("Testing: testReadSnippet", 1);
