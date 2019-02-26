@@ -19,9 +19,9 @@ benchCommon: ${linux-amd64} ${labsjdk8} {
   targets: [bench, weekly],
   timelimit: "1:00:00",
   setup : [
-    ["cd", "./compiler"],
+    ["cd", ${compiler-suite-root}],
     ["mx", "build" ]
-  ],
+  ] ${download-hsdis.setup}
   teardown : [
     ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "${BENCH_RESULTS_FILE_PATH}"]
   ]
