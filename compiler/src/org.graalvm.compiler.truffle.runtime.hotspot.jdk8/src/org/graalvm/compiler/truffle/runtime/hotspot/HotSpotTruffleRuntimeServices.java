@@ -58,6 +58,8 @@ class HotSpotTruffleRuntimeServices {
      */
     public static SpeculationLog getCompilationSpeculationLog(OptimizedCallTarget callTarget) {
         HotSpotSpeculationLog masterLog = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
-        return new CompilationSpeculationLog(masterLog);
+        CompilationSpeculationLog compilationSpeculationLog = new CompilationSpeculationLog(masterLog);
+        compilationSpeculationLog.collectFailedSpeculations();
+        return compilationSpeculationLog;
     }
 }
