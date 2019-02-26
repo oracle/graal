@@ -829,7 +829,7 @@ public class BytecodeNode extends EspressoBaseNode {
 
                     case ATHROW                : CompilerDirectives.transferToInterpreter(); throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
 
-                    case CHECKCAST             : putObject(frame, top - 1, checkCast(peekObject(frame, top - 1), resolveType(curOpcode, bs.readCPI(curBCI)))); break;
+                    case CHECKCAST             : top += quickenCheckCast(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
                     case INSTANCEOF            : top += quickenInstanceOf(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
 
                     case MONITORENTER          : InterpreterToVM.monitorEnter(nullCheck(peekObject(frame, top - 1))); break;
@@ -1136,6 +1136,12 @@ public class BytecodeNode extends EspressoBaseNode {
         return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
     }
 
+    private int quickenCheckCast(final VirtualFrame frame, int top, int curBCI, Klass typeToCheck, int opCode) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert opCode == CHECKCAST;
+        return injectAndCall(frame, top, curBCI, CheckCastNodeGen.create(typeToCheck), opCode);
+    }
+
     private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, Klass typeToCheck, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opCode == INSTANCEOF;
@@ -1300,14 +1306,6 @@ public class BytecodeNode extends EspressoBaseNode {
     }
 
     // endregion Arithmetic/binary operations
-
-    // region Type checks
-
-    private StaticObject checkCast(StaticObject instance, Klass typeToCheck) {
-        return getInterpreterToVM().checkCast(instance, typeToCheck);
-    }
-
-    // endregion Type checks
 
     // region Comparisons
 
