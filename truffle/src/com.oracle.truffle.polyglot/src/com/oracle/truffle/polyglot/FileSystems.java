@@ -100,6 +100,14 @@ final class FileSystems {
         return fileSystem != null && fileSystem.getClass() == DeniedIOFileSystem.class;
     }
 
+    /**
+     * Called after context pre-initialization before native image is written to remove the
+     * {@link FileSystemProvider} reference from native image heap.
+     */
+    static void resetDefaultFileSystemProvider() {
+        DEFAULT_FILE_SYSTEM_PROVIDER.set(null);
+    }
+
     private static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider) {
         return new NIOFileSystem(fileSystemProvider);
     }

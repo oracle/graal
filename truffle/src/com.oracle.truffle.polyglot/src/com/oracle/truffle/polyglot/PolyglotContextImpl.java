@@ -1216,6 +1216,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             return context;
         } finally {
             fs.patchDelegate(FileSystems.INVALID_FILESYSTEM);
+            FileSystems.resetDefaultFileSystemProvider();
             if (!config.logLevels.isEmpty()) {
                 VMAccessor.LANGUAGE.configureLoggers(context, null);
             }
