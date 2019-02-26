@@ -102,11 +102,16 @@ public class StaticObjectImpl extends StaticObject {
         }
     }
 
+    public final Object getFieldVolatile(Field field) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        return U.getObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getSlot());
+    }
+
     public final Object getField(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         Object result;
         if (field.isVolatile()) {
-            result = U.getObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getSlot());
+            result = getFieldVolatile(field);
         } else {
             result = fields[field.getSlot()];
         }
@@ -114,10 +119,15 @@ public class StaticObjectImpl extends StaticObject {
         return result;
     }
 
+    public final void setFieldVolatile(Field field, Object value) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        U.putObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getSlot(), value);
+    }
+
     public final void setField(Field field, Object value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         if (field.isVolatile()) {
-            U.putObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getSlot(), value);
+            setFieldVolatile(field, value);
         } else {
             fields[field.getSlot()] = value;
         }
