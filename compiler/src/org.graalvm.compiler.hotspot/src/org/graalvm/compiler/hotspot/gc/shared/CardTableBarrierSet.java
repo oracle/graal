@@ -102,7 +102,7 @@ public class CardTableBarrierSet extends BarrierSet {
         graph.addAfterFixed(write.asNode(), serialArrayRangeWriteBarrier);
     }
 
-    private static void addSerialPostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
+    protected void addSerialPostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
         if (alwaysNull) {
             // Serial barrier isn't needed for null value

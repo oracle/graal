@@ -27,7 +27,9 @@ package org.graalvm.compiler.hotspot.phases;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.gc.g1.G1BarrierSet;
 import org.graalvm.compiler.hotspot.gc.shared.BarrierSet;
+import org.graalvm.compiler.hotspot.gc.shared.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
@@ -41,7 +43,7 @@ public class WriteBarrierAdditionPhase extends Phase {
     private BarrierSet barrierSet;
 
     public WriteBarrierAdditionPhase(GraalHotSpotVMConfig config) {
-        this.barrierSet = BarrierSet.create(config);
+        this.barrierSet = createBarrierSet(config);
     }
 
     @SuppressWarnings("try")
@@ -71,5 +73,21 @@ public class WriteBarrierAdditionPhase extends Phase {
     @Override
     public boolean checkContract() {
         return false;
+    }
+
+    private BarrierSet createBarrierSet(GraalHotSpotVMConfig config) {
+        if (config.useG1GC) {
+            return createG1BarrierSet();
+        } else {
+            return createCardTableBarrierSet();
+        }
+    }
+
+    protected BarrierSet createCardTableBarrierSet() {
+        return new CardTableBarrierSet();
+    }
+
+    protected BarrierSet createG1BarrierSet() {
+        return new G1BarrierSet();
     }
 }

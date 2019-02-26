@@ -25,8 +25,6 @@
  */
 package org.graalvm.compiler.hotspot.gc.shared;
 
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.gc.g1.G1BarrierSet;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
@@ -35,14 +33,6 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 
 public abstract class BarrierSet {
-    public static BarrierSet create(GraalHotSpotVMConfig config) {
-        if (config.useG1GC) {
-            return new G1BarrierSet();
-        } else {
-            return new CardTableBarrierSet();
-        }
-    }
-
     public abstract void addReadNodeBarriers(ReadNode node, StructuredGraph graph);
 
     public abstract void addWriteNodeBarriers(WriteNode node, StructuredGraph graph);
