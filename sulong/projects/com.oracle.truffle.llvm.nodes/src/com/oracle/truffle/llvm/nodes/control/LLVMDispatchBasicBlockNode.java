@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -114,8 +114,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                             backEdgeCounter++;
                         }
                     }
-                    executePhis(frame, conditionalBranchNode, LLVMConditionalBranchNode.TRUE_SUCCESSOR);
                     nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
+                    executePhis(frame, conditionalBranchNode, LLVMConditionalBranchNode.TRUE_SUCCESSOR);
                     basicBlockIndex = conditionalBranchNode.getTrueSuccessor();
                     nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                     continue outer;
@@ -126,8 +126,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                             backEdgeCounter++;
                         }
                     }
-                    executePhis(frame, conditionalBranchNode, LLVMConditionalBranchNode.FALSE_SUCCESSOR);
                     nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
+                    executePhis(frame, conditionalBranchNode, LLVMConditionalBranchNode.FALSE_SUCCESSOR);
                     basicBlockIndex = conditionalBranchNode.getFalseSuccessor();
                     nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                     continue outer;
@@ -146,8 +146,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                                 backEdgeCounter++;
                             }
                         }
-                        executePhis(frame, switchNode, i);
                         nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
+                        executePhis(frame, switchNode, i);
                         basicBlockIndex = successors[i];
                         nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                         continue outer;
@@ -161,8 +161,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                         backEdgeCounter++;
                     }
                 }
-                executePhis(frame, switchNode, i);
                 nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
+                executePhis(frame, switchNode, i);
                 basicBlockIndex = successors[i];
                 nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                 continue outer;
@@ -180,8 +180,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                                 backEdgeCounter++;
                             }
                         }
-                        executePhis(frame, indirectBranchNode, i);
                         nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
+                        executePhis(frame, indirectBranchNode, i);
                         basicBlockIndex = successors[i];
                         nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                         continue outer;
@@ -196,8 +196,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                         backEdgeCounter++;
                     }
                 }
-                executePhis(frame, indirectBranchNode, i);
                 nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
+                executePhis(frame, indirectBranchNode, i);
                 basicBlockIndex = successors[i];
                 nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                 continue outer;
@@ -209,8 +209,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                     }
                 }
                 unconditionalNode.execute(frame); // required for instrumentation
-                executePhis(frame, unconditionalNode, 0);
                 nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
+                executePhis(frame, unconditionalNode, 0);
                 basicBlockIndex = unconditionalNode.getSuccessor();
                 nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                 continue outer;
@@ -223,8 +223,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                             backEdgeCounter++;
                         }
                     }
-                    executePhis(frame, invokeNode, LLVMInvokeNode.NORMAL_SUCCESSOR);
                     nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
+                    executePhis(frame, invokeNode, LLVMInvokeNode.NORMAL_SUCCESSOR);
                     basicBlockIndex = invokeNode.getNormalSuccessor();
                     nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                     continue outer;
@@ -235,8 +235,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                             backEdgeCounter++;
                         }
                     }
-                    executePhis(frame, invokeNode, LLVMInvokeNode.UNWIND_SUCCESSOR);
                     nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
+                    executePhis(frame, invokeNode, LLVMInvokeNode.UNWIND_SUCCESSOR);
                     basicBlockIndex = invokeNode.getUnwindSuccessor();
                     nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                     continue outer;
