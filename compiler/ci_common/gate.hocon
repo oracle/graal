@@ -132,6 +132,8 @@ gateLinuxAMD64 : ${linux-amd64} ${gateCommon}
 
 gateDarwinAMD64 : ${darwin-amd64} ${gateCommon}
 
+gateWindowsAMD64 : ${windows-amd64} ${gateCommon}
+
 gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
 
 gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}

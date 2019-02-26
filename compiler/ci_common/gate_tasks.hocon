@@ -7,6 +7,9 @@ builds += [
   ${gateTest}           ${oraclejdk11} ${gateDarwinAMD64}  {name: "weekly-test-compiler-test-11-darwin-amd64"} ${graalWeekly}
 # ${gateTestBenchmark}  ${labsjdk8}    ${gateDarwinAMD64}  {name: "weekly-test-compiler-benchmarktest-8-darwin-amd64"} ${graalWeekly}
 
+  # Windows AMD64
+  ${gateTest}          ${labsjdk8}     ${gateWindowsAMD64}   {name: "gate-compiler-test-8-windows-amd64", timelimit: "40:00", packages: {msvc: "==10.0" }}
+
   # Linux AMD64
   ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64"}
   ${gateTest}          ${openjdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-openjdk8-linux-amd64"} ${graalWeekly}
