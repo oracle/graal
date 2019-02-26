@@ -455,6 +455,9 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
         super(GraalVmLayoutDistributionTask, self).__init__(args, dist)
 
     def _add_link(self):
+        if mx.get_os() == 'windows':
+            mx.log('Skip adding symlink ' + self._root_link_path + ' (Windows)')
+            return
         self._rm_link()
         os.symlink(self._root_link_target(), self._root_link_path)
         os.symlink(self._home_link_target(), self._home_link_path)
@@ -466,6 +469,8 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
         return relpath(join(self.subject.output, self.subject.jdk_base), _suite.dir)
 
     def _rm_link(self):
+        if mx.get_os() == 'windows':
+            return
         for l in [self._root_link_path, self._home_link_path]:
             if os.path.lexists(l):
                 os.unlink(l)
