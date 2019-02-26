@@ -122,7 +122,7 @@ builds += [
   ${sulong-gateTest60-linux} ${requireGCC} { name: gate-sulong-basic_v60, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
 
-  ${sulong-gateTest38-linux} ${sulong-ruby-downstream-test} { targets: [post-merge], name: gate-sulong-ruby-downstream }
+  ${sulong-gateTest38-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
   ${sulong-gateTest38-linux} ${sulong-python-downstream-test} { name: gate-sulong-python-downstream }
 
   ${sulong-coverage-linux} { name: weekly-sulong-coverage }
