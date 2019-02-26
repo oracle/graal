@@ -45,6 +45,10 @@ public class BootstrapMethodsAttribute extends Attribute {
             this.bootstrapMethodRef = bootstrapMethodRef;
             this.bootstrapArguments = bootstrapArguments;
         }
+
+        public char argAt(int index) {
+            return bootstrapArguments[index];
+        }
     }
 
     private final Entry[] entries;
@@ -52,5 +56,9 @@ public class BootstrapMethodsAttribute extends Attribute {
     public BootstrapMethodsAttribute(Symbol<Name> name, Entry[] entries) {
         super(name, null);
         this.entries = entries;
+    }
+
+    public Entry at(int index) {
+        return entries[index];
     }
 }

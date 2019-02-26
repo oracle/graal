@@ -66,7 +66,7 @@ public interface MethodHandleConstant extends PoolConstant {
 
     RefKind getRefKind();
 
-    int getRefIndex();
+    char getRefIndex();
 
     @Override
     default String toString(ConstantPool pool) {
@@ -89,7 +89,7 @@ public interface MethodHandleConstant extends PoolConstant {
             return kind;
         }
 
-        public int getRefIndex() {
+        public char getRefIndex() {
             return refIndex;
         }
     }

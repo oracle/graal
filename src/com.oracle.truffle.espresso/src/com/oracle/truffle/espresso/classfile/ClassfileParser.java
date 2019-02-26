@@ -38,10 +38,7 @@ import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
-import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.runtime.ClasspathFile;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.*;
 
 public final class ClassfileParser {
 

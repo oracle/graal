@@ -53,6 +53,8 @@ public abstract class StaticObject implements TruffleObject {
     public final boolean isStaticStorage() {
         return this == getKlass().getStatics();
     }
+
+    public abstract boolean isCallSite();// {return false;}
 }
 
 final class Void extends StaticObject {
@@ -69,6 +71,11 @@ final class Void extends StaticObject {
     public String toString() {
         return "void";
     }
+
+    @Override
+    public boolean isCallSite() {
+        return false;
+    }
 }
 
 final class Null extends StaticObject {
@@ -84,5 +91,10 @@ final class Null extends StaticObject {
     @Override
     public String toString() {
         return "null";
+    }
+
+    @Override
+    public boolean isCallSite() {
+        return false;
     }
 }

@@ -52,6 +52,7 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
@@ -128,6 +129,10 @@ public final class Method implements ModifiersProvider, ContextAccess {
     @Override
     public EspressoContext getContext() {
         return declaringKlass.getContext();
+    }
+
+    public final BootstrapMethodsAttribute getBootstrapMethods() {
+        return (BootstrapMethodsAttribute) getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
     public byte[] getCode() {

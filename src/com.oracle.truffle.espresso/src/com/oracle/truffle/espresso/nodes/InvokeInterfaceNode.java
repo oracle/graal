@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.runtime.CallSiteObject;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
@@ -90,8 +91,18 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         BytecodeNode root = (BytecodeNode) getParent();
         // TODO(peterssen): IsNull Node?.
         final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
-        final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver != null;
+        if (receiver.isCallSite()) {
+            CallSiteObject cso = (CallSiteObject) receiver;
+            Method method = cso.getTarget();
+            Object[] targetArgs = root.peekArgumentsWithCSO(frame, top, cso.hasReceiver(), method.getParsedSignature(), cso);
+            Object result = cso.call(targetArgs);
+            int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) + cso.getStackEffect(); // pop CSO
+            int ret = (resultAt - top) + root.putKind(frame, resultAt, result, Signatures.returnKind(method.getParsedSignature()));
+            //return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind()); //
+            return ret;
+        }
+        final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = executeVirtual(receiver, args);
         int resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
