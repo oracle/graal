@@ -34,12 +34,15 @@ void sbuf_new(struct sbuf *b) {
   b->length = 0;
 }
 
-static bool maybe_resize_sbuf_for_retry(struct sbuf *b, int just_written) {
-  if (b->length + just_written < b->capacity) {
-    b->length += just_written;
+static inline bool maybe_grow(struct sbuf *b, int required) {
+  int required_capacity = b->length + required + 1; // +1: NUL byte excluded from length
+  if (required_capacity <= b->capacity) {
     return false;
   }
   int new_capacity = 2 * b->capacity;
+  if (new_capacity < required_capacity) {
+    new_capacity = required_capacity;
+  }
   guarantee((b->buffer = realloc(b->buffer, new_capacity)) != NULL);
   b->capacity = new_capacity;
   return true;
@@ -57,17 +60,31 @@ void sbuf_printf(struct sbuf *b, const char *fmt, ...) {
 }
 
 void sbuf_vprintf(struct sbuf *b, const char *fmt, va_list ap) {
-  int just_written;
+  int required;
   do {
     va_list aq;
     va_copy(aq, ap);
-    just_written = vsnprintf(&b->buffer[b->length], b->capacity - b->length, fmt, aq);
+    required = vsnprintf(&b->buffer[b->length], b->capacity - b->length, fmt, aq);
     va_end(aq);
-  } while (maybe_resize_sbuf_for_retry(b, just_written));
+  } while (maybe_grow(b, required));
+  b->length += required;
 }
 
-void sbuf_append(struct sbuf *b, const struct sbuf *other) {
-  sbuf_printf(b, "%s", other);
+void sbuf_quote(struct sbuf *b, const char *s) {
+  maybe_grow(b, 1);
+  b->buffer[b->length++] = '"';
+
+  for (char *p = s; *p != '\0'; p++) {
+    maybe_grow(b, 2);
+    if (*p == '"' || *p == '\\') {
+      b->buffer[b->length++] = '\\';
+    }
+    b->buffer[b->length++] = *p;
+  }
+
+  maybe_grow(b, 1);
+  b->buffer[b->length++] = '"';
+  b->buffer[b->length] = '\0';
 }
 
 void sbuf_destroy(struct sbuf *b) {

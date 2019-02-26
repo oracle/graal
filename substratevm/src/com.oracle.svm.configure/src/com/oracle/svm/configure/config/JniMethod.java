@@ -30,9 +30,6 @@ import java.util.Objects;
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaUtil;
-
 public class JniMethod implements JsonPrintable {
     private final String name;
     private final String signature;
@@ -53,47 +50,14 @@ public class JniMethod implements JsonPrintable {
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{');
-        writer.append("\"name\":\"").append(name).append("\",");
-        writer.append("\"parameterTypes\":");
-        printJsonParameterTypes(writer);
-        writer.append('}');
-    }
-
-    private void printJsonParameterTypes(JsonWriter writer) throws IOException {
-        if (signature.charAt(0) != '(') {
-            throw new IllegalArgumentException("Invalid signature, expected '(':" + signature);
-        }
-        writer.append('[');
+        writer.quote("name").append(':').quote(name).append(',');
+        writer.quote("parameterTypes").append(":[");
         char prefix = ' ';
-        int position = 1;
-        int arrayDimensions = 0;
-        while (signature.charAt(position) != ')') {
-            String type = null;
-            if (signature.charAt(position) == '[') {
-                arrayDimensions++;
-            } else if (signature.charAt(position) == 'L') {
-                int end = signature.indexOf(';', position + 1);
-                type = MetaUtil.internalNameToJava(signature.substring(position, end + 1), true, false);
-                position = end;
-            } else {
-                type = JavaKind.fromPrimitiveOrVoidTypeChar(signature.charAt(position)).toString();
-            }
-            position++;
-            if (type != null) {
-                writer.append(prefix).append('"').append(type);
-                while (arrayDimensions > 0) {
-                    writer.append("[]");
-                    arrayDimensions--;
-                }
-                writer.append('"');
-                prefix = ',';
-            }
+        for (String type : SignatureParser.getParameterTypes(signature)) {
+            writer.append(prefix).quote(type);
+            prefix = ',';
         }
-        // ignore return type
-        if (arrayDimensions > 0) {
-            throw new IllegalArgumentException("Invalid array in signature: " + signature);
-        }
-        writer.append(" ]");
+        writer.append("] }");
     }
 
     @Override

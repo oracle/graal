@@ -36,7 +36,7 @@ public class ReflectionMemberSet {
 
     public MatchSet<String> getFields() {
         if (fields == null) {
-            fields = MatchSet.create(Comparator.naturalOrder(), (String s, JsonWriter w) -> w.append("{\"name\":\"").append(s).append("\"}"));
+            fields = MatchSet.create(Comparator.naturalOrder(), (String s, JsonWriter w) -> w.append('{').quote("name").append(':').quote(s).append('}'));
         }
         return fields;
     }
@@ -77,13 +77,13 @@ public class ReflectionMemberSet {
 
     public void printJson(JsonWriter writer, String infix) throws IOException {
         if (fields != null && fields.matchesAll()) {
-            writer.append(',').newline().append("\"all").append(infix).append("Fields\":").append("true");
+            writer.append(',').newline().quote("all" + infix + "Fields").append(":true");
         }
         if (methods != null && methods.matchesAll()) {
-            writer.append(',').newline().append("\"all").append(infix).append("Methods\":").append("true");
+            writer.append(',').newline().quote("all" + infix + "Methods").append(":true");
         }
         if (constructors != null && constructors.matchesAll()) {
-            writer.append(',').newline().append("\"all").append(infix).append("Constructors\":").append("true");
+            writer.append(',').newline().quote("all" + infix + "Constructors").append(":true");
         }
     }
 }

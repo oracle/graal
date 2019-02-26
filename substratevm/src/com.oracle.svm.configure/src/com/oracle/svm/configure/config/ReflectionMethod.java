@@ -71,11 +71,11 @@ public class ReflectionMethod implements JsonPrintable {
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append("{ \"name\":\"").append(name).append('"');
-        writer.append(", \"parameterTypes\":[");
+        writer.append("{ ").quote("name").append(':').quote(name);
+        writer.append(", ").quote("parameterTypes").append(":[");
         String prefix = "";
         for (String type : parameterTypes) {
-            writer.append(prefix).append('"').append(type).append('"');
+            writer.append(prefix).quote(type);
             prefix = ", ";
         }
         writer.append("] }");

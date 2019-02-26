@@ -41,7 +41,7 @@ void sbuf_new(struct sbuf *b);
 const char *sbuf_as_cstr(struct sbuf *b);
 void sbuf_printf(struct sbuf *b, const char *fmt, ...);
 void sbuf_vprintf(struct sbuf *b, const char *fmt, va_list ap);
-void sbuf_append(struct sbuf *b, const struct sbuf *other);
+void sbuf_quote(struct sbuf *b, const char *s);
 void sbuf_destroy(struct sbuf *b);
 
 #ifdef __cplusplus

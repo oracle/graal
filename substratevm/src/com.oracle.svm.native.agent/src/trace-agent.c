@@ -120,30 +120,40 @@ static bool should_quote(const char *s) {
   return (s != TRACE_VALUE_NULL && s != TRACE_VALUE_UNKNOWN);
 }
 
-#define SBUF_PRINT_OPTIONAL_QUOTE(condition, sbuf, fmt, ...) \
-  sbuf_printf((sbuf), ((condition) ? (fmt "\"%s\"") : (fmt "%s")), __VA_ARGS__)
+static void quote_or_append(bool condition, struct sbuf *b, const char *s) {
+  if (condition) {
+    sbuf_quote(b, s);
+  } else {
+    sbuf_printf(b, "%s", s);
+  }
+}
 
-void sbuf_append_jclass(JNIEnv *env, struct sbuf *s, const char *key, jclass clazz) {
-    jstring clazz_name = NULL;
-    const char *clazz_name_cstr = NULL;
-    if (clazz != TRACE_OBJECT_NULL) {
-      jclass clazz_class = jnifun->GetObjectClass(env, clazz);
-      clazz_name = (clazz_class != NULL) ? jnifun->CallObjectMethod(env, clazz, java_lang_Class_getName) : NULL;
-      clazz_name_cstr = (clazz_name != NULL) ? jnifun->GetStringUTFChars(env, clazz_name, NULL) : NULL;
-    }
-    clazz_name_cstr = (clazz_name_cstr != NULL) ? clazz_name_cstr : TRACE_VALUE_NULL;
-    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(clazz_name_cstr), s, ", \"%s\":", key, clazz_name_cstr);
-    if (clazz_name_cstr != TRACE_VALUE_NULL) {
-      jnifun->ReleaseStringUTFChars(env, clazz_name, clazz_name_cstr);
-    }
+static void sbuf_append_jclass(JNIEnv *env, struct sbuf *b, const char *key, jclass clazz) {
+  jstring clazz_name = NULL;
+  const char *clazz_name_cstr = NULL;
+  if (clazz != TRACE_OBJECT_NULL) {
+    jclass clazz_class = jnifun->GetObjectClass(env, clazz);
+    clazz_name = (clazz_class != NULL) ? jnifun->CallObjectMethod(env, clazz, java_lang_Class_getName) : NULL;
+    clazz_name_cstr = (clazz_name != NULL) ? jnifun->GetStringUTFChars(env, clazz_name, NULL) : NULL;
+  }
+  clazz_name_cstr = (clazz_name_cstr != NULL) ? clazz_name_cstr : TRACE_VALUE_NULL;
+  sbuf_printf(b, ", ");
+  sbuf_quote(b, key);
+  sbuf_printf(b, ":");
+  quote_or_append(should_quote(clazz_name_cstr), b, clazz_name_cstr);
+  if (clazz_name_cstr != TRACE_VALUE_NULL) {
+    jnifun->ReleaseStringUTFChars(env, clazz_name, clazz_name_cstr);
+  }
 }
 
 void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller_class, const char *function, va_list args) {
   struct sbuf e;
   sbuf_new(&e);
-  sbuf_printf(&e, "{\"tracer\":\"%s\"", tracer);
+  sbuf_printf(&e, "{\"tracer\":");
+  sbuf_quote(&e, tracer);
   if (function != NULL) {
-    SBUF_PRINT_OPTIONAL_QUOTE(should_quote(function), &e, ", \"function\":", function);
+    sbuf_printf(&e, ", \"function\":");
+    quote_or_append(should_quote(function), &e, function);
   }
   if (clazz != NULL) {
     sbuf_append_jclass(env, &e, "class", clazz);
@@ -161,7 +171,8 @@ void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller
         quote_next = false;
       } else {
         if (arg != TRACE_ARG_IGNORE) {
-          SBUF_PRINT_OPTIONAL_QUOTE(quote_next && should_quote(arg), &e, "%c", prefix, arg);
+          sbuf_printf(&e, "%c", prefix);
+          quote_or_append(quote_next && should_quote(arg), &e, arg);
           prefix = ',';
         }
         quote_next = true;

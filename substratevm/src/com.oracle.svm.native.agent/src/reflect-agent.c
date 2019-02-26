@@ -131,10 +131,11 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
     sbuf_new(&b);
     char prefix = '[';
     for (jint i = 0; i < param_types_len; i++) {
+      sbuf_printf(&b, "%c", prefix);
       jclass arg = jnifun->GetObjectArrayElement(jni, param_types, i);
       jstring class_name = (arg != NULL) ? jnifun->CallObjectMethod(jni, arg, java_lang_Class_getName) : NULL;
       const char *class_name_cstr = get_cstr(jni, class_name);
-      sbuf_printf(&b, "%c\"%s\"", prefix, class_name_cstr);
+      sbuf_quote(&b, class_name_cstr);
       prefix = ',';
       release_cstr(jni, class_name, class_name_cstr);
     }
@@ -160,10 +161,11 @@ static void OnBreakpoint_requestProxy(jvmtiEnv *jvmti, JNIEnv* jni, jthread thre
     sbuf_new(&b);
     char prefix = '[';
     for (jint i = 0; i < ifaces_len; i++) {
+      sbuf_printf(&b, "%c", prefix);
       jclass arg = jnifun->GetObjectArrayElement(jni, ifaces, i);
       jstring class_name = (arg != NULL) ? jnifun->CallObjectMethod(jni, arg, java_lang_Class_getName) : NULL;
       const char *class_name_cstr = get_cstr(jni, class_name);
-      sbuf_printf(&b, "%c\"%s\"", prefix, class_name_cstr);
+      sbuf_quote(&b, class_name_cstr);
       prefix = ',';
       release_cstr(jni, class_name, class_name_cstr);
     }

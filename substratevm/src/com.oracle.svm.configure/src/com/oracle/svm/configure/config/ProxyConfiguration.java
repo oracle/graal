@@ -26,11 +26,10 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
@@ -44,18 +43,34 @@ public class ProxyConfiguration implements JsonPrintable {
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
+        List<String[]> sets = new ArrayList<>(interfaceSets.size());
+        for (Set<String> set : interfaceSets) {
+            String[] array = set.toArray(new String[0]);
+            Arrays.sort(array);
+            sets.add(array);
+        }
+        sets.sort((a, b) -> {
+            int c = 0;
+            for (int i = 0; c == 0 && i < a.length && i < b.length; i++) {
+                c = a[i].compareTo(b[i]);
+            }
+            return (c != 0) ? c : (a.length - b.length);
+        });
+
         writer.append('[');
         writer.indent();
-        List<String> lines = new ArrayList<>(interfaceSets.size());
-        interfaceSets.forEach(set -> lines.add(set.stream().sorted().map(str -> '"' + str + '"')
-                        .collect(Collectors.joining(", ", "[", "]"))));
-        lines.sort(Comparator.naturalOrder());
         String prefix = "";
-        for (String line : lines) {
-            writer.append(prefix).newline().append(line);
+        for (String[] set : sets) {
+            writer.append(prefix).newline();
+            char typePrefix = '[';
+            for (String type : set) {
+                writer.append(typePrefix).quote(type);
+                typePrefix = ',';
+            }
+            writer.append(']');
             prefix = ",";
         }
         writer.unindent().newline();
-        writer.append(']');
+        writer.append(']').newline();
     }
 }

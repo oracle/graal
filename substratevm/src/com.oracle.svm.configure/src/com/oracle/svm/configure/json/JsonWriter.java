@@ -26,17 +26,20 @@ package com.oracle.svm.configure.json;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
 
 public class JsonWriter implements AutoCloseable {
     private static final String WHITESPACE = "                                ";
 
-    private final String lineSep = System.lineSeparator();
     private final Writer writer;
 
     private int indentation = 0;
 
-    public JsonWriter(Writer writer) {
-        this.writer = writer;
+    public JsonWriter(Path path, OpenOption... options) throws IOException {
+        this.writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, options);
     }
 
     public JsonWriter append(char c) throws IOException {
@@ -49,8 +52,23 @@ public class JsonWriter implements AutoCloseable {
         return this;
     }
 
+    public JsonWriter quote(String s) throws IOException {
+        StringBuilder sb = new StringBuilder(2 + s.length() + 8 /* room for escaping */);
+        sb.append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"' || c == '\\') {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        sb.append('"');
+        writer.write(sb.toString());
+        return this;
+    }
+
     public JsonWriter newline() throws IOException {
-        writer.write(lineSep);
+        writer.write('\n');
         writer.write(WHITESPACE, 0, Math.min(2 * indentation, WHITESPACE.length()));
         return this;
     }

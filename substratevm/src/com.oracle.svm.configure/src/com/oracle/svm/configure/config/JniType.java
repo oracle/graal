@@ -47,7 +47,7 @@ public class JniType implements JsonPrintable {
 
     public MatchSet<String> getFields() {
         if (fields == null) {
-            fields = MatchSet.create(Comparator.naturalOrder(), (String s, JsonWriter w) -> w.append("{\"name\":\"").append(s).append("\"}"));
+            fields = MatchSet.create(Comparator.naturalOrder(), (String s, JsonWriter w) -> w.append('{').quote("name").append(':').quote(s).append('}'));
         }
         return fields;
     }
@@ -62,13 +62,13 @@ public class JniType implements JsonPrintable {
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
-        writer.append("\"name\":\"").append(qualifiedName).append('"');
+        writer.quote("name").append(':').quote(qualifiedName);
         if (fields != null) {
-            writer.append(',').newline().append("\"fields\":");
+            writer.append(',').newline().quote("fields").append(':');
             fields.printJson(writer);
         }
         if (methods != null) {
-            writer.append(',').newline().append("\"methods\":");
+            writer.append(',').newline().quote("methods").append(':');
             methods.printJson(writer);
         }
         writer.unindent().newline();

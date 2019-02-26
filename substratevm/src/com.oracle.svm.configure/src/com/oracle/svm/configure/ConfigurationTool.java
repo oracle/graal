@@ -26,6 +26,7 @@ package com.oracle.svm.configure;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -101,22 +102,22 @@ public class ConfigurationTool {
         p.setFilterEnabled(filter);
         p.process(Files.newBufferedReader(traceInputPath));
         if (reflectOutputPath != null) {
-            try (JsonWriter writer = new JsonWriter(Files.newBufferedWriter(reflectOutputPath))) {
+            try (JsonWriter writer = new JsonWriter(reflectOutputPath)) {
                 p.getReflectionConfiguration().printJson(writer);
             }
         }
         if (jniOutputPath != null) {
-            try (JsonWriter writer = new JsonWriter(Files.newBufferedWriter(jniOutputPath))) {
+            try (JsonWriter writer = new JsonWriter(jniOutputPath)) {
                 p.getJniConfiguration().printJson(writer);
             }
         }
         if (proxyOutputPath != null) {
-            try (JsonWriter writer = new JsonWriter(Files.newBufferedWriter(proxyOutputPath))) {
+            try (JsonWriter writer = new JsonWriter(proxyOutputPath)) {
                 p.getProxyConfiguration().printJson(writer);
             }
         }
         if (resourcesOutputPath != null) {
-            try (Writer writer = Files.newBufferedWriter(resourcesOutputPath)) {
+            try (Writer writer = Files.newBufferedWriter(resourcesOutputPath, StandardCharsets.UTF_8)) {
                 p.getResourceConfiguration().write(writer);
             }
         }

@@ -19,16 +19,12 @@ public class ResourceConfiguration {
         add(resource);
     }
 
-    public Set<String> getResources() {
-        return Collections.unmodifiableSet(resources);
-    }
-
     public void write(Writer writer) throws IOException {
         List<String> sorted = new ArrayList<>(resources);
         Collections.sort(sorted);
 
         for (String resource : sorted) {
-            writer.append("-H:IncludeResources=.*/").append(resource).append(System.lineSeparator());
+            writer.append("-H:IncludeResources=").append(resource).append('\n');
         }
     }
 }

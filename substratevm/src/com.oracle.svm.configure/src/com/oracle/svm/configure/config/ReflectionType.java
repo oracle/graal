@@ -61,7 +61,7 @@ public class ReflectionType implements JsonPrintable {
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
-        writer.append("\"name\":\"").append(qualifiedName).append('"');
+        writer.quote("name").append(':').quote(qualifiedName);
         MatchSet<String> fields = null;
         MatchSet<ReflectionMethod> methods = null;
         if (declaredMembers != null) {
@@ -75,11 +75,11 @@ public class ReflectionType implements JsonPrintable {
             methods = MatchSet.union(methods, publicMembers.getIndividualMethodsAndConstructors());
         }
         if (fields != null && !fields.isEmpty()) {
-            writer.append(',').newline().append("\"fields\":");
+            writer.append(',').newline().quote("fields").append(':');
             fields.printJson(writer);
         }
         if (methods != null && !methods.isEmpty()) {
-            writer.append(',').newline().append("\"methods\":");
+            writer.append(',').newline().quote("methods").append(':');
             methods.printJson(writer);
         }
         writer.unindent().newline();
