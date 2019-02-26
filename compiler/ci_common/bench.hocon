@@ -94,7 +94,7 @@ bench-scala-dacapo-move-profiling: ${bench-common} ${default-heap} ${scala-dacap
 # SPECjbb2005-related targets
 
 bench-specjbb2005: ${bench-common} ${large-heap} ${specjbb-bench-notifications} {
-  targets: [bench, post-merge]
+  targets: [bench, weekly]
   downloads: {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
   }
@@ -136,7 +136,7 @@ bench-specjvm2008-OneVM: ${bench-specjvm2008} ${specjvm-bench-notifications} {
 # SPECjbb2015-related targets
 
 bench-specjbb2015: ${bench-common} ${large-heap} ${specjbb-bench-notifications} {
-  targets: [bench, post-merge]
+  targets: [bench, weekly]
   run: [
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
   ]
