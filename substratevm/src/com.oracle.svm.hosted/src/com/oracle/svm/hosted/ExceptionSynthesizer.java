@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
@@ -43,12 +44,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ExceptionSynthesizer {
 
-    private static final Method throwClassNotFoundExceptionMethod;
-    private static final Method throwNoSuchFieldExceptionMethod;
-    private static final Method throwNoSuchMethodExceptionMethod;
-    private static final Method throwNoClassDefFoundErrorMethod;
-    private static final Method throwNoSuchFieldErrorMethod;
-    private static final Method throwNoSuchMethodErrorMethod;
+    public static final Method throwClassNotFoundExceptionMethod;
+    public static final Method throwNoSuchFieldExceptionMethod;
+    public static final Method throwNoSuchMethodExceptionMethod;
+    public static final Method throwNoClassDefFoundErrorMethod;
+    public static final Method throwNoSuchFieldErrorMethod;
+    public static final Method throwNoSuchMethodErrorMethod;
 
     static {
         try {
@@ -87,16 +88,24 @@ public class ExceptionSynthesizer {
         throwException(b, targetMethod, throwNoSuchMethodErrorMethod);
     }
 
-    private static void throwException(GraphBuilderContext b, String message, Method reportExceptionMethod) {
+    public static void throwException(GraphBuilderContext b, String message, Method reportExceptionMethod) {
         ValueNode messageNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph());
         ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(reportExceptionMethod);
         assert exceptionMethod.isStatic();
-        b.handleReplacedInvoke(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, false);
-        /*
-         * Append a deopt node to stop parsing. This way we don't need to make sure that the stack
-         * is left in a consistent state after the new invoke is introduced, e.g., like pushing a
-         * dummy value for a replaced field load.
-         */
-        b.append(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+        Invoke invoke = b.handleReplacedInvoke(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, false);
+        if (invoke != null) {
+            /*
+             * If there is an invoke node, i.e., the call was not inlined, append a deopt node to
+             * stop parsing. This way we don't need to make sure that the stack is left in a
+             * consistent state after the new invoke is introduced, e.g., like pushing a dummy value
+             * for a replaced field load.
+             *
+             * If there is no invoke node then the error reporting method call was inlined. In that
+             * case the deopt node is not required since the body of the error reporting method is
+             * "throw ...".
+             */
+            b.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+        }
+
     }
 }

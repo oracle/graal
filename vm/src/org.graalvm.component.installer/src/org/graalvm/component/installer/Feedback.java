@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer;
 
+import java.net.URL;
 import java.nio.file.Path;
 
 /**
@@ -31,6 +32,11 @@ import java.nio.file.Path;
  * of exceptions etc. Allows to work with different Bundles.
  */
 public interface Feedback {
+    /**
+     * Returned from {@link #acceptLine} for an automatic accept.
+     */
+    String AUTO_YES = "<automatic-yes>";
+
     /**
      * Formats a message on stderr.
      * 
@@ -129,7 +135,36 @@ public interface Feedback {
 
     boolean backspace(int chars, boolean beVerbose);
 
-    String translateFilename(Path f);
+    /**
+     * Waits for user input confirmed by ENTER.
+     * 
+     * @param autoYes returns the {@link #AUTO_YES} if yes-to-all was specified on commandline.
+     * @return accepted line.
+     */
+    String acceptLine(boolean autoYes);
 
-    void bindFilename(Path file, String label);
+    /**
+     * Allows to enter password using console services.
+     * 
+     * @return password
+     */
+    String acceptPassword();
+
+    /**
+     * Provides a cache for remote files. The URL contents should be downloaded and stored to the
+     * `local` file. The file should be marked with {@link java.io.File#deleteOnExit()}.
+     * 
+     * @param location remote location
+     * @param local locally cached content
+     */
+    void addLocalFileCache(URL location, Path local);
+
+    /**
+     * Returns a local cache for the location. Returns {@code null}, if the content is not locally
+     * available.
+     * 
+     * @param location the remote location
+     * @return locally stored content or {@code null}.
+     */
+    Path getLocalCache(URL location);
 }

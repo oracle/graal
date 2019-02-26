@@ -29,7 +29,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
+import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
@@ -47,13 +47,14 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
+import org.graalvm.compiler.hotspot.replacements.ArraysSupportSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
-import org.graalvm.compiler.hotspot.replacements.CounterModeSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CRC32CSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CRC32Substitutions;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
 import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
+import org.graalvm.compiler.hotspot.replacements.CounterModeSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotArraySubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotClassSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
@@ -174,6 +175,7 @@ public class HotSpotGraphBuilderPlugins {
                 StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacementBytecodeProvider, true, false);
                 registerArrayPlugins(invocationPlugins, replacementBytecodeProvider);
                 registerStringPlugins(invocationPlugins, replacementBytecodeProvider);
+                registerArraysSupportPlugins(invocationPlugins, config, replacementBytecodeProvider);
 
                 for (NodeIntrinsicPluginFactory factory : GraalServices.load(NodeIntrinsicPluginFactory.class)) {
                     factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
@@ -533,10 +535,10 @@ public class HotSpotGraphBuilderPlugins {
                                     int longArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Long);
                                     int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                                     ValueNode dataOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), inOffset, NodeView.DEFAULT);
-                                    ComputeObjectAddressNode dataAddress = b.addWithInputs(new ComputeObjectAddressNode(data, dataOffset));
-                                    ComputeObjectAddressNode stateAddress = b.addWithInputs(new ComputeObjectAddressNode(state, ConstantNode.forInt(longArrayBaseOffset)));
-                                    ComputeObjectAddressNode hashSubkeyAddress = b.addWithInputs(new ComputeObjectAddressNode(hashSubkey, ConstantNode.forInt(longArrayBaseOffset)));
-                                    b.addWithInputs(new ForeignCallNode(foreignCalls, GHASH_PROCESS_BLOCKS, stateAddress, hashSubkeyAddress, dataAddress, blocks));
+                                    ComputeObjectAddressNode dataAddress = b.add(new ComputeObjectAddressNode(data, dataOffset));
+                                    ComputeObjectAddressNode stateAddress = b.add(new ComputeObjectAddressNode(state, ConstantNode.forInt(longArrayBaseOffset)));
+                                    ComputeObjectAddressNode hashSubkeyAddress = b.add(new ComputeObjectAddressNode(hashSubkey, ConstantNode.forInt(longArrayBaseOffset)));
+                                    b.add(new ForeignCallNode(foreignCalls, GHASH_PROCESS_BLOCKS, stateAddress, hashSubkeyAddress, dataAddress, blocks));
                                     return true;
                                 }
                             });
@@ -570,6 +572,13 @@ public class HotSpotGraphBuilderPlugins {
             Registration r = new Registration(plugins, "java.util.zip.CRC32C", bytecodeProvider);
             r.registerMethodSubstitution(CRC32CSubstitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
             r.registerMethodSubstitution(CRC32CSubstitutions.class, "updateDirectByteBuffer", int.class, long.class, int.class, int.class);
+        }
+    }
+
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+        if (config.useVectorizedMismatchIntrinsic) {
+            Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", bytecodeProvider);
+            r.registerMethodSubstitution(ArraysSupportSubstitutions.class, "vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class);
         }
     }
 }

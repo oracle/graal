@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 
-@Platforms(Platform.LINUX.class)
+@Platforms(Platform.LINUX_AND_JNI.class)
 public class LinuxProcessPropertiesSupport extends PosixProcessPropertiesSupport {
 
     @Override

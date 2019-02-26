@@ -36,7 +36,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 // { Allow names with underscores: Checkstyle: stop
 
 /** Declarations of method from </mach-o/dyld.h>. */
-@Platforms(Platform.DARWIN.class)
+@Platforms(Platform.DARWIN_AND_JNI.class)
 @CContext(PosixDirectives.class)
 public class DarwinDyld {
 

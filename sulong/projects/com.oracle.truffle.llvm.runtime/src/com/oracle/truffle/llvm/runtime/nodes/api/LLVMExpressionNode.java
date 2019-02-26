@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -90,14 +90,6 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
 
     public LLVMManagedPointer executeLLVMManagedPointer(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMManagedPointer(executeGeneric(frame));
-    }
-
-    public TruffleObject executeTruffleObject(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectTruffleObject(executeGeneric(frame));
-    }
-
-    public byte[] executeByteArray(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectByteArray(executeGeneric(frame));
     }
 
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,23 +40,39 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.MessageFormat;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.ResourceBundle;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import org.junit.AfterClass;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
+import org.junit.rules.TestName;
 
 /**
  * Boilerplate for tests.
  */
 public class TestBase implements Feedback {
+    private static final ResourceBundle NO_BUNDLE = new ResourceBundle() {
+        @Override
+        protected Object handleGetObject(String key) {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public Enumeration<String> getKeys() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+    };
     protected ResourceBundle defaultBundle = ResourceBundle.getBundle("org.graalvm.component.installer.Bundle"); // NOI18N
     private Feedback feedbackDelegate;
     protected boolean verbose;
 
     @ClassRule public static TemporaryFolder expandedFolder = new ClassTempFolder();
+    @Rule public TemporaryFolder testFolder = new TemporaryFolder();
+    @Rule public TestName testName = new TestName();
 
     static class ClassTempFolder extends TemporaryFolder {
         ThreadLocal<File> root = new ThreadLocal<>();
@@ -197,6 +213,9 @@ public class TestBase implements Feedback {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
         }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
+        }
         if (feedbackDelegate != null) {
             feedbackDelegate.message(bundleKey, params);
         }
@@ -205,6 +224,9 @@ public class TestBase implements Feedback {
     public void output(ResourceBundle bundle, String bundleKey, Object... params) {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
+        }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
         }
         if (feedbackDelegate != null) {
             feedbackDelegate.output(bundleKey, params);
@@ -218,15 +240,27 @@ public class TestBase implements Feedback {
 
     @Override
     public boolean verbatimPart(String msg, boolean beVerbose) {
-        if (feedbackDelegate != null) {
-            return feedbackDelegate.verbatimPart(msg, beVerbose);
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(NO_BUNDLE);
         }
-        return beVerbose;
+        try {
+            if (feedbackDelegate != null) {
+                return feedbackDelegate.verbatimPart(msg, beVerbose);
+            }
+        } finally {
+            if (feedbackDelegate instanceof FeedbackAdapter) {
+                ((FeedbackAdapter) feedbackDelegate).setBundle(null);
+            }
+        }
+        return verbose;
     }
 
     public void verbosePart(ResourceBundle bundle, String bundleKey, Object... params) {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
+        }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
         }
         if (feedbackDelegate != null) {
             feedbackDelegate.verbosePart(bundleKey, params);
@@ -237,6 +271,9 @@ public class TestBase implements Feedback {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
         }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
+        }
         if (feedbackDelegate != null) {
             feedbackDelegate.verboseOutput(bundleKey, params);
         }
@@ -245,6 +282,9 @@ public class TestBase implements Feedback {
     public void error(ResourceBundle bundle, String key, Throwable t, Object... params) {
         if (bundle != null) {
             MessageFormat.format(bundle.getString(key), params);
+        }
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(bundle == null ? NO_BUNDLE : bundle);
         }
         if (feedbackDelegate != null) {
             feedbackDelegate.error(key, t, params);
@@ -256,7 +296,11 @@ public class TestBase implements Feedback {
             MessageFormat.format(bundle.getString(key), params);
         }
         if (feedbackDelegate != null) {
-            String s = feedbackDelegate.l10n(key, params);
+            String s;
+            if (feedbackDelegate instanceof FeedbackAdapter) {
+                ((FeedbackAdapter) feedbackDelegate).setBundle(bundle);
+            }
+            s = feedbackDelegate.l10n(key, params);
             if (s != null) {
                 return s;
             }
@@ -271,13 +315,22 @@ public class TestBase implements Feedback {
 
     @Override
     public boolean verbatimOut(String msg, boolean verboseOutput) {
-        if (verboseOutput) {
-            verboseOutput((ResourceBundle) null, msg);
-        } else {
-            if (feedbackDelegate != null) {
-                feedbackDelegate.verbatimOut(msg, verboseOutput);
+        if (feedbackDelegate instanceof FeedbackAdapter) {
+            ((FeedbackAdapter) feedbackDelegate).setBundle(NO_BUNDLE);
+        }
+        try {
+            if (verboseOutput) {
+                verboseOutput((ResourceBundle) null, msg);
+            } else {
+                if (feedbackDelegate != null) {
+                    feedbackDelegate.verbatimOut(msg, verboseOutput);
+                }
+                output((ResourceBundle) null, msg);
             }
-            output((ResourceBundle) null, msg);
+        } finally {
+            if (feedbackDelegate instanceof FeedbackAdapter) {
+                ((FeedbackAdapter) feedbackDelegate).setBundle(null);
+            }
         }
         return verboseOutput;
     }
@@ -346,16 +399,6 @@ public class TestBase implements Feedback {
         return new WB(clazz);
     }
 
-    @Override
-    public String translateFilename(Path f) {
-        return f.toString();
-    }
-
-    @Override
-    public void bindFilename(Path file, String label) {
-
-    }
-
     class WB implements Feedback {
         ResourceBundle localBundle;
 
@@ -414,12 +457,12 @@ public class TestBase implements Feedback {
 
         @Override
         public void outputPart(String bundleKey, Object... params) {
-            throw new UnsupportedOperationException("Not supported yet.");
+            TestBase.this.output(localBundle, bundleKey, params);
         }
 
         @Override
         public boolean verbatimPart(String msg, boolean beVerbose) {
-            return TestBase.this.verbatimOut(msg, beVerbose);
+            return TestBase.this.verbatimPart(msg, beVerbose);
         }
 
         @Override
@@ -428,17 +471,29 @@ public class TestBase implements Feedback {
         }
 
         @Override
-        public String translateFilename(Path f) {
-            return TestBase.this.translateFilename(f);
+        public String acceptLine(boolean autoYes) {
+            return TestBase.this.acceptLine(autoYes);
         }
 
         @Override
-        public void bindFilename(Path file, String label) {
-            TestBase.this.bindFilename(file, label);
+        public String acceptPassword() {
+            return TestBase.this.acceptPassword();
+        }
+
+        @Override
+        public void addLocalFileCache(URL location, Path local) {
+            TestBase.this.addLocalFileCache(location, local);
+        }
+
+        @Override
+        public Path getLocalCache(URL location) {
+            return TestBase.this.getLocalCache(location);
         }
     }
 
     public class FeedbackAdapter implements Feedback {
+        private ResourceBundle currentBundle;
+
         @Override
         public boolean verbatimOut(String msg, boolean beVerbose) {
             return verbose;
@@ -495,18 +550,94 @@ public class TestBase implements Feedback {
             return verbose;
         }
 
-        @Override
-        public String translateFilename(Path f) {
-            return f.toString();
+        protected String reallyl10n(String k, Object... params) {
+            return TestBase.this.reallyl10n(getBundle(), k, params);
+        }
+
+        protected ResourceBundle getBundle() {
+            if (currentBundle == NO_BUNDLE) {
+                return null;
+            }
+            if (currentBundle != null) {
+                return currentBundle;
+            }
+            return defaultBundle;
+        }
+
+        void setBundle(ResourceBundle bundle) {
+            this.currentBundle = bundle;
         }
 
         @Override
-        public void bindFilename(Path file, String label) {
+        public String acceptLine(boolean autoYes) {
+            return TestBase.this.doAcceptLine(autoYes);
+        }
+
+        @Override
+        public String acceptPassword() {
+            return TestBase.this.doAcceptPassword();
+        }
+
+        @Override
+        public void addLocalFileCache(URL location, Path local) {
+            TestBase.this.addLocalFileCache(location, local);
+        }
+
+        @Override
+        public Path getLocalCache(URL location) {
+            return TestBase.this.getLocalCache(location);
         }
 
     }
 
     public static boolean isWindows() {
         return SystemUtils.isWindows();
+    }
+
+    protected StringBuilder userInput = new StringBuilder();
+    protected String password;
+    protected boolean autoYesEnabled;
+
+    @Override
+    public String acceptLine(boolean autoYes) {
+        if (feedbackDelegate != null) {
+            return feedbackDelegate.acceptLine(autoYes);
+        }
+        return doAcceptLine(autoYes);
+    }
+
+    String doAcceptLine(boolean autoYes) {
+        if (autoYes && autoYesEnabled) {
+            return AUTO_YES;
+        }
+        int nl = userInput.indexOf("\n");
+        if (nl < 0) {
+            nl = userInput.length();
+        }
+        String r = userInput.substring(0, nl);
+        userInput.delete(0, nl);
+        return r;
+    }
+
+    @Override
+    public String acceptPassword() {
+        if (feedbackDelegate != null) {
+            return feedbackDelegate.acceptPassword();
+        }
+        return password;
+    }
+
+    String doAcceptPassword() {
+        return password;
+    }
+
+    @Override
+    public void addLocalFileCache(URL location, Path local) {
+
+    }
+
+    @Override
+    public Path getLocalCache(URL location) {
+        return null;
     }
 }

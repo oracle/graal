@@ -532,10 +532,10 @@ public final class Runner {
             return ret;
         }
 
-        LLVMAllocateNode getAllocateNode(NodeFactory factory, String typeName) {
+        LLVMAllocateNode getAllocateNode(NodeFactory factory, String typeName, boolean readOnly) {
             if (offset > 0) {
                 StructureType structType = new StructureType(typeName, true, types.toArray(Type.EMPTY_ARRAY));
-                return factory.createAllocateGlobalsBlock(structType);
+                return factory.createAllocateGlobalsBlock(structType, readOnly);
             } else {
                 return null;
             }
@@ -572,8 +572,8 @@ public final class Runner {
                 }
             }
 
-            this.allocRoSection = roSection.getAllocateNode(context.getNodeFactory(), "roglobals_struct");
-            this.allocRwSection = rwSection.getAllocateNode(context.getNodeFactory(), "rwglobals_struct");
+            this.allocRoSection = roSection.getAllocateNode(context.getNodeFactory(), "roglobals_struct", true);
+            this.allocRwSection = rwSection.getAllocateNode(context.getNodeFactory(), "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
             this.fileScope = res.getRuntime().getFileScope();
         }
@@ -588,7 +588,7 @@ public final class Runner {
 
             allocGlobals(ctx, roBase, rwBase);
             if (allocRoSection != null) {
-                ctx.registerGlobals(roBase);
+                ctx.registerReadOnlyGlobals(roBase);
             }
             if (allocRwSection != null) {
                 ctx.registerGlobals(rwBase);
@@ -850,7 +850,7 @@ public final class Runner {
             parserResults.add(parserResult);
             return parserResult;
         } else if (!library.isNative()) {
-            throw new LLVMParserException("The file '" + source.getName() + "' is not a bitcode file nor an ELF File with an .llvmbc section.");
+            throw new LLVMParserException("The file '" + source.getName() + "' is not a bitcode file nor an ELF or Mach-O object file with an embedded bitcode section.");
         } else {
             return null;
         }

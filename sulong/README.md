@@ -7,26 +7,26 @@ Sulong is written in Java and uses the Truffle language implementation
 framework and Graal as a dynamic compiler.
 
 With Sulong you can execute C/C++, Fortran, and other programming languages
-that can be transformed to LLVM bitcode on Graal VM. To execute a program,
+that can be transformed to LLVM bitcode on GraalVM. To execute a program,
 you have to compile the program to LLVM bitcode by a LLVM front end such
 as `clang`.
 
-Graal VM
---------
+GraalVM
+-------
 
-Sulong is part of the [Graal VM](http://www.graalvm.org).
-Graal VM supports Linux or Mac OS X on x86 64-bit systems.
+Sulong is part of the [GraalVM](http://www.graalvm.org).
+GraalVM supports Linux or Mac OS X on x86 64-bit systems.
 
-1. Download the [Graal VM](http://www.graalvm.org/downloads/) binaries.
+1. Download the [GraalVM](http://www.graalvm.org/downloads/) binaries.
 2. Extract the archive to your file system.
-3. Add the Graal VM `/bin` folder to your `PATH` environment variable.
+3. Add the GraalVM `/bin` folder to your `PATH` environment variable.
 
-To run programs in LLVM bitcode format on Graal VM, use:
+To run programs in LLVM bitcode format on GraalVM, use:
 
-    lli [LLI Options] [Graal VM Options] [Polyglot Options] file.bc [program args]
+    lli [LLI Options] [GraalVM Options] [Polyglot Options] file.bc [program args]
 
 Where `file.bc` is a single program source file in LLVM bitcode format.
-Graal VM executes the LLVM bitcode using Sulong as an interpreter.
+GraalVM executes the LLVM bitcode using Sulong as an interpreter.
 Note: LLVM bitcode is platform dependent. The program must be compiled to
 bitcode for the appropriate platform.
 
@@ -41,12 +41,12 @@ or bitcode files. You can specify `--lib` multiple times. *Note:* You must speci
 the library `example` with `--lib /path/to/libexample.so` as opposed to common linker
 `-l` options.
 
-#### Graal VM Options
+#### GraalVM Options
 
 - `--jvm` executes the application in JVM mode instead of executing the
-Graal VM native image.
+GraalVM native image.
 
-- `--jvm.<option>` passes JVM options to Graal VM.
+- `--jvm.<option>` passes JVM options to GraalVM.
 List available JVM options with `--jvm.help`.
 
 - `--graal.<property>=<value>` passes settings to the Graal compiler.
@@ -62,7 +62,7 @@ through the Graal Polyglot SDK.
 
 #### Compiling to LLVM bitcode format
 
-Graal VM can execute C/C++, Fortran, and other programs that can be compiled to
+GraalVM can execute C/C++, Fortran, and other programs that can be compiled to
 LLVM bitcode. As a first step, you have to compile the program to LLVM bitcode
 using an LLVM frontend such as `clang`. C/C++ code can be compiled to LLVM
 bitcode using `clang` with the `-emit-llvm` option.
@@ -82,7 +82,7 @@ to an LLVM bitcode file `test.bc`.
 
     clang -O1 -c -emit-llvm -o test.bc test.c
 
-You can then run `test.bc` on Graal VM as follows:
+You can then run `test.bc` on GraalVM as follows:
 
     lli test.bc
 
@@ -104,11 +104,17 @@ Build Dependencies
 Sulong is mostly implemented in Java. However, parts of Sulong are
 implemented in C/C++ and will be compiled to a shared library or a bitcode
 file. For a successful build you need to have LLVM (incl. `CLANG` and `OPT`
-tool) v3.8 - v7.0 installed.
+tool) in one of the supported versions (v3.8 - v7.0) installed. For best
+experience we suggest to install either LLVM 4 or LLVM 6.
 
-MacOS: Apple's default LLVM does not contain the `opt` tool, which a Sulong
-build needs. We recommend installing LLVM via `homebrew` and appending the
-bin path to the `PATH`. For best experience we suggest to install LLVM 4.0.
+On a Linux-based operating system you can usually use its included package
+manager to install a supported version. Note, however, that the LLVM that
+is shipped with MacOS does not contain the `opt` tool, which a Sulong
+build needs. On MacOS, we recommend installing LLVM via `homebrew` and
+appending the bin path to the `PATH`.
+
+To install Clang and LLVM 4 on MacOS using `homebrew` you can use the
+following command:
 
     brew install llvm@4
     export PATH="/usr/local/opt/llvm@4/bin:$PATH"
@@ -144,11 +150,11 @@ Next, you need to download a recent
 [labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 Extract it inside the `sulong-dev` directory:
 
-    tar -zxf labsjdk-8u172-jvmci-0.47-linux-amd64.tar.gz
+    tar -zxf labsjdk-8u172-jvmci-0.54-linux-amd64.tar.gz
 
 Set `JAVA_HOME` to point to the extracted labsjdk from above:
 
-    echo JAVA_HOME=`pwd`/labsjdk1.8.0_172-jvmci-0.47 > graal/sulong/mx.sulong/env
+    echo JAVA_HOME=`pwd`/labsjdk1.8.0_172-jvmci-0.54 > graal/sulong/mx.sulong/env
 
 Sulong partially consists of C/C++ code that is compiled using `make`. To speed
 up the build process you can edit the `MAKEFLAGS` environment variable:
@@ -168,8 +174,8 @@ Now, Sulong is ready to start. You can for example compile a C file named
     clang -c -emit-llvm -o test.bc test.c
     mx lli test.bc
 
-For best experience we suggest to use clang 3.8, though versions 3.2, 3.3 and
-3.8 to 7.0 should also work. Additionally, if you compile with the `-g` option
+For best experience we suggest to use clang 4.0 or 6.0, though all versions between
+3.8 and 7.0 should also work. Additionally, if you compile with the `-g` option
 Sulong can provide source-file information in stacktraces.
 
 You can specify additional libraries to load with the `-Dpolyglot.llvm.libraries`
@@ -182,7 +188,7 @@ multiple arguments separated by `:`.
 
 #### Running with the Graal compiler
 
-In contrast to Graal VM, `mx lli` will by default  *not* optimize your program.
+In contrast to GraalVM, `mx lli` will by default  *not* optimize your program.
 If you are interested in high performance, you might want to import the Graal
 compiler. To do so, first ensure that the compiler is built:
 
@@ -205,10 +211,8 @@ command instead:
 
     mx intellijinit
 
-If you also want to edit the mx configuration files from within Idea, you can
-append the `--mx-python-modules` argument to this. Since the configuration files
-consist of Python code, you will probably want to install the
-[Python Language Support Plugin](https://plugins.jetbrains.com/plugin/631-python).
+Since Sulong's configuration files for `mx` consist of Python code, you will
+probably want to install the [Python Language Support Plugin](https://plugins.jetbrains.com/plugin/631-python).
 
 You can also develop Sulong in Netbeans. The following command will generate the
 project files and print instructions on how to import them into the IDE:
@@ -236,7 +240,7 @@ LLVM is an umbrella project for a modular and reusable compiler
 infrastructure written in C++. It includes a compiler frontend `clang`
 for compiling C, C++, Objective C and Objective C++ to LLVM bitcode IR.
 Many of the other tools such as the optimizer `opt`, assembler,
-linker, and backends then operate on the LLVM bitcode, to finally produce
+linker, and back-ends then operate on the LLVM bitcode, to finally produce
 machine code. LLVM envisions that transformations and analyses can be
 applied during compile-time, link-time, runtime, and offline.
 

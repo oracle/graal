@@ -52,6 +52,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -69,7 +70,6 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.tiers.Suites;
@@ -87,6 +87,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -103,6 +104,7 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateRuntimeConfigurationBuilder;
 import com.oracle.svm.graal.meta.SubstrateType;
+import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -110,6 +112,7 @@ import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
@@ -119,6 +122,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
+import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -159,6 +163,18 @@ public final class GraalFeature implements Feature {
         @Override
         public boolean getAsBoolean() {
             return ImageSingletons.contains(GraalFeature.class);
+        }
+    }
+
+    /**
+     * This predicate is used to distinguish between building a Graal native image as a shared
+     * library for HotSpot (non-pure) or Graal as a compiler used only for a runtime in the same
+     * image (pure).
+     */
+    public static final class IsEnabledAndNotLibgraal implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return ImageSingletons.contains(GraalFeature.class) && !SubstrateUtil.isBuildingLibgraal();
         }
     }
 
@@ -324,10 +340,10 @@ public final class GraalFeature implements Feature {
         populateMatchRuleRegistry();
 
         Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
-
+        ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
         runtimeConfigBuilder = new SubstrateRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
-                        originalProviders.getConstantReflection(), backendProvider).build();
+                        originalProviders.getConstantReflection(), backendProvider, classInitializationSupport).build();
         RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
 
         Providers runtimeProviders = runtimeConfig.getProviders();
@@ -343,9 +359,10 @@ public final class GraalFeature implements Feature {
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
-                        config.getImageClassLoader(), false, false);
+                        config.getImageClassLoader(), false, false, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(), new SubstrateClassInitializationPlugin(config.getHostVM()),
+                        classInitializationSupport);
         DebugContext debug = DebugContext.forCurrentThread();
-        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), runtimeConfig.getSnippetReflection(), false);
+        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), runtimeConfig.getSnippetReflection(), false, true);
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);

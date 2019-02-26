@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
+import org.graalvm.nativeimage.Platform.DARWIN_AND_JNI;
+import org.graalvm.nativeimage.Platform.LINUX_AND_JNI;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 
@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
  * The definitions I need, manually translated from the C header file <sched.h>.
  */
 
-@Platforms({DARWIN.class, LINUX.class})
+@Platforms({DARWIN_AND_JNI.class, LINUX_AND_JNI.class})
 @CContext(PosixDirectives.class)
 public class Sched {
 

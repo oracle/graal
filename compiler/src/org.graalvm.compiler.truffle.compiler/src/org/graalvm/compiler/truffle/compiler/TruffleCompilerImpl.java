@@ -428,12 +428,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(TruffleCompilerOptions.getOptions())) {
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
 
-            // Failed speculations must be collected before any compilation or
-            // partial evaluation is performed.
-            SpeculationLog speculationLog = compilable.getSpeculationLog();
-            if (speculationLog != null) {
-                speculationLog.collectFailedSpeculations();
-            }
+            SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
 
             try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
                 graph = partialEvaluator.createGraph(debug, compilable, inliningPlan, AllowAssumptions.YES, compilationId, speculationLog, task);
@@ -523,8 +518,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
         try (DebugCloseable a = CodeInstallationTime.start(debug); DebugCloseable c = CodeInstallationMemUse.start(debug)) {
             InstalledCode installedCode = createInstalledCode(compilable);
-
-            backend.createInstalledCode(debug, graph.method(), compilationRequest, result, graph.getSpeculationLog(), installedCode, false);
+            assert graph.getSpeculationLog() == result.getSpeculationLog();
+            backend.createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

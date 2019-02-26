@@ -3,8 +3,6 @@
 m7_eighth.default : ${solaris-sparcv9} {
   capabilities: ${solaris-sparcv9.capabilities} [m7_eighth]
   environment : {
-    XMX         : "16g"
-    XMS         : "16g"
     JVM_CONFIG  : ${jvm-config.default}
     JVM         : "server"
     MACHINE_NAME: "m7_eighth"
@@ -16,7 +14,6 @@ m7_eighth.default-g1gc : ${m7_eighth.default} {
     JVM_CONFIG  : ${jvm-config.default}"-g1gc"
   }
 }
-
 
 builds += [
   ${m7_eighth.default} ${bench-dacapo}              ${labsjdk8} { name: "bench-compiler-dacapo-solaris-m7_eighth", timelimit: "1:00:00" }

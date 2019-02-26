@@ -28,11 +28,12 @@
 import mx
 import mx_vm
 import mx_subst
+import mx_unittest
 
 import functools
 from mx_gate import Task
 
-from os.path import join, exists
+from os.path import join, exists, dirname
 from contextlib import contextmanager
 
 _suite = mx.suite('vm')
@@ -51,6 +52,7 @@ class VmGateTasks:
     graalpython = 'graalpython'
     integration = 'integration'
     tools = 'tools'
+    libgraal = 'libgraal'
 
 
 def gate_body(args, tasks):
@@ -86,6 +88,27 @@ def gate_body(args, tasks):
         if t and mx_vm.has_component('Graal.Python', fatalIfMissing=True):
             pass
 
+    if mx_vm.has_component('LibGraal'):
+        libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
+        if libgraal_location is None:
+            mx.warn("Skipping libgraal tests: no library enabled in the LibGraal component")
+        else:
+            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)]
+            if args.extra_vm_argument:
+                extra_vm_argument += args.extra_vm_argument
+            import mx_compiler
+            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, prefix='LibGraal: ')
+
+            with Task('Test LibGraal', tasks, tags=[VmGateTasks.libgraal]) as t:
+                if t:
+                    mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false"])
+
+            with Task('LibGraal GraalVM smoke test', tasks, tags=[VmGateTasks.libgraal]) as t:
+                if t:
+                    mx.run([join(mx_vm.graalvm_home(), 'bin', 'java'), '-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-jar', mx.library('DACAPO').get_path(True), 'avrora'])
+    else:
+        mx.warn("Skipping libgraal tests: component not enabled")
+
     gate_substratevm(tasks)
     gate_sulong(tasks)
     gate_ruby(tasks)
@@ -109,7 +132,7 @@ def gate_substratevm(tasks):
     with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.substratevm]) as t:
         if t:
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
-            truffle_no_compilation = ['--tool:truffle', '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', '-Dcom.oracle.truffle.aot=true']
+            truffle_no_compilation = ['--tool:truffle', '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
             truffle_dir = mx.suite('truffle').dir
             args = ['--build-args'] + truffle_no_compilation + [
                 '-H:Features=com.oracle.truffle.api.test.polyglot.RegisterTestClassesForReflectionFeature',

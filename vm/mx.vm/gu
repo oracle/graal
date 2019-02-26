@@ -11,7 +11,8 @@ while [ -h "$source" ] ; do
     fi
 done
 bin_dir="$( cd -P "$( dirname "$source" )" && pwd )"
-installer_jar="${bin_dir}/../installer.jar"
+lib_dir=${bin_dir}/..
+installer_jar="${lib_dir}/installer.jar"
 root_dir="${bin_dir}/../../../.."
 java_exe="${root_dir}/bin/java"
 
@@ -28,5 +29,13 @@ do
     esac
 done
 
-
-exec "${java_exe}" "${JAVA_ARGS[@]}" "-DGRAAL_HOME=${root_dir}" -jar "${installer_jar}" "${PROGRAM_ARGS[@]}"
+libs=""
+# Add possible drop-in extensions
+for x in ${lib_dir}/*.jar ; do 
+    if [ -z "$libs" ]; then
+        libs="$x"
+    else 
+        libs="${libs}:$x"
+    fi
+done
+exec "${java_exe}" "${JAVA_ARGS[@]}" "-DGRAAL_HOME=${root_dir}" -cp "${libs}" org.graalvm.component.installer.ComponentInstaller "${PROGRAM_ARGS[@]}"

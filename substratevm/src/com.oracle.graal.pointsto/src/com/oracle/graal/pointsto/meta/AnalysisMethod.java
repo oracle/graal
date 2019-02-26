@@ -325,18 +325,11 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     @Override
     public int getMaxLocals() {
-        if (isNative()) {
-            return getSignature().getParameterCount(!Modifier.isStatic(getModifiers())) * 2;
-        }
         return wrapped.getMaxLocals();
     }
 
     @Override
     public int getMaxStackSize() {
-        if (isNative()) {
-            // At most we have a double-slot return value.
-            return 2;
-        }
         return wrapped.getMaxStackSize();
     }
 

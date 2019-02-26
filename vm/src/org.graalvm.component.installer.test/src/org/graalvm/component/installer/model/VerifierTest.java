@@ -29,6 +29,7 @@ import static org.graalvm.component.installer.CommonConstants.CAP_OS_NAME;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.commands.MockStorage;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.junit.Before;
 import org.junit.Rule;
@@ -54,7 +55,7 @@ public class VerifierTest extends TestBase {
     @Test
     public void testGraalCapabilitiesCaseInsensitive() throws Exception {
         try (JarFile jf = new JarFile(dataFile("truffleruby2.jar").toFile())) {
-            ComponentPackageLoader ldr = new ComponentPackageLoader(jf, this);
+            ComponentPackageLoader ldr = new JarMetaLoader(jf, this);
 
             rubyInfo = ldr.createComponentInfo();
             ldr.loadPaths();
@@ -69,7 +70,7 @@ public class VerifierTest extends TestBase {
     @Test
     public void testGraalCapabilitiesMismatch() throws Exception {
         try (JarFile jf = new JarFile(dataFile("truffleruby2.jar").toFile())) {
-            ComponentPackageLoader ldr = new ComponentPackageLoader(jf, this);
+            ComponentPackageLoader ldr = new JarMetaLoader(jf, this);
 
             rubyInfo = ldr.createComponentInfo();
             ldr.loadPaths();

@@ -43,6 +43,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.net.URL;
+import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.IdentityHashMap;
@@ -60,6 +61,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
@@ -69,15 +71,16 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
-import sun.reflect.ReflectionFactory;
 import sun.security.util.SecurityConstants;
 
 @Hybrid
@@ -86,6 +89,10 @@ import sun.security.util.SecurityConstants;
 @SuppressWarnings({"static-method", "serial"})
 @SuppressFBWarnings(value = "Se", justification = "DynamicHub must implement Serializable for compatibility with java.lang.Class, not because of actual serialization")
 public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable {
+
+    @Substitute //
+    @TargetElement(name = "EMPTY_CLASS_ARRAY", onlyWith = JDK9OrLater.class) //
+    private static Class<?>[] emptyClassArray = new Class<?>[0];
 
     /* Value copied from java.lang.Class. */
     private static final int SYNTHETIC = 0x00001000;
@@ -253,7 +260,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
 
-    private static java.security.ProtectionDomain allPermDomain;
+    private static final LazyFinalReference<java.security.ProtectionDomain> allPermDomain = new LazyFinalReference<>(() -> {
+        java.security.Permissions perms = new java.security.Permissions();
+        perms.add(SecurityConstants.ALL_PERMISSION);
+        return new java.security.ProtectionDomain(null, perms);
+    });
+
+    private static final LazyFinalReference<Target_java_lang_Module> singleModule = new LazyFinalReference<>(Target_java_lang_Module::new);
+
+    private final LazyFinalReference<String> packageName = new LazyFinalReference<>(this::computePackageName);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
@@ -636,13 +651,23 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public DynamicHub[] getInterfaces() {
-        if (interfacesEncoding == null) {
+        return getInterfaces(this, true);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private DynamicHub[] getInterfaces(boolean cloneArray) {
+        return getInterfaces(this, cloneArray);
+    }
+
+    private static DynamicHub[] getInterfaces(DynamicHub hub, boolean cloneArray) {
+        if (hub.interfacesEncoding == null) {
             return new DynamicHub[0];
-        } else if (interfacesEncoding instanceof DynamicHub) {
-            return new DynamicHub[]{(DynamicHub) interfacesEncoding};
+        } else if (hub.interfacesEncoding instanceof DynamicHub) {
+            return new DynamicHub[]{(DynamicHub) hub.interfacesEncoding};
         } else {
             /* The caller is allowed to modify the array, so we have to make a copy. */
-            return ((DynamicHub[]) interfacesEncoding).clone();
+            return cloneArray ? ((DynamicHub[]) hub.interfacesEncoding).clone() : (DynamicHub[]) hub.interfacesEncoding;
         }
     }
 
@@ -795,6 +820,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         final Constructor<?> nullaryConstructor;
         final Field[] declaredPublicFields;
         final Method[] declaredPublicMethods;
+        final Class<?>[] declaredClasses;
+        final Class<?>[] publicClasses;
 
         /**
          * The result of {@link Class#getEnclosingMethod()} or
@@ -803,7 +830,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         final Executable enclosingMethodOrConstructor;
 
         public ReflectionData(Field[] declaredFields, Field[] publicFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
-                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Executable enclosingMethodOrConstructor) {
+                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods,
+                        Class<?>[] declaredClasses, Class<?>[] publicClasses,
+                        Executable enclosingMethodOrConstructor) {
             this.declaredFields = declaredFields;
             this.publicFields = publicFields;
             this.declaredMethods = declaredMethods;
@@ -813,6 +842,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             this.nullaryConstructor = nullaryConstructor;
             this.declaredPublicFields = declaredPublicFields;
             this.declaredPublicMethods = declaredPublicMethods;
+            this.declaredClasses = declaredClasses;
+            this.publicClasses = publicClasses;
             this.enclosingMethodOrConstructor = enclosingMethodOrConstructor;
         }
     }
@@ -822,7 +853,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     private static final ReflectionData NO_REFLECTION_DATA = new ReflectionData(new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0], null,
-                    new Field[0], new Method[0], null);
+                    new Field[0], new Method[0], new Class<?>[0], new Class<?>[0], null);
 
     private ReflectionData rd = NO_REFLECTION_DATA;
 
@@ -849,11 +880,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private native Constructor<?> getConstructor(Class<?>... parameterTypes);
 
-    @KeepOriginal
-    private native Class<?>[] getDeclaredClasses();
+    @Substitute
+    private Class<?>[] getDeclaredClasses() {
+        return rd.declaredClasses;
+    }
 
-    @KeepOriginal
-    public native Class<?>[] getClasses();
+    @Substitute
+    private Class<?>[] getClasses() {
+        return rd.publicClasses;
+    }
 
     @KeepOriginal
     private native Field[] getDeclaredFields();
@@ -920,11 +955,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    private static ReflectionFactory getReflectionFactory() {
-        return reflectionFactory;
+    private static Target_jdk_internal_reflect_ReflectionFactory getReflectionFactory() {
+        return Target_jdk_internal_reflect_ReflectionFactory.getReflectionFactory();
     }
-
-    private static final ReflectionFactory reflectionFactory = ReflectionFactory.getReflectionFactory();
 
     @KeepOriginal
     private static native Field searchFields(Field[] fields, String name);
@@ -942,6 +975,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     @TargetElement(name = "getMethod0", onlyWith = JDK9OrLater.class)
     private native Method getMethod0JDK9OrLater(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes);
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private native Object getMethodsRecursive(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes, boolean includeStatic);
 
     @KeepOriginal
     @TargetElement(onlyWith = JDK8OrEarlier.class)
@@ -1039,7 +1076,23 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public String getPackageName() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getPackageName()");
+        return packageName.get();
+    }
+
+    private String computePackageName() {
+        String pn = null;
+        DynamicHub me = this;
+        while (me.isArray()) {
+            me = (DynamicHub) me.getComponentType();
+        }
+        if (me.isPrimitive()) {
+            pn = "java.lang";
+        } else {
+            String cn = me.getName();
+            int dot = cn.lastIndexOf('.');
+            pn = (dot != -1) ? cn.substring(0, dot).intern() : "";
+        }
+        return pn;
     }
 
     @Override
@@ -1060,13 +1113,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    public Object getProtectionDomain() {
-        if (allPermDomain == null) {
-            java.security.Permissions perms = new java.security.Permissions();
-            perms.add(SecurityConstants.ALL_PERMISSION);
-            allPermDomain = new java.security.ProtectionDomain(null, perms);
-        }
-        return allPermDomain;
+    public ProtectionDomain getProtectionDomain() {
+        return allPermDomain.get();
     }
 
     @Substitute
@@ -1077,7 +1125,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public Target_java_lang_Module getModule() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getModule()");
+        return singleModule.get();
     }
 
     @Substitute //
@@ -1122,4 +1170,16 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 /** FIXME: How to handle java.lang.Class.ReflectionData? */
 @TargetClass(className = "java.lang.Class", innerClass = "ReflectionData")
 final class Target_java_lang_Class_ReflectionData<T> {
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ReflectionFactory")
+final class Target_jdk_internal_reflect_ReflectionFactory {
+
+    @Alias //
+    private static Target_jdk_internal_reflect_ReflectionFactory soleInstance;
+
+    @Substitute
+    public static Target_jdk_internal_reflect_ReflectionFactory getReflectionFactory() {
+        return soleInstance;
+    }
 }

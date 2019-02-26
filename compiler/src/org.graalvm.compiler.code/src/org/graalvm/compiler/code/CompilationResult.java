@@ -55,6 +55,7 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.InvokeTarget;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Represents the output from compiling a method, including the compiled machine code, associated
@@ -221,6 +222,11 @@ public class CompilationResult {
     private ResolvedJavaMethod[] methods;
 
     /**
+     * The {@link SpeculationLog} log used during compilation.
+     */
+    private SpeculationLog speculationLog;
+
+    /**
      * The list of fields that were accessed from the bytecodes.
      */
     private ResolvedJavaField[] fields;
@@ -370,6 +376,21 @@ public class CompilationResult {
      */
     public ResolvedJavaMethod[] getMethods() {
         return methods;
+    }
+
+    /**
+     * Sets the {@link SpeculationLog} log used during compilation.
+     */
+    public void setSpeculationLog(SpeculationLog speculationLog) {
+        checkOpen();
+        this.speculationLog = speculationLog;
+    }
+
+    /**
+     * Gets the {@link SpeculationLog} log, if any, used during compilation.
+     */
+    public SpeculationLog getSpeculationLog() {
+        return speculationLog;
     }
 
     /**

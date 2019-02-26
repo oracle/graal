@@ -37,6 +37,8 @@ extern "C" {
  * Returns poly_ok on success, or a poly_generic_failure value on failure.
  * On success, the current thread is attached to the created isolate, and the
  * address of the isolate structure is written to the passed pointer.
+ * Every thread starts with a default handle scope. This scope is released when
+ * the thread is detached.
  */
 poly_status poly_create_isolate(const poly_isolate_params* params, poly_isolate* isolate, poly_thread* thread);
 
@@ -70,6 +72,26 @@ poly_isolate poly_get_isolate(poly_thread thread);
  * Returns poly_ok on success, or poly_generic_failure on failure.
  */
 poly_status poly_detach_thread(poly_thread thread);
+
+/**
+ * Using the context of the isolate thread from the first argument, detaches the
+ * threads in an array pointed to by the second argument, with the length of the
+ * array given in the third argument. All of the passed threads must be in the
+ * same isolate, including the first argument. None of the threads to detach may
+ * execute Java code at the time of the call or later without reattaching first,
+ * or their behavior will be entirely undefined. The current thread may be part of
+ * the array, however, using detach_thread() should be preferred for detaching only
+ * the current thread.
+ *
+ * @param thread current thread
+ * @param threads array of threads to detach
+ * @param length number of threads in the array
+ * @return poly_ok success, or poly_generic_failure on failure.
+ *
+ * @see graal_detach_threads
+ * @since 1.0
+ */
+poly_status poly_detach_threads(poly_thread thread, poly_thread* threads, int length);
 
 /*
  * Tears down the passed isolate, waiting for any attached threads to detach from

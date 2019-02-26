@@ -49,6 +49,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.svm.hosted.ClassInitializationSupport;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -93,8 +94,8 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
     private final Map<Executable, MethodDescriptor> methodDescriptors;
     private final Map<Field, FieldDescriptor> fieldDescriptors;
 
-    public DeclarativeSubstitutionProcessor(ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess) {
-        super(imageClassLoader, metaAccess);
+    public DeclarativeSubstitutionProcessor(ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
+        super(imageClassLoader, metaAccess, classInitializationSupport);
 
         classDescriptors = new HashMap<>();
         methodDescriptors = new HashMap<>();

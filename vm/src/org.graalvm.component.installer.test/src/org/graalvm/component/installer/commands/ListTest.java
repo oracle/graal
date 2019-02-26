@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.ResourceBundle;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.model.ComponentRegistry;
-import org.graalvm.component.installer.persist.RemoteStorage;
+import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import static org.junit.Assert.assertEquals;
 import org.junit.Rule;
 import org.junit.Test;
@@ -47,12 +46,11 @@ import org.junit.rules.TestName;
 public class ListTest extends CommandTestBase {
     @Rule public TestName name = new TestName();
 
-    private RemoteStorage remoteStorage;
+    private RemotePropertiesStorage remoteStorage;
     private Properties catalogContents = new Properties();
-    private static final ResourceBundle BUNDLE = ResourceBundle.getBundle("org.graalvm.component.installer.commands.Bundle");
 
     private void initRemoteStorage() throws MalformedURLException {
-        this.remoteStorage = new RemoteStorage(
+        this.remoteStorage = new RemotePropertiesStorage(
                         this, localRegistry, catalogContents, "1.0.0-rc3-dev_linux_amd64", new URL("http://go.to/graalvm"));
         this.registry = new ComponentRegistry(this, remoteStorage);
     }
@@ -73,7 +71,7 @@ public class ListTest extends CommandTestBase {
             @Override
             public String l10n(String key, Object... params) {
                 if ("LIST_ComponentShortList".equals(key)) {
-                    return reallyl10n(BUNDLE, key, params);
+                    return reallyl10n(key, params);
                 }
                 return null;
             }

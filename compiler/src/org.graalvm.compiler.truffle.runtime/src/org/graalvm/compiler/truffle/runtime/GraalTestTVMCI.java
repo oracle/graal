@@ -113,7 +113,7 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
         OptionValues options = TruffleRuntimeOptions.getOptions();
         try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
             try (AutoCloseable s = testContext.debug.scope("UnitTest")) {
-                truffleRuntime.doCompile(testContext.debug, compilation, options, callTarget, null);
+                truffleRuntime.doCompile(testContext.debug, compilation, TruffleRuntimeOptions.asMap(options), callTarget, null);
             } catch (Throwable e) {
                 throw new InternalError(e);
             }

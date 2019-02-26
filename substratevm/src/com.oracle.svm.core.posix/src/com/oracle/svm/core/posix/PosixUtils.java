@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import static com.oracle.svm.core.posix.headers.Errno.errno;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_WRONLY;
 import static com.oracle.svm.core.posix.headers.Fcntl.open;
 import static com.oracle.svm.core.posix.headers.Unistd.close;
@@ -38,11 +39,20 @@ import java.io.SyncFailedException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.posix.headers.Dlfcn;
+import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Locale;
+import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.Wait;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
@@ -56,15 +66,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK9OrLater;
-import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.posix.headers.Errno;
-import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Locale;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
+@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
 public class PosixUtils {
 
     static String setLocale(String category, String locale) {
@@ -206,6 +211,10 @@ public class PosixUtils {
         return errorString(errno, defaultMsg);
     }
 
+    public static IOException newIOExceptionWithLastError(String defaultMsg) {
+        return new IOException(PosixUtils.lastErrorString(defaultMsg));
+    }
+
     /** Return the error string for the given error number, or a default message. */
     public static String errorString(int errno, String defaultMsg) {
         String result = "";
@@ -244,13 +253,13 @@ public class PosixUtils {
             }
             if (devnull < 0) {
                 setFD(fd, handle);
-                throw new IOException(lastErrorString("open /dev/null failed"));
+                throw PosixUtils.newIOExceptionWithLastError("open /dev/null failed");
             } else {
                 dup2(devnull, handle);
                 close(devnull);
             }
         } else if (close(handle) == -1) {
-            throw new IOException(lastErrorString("close failed"));
+            throw PosixUtils.newIOExceptionWithLastError("close failed");
         }
     }
 
@@ -263,6 +272,28 @@ public class PosixUtils {
         return instance.pid;
     }
 
+    public static int waitForProcessExit(int ppid) {
+        CIntPointer statusptr = StackValue.get(CIntPointer.class);
+        while (Wait.waitpid(ppid, statusptr, 0) < 0) {
+            if (Errno.errno() == Errno.ECHILD()) {
+                return 0;
+            } else if (Errno.errno() == Errno.EINTR()) {
+                break;
+            } else {
+                return -1;
+            }
+        }
+
+        int status = statusptr.read();
+        if (Wait.WIFEXITED(status)) {
+            return Wait.WEXITSTATUS(status);
+        } else if (Wait.WIFSIGNALED(status)) {
+            // Exited because of signal: return 0x80 + signal number like shells do
+            return 0x80 + Wait.WTERMSIG(status);
+        }
+        return status;
+    }
+
     static int readSingle(FileDescriptor fd) throws IOException {
         CCharPointer retPtr = StackValue.get(CCharPointer.class);
         int handle = PosixUtils.getFDHandle(fd);
@@ -271,7 +302,7 @@ public class PosixUtils {
             // EOF
             return -1;
         } else if (nread.equal(-1)) {
-            throw new IOException(lastErrorString("Read error"));
+            throw PosixUtils.newIOExceptionWithLastError("Read error");
         }
         return retPtr.read() & 0xFF;
     }
@@ -304,7 +335,7 @@ public class PosixUtils {
                     LibC.memcpy(pin.addressOfArrayElement(off), buf, (UnsignedWord) nread);
                 }
             } else if (nread.equal(-1)) {
-                throw new IOException(lastErrorString("Read error"));
+                throw PosixUtils.newIOExceptionWithLastError("Read error");
             } else {
                 // EOF
                 nread = WordFactory.signed(-1);
@@ -330,7 +361,7 @@ public class PosixUtils {
         n = write(handle, bufPtr, WordFactory.unsigned(1));
 
         if (n.equal(-1)) {
-            throw new IOException(lastErrorString("Write error"));
+            throw PosixUtils.newIOExceptionWithLastError("Write error");
         }
     }
 
@@ -357,7 +388,7 @@ public class PosixUtils {
                 SignedWord n = write(fd, curBuf, curLen);
 
                 if (n.equal(-1)) {
-                    throw new IOException(lastErrorString("Write error"));
+                    throw PosixUtils.newIOExceptionWithLastError("Write error");
                 }
                 curBuf = curBuf.addressOf(n);
                 curLen = curLen.subtract((UnsignedWord) n);
@@ -464,5 +495,32 @@ public class PosixUtils {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void checkStatusIs0(int status, String message) {
         VMError.guarantee(status == 0, message);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static boolean readEntirely(int fd, CCharPointer buffer, int bufferLen) {
+        int bufferOffset = 0;
+        for (;;) {
+            int readBytes = readBytes(fd, buffer, bufferLen - 1, bufferOffset);
+            if (readBytes < 0) { // NOTE: also when file does not fit in buffer
+                return false;
+            }
+            bufferOffset += readBytes;
+            if (readBytes == 0) { // EOF, terminate string
+                buffer.write(bufferOffset, (byte) 0);
+                return true;
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static int readBytes(int fd, CCharPointer buffer, int bufferLen, int readOffset) {
+        int readBytes = -1;
+        if (readOffset < bufferLen) {
+            do {
+                readBytes = (int) Unistd.NoTransitions.read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
+            } while (readBytes == -1 && errno() == Errno.EINTR());
+        }
+        return readBytes;
     }
 }

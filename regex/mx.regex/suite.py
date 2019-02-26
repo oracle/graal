@@ -1,10 +1,10 @@
 suite = {
-  "mxversion" : "5.176.0",
+  "mxversion" : "5.210.2",
 
   "name" : "regex",
 
-  "version" : "1.0.0-rc12",
-  "release" : True,
+  "version" : "1.0.0-rc13",
+  "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -51,6 +51,7 @@ suite = {
       "checkstyleVersion" : "8.8",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
+      "spotbugsIgnoresGenerated" : True,
     },
 
     "com.oracle.truffle.regex.test" : {

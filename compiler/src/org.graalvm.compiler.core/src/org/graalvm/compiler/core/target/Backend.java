@@ -54,7 +54,6 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Represents a compiler backend for Graal.
@@ -124,21 +123,28 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
 
     /**
      * @see #createInstalledCode(DebugContext, ResolvedJavaMethod, CompilationRequest,
-     *      CompilationResult, SpeculationLog, InstalledCode, boolean, Object[])
+     *      CompilationResult, InstalledCode, boolean, Object[])
      */
-    public InstalledCode createInstalledCode(DebugContext debug, ResolvedJavaMethod method, CompilationResult compilationResult,
-                    SpeculationLog speculationLog, InstalledCode predefinedInstalledCode, boolean isDefault) {
-        return createInstalledCode(debug, method, null, compilationResult, speculationLog, predefinedInstalledCode, isDefault, null);
+    public InstalledCode createInstalledCode(DebugContext debug,
+                    ResolvedJavaMethod method,
+                    CompilationResult compilationResult,
+                    InstalledCode predefinedInstalledCode,
+                    boolean isDefault) {
+        return createInstalledCode(debug, method, null, compilationResult, predefinedInstalledCode, isDefault, null);
     }
 
     /**
      * @see #createInstalledCode(DebugContext, ResolvedJavaMethod, CompilationRequest,
-     *      CompilationResult, SpeculationLog, InstalledCode, boolean, Object[])
+     *      CompilationResult, InstalledCode, boolean, Object[])
      */
     @SuppressWarnings("try")
-    public InstalledCode createInstalledCode(DebugContext debug, ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult,
-                    SpeculationLog speculationLog, InstalledCode predefinedInstalledCode, boolean isDefault) {
-        return createInstalledCode(debug, method, compilationRequest, compilationResult, speculationLog, predefinedInstalledCode, isDefault, null);
+    public InstalledCode createInstalledCode(DebugContext debug,
+                    ResolvedJavaMethod method,
+                    CompilationRequest compilationRequest,
+                    CompilationResult compilationResult,
+                    InstalledCode predefinedInstalledCode,
+                    boolean isDefault) {
+        return createInstalledCode(debug, method, compilationRequest, compilationResult, predefinedInstalledCode, isDefault, null);
     }
 
     /**
@@ -151,7 +157,6 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * @param predefinedInstalledCode a pre-allocated {@link InstalledCode} object to use as a
      *            reference to the installed code. If {@code null}, a new {@link InstalledCode}
      *            object will be created.
-     * @param speculationLog the speculation log to be used
      * @param isDefault specifies if the installed code should be made the default implementation of
      *            {@code compRequest.getMethod()}. The default implementation for a method is the
      *            code executed for standard calls to the method. This argument is ignored if
@@ -164,8 +169,13 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      *             {@link InstalledCode} object
      */
     @SuppressWarnings("try")
-    public InstalledCode createInstalledCode(DebugContext debug, ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult,
-                    SpeculationLog speculationLog, InstalledCode predefinedInstalledCode, boolean isDefault, Object[] context) {
+    public InstalledCode createInstalledCode(DebugContext debug,
+                    ResolvedJavaMethod method,
+                    CompilationRequest compilationRequest,
+                    CompilationResult compilationResult,
+                    InstalledCode predefinedInstalledCode,
+                    boolean isDefault,
+                    Object[] context) {
         Object[] debugContext = context != null ? context : new Object[]{getProviders().getCodeCache(), method, compilationResult};
         CodeInstallationTask[] tasks;
         synchronized (this) {
@@ -181,7 +191,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
             try {
                 preCodeInstallationTasks(tasks, compilationResult);
                 CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult, isDefault, debug.getOptions());
-                installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
+                installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, compilationResult.getSpeculationLog(), isDefault);
                 assert predefinedInstalledCode == null || installedCode == predefinedInstalledCode;
             } catch (Throwable t) {
                 failCodeInstallationTasks(tasks, t);
@@ -225,12 +235,15 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * @param method the method compiled to produce {@code compiledCode} or {@code null} if the
      *            input to {@code compResult} was not a {@link ResolvedJavaMethod}
      * @param compilationRequest the request or {@code null}
-     * @param compilationResult the code to be compiled
+     * @param compilationResult the compiled code
      * @return a reference to the compiled and ready-to-run installed code
      * @throws BailoutException if the code installation failed
      */
-    public InstalledCode addInstalledCode(DebugContext debug, ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult) {
-        return createInstalledCode(debug, method, compilationRequest, compilationResult, null, null, false);
+    public InstalledCode addInstalledCode(DebugContext debug,
+                    ResolvedJavaMethod method,
+                    CompilationRequest compilationRequest,
+                    CompilationResult compilationResult) {
+        return createInstalledCode(debug, method, compilationRequest, compilationResult, null, false);
     }
 
     /**
@@ -239,12 +252,13 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      *
      * @param method the method compiled to produce {@code compiledCode} or {@code null} if the
      *            input to {@code compResult} was not a {@link ResolvedJavaMethod}
-     * @param compilationResult the code to be compiled
+     * @param compilationResult the compiled code
      * @return a reference to the compiled and ready-to-run installed code
      * @throws BailoutException if the code installation failed
      */
     public InstalledCode createDefaultInstalledCode(DebugContext debug, ResolvedJavaMethod method, CompilationResult compilationResult) {
-        return createInstalledCode(debug, method, compilationResult, null, null, true);
+        System.out.println(compilationResult.getSpeculationLog());
+        return createInstalledCode(debug, method, compilationResult, null, true);
     }
 
     /**
@@ -257,7 +271,11 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
         return CompilationIdentifier.INVALID_COMPILATION_ID;
     }
 
-    public void emitBackEnd(StructuredGraph graph, Object stub, ResolvedJavaMethod installedCodeOwner, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
+    public void emitBackEnd(StructuredGraph graph,
+                    Object stub,
+                    ResolvedJavaMethod installedCodeOwner,
+                    CompilationResult compilationResult,
+                    CompilationResultBuilderFactory factory,
                     RegisterConfig config, LIRSuites lirSuites) {
         LIRCompilerBackend.emitBackEnd(graph, stub, installedCodeOwner, this, compilationResult, factory, config, lirSuites);
     }

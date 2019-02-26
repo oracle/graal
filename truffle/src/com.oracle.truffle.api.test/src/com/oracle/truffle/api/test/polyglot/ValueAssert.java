@@ -180,6 +180,7 @@ public class ValueAssert {
                                 assertClassMembers(value, (Class<?>) hostObject, true);
                             } else {
                                 assertClassMembers(value, Class.class, false);
+                                assertTrue(value.hasMember("static"));
                             }
                         } else {
                             assertClassMembers(value, hostObject.getClass(), false);
@@ -197,8 +198,10 @@ public class ValueAssert {
                     Map<Object, Object> expectedValues = new HashMap<>();
                     for (String key : value.getMemberKeys()) {
                         Value child = value.getMember(key);
-                        assertValueImpl(child, depth + 1, detectSupportedTypes(child));
-                        expectedValues.put(key, value.getMember(key).as(Object.class));
+                        expectedValues.put(key, child.as(Object.class));
+                        if (!isSameHostObject(value, child)) {
+                            assertValueImpl(child, depth + 1, detectSupportedTypes(child));
+                        }
                     }
 
                     if (value.isHostObject() && value.asHostObject() instanceof Map) {
@@ -244,6 +247,10 @@ public class ValueAssert {
         } else {
             return new HashMap<>(map);
         }
+    }
+
+    private static boolean isSameHostObject(Value a, Value b) {
+        return a.isHostObject() && b.isHostObject() && a.asHostObject() == b.asHostObject();
     }
 
     static void assertUnsupported(Value value, Trait... supported) {

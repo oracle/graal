@@ -34,10 +34,10 @@ images or shared objects.
 
 ## Related Repositories
 GraalVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and Graal compiler. These are:
-* [Graal.JS](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2017 compatible) and node.js 8.11.1
-* [FastR](https://github.com/oracle/fastr) - R Language 3.4.0
+* [Graal.JS](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2018 compatible) and node.js 10.15.0
+* [FastR](https://github.com/oracle/fastr) - R Language 3.5.1
 * [GraalPython](https://github.com/graalvm/graalpython) - Python 3.7
-* [TruffleRuby](https://github.com/oracle/truffleruby/) - Ruby Programming Language 2.3.7
+* [TruffleRuby](https://github.com/oracle/truffleruby/) - Ruby Programming Language 2.4.4
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage) - A simple demonstration language for the GraalVM.
 
 

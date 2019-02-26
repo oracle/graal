@@ -541,34 +541,39 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     for b in bootstrap_tests:
         b.run(tasks, extraVMarguments)
 
+    with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
+        # metadata package was deprecated, exclude it
+        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
+
+
+def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # run selected DaCapo benchmarks
-    # DaCapo benchmarks that can run with system assertions enabled
-    dacapos_with_sa = {
+
+    # DaCapo benchmarks that can run with system assertions enabled but
+    # java.util.Logging assertions disabled because the the DaCapo harness
+    # misuses the API.
+    dacapos = {
         'avrora':     1,
         'h2':         1,
         'jython':     2,
         'luindex':    1,
         'lusearch':   4,
         'xalan':      1,
-    }
-    for name, iterations in sorted(dacapos_with_sa.iteritems()):
-        with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
-
-    # DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
-    dacapos_without_sa = {
         'batik':      1,
         'fop':        8,
         'pmd':        1,
         'sunflow':    2,
     }
-    for name, iterations in sorted(dacapos_without_sa.iteritems()):
-        with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
+    for name, iterations in sorted(dacapos.iteritems()):
+        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
+                               ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
 
     # run selected Scala DaCapo benchmarks
-    # Scala DaCapo benchmarks that can run with system assertions enabled
-    scala_dacapos_with_sa = {
+    # Scala DaCapo benchmarks that can run with system assertions enabled but
+    # java.util.Logging assertions disabled because the the DaCapo harness
+    # misuses the API.
+    scala_dacapos = {
         'apparat':    1,
         'factorie':   1,
         'kiama':      4,
@@ -578,51 +583,43 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'scalariform':1,
         'scalatest':  1,
         'scalaxb':    1,
-        'tmt':        1
-    }
-    for name, iterations in sorted(scala_dacapos_with_sa.iteritems()):
-        with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
-
-    # Scala DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
-    scala_dacapos_without_sa = {
+        'tmt':        1,
         'actors':     1,
     }
     if not jdk_includes_corba(jdk):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
-        del scala_dacapos_without_sa['actors']
+        del scala_dacapos['actors']
 
-    for name, iterations in sorted(scala_dacapos_without_sa.iteritems()):
-        with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
+    for name, iterations in sorted(scala_dacapos.iteritems()):
+        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
+                                     ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
 
     # ensure -Xbatch still works
-    with Task('DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
+    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
         if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
 
     # ensure benchmark counters still work
     if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
-        with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
+        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
             if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
 
     # ensure -Xcomp still works
-    with Task('XCompMode:product', tasks, tags=GraalTags.test) as t:
+    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     if isJDK8:
         # temporarily isolate those test (GR-10990)
         cms = ['cms']
         # ensure CMS still works
-        with Task('DaCapo_pmd:CMS', tasks, tags=cms) as t:
+        with Task(prefix + 'DaCapo_pmd:CMS', tasks, tags=cms) as t:
             if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
         # ensure CMSIncrementalMode still works
-        with Task('DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
+        with Task(prefix + 'DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
             if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
-    with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
-        # metadata package was deprecated, exclude it
-        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
+
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test + GraalTags.coverage),
@@ -662,6 +659,7 @@ graal_bootstrap_tests = [
 
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
     mx_jaotc.jaotc_gate_runner(tasks)
 
@@ -1064,22 +1062,26 @@ def makegraaljdk(args):
     parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
     parser.add_argument('-b', '--bootstrap', action='store_true', help='execute a bootstrap of the created GraalJDK')
     parser.add_argument('-l', '--license', action='store', help='path to the license file', metavar='<path>')
+    parser.add_argument('-o', '--overlay', action='store_true', help='Only write the Graal files into the destination')
     parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
     args = parser.parse_args(args)
     if isJDK8:
         dstJdk = os.path.abspath(args.dest)
-        srcJdk = jdk.home
-        if exists(dstJdk):
-            if args.force:
-                shutil.rmtree(dstJdk)
-            else:
-                mx.abort('Use --force to overwrite existing directory ' + dstJdk)
-        mx.log('Creating {} from {}'.format(dstJdk, srcJdk))
-        shutil.copytree(srcJdk, dstJdk)
+        if not args.overlay:
+            srcJdk = jdk.home
+            if exists(dstJdk):
+                if args.force:
+                    shutil.rmtree(dstJdk)
+                else:
+                    mx.abort('Use --force to overwrite existing directory ' + dstJdk)
+                    mx.log('Creating {} from {}'.format(dstJdk, srcJdk))
+            shutil.copytree(srcJdk, dstJdk)
 
         bootDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'boot'))
         truffleDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'truffle'))
         jvmciDir = join(dstJdk, 'jre', 'lib', 'jvmci')
+        if args.overlay:
+            mx.ensure_dir_exists(jvmciDir)
         assert exists(jvmciDir), jvmciDir + ' does not exist'
 
         if mx.get_os() == 'darwin':
@@ -1088,8 +1090,11 @@ def makegraaljdk(args):
             jvmlibDir = join(dstJdk, 'jre', 'bin', 'server')
         else:
             jvmlibDir = join(dstJdk, 'jre', 'lib', mx.get_arch(), 'server')
-        jvmlib = join(jvmlibDir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
-        assert exists(jvmlib), jvmlib + ' does not exist'
+        if args.overlay:
+            mx.ensure_dir_exists(jvmlibDir)
+        else:
+            jvmlib = join(jvmlibDir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
+            assert exists(jvmlib), jvmlib + ' does not exist'
 
         with open(join(jvmciDir, 'compiler-name'), 'w') as fp:
             print >> fp, 'graal'
@@ -1172,7 +1177,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
     graal_compiler='graal',
 ))
-
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],

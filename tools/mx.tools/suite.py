@@ -1,11 +1,11 @@
 suite = {
-    "mxversion": "5.195.1",
+    "mxversion": "5.210.2",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "1.0.0-rc12",
-    "release" : True,
+    "version" : "1.0.0-rc13",
+    "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
       "name" : "Truffle and Graal developers",

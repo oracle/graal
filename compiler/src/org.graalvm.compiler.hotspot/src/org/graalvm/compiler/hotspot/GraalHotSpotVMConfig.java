@@ -106,6 +106,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class, false);
     private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class, false);
     private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class, false);
+    public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class, false);
 
     /*
      * These are methods because in some JDKs the flags are visible but the stubs themselves haven't
@@ -388,11 +389,28 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final int pendingExceptionOffset = getFieldOffset("ThreadShadow::_pending_exception", Integer.class, "oop");
 
     public final int pendingDeoptimizationOffset = getFieldOffset("JavaThread::_pending_deoptimization", Integer.class, "int");
-    public final int pendingFailedSpeculationOffset = getFieldOffset("JavaThread::_pending_failed_speculation", Integer.class, "long");
     public final int pendingTransferToInterpreterOffset = getFieldOffset("JavaThread::_pending_transfer_to_interpreter", Integer.class, "bool");
 
     private final int javaFrameAnchorLastJavaSpOffset = getFieldOffset("JavaFrameAnchor::_last_Java_sp", Integer.class, "intptr_t*");
     private final int javaFrameAnchorLastJavaPcOffset = getFieldOffset("JavaFrameAnchor::_last_Java_pc", Integer.class, "address");
+
+    public final int pendingFailedSpeculationOffset;
+    {
+        String name = "JavaThread::_pending_failed_speculation";
+        int offset = -1;
+        try {
+            offset = getFieldOffset(name, Integer.class, "jlong");
+        } catch (JVMCIError e) {
+            try {
+                offset = getFieldOffset(name, Integer.class, "long");
+            } catch (JVMCIError e2) {
+            }
+        }
+        if (offset == -1) {
+            throw new JVMCIError("cannot get offset of field " + name + " with type long or jlong");
+        }
+        pendingFailedSpeculationOffset = offset;
+    }
 
     public int threadLastJavaSpOffset() {
         return javaThreadAnchorOffset + javaFrameAnchorLastJavaSpOffset;

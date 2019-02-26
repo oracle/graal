@@ -120,6 +120,16 @@ public class ByteSequenceTest {
     }
 
     @Test
+    public void testByteArraySubSequence() {
+        ByteSequence sequence = ByteSequence.create(new byte[]{1, 2, 3, 4});
+        assertArrayEquals(new byte[]{1, 2, 3, 4}, sequence.toByteArray());
+        ByteSequence subSequence = sequence.subSequence(1, 4);
+        assertArrayEquals(new byte[]{2, 3, 4}, subSequence.toByteArray());
+        ByteSequence subSubSequence = subSequence.subSequence(1, 3);
+        assertArrayEquals(new byte[]{3, 4}, subSubSequence.toByteArray());
+    }
+
+    @Test
     public void testEmptySequence() {
         ByteSequence sequence = ByteSequence.create(new byte[]{});
         assertEquals(0, sequence.length());

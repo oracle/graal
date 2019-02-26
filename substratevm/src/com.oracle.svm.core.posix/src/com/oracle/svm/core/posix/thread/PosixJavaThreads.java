@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -206,7 +206,7 @@ public final class PosixJavaThreads extends JavaThreads {
 }
 
 @TargetClass(Thread.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
 final class Target_java_lang_Thread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean hasPthreadIdentifier;
@@ -363,7 +363,7 @@ class PosixParkEventFactory implements ParkEventFactory {
 }
 
 @AutomaticFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
 class PosixThreadsFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

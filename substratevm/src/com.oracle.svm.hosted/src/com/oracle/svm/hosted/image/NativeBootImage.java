@@ -122,7 +122,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
     protected final void write(Path outputFile) {
         try {
-            Files.createDirectories(outputFile.normalize().getParent());
+            Path outFileParent = outputFile.normalize().getParent();
+            if (outFileParent != null) {
+                Files.createDirectories(outFileParent);
+            }
             FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
             objectFile.write(channel);
         } catch (Exception ex) {
@@ -136,7 +139,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
-    void writeHeaderFiles(Path outputDir, String imageName, boolean dynamic) {
+    void writeHeaderFiles(Path outputDir, String imageName, Map<ResolvedJavaMethod, String> symbolAliases, boolean dynamic) {
         /* Group methods by header files. */
         Map<? extends Class<? extends Header>, List<HostedMethod>> hostedMethods = uniqueEntryPoints.stream()
                         .filter(this::shouldWriteHeader)
@@ -146,11 +149,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         hostedMethods.forEach((headerClass, methods) -> {
             methods.sort(NativeBootImage::sortMethodsByFileNameAndPosition);
             Header header = headerClass == Header.class ? defaultCHeaderAnnotation(imageName) : instantiateCHeader(headerClass);
-            writeHeaderFile(outputDir, header, methods, dynamic);
+            writeHeaderFile(outputDir, header, methods, symbolAliases, dynamic);
         });
     }
 
-    private void writeHeaderFile(Path outDir, CHeader.Header header, List<HostedMethod> methods, boolean dynamic) {
+    private void writeHeaderFile(Path outDir, Header header, List<HostedMethod> methods, Map<ResolvedJavaMethod, String> symbolAliases, boolean dynamic) {
         CSourceCodeWriter writer = new CSourceCodeWriter(outDir.getParent());
         String imageHeaderGuard = "__" + header.name().toUpperCase().replaceAll("[^A-Z0-9]", "_") + "_H";
         String dynamicSuffix = dynamic ? "_dynamic.h" : ".h";
@@ -182,7 +185,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.appendln("#endif");
             writer.appendln();
 
-            methods.forEach(m -> writeMethodHeader(m, writer, dynamic));
+            methods.forEach(m -> writeMethodHeader(m, writer, symbolAliases, dynamic));
 
             writer.appendln("#if defined(__cplusplus)");
             writer.appendln("}");
@@ -190,9 +193,13 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
 
         writer.appendln("#endif");
-
-        String fileName = outDir.getFileName().resolve(header.name() + dynamicSuffix).toString();
-        writer.writeFile(fileName, false);
+        Path fileNamePath = outDir.getFileName();
+        if (fileNamePath == null) {
+            throw UserError.abort("Cannot determine header file name for directory " + outDir);
+        } else {
+            String fileName = fileNamePath.resolve(header.name() + dynamicSuffix).toString();
+            writer.writeFile(fileName, false);
+        }
     }
 
     /**
@@ -263,7 +270,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         return 0;
     }
 
-    private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, boolean dynamic) {
+    private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, Map<ResolvedJavaMethod, String> symbolAliases, boolean dynamic) {
         assert Modifier.isStatic(m.getModifiers()) : "Published methods that go into the header must be static.";
         CEntryPointData cEntryPointData = (CEntryPointData) m.getWrapped().getEntryPointData();
         String docComment = cEntryPointData.getDocumentation();
@@ -271,6 +278,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.appendln("/*");
             Arrays.stream(docComment.split("\n")).forEach(l -> writer.appendln(" * " + l));
             writer.appendln(" */");
+        }
+
+        String symbolName = symbolAliases.get(m);
+        if (symbolName == null || symbolName.isEmpty()) {
+            symbolName = cEntryPointData.getSymbolName();
         }
 
         if (dynamic) {
@@ -285,11 +297,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
                         nativeLibs));
         writer.append(" ");
 
-        assert !cEntryPointData.getSymbolName().isEmpty();
+        assert !symbolName.isEmpty();
         if (dynamic) {
-            writer.append("(*").append(cEntryPointData.getSymbolName()).append("_fn_t)");
+            writer.append("(*").append(symbolName).append("_fn_t)");
         } else {
-            writer.append(cEntryPointData.getSymbolName());
+            writer.append(symbolName);
         }
         writer.append("(");
 
@@ -384,7 +396,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBytes());
                 final String heapSectionName = SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat());
                 heapSection = objectFile.newProgbitsSection(heapSectionName, objectFile.getPageSize(), writable, false, heapSectionImpl);
-                objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, true);
+                objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
                 heap.setReadOnlySection(heapSection.getName(), 0);
                 long writableSectionOffset = heap.getReadOnlySectionSize();

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.code;
 
+import java.util.List;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -70,7 +72,7 @@ public final class CFunctionCallStubMethod extends CCallStubMethod {
     }
 
     @Override
-    protected ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers) {
+    protected ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers, List<ValueNode> arguments) {
         return kit.unique(new CGlobalDataLoadAddressNode(linkage));
     }
 }

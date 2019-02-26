@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,7 +45,7 @@ public final class ElfFile {
     }
 
     public static ElfFile create(ByteSequence data) {
-        ElfReader reader = new ElfReader(data);
+        ElfReader reader = ElfReader.create(data);
 
         ElfHeader header = ElfHeader.create(reader);
         ElfSectionHeaderTable sectionHeaderTable = ElfSectionHeaderTable.create(header, reader);

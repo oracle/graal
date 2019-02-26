@@ -478,6 +478,10 @@ public final class Context implements AutoCloseable {
      * provided as {@link Value#getMember(String) members}. Methods and fields are grouped by name,
      * so only one member is exposed for each name.
      * <p>
+     * {@link Class} objects have a member named {@code static} referring to the class's companion
+     * object containing the static methods of the class. Likewise, the companion object has a
+     * member named {@code class} that points back to the class object.
+     * <p>
      * When an argument value needs to be mapped to match a required Java method parameter type,
      * then the semantics of {@link Value#as(Class) host value mapping} is used. The result of the
      * mapping is equivalent of calling {@link Value#as(Class)} with the parameter type. Therefore,
@@ -1048,22 +1052,12 @@ public final class Context implements AutoCloseable {
          * @since 1.0
          */
         public Context build() {
-            if (allowHostAccess == null) {
-                allowHostAccess = allowAllAccess;
-            }
-            if (allowNativeAccess == null) {
-                allowNativeAccess = allowAllAccess;
-            }
-            if (allowCreateThread == null) {
-                allowCreateThread = allowAllAccess;
-            }
-            if (allowIO == null) {
-                allowIO = allowAllAccess;
-            }
-            if (allowHostClassLoading == null) {
-                allowHostClassLoading = allowAllAccess;
-            }
-            if (!allowIO && customFileSystem != null) {
+            boolean hostAccess = orAllAccess(allowHostAccess);
+            boolean nativeAccess = orAllAccess(allowNativeAccess);
+            boolean createThread = orAllAccess(allowCreateThread);
+            boolean io = orAllAccess(allowIO);
+            boolean hostClassLoading = orAllAccess(allowHostClassLoading);
+            if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }
             Engine engine = this.sharedEngine;
@@ -1083,20 +1077,24 @@ public final class Context implements AutoCloseable {
                 }
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
-                                allowHostClassLoading,
-                                hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem, customLogHandler);
+                return engine.impl.createContext(null, null, null, hostAccess, nativeAccess, createThread, io,
+                                hostClassLoading, hostClassFilter,
+                                Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages,
+                                customFileSystem, customLogHandler);
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
                 }
-                return engine.impl.createContext(out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
-                                allowHostClassLoading,
-                                hostClassFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem,
-                                customLogHandler);
+                return engine.impl.createContext(out, err, in, hostAccess, nativeAccess, createThread, io,
+                                hostClassLoading, hostClassFilter,
+                                options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages,
+                                customFileSystem, customLogHandler);
             }
         }
 
+        private boolean orAllAccess(Boolean optionalBoolean) {
+            return optionalBoolean != null ? optionalBoolean : allowAllAccess;
+        }
     }
 
 }

@@ -38,6 +38,7 @@ import static jdk.vm.ci.meta.DeoptimizationReason.TypeCheckedInliningViolated;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
 import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static org.graalvm.compiler.bytecode.Bytecodes.AALOAD;
 import static org.graalvm.compiler.bytecode.Bytecodes.AASTORE;
 import static org.graalvm.compiler.bytecode.Bytecodes.ACONST_NULL;
@@ -425,7 +426,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BailoutException;
@@ -1647,11 +1648,11 @@ public class BytecodeParser implements GraphBuilderContext {
     private boolean forceInliningEverything;
 
     @Override
-    public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
+    public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
         boolean previous = forceInliningEverything;
         forceInliningEverything = previous || inlineEverything;
         try {
-            appendInvoke(invokeKind, targetMethod, args);
+            return appendInvoke(invokeKind, targetMethod, args);
         } finally {
             forceInliningEverything = previous;
         }
@@ -1721,7 +1722,6 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
             if (invokeKind.isDirect()) {
-
                 inlineInfo = tryInline(args, targetMethod);
                 if (inlineInfo == SUCCESSFULLY_INLINED) {
                     return null;
@@ -2321,7 +2321,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         }
                         return false;
                     }
-                    if (canInlinePartialIntrinsicExit() && InlinePartialIntrinsicExitDuringParsing.getValue(options)) {
+                    if (canInlinePartialIntrinsicExit() && InlinePartialIntrinsicExitDuringParsing.getValue(options) && !IS_BUILDING_NATIVE_IMAGE) {
                         // Otherwise inline the original method. Any frame state created
                         // during the inlining will exclude frame(s) in the
                         // intrinsic method (see FrameStateBuilder.create(int bci)).
@@ -3996,7 +3996,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private String unresolvedMethodAssertionMessage(JavaMethod result) {
         String message = result.format("%H.%n(%P)%R");
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             JavaType declaringClass = result.getDeclaringClass();
             String className = declaringClass.getName();
             switch (className) {

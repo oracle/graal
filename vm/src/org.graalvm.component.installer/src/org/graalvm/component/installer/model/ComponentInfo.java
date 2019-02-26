@@ -64,6 +64,11 @@ public final class ComponentInfo {
     private String licensePath;
 
     /**
+     * License type.
+     */
+    private String licenseType;
+
+    /**
      * Assertions on graalVM installation.
      */
     private final Map<String, String> requiredGraalValues = new HashMap<>();
@@ -181,5 +186,13 @@ public final class ComponentInfo {
 
     public void setPostinstMessage(String postinstMessage) {
         this.postinstMessage = postinstMessage;
+    }
+
+    public String getLicenseType() {
+        return licenseType;
+    }
+
+    public void setLicenseType(String licenseType) {
+        this.licenseType = licenseType;
     }
 }

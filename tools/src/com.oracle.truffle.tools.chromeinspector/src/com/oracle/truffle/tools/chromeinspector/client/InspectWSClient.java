@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,7 @@ package com.oracle.truffle.tools.chromeinspector.client;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -67,7 +65,6 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
     private final InspectorExecutionContext executionContext;
     private final boolean debugBreak;
     private final ConnectionWatcher connectionWatcher;
-    private final PrintStream traceLog;
     private InspectServerSession iss;
 
     private static URI getURI(InetSocketAddress isa, String wsspath) {
@@ -86,22 +83,6 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
         this.executionContext = executionContext;
         this.debugBreak = debugBreak;
         this.connectionWatcher = connectionWatcher;
-        String traceLogFile = System.getProperty("chromeinspector.traceMessages");
-        if (traceLogFile != null) {
-            if (Boolean.parseBoolean(traceLogFile)) {
-                traceLog = System.err;
-            } else if (!"false".equalsIgnoreCase(traceLogFile)) {
-                if ("tmp".equalsIgnoreCase(traceLogFile)) {
-                    traceLog = new PrintStream(new FileOutputStream(File.createTempFile("ChromeInspectorProtocol", ".txt")));
-                } else {
-                    traceLog = new PrintStream(new FileOutputStream(traceLogFile));
-                }
-            } else {
-                traceLog = null;
-            }
-        } else {
-            traceLog = null;
-        }
         if (secure) {
             if (TruffleOptions.AOT) {
                 throw new IOException("Secure connection is not available in the native-image yet.");
@@ -133,7 +114,9 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
                 }
                 KeyStore keystore = KeyStore.getInstance(keystoreType);
                 File keyFile = new File(keyStoreFile);
-                keystore.load(new FileInputStream(keyFile), filePassword);
+                try (FileInputStream keyIn = new FileInputStream(keyFile)) {
+                    keystore.load(keyIn, filePassword);
+                }
                 String keyRecoverPasswordProperty = keyStoreOptions.getKeyPassword();
                 char[] keyRecoverPassword = keyRecoverPasswordProperty == null ? filePassword : keyRecoverPasswordProperty.toCharArray();
                 final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
@@ -159,19 +142,13 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
 
     @Override
     public void onOpen(ServerHandshake sh) {
-        if (traceLog != null) {
-            traceLog.println("CLIENT ws connection opened at " + getURI());
-            traceLog.flush();
-        }
+        executionContext.logMessage("CLIENT ws connection opened at ", getURI().toString());
         iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
         connectionWatcher.notifyOpen();
         iss.setMessageListener(new MessageEndpoint() {
             @Override
             public void sendText(String message) {
-                if (traceLog != null) {
-                    traceLog.println("SERVER: " + message);
-                    traceLog.flush();
-                }
+                executionContext.logMessage("SERVER: ", message);
                 send(message);
             }
 
@@ -197,19 +174,13 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
 
     @Override
     public void onMessage(String message) {
-        if (traceLog != null) {
-            traceLog.println("CLIENT: " + message);
-            traceLog.flush();
-        }
+        executionContext.logMessage("CLIENT: ", message);
         iss.sendText(message);
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        if (traceLog != null) {
-            traceLog.println("SERVER closed " + reason);
-            traceLog.flush();
-        }
+        executionContext.logMessage("SERVER closed ", reason);
         connectionWatcher.notifyClosing();
         if (!executionContext.canRun()) {
             // The connection was not successfull, resume the execution
@@ -219,10 +190,12 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
 
     @Override
     public void onError(Exception excptn) {
-        if (traceLog != null) {
-            traceLog.println("SERVER error " + excptn);
-            traceLog.flush();
-        }
+        executionContext.logException("SERVER error ", excptn);
+    }
+
+    @Override
+    public void consoleAPICall(String wsspath, String type, Object text) {
+        iss.consoleAPICall(type, text);
     }
 
     @Override

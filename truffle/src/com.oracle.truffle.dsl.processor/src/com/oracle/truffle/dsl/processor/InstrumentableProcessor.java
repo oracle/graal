@@ -68,7 +68,6 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper.IncomingConverter;
@@ -316,7 +315,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         TypeMirror factoryType = context.reloadType(context.getType(com.oracle.truffle.api.instrumentation.InstrumentableFactory.class));
         factory.getImplements().add(new CodeTypeMirror.DeclaredCodeTypeMirror(ElementUtils.fromTypeMirror(factoryType), Arrays.asList(sourceType.asType())));
 
-        addGeneratedBy(context, factory, sourceType);
+        GeneratorUtils.addGeneratedBy(context, factory, sourceType);
 
         TypeMirror returnType = context.getType(com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode.class);
         CodeExecutableElement createMethod = new CodeExecutableElement(ElementUtils.modifiers(Modifier.PUBLIC), returnType, "createWrapper");
@@ -444,7 +443,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             wrapperType.getImplements().add(context.getType(com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode.class));
         }
 
-        addGeneratedBy(context, wrapperType, sourceType);
+        GeneratorUtils.addGeneratedBy(context, wrapperType, sourceType);
 
         wrapperType.add(createNodeChild(context, sourceType.asType(), FIELD_DELEGATE));
         wrapperType.add(createNodeChild(context, context.getType(ProbeNode.class), FIELD_PROBE));
@@ -809,16 +808,6 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             return types.boxedClass((PrimitiveType) type).asType();
         } else {
             return type;
-        }
-    }
-
-    private static void addGeneratedBy(ProcessorContext context, CodeTypeElement generatedType, TypeElement generatedByType) {
-        DeclaredType generatedBy = (DeclaredType) context.getType(GeneratedBy.class);
-        // only do this if generatedBy is on the classpath.
-        if (generatedBy != null) {
-            CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror(generatedBy);
-            generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("value"), new CodeAnnotationValue(generatedByType.asType()));
-            generatedType.addAnnotationMirror(generatedByAnnotation);
         }
     }
 

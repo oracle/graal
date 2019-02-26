@@ -58,8 +58,6 @@ public final class CompletionExecutor {
         UNUSED
     }
 
-    private final Thread mainThread;
-
     private final AtomicReference<State> state;
     private final LongAdder postedOperations;
     private final LongAdder completedOperations;
@@ -86,7 +84,6 @@ public final class CompletionExecutor {
 
     public CompletionExecutor(BigBang bb, ForkJoinPool forkJoin) {
         this.bb = bb;
-        mainThread = Thread.currentThread();
         executorService = forkJoin;
         state = new AtomicReference<>(State.UNUSED);
         postedOperations = new LongAdder();
@@ -100,7 +97,6 @@ public final class CompletionExecutor {
 
     public void init(Timing newTiming) {
         assert isSequential() || !executorService.hasQueuedSubmissions();
-        assert Thread.currentThread() == mainThread;
 
         timing = newTiming;
         setState(State.BEFORE_START);
@@ -146,7 +142,6 @@ public final class CompletionExecutor {
             case UNUSED:
                 throw JVMCIError.shouldNotReachHere();
             case BEFORE_START:
-                assert Thread.currentThread() == mainThread;
                 postedBeforeStart.add(command);
                 break;
             case STARTED:
@@ -197,7 +192,6 @@ public final class CompletionExecutor {
 
     public void start() {
         assert state.get() == State.BEFORE_START;
-        assert Thread.currentThread() == mainThread;
 
         setState(State.STARTED);
         postedBeforeStart.forEach(this::execute);
@@ -226,7 +220,6 @@ public final class CompletionExecutor {
 
         while (true) {
             assert state.get() == State.STARTED;
-            assert Thread.currentThread() == mainThread;
 
             boolean quiescent = executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
             if (timing != null && !quiescent) {
@@ -255,7 +248,6 @@ public final class CompletionExecutor {
     }
 
     public long getPostedOperations() {
-        assert Thread.currentThread() == mainThread;
         return postedOperations.sum() + postedBeforeStart.size();
     }
 
@@ -273,4 +265,7 @@ public final class CompletionExecutor {
         return state.get() == State.STARTED;
     }
 
+    public ForkJoinPool getExecutorService() {
+        return executorService;
+    }
 }

@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -175,6 +176,10 @@ public abstract class TypeFlow<T> {
 
     public MethodFlowsGraph graphRef() {
         return graphRef;
+    }
+
+    public AnalysisMethod method() {
+        return graphRef != null ? graphRef.getMethod() : null;
     }
 
     public T getSource() {

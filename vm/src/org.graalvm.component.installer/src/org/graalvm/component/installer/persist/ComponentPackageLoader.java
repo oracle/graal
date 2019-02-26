@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,13 @@
  */
 package org.graalvm.component.installer.persist;
 
+import java.io.BufferedReader;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.InstallerStopException;
-import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -48,14 +45,8 @@ import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.jar.Manifest;
+import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
-import static org.graalvm.component.installer.BundleConstants.PATH_LICENSE;
-import static org.graalvm.component.installer.BundleConstants.META_INF_PATH;
-import static org.graalvm.component.installer.BundleConstants.META_INF_PERMISSIONS_PATH;
-import static org.graalvm.component.installer.BundleConstants.META_INF_SYMLINKS_PATH;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -65,8 +56,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
  */
 public class ComponentPackageLoader implements Closeable, MetadataLoader {
     private final Feedback feedback;
-    private final JarFile jarFile;
-    private final Manifest manifest;
+
     /**
      * Default value producer.
      */
@@ -97,6 +87,11 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     private String licensePath;
 
     /**
+     * Type / name of the license.
+     */
+    private String licenseType;
+
+    /**
      * The produced component info.
      */
     private ComponentInfo info;
@@ -110,26 +105,14 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
 
     static final ResourceBundle BUNDLE = ResourceBundle.getBundle("org.graalvm.component.installer.persist.Bundle");
 
-    public ComponentPackageLoader(JarFile jarFile, Feedback feedback) throws IOException {
-        this.feedback = feedback.withBundle(ComponentPackageLoader.class);
-        this.jarFile = jarFile;
-        manifest = jarFile.getManifest();
-        if (manifest == null) {
-            throw this.feedback.failure("ERROR_CorruptedPackageMissingMeta", null);
-        }
-        valueSupplier = (s) -> manifest.getMainAttributes().getValue(s);
-    }
-
-    ComponentPackageLoader(Function<String, String> supplier, Feedback feedback) {
+    public ComponentPackageLoader(Function<String, String> supplier, Feedback feedback) {
         this.feedback = feedback.withBundle(ComponentPackageLoader.class);
         this.valueSupplier = supplier;
-        this.jarFile = null;
-        this.manifest = null;
     }
 
     @Override
-    public JarFile getJarFile() {
-        return jarFile;
+    public Archive getArchive() {
+        return null;
     }
 
     @Override
@@ -214,10 +197,15 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                         },
                         () -> info.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
                         () -> loadWorkingDirectories(),
-                        () -> loadMessages()
+                        () -> loadMessages(),
+                        () -> loadLicenseType()
 
         );
         return info;
+    }
+
+    private void loadLicenseType() {
+        licenseType = parseHeader(BundleConstants.BUNDLE_LICENSE_TYPE, null).getContents(null);
     }
 
     @Override
@@ -225,12 +213,22 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         return licensePath;
     }
 
+    @Override
+    public String getLicenseID() {
+        return null;
+    }
+
+    @Override
+    public String getLicenseType() {
+        return licenseType;
+    }
+
     private void throwInvalidPermissions() {
         throw feedback.failure("ERROR_PermissionFormat", null);
     }
 
     @SuppressWarnings("unchecked")
-    Map<String, String> parsePermissions(BufferedReader r) throws IOException {
+    protected Map<String, String> parsePermissions(BufferedReader r) throws IOException {
         Map<String, String> result = new LinkedHashMap<>();
 
         Properties prop = new Properties();
@@ -255,19 +253,11 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
 
     @Override
     public Map<String, String> loadPermissions() throws IOException {
-        JarEntry permEntry = jarFile.getJarEntry(META_INF_PERMISSIONS_PATH);
-        if (permEntry == null) {
-            return Collections.emptyMap();
-        }
-        try (BufferedReader r = new BufferedReader(new InputStreamReader(
-                        jarFile.getInputStream(permEntry), "UTF-8"))) {
-            Map<String, String> permissions = parsePermissions(r);
-            return permissions;
-        }
+        return Collections.emptyMap();
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Map<String, String> parseSymlinks(Properties links) {
+    protected Map<String, String> parseSymlinks(Properties links) {
         for (String key : new HashSet<>(links.stringPropertyNames())) {
             Path p = SystemUtils.fromCommonString(key).normalize();
             String prop = (String) links.remove(key);
@@ -303,51 +293,12 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
 
     @Override
     public Map<String, String> loadSymlinks() throws IOException {
-        assert info != null;
-        JarEntry symEntry = jarFile.getJarEntry(META_INF_SYMLINKS_PATH);
-        if (symEntry == null) {
-            return Collections.emptyMap();
-        }
-        Properties links = new Properties();
-        try (InputStream istm = jarFile.getInputStream(symEntry)) {
-            links.load(istm);
-        }
-        return parseSymlinks(links);
+        return Collections.emptyMap();
     }
 
     @Override
     public void loadPaths() {
-        ComponentInfo cinfo = getComponentInfo();
-        Set<String> emptyDirectories = new HashSet<>();
-        for (JarEntry en : Collections.list(jarFile.entries())) {
-            String eName = en.getName();
-            if (eName.startsWith(META_INF_PATH)) {
-                continue;
-            }
-            int li = eName.lastIndexOf("/", en.isDirectory() ? eName.length() - 2 : eName.length() - 1);
-            if (li > 0) {
-                emptyDirectories.remove(eName.substring(0, li + 1));
-            }
-            if (PATH_LICENSE.equals(eName)) {
-                this.licensePath = MessageFormat.format(
-                                BUNDLE.getString("LICENSE_Path_translation"),
-                                cinfo.getId(),
-                                cinfo.getVersionString());
-                fileList.add(licensePath);
-                cinfo.setLicensePath(licensePath);
-                continue;
-            }
-            if (en.isDirectory()) {
-                // directory names always come first
-                emptyDirectories.add(eName);
-            } else {
-                fileList.add(eName);
-            }
-        }
-        fileList.addAll(emptyDirectories);
-        // sort empty directories first
-        Collections.sort(fileList);
-        cinfo.addPaths(fileList);
+        getComponentInfo();
     }
 
     @Override
@@ -362,9 +313,6 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
 
     @Override
     public void close() throws IOException {
-        if (jarFile != null) {
-            jarFile.close();
-        }
     }
 
     private void loadMessages() {
@@ -373,5 +321,14 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
             String text = val.replace("\\n", "\n").replace("\\\\", "\\"); // NOI18N
             info.setPostinstMessage(text);
         }
+    }
+
+    protected void setLicensePath(String path) {
+        this.licensePath = path;
+        getComponentInfo().setLicensePath(licensePath);
+    }
+
+    protected void addFiles(List<String> files) {
+        fileList.addAll(files);
     }
 }

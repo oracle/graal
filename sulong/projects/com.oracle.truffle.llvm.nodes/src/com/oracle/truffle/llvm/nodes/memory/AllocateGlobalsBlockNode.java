@@ -29,44 +29,25 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 
 public final class AllocateGlobalsBlockNode extends LLVMNode implements LLVMAllocateNode {
 
     private final long size;
-
-    @Child Node execute;
-    @Child LLVMToNativeNode toNative;
-
-    private final TruffleObject allocateGlobalsBlock;
+    private final LLVMMemory memory;
 
     public AllocateGlobalsBlockNode(LLVMContext context, StructureType type) {
         this.size = context.getByteSize(type);
-        this.execute = Message.EXECUTE.createNode();
-        this.toNative = LLVMToNativeNode.createToNativeWithTarget();
-
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        this.allocateGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_allocate_globals_block", "(UINT64):POINTER");
+        this.memory = context.getLanguage().getCapability(LLVMMemory.class);
     }
 
     @Override
     public LLVMPointer executeWithTarget() {
-        try {
-            Object ret = ForeignAccess.sendExecute(execute, allocateGlobalsBlock, size);
-            return toNative.executeWithTarget(ret);
-        } catch (InteropException ex) {
-            throw new OutOfMemoryError("could not allocate globals block");
-        }
+        return memory.allocateMemory(size);
     }
 }

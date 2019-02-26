@@ -57,6 +57,6 @@ final class PolyglotEngineOptions {
      * When the option is set the exceptions thrown by instruments are propagated rather than logged
      * into err.
      */
-    @Option(name = INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME, category = OptionCategory.DEBUG, help = "Propagates exceptions thrown by instruments.") static final OptionKey<Boolean> InstrumentExceptionsAreThrown = new OptionKey<>(
+    @Option(name = INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME, category = OptionCategory.INTERNAL, help = "Propagates exceptions thrown by instruments.") static final OptionKey<Boolean> InstrumentExceptionsAreThrown = new OptionKey<>(
                     false);
 }

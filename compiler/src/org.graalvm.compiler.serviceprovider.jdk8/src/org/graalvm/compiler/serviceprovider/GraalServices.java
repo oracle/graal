@@ -28,11 +28,21 @@ import static java.lang.Thread.currentThread;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup.SpeculationContextObject;
+
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReasonEncoding;
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
 
@@ -40,30 +50,6 @@ import jdk.vm.ci.services.Services;
  * JDK 8 version of {@link GraalServices}.
  */
 public final class GraalServices {
-
-    private static int getJavaSpecificationVersion() {
-        String value = System.getProperty("java.specification.version");
-        if (value.startsWith("1.")) {
-            value = value.substring(2);
-        }
-        return Integer.parseInt(value);
-    }
-
-    /**
-     * The integer value corresponding to the value of the {@code java.specification.version} system
-     * property after any leading {@code "1."} has been stripped.
-     */
-    public static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
-
-    /**
-     * Determines if the Java runtime is version 8 or earlier.
-     */
-    public static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
-
-    /**
-     * Determines if the Java runtime is version 11 or earlier.
-     */
-    public static final boolean Java11OrEarlier = JAVA_SPECIFICATION_VERSION <= 11;
 
     private GraalServices() {
     }
@@ -138,6 +124,162 @@ public final class GraalServices {
     public static boolean isToStringTrusted(Class<?> c) {
         ClassLoader cl = c.getClassLoader();
         return cl == null || cl == JVMCI_LOADER || cl == JVMCI_PARENT_LOADER;
+    }
+
+    /**
+     * An implementation of {@link SpeculationReason} based on direct, unencoded values.
+     */
+    static final class DirectSpeculationReason implements SpeculationReason {
+        final int groupId;
+        final String groupName;
+        final Object[] context;
+        private SpeculationReasonEncoding encoding;
+
+        DirectSpeculationReason(int groupId, String groupName, Object[] context) {
+            this.groupId = groupId;
+            this.groupName = groupName;
+            this.context = context;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof DirectSpeculationReason) {
+                DirectSpeculationReason that = (DirectSpeculationReason) obj;
+                return this.groupId == that.groupId && Arrays.equals(this.context, that.context);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return groupId + Arrays.hashCode(this.context);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s@%d%s", groupName, groupId, Arrays.toString(context));
+        }
+
+        @Override
+        public SpeculationReasonEncoding encode(Supplier<SpeculationReasonEncoding> encodingSupplier) {
+            if (encoding == null) {
+                encoding = encodingSupplier.get();
+                encoding.addInt(groupId);
+                for (Object o : context) {
+                    if (o == null) {
+                        encoding.addInt(0);
+                    } else {
+                        addNonNullObject(encoding, o);
+                    }
+                }
+            }
+            return encoding;
+        }
+
+        static void addNonNullObject(SpeculationReasonEncoding encoding, Object o) {
+            Class<? extends Object> c = o.getClass();
+            if (c == String.class) {
+                encoding.addString((String) o);
+            } else if (c == Byte.class) {
+                encoding.addByte((Byte) o);
+            } else if (c == Short.class) {
+                encoding.addShort((Short) o);
+            } else if (c == Character.class) {
+                encoding.addShort((Character) o);
+            } else if (c == Integer.class) {
+                encoding.addInt((Integer) o);
+            } else if (c == Long.class) {
+                encoding.addLong((Long) o);
+            } else if (c == Float.class) {
+                encoding.addInt(Float.floatToRawIntBits((Float) o));
+            } else if (c == Double.class) {
+                encoding.addLong(Double.doubleToRawLongBits((Double) o));
+            } else if (o instanceof Enum) {
+                encoding.addInt(((Enum<?>) o).ordinal());
+            } else if (o instanceof ResolvedJavaMethod) {
+                encoding.addMethod((ResolvedJavaMethod) o);
+            } else if (o instanceof ResolvedJavaType) {
+                encoding.addType((ResolvedJavaType) o);
+            } else if (o instanceof ResolvedJavaField) {
+                encoding.addField((ResolvedJavaField) o);
+            } else if (o instanceof SpeculationContextObject) {
+                SpeculationContextObject sco = (SpeculationContextObject) o;
+                // These are compiler objects which all have the same class
+                // loader so the class name uniquely identifies the class.
+                encoding.addString(o.getClass().getName());
+                sco.accept(new EncodingAdapter(encoding));
+            } else if (o.getClass() == BytecodePosition.class) {
+                BytecodePosition p = (BytecodePosition) o;
+                while (p != null) {
+                    encoding.addInt(p.getBCI());
+                    encoding.addMethod(p.getMethod());
+                    p = p.getCaller();
+                }
+            } else {
+                throw new IllegalArgumentException("Unsupported type for encoding: " + c.getName());
+            }
+        }
+    }
+
+    static class EncodingAdapter implements SpeculationContextObject.Visitor {
+        private final SpeculationReasonEncoding encoding;
+
+        EncodingAdapter(SpeculationReasonEncoding encoding) {
+            this.encoding = encoding;
+        }
+
+        @Override
+        public void visitBoolean(boolean v) {
+            encoding.addByte(v ? 1 : 0);
+        }
+
+        @Override
+        public void visitByte(byte v) {
+            encoding.addByte(v);
+        }
+
+        @Override
+        public void visitChar(char v) {
+            encoding.addShort(v);
+        }
+
+        @Override
+        public void visitShort(short v) {
+            encoding.addInt(v);
+        }
+
+        @Override
+        public void visitInt(int v) {
+            encoding.addInt(v);
+        }
+
+        @Override
+        public void visitLong(long v) {
+            encoding.addLong(v);
+        }
+
+        @Override
+        public void visitFloat(float v) {
+            encoding.addInt(Float.floatToRawIntBits(v));
+        }
+
+        @Override
+        public void visitDouble(double v) {
+            encoding.addLong(Double.doubleToRawLongBits(v));
+        }
+
+        @Override
+        public void visitObject(Object v) {
+            if (v == null) {
+                encoding.addInt(0);
+            } else {
+                DirectSpeculationReason.addNonNullObject(encoding, v);
+            }
+        }
+    }
+
+    static SpeculationReason createSpeculationReason(int groupId, String groupName, Object... context) {
+        return new DirectSpeculationReason(groupId, groupName, context);
     }
 
     /**

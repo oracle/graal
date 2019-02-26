@@ -75,6 +75,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
@@ -89,9 +90,11 @@ public class Inflation extends BigBang {
 
     private final Pattern illegalCalleesPattern;
     private final Pattern targetCallersPattern;
+    private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
 
-    public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, ForkJoinPool executor) {
+    public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor) {
         super(options, universe, providers, universe.hostVM(), executor, new SubstrateUnsupportedFeatures());
+        this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};
         targetCallersPattern = buildPrefixMatchPattern(targetCallers);
@@ -254,6 +257,10 @@ public class Inflation extends BigBang {
                                 ".");
             }
         }
+    }
+
+    public AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor() {
+        return annotationSubstitutionProcessor;
     }
 
     class GenericInterfacesEncodingKey {

@@ -90,7 +90,7 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
     private void parseClass(Map<String, Object> data) {
         Object classObject = data.get("name");
         if (classObject == null) {
-            throw new JSONParserException("Missing atrribute 'name' in class descriptor object");
+            throw new JSONParserException("Missing attribute 'name' in class descriptor object");
         }
         String className = asString(classObject, "name");
 
@@ -131,6 +131,14 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
                     if (asBoolean(value, "allPublicFields")) {
                         registry.register(false, clazz.getFields());
                     }
+                } else if (name.equals("allDeclaredClasses")) {
+                    if (asBoolean(value, "allDeclaredClasses")) {
+                        registry.register(clazz.getDeclaredClasses());
+                    }
+                } else if (name.equals("allPublicClasses")) {
+                    if (asBoolean(value, "allPublicClasses")) {
+                        registry.register(clazz.getClasses());
+                    }
                 } else if (name.equals("methods")) {
                     parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
                 } else if (name.equals("fields")) {
@@ -167,7 +175,7 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
         }
 
         if (fieldName == null) {
-            throw new JSONParserException("Missing atribute 'name' in definition of field for class " + clazz.getTypeName());
+            throw new JSONParserException("Missing attribute 'name' in definition of field for class " + clazz.getTypeName());
         }
 
         try {

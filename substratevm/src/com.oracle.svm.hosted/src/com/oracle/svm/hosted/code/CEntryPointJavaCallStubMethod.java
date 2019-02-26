@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.code;
 
 import java.lang.annotation.Annotation;
+import java.util.List;
 
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -72,7 +73,7 @@ public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
     }
 
     @Override
-    protected ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers) {
+    protected ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers, List<ValueNode> arguments) {
         try {
             /*
              * We currently cannot handle {@link MethodPointer} as a constant in the code, so we use

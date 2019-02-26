@@ -32,7 +32,7 @@ import java.net.URLConnection;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.graalvm.component.installer.persist.FileDownloaderTest;
+import org.graalvm.component.installer.remote.FileDownloaderTest;
 
 public class ChunkedConnection extends HttpURLConnection {
     public InputStream delegate;

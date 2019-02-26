@@ -28,32 +28,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.services.JVMCIPermission;
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
  */
 public final class GraalServices {
-
-    private static int getJavaSpecificationVersion() {
-        throw shouldNotReachHere();
-    }
-
-    /**
-     * The integer value corresponding to the value of the {@code java.specification.version} system
-     * property after any leading {@code "1."} has been stripped.
-     */
-    public static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
-
-    /**
-     * Determines if the Java runtime is version 8 or earlier.
-     */
-    public static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
-
-    /**
-     * Determines if the Java runtime is version 11 or earlier.
-     */
-    public static final boolean Java11OrEarlier = JAVA_SPECIFICATION_VERSION <= 11;
 
     private GraalServices() {
     }
@@ -106,6 +87,17 @@ public final class GraalServices {
      * @param c
      */
     public static boolean isToStringTrusted(Class<?> c) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Creates an encoding of the context objects representing a speculation reason.
+     *
+     * @param groupId
+     * @param groupName
+     * @param context the objects forming a key for the speculation
+     */
+    static SpeculationReason createSpeculationReason(int groupId, String groupName, Object... context) {
         throw shouldNotReachHere();
     }
 

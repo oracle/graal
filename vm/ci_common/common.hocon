@@ -23,6 +23,11 @@ common_vm_darwin: ${common_vm} ${darwin} {
     LANG: en_US.UTF-8
     MACOSX_DEPLOYMENT_TARGET: "10.11"
   }
+  setup: ${common_vm.setup} [
+    [set-export, PKG_INCLUDE_FLAGS_OVERRIDE, "-I/cm/shared/apps/pcre/8.38/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"]
+    [set-export, GCC_LIB_PATH, [echo, "${LD_LIBRARY_PATH}", |, tr, "\:", "\\n", |, grep, lib/gcc, |, tail, "-1"]]
+    [set-export, PKG_LDFLAGS_OVERRIDE, "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.38/lib -L/cm/shared/apps/curl/7.50.1/lib -L${GCC_LIB_PATH} -L/usr/lib"]
+  ]
 }
 
 # SULONG
@@ -84,14 +89,13 @@ fastr_linux: ${fastr} {
 fastr_darwin: ${fastr} {
   packages: {
     "pcre" : "==8.38"
+    "homebrew/gcc" : "==4.9"
   }
   environment:  {
     # TODO: check these env vars
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
     F77: "/usr/local/bin/gfortran-4.9"
     TZDIR: "/usr/share/zoneinfo"
-    PKG_INCLUDE_FLAGS_OVERRIDE : """-I/cm/shared/apps/pcre/8.38/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"""
-    PKG_LDFLAGS_OVERRIDE : """ -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.38/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.9.1/lib64 -L/usr/local/Cellar/gcc@4.9/4.9.4/lib/gcc/4.9/ -L/usr/lib"""
   }
 }
 
@@ -111,7 +115,7 @@ vm_linux: ${common_vm_linux} {
 }
 
 vm_darwin: ${common_vm_darwin} {
-  capabilities: [darwin_sierra, amd64, ram16gb]
+  capabilities: [darwin, amd64, ram16gb]
 }
 
 gate_vm_linux: ${vm_linux} {
@@ -146,12 +150,12 @@ deploy_daily_vm_darwin: ${vm_darwin} {
   targets: [deploy, daily]
 }
 
-deploy_vm_linux: ${vm_linux} {
-  targets: [deploy, post-merge]
+daily_vm_linux: ${vm_linux} {
+  targets: [daily]
 }
 
 daily_vm_darwin: ${vm_darwin} {
-  targets: [deploy, daily]
+  targets: [daily]
 }
 
 mx_vm_common: [mx, --strip-jars, --no-sources, --env, ${vm_env}]
@@ -182,7 +186,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-linux-amd64
   },
-  ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
+  ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
@@ -191,7 +195,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-installable-darwin-amd64
   },
-  ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
+  ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_vm}
@@ -199,6 +203,15 @@ builds += [
     ]
     timelimit: "1:30:00"
     name: deploy-vm-base-darwin-amd64
+  },
+  ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
+    run: [
+      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-ea", "--extra-image-builder-argument=-J-esa", build]
+      [mx, --env, ${libgraal_env}, gate, --task, LibGraal]
+    ]
+    timelimit: "35:00"
+    targets: [post-merge]
+    name: postmerge-vm-libgraal
   },
   ${svm-common-linux-amd64} ${custom_vm_linux} ${gate_vm_linux} {
     run: [

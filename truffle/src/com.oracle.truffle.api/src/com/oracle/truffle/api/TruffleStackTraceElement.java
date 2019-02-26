@@ -43,6 +43,7 @@ package com.oracle.truffle.api;
 import java.util.List;
 
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -64,8 +65,14 @@ public final class TruffleStackTraceElement {
     }
 
     /**
-     * Returns a node representing the callsite on the stack. Returns <code>null</code> if no
-     * detailed callsite information is available.
+     * Returns a node representing the callsite on the stack.
+     * <p>
+     * Returns <code>null</code> if no detailed callsite information is available. This is the case
+     * when {@link CallTarget#call(Object...)} is used or for the top-of-the-stack element if
+     * {@link TruffleException#getLocation()} returned <code>null</code> or the exception wasn't a
+     * {@link TruffleException}.
+     * <p>
+     * See {@link FrameInstance#getCallNode()} for the relation between callsite and CallTarget.
      *
      * @since 0.27
      **/
@@ -74,7 +81,9 @@ public final class TruffleStackTraceElement {
     }
 
     /**
-     * Returns the call target on the stack. Returns never <code>null</code>.
+     * Returns the call target on the stack. Never returns <code>null</code>.
+     * <p>
+     * See {@link FrameInstance#getCallNode()} for the relation between callsite and CallTarget.
      *
      * @since 0.27
      **/
@@ -94,32 +103,21 @@ public final class TruffleStackTraceElement {
     }
 
     /**
-     * Returns the guest language frames that are stored in this throwable or <code>null</code> if
-     * no guest language frames are available. Guest language frames are automatically added by the
-     * Truffle runtime the first time the exception is passed through a {@link CallTarget call
-     * target} and the frames are not yet set. Therefore no guest language frames are available
-     * immediately after the exception was constructed. The returned list is not modifiable. The
-     * number stack trace elements that are filled in can be customized by implementing
-     * {@link TruffleException#getStackTraceElementLimit()} .
+     * @deprecated Use {@link TruffleStackTrace#getStacktrace(Throwable)} instead.
      *
-     * @param throwable the throwable instance to look for guest language frames
-     * @see #fillIn(Throwable) To force early filling of guest language stack frames.
      * @since 0.27
      */
+    @Deprecated
     public static List<TruffleStackTraceElement> getStackTrace(Throwable throwable) {
-        return TruffleStackTrace.find(throwable);
+        return TruffleStackTrace.getStacktrace(throwable);
     }
 
     /**
-     * Fills in the guest language stack frames from the current frames on the stack. If the stack
-     * was already filled before then this method has no effect. The implementation attaches a
-     * lightweight exception object to the last location in the {@link Throwable#getCause() cause}
-     * chain of the exception. The number stack trace elements that are filled in can be customized
-     * by implementing {@link TruffleException#getStackTraceElementLimit()} .
+     * @deprecated Use {@link TruffleStackTrace#fillIn(Throwable)} instead.
      *
-     * @param throwable the throwable to fill
      * @since 0.27
      */
+    @Deprecated
     public static void fillIn(Throwable throwable) {
         TruffleStackTrace.fillIn(throwable);
     }

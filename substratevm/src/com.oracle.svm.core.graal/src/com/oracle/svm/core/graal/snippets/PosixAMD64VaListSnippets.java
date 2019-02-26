@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,8 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.DARWIN_AMD64;
 import org.graalvm.nativeimage.Platform.LINUX_AMD64;
+import org.graalvm.nativeimage.Platform.DARWIN_JNI_AMD64;
+import org.graalvm.nativeimage.Platform.LINUX_JNI_AMD64;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -52,7 +54,8 @@ import com.oracle.svm.core.util.VMError;
 class PosixAMD64VaListSnippetsFeature implements GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(LINUX_AMD64.class) || Platform.includedIn(DARWIN_AMD64.class);
+        return Platform.includedIn(LINUX_AMD64.class) || Platform.includedIn(DARWIN_AMD64.class) ||
+                        Platform.includedIn(LINUX_JNI_AMD64.class) || Platform.includedIn(DARWIN_JNI_AMD64.class);
     }
 
     @Override
@@ -71,7 +74,7 @@ class PosixAMD64VaListSnippetsFeature implements GraalFeature {
  * remaining arguments (if any) on the stack. Therefore, a varargs function creating a
  * {@code va_list} must initially save the contents of the argument registers so that they can be
  * read from the {@code va_list} in another function. The {@code va_list} structure looks like this:
- * 
+ *
  * <pre>
  *   typedef struct {
  *     unsigned int gp_offset;  // offset of the next general-purpose argument in reg_save_area
@@ -80,7 +83,7 @@ class PosixAMD64VaListSnippetsFeature implements GraalFeature {
  *     void *reg_save_area;     // start address of the register save area
  *   } va_list[1];
  * </pre>
- * 
+ *
  * Reading a {@code va_list} requires knowing the types of the arguments. General-purpose values
  * (integers and pointers) are passed in the six 64-bit registers {@code rdi, rsi, rdx, rcx, r8} and
  * {@code r9}, which are saved to the start of {@code reg_save_area}. Floating-point values are

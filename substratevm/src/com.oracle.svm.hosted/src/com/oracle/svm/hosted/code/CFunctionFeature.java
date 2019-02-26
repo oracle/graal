@@ -55,7 +55,7 @@ public class CFunctionFeature implements GraalFeature {
         }
     }
 
-    void warnRuntimeCompilationReachableCFunctionWithTransition(CFunctionCallStubMethod method) {
+    void warnRuntimeCompilationReachableCFunctionWithTransition(CCallStubMethod method) {
         if (Options.WarnCFunctionsWithTransition.getValue()) {
             if (warnCFunctionsWithTransition == null) {
                 warnCFunctionsWithTransition = new TreeSet<>();

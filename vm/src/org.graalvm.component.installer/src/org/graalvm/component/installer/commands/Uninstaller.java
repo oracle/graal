@@ -119,6 +119,9 @@ public class Uninstaller {
                 Path d = p.getParent();
                 // set the parent directory's permissions, but do not
                 // alter permissions outside the to-be-deleted tree:
+                if (d == null) {
+                    throw new IOException("Cannot determine parent of " + p);
+                }
                 if (d.startsWith(rootPath) && !d.equals(rootPath)) {
                     restoreDirPermissions = Files.getPosixFilePermissions(d);
                     Files.setPosixFilePermissions(d, ALL_WRITE_PERMS);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,7 @@ import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
-@Platforms(Platform.LINUX.class)
+@Platforms(Platform.LINUX_AND_JNI.class)
 public class LinuxPthread {
 
     /* { Allow names with underscores: Checkstyle: stop */

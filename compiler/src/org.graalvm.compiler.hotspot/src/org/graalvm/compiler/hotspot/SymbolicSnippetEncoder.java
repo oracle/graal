@@ -469,23 +469,21 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
                 for (int i = 0; i < encodedGraph.getNumObjects(); i++) {
                     filterSnippetObject(encodedGraph.getObject(i));
                 }
-                if (method.getAnnotation(Snippet.class) != null) {
-                    StructuredGraph snippet = filteringReplacements.makeGraph(debug, filteringReplacements.getDefaultReplacementBytecodeProvider(), method, null, original,
-                                    trackNodeSourcePosition, null);
-                    SymbolicEncodedGraph symbolicGraph = new SymbolicEncodedGraph(encodedGraph, method.getDeclaringClass(), original != null ? methodKey(original) : null);
-                    StructuredGraph decodedSnippet = decodeSnippetGraph(symbolicGraph, method, replacements, null, arch);
-                    String snippetString = getCanonicalGraphString(snippet, true, false);
-                    String decodedSnippetString = getCanonicalGraphString(decodedSnippet, true, false);
-                    if (snippetString.equals(decodedSnippetString)) {
-                        debug.log("Snippet decode for %s produces exactly same graph", method);
-                        debug.dump(DebugContext.INFO_LEVEL, decodedSnippet, "Decoded snippet graph for %s", method);
-                    } else {
-                        debug.log("Snippet decode for %s produces different graph", method);
-                        debug.log("%s", compareGraphStrings(snippet, snippetString, decodedSnippet, decodedSnippetString));
-                        debug.dump(DebugContext.INFO_LEVEL, snippet, "Snippet graph for %s", method);
-                        debug.dump(DebugContext.INFO_LEVEL, structuredGraph, "Encoded snippet graph for %s", method);
-                        debug.dump(DebugContext.INFO_LEVEL, decodedSnippet, "Decoded snippet graph for %s", method);
-                    }
+                StructuredGraph snippet = filteringReplacements.makeGraph(debug, filteringReplacements.getDefaultReplacementBytecodeProvider(), method, null, original,
+                                trackNodeSourcePosition, null);
+                SymbolicEncodedGraph symbolicGraph = new SymbolicEncodedGraph(encodedGraph, method.getDeclaringClass(), original != null ? methodKey(original) : null);
+                StructuredGraph decodedSnippet = decodeSnippetGraph(symbolicGraph, method, replacements, null, arch);
+                String snippetString = getCanonicalGraphString(snippet, true, false);
+                String decodedSnippetString = getCanonicalGraphString(decodedSnippet, true, false);
+                if (snippetString.equals(decodedSnippetString)) {
+                    debug.log("Snippet decode for %s produces exactly same graph", method);
+                    debug.dump(DebugContext.INFO_LEVEL, decodedSnippet, "Decoded snippet graph for %s", method);
+                } else {
+                    debug.log("Snippet decode for %s produces different graph", method);
+                    debug.log("%s", compareGraphStrings(snippet, snippetString, decodedSnippet, decodedSnippetString));
+                    debug.dump(DebugContext.INFO_LEVEL, snippet, "Snippet graph for %s", method);
+                    debug.dump(DebugContext.INFO_LEVEL, structuredGraph, "Encoded snippet graph for %s", method);
+                    debug.dump(DebugContext.INFO_LEVEL, decodedSnippet, "Decoded snippet graph for %s", method);
                 }
             } catch (Throwable t) {
                 throw debug.handle(t);
@@ -532,7 +530,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
     }
 
     EncodedSnippets encodeSnippets(DebugContext debug) {
-        GraphEncoder encoder = new GraphEncoder(HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch);
+        GraphEncoder encoder = new GraphEncoder(HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch, debug);
         for (StructuredGraph graph : preparedSnippetGraphs.values()) {
             encoder.prepare(graph);
         }
@@ -920,7 +918,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
                     if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode || node instanceof FullInfopointNode || node instanceof ParameterNode)) {
                         if (node instanceof ConstantNode) {
                             if (checkConstants) {
-                                String name = checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
+                                String name = node.toString(Verbosity.Name);
                                 if (excludeVirtual) {
                                     constantsLines.add(name);
                                 } else {

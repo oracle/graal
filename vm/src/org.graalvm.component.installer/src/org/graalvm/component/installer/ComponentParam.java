@@ -26,7 +26,7 @@ package org.graalvm.component.installer;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.jar.JarFile;
+import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 public interface ComponentParam extends Closeable {
@@ -38,8 +38,6 @@ public interface ComponentParam extends Closeable {
 
     MetadataLoader createFileLoader() throws IOException;
 
-    JarFile getFile() throws IOException;
-
     boolean isComplete();
 
     @Override
@@ -48,4 +46,14 @@ public interface ComponentParam extends Closeable {
     String getFullPath();
 
     String getShortName();
+
+    /**
+     * Completes the metadata. The implementation should ensure that {@link #createMetaLoader} will
+     * populate the {@link ComponentInfo} with complete metadata. If {@code fileList} is true, the
+     * list of files must be also initialized. File contents do not need to be available locally.
+     * 
+     * @throws IOException if the metadata load fails.
+     * @return MetadataLoader capable of loading the ComponentInfo
+     */
+    MetadataLoader completeMetadata() throws IOException;
 }

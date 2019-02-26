@@ -132,20 +132,21 @@ public class LinuxJavaNetNetworkInterface {
             // 1138 #endif /* __linux__ */
             // 1139
             // 1140 CHECKED_MALLOC3(buf,char *, ifc.ifc_len);
-            /* Expands CHECKED_MALLOC3 inline. */
+            /* Expands CHECKED_MALLOC3 inline, without the wrapping
+             *     do { .... } while (0)
+             * whose purpose is to make the macro expansion into a single C statement.
+             */
             // 843 #define CHECKED_MALLOC3(_pointer,_type,_size) \
             // 844 do{ \
-            do {
-                // 845 _pointer = (_type)malloc( _size ); \
-                buf = LibC.malloc(WordFactory.unsigned(ifc.ifc_len()));
-                // 846 if (_pointer == NULL) { \
-                if (buf.isNull()) {
-                    // 847 JNU_ThrowOutOfMemoryError(env, "Native heap allocation failed"); \
-                    throw new OutOfMemoryError("Native heap allocation failed");
-                    // 848 return ifs; /* return untouched list */ \
-                }
-                // 850 } while(0)
-            } while (false);
+            // 845 _pointer = (_type)malloc( _size ); \
+            buf = LibC.malloc(WordFactory.unsigned(ifc.ifc_len()));
+            // 846 if (_pointer == NULL) { \
+            if (buf.isNull()) {
+                // 847 JNU_ThrowOutOfMemoryError(env, "Native heap allocation failed"); \
+                throw new OutOfMemoryError("Native heap allocation failed");
+                // 848 return ifs; /* return untouched list */ \
+            }
+            // 850 } while(0)
             // 1141
             // 1142 ifc.ifc_buf = buf;
             ifc.ifc_buf(buf);

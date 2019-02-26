@@ -106,6 +106,8 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
+        public abstract boolean useContextClassLoader();
+
         public abstract Engine newEngine(AbstractEngineImpl impl);
 
         public abstract Context newContext(AbstractContextImpl impl);

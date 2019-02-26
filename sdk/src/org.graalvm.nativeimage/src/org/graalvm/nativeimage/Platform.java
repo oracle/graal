@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,6 +92,40 @@ public interface Platform {
     }
 
     /**
+     * Supported operating system: Linux platform that uses JNI based native JDK libraries.
+     *
+     * @since 1.0
+     */
+    interface LINUX_JNI extends Platform {
+    }
+
+    /**
+     * Supported operating system: Darwin (MacOS) platform that uses JNI based native JDK libraries.
+     *
+     * @since 1.0
+     */
+    interface DARWIN_JNI extends Platform {
+    }
+
+    /**
+     * Temporary platform used to mark classes or methods that are used for LINUX and LINUX_JNI
+     * platforms.
+     *
+     * @since 1.0
+     */
+    interface LINUX_AND_JNI extends Platform {
+    }
+
+    /**
+     * Temporary platform used to mark classes or methods that are used for DARWIN (MacOS) and
+     * DARWIN_JNI platforms.
+     *
+     * @since 1.0
+     */
+    interface DARWIN_AND_JNI extends Platform {
+    }
+
+    /**
      * Supported operating system: Windows.
      *
      * @since 1.0
@@ -108,7 +142,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    class LINUX_AMD64 implements LINUX, AMD64 {
+    class LINUX_AMD64 implements LINUX, LINUX_AND_JNI, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -124,7 +158,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    class DARWIN_AMD64 implements DARWIN, AMD64 {
+    class DARWIN_AMD64 implements DARWIN, DARWIN_AND_JNI, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -132,6 +166,40 @@ public interface Platform {
          * @since 1.0
          */
         public DARWIN_AMD64() {
+        }
+    }
+
+    /**
+     * Temporary leaf platform that is used to mark classes or methods that are used for LINUX_JNI
+     * platforms.
+     *
+     * @since 1.0
+     */
+    class LINUX_JNI_AMD64 implements LINUX_JNI, LINUX_AND_JNI, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 1.0
+         */
+        public LINUX_JNI_AMD64() {
+        }
+    }
+
+    /**
+     * Temporary leaf platform that is used to mark classes or methods that are used for DARWIN_JNI
+     * platforms.
+     *
+     * @since 1.0
+     */
+    class DARWIN_JNI_AMD64 implements DARWIN_JNI, DARWIN_AND_JNI, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 1.0
+         */
+        public DARWIN_JNI_AMD64() {
         }
     }
 

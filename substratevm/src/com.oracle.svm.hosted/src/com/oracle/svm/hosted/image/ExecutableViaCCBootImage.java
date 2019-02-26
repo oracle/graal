@@ -30,8 +30,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -39,16 +37,12 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 
 public class ExecutableViaCCBootImage extends NativeBootImageViaCC {
 
-    private final HostedMethod mainEntryPoint;
-
     public ExecutableViaCCBootImage(AbstractBootImage.NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
                     NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints,
                     HostedMethod mainEntryPoint,
                     ClassLoader classLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
-
-        this.mainEntryPoint = mainEntryPoint;
     }
 
     @Override
@@ -57,16 +51,5 @@ public class ExecutableViaCCBootImage extends NativeBootImageViaCC {
         cmd.add(workPath.relativize(binPath.resolve("./" + imageName)).normalize().toString());
 
         return cmd.toArray(new String[]{});
-    }
-
-    @Override
-    LinkerInvocation getLinkerInvocation(Path outputDirectory, Path tempDirectory, String imageName) {
-        String mainSymbolNameStem = NativeBootImage.globalSymbolNameForMethod(mainEntryPoint);
-        // HACK: guess main symbol name using hacked-up knowledge of object file format
-        String mainSymbolAlias = (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) ? "_main" : "main";
-        String mainSymbolName = (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) ? "_" + mainSymbolNameStem : mainSymbolNameStem;
-        LinkerInvocation inv = super.getLinkerInvocation(outputDirectory, tempDirectory, imageName);
-        inv.addSymbolAlias(mainSymbolAlias, mainSymbolName);
-        return inv;
     }
 }

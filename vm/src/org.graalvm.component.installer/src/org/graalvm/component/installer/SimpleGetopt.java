@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ public class SimpleGetopt {
     }
 
     // overridable by tests
-    RuntimeException err(String messageKey, Object... args) {
+    public RuntimeException err(String messageKey, Object... args) {
         throw ComponentInstaller.err(messageKey, args);
     }
 
@@ -124,10 +124,6 @@ public class SimpleGetopt {
                 String fullName = result.get(s);
                 if (fullName == null) {
                     result.put(s, o);
-                } else if (fullName.length() == 2) {
-                    continue;
-                } else if (o.length() == 2) {
-                    result.put(o, o);
                 } else {
                     result.put(s, NO_ABBREV);
                 }
@@ -312,7 +308,7 @@ public class SimpleGetopt {
     }
 
     public void addCommandOptions(String commandName, Map<String, String> optSpec) {
-        commandOptions.put(commandName, optSpec);
+        commandOptions.put(commandName, new HashMap<>(optSpec));
     }
 
     // test only

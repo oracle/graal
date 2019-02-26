@@ -40,8 +40,14 @@
  */
 package com.oracle.truffle.api.test;
 
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.nodes.RootNode;
+import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -54,6 +60,7 @@ import org.junit.Assert;
 public final class GCUtils {
 
     private GCUtils() {
+        throw new IllegalStateException("No instance allowed.");
     }
 
     /**
@@ -72,7 +79,7 @@ public final class GCUtils {
         List<WeakReference<Object>> collectibleObjects = new ArrayList<>();
         for (int i = 0; i < GC_TEST_ITERATIONS; i++) {
             collectibleObjects.add(new WeakReference<>(objectFactory.apply(i), queue));
-            System.gc();
+            gc();
         }
         int refsCleared = 0;
         while (queue.poll() != null) {
@@ -80,6 +87,73 @@ public final class GCUtils {
         }
         // we need to have any refs cleared for this test to have any value
         Assert.assertTrue(refsCleared > 0);
+    }
+
+    /**
+     * Asserts that given reference is cleaned, the referent is freed by garbage collector.
+     *
+     * @param message the message for an {@link AssertionError} when referent is not freed by GC
+     * @param ref the reference
+     */
+    public static void assertGc(final String message, final Reference<?> ref) {
+        cleanRuntimeNativeReferences();
+        int blockSize = 100_000;
+        final List<byte[]> blocks = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            if (ref.get() == null) {
+                return;
+            }
+            try {
+                System.gc();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                System.runFinalization();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                blocks.add(new byte[blockSize]);
+                blockSize = (int) (blockSize * 1.3);
+            } catch (OutOfMemoryError oom) {
+                blockSize >>>= 1;
+            }
+            if (i % 10 == 0) {
+                cleanRuntimeNativeReferences();
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ie) {
+                    break;
+                }
+            }
+        }
+        try {
+            System.out.println("Not freed...");
+            Thread.sleep(1_000_000);
+        } catch (InterruptedException e) {
+        }
+        Assert.fail(message);
+    }
+
+    /**
+     * Performs GC and possibly frees non HotSpot heap.
+     */
+    public static void gc() {
+        cleanRuntimeNativeReferences();
+        System.gc();
+    }
+
+    private static boolean cleanRuntimeNativeReferences() {
+        try {
+            TruffleRuntime runtime = Truffle.getRuntime();
+            Method clearNativeReferences = runtime.getClass().getDeclaredMethod("cleanNativeReferences");
+            clearNativeReferences.setAccessible(true);
+            clearNativeReferences.invoke(null);
+            RootCallTarget cleanSentinel = runtime.createCallTarget(RootNode.createConstantNode(42));
+            cleanSentinel.call();
+            return true;
+        } catch (ReflectiveOperationException e) {
+            return false;
+        }
     }
 
 }

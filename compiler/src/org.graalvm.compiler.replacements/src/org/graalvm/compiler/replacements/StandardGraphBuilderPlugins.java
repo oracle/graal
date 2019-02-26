@@ -33,8 +33,8 @@ import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
-import static org.graalvm.compiler.serviceprovider.GraalServices.Java11OrEarlier;
-import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
+import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java11OrEarlier;
+import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -54,8 +54,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
-import org.graalvm.compiler.java.IntegerExactOpSpeculation;
-import org.graalvm.compiler.java.IntegerExactOpSpeculation.IntegerExactOp;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -132,6 +130,7 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulExactSplitNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -202,8 +201,10 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant()) {
                     String s = snippetReflection.asObject(String.class, (JavaConstant) receiver.get().asConstant());
-                    b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(s.hashCode())));
-                    return true;
+                    if (s != null) {
+                        b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(s.hashCode())));
+                        return true;
+                    }
                 }
                 return false;
             }
@@ -554,6 +555,14 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
+    public enum IntegerExactOp {
+        INTEGER_ADD_EXACT,
+        INTEGER_INCREMENT_EXACT,
+        INTEGER_SUBTRACT_EXACT,
+        INTEGER_DECREMENT_EXACT,
+        INTEGER_MULTIPLY_EXACT
+    }
+
     private static ValueNode createIntegerExactArithmeticNode(ValueNode x, ValueNode y, SpeculationReason speculation, IntegerExactOp op) {
         switch (op) {
             case INTEGER_ADD_EXACT:
@@ -584,6 +593,8 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    private static final SpeculationReasonGroup INTEGER_EXACT_OP_SPECULATIONS = new SpeculationReasonGroup("IntegerExactOp", ResolvedJavaMethod.class, IntegerExactOp.class);
+
     private static void createIntegerExactOperation(GraphBuilderContext b, JavaKind kind, ValueNode x, ValueNode y, IntegerExactOp op) {
         if (b.needsExplicitException()) {
             BytecodeExceptionKind exceptionKind = kind == JavaKind.Int ? BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW : BytecodeExceptionKind.LONG_EXACT_OVERFLOW;
@@ -595,9 +606,9 @@ public class StandardGraphBuilderPlugins {
             if (log == null || (x.isConstant() && y.isConstant())) {
                 b.addPush(kind, createIntegerExactArithmeticNode(x, y, null, op));
             } else {
-                SpeculationReason speculation = new IntegerExactOpSpeculation(b.getMethod(), op);
-                if (log.maySpeculate(speculation)) {
-                    b.addPush(kind, createIntegerExactArithmeticNode(x, y, speculation, op));
+                SpeculationReason reason = INTEGER_EXACT_OP_SPECULATIONS.createSpeculationReason(b.getMethod(), op);
+                if (log.maySpeculate(reason)) {
+                    b.addPush(kind, createIntegerExactArithmeticNode(x, y, reason, op));
                 } else {
                     BeginNode begin = b.add(new BeginNode());
                     IntegerExactArithmeticNode node = (IntegerExactArithmeticNode) b.addPush(kind, createIntegerExactArithmeticNode(x, y, null, op));
@@ -1142,23 +1153,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static final class DirectiveSpeculationReason implements SpeculationLog.SpeculationReason {
-        private final BytecodePosition pos;
-
-        private DirectiveSpeculationReason(BytecodePosition pos) {
-            this.pos = pos;
-        }
-
-        @Override
-        public int hashCode() {
-            return pos.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof DirectiveSpeculationReason && ((DirectiveSpeculationReason) obj).pos.equals(this.pos);
-        }
-    }
+    private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup("GraalDirective", BytecodePosition.class);
 
     private static void registerGraalDirectivesPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, GraalDirectives.class);
@@ -1181,9 +1176,9 @@ public class StandardGraphBuilderPlugins {
         r.register0("deoptimizeAndInvalidateWithSpeculation", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is need to use `deoptimizeAndInvalidateWithSpeculation`");
+                GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is needed to use `deoptimizeAndInvalidateWithSpeculation`");
                 BytecodePosition pos = new BytecodePosition(null, b.getMethod(), b.bci());
-                DirectiveSpeculationReason reason = new DirectiveSpeculationReason(pos);
+                SpeculationReason reason = DIRECTIVE_SPECULATIONS.createSpeculationReason(pos);
                 Speculation speculation;
                 if (b.getGraph().getSpeculationLog().maySpeculate(reason)) {
                     speculation = b.getGraph().getSpeculationLog().speculate(reason);
@@ -1366,7 +1361,7 @@ public class StandardGraphBuilderPlugins {
                             b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
                         } else if (falseCount == 0 || trueCount == 0) {
                             boolean expected = falseCount == 0;
-                            LogicNode condition = b.addWithInputs(
+                            LogicNode condition = b.add(
                                             IntegerEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, result, b.add(ConstantNode.forBoolean(!expected)),
                                                             NodeView.DEFAULT));
                             b.append(new FixedGuardNode(condition, DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateReprofile, true));

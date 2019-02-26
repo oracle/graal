@@ -39,10 +39,10 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.189.0",
+  "mxversion" : "5.210.2",
   "name" : "truffle",
-  "version" : "1.0.0-rc12",
-  "release" : True,
+  "version" : "1.0.0-rc13",
+  "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
@@ -198,7 +198,7 @@ suite = {
       "imports" : ["jdk.internal.loader"],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
-      "findbugsIgnoresGenerated" : True,
+      "spotbugsIgnoresGenerated" : True,
       "testProject" : True,
       "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
@@ -579,18 +579,6 @@ suite = {
       "buildDependencies" : [
         "LIBFFI_SOURCES",
       ],
-      "os_arch" : {
-        "windows" : {
-          "<others>" : {
-            "ignore" : "windows is not supported",
-          },
-        },
-        "<others>" : {
-          "<others>" : {
-            "ignore" : False,
-          },
-        },
-      },
     },
 
     "com.oracle.truffle.nfi.native" : {

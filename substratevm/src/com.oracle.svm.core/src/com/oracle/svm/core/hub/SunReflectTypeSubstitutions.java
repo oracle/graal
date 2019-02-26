@@ -27,10 +27,11 @@ package com.oracle.svm.core.hub;
 //Checkstyle: allow reflection
 
 import java.lang.reflect.GenericDeclaration;
+import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Type;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -88,7 +89,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
     @Substitute
     public Type[] getBounds() {
         /* Variant method bodies from JDK-8 and JDK-9 to use the appropriately typed variables. */
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return boundsJDK8OrEarlier;
         } else {
             Object[] value = boundsJDK9OrLater;
@@ -136,7 +137,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_LazyReflectiveObjectGe
 class TypeVariableBoundsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return ((TypeVariableImpl<?>) receiver).getBounds();
+        return GuardedBoundsAccess.getBounds((TypeVariableImpl<?>) receiver);
     }
 }
 
@@ -185,7 +186,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
 
     @Substitute
     public Type[] getUpperBounds() {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return upperBoundsJDK8OrEarlier;
         } else {
             Object[] value = upperBoundsJDK9OrLater;
@@ -199,7 +200,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
 
     @Substitute
     public Type[] getLowerBounds() {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return lowerBoundsJDK8OrEarlier;
         } else {
             Object[] value = lowerBoundsJDK9OrLater;
@@ -215,14 +216,14 @@ final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
 class WildcardTypeImplUpperBoundsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return ((WildcardTypeImpl) receiver).getUpperBounds();
+        return GuardedBoundsAccess.getUpperBounds((WildcardTypeImpl) receiver);
     }
 }
 
 class WildcardTypeImplLowerBoundsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return ((WildcardTypeImpl) receiver).getLowerBounds();
+        return GuardedBoundsAccess.getLowerBounds((WildcardTypeImpl) receiver);
     }
 }
 
@@ -238,6 +239,72 @@ final class Util_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
     /** Emulate virtual dispatch. */
     static Type[] reifyBounds(Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl wildCardTypeImpl, FieldTypeSignature[] boundASTs) {
         return asLazyReflectiveObjectGenerator(wildCardTypeImpl).reifyBounds(boundASTs);
+    }
+}
+
+class GuardedBoundsAccess {
+
+    static Type[] getLowerBounds(WildcardTypeImpl receiver) {
+        try {
+            return receiver.getLowerBounds();
+        } catch (TypeNotPresentException | MalformedParameterizedTypeException e) {
+            /*
+             * This computer is used to compute the value of the WildcardTypeImpl.lowerBounds field.
+             * As per WildcardTypeImpl.getLowerBounds() javadoc:
+             *
+             * "Returns an array of <tt>Type</tt> objects representing the lower bound(s) of this
+             * type variable. Note that if no lower bound is explicitly declared, the lower bound is
+             * the type of <tt>null</tt>. In this case, a zero length array is returned."
+             *
+             * Thus, if getLowerBounds() throws a TypeNotPresentException, i.e., any of the bounds
+             * refers to a non-existent type declaration, or a MalformedParameterizedTypeException,
+             * i.e., any of the bounds refer to a parameterized type that cannot be instantiated, we
+             * conservatively return a zero length array.
+             */
+            return new Type[0];
+        }
+    }
+
+    static Type[] getUpperBounds(WildcardTypeImpl receiver) {
+        try {
+            return receiver.getUpperBounds();
+        } catch (TypeNotPresentException | MalformedParameterizedTypeException e) {
+            /*
+             * This computer is used to compute the value of the WildcardTypeImpl.upperBounds field.
+             * As per WildcardTypeImpl.getUpperBounds() javadoc:
+             *
+             * "Returns an array of <tt>Type</tt> objects representing the upper bound(s) of this
+             * type variable. Note that if no upper bound is explicitly declared, the upper bound is
+             * <tt>Object</tt>."
+             *
+             * Thus, if getUpperBounds() throws a TypeNotPresentException, i.e., any of the bounds
+             * refers to a non-existent type declaration, or a MalformedParameterizedTypeException,
+             * i.e., any of the bounds refer to a parameterized type that cannot be instantiated, we
+             * conservatively return the upper bound.
+             */
+            return new Type[0];
+        }
+    }
+
+    static Type[] getBounds(TypeVariableImpl<?> receiver) {
+        try {
+            return receiver.getBounds();
+        } catch (TypeNotPresentException | MalformedParameterizedTypeException e) {
+            /*
+             * This computer is used to compute the value of the TypeVariableImpl.bounds field. As
+             * per TypeVariableImpl.getBounds() javadoc:
+             *
+             * "Returns an array of <tt>Type</tt> objects representing the upper bound(s) of this
+             * type variable. Note that if no upper bound is explicitly declared, the upper bound is
+             * <tt>Object</tt>."
+             *
+             * Thus, if getBounds() throws a TypeNotPresentException, i.e., any of the bounds refers
+             * to a non-existent type declaration, or a MalformedParameterizedTypeException, i.e.,
+             * any of the bounds refer to a parameterized type that cannot be instantiated, we
+             * conservatively return the upper bound.
+             */
+            return new Type[]{Object.class};
+        }
     }
 }
 

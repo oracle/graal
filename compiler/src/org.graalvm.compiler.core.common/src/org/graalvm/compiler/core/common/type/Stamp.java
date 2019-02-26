@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.common.type;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup.SpeculationContextObject;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
@@ -36,7 +37,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * A stamp is the basis for a type system.
  */
-public abstract class Stamp {
+public abstract class Stamp implements SpeculationContextObject {
 
     protected Stamp() {
     }
@@ -193,4 +194,7 @@ public abstract class Stamp {
     public SymbolicJVMCIReference<? extends Stamp> makeSymbolic() {
         return null;
     }
+
+    @Override
+    public abstract String toString();
 }

@@ -46,11 +46,11 @@ import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
+import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -89,6 +89,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * State providing a new copy of a graph for each invocation of a benchmark. Subclasses of this
@@ -461,8 +462,10 @@ public abstract class GraalCompilerState {
      */
     protected final void emitCode() {
         int bytecodeSize = request.graph.method() == null ? 0 : request.graph.getBytecodeSize();
+        SpeculationLog speculationLog = null;
         request.compilationResult.setHasUnsafeAccess(request.graph.hasUnsafeAccess());
-        LIRCompilerBackend.emitCode(request.backend, request.graph.getAssumptions(), request.graph.method(), request.graph.getMethods(), request.graph.getFields(), bytecodeSize, lirGenRes,
+        LIRCompilerBackend.emitCode(request.backend, request.graph.getAssumptions(), request.graph.method(), request.graph.getMethods(), request.graph.getFields(),
+                        speculationLog, bytecodeSize, lirGenRes,
                         request.compilationResult, request.installedCodeOwner, request.factory);
     }
 

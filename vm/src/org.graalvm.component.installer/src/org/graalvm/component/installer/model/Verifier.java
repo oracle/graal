@@ -172,7 +172,8 @@ public class Verifier {
             String reqVal = requiredCaps.get(s);
             String graalVal = graalCaps.get(s);
             if ((reqVal != graalVal) &&
-                            (reqVal == null || graalVal == null || (reqVal.compareToIgnoreCase(graalVal) != 0))) {
+                            (reqVal == null || graalVal == null ||
+                                            (reqVal.replace('-', '_').compareToIgnoreCase(graalVal.replace('-', '_')) != 0))) {
                 String val = graalVal != null ? graalVal : feedback.l10n("VERIFY_CapabilityMissing");
                 addOrThrow(new DependencyException.Mismatch(
                                 GRAALVM_CAPABILITY,

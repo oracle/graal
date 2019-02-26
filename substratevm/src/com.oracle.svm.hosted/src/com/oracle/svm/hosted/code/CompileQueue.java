@@ -51,7 +51,6 @@ import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
@@ -328,7 +327,7 @@ public class CompileQueue {
     }
 
     protected void callForReplacements(DebugContext debug, FeatureHandler featureHandler, @SuppressWarnings("hiding") RuntimeConfiguration runtimeConfig, SnippetReflectionProvider snippetReflection) {
-        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), snippetReflection, true);
+        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), snippetReflection, true, true);
     }
 
     @SuppressWarnings("try")
@@ -661,7 +660,6 @@ public class CompileQueue {
 
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
         boolean needParsing = false;
-        OptionValues options = HostedOptionValues.singleton();
         StructuredGraph graph = method.buildGraph(debug, method, providers, Purpose.AOT_COMPILATION);
         if (graph == null) {
             InvocationPlugin plugin = providers.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
@@ -677,16 +675,7 @@ public class CompileQueue {
         }
         if (graph == null) {
             needParsing = true;
-            if (!method.compilationInfo.isDeoptTarget()) {
-                /*
-                 * Disabling liveness analysis preserves the values of local variables beyond the
-                 * bytecode-liveness. This greatly helps debugging. When local variable numbers are
-                 * reused by javac, local variables can still get illegal values. Since we cannot
-                 * "restore" such illegal values during deoptimization, we must do liveness analysis
-                 * for deoptimization target methods.
-                 */
-                options = new OptionValues(options, GraalOptions.OptClearNonLiveLocals, false);
-            }
+            OptionValues options = universe.adjustCompilerOptions(HostedOptionValues.singleton(), method);
             graph = new StructuredGraph.Builder(options, debug).method(method).build();
         }
 

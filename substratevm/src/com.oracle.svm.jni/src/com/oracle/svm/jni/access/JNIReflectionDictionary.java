@@ -148,22 +148,60 @@ public final class JNIReflectionDictionary {
         }
     }
 
-    public JNIMethodId getMethodID(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, boolean isStatic) {
-        JNIMethodId methodID = WordFactory.nullPointer();
-        JNIAccessibleClass clazz = classesByClassObject.get(classObject);
-        dump(clazz == null, "getMethodID");
-        if (clazz != null) {
-            JNIAccessibleMethod method = clazz.getMethod(descriptor);
-            if (method != null && method.isStatic() == isStatic) {
-                // safe because JNIAccessibleMethod is immutable (non-movable)
-                methodID = (JNIMethodId) Word.objectToUntrackedPointer(method);
+    private JNIAccessibleMethod findMethod(Class<?> clazz, JNIAccessibleMethodDescriptor descriptor, String dumpLabel) {
+        JNIAccessibleMethod method = getDeclaredMethod(clazz, descriptor, dumpLabel);
+        if (descriptor.isConstructor() || descriptor.isClassInitializer()) { // never recurse
+            return method;
+        }
+        if (method == null && clazz.getSuperclass() != null) {
+            method = findMethod(clazz.getSuperclass(), descriptor, null);
+        }
+        if (method == null) {
+            // NOTE: this likely needs special handling for resolving default methods.
+            method = findSuperinterfaceMethod(clazz, descriptor);
+        }
+        return method;
+    }
+
+    private JNIAccessibleMethod findSuperinterfaceMethod(Class<?> clazz, JNIAccessibleMethodDescriptor descriptor) {
+        for (Class<?> parent : clazz.getInterfaces()) {
+            JNIAccessibleMethod method = getDeclaredMethod(parent, descriptor, null);
+            if (method == null) {
+                method = findSuperinterfaceMethod(parent, descriptor);
+            }
+            if (method != null) {
+                return method;
             }
         }
-        return methodID;
+        return null;
+    }
+
+    public JNIMethodId getDeclaredMethodID(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, boolean isStatic) {
+        JNIAccessibleMethod method = getDeclaredMethod(classObject, descriptor, "getDeclaredMethodID");
+        return toMethodID(method, isStatic);
+    }
+
+    private JNIAccessibleMethod getDeclaredMethod(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, String dumpLabel) {
+        JNIAccessibleClass clazz = classesByClassObject.get(classObject);
+        dump(clazz == null && dumpLabel != null, dumpLabel);
+        JNIAccessibleMethod method = null;
+        if (clazz != null) {
+            method = clazz.getMethod(descriptor);
+        }
+        return method;
     }
 
     public JNIMethodId getMethodID(Class<?> classObject, String name, String signature, boolean isStatic) {
-        return getMethodID(classObject, new JNIAccessibleMethodDescriptor(name, signature), isStatic);
+        JNIAccessibleMethod method = findMethod(classObject, new JNIAccessibleMethodDescriptor(name, signature), "getMethodID");
+        return toMethodID(method, isStatic);
+    }
+
+    private static JNIMethodId toMethodID(JNIAccessibleMethod method, boolean requireStatic) {
+        // Using the address is safe because JNIAccessibleMethod is immutable (non-movable)
+        if (method != null && method.isStatic() == requireStatic) {
+            return (JNIMethodId) Word.objectToUntrackedPointer(method);
+        }
+        return WordFactory.nullPointer();
     }
 
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
@@ -171,8 +209,9 @@ public final class JNIReflectionDictionary {
         return KnownIntrinsics.convertUnknownValue(obj, JNIAccessibleMethod.class);
     }
 
-    private JNIAccessibleField getDeclaredField(Class<?> classObject, String name, boolean isStatic) {
+    private JNIAccessibleField getDeclaredField(Class<?> classObject, String name, boolean isStatic, String dumpLabel) {
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
+        dump(clazz == null && dumpLabel != null, dumpLabel);
         if (clazz != null) {
             JNIAccessibleField field = clazz.getField(name);
             if (field != null && field.isStatic() == isStatic) {
@@ -182,27 +221,26 @@ public final class JNIReflectionDictionary {
         return null;
     }
 
-    public JNIFieldId getDeclaredFieldId(Class<?> classObject, String name, boolean isStatic) {
-        dump(classObject == null, "getDeclaredFieldID");
-        JNIAccessibleField field = findField(classObject, name, isStatic);
+    public JNIFieldId getDeclaredFieldID(Class<?> classObject, String name, boolean isStatic) {
+        JNIAccessibleField field = getDeclaredField(classObject, name, isStatic, "getDeclaredFieldID");
         return (field != null) ? field.getId() : WordFactory.nullPointer();
     }
 
-    private JNIAccessibleField findField(Class<?> clazz, String name, boolean isStatic) {
+    private JNIAccessibleField findField(Class<?> clazz, String name, boolean isStatic, String dumpLabel) {
         // Lookup according to JVM spec 5.4.3.2: local fields, superinterfaces, superclasses
-        JNIAccessibleField field = getDeclaredField(clazz, name, isStatic);
+        JNIAccessibleField field = getDeclaredField(clazz, name, isStatic, dumpLabel);
         if (field == null && isStatic) {
             field = findSuperinterfaceField(clazz, name);
         }
         if (field == null && clazz.getSuperclass() != null) {
-            field = findField(clazz.getSuperclass(), name, isStatic);
+            field = findField(clazz.getSuperclass(), name, isStatic, null);
         }
         return field;
     }
 
     private JNIAccessibleField findSuperinterfaceField(Class<?> clazz, String name) {
         for (Class<?> parent : clazz.getInterfaces()) {
-            JNIAccessibleField field = getDeclaredField(parent, name, true);
+            JNIAccessibleField field = getDeclaredField(parent, name, true, null);
             if (field == null) {
                 field = findSuperinterfaceField(parent, name);
             }
@@ -214,8 +252,7 @@ public final class JNIReflectionDictionary {
     }
 
     public JNIFieldId getFieldID(Class<?> clazz, String name, boolean isStatic) {
-        dump(clazz == null, "getFieldID");
-        JNIAccessibleField field = findField(clazz, name, isStatic);
+        JNIAccessibleField field = findField(clazz, name, isStatic, "getFieldID");
         return (field != null) ? field.getId() : WordFactory.nullPointer();
     }
 

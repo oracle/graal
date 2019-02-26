@@ -128,7 +128,7 @@ final class ByteArraySequence implements ByteSequence {
         if (realStartIndex < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(startIndex));
         }
-        if (realStartIndex + l > length()) {
+        if (endIndex > length()) {
             throw new IndexOutOfBoundsException(String.valueOf(realStartIndex + l));
         }
         return new ByteArraySequence(buffer, realStartIndex, l);

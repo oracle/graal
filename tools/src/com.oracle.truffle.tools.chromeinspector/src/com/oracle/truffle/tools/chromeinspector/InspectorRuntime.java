@@ -347,6 +347,7 @@ public final class InspectorRuntime extends RuntimeDomain {
             }
             int i = 0;
             for (DebugValue v : arrayElements) {
+                assert storedPropertyNames != null;
                 String name = Integer.toString(i++);
                 try {
                     if (v.isReadable() && !storedPropertyNames.contains(name)) {
@@ -592,6 +593,11 @@ public final class InspectorRuntime extends RuntimeDomain {
         postProcessor.setPostProcessJob(() -> context.doRunIfWaitingForDebugger());
     }
 
+    @Override
+    public void notifyConsoleAPICalled(String type, Object text) {
+        eventHandler.event(new Event("Runtime.consoleAPICalled", Params.createConsoleAPICalled(type, text, context.getId())));
+    }
+
     private JSONObject createPropertyJSON(DebugValue v) {
         return createPropertyJSON(v, null);
     }
@@ -657,7 +663,7 @@ public final class InspectorRuntime extends RuntimeDomain {
 
         @Override
         public void outputText(String str) {
-            eventHandler.event(new Event("Runtime.consoleAPICalled", Params.createConsoleAPICalled(type, str, context.getId())));
+            notifyConsoleAPICalled(type, str);
         }
 
     }

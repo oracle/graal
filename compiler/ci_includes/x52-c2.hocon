@@ -1,8 +1,6 @@
 x52.c2-perftag : ${labsjdk8} {
   capabilities: [linux, x52, no_frequency_scaling]
   environment : {
-    XMX          : "64g"
-    XMS          : "64g"
     JVM_CONFIG   : "default"
     JVM          : "server"
     MACHINE_NAME : "x52"

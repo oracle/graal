@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -31,6 +33,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import com.oracle.svm.core.posix.headers.Socket;
 
 /** Native methods (and macros) from src/share/vm/prims/jvm.cpp translated to Java. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public final class VmPrimsJVM {
     /* { Do not re-wrap commented-out code.  @formatter:off */
     /* { Allow names with underscores: @Checkstyle: stop */
@@ -73,7 +76,7 @@ public final class VmPrimsJVM {
         CIntPointer socklen_Pointer = StackValue.get(CIntPointer.class);
         socklen_Pointer.write(len_Pointer.read());
         // 3785   jint result = os::accept(fd, him, &socklen);
-        int result = Socket.accept(fd, him, socklen_Pointer);
+        int result = Target_os.accept(fd, him, socklen_Pointer);
         // 3786   *len = (jint)socklen;
         len_Pointer.write(socklen_Pointer.read());
         // 3787   return result;

@@ -29,14 +29,14 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.OS;
 
 public class JNIHeaderDirectives implements CContext.Directives {
 
-    private final Path jdkIncludeDir = GraalServices.Java8OrEarlier
+    private final Path jdkIncludeDir = JavaVersionUtil.Java8OrEarlier
                     ? Paths.get(System.getProperty("java.home")).getParent().resolve("include")
                     : Paths.get(System.getProperty("java.home")).resolve("include");
 

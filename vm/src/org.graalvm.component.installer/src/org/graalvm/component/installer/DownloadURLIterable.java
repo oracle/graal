@@ -24,10 +24,14 @@
  */
 package org.graalvm.component.installer;
 
+import org.graalvm.component.installer.remote.RemoteComponentParam;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.Iterator;
-import org.graalvm.component.installer.CatalogIterable.RemoteComponentParam;
+import org.graalvm.component.installer.FileIterable.FileComponent;
+import org.graalvm.component.installer.persist.MetadataLoader;
 
 public class DownloadURLIterable implements ComponentIterable {
     private final Feedback feedback;
@@ -67,9 +71,28 @@ public class DownloadURLIterable implements ComponentIterable {
                 throw feedback.failure("URL_InvalidDownloadURL", ex, s, ex.getLocalizedMessage());
             }
             boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
-            RemoteComponentParam p = new RemoteComponentParam(u, s, s, feedback, progress);
+            RemoteComponentParam p = new DownloadURLParam(u, s, s, feedback, progress);
             p.setVerifyJars(verifyJars);
             return p;
+        }
+    }
+
+    static class DownloadURLParam extends RemoteComponentParam {
+
+        DownloadURLParam(URL remoteURL, String dispName, String spec, Feedback feedback, boolean progress) {
+            super(remoteURL, dispName, spec, feedback, progress);
+        }
+
+        @Override
+        protected MetadataLoader metadataFromLocal(Path localFile) throws IOException {
+            // cowardly use autodetection developed for local files.
+            FileComponent fc = new FileComponent(localFile.toFile(), isVerifyJars(), getFeedback());
+            return fc.createFileLoader();
+        }
+
+        @Override
+        public MetadataLoader completeMetadata() throws IOException {
+            return createFileLoader();
         }
     }
 

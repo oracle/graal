@@ -172,7 +172,7 @@ public class UniverseBuilder {
 
         String typeName = aType.getName();
 
-        assert !typeName.contains("/hotspot/") || typeName.contains("/jtt/hotspot/") : "HotSpot object in image " + typeName;
+        assert SubstrateUtil.isBuildingLibgraal() || !typeName.contains("/hotspot/") || typeName.contains("/jtt/hotspot/") : "HotSpot object in image " + typeName;
         assert !typeName.contains("/analysis/meta/") : "Analysis meta object in image " + typeName;
         assert !typeName.contains("/hosted/meta/") : "Hosted meta object in image " + typeName;
 
@@ -1142,6 +1142,7 @@ public class UniverseBuilder {
         Map<HostedType, ReferenceMapEncoder.Input> referenceMaps = new HashMap<>();
         for (HostedType type : hUniverse.orderedTypes) {
             ReferenceMapEncoder.Input referenceMap = createReferenceMap(type);
+            assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
             referenceMaps.put(type, referenceMap);
             referenceMapEncoder.add(referenceMap);
         }
@@ -1195,6 +1196,7 @@ public class UniverseBuilder {
             // pointer maps in Dynamic Hub
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
+            assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();

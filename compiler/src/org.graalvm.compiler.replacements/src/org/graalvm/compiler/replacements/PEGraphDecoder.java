@@ -353,7 +353,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
+        public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
             throw unimplemented();
         }
 
@@ -749,6 +749,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         InvocationPlugin invocationPlugin = getInvocationPlugin(targetMethod);
         if (invocationPlugin == null) {
+            return false;
+        }
+
+        if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
             return false;
         }
 

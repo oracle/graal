@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,13 +117,14 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.word.ObjectAccess;
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -141,7 +142,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -149,11 +152,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
@@ -177,8 +175,6 @@ import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pwd.passwd;
 import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
 import com.oracle.svm.core.posix.headers.Resource.rlimit;
-import com.oracle.svm.core.posix.headers.Signal;
-import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Socket.sockaddr;
 import com.oracle.svm.core.posix.headers.Stat;
@@ -194,9 +190,89 @@ import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.linux.Mntent;
 import com.oracle.svm.core.posix.headers.linux.Mntent.mntent;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 import jdk.vm.ci.meta.JavaKind;
 
+@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@AutomaticFeature
+@CLibrary("nio")
+class PosixJavaNIOSubstituteFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.FileKey"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.fs.UnixNativeDispatcher"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.IOUtil"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.FileChannelImpl"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.nio.file.FileSystems"));
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        try {
+            if (OS.getCurrent() == OS.DARWIN || OS.getCurrent() == OS.LINUX) {
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_mode"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_ino"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_dev"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_rdev"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_nlink"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_uid"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_gid"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_size"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_atime_sec"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_atime_nsec"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_mtime_sec"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_mtime_nsec"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_ctime_sec"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_ctime_nsec"));
+
+                // Only needed ifdef _DARWIN_FEATURE_64_BIT_INODE
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_birthtime_sec"));
+
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_frsize"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_blocks"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_bfree"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_bavail"));
+
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("name"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("dir"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("fstype"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("opts"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("dev"));
+
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileKey"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileKey").getDeclaredField("st_dev"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileKey").getDeclaredField("st_ino"));
+
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileChannelImpl"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileChannelImpl").getDeclaredField("fd"));
+
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl").getDeclaredField("sender"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl").getDeclaredField("cachedSenderInetAddress"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl").getDeclaredField("cachedSenderPort"));
+
+                JNIRuntimeAccess.register(access.findClassByName("java.lang.Exception"));
+                JNIRuntimeAccess.register(access.findClassByName("java.lang.Exception").getDeclaredConstructor());
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixException"));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixException").getDeclaredConstructor(int.class));
+                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixException").getDeclaredConstructor(String.class));
+            }
+
+        } catch (NoSuchFieldException | NoSuchMethodException e) {
+            VMError.shouldNotReachHere("JNIRuntimeAccess.register failed: ", e);
+
+        }
+    }
+}
+
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public final class PosixJavaNIOSubstitutions {
 
     // Checkstyle: stop
@@ -232,10 +308,6 @@ public final class PosixJavaNIOSubstitutions {
 
     // Checkstyle: resume
 
-    protected static IOException throwIOExceptionWithLastError(String defaultMsg) throws IOException {
-        throw new IOException(PosixUtils.lastErrorString(defaultMsg));
-    }
-
     protected static int handle(int rv, String msg) throws IOException {
         if (rv >= 0) {
             return rv;
@@ -243,7 +315,7 @@ public final class PosixJavaNIOSubstitutions {
         if (errno() == EINTR()) {
             return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
         }
-        throw throwIOExceptionWithLastError(msg);
+        throw PosixUtils.newIOExceptionWithLastError(msg);
     }
 
     protected static long handle(long rv, String msg) throws IOException {
@@ -253,7 +325,7 @@ public final class PosixJavaNIOSubstitutions {
         if (errno() == EINTR()) {
             return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
         }
-        throw throwIOExceptionWithLastError(msg);
+        throw PosixUtils.newIOExceptionWithLastError(msg);
     }
 
     protected static int convertReturnVal(WordBase n, boolean reading) throws IOException {
@@ -276,8 +348,7 @@ public final class PosixJavaNIOSubstitutions {
             return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
         } else {
             String msg = reading ? "Read failed" : "Write failed";
-            throwIOExceptionWithLastError(msg);
-            return Target_sun_nio_ch_IOStatus.IOS_THROWN;
+            throw PosixUtils.newIOExceptionWithLastError(msg);
         }
     }
 
@@ -301,8 +372,7 @@ public final class PosixJavaNIOSubstitutions {
             return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
         } else {
             String msg = reading ? "Read failed" : "Write failed";
-            throwIOExceptionWithLastError(msg);
-            return Target_sun_nio_ch_IOStatus.IOS_THROWN;
+            throw PosixUtils.newIOExceptionWithLastError(msg);
         }
     }
 
@@ -354,105 +424,45 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void signal(long thread) throws IOException {
             if (SubstrateOptions.MultiThreaded.getValue()) {
-                Util_sun_nio_ch_NativeThread.ensureInitialized();
                 // 090     int ret;
                 int ret;
                 // 091 #ifdef __solaris__
                 // 092     ret = thr_kill((thread_t)thread, INTERRUPT_SIGNAL);
                 // 093 #else
                 // 094     ret = pthread_kill((pthread_t)thread, INTERRUPT_SIGNAL);
-                ret = Pthread.pthread_kill(WordFactory.pointer(thread), Util_sun_nio_ch_NativeThread.INTERRUPT_SIGNAL);
+                ret = Pthread.pthread_kill(WordFactory.pointer(thread), PosixInterruptSignalHandler.INTERRUPT_SIGNAL);
                 // 095 #endif
                 // 096     if (ret != 0)
                 if (ret != 0) {
                     // 097         JNU_ThrowIOExceptionWithLastError(env, "Thread signal failed");
-                    throw new IOException("Thread signal failed");
+                    throw PosixUtils.newIOExceptionWithLastError("Thread signal failed");
                 }
             }
         }
 
-        /** See {@link Util_sun_nio_ch_NativeThread#ensureInitialized()}. */
         @Substitute
-        private static void init() {
-            throw new InternalError("init() is only called from static initializers, so not reachable in Substrate VM");
+        // 58  JNIEXPORT void JNICALL
+        // 59  Java_sun_nio_ch_NativeThread_init(JNIEnv *env, jclass cl)
+        // 60  {
+        private static /* native */ void init() throws IOException {
+            // 61      /* Install the null handler for INTERRUPT_SIGNAL.  This might overwrite the
+            // 62       * handler previously installed by java/net/linux_close.c, but that's okay
+            // 63       * since neither handler actually does anything.  We install our own
+            // 64       * handler here simply out of paranoia; ultimately the two mechanisms
+            // 65       * should somehow be unified, perhaps within the VM.
+            // 66       */
+            // 67
+            // 68      sigset_t ss;
+            // 69      struct sigaction sa, osa;
+            // 70      sa.sa_handler = nullHandler;
+            // 71      sa.sa_flags = 0;
+            // 72      sigemptyset(&sa.sa_mask);
+            // 73      if (sigaction(INTERRUPT_SIGNAL, &sa, &osa) < 0)
+            // 74          JNU_ThrowIOExceptionWithLastError(env, "sigaction");
+            PosixInterruptSignalHandler.ensureInitialized();
         }
 
         /* } Do not re-format commented code: @formatter:on */
-    }
-
-    static final class Util_sun_nio_ch_NativeThread {
-
-        /**
-         * The initialization of {@link sun.nio.ch.NativeThread} is in a static block that gets run
-         * during image building. I need to initialize the signal handler at run time. I am not
-         * worried about races, as they will all register the same signal handler.
-         */
-        static boolean initialized = false;
-
-        /* { Do not re-format commented code: @formatter:off */
-        // 035 #ifdef __linux__
-        // 036   #include <pthread.h>
-        // 037   #include <sys/signal.h>
-        // 038   /* Also defined in net/linux_close.c */
-        // 039   #define INTERRUPT_SIGNAL (__SIGRTMAX - 2)
-        // 040 #elif __solaris__
-        // 041   #include <thread.h>
-        // 042   #include <signal.h>
-        // 043   #define INTERRUPT_SIGNAL (SIGRTMAX - 2)
-        // 044 #elif _ALLBSD_SOURCE
-        // 045   #include <pthread.h>
-        // 046   #include <signal.h>
-        // 047   /* Also defined in net/bsd_close.c */
-        // 048   #define INTERRUPT_SIGNAL SIGIO
-        // 049 #else
-        // 050   #error "missing platform-specific definition here"
-        // 051 #endif
-        static final Signal.SignalEnum INTERRUPT_SIGNAL = Signal.SignalEnum.SIGIO;
-        /* } Do not re-format commented code: @formatter:on */
-
-        /* Translated from jdk/src/solaris/native/sun/nio/ch/NativeThread.c?v=Java_1.8.0_40_b10. */
-        // 053 static void
-        // 054 nullHandler(int sig)
-        // 055 {
-        // 056 }
-        @CEntryPoint
-        @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-        @Uninterruptible(reason = "Can not check for safepoints because I am running on a borrowed thread.")
-        private static void nullHandler(@SuppressWarnings("unused") int signalNumber) {
-        }
-
-        /** The address of the null signal handler. */
-        private static final CEntryPointLiteral<SignalDispatcher> nullDispatcher = CEntryPointLiteral.create(Util_sun_nio_ch_NativeThread.class, "nullHandler", int.class);
-
-        static void ensureInitialized() throws IOException {
-            if (!initialized) {
-                /* { Do not re-format commented code: @formatter:off */
-                // 061     /* Install the null handler for INTERRUPT_SIGNAL.  This might overwrite the
-                // 062      * handler previously installed by java/net/linux_close.c, but that's okay
-                // 063      * since neither handler actually does anything.  We install our own
-                // 064      * handler here simply out of paranoia; ultimately the two mechanisms
-                // 065      * should somehow be unified, perhaps within the VM.
-                // 066      */
-                // 067
-                // 068     sigset_t ss;
-                // 069     struct sigaction sa, osa;
-                Signal.sigaction saPointer = StackValue.get(Signal.sigaction.class);
-                Signal.sigaction osaPointer = StackValue.get(Signal.sigaction.class);
-                // 070     sa.sa_handler = nullHandler;
-                saPointer.sa_handler(Util_sun_nio_ch_NativeThread.nullDispatcher.getFunctionPointer());
-                // 071     sa.sa_flags = 0;
-                saPointer.sa_flags(0);
-                // 072     sigemptyset(&sa.sa_mask);
-                Signal.sigemptyset(saPointer.sa_mask());
-                // 073     if (sigaction(INTERRUPT_SIGNAL, &sa, &osa) < 0)
-                if (Signal.sigaction(INTERRUPT_SIGNAL, saPointer, osaPointer) < 0) {
-                    // 074         JNU_ThrowIOExceptionWithLastError(env, "sigaction");
-                    throw new IOException("sigaction");
-                }
-                /* } Do not re-format commented code: @formatter:on */
-                initialized = true;
-            }
-        }
     }
 
     /*
@@ -482,7 +492,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void configureBlocking(FileDescriptor fdo, boolean blocking) throws IOException {
             if (Util_sun_nio_ch_IOUtil.configureBlocking(fdval(fdo), blocking) < 0) {
-                throwIOExceptionWithLastError("Configure blocking failed");
+                throw PosixUtils.newIOExceptionWithLastError("Configure blocking failed");
             }
         }
 
@@ -495,15 +505,17 @@ public final class PosixJavaNIOSubstitutions {
             CIntPointer fd = StackValue.get(2, CIntPointer.class);
 
             if (pipe(fd) < 0) {
-                throwIOExceptionWithLastError("Pipe failed");
-                return 0;
+                throw PosixUtils.newIOExceptionWithLastError("Pipe failed");
             }
             if (blocking == false) {
                 if ((Util_sun_nio_ch_IOUtil.configureBlocking(fd.read(0), false) < 0) || (Util_sun_nio_ch_IOUtil.configureBlocking(fd.read(1), false) < 0)) {
-                    throwIOExceptionWithLastError("Configure blocking failed");
-                    close(fd.read(0));
-                    close(fd.read(1));
-                    return 0;
+                    try {
+                        /* Capture last error before closing files, which will clear errno. */
+                        throw PosixUtils.newIOExceptionWithLastError("Configure blocking failed");
+                    } finally {
+                        close(fd.read(0));
+                        close(fd.read(1));
+                    }
                 }
             }
             return ((long) fd.read(0) << 32) | fd.read(1);
@@ -519,7 +531,7 @@ public final class PosixJavaNIOSubstitutions {
                 int n = (int) read(fd, buf, WordFactory.unsigned(bufsize)).rawValue();
                 tn += n;
                 if ((n < 0) && (errno() != EAGAIN())) {
-                    throwIOExceptionWithLastError("Drain");
+                    throw PosixUtils.newIOExceptionWithLastError("Drain");
                 }
                 if (n == bufsize) {
                     continue;
@@ -555,7 +567,7 @@ public final class PosixJavaNIOSubstitutions {
                     // 143 } else {
                 } else {
                     // 144 JNU_ThrowIOExceptionWithLastError(env, "read");
-                    throw throwIOExceptionWithLastError("read");
+                    throw PosixUtils.newIOExceptionWithLastError("read");
                     // 145 return IOS_THROWN;
                     /* Unreachable! */
                 }
@@ -577,7 +589,7 @@ public final class PosixJavaNIOSubstitutions {
         private static int fdLimit() throws IOException {
             rlimit rlp = StackValue.get(rlimit.class);
             if (getrlimit(RLIMIT_NOFILE(), rlp) < 0) {
-                throw throwIOExceptionWithLastError("getrlimit failed");
+                throw PosixUtils.newIOExceptionWithLastError("getrlimit failed");
             }
             if (rlp.rlim_max() < 0 || rlp.rlim_max() > Integer.MAX_VALUE) {
                 return Integer.MAX_VALUE;
@@ -1258,7 +1270,7 @@ public final class PosixJavaNIOSubstitutions {
                 }
                 //        106         JNU_ThrowIOExceptionWithLastError(env, "Accept failed");
                 //        107         return IOS_THROWN;
-                throw new IOException("Accept failed");
+                throw PosixUtils.newIOExceptionWithLastError("Accept failed");
             }
             //        109
             //        110     (*env)->SetIntField(env, newfdo, fd_fdID, newfd);
@@ -1499,7 +1511,7 @@ public final class PosixJavaNIOSubstitutions {
                 if (errno() == EINTR()) {
                     return Target_sun_nio_ch_FileDispatcher.FD_INTERRUPTED;
                 }
-                throwIOExceptionWithLastError("Lock failed");
+                throw PosixUtils.newIOExceptionWithLastError("Lock failed");
             }
             return 0;
         }
@@ -1521,7 +1533,7 @@ public final class PosixJavaNIOSubstitutions {
             fl.set_l_type(F_UNLCK());
             lockResult = fcntl(fd, cmd, fl);
             if (lockResult < 0) {
-                throw throwIOExceptionWithLastError("Release failed");
+                throw PosixUtils.newIOExceptionWithLastError("Release failed");
             }
         }
 
@@ -1540,7 +1552,7 @@ public final class PosixJavaNIOSubstitutions {
             int fd = fdval(fdo);
             if (Util_sun_nio_ch_FileDispatcherImpl.preCloseFD >= 0) {
                 if (dup2(Util_sun_nio_ch_FileDispatcherImpl.preCloseFD, fd) < 0) {
-                    throwIOExceptionWithLastError("dup2 failed");
+                    throw PosixUtils.newIOExceptionWithLastError("dup2 failed");
                 }
             }
         }
@@ -1556,7 +1568,6 @@ public final class PosixJavaNIOSubstitutions {
         }
 
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
         private static long seek0(FileDescriptor fd, long offset) throws IOException {
             int f = fdval(fd);
             long result = 0;
@@ -1576,7 +1587,7 @@ public final class PosixJavaNIOSubstitutions {
             if (fd != -1) {
                 int result = close(fd);
                 if (result < 0) {
-                    throwIOExceptionWithLastError("Close failed");
+                    throw PosixUtils.newIOExceptionWithLastError("Close failed");
                 }
             }
         }
@@ -2901,20 +2912,6 @@ public final class PosixJavaNIOSubstitutions {
             return handle(munmap(a, WordFactory.unsigned(len)), "Unmap failed");
         }
 
-        @Substitute
-        @TargetElement(onlyWith = JDK8OrEarlier.class)
-        private long position0(FileDescriptor fdo, long offset) throws IOException {
-            int fd = fdval(fdo);
-            long result = 0;
-
-            if (offset < 0) {
-                result = lseek(fd, WordFactory.zero(), SEEK_CUR()).rawValue();
-            } else {
-                result = lseek(fd, WordFactory.signed(offset), SEEK_SET()).rawValue();
-            }
-            return handle(result, "Position failed");
-        }
-
         // @Substitute
         // private static void close0(FileDescriptor fdo) throws IOException {
         // int fd = fdval(fdo);
@@ -2949,7 +2946,7 @@ public final class PosixJavaNIOSubstitutions {
                 if (errno() == EINTR()) {
                     return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
                 }
-                throw throwIOExceptionWithLastError("Transfer failed");
+                throw PosixUtils.newIOExceptionWithLastError("Transfer failed");
             }
             return n.rawValue();
         }
@@ -2981,7 +2978,7 @@ public final class PosixJavaNIOSubstitutions {
                 if (errno() == EINTR()) {
                     return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
                 }
-                throw throwIOExceptionWithLastError("Transfer failed");
+                throw PosixUtils.newIOExceptionWithLastError("Transfer failed");
             }
 
             return result;
@@ -3016,7 +3013,7 @@ public final class PosixJavaNIOSubstitutions {
             } while ((res == -1) && (errno() == EINTR()));
 
             if (res < 0) {
-                throw throwIOExceptionWithLastError("fstat64 failed");
+                throw PosixUtils.newIOExceptionWithLastError("fstat64 failed");
             } else {
                 st_dev = fbuf.st_dev();
                 st_ino = fbuf.st_ino();
@@ -3189,7 +3186,7 @@ public final class PosixJavaNIOSubstitutions {
                 // 065 if (result < 0) {
                 if (result < 0) {
                     // 066 JNU_ThrowIOExceptionWithLastError(env, "Poll failed");
-                    throw new IOException("Poll failed");
+                    throw PosixUtils.newIOExceptionWithLastError("Poll failed");
                     // 067 return IOS_THROWN;
                     /* unreachable! */
                 }
@@ -3268,7 +3265,7 @@ public final class PosixJavaNIOSubstitutions {
                     return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
                 } else {
                     // 67             JNU_ThrowIOExceptionWithLastError(env, "poll failed");
-                    throw throwIOExceptionWithLastError("poll failed");
+                    throw PosixUtils.newIOExceptionWithLastError("poll failed");
                     // 68             return IOS_THROWN;
                     /* unreachable! */
                 }
@@ -3334,7 +3331,7 @@ public final class PosixJavaNIOSubstitutions {
             // 047     if (result < 0) {
             if (result < 0) {
                 // 048         JNU_ThrowIOExceptionWithLastError(env, "getsockopt");
-                PosixJavaNIOSubstitutions.throwIOExceptionWithLastError("getsockopt");
+                throw PosixUtils.newIOExceptionWithLastError("getsockopt");
             } else {
                 // 050         if (error)
                 if (CTypeConversion.toBoolean(errorPointer.read())) {
@@ -4043,5 +4040,18 @@ public final class PosixJavaNIOSubstitutions {
 
         /* } Allow names with underscores: Checkstyle: resume. */
         /* } Do not format quoted code: @formatter:on */
+    }
+}
+
+/**
+ * Re-run the class initialization for {@code sun.nio.ch.NativeThread} so that it ensures that the
+ * interrupt signal handler is initialized at runtime.
+ */
+@AutomaticFeature
+final class SunNioChNativeThreadFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.NativeThread"));
     }
 }

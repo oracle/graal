@@ -100,7 +100,9 @@ public class ComponentInstallerTest extends TestBase {
             int oE = l.indexOf(']');
             int sp = l.indexOf(' ', 4);
             String cn = l.substring(4, sp);
-
+            if (cn.startsWith("<")) {
+                continue;
+            }
             InstallerCommand c = allCmds.remove(cn);
             if (c == null) {
                 Assert.fail("Unknown command: " + cn);

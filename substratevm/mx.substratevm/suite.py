@@ -1,8 +1,8 @@
 suite = {
-    "mxversion": "5.196.3",
+    "mxversion": "5.210.5",
     "name": "substratevm",
-    "version" : "1.0.0-rc12",
-    "release" : True,
+    "version" : "1.0.0-rc13",
+    "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
     "developer" : {
@@ -84,7 +84,7 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.jdk9.posix": {
+        "com.oracle.svm.core.posix.jdk9": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -155,7 +155,9 @@ suite = {
         "com.oracle.svm.core.posix": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
             "annotationProcessors": [
@@ -164,7 +166,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.core.windows": {
@@ -181,7 +183,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.graal.pointsto": {
@@ -268,9 +270,33 @@ suite = {
             },
         },
 
-        "com.oracle.svm.native.jvm": {
+        "com.oracle.svm.native.jvm.posix": {
             "subDir": "src",
             "native": "static_lib",
+            "deliverable" : "jvm",
+            "os_arch" : {
+                "darwin": {
+                    "amd64" : {
+                        "cflags": ["-g", "-fPIC", "-O2"],
+                    },
+                },
+                "linux": {
+                    "amd64" : {
+                        "cflags": ["-g", "-fPIC", "-O2"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only darwin and linux are supported",
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.jvm.windows": {
+            "subDir": "src",
+            "native": "static_lib",
+            "deliverable" : "jvm",
             "os_arch" : {
                 "windows": {
                     "amd64" : {
@@ -299,7 +325,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.driver": {
@@ -321,7 +347,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.junit": {
@@ -337,7 +363,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.test": {
@@ -353,7 +379,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.reflect": {
@@ -368,7 +394,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "8+",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.tutorial" : {
@@ -383,7 +409,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets" : "SVM",
-            "findbugs" : "false",
+            "spotbugs" : "false",
         },
 
         "com.oracle.objectfile" : {
@@ -394,7 +420,7 @@ suite = {
             "javaCompliance" : "8+",
             "annotationProcessors" : ["compiler:GRAAL_OPTIONS_PROCESSOR"],
             "workingSets" : "SVM",
-            "findbugs" : "false",
+            "spotbugs" : "false",
         },
 
         "com.oracle.svm.graal": {
@@ -463,29 +489,6 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.libffi": {
-            "subDir": "src",
-            "native": True,
-            "vpath": True,
-            "results": [
-                "libffi.a",
-                "include/ffi.h",
-                "include/ffitarget.h",
-                "include/trufflenfi.h",
-                "include/svm_libffi.h",
-            ],
-            "buildEnv": {
-                "LIBFFI_DIST": "<path:truffle:LIBFFI_DIST>",
-                "TRUFFLE_NFI": "<path:truffle:TRUFFLE_NFI_NATIVE>",
-                "ARCH": "<arch>",
-                "OS": "<os>"
-            },
-            "buildDependencies": [
-                "truffle:LIBFFI_DIST",
-                "truffle:TRUFFLE_NFI_NATIVE",
-            ],
-        },
-
         "com.oracle.svm.jline": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -501,7 +504,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.polyglot": {
@@ -518,7 +521,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "org.graalvm.polyglot.nativeapi" : {
@@ -543,7 +546,7 @@ suite = {
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets" : "SVM",
-            "findbugs": "false",
+            "spotbugs": "false",
         },
 
         "org.graalvm.polyglot.nativeapi.native" : {
@@ -576,6 +579,23 @@ suite = {
                 },
             },
         },
+
+        "com.oracle.svm.graal.hotspot.libgraal" : {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.jni",
+                "com.oracle.svm.graal",
+                "compiler:GRAAL"
+            ],
+            "checkstyle" : "com.oracle.svm.hosted",
+            "javaCompliance": "1.8",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+        },
     },
 
     "distributions": {
@@ -595,7 +615,7 @@ suite = {
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",
-                "com.oracle.svm.core.jdk9.posix",
+                "com.oracle.svm.core.posix.jdk9",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
             ],
@@ -678,16 +698,23 @@ suite = {
             ],
         },
 
+        "GRAAL_HOTSPOT_LIBRARY": {
+            "description" : "SubstrateVM HotSpot Graal library support",
+            "dependencies": [
+                "com.oracle.svm.graal.hotspot.libgraal",
+            ],
+            "overlaps" : [
+                "LIBRARY_SUPPORT"
+            ],
+            "distDependencies": [
+                "SVM",
+            ],
+        },
+
         #
         # Native Projects
         #
         "SVM_HOSTED_NATIVE": {
-            "dependencies": [
-                "com.oracle.svm.native.libchelper",
-                "com.oracle.svm.native.strictmath",
-                "com.oracle.svm.native.jvm",
-                "com.oracle.svm.libffi"
-            ],
             "native": True,
             "platformDependent" : True,
             "platforms" : [
@@ -695,10 +722,20 @@ suite = {
                 "darwin-amd64",
                 "windows-amd64",
             ],
+            "layout": {
+                "<os>-<arch>/": [
+                    "dependency:com.oracle.svm.native.libchelper/*",
+                    "dependency:com.oracle.svm.native.strictmath/*",
+                    "dependency:com.oracle.svm.native.jvm.posix/*",
+                    "dependency:com.oracle.svm.native.jvm.windows/*",
+                    "extracted-dependency:truffle:LIBFFI_DIST",
+                ],
+                "<os>-<arch>/include/": [
+                    "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*",
+                    "file:src/com.oracle.svm.libffi/include/svm_libffi.h",
+                ]
+            },
             "description" : "SubstrateVM image builder native components",
-            "relpath": True,
-            "auto_prefix": True,
-            "output": "clibraries",
             "maven": True
         },
 

@@ -85,4 +85,9 @@ public interface CommandInput {
      * @return option value; {@code null}, if the option is not present
      */
     String optValue(String option);
+
+    default String optValue(String option, String defV) {
+        String s = optValue(option);
+        return s == null ? defV : s;
+    }
 }

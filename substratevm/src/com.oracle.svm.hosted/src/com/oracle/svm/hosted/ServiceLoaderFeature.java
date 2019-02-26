@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -44,9 +43,9 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeReflection;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.Resources;
@@ -54,7 +53,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.analysis.Inflation;
 
 /**
  * Support for {@link ServiceLoader} on Substrate VM.
@@ -213,7 +212,7 @@ public class ServiceLoaderFeature implements Feature {
                 continue;
             }
 
-            if (ImageSingletons.lookup(AnnotationSubstitutionProcessor.class).isDeleted(implementationClass)) {
+            if (((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(implementationClass)) {
                 /* Disallow services with implementation classes that are marked as @Deleted */
                 continue;
             }

@@ -206,7 +206,7 @@ for binary in "${to_build[@]}"; do
             language python "bin/graalpython" "com.oracle.graal.python.shell.GraalPythonMain"
             ;;
         ruby)
-            language ruby "bin/ruby" "org.truffleruby.launcher.RubyLauncher"
+            language ruby "bin/truffleruby" "org.truffleruby.launcher.RubyLauncher"
             ;;
         *)
             echo "shouldNotReachHere()"

@@ -51,12 +51,7 @@ public final class GraalVMLocator extends TruffleLocator
     public GraalVMLocator() {
     }
 
-    private static List<URL> collectClassPath() {
-
-        HomeFinder homeFinder = HomeFinder.getInstance();
-        if (homeFinder == null) {
-            throw new IllegalStateException("No HomeFinder instance.");
-        }
+    private static void setGraalVMProperties(HomeFinder homeFinder) {
         Path homePath = homeFinder.getHomeFolder();
         if (homePath != null) {
             String home = homePath.toString();
@@ -69,11 +64,27 @@ public final class GraalVMLocator extends TruffleLocator
                 System.setProperty("org.graalvm.home", home);
             }
         }
-
         String version = homeFinder.getVersion();
         System.setProperty("graalvm.version", version);
         System.setProperty("org.graalvm.version", version);
+        for (Map.Entry<String, Path> languageHome : homeFinder.getLanguageHomes().entrySet()) {
+            setLanguageHomeProperty(languageHome.getKey(), languageHome.getValue());
+        }
+        for (Map.Entry<String, Path> toolHome : homeFinder.getToolHomes().entrySet()) {
+            setLanguageHomeProperty(toolHome.getKey(), toolHome.getValue());
+        }
+    }
 
+    private static void setLanguageHomeProperty(String languageId, Path languageLocation) {
+        if (Files.isDirectory(languageLocation)) {
+            final String homeFolderKey = languageId + ".home";
+            if (System.getProperty(homeFolderKey) == null) {
+                System.setProperty(homeFolderKey, languageLocation.toString());
+            }
+        }
+    }
+
+    private static List<URL> collectClassPath(HomeFinder homeFinder) {
         List<URL> classPath = new ArrayList<>();
         collectLanguageJars(homeFinder.getLanguageHomes(), classPath);
         collectLanguageJars(homeFinder.getToolHomes(), classPath);
@@ -96,8 +107,15 @@ public final class GraalVMLocator extends TruffleLocator
 
     public static ClassLoader getLanguagesLoader() {
         if (loader == null) {
-            final List<URL> classPath = collectClassPath();
-            loader = TruffleOptions.AOT ? null : new GuestLangToolsLoader(classPath.toArray(new URL[0]), GraalVMLocator.class.getClassLoader());
+            HomeFinder homeFinder = HomeFinder.getInstance();
+            if (homeFinder == null) {
+                throw new IllegalStateException("No HomeFinder instance.");
+            }
+            setGraalVMProperties(homeFinder);
+            if (!TruffleOptions.AOT) {
+                final List<URL> classPath = collectClassPath(homeFinder);
+                loader = new GuestLangToolsLoader(classPath.toArray(new URL[0]), GraalVMLocator.class.getClassLoader());
+            }
         }
         return loader;
     }
@@ -112,13 +130,8 @@ public final class GraalVMLocator extends TruffleLocator
 
     private static void collectLanguageJars(Map<String, Path> homes, List<URL> classPath) {
         for (Map.Entry<String, Path> languageHome : homes.entrySet()) {
-            final String languageId = languageHome.getKey();
             final Path languageLocation = languageHome.getValue();
             if (Files.isDirectory(languageLocation)) {
-                final String homeFolderKey = languageId + ".home";
-                if (System.getProperty(homeFolderKey) == null) {
-                    System.setProperty(homeFolderKey, languageLocation.toString());
-                }
                 try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(languageLocation)) {
                     for (Path file : dirStream) {
                         addJar(classPath, file);
@@ -145,7 +158,8 @@ public final class GraalVMLocator extends TruffleLocator
     }
 
     private static void addJar(List<URL> classPath, Path jar) {
-        if (jar.getFileName().toString().endsWith(".jar") && Files.exists(jar)) {
+        Path filename = jar.getFileName();
+        if (filename != null && filename.toString().endsWith(".jar") && Files.exists(jar)) {
             try {
                 classPath.add(jar.toUri().toURL());
             } catch (MalformedURLException ex) {

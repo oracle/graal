@@ -243,9 +243,9 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
     }
 
     private static final LocationIdentity JAVA_THREAD_SHOULD_POST_ON_EXCEPTIONS_FLAG_LOCATION = NamedLocationIdentity.mutable("JavaThread::_should_post_on_exceptions_flag");
-    private static final Unsafe UNSAFE = initUnsafe();
+    static final Unsafe UNSAFE = initUnsafe();
 
-    private static Unsafe initUnsafe() {
+    static Unsafe initUnsafe() {
         try {
             // Fast path when we are trusted.
             return Unsafe.getUnsafe();

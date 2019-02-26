@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.graalvm.component.installer.CatalogIterable;
+import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentParam;
@@ -45,7 +45,7 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ProxyResource;
-import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
+import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -240,7 +240,7 @@ public class InstallTest extends CommandTestBase {
         componentIterable = new CatalogIterable(this, this,
                         new RemoteCatalogDownloader(
                                         this,
-                                        this.getLocalRegistry(),
+                                        this,
                                         u));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
         textParams.add("ruby");
@@ -271,7 +271,7 @@ public class InstallTest extends CommandTestBase {
         componentIterable = new CatalogIterable(this, this,
                         new RemoteCatalogDownloader(
                                         this,
-                                        this.getLocalRegistry(),
+                                        this,
                                         u));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
         textParams.add("ruby");

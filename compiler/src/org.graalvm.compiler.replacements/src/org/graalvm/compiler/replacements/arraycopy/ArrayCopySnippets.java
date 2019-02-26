@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.replacements.arraycopy;
 
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
@@ -251,7 +252,9 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     private static void incrementLengthCounter(int length, Counters counters) {
-        counters.lengthHistogram.inc(length);
+        if (!IS_BUILDING_NATIVE_IMAGE) {
+            counters.lengthHistogram.inc(length);
+        }
     }
 
     private static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length, Counters counters) {
