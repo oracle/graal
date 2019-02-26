@@ -100,18 +100,25 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
 }
 
 JNIEXPORT void JNICALL Agent_OnUnload(JavaVM *vm) {
+  pthread_mutex_lock(&trace_mtx);
+
   fputs("\n]\n", trace_file);
   fclose(trace_file);
-  pthread_mutex_destroy(&trace_mtx);
+  trace_file = NULL;
+
+  pthread_mutex_unlock(&trace_mtx);
+  // pthread_mutex_destroy(&trace_mtx); // leave alone to avoid problems on shutdown
 }
 
 static void mtx_trace_print(const char *s) {
   pthread_mutex_lock(&trace_mtx);
 
-  fputs(trace_sep, trace_file);
-  trace_sep = ",\n";
+  if (trace_file != NULL) {
+    fputs(trace_sep, trace_file);
+    trace_sep = ",\n";
 
-  fputs(s, trace_file);
+    fputs(s, trace_file);
+  }
 
   pthread_mutex_unlock(&trace_mtx);
 }
