@@ -56,8 +56,11 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_KLASS_BY_SYMBO
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_STRING_BY_SYMBOL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VECTORIZED_MISMATCHED;
@@ -379,14 +382,18 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(MULTIPLY_TO_LEN, c.multiplyToLen, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
                             NamedLocationIdentity.getArrayLocation(JavaKind.Int));
         }
+
         if (c.useSHA1Intrinsics()) {
             registerForeignCall(SHA_IMPL_COMPRESS, c.sha1ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
+            registerForeignCall(SHA_IMPL_COMPRESS_MB, c.sha1ImplCompressMultiBlock, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
         }
         if (c.useSHA256Intrinsics()) {
             registerForeignCall(SHA2_IMPL_COMPRESS, c.sha256ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
+            registerForeignCall(SHA2_IMPL_COMPRESS_MB, c.sha256ImplCompressMultiBlock, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
         }
         if (c.useSHA512Intrinsics()) {
             registerForeignCall(SHA5_IMPL_COMPRESS, c.sha512ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
+            registerForeignCall(SHA5_IMPL_COMPRESS_MB, c.sha512ImplCompressMultiBlock, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
         }
         if (c.useGHASHIntrinsics()) {
             registerForeignCall(GHASH_PROCESS_BLOCKS, c.ghashProcessBlocks, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());

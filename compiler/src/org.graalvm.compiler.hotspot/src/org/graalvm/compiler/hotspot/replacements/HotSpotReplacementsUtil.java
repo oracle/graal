@@ -143,7 +143,8 @@ public class HotSpotReplacementsUtil {
         return context.getOriginalMethod().getDeclaringClass();
     }
 
-    static ResolvedJavaType getType(IntrinsicContext context, String typeName) {
+    @Fold
+    static ResolvedJavaType getType(@Fold.InjectedParameter IntrinsicContext context, String typeName) {
         try {
             UnresolvedJavaType unresolved = UnresolvedJavaType.create(typeName);
             return unresolved.resolve(methodHolderClass(context));
@@ -152,6 +153,7 @@ public class HotSpotReplacementsUtil {
         }
     }
 
+    @Fold
     static int getFieldOffset(ResolvedJavaType type, String fieldName) {
         for (ResolvedJavaField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
