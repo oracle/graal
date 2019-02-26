@@ -46,8 +46,8 @@ void __guarantee_fail(const char *test, const char *file, unsigned int line, con
    ? (void) (0) \
    : __guarantee_fail (#expr, __FILE__, __LINE__, __func__))
 
-void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz,
-        jclass caller_class, const char *function, va_list args);
+void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller_class,
+        const char *function, const char *result, va_list args);
 
 extern const jobject TRACE_OBJECT_NULL;
 extern const char * const TRACE_VALUE_NULL;

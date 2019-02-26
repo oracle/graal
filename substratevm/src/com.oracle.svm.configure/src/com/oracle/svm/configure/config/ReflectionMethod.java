@@ -31,17 +31,20 @@ import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 
 public class ReflectionMethod implements JsonPrintable {
+    public static final String CONSTRUCTOR_NAME = "<init>";
+
     private final String name;
     private final String[] parameterTypes;
     private int hashCode = 0;
 
-    public static ReflectionMethod createConstructor(String[] parameterTypes) {
-        return new ReflectionMethod("<init>", parameterTypes);
-    }
-
     public ReflectionMethod(String name, String[] parameterTypes) {
         this.name = name;
         this.parameterTypes = parameterTypes;
+    }
+
+    public ReflectionMethod(String name, String signature) {
+        this.name = name;
+        this.parameterTypes = SignatureParser.getParameterTypes(signature);
     }
 
     public String getName() {

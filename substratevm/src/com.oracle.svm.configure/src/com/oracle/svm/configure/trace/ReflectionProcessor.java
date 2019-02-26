@@ -62,6 +62,7 @@ public class ReflectionProcessor extends AbstractProcessor {
     public void processEntry(Map<String, ?> entry) {
         String function = (String) entry.get("function");
         String clazz = (String) entry.get("class");
+        String result = (String) entry.get("result");
         List<?> args = (List<?>) entry.get("args");
         switch (function) {
             // These are called via java.lang.Class or via the class loader hierarchy, so we would
@@ -131,19 +132,40 @@ public class ReflectionProcessor extends AbstractProcessor {
                 declared = true; // fall-through
             case "getConstructor": {
                 List<String> parameterTypes = singleElement(args);
-                ReflectionMethod constructor = ReflectionMethod.createConstructor(parameterTypes.toArray(new String[0]));
+                ReflectionMethod constructor = new ReflectionMethod(ReflectionMethod.CONSTRUCTOR_NAME, parameterTypes.toArray(new String[0]));
                 getMemberSet(clazz, declared).getConstructors().add(constructor);
                 break;
             }
 
-            case "getProxyClass": // fall-through
+            case "getProxyClass": {
                 expectSize(args, 2);
                 addDynamicProxy((List<?>) args.get(1));
+                break;
+            }
             case "newProxyInstance": {
                 expectSize(args, 3);
                 addDynamicProxy((List<?>) args.get(1));
                 break;
             }
+
+            case "getEnclosingConstructor":
+            case "getEnclosingMethod": {
+                addFullyQualifiedDeclaredMethod(result);
+                break;
+            }
+        }
+    }
+
+    private void addFullyQualifiedDeclaredMethod(String descriptor) {
+        int sigbegin = descriptor.indexOf('(');
+        int classend = descriptor.lastIndexOf('.', sigbegin - 1);
+        String qualifiedClass = descriptor.substring(0, classend);
+        String methodName = descriptor.substring(classend + 1, sigbegin);
+        String signature = descriptor.substring(sigbegin + 1);
+        if (methodName.equals(ReflectionMethod.CONSTRUCTOR_NAME)) {
+            getMemberSet(qualifiedClass, true).getConstructors().add(new ReflectionMethod(ReflectionMethod.CONSTRUCTOR_NAME, signature));
+        } else {
+            getMemberSet(qualifiedClass, true).getMethods().add(new ReflectionMethod(methodName, signature));
         }
     }
 

@@ -34,7 +34,7 @@ extern "C" {
 static void jni_trace(JNIEnv *env, char *function, jclass clazz, ...) {
   va_list ap;
   va_start(ap, clazz);
-  trace_append_v(env, "jni", clazz, NULL, function, ap);
+  trace_append_v(env, "jni", clazz, NULL, function, NULL, ap);
   va_end(ap);
 }
 

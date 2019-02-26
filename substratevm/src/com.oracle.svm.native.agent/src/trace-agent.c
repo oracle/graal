@@ -146,7 +146,7 @@ static void sbuf_append_jclass(JNIEnv *env, struct sbuf *b, const char *key, jcl
   }
 }
 
-void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller_class, const char *function, va_list args) {
+void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller_class, const char *function, const char *result, va_list args) {
   struct sbuf e;
   sbuf_new(&e);
   sbuf_printf(&e, "{\"tracer\":");
@@ -160,6 +160,10 @@ void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller
   }
   if (caller_class != NULL) {
     sbuf_append_jclass(env, &e, "caller_class", caller_class);
+  }
+  if (result != NULL) {
+    sbuf_printf(&e, ", \"result\":");
+    quote_or_append(should_quote(result), &e, result);
   }
   char *arg = va_arg(args, char*);
   if (arg != NULL) {
