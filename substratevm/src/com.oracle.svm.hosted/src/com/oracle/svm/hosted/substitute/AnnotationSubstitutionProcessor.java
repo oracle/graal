@@ -900,7 +900,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         } else if (element instanceof ResolvedJavaType) {
             result.append("type ").append(((ResolvedJavaType) element).toJavaName(true));
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHere("Unknown @Delete annotated element " + element);
         }
         result.append(" is reachable");
         if (message != null && !message.isEmpty()) {
