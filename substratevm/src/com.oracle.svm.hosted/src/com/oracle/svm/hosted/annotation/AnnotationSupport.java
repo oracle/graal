@@ -36,6 +36,8 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -64,6 +66,8 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -159,9 +163,29 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 result.addSubstitutionMethod(originalMethod, substitutionMethod);
             }
 
+            for (ResolvedJavaMethod originalMethod : type.getDeclaredConstructors()) {
+                AnnotationSubstitutionMethod substitutionMethod = new AnnotationConstructorMethod(originalMethod);
+                result.addSubstitutionMethod(originalMethod, substitutionMethod);
+            }
+
             typeSubstitutions.put(type, result);
         }
         return result;
+    }
+
+    static class AnnotationConstructorMethod extends AnnotationSubstitutionMethod {
+        AnnotationConstructorMethod(ResolvedJavaMethod original) {
+            super(original);
+        }
+
+        @Override
+        public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+            HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+            StructuredGraph graph = kit.getGraph();
+            graph.addAfterFixed(graph.start(), graph.add(new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true)));
+            assert graph.verify();
+            return graph;
+        }
     }
 
     /* Used to check the type of fields that need special guarding against missing types. */
