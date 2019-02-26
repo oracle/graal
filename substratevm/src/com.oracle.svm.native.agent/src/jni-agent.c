@@ -27,39 +27,17 @@ extern "C" {
 #endif
 
 #include "trace-agent.h"
+#include "util.h"
 
 #include <stdarg.h>
 #include <malloc.h>
 
-// JVMTI environments, unlike JNI, can be safely shared across threads
-static jvmtiEnv *global_jvmti = NULL;
-
-static jclass get_caller_class(JNIEnv *env) {
-  jvmtiFrameInfo info;
-  jint count;
-  if ((*global_jvmti)->GetStackTrace(global_jvmti, NULL, 0, 1, &info, &count) == JVMTI_ERROR_NONE && count == 1) {
-    jclass declaring;
-    if ((*global_jvmti)->GetMethodDeclaringClass(global_jvmti, info.method, &declaring) == JVMTI_ERROR_NONE) {
-      return declaring;
-    }
-  }
-  return NULL;
-}
-
 static void jni_trace_call(JNIEnv *env, char *function, jclass clazz, ...) {
-  jclass caller_class = get_caller_class(env);
+  jclass caller_class = get_caller_class(0);
   va_list ap;
   va_start(ap, clazz);
   trace_append_v(env, "jni", clazz, caller_class, function, NULL, ap);
   va_end(ap);
-}
-
-static jclass nn_class(jclass clazz) {
-  return (clazz != NULL) ? clazz : TRACE_OBJECT_NULL;
-}
-
-static const char * nn_str(const char *cstr) {
-  return (cstr != NULL) ? cstr : TRACE_VALUE_NULL;
 }
 
 static jclass JNICALL DefineClass(JNIEnv *env, const char *name, jobject loader, const jbyte *buf, jsize bufLen) {
@@ -93,8 +71,6 @@ static jfieldID JNICALL GetStaticFieldID(JNIEnv *env, jclass clazz, const char *
 }
 
 void OnVMStart_JNI(jvmtiEnv *jvmti, JNIEnv *jni) {
-  global_jvmti = jvmti;
-
   jniNativeInterface *functions;
   guarantee((*jvmti)->GetJNIFunctionTable(jvmti, &functions) == JVMTI_ERROR_NONE);
   functions->DefineClass = &DefineClass;

@@ -35,15 +35,7 @@ extern "C" {
 #include "jni-agent.h"
 #include "reflect-agent.h"
 #include "sbuf.h"
-
-void __guarantee_fail(const char *test, const char *file, unsigned int line, const char *funcname) {
-    fprintf(stderr, "%s:%u: %s: check failed, aborting: %s\n", file, line, funcname, test);
-    exit(1);
-}
-
-jniNativeInterface *jnifun;
-
-static jmethodID java_lang_Class_getName;
+#include "util.h"
 
 static FILE *trace_file;
 static pthread_mutex_t trace_mtx;
@@ -57,14 +49,8 @@ const char * const TRACE_NEXT_ARG_UNQUOTED_TAG = "@next_unquoted@";
 void trace_phase_change(const char *phase);
 
 void JNICALL OnVMStart(jvmtiEnv *jvmti, JNIEnv *jni) {
-  guarantee((*jvmti)->GetJNIFunctionTable(jvmti, &jnifun) == JVMTI_ERROR_NONE);
-
-  jclass javaLangClass;
-  guarantee((javaLangClass = jnifun->FindClass(jni, "java/lang/Class")) != NULL);
-  guarantee((java_lang_Class_getName = jnifun->GetMethodID(jni, javaLangClass, "getName", "()Ljava/lang/String;")) != NULL);
-
+  OnVMStart_Util(jvmti, jni);
   OnVMStart_JNI(jvmti, jni);
-  OnVMStart_Reflection(jvmti, jni);
 
   trace_phase_change("start");
 }

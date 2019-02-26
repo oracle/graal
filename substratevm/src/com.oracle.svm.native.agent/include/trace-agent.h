@@ -34,18 +34,6 @@ extern "C" {
 
 #include <jvmti.h>
 
-#define MAX_PATH_LEN 4096
-
-// A copy of the initial JNI function table before any modifications
-extern jniNativeInterface *jnifun;
-
-// Non-debug assertion
-void __guarantee_fail(const char *test, const char *file, unsigned int line, const char *funcname);
-#define guarantee(expr) \
-  ((expr) \
-   ? (void) (0) \
-   : __guarantee_fail (#expr, __FILE__, __LINE__, __func__))
-
 void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller_class,
         const char *function, const char *result, va_list args);
 
