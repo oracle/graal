@@ -1,0 +1,9 @@
+nwcc_0.8.3/test2/pic0-f.c
+nwcc_0.8.3/tests/aaa_BUGAMD64fp.c
+nwcc_0.8.3/tests/aaa_BUGbitfield_promo.c
+nwcc_0.8.3/tests/bf_init22.c
+nwcc_0.8.3/tests/bug.c
+nwcc_0.8.3/tests/builtin_va_copy.c
+nwcc_0.8.3/tests/condop_bug4.c
+nwcc_0.8.3/tests/condopstructbug.c
+nwcc_0.8.3/tests/structassbug.c

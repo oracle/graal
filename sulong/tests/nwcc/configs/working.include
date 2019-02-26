@@ -32,7 +32,6 @@ nwcc_0.8.3/tests/varinit_struct.c
 nwcc_0.8.3/tests/bf-layout-where1.c
 nwcc_0.8.3/tests/aaa_BUGcomplit_sizeof.c
 nwcc_0.8.3/tests/bf_init2.c
-nwcc_0.8.3/tests/aaa_BUGbitfield_promo.c
 nwcc_0.8.3/tests/bf_bneg.c
 nwcc_0.8.3/tests/addrcomp.c
 nwcc_0.8.3/tests/constexprbug1.c
@@ -52,7 +51,6 @@ nwcc_0.8.3/tests/bf_init13.c
 nwcc_0.8.3/tests/static.c
 nwcc_0.8.3/tests/llong-equ2.c
 nwcc_0.8.3/tests/gas_bugs.c
-nwcc_0.8.3/tests/condop_bug4.c
 nwcc_0.8.3/tests/typedef_bug.c
 nwcc_0.8.3/tests/transparent_union_spec.c
 nwcc_0.8.3/tests/nimbus_condop.c
@@ -66,7 +64,6 @@ nwcc_0.8.3/tests/bf_init16.c
 nwcc_0.8.3/tests/addrinit.c
 nwcc_0.8.3/tests/bf_init7.c
 nwcc_0.8.3/tests/bf-layout-size.c
-nwcc_0.8.3/tests/condopstructbug.c
 nwcc_0.8.3/tests/desiginit6.c
 nwcc_0.8.3/tests/tentative6.c
 nwcc_0.8.3/tests/builtin_string.c
@@ -202,7 +199,6 @@ nwcc_0.8.3/tests/conv.c
 nwcc_0.8.3/tests/desig_array_notrange.c
 nwcc_0.8.3/tests/x.c
 nwcc_0.8.3/tests/struct.c
-nwcc_0.8.3/tests/structassbug.c
 nwcc_0.8.3/tests/static2.c
 nwcc_0.8.3/tests/bf_basic3.c
 nwcc_0.8.3/tests/strlol.c
@@ -238,7 +234,6 @@ nwcc_0.8.3/tests/desiginit.c
 nwcc_0.8.3/tests/gnuinit.c
 nwcc_0.8.3/tests/bigoffsets.c
 nwcc_0.8.3/tests/idstuff.c
-nwcc_0.8.3/tests/bf_init22.c
 nwcc_0.8.3/tests/l2.c
 nwcc_0.8.3/tests/constarrayinitbug.c
 nwcc_0.8.3/tests/constexprbug4.c
@@ -251,7 +246,6 @@ nwcc_0.8.3/tests/constexprbug7.c
 nwcc_0.8.3/tests/relat.c
 nwcc_0.8.3/tests/wchar2.c
 nwcc_0.8.3/tests/bf_basic7.c
-nwcc_0.8.3/tests/bug.c
 nwcc_0.8.3/tests/unioninitbug.c
 nwcc_0.8.3/tests/constexprbug6.c
 nwcc_0.8.3/tests/builtin_memset.c
@@ -287,6 +281,5 @@ nwcc_0.8.3/tests/attribute.c
 nwcc_0.8.3/tests/emptystructcopybug2.c
 nwcc_0.8.3/tests/n_libc.c
 nwcc_0.8.3/tests/bitchxbugs.c
-nwcc_0.8.3/tests/aaa_BUGAMD64fp.c
 nwcc_0.8.3/tests/struct_pass_small.c
 nwcc_0.8.3/tests/promo_para_bug.c
