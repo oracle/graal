@@ -45,7 +45,6 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -189,9 +188,7 @@ public final class EspressoContext {
             initializeKnownClass(type);
         }
 
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-
-        createMainThread(context);
+        createMainThread();
 
         // Finalizer is not public.
         initializeKnownClass(Type.java_lang_ref_Finalizer);
@@ -215,7 +212,7 @@ public final class EspressoContext {
         System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 
-    private void createMainThread(EspressoContext context) {
+    private void createMainThread() {
         StaticObjectImpl mainThread = (StaticObjectImpl) meta.Thread.allocateInstance();
         StaticObject threadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup_maxPriority.set(threadGroup, Thread.MAX_PRIORITY);
@@ -223,7 +220,6 @@ public final class EspressoContext {
         meta.Thread_name.set(mainThread, meta.toGuestString("mainThread"));
         meta.Thread_priority.set(mainThread, 5);
         mainThread.setHiddenField(HIDDEN_HOST_THREAD, Thread.currentThread());
-        // host2guest should be in the context
         host2guest.put(Thread.currentThread(), mainThread);
 
         // Lock object used by NIO.
