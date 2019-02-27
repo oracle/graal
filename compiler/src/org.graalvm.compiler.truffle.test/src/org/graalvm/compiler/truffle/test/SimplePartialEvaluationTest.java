@@ -99,13 +99,14 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
+    @SuppressWarnings("try")
     public void neverPartOfCompilationTest() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode firstTree = new NeverPartOfCompilationTestNode(new ConstantTestNode(1), 2);
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "neverPartOfCompilationTest", firstTree));
 
         AbstractTestNode secondTree = new NeverPartOfCompilationTestNode(new ConstantTestNode(1), 1);
-        try {
+        try (PreventDumping noDump = new PreventDumping()) {
             assertPartialEvalEquals("constant42", new RootTestNode(fd, "neverPartOfCompilationTest", secondTree));
             Assert.fail("Expected verification error!");
         } catch (GraalBailoutException t) {
