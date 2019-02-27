@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 
 public final class InvokeStaticNode extends QuickNode {
+
     protected final Method method;
     @Child private DirectCallNode directCallNode;
 

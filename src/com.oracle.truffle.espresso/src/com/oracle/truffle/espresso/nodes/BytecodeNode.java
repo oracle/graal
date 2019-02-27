@@ -839,36 +839,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     case INVOKEDYNAMIC         :
                         //CompilerAsserts.neverPartOfCompilation();
                         //throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
-                        RuntimeConstantPool pool = getConstantPool();
-                        InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
-                        BootstrapMethodsAttribute bms = getBootstrapMethods();
-
-                        assert(bms != null);
-                        BootstrapMethodsAttribute.Entry bsEntry = getBootstrapMethods().at(inDy.getBootstrapMethodAttrIndex());
-
-                        // TODO(garcia) add support for non-lambda invokedynamic
-                        assert(bsEntry.numBootstrapArguments() == 3);
-
-                        Symbol<Type>[] parsed = getMethod().getContext().getSignatures().parsed(inDy.getSignature(pool));
-                        Object[] args = peekArguments(frame, top, false, parsed);
-
-                        top -= Signatures.parameterCount(parsed, false);
-
-                        MethodHandleConstant mh = (MethodHandleConstant) pool.at(bsEntry.argAt(1));
-                        Method target = resolveMethod(curOpcode, mh.getRefIndex());
-
-                        ObjectKlass CSOKlass = (ObjectKlass)  getMethod().getContext().getRegistries().loadKlassWithBootClassLoader(Signatures.returnType(parsed));
-
-
-                        StaticObject emulatedThis;
-
-                        if (getMethod().isStatic()) {
-                            emulatedThis = null;
-                        } else {
-                            emulatedThis = getLocalObject(frame, 0);
-                        }
-                        CallSiteObject cso = new CallSiteObject(CSOKlass, target, parsed, args, mh, emulatedThis);
-                        putObject(frame, top, cso);
+                        top += quickenInvokeDynamic(frame, top, curBCI, curOpcode);
                         break;
 
                     case QUICK                 : top += nodes[bs.readCPI(curBCI)].invoke(frame, top); break;
@@ -1123,6 +1094,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         return getMethod().getRuntimeConstantPool();
     }
 
+    @TruffleBoundary
     private BootstrapMethodsAttribute getBootstrapMethods() {
         return (BootstrapMethodsAttribute) ((ObjectKlass) getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
     }
@@ -1181,7 +1153,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, Method resolutionSeed, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opCode);
-        //assert opCode != INVOKEDYNAMIC : "not supported";
+        // assert opCode != INVOKEDYNAMIC : "not supported";
 
         if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet())) {
             return quickenInvoke(frame, top, curBCI, resolutionSeed, INVOKESPECIAL);
@@ -1200,6 +1172,39 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         // @formatter:on
         // Checkstyle: resume
         return injectAndCall(frame, top, curBCI, invoke, opCode);
+    }
+
+    private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opCode) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert (Bytecodes.INVOKEDYNAMIC == opCode);
+
+        RuntimeConstantPool pool = getConstantPool();
+        InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
+        BootstrapMethodsAttribute bms = getBootstrapMethods();
+
+        assert (bms != null);
+        BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
+
+        // TODO(garcia) add support for non-lambda invokedynamic
+        assert (bsEntry.numBootstrapArguments() == 3);
+
+        MethodHandleConstant mh = (MethodHandleConstant) pool.at(bsEntry.argAt(1));
+        Method target = resolveMethod(opCode, mh.getRefIndex());
+
+        Symbol<Symbol.Type>[] parsed = getMethod().getContext().getSignatures().parsed(inDy.getSignature(pool));
+        ObjectKlass CSOKlass = (ObjectKlass) getMethod().getContext().getRegistries().loadKlassWithBootClassLoader(Signatures.returnType(parsed));
+
+        StaticObject emulatedThis;
+
+        if (getMethod().isStatic()) {
+            emulatedThis = null;
+        } else {
+            emulatedThis = getLocalObject(frame, 0);
+        }
+        CallSiteObject cso = new CallSiteObject(CSOKlass, target, parsed, mh.getRefKind(), emulatedThis);
+        return injectAndCall(frame, top, curBCI, new InvokeDynamicNode(cso), opCode);
+
+        // return putKind(frame, top, cso, JavaKind.Object);
     }
 
     // endregion Bytecode quickening
@@ -1518,7 +1523,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     @ExplodeLoop
     public Object[] peekArgumentsWithCSO(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature, CallSiteObject cso) {
         Object[] CSOargs = cso.getArgs();
-        int nCSOargs = CSOargs.length;
+        final int nCSOargs = CSOargs.length;
 
         int argCount = Signatures.parameterCount(signature, false);
 

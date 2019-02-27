@@ -1,9 +1,9 @@
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.classfile.MethodHandleConstant;
 import com.oracle.truffle.espresso.classfile.MethodHandleConstant.RefKind;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -15,7 +15,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class CallSiteObject extends StaticObject {
 
@@ -29,23 +28,23 @@ public final class CallSiteObject extends StaticObject {
     private final int stackEffect;
     private final int endModif;
 
-    public CallSiteObject(Klass klass, Method target, Symbol<Type>[] signature, Object[] args, MethodHandleConstant mh, StaticObject emulatedThis) {
+    @CompilerDirectives.TruffleBoundary
+    public CallSiteObject(Klass klass, Method target, Symbol<Type>[] signature, RefKind mh, StaticObject emulatedThis) {
         super(klass);
         this.target = target;
         this.signature = signature;
-        this.args = args;
         this.callNode = DirectCallNode.create(target.getCallTarget());
-        this.kind = mh.getRefKind();
+        this.kind = mh;
         this.emulatedThis = emulatedThis;
         this.hasReceiver = !(kind == RefKind.INVOKESTATIC);
         int kindEffect;
         int endEffect;
         switch (kind) {
-            case INVOKESPECIAL      :
+            case INVOKESPECIAL:
                 kindEffect = 1;
                 endEffect = 0;
                 break;
-            case NEWINVOKESPECIAL   :
+            case NEWINVOKESPECIAL:
                 kindEffect = 0;
                 endEffect = 1;
                 break;
@@ -54,7 +53,8 @@ public final class CallSiteObject extends StaticObject {
                 endEffect = 0;
         }
         this.endModif = endEffect;
-        this.stackEffect = args.length - kindEffect - 1; // Always pop CSO
+        this.stackEffect = Signatures.parameterCount(signature, false) - kindEffect - 1; // Always
+                                                                                         // pop CSO
     }
 
     public ForeignAccess getForeignAccess() {
@@ -62,7 +62,9 @@ public final class CallSiteObject extends StaticObject {
     }
 
     @Override
-    public boolean isCallSite() {return true;}
+    public boolean isCallSite() {
+        return true;
+    }
 
     @Override
     public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
@@ -74,35 +76,39 @@ public final class CallSiteObject extends StaticObject {
         }
     }
 
-    public RefKind getKind() {
+    public final RefKind getKind() {
         return kind;
     }
 
-    public Method getTarget() {
+    public final Method getTarget() {
         return target;
     }
 
-    public Symbol<Type>[] getSignature() {
+    public final Symbol<Type>[] getSignature() {
         return signature;
     }
 
-    public Object call(Object[] targetArgs) {
+    public final Object call(Object[] targetArgs) {
         return callNode.call(targetArgs);
+    }
+
+    public final void setArgs(Object[] args) {
+        this.args = args;
     }
 
     public Object[] getArgs() {
         return this.args;
     }
 
-    public Boolean hasReceiver() {
+    public final Boolean hasReceiver() {
         return this.hasReceiver;
     }
 
-    public int invoke(final VirtualFrame frame, int top, BytecodeNode root) {
-        if (kind == MethodHandleConstant.RefKind.NEWINVOKESPECIAL) {
+    public final int invoke(final VirtualFrame frame, int top, BytecodeNode root) {
+        if (kind == RefKind.NEWINVOKESPECIAL) {
             Klass klass = target.getDeclaringKlass();
             klass.safeInitialize();
-            root.putKind(frame, top - 1, InterpreterToVM.newObject(klass), JavaKind.Object);
+            root.putKind(frame, top - 1, klass.allocateInstance(), JavaKind.Object);
         }
         Object[] targetArgs = root.peekArgumentsWithCSO(frame, top, hasReceiver, target.getParsedSignature(), this);
         Object result = call(targetArgs);
@@ -111,9 +117,11 @@ public final class CallSiteObject extends StaticObject {
             result = Meta.box(root.getMeta(), result);
             toPush = JavaKind.Object;
         }
-        int resultAt = top - Signatures.slotsForParameters(target.getParsedSignature()) + stackEffect; // pop CSO
+        int resultAt = top - Signatures.slotsForParameters(target.getParsedSignature()) + stackEffect; // pop
+                                                                                                       // CSO
         int ret = (resultAt - top) + root.putKind(frame, resultAt, result, toPush);
-        //return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind()); //
+        // return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
+        // //
         return ret + endModif;
     }
 
