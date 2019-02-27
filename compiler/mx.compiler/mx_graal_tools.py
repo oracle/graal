@@ -26,7 +26,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import os, shutil, zipfile, re
+import os, shutil, re
 from os.path import join, exists
 from argparse import ArgumentParser, REMAINDER
 
@@ -38,25 +38,15 @@ def run_netbeans_app(app_name, env=None, args=None):
     args = [] if args is None else args
     dist = app_name.upper() + '_DIST'
     name = app_name.lower()
-    extractPath = join(_suite.get_output_root())
+    res = mx.library(dist)
+
+    assert res.isPackedResourceLibrary(), name + " should be a PackedResourceLibrary"
+    extractPath = res.get_path(resolve=True)
+
     if mx.get_os() == 'windows':
         executable = join(extractPath, name, 'bin', name + '.exe')
     else:
         executable = join(extractPath, name, 'bin', name)
-
-    # Check whether the current installation is up-to-date
-    versionFile = join(extractPath, name, mx.library(dist).sha1)
-    if exists(executable) and not exists(versionFile):
-        mx.log('Updating ' + app_name)
-        shutil.rmtree(join(extractPath, name))
-
-    archive = mx.library(dist).get_path(resolve=True)
-
-    if not exists(executable):
-        zf = zipfile.ZipFile(archive, 'r')
-        zf.extractall(extractPath)
-        with open(versionFile, 'a'):
-            os.utime(versionFile, None)
 
     if not exists(executable):
         mx.abort(app_name + ' binary does not exist: ' + executable)

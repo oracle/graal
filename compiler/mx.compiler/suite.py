@@ -109,6 +109,7 @@ suite = {
     "C1VISUALIZER_DIST" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/c1visualizer/c1visualizer-1.7.zip"],
       "sha1" : "305a772ccbdc0e42dfa233b0ce6762d0dd1de6de",
+      "packedResource": True,
     },
 
     "JOL_CLI" : {
