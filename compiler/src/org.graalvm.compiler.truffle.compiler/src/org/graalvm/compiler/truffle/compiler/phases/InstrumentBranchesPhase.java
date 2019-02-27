@@ -46,13 +46,6 @@ import jdk.vm.ci.meta.JavaConstant;
  * -Dgraal.TruffleInstrumentBranches
  * </pre>
  *
- * The phase can be configured to only instrument the {@link IfNode}s in specific methods, by
- * providing the following method filter flag:
- *
- * <pre>
- * -Dgraal.TruffleInstrumentBranchesFilter
- * </pre>
- *
  * The flag:
  *
  * <pre>
