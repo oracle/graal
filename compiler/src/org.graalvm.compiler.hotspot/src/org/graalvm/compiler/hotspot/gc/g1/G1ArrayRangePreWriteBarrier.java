@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.nodes;
+
+package org.graalvm.compiler.hotspot.gc.g1;
+
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.hotspot.gc.shared.ArrayRangeWriteBarrier;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
 
-@NodeInfo
-public abstract class ArrayRangeWriteBarrier extends WriteBarrier implements Lowerable {
+@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
+public final class G1ArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier {
+    public static final NodeClass<G1ArrayRangePreWriteBarrier> TYPE = NodeClass.create(G1ArrayRangePreWriteBarrier.class);
 
-    public static final NodeClass<ArrayRangeWriteBarrier> TYPE = NodeClass.create(ArrayRangeWriteBarrier.class);
-    @Input(InputType.Association) AddressNode address;
-    @Input ValueNode length;
-
-    private final int elementStride;
-
-    protected ArrayRangeWriteBarrier(NodeClass<? extends ArrayRangeWriteBarrier> c, AddressNode address, ValueNode length, int elementStride) {
-        super(c);
-        this.address = address;
-        this.length = length;
-        this.elementStride = elementStride;
+    public G1ArrayRangePreWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
+        super(TYPE, address, length, elementStride);
     }
 
-    public AddressNode getAddress() {
-        return address;
-    }
-
-    public ValueNode getLength() {
-        return length;
-    }
-
-    public int getElementStride() {
-        return elementStride;
-    }
 }

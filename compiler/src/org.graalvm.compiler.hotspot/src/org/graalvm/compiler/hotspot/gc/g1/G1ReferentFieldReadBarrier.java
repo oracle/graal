@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.nodes;
+package org.graalvm.compiler.hotspot.gc.g1;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.gc.shared.ObjectWriteBarrier;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
+/**
+ * The {@code G1ReferentFieldReadBarrier} is added when a read access is performed to the referent
+ * field of a {@link java.lang.ref.Reference} object (through a {@code LoadFieldNode} or an
+ * {@code UnsafeLoadNode}). The return value of the read is passed to the snippet implementing the
+ * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
+ */
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public class G1PostWriteBarrier extends ObjectWriteBarrier {
+public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier {
+    public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.create(G1ReferentFieldReadBarrier.class);
 
-    public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
-    protected final boolean alwaysNull;
+    private final boolean doLoad;
 
-    public G1PostWriteBarrier(AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        this(TYPE, address, value, precise, alwaysNull);
+    public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad) {
+        super(TYPE, address, expectedObject, true);
+        this.doLoad = doLoad;
     }
 
-    protected G1PostWriteBarrier(NodeClass<? extends G1PostWriteBarrier> c, AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        super(c, address, value, precise);
-        this.alwaysNull = alwaysNull;
+    public ValueNode getExpectedObject() {
+        return getValue();
     }
 
-    public boolean alwaysNull() {
-        return alwaysNull;
+    public boolean doLoad() {
+        return doLoad;
     }
 }

@@ -22,21 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.nodes;
+package org.graalvm.compiler.hotspot.gc.shared;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
-@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class G1ArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<G1ArrayRangePreWriteBarrier> TYPE = NodeClass.create(G1ArrayRangePreWriteBarrier.class);
+@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
+public final class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
+    public static final NodeClass<SerialArrayRangeWriteBarrier> TYPE = NodeClass.create(SerialArrayRangeWriteBarrier.class);
 
-    public G1ArrayRangePreWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
+    public SerialArrayRangeWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
         super(TYPE, address, length, elementStride);
     }
 

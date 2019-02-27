@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +23,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.nodes;
+package org.graalvm.compiler.hotspot.gc.shared;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
+import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
+import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
+import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.WriteNode;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
+public abstract class BarrierSet {
+    public abstract void addReadNodeBarriers(ReadNode node, StructuredGraph graph);
 
-@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public class G1ArrayRangePostWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<G1ArrayRangePostWriteBarrier> TYPE = NodeClass.create(G1ArrayRangePostWriteBarrier.class);
+    public abstract void addWriteNodeBarriers(WriteNode node, StructuredGraph graph);
 
-    public G1ArrayRangePostWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
-        super(TYPE, address, length, elementStride);
-    }
+    public abstract void addAtomicReadWriteNodeBarriers(LoweredAtomicReadAndWriteNode node, StructuredGraph graph);
 
+    public abstract void addCASBarriers(AbstractCompareAndSwapNode node, StructuredGraph graph);
+
+    public abstract void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph);
 }

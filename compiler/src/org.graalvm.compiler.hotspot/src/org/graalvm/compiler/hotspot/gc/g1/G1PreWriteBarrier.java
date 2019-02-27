@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.nodes;
+
+package org.graalvm.compiler.hotspot.gc.g1;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.gc.shared.ObjectWriteBarrier;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
@@ -40,9 +42,9 @@ public final class G1PreWriteBarrier extends ObjectWriteBarrier implements Deopt
 
     public static final NodeClass<G1PreWriteBarrier> TYPE = NodeClass.create(G1PreWriteBarrier.class);
 
-    @OptionalInput(InputType.State) FrameState stateBefore;
-    protected final boolean nullCheck;
-    protected final boolean doLoad;
+    @OptionalInput(InputType.State) private FrameState stateBefore;
+    private final boolean nullCheck;
+    private final boolean doLoad;
 
     public G1PreWriteBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad, boolean nullCheck) {
         super(TYPE, address, expectedObject, true);
