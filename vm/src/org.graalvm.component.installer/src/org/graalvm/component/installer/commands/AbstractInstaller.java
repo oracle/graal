@@ -157,7 +157,7 @@ public abstract class AbstractInstaller implements Closeable {
     }
 
     public void setInstallPath(Path installPath) {
-        this.installPath = installPath;
+        this.installPath = installPath.normalize();
     }
 
     public Path getLicenseRelativePath() {

@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY;
 import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSION;
 import org.graalvm.component.installer.jar.JarMetaLoader;
@@ -107,6 +108,7 @@ public final class GenerateCatalog {
             throw new IOException("Cannot compute digest " + ex.getLocalizedMessage(), ex);
         }
         ByteBuffer bb = ByteBuffer.allocate(2048);
+        boolean updated = false;
         try (
                         InputStream is = new FileInputStream(f);
                         ReadableByteChannel bch = Channels.newChannel(is)) {
@@ -119,7 +121,11 @@ public final class GenerateCatalog {
                 bb.flip();
                 fileDigest.update(bb);
                 bb.clear();
+                updated = true;
             }
+        }
+        if (!updated) {
+            fileDigest.update(new byte[0]);
         }
 
         return fileDigest.digest();
@@ -317,7 +323,11 @@ public final class GenerateCatalog {
                 if (!graalVMReleases.containsKey(prefix)) {
                     graalVMReleases.put(prefix, new GraalVersion(version, os, arch));
                 }
-                Attributes atts = jf.getManifest().getMainAttributes();
+                Manifest mf = jf.getManifest();
+                if (mf == null) {
+                    throw new IOException("No manifest in " + spec);
+                }
+                Attributes atts = mf.getMainAttributes();
                 String bid = atts.getValue(BundleConstants.BUNDLE_ID).toLowerCase();
                 String bl = atts.getValue(BundleConstants.BUNDLE_NAME);
 
