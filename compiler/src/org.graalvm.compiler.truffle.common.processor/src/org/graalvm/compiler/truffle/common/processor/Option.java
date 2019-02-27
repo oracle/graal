@@ -40,6 +40,7 @@ public class Option {
             .def("null")
             .help("Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde).",
                   "EBNF format of argument value:  CompileOnly = Element, { ',', Element } ;"),
+
         option("TruffleCompilation")
             .type("Boolean")
             .category("INTERNAL")
@@ -170,10 +171,10 @@ public class Option {
             .help("Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown"),
 
         option("TruffleSplittingTraceEvents")
-                .type("Boolean")
-                .category("EXPERT")
-                .def("false")
-                .help("Trace details of splitting events and decisions."),
+            .type("Boolean")
+            .category("EXPERT")
+            .def("false")
+            .help("Trace details of splitting events and decisions."),
 
         option("TruffleSplittingDumpDecisions")
             .type("Boolean")

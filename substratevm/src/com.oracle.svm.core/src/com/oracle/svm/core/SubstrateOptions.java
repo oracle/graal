@@ -210,7 +210,8 @@ public class SubstrateOptions {
      * The default value is derived by taking the common value from HotSpot configs.
      */
     @Option(help = "Sets the size (in bytes) of the prefetch distance for object allocation. " +
-                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. Each Java thread has its own allocation point.")//
+                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. " +
+                    "Each Java thread has its own allocation point.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchDistance = new HostedOptionKey<>(256);
 
     @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
