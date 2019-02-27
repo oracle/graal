@@ -62,7 +62,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
 
     def post_process_launcher_command_line_args(self, args):
         return self.extra_launcher_args + \
-               ['--jvm.' + x[1:] if x.startswith('-X') else x for x in self.debug_args] + \
+               ['--vm.' + x[1:] if x.startswith('-X') else x for x in self.debug_args] + \
                args
 
     def dimensions(self, cwd, args, code, out):

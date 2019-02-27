@@ -102,7 +102,7 @@ public class Option {
             .type("Boolean")
             .category("INTERNAL")
             .def("true")
-            .help("Enable automatic inlining of call targets"),
+            .help("Enable automatic inlining of call targets"), // COMPILER
 
         option("TruffleInliningMaxCallerSize")
             .type("Integer")
@@ -213,7 +213,7 @@ public class Option {
         option("TruffleUseFrameWithoutBoxing")
             .type("Boolean")
             .category("INTERNAL")
-            .def("true"),
+            .def("true"), // COMPILER
 
         option("TraceTruffleCompilation")
             .type("Boolean")
@@ -255,13 +255,13 @@ public class Option {
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Treat compilation exceptions as fatal exceptions that will exit the application"),
+            .help("Treat compilation exceptions as fatal exceptions that will exit the application"), // COMPILER
 
         option("TrufflePerformanceWarningsAreFatal")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Treat performance warnings as fatal occurrences that will exit the applications"),
+            .help("Treat performance warnings as fatal occurrences that will exit the applications"), // COMPILER
 
         option("TruffleCompilationExceptionsArePrinted")
             .type("Boolean")
@@ -297,7 +297,7 @@ public class Option {
             .type("Integer")
             .category("INTERNAL")
             .def("20")
-            .help("Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions"),
+            .help("Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions"), // COMPILER
 
         option("TruffleCompilationStatistics")
             .type("Boolean")

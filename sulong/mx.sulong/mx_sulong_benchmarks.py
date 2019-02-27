@@ -262,9 +262,12 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
                 props = []
                 remaining_args = []
                 jvm_prefix = "--jvm.D"
+                vm_prefix = "--vm.D"
                 for arg in args:
                     if arg.startswith(jvm_prefix):
                         props.append('-D' + arg[len(jvm_prefix):])
+                    elif arg.startswith(vm_prefix):
+                        props.append('-D' + arg[len(vm_prefix):])
                     else:
                         remaining_args.append(arg)
                 return props, remaining_args
@@ -306,15 +309,16 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
 
     def launcher_args(self, args):
         launcher_args = [
-            '--jvm.Dgraal.TruffleInliningMaxCallerSize=10000',
-            '--jvm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
+            '--vm.Dgraal.TruffleInliningMaxCallerSize=10000',
+            '--vm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
             '--llvm.libraries=libgmp.so.10'] + args
-        # FIXME: currently, we do not support a common option prefix for jvm and native mode (GR-11165) #pylint: disable=fixme
         if self.host_vm().config_name() == "native":
             def _convert_arg(arg):
                 jvm_prefix = "--jvm."
                 if arg.startswith(jvm_prefix):
-                    return "--native." + arg[len(jvm_prefix):]
+                    replacement = "--vm." + arg[len(jvm_prefix):]
+                    mx.warn("Use of --native.* and --jvm.* options is deprecated, use --vm.* instead. Translating '{}' to '{}'.".format(arg, replacement))
+                    return replacement
                 return arg
 
             launcher_args = [_convert_arg(arg) for arg in launcher_args]

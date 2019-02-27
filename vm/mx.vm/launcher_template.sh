@@ -75,6 +75,8 @@ for o in "$@"; do
                 absolute_cp+=("${e}")
             done
         fi
+    elif [[ "$o" == --vm.* ]]; then
+        jvm_args+=("${o#--vm.}")
     else
         launcher_args+=("$o")
     fi

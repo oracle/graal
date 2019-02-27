@@ -46,10 +46,10 @@ the library `example` with `--lib /path/to/libexample.so` as opposed to common l
 - `--jvm` executes the application in JVM mode instead of executing the
 GraalVM native image.
 
-- `--jvm.<option>` passes JVM options to GraalVM.
-List available JVM options with `--jvm.help`.
+- `--vm.<option>` passes VM options to GraalVM.
+List available JVM options with `--vm.help`.
 
-- `--graal.<property>=<value>` passes settings to the Graal compiler.
+- `--vm.Dgraal.<property>=<value>` passes settings to the Graal compiler.
 For example, `--graal.DumpOnError=true` sends the compiler intermediate
 representation (IR) to dump handlers if errors occur.
 

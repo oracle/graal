@@ -40,12 +40,17 @@
  */
 package org.graalvm.launcher;
 
-import java.io.BufferedOutputStream;
 import static java.lang.Integer.max;
+import static java.nio.file.StandardOpenOption.APPEND;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.nio.file.StandardOpenOption.WRITE;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.ref.WeakReference;
 import java.nio.channels.FileChannel;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.AccessDeniedException;
@@ -55,14 +60,11 @@ import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import static java.nio.file.StandardOpenOption.APPEND;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static java.nio.file.StandardOpenOption.WRITE;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -75,6 +77,7 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 
 import org.graalvm.nativeimage.RuntimeOptions;
+import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.options.OptionCategory;
@@ -475,11 +478,10 @@ public abstract class Launcher {
                 printOption("--polyglot", "Run with all other guest languages accessible.");
             }
             printOption("--native", "Run using the native launcher with limited Java access" + (this.getDefaultVMType() == VMType.Native ? " (default)" : "") + ".");
-            printOption("--native.[option]", "Pass options to the native image. To see available options, use '--native.help'.");
             if (isGraalVMAvailable()) {
                 printOption("--jvm", "Run on the Java Virtual Machine with Java access" + (this.getDefaultVMType() == VMType.JVM ? " (default)" : "") + ".");
-                printOption("--jvm.[option]", "Pass options to the JVM; for example, '--jvm.classpath=myapp.jar'. To see available options. use '--jvm.help'.");
             }
+            printOption("--vm.[option]",                 "Pass options to the host VM. To see available options, use '--vm.help'.");
             printOption("--help",                        "Print this help message.");
             printOption("--help:languages",              "Print options for all installed languages.");
             printOption("--help:tools",                  "Print options for all installed tools.");
@@ -621,6 +623,8 @@ public abstract class Launcher {
                     if (!isAOT()) {
                         throw abort("native options are not supported on the JVM");
                     }
+                    return true;
+                } else if (arg.startsWith("--vm.") && arg.length() > "--vm.".length()) {
                     return true;
                 }
                 // getLanguageId() or null?
@@ -999,11 +1003,12 @@ public abstract class Launcher {
             }
 
             Iterator<String> iterator = args.iterator();
+            List<String> vmOptions = new ArrayList<>();
             while (iterator.hasNext()) {
                 String arg = iterator.next();
                 if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
                     if (vmType == VMType.Native) {
-                        throw abort("`--jvm` and `--native` options can not be used together.");
+                        throw abort("'--jvm' and '--native' options can not be used together.");
                     }
                     if (!isGraalVMAvailable()) {
                         throw abort("--jvm.* options are only supported when this launcher is part of a GraalVM.");
@@ -1032,7 +1037,7 @@ public abstract class Launcher {
                     iterator.remove();
                 } else if ((arg.startsWith("--native.") && arg.length() > "--native.".length()) || arg.equals("--native")) {
                     if (vmType == VMType.JVM) {
-                        throw abort("`--jvm` and `--native` options can not be used together.");
+                        throw abort("'--jvm' and '--native' options can not be used together.");
                     }
                     vmType = VMType.Native;
                     if (arg.equals("--native.help")) {
@@ -1043,10 +1048,43 @@ public abstract class Launcher {
                         setNativeOption(arg.substring("--native.".length()));
                     }
                     iterator.remove();
+                } else if (arg.startsWith("--vm.") && arg.length() > "--vm.".length()) {
+                    if (arg.equals("--vm.help")) {
+                        if (vmType == VMType.JVM) {
+                            printJvmHelp();
+                        } else if (vmType == VMType.Native) {
+                            printNativeHelp();
+                        } else {
+                            printJvmHelp();
+                            printNativeHelp();
+                        }
+                        throw exit();
+                    }
+                    if (arg.startsWith("--vm.classpath")) {
+                        throw abort("Unrecognized argument '" + arg + "', did you mean '--jvm.classpath=<classpath>'?");
+                    }
+                    if (arg.startsWith("--vm.cp")) {
+                        throw abort("Unrecognized argument '" + arg + "', did you mean '--jvm.cp=<classpath>'?");
+                    }
+                    vmOptions.add(arg.substring("--vm.".length()));
+                    iterator.remove();
                 } else if (arg.equals("--polyglot")) {
                     polyglot = true;
                 } else {
                     remainingArgs.add(arg);
+                }
+            }
+
+            if (vmType == null) {
+                vmType = defaultVmType;
+            }
+
+            for (String vmOption : vmOptions) {
+                if (vmType == VMType.JVM) {
+                    jvmArgs.add('-' + vmOption);
+                } else {
+                    assert vmType == VMType.Native;
+                    setNativeOption(vmOption);
                 }
             }
 
@@ -1055,10 +1093,6 @@ public abstract class Launcher {
              * option values.
              */
             VMRuntime.initialize();
-
-            if (vmType == null) {
-                vmType = defaultVmType;
-            }
             if (vmType == VMType.JVM) {
                 if (!isPolyglot && polyglot) {
                     remainingArgs.add(0, "--polyglot");
@@ -1074,6 +1108,33 @@ public abstract class Launcher {
             }
         }
 
+        private WeakReference<OptionDescriptors> compilerOptionDescriptors;
+        private WeakReference<OptionDescriptors> vmOptionDescriptors;
+
+        private OptionDescriptors getCompilerOptions() {
+            OptionDescriptors descriptors = null;
+            if (compilerOptionDescriptors != null) {
+                descriptors = compilerOptionDescriptors.get();
+            }
+            if (descriptors == null) {
+                descriptors = RuntimeOptions.getOptions(EnumSet.of(OptionClass.Compiler));
+                compilerOptionDescriptors = new WeakReference<>(descriptors);
+            }
+            return descriptors;
+        }
+
+        private OptionDescriptors getVMOptions() {
+            OptionDescriptors descriptors = null;
+            if (vmOptionDescriptors != null) {
+                descriptors = vmOptionDescriptors.get();
+            }
+            if (descriptors == null) {
+                descriptors = RuntimeOptions.getOptions(EnumSet.of(OptionClass.VM));
+                vmOptionDescriptors = new WeakReference<>(descriptors);
+            }
+            return descriptors;
+        }
+
         private void setNativeOption(String arg) {
             if (arg.startsWith("Dgraal.")) {
                 setGraalStyleRuntimeOption(arg.substring("Dgraal.".length()));
@@ -1084,7 +1145,7 @@ public abstract class Launcher {
             } else if (arg.startsWith("X") && isXOption(arg)) {
                 setXOption(arg.substring("X".length()));
             } else {
-                throw abort("Unrecognized --native option: '--native." + arg + "'. Such arguments should start with '--native.D', '--native.XX:', or '--native.X'");
+                throw abort("Unrecognized vm option: '--vm." + arg + "'. Such arguments should start with '--vm.D', '--vm.XX:', or '--vm.X'");
             }
         }
 
@@ -1102,16 +1163,27 @@ public abstract class Launcher {
                 key = arg.substring(0, eqIdx);
                 value = arg.substring(eqIdx + 1);
             }
-            OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
+            OptionDescriptor descriptor = getCompilerOptions().get(key);
+            if (descriptor == null) {
+                descriptor = getVMOptions().get(key);
+                if (descriptor != null) {
+                    if (isBooleanOption(descriptor)) {
+                        System.err.printf("Warning: VM options such as '%s' should be set with '--vm.XX:\u00b1%<s'.%n" +
+                                        "Support for setting them with '--vm.Dgraal.%<s=<value>' is deprecated and will be removed.%n", key);
+                    } else {
+                        System.err.printf("Warning: VM options such as '%s' should be set with '--vm.XX:%<s=<value>'.%n" +
+                                        "Support for setting them with '--vm.Dgraal.%<s=<value>' is deprecated and will be removed.%n", key);
+                    }
+                }
+            }
             if (descriptor == null) {
                 throw unknownOption(key);
             }
             try {
                 RuntimeOptions.set(key, descriptor.getKey().getType().convert(value));
             } catch (IllegalArgumentException iae) {
-                throw abort("Invalid argument: '--native." + arg + "': " + iae.getMessage());
+                throw abort("Invalid argument: '--vm." + arg + "': " + iae.getMessage());
             }
-
         }
 
         public void setSystemProperty(String arg) {
@@ -1135,34 +1207,43 @@ public abstract class Launcher {
             if (arg.startsWith("+") || arg.startsWith("-")) {
                 key = arg.substring(1);
                 if (eqIdx >= 0) {
-                    throw abort("Invalid argument: '--native." + arg + "': Use either +/- or =, but not both");
+                    throw abort("Invalid argument: '--vm." + arg + "': Use either +/- or =, but not both");
                 }
-                OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
-                if (descriptor == null) {
-                    throw unknownOption(key);
-                }
+                OptionDescriptor descriptor = getVMOptionDescriptor(key);
                 if (!isBooleanOption(descriptor)) {
-                    throw abort("Invalid argument: " + key + " is not a boolean option, set it with --native.XX:" + key + "=<value>.");
+                    throw abort("Invalid argument: " + key + " is not a boolean option, set it with --vm.XX:" + key + "=<value>.");
                 }
                 value = arg.startsWith("+");
             } else if (eqIdx > 0) {
                 key = arg.substring(0, eqIdx);
-                OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
-                if (descriptor == null) {
-                    throw unknownOption(key);
-                }
+                OptionDescriptor descriptor = getVMOptionDescriptor(key);
                 if (isBooleanOption(descriptor)) {
                     throw abort("Boolean option '" + key + "' must be set with +/- prefix, not <name>=<value> format.");
                 }
                 try {
                     value = descriptor.getKey().getType().convert(arg.substring(eqIdx + 1));
                 } catch (IllegalArgumentException iae) {
-                    throw abort("Invalid argument: '--native." + arg + "': " + iae.getMessage());
+                    throw abort("Invalid argument: '--vm." + arg + "': " + iae.getMessage());
                 }
             } else {
-                throw abort("Invalid argument: '--native." + arg + "'. Prefix boolean options with + or -, suffix other options with <name>=<value>");
+                throw abort("Invalid argument: '--vm." + arg + "'. Prefix boolean options with + or -, suffix other options with <name>=<value>");
             }
             RuntimeOptions.set(key, value);
+        }
+
+        private OptionDescriptor getVMOptionDescriptor(String key) {
+            OptionDescriptor descriptor = getVMOptions().get(key);
+            if (descriptor == null) {
+                descriptor = getCompilerOptions().get(key);
+                if (descriptor != null) {
+                    System.err.printf("Warning: compiler options such as '%s' should be set with '--vm.Dgraal.%<s=<value>'.%n" +
+                                    "Support for setting them with '--vm.XX:...' is deprecated and will be removed.%n", key);
+                }
+            }
+            if (descriptor == null) {
+                throw unknownOption(key);
+            }
+            return descriptor;
         }
 
         /* Is an option that starts with an 'X' one of the recognized X options? */
@@ -1175,16 +1256,16 @@ public abstract class Launcher {
             try {
                 RuntimeOptions.set(arg, null);
             } catch (RuntimeException re) {
-                throw abort("Invalid argument: '--native.X" + arg + "' does not specify a valid number.");
+                throw abort("Invalid argument: '--vm.X" + arg + "' does not specify a valid number.");
             }
         }
 
         private void helpXOption() {
             /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
-            printOption("--native.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
-            printOption("--native.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
-            printOption("--native.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
-            printOption("--native.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
+            printOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
+            printOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
+            printOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
+            printOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
         }
 
         private boolean isBooleanOption(OptionDescriptor descriptor) {
@@ -1192,60 +1273,72 @@ public abstract class Launcher {
         }
 
         private AbortException unknownOption(String key) {
-            throw abort("Unknown native option: " + key + ". Use --native.help to list available options.");
+            throw abort("Unknown native option: " + key + ". Use --vm.help to list available options.");
         }
 
         private void printJvmHelp() {
             System.out.println("JVM options:");
-            printOption("--jvm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
-            printOption("--jvm.D<name>=<value>", "Set a system property");
-            printOption("--jvm.esa", "Enable system assertions");
-            printOption("--jvm.ea[:<packagename>...|:<classname>]", "Enable assertions with specified granularity");
-            printOption("--jvm.agentlib:<libname>[=<options>]", "Load native agent library <libname>");
-            printOption("--jvm.agentpath:<pathname>[=<options>]", "Load native agent library by full pathname");
-            printOption("--jvm.javaagent:<jarpath>[=<options>]", "Load Java programming language agent");
-            printOption("--jvm.Xbootclasspath/a:<...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's boot classpath");
-            printOption("--jvm.Xmx<size>", "Set maximum Java heap size");
-            printOption("--jvm.Xms<size>", "Set initial Java heap size");
-            printOption("--jvm.Xss<size>", "Set java thread stack size");
+            printOption("--vm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
+            printOption("--vm.D<name>=<value>", "Set a system property");
+            printOption("--vm.esa", "Enable system assertions");
+            printOption("--vm.ea[:<packagename>...|:<classname>]", "Enable assertions with specified granularity");
+            printOption("--vm.agentlib:<libname>[=<options>]", "Load native agent library <libname>");
+            printOption("--vm.agentpath:<pathname>[=<options>]", "Load native agent library by full pathname");
+            printOption("--vm.javaagent:<jarpath>[=<options>]", "Load Java programming language agent");
+            printOption("--vm.Xbootclasspath/a:<...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's boot classpath");
+            printOption("--vm.Xmx<size>", "Set maximum Java heap size");
+            printOption("--vm.Xms<size>", "Set initial Java heap size");
+            printOption("--vm.Xss<size>", "Set java thread stack size");
         }
 
         private void printNativeHelp() {
             System.out.println("Native VM options:");
-            OptionDescriptors options = RuntimeOptions.getOptions();
             SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
-            for (OptionDescriptor descriptor : options) {
+            for (OptionDescriptor descriptor : getVMOptions()) {
                 sortedOptions.put(descriptor.getName(), descriptor);
             }
             for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
                 OptionDescriptor descriptor = entry.getValue();
                 String helpMsg = descriptor.getHelp();
-                int helpLen = helpMsg.length();
-                if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
-                    helpMsg += '.';
-                }
                 if (isBooleanOption(descriptor)) {
                     Boolean val = (Boolean) descriptor.getKey().getDefaultValue();
-                    if (helpLen != 0) {
+                    if (helpMsg.length() != 0) {
                         helpMsg += ' ';
                     }
-                    if (val == null || !((boolean) val)) {
+                    if (val == null || !val) {
                         helpMsg += "Default: - (disabled).";
                     } else {
                         helpMsg += "Default: + (enabled).";
                     }
-                    printOption("--native.XX:\u00b1" + entry.getKey(), helpMsg);
+                    printOption("--vm.XX:\u00b1" + entry.getKey(), helpMsg);
                 } else {
                     Object def = descriptor.getKey().getDefaultValue();
                     if (def instanceof String) {
-                        def = '"' + String.valueOf(def) + '"';
+                        def = '"' + (String) def + '"';
                     }
-                    printOption("--native.XX:" + entry.getKey() + "=" + def, helpMsg);
+                    printOption("--vm.XX:" + entry.getKey() + "=" + def, helpMsg);
                 }
             }
-            System.out.println("System properties:");
-            printOption("--native.D<property>=<value>", "Sets a system property");
+            printOption("--vm.D<property>=<value>", "Sets a system property");
             helpXOption();
+            printCompilerOptions();
+        }
+
+        private void printCompilerOptions() {
+            System.out.println("Compiler options:");
+            SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
+            for (OptionDescriptor descriptor : getCompilerOptions()) {
+                sortedOptions.put(descriptor.getName(), descriptor);
+            }
+            for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
+                OptionDescriptor descriptor = entry.getValue();
+                String helpMsg = descriptor.getHelp();
+                Object def = descriptor.getKey().getDefaultValue();
+                if (def instanceof String) {
+                    def = '"' + (String) def + '"';
+                }
+                printOption("--vm.Dgraal." + entry.getKey() + "=" + def, helpMsg);
+            }
         }
 
         private void execNativePolyglot(List<String> args, Map<String, String> polyglotOptions) {
