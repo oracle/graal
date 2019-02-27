@@ -60,4 +60,8 @@ public interface InvokeDynamicConstant extends PoolConstant {
     default String toString(ConstantPool pool) {
         return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool);
     }
+    @Override
+    default String toString(ConstantPool pool) {
+        return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool);
+    }
 }
