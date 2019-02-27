@@ -36,7 +36,7 @@ static jvmtiEnv *global_jvmti = NULL;
 
 jniNativeInterface *jnifun;
 
-jclass java_lang_Class;
+jmethodID java_lang_Class_forName3;
 jmethodID java_lang_Class_getName;
 jmethodID java_lang_Class_getConstructor;
 jmethodID java_lang_Class_getDeclaredConstructor;
@@ -51,8 +51,9 @@ void OnVMStart_Util(jvmtiEnv *jvmti, JNIEnv *jni) {
 
   guarantee((*jvmti)->GetJNIFunctionTable(jvmti, &jnifun) == JVMTI_ERROR_NONE);
 
+  jclass java_lang_Class;
   guarantee((java_lang_Class = jnifun->FindClass(jni, "java/lang/Class")) != NULL);
-  guarantee((java_lang_Class = jnifun->NewGlobalRef(jni, java_lang_Class)) != NULL);
+  guarantee((java_lang_Class_forName3 = jnifun->GetStaticMethodID(jni, java_lang_Class, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;")) != NULL);
   guarantee((java_lang_Class_getName = jnifun->GetMethodID(jni, java_lang_Class, "getName", "()Ljava/lang/String;")) != NULL);
   guarantee((java_lang_Class_getConstructor = jnifun->GetMethodID(jni, java_lang_Class, "getConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;")) != NULL);
   guarantee((java_lang_Class_getDeclaredConstructor = jnifun->GetMethodID(jni, java_lang_Class, "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;")) != NULL);
@@ -90,6 +91,14 @@ void release_cstr(JNIEnv *jni, jstring str, const char *cstr) {
   if (cstr != TRACE_VALUE_NULL) {
     jnifun->ReleaseStringUTFChars(jni, str, cstr);
   }
+}
+
+jboolean clear_exception(JNIEnv *env) {
+  if (jnifun->ExceptionCheck(env)) {
+    jnifun->ExceptionClear(env);
+    return JNI_TRUE;
+  }
+  return JNI_FALSE;
 }
 
 jboolean test_exception(JNIEnv *env) {

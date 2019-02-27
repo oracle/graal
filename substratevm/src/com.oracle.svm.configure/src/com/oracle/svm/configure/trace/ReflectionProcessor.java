@@ -60,9 +60,12 @@ class ReflectionProcessor extends AbstractProcessor {
     @Override
     @SuppressWarnings("fallthrough")
     public void processEntry(Map<String, ?> entry) {
+        boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
+        if (invalidResult) {
+            return;
+        }
         String function = (String) entry.get("function");
         String clazz = (String) entry.get("class");
-        String result = (String) entry.get("result");
         List<?> args = (List<?>) entry.get("args");
         switch (function) {
             // These are called via java.lang.Class or via the class loader hierarchy, so we would
@@ -149,6 +152,7 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "getEnclosingConstructor":
             case "getEnclosingMethod": {
+                String result = (String) entry.get("result");
                 addFullyQualifiedDeclaredMethod(result);
                 break;
             }

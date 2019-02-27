@@ -45,6 +45,7 @@ struct reflect_breakpoint_entry;
 typedef void (*reflect_breakpoint_handler)(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp);
 
 struct reflect_breakpoint_entry {
+  jclass    clazz;
   jmethodID methodID;
   jlocation location;
   const char *class_name;
@@ -53,14 +54,54 @@ struct reflect_breakpoint_entry {
   reflect_breakpoint_handler handler;
 };
 
+/*
+ * NOTE: With most of our breakpoints, we recursively call the interrupted method
+ * ourself to inspect its return value and determine whether it provides a valid
+ * result. This permits us to identify probing.
+ *
+ * Many of the methods are caller-sensitive, so when we call them from a
+ * breakpoint, they observe a different caller class and therefore can behave
+ * differently. Short of using bytecode instrumentation to intercept the return
+ * value, there seems to be no strictly better approach (and instrumenting
+ * java.lang.Class and friends might be tricky, too). It would be possible to
+ * set breakpoints at return bytecodes instead, but then there is no way to
+ * retrieve the return value from the operand stack.
+ */
+
 static void OnBreakpoint_forName(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp) {
   jstring name = get_object_arg(0);
+  jboolean initialize;
+  jobject class_loader;
+  bool initialize_valid = true;
+  bool class_loader_valid = true;
+  if (bp->methodID == java_lang_Class_forName3) {
+    initialize_valid = ((*jvmti)->GetLocalInt(jvmti, thread, 0, 1, &initialize) == JVMTI_ERROR_NONE);
+    class_loader_valid = ((*jvmti)->GetLocalObject(jvmti, thread, 0, 2, &class_loader) == JVMTI_ERROR_NONE);
+  } else {
+    initialize = JNI_TRUE;
+    class_loader = NULL;
+    if (caller_class != NULL) {
+      // NOTE: our caller class could actually be skipped over in the security
+      // stackwalk of @CallerSensitive, leading to different behavior of our call
+      class_loader_valid = ((*jvmti)->GetClassLoader(jvmti, caller_class, &class_loader) == JVMTI_ERROR_NONE);
+    }
+  }
+  const char *result = TRACE_VALUE_UNKNOWN;
+  if (initialize_valid && class_loader_valid) {
+    result = nn_bool(jnifun->CallStaticObjectMethod(jni, bp->clazz, bp->methodID, name, initialize, class_loader));
+    if (clear_exception(jni)) {
+      result = NULL;
+    }
+  }
+
   const char *name_cstr = get_cstr(jni, name);
-  reflect_trace(jni, java_lang_Class, caller_class, bp->name, NULL, name_cstr, NULL);
+  reflect_trace(jni, bp->clazz, caller_class, bp->name, result, name_cstr, NULL);
   release_cstr(jni, name, name_cstr);
 }
 
 static void OnBreakpoint_bulkGetMembers(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp) {
+  // No need to recursively call these methods because they can only
+  // return an empty array or throw a SecurityException.
   jclass self = get_object_arg(0);
   reflect_trace(jni, self, caller_class, bp->name, NULL, NULL);
 }
@@ -68,8 +109,14 @@ static void OnBreakpoint_bulkGetMembers(jvmtiEnv *jvmti, JNIEnv* jni, jthread th
 static void OnBreakpoint_getSingleField(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp) {
   jclass self = get_object_arg(0);
   jstring name = get_object_arg(1);
+
+  jobject result = jnifun->CallObjectMethod(jni, self, bp->methodID, name);
+  if (clear_exception(jni)) {
+    result = NULL;
+  }
+
   const char *name_cstr = get_cstr(jni, name);
-  reflect_trace(jni, self, caller_class, bp->name, NULL, name_cstr, NULL);
+  reflect_trace(jni, self, caller_class, bp->name, nn_bool(result), name_cstr, NULL);
   release_cstr(jni, name, name_cstr);
 }
 
@@ -79,14 +126,21 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
   jstring method_name = NULL;
   const char *method_name_cstr;
   jobjectArray param_types;
+  jobject result;
   if (is_ctor) {
     method_name_cstr = TRACE_ARG_IGNORE;
     param_types = get_object_arg(1);
+    result = jnifun->CallObjectMethod(jni, self, bp->methodID, param_types);
   } else {
     method_name = get_object_arg(1);
     method_name_cstr = get_cstr(jni, method_name);
     param_types = get_object_arg(2);
+    result = jnifun->CallObjectMethod(jni, self, bp->methodID, method_name, param_types);
   }
+  if (clear_exception(jni)) {
+    result = NULL;
+  }
+
   jint param_types_len = (param_types == NULL) ? -1 : jnifun->GetArrayLength(jni, param_types);
   struct sbuf b;
   if (param_types_len > 0) {
@@ -102,11 +156,11 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
       release_cstr(jni, class_name, class_name_cstr);
     }
     sbuf_printf(&b, "]");
-    reflect_trace(jni, self, caller_class, bp->name, NULL, method_name_cstr, TRACE_NEXT_ARG_UNQUOTED_TAG, sbuf_as_cstr(&b), NULL);
+    reflect_trace(jni, self, caller_class, bp->name, nn_bool(result), method_name_cstr, TRACE_NEXT_ARG_UNQUOTED_TAG, sbuf_as_cstr(&b), NULL);
     sbuf_destroy(&b);
   } else {
     const char *param_types_cstr = (param_types != NULL) ? "[]" : TRACE_VALUE_NULL;
-    reflect_trace(jni, self, caller_class, bp->name, NULL, method_name_cstr, TRACE_NEXT_ARG_UNQUOTED_TAG, param_types_cstr, NULL);
+    reflect_trace(jni, self, caller_class, bp->name, nn_bool(result), method_name_cstr, TRACE_NEXT_ARG_UNQUOTED_TAG, param_types_cstr, NULL);
   }
   if (!is_ctor) {
     release_cstr(jni, method_name, method_name_cstr);
@@ -114,9 +168,20 @@ static void OnBreakpoint_getSingleMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread t
 }
 
 static void OnBreakpoint_requestProxy(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp) {
-  const char *class_loader = TRACE_VALUE_UNKNOWN;   // not relevant
-  const char *invoke_handler = TRACE_VALUE_UNKNOWN; // not relevant
+  jobject class_loader = get_object_arg(0);
   jobjectArray ifaces = get_object_arg(1);
+  jobject invoke_handler = NULL;
+  jobject result;
+  // Proxies should be cached, so repeated calls shouldn't generate extra types
+  if ((*jvmti)->GetLocalObject(jvmti, thread, 0, 2, &invoke_handler) == JVMTI_ERROR_NONE) {
+    result = jnifun->CallStaticObjectMethod(jni, bp->clazz, bp->methodID, class_loader, ifaces, invoke_handler);
+  } else {
+    result = jnifun->CallStaticObjectMethod(jni, bp->clazz, bp->methodID, class_loader, ifaces);
+  }
+  if (clear_exception(jni)) {
+    result = NULL;
+  }
+
   jint ifaces_len = (ifaces == NULL) ? -1 : jnifun->GetArrayLength(jni, ifaces);
   struct sbuf b;
   if (ifaces_len > 0) {
@@ -132,37 +197,43 @@ static void OnBreakpoint_requestProxy(jvmtiEnv *jvmti, JNIEnv* jni, jthread thre
       release_cstr(jni, class_name, class_name_cstr);
     }
     sbuf_printf(&b, "]");
-    reflect_trace(jni, NULL, caller_class, bp->name, NULL, class_loader, TRACE_NEXT_ARG_UNQUOTED_TAG, sbuf_as_cstr(&b), invoke_handler, NULL);
+    reflect_trace(jni, NULL, caller_class, bp->name, nn_bool(result), TRACE_VALUE_UNKNOWN, TRACE_NEXT_ARG_UNQUOTED_TAG, sbuf_as_cstr(&b), TRACE_VALUE_UNKNOWN, NULL);
     sbuf_destroy(&b);
   } else {
     const char *ifaces_cstr = (ifaces != NULL) ? "[]" : TRACE_VALUE_NULL;
-    reflect_trace(jni, NULL, caller_class, bp->name, NULL, class_loader, ifaces_cstr, invoke_handler, NULL);
+    reflect_trace(jni, NULL, caller_class, bp->name, nn_bool(result), class_loader, ifaces_cstr, invoke_handler, NULL);
   }
 }
 
 static void OnBreakpoint_getResource(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp) {
   jobject self = get_object_arg(0);
-  jclass clazz = (self != NULL) ? jnifun->GetObjectClass(jni, self) : NULL;
   jstring name = get_object_arg(1);
+
+  jobject result = jnifun->CallObjectMethod(jni, self, bp->methodID, name);
+  if (clear_exception(jni)) {
+    result = NULL;
+  }
+
   const char *name_cstr = get_cstr(jni, name);
-  reflect_trace(jni, clazz, caller_class, bp->name, NULL, name_cstr, NULL);
+  jclass clazz = (self != NULL) ? jnifun->GetObjectClass(jni, self) : NULL;
+  reflect_trace(jni, clazz, caller_class, bp->name, nn_bool(result), name_cstr, NULL);
   release_cstr(jni, name, name_cstr);
 }
 
 static void OnBreakpoint_getSystemResource(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp) {
   jstring name = get_object_arg(0);
+
+  jobject result = jnifun->CallStaticObjectMethod(jni, bp->clazz, bp->methodID, name);
+  if (clear_exception(jni)) {
+    result = NULL;
+  }
+
   const char *name_cstr = get_cstr(jni, name);
   reflect_trace(jni, NULL, caller_class, bp->name, NULL, name_cstr, NULL);
   release_cstr(jni, name, name_cstr);
 }
 
 static void OnBreakpoint_getEnclosingMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp) {
-  void *data = NULL;
-  if ((*jvmti)->GetThreadLocalStorage(jvmti, thread, &data) == JVMTI_ERROR_NONE && data != NULL) {
-    return; // recursive call from below
-  }
-  (*jvmti)->SetThreadLocalStorage(jvmti, thread, "recursive");
-
   jclass self = get_object_arg(0);
   jobject method = jnifun->CallObjectMethod(jni, self, bp->methodID);
   jmethodID methodID = jnifun->FromReflectedMethod(jni, method);
@@ -181,13 +252,10 @@ static void OnBreakpoint_getEnclosingMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthrea
   (*jvmti)->Deallocate(jvmti, signature);
   reflect_trace(jni, NULL, caller_class, bp->name, sbuf_as_cstr(&b), NULL);
   sbuf_destroy(&b);
-  jnifun->ExceptionClear(jni);
-
-  (*jvmti)->SetThreadLocalStorage(jvmti, thread, NULL);
 }
 
 #define REFLECTION_BREAKPOINT(class_name, name, signature, handler) \
-  { (jmethodID)0, (jlocation)0, (class_name), (name), (signature), (handler) }
+  { (jclass)0, (jmethodID)0, (jlocation)0, (class_name), (name), (signature), (handler) }
 
 static struct reflect_breakpoint_entry reflect_breakpoints[] = {
   REFLECTION_BREAKPOINT("java/lang/Class", "forName", "(Ljava/lang/String;)Ljava/lang/Class;", &OnBreakpoint_forName),
@@ -207,21 +275,30 @@ static struct reflect_breakpoint_entry reflect_breakpoints[] = {
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", &OnBreakpoint_getSingleMethod),
   REFLECTION_BREAKPOINT("java/lang/Class", "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", &OnBreakpoint_getSingleMethod),
 
+  REFLECTION_BREAKPOINT("java/lang/Class", "getEnclosingMethod", "()Ljava/lang/reflect/Method;", &OnBreakpoint_getEnclosingMethod),
+  REFLECTION_BREAKPOINT("java/lang/Class", "getEnclosingConstructor", "()Ljava/lang/reflect/Constructor;", &OnBreakpoint_getEnclosingMethod),
+
   REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResource", "(Ljava/lang/String;)Ljava/net/URL;", &OnBreakpoint_getResource),
-  REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", &OnBreakpoint_getResource),
   REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", &OnBreakpoint_getResource),
   REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getSystemResource", "(Ljava/lang/String;)Ljava/net/URL;", &OnBreakpoint_getSystemResource),
-  REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getSystemResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", &OnBreakpoint_getSystemResource),
   REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getSystemResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", &OnBreakpoint_getSystemResource),
+// Not needed: getResourceAsStream() generally uses getResource()
+//REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", &OnBreakpoint_getResource),
+//REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getSystemResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", &OnBreakpoint_getSystemResource),
 
   REFLECTION_BREAKPOINT("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", &OnBreakpoint_requestProxy),
   REFLECTION_BREAKPOINT("java/lang/reflect/Proxy", "newProxyInstance", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", &OnBreakpoint_requestProxy),
-
-  REFLECTION_BREAKPOINT("java/lang/Class", "getEnclosingMethod", "()Ljava/lang/reflect/Method;", &OnBreakpoint_getEnclosingMethod),
-  REFLECTION_BREAKPOINT("java/lang/Class", "getEnclosingConstructor", "()Ljava/lang/reflect/Constructor;", &OnBreakpoint_getEnclosingMethod),
 };
 
 static void JNICALL OnBreakpoint(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jmethodID method, jlocation location) {
+  void *data = NULL;
+  if ((*jvmti)->GetThreadLocalStorage(jvmti, thread, &data) == JVMTI_ERROR_NONE && data != NULL) {
+    return; // recursion
+  }
+  (*jvmti)->SetThreadLocalStorage(jvmti, thread, "prevent recursion");
+
+  assert(!test_exception(jni)); // should never happen with our breakpoints
+
   // Linear search should be fine for now, but we could sort and do binary searches
   const int count = sizeof (reflect_breakpoints) / sizeof (struct reflect_breakpoint_entry);
   struct reflect_breakpoint_entry *match = NULL;
@@ -235,7 +312,9 @@ static void JNICALL OnBreakpoint(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, j
   guarantee(match != NULL);
   jclass caller_class = get_caller_class(1);
   match->handler(jvmti, jni, thread, caller_class, match);
+
   guarantee(!test_exception(jni));
+  (*jvmti)->SetThreadLocalStorage(jvmti, thread, NULL);
 }
 
 jint OnLoad_Reflection(JavaVM *vm, char *options, jvmtiEnv *jvmti, jvmtiEventCallbacks *callbacks) {
@@ -259,13 +338,15 @@ void OnVMInit_Reflection(jvmtiEnv *jvmti, JNIEnv *jni, jthread thread) {
     struct reflect_breakpoint_entry *bp = &reflect_breakpoints[i];
     if (last_class_name == NULL || (last_class_name != bp->class_name && strcmp(last_class_name, bp->class_name) != 0)) {
       guarantee((last_class = jnifun->FindClass(jni, bp->class_name)) != NULL);
+      guarantee((last_class = jnifun->NewGlobalRef(jni, last_class)) != NULL);
       guarantee(!test_exception(jni));
     }
     last_class_name = bp->class_name;
-    bp->methodID = jnifun->GetMethodID(jni, last_class, bp->name, bp->signature);
+    bp->clazz = last_class;
+    bp->methodID = jnifun->GetMethodID(jni, bp->clazz, bp->name, bp->signature);
     if (bp->methodID == NULL) {
       jnifun->ExceptionClear(jni);
-      bp->methodID = jnifun->GetStaticMethodID(jni, last_class, bp->name, bp->signature);
+      bp->methodID = jnifun->GetStaticMethodID(jni, bp->clazz, bp->name, bp->signature);
     }
     guarantee(bp->methodID != NULL);
     guarantee((*jvmti)->SetBreakpoint(jvmti, bp->methodID, bp->location) == JVMTI_ERROR_NONE);

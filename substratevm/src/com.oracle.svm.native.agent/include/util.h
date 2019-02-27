@@ -32,7 +32,7 @@ extern "C" {
 // A copy of the initial JNI function table before any modifications
 extern jniNativeInterface *jnifun;
 
-extern jclass java_lang_Class;
+extern jmethodID java_lang_Class_forName3;
 extern jmethodID java_lang_Class_getName;
 extern jmethodID java_lang_Class_getConstructor;
 extern jmethodID java_lang_Class_getDeclaredConstructor;
@@ -52,6 +52,7 @@ jobject get_object_arg(jint slot);
 const char *get_cstr(JNIEnv *jni, jstring str);
 void release_cstr(JNIEnv *jni, jstring str, const char *cstr);
 
+jboolean clear_exception(JNIEnv *env);
 jboolean test_exception(JNIEnv *env);
 
 static inline jclass nn_class(jclass clazz) {
