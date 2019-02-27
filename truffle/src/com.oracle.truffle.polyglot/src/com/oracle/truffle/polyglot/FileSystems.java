@@ -64,6 +64,12 @@ import org.graalvm.polyglot.io.FileSystem;
 final class FileSystems {
 
     static final String FILE_SCHEME = "file";
+    /**
+     * A file system written into a native image heap as a
+     * {@link PreInitializeContextFileSystem#delegate}. This file system is replaced by a real file
+     * system configured on Context when the pre-initialized Context is patched.
+     */
+    static final FileSystem INVALID_FILESYSTEM = new InvalidFileSystem();
     private static final AtomicReference<FileSystemProvider> DEFAULT_FILE_SYSTEM_PROVIDER = new AtomicReference<>();
 
     private FileSystems() {
@@ -92,6 +98,14 @@ final class FileSystems {
 
     static boolean isNoIOFileSystem(FileSystem fileSystem) {
         return fileSystem != null && fileSystem.getClass() == DeniedIOFileSystem.class;
+    }
+
+    /**
+     * Called after context pre-initialization before native image is written to remove the
+     * {@link FileSystemProvider} reference from native image heap.
+     */
+    static void resetDefaultFileSystemProvider() {
+        DEFAULT_FILE_SYSTEM_PROVIDER.set(null);
     }
 
     private static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider) {
@@ -512,9 +526,97 @@ final class FileSystems {
             }
             return res;
         }
+    }
 
-        private static SecurityException forbidden(final Path path) {
-            throw new SecurityException("Operation is not allowed for: " + path);
+    private static final class InvalidFileSystem implements FileSystem {
+
+        @Override
+        public Path parsePath(URI uri) {
+            throw new UnsupportedOperationException("ParsePath not supported on InvalidFileSystem");
         }
+
+        @Override
+        public Path parsePath(String path) {
+            throw new UnsupportedOperationException("ParsePath not supported on InvalidFileSystem");
+        }
+
+        @Override
+        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+            throw forbidden(path);
+        }
+
+        @Override
+        public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+            throw forbidden(dir);
+        }
+
+        @Override
+        public void delete(Path path) throws IOException {
+            throw forbidden(path);
+        }
+
+        @Override
+        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+            throw forbidden(path);
+        }
+
+        @Override
+        public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+            throw forbidden(dir);
+        }
+
+        @Override
+        public Path toAbsolutePath(Path path) {
+            throw forbidden(path);
+        }
+
+        @Override
+        public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
+            throw forbidden(path);
+        }
+
+        @Override
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+            throw forbidden(path);
+        }
+
+        @Override
+        public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
+            throw forbidden(path);
+        }
+
+        @Override
+        public void copy(Path source, Path target, CopyOption... options) throws IOException {
+            throw forbidden(source);
+        }
+
+        @Override
+        public void move(Path source, Path target, CopyOption... options) throws IOException {
+            throw forbidden(source);
+        }
+
+        @Override
+        public void createLink(Path link, Path existing) throws IOException {
+            throw forbidden(link);
+        }
+
+        @Override
+        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+            throw forbidden(link);
+        }
+
+        @Override
+        public Path readSymbolicLink(Path link) throws IOException {
+            throw forbidden(link);
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            throw forbidden(currentWorkingDirectory);
+        }
+    }
+
+    private static SecurityException forbidden(final Path path) {
+        throw new SecurityException("Operation is not allowed for: " + path);
     }
 }

@@ -1181,42 +1181,46 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         fs,
                         engine.logHandler);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
-        final String optionValue = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
-        if (optionValue != null && !optionValue.isEmpty()) {
-            final Set<String> languagesToPreinitialize = new HashSet<>();
-            Collections.addAll(languagesToPreinitialize, optionValue.split(","));
-            context.inContextPreInitialization = true;
-            try {
-                Object prev = context.enter();
+        try {
+            final String optionValue = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
+            if (optionValue != null && !optionValue.isEmpty()) {
+                final Set<String> languagesToPreinitialize = new HashSet<>();
+                Collections.addAll(languagesToPreinitialize, optionValue.split(","));
+                context.inContextPreInitialization = true;
                 try {
-                    for (String languageId : engine.getLanguages().keySet()) {
-                        if (languagesToPreinitialize.contains(languageId)) {
-                            PolyglotLanguage language = engine.findLanguage(languageId, null, false);
-                            if (language != null) {
-                                final PolyglotLanguageContext languageContext = context.getContextInitialized(language, null);
-                                languageContext.preInitialize();
+                    Object prev = context.enter();
+                    try {
+                        for (String languageId : engine.getLanguages().keySet()) {
+                            if (languagesToPreinitialize.contains(languageId)) {
+                                PolyglotLanguage language = engine.findLanguage(languageId, null, false);
+                                if (language != null) {
+                                    final PolyglotLanguageContext languageContext = context.getContextInitialized(language, null);
+                                    languageContext.preInitialize();
+                                }
                             }
+                            // Reset language options parsed during preinitialization
+                            PolyglotLanguage language = engine.idToLanguage.get(languageId);
+                            language.clearOptionValues();
                         }
-                        // Reset language options parsed during preinitialization
-                        PolyglotLanguage language = engine.idToLanguage.get(languageId);
-                        language.clearOptionValues();
+                    } finally {
+                        context.leave(prev);
                     }
                 } finally {
-                    context.leave(prev);
-                }
-            } finally {
-                context.inContextPreInitialization = false;
-                fs.patchDelegate(FileSystems.newNoIOFileSystem(null));
-                if (!config.logLevels.isEmpty()) {
-                    VMAccessor.LANGUAGE.configureLoggers(context, null);
+                    context.inContextPreInitialization = false;
                 }
             }
+            // Need to clean up Threads before storing SVM image
+            context.currentThreadInfo = PolyglotThreadInfo.NULL;
+            context.constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
+            disposeStaticContext(context);
+            return context;
+        } finally {
+            fs.patchDelegate(FileSystems.INVALID_FILESYSTEM);
+            FileSystems.resetDefaultFileSystemProvider();
+            if (!config.logLevels.isEmpty()) {
+                VMAccessor.LANGUAGE.configureLoggers(context, null);
+            }
         }
-        // Need to clean up Threads before storing SVM image
-        context.currentThreadInfo = PolyglotThreadInfo.NULL;
-        context.constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
-        disposeStaticContext(context);
-        return context;
     }
 
     static class ContextWeakReference extends WeakReference<PolyglotContextImpl> {
