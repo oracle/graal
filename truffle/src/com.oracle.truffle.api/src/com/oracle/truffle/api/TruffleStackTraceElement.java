@@ -103,13 +103,13 @@ public final class TruffleStackTraceElement {
     }
 
     /**
-     * @deprecated Use {@link TruffleStackTrace#getStacktrace(Throwable)} instead.
+     * @deprecated Use {@link TruffleStackTrace#getStackTrace(Throwable)} instead.
      *
      * @since 0.27
      */
     @Deprecated
     public static List<TruffleStackTraceElement> getStackTrace(Throwable throwable) {
-        return TruffleStackTrace.getStacktrace(throwable);
+        return TruffleStackTrace.getStackTrace(throwable);
     }
 
     /**
