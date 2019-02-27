@@ -26,6 +26,8 @@ package com.oracle.svm.jni.hosted;
 
 // Checkstyle: allow reflection
 
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -187,7 +189,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         kit.rethrowPendingException();
         if (javaReturnType.getJavaKind().isObject()) {
             // Just before return to always run the epilogue and never suppress a pending exception
-            returnValue = castObject(kit, returnValue, (ResolvedJavaType) javaReturnType);
+            returnValue = castObject(kit, returnValue, (ResolvedJavaType) javaReturnType, purpose);
         }
         kit.createReturn(returnValue, javaReturnType.getJavaKind());
 
@@ -197,15 +199,26 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         return graph;
     }
 
-    private static ValueNode castObject(JNIGraphKit kit, ValueNode object, ResolvedJavaType type) {
+    private static ValueNode castObject(JNIGraphKit kit, ValueNode object, ResolvedJavaType type, Purpose purpose) {
         ValueNode casted = object;
         if (!type.isJavaLangObject()) { // safe cast to expected type
             TypeReference typeRef = TypeReference.createTrusted(kit.getAssumptions(), type);
-            LogicNode condition = kit.append(InstanceOfNode.createAllowNull(typeRef, object, null, null));
-            if (!condition.isTautology()) {
+            if (IS_BUILDING_NATIVE_IMAGE && purpose == Purpose.AOT_COMPILATION) {
+                // Workaround GR-14106 until JVMCI 0.56
+                // CompilerToVM.getFailedSpeculations returns an Object[] containing byte[]s instead
+                // of a byte[][]. During analysis we generate the proper instanceof to produce this
+                // type but drop the instanceof in the final code generation so we don't throw an
+                // exception.
+                // The code will work ok because the layouts are the same.
                 ObjectStamp stamp = StampFactory.object(typeRef, false);
-                FixedGuardNode fixedGuard = kit.append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
-                casted = kit.append(PiNode.create(object, stamp, fixedGuard));
+                casted = kit.append(PiNode.create(object, stamp));
+            } else {
+                LogicNode condition = kit.append(InstanceOfNode.createAllowNull(typeRef, object, null, null));
+                if (!condition.isTautology()) {
+                    ObjectStamp stamp = StampFactory.object(typeRef, false);
+                    FixedGuardNode fixedGuard = kit.append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
+                    casted = kit.append(PiNode.create(object, stamp, fixedGuard));
+                }
             }
         }
         return casted;
