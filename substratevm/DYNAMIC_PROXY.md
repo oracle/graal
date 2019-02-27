@@ -1,10 +1,11 @@
 # Dynamic proxies on Substrate VM
+(See also the [guide on assisted configuration of Java dynamic proxies and other dynamic features](CONFIGURE.md))
 
 Java dynamic proxies, implemented by `java.lang.reflect.Proxy`, provide a mechanism which enables object level access control by routing all method invocations through a `java.lang.reflect.InvocationHandler`.
 Dynamic proxy classes are generated from a list of interfaces.
 
 Substrate VM doesn't provide machinery for generating and interpreting bytecodes at run time.
-Therefore all dynamic proxy classes need to be generated at native image build time
+Therefore all dynamic proxy classes need to be generated at native image build time.
 
 
 # Automatic detection

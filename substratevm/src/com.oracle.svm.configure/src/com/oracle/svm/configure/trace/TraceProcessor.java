@@ -65,6 +65,7 @@ public class TraceProcessor extends AbstractProcessor {
 
     @SuppressWarnings("unchecked")
     public void process(Reader reader) throws IOException {
+        setInLivePhase(false);
         JSONParser parser = new JSONParser(reader);
         List<Map<String, ?>> trace = (List<Map<String, ?>>) parser.parse();
         processTrace(trace);
@@ -75,7 +76,7 @@ public class TraceProcessor extends AbstractProcessor {
             try {
                 processEntry(entry);
             } catch (Exception e) {
-                logWarning("Error processing log entry: " + e.getMessage() + ": " + entry.toString());
+                logWarning("Error processing log entry: " + e.toString() + ": " + entry.toString());
             }
         }
     }

@@ -637,6 +637,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": [
                 "src",
+                "resources",
             ],
             "dependencies": [
                 "com.oracle.svm.core",
