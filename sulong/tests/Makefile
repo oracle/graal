@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -69,6 +69,10 @@ endif
 %/ref.out: %.cpp $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+
+%/ref.out: %.ll $(BC_FILE)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 %/gcc_O0.bc: %/gcc_O0.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
