@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -256,7 +256,10 @@ public class CheckGraalIntrinsics extends GraalTest {
                         // Unsafe.allocateUninitializedArray0
                         "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
                         // HotSpot MacroAssembler-based intrinsic
-                        "sun/nio/cs/ISO_8859_1$Encoder.encodeISOArray([CI[BII)I");
+                        "sun/nio/cs/ISO_8859_1$Encoder.encodeISOArray([CI[BII)I",
+                        // We have implemented implCompressMultiBlock0 on JDK9+. Does it worth
+                        // backporting as corresponding HotSpot stubs are only generated on SPARC?
+                        "sun/security/provider/DigestBase.implCompressMultiBlock([BII)I");
 
         // See JDK-8207146.
         String oopName = isJDK12OrHigher() ? "Reference" : "Object";

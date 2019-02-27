@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -500,11 +500,9 @@ public class HotSpotGraphBuilderPlugins {
         boolean useSha256 = config.useSHA256Intrinsics();
         boolean useSha512 = config.useSHA512Intrinsics();
 
-        Registration digestBaseReg = null;
-
-        if (useSha1 || useSha256 || useSha512) {
-            digestBaseReg = new Registration(plugins, "sun.security.provider.DigestBase", bytecodeProvider);
-            digestBaseReg.registerMethodSubstitution(DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
+        if (!Java8OrEarlier && (useSha1 || useSha256 || useSha512)) {
+            Registration r = new Registration(plugins, "sun.security.provider.DigestBase", bytecodeProvider);
+            r.registerMethodSubstitution(DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
         }
 
         if (useSha1) {
