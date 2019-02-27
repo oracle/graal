@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.posix;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
-/*
- * Break the link between the {@link sun.util.logging.PlatformLogger} and {@link
- * java.util.logging.Logger}. This means we still have basic logging for the JDK classes to
- * System.err, but not the "fancy" logging facilities.
- */
+@TargetClass(java.util.logging.FileHandler.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+final class Target_java_util_logging_FileHandler {
 
-@TargetClass(sun.util.logging.PlatformLogger.class)
-final class Target_sun_util_logging_PlatformLogger {
-
-    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) private static Map<?, ?> loggers = new HashMap<>();
+    /*
+     * The original method is a native method. We provide the simplest implementation which by
+     * default assumes that this is not a setuid program.
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static boolean isSetUID() {
+        return false;
+    }
 }
 
-/** Dummy class to have a class with the file's name. */
-public final class LoggingSubstitutions {
+public class PosixLoggingSubstitutions {
 }
