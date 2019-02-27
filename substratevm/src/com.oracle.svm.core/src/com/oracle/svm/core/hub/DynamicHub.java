@@ -91,8 +91,8 @@ import sun.security.util.SecurityConstants;
 public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable {
 
     @Substitute //
-    @TargetElement(name = "EMPTY_CLASS_ARRAY", onlyWith = JDK9OrLater.class) //
-    private static Class<?>[] emptyClassArray = new Class<?>[0];
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
 
     /* Value copied from java.lang.Class. */
     private static final int SYNTHETIC = 0x00001000;
@@ -260,15 +260,25 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
 
-    private static final LazyFinalReference<java.security.ProtectionDomain> allPermDomain = new LazyFinalReference<>(() -> {
+    /**
+     * Final fields in subsituted classes are treated as implicitly RecomputeFieldValue even when
+     * not annotated with @RecomputeFieldValue. Their name must not match a field in the original
+     * class, i.e., allPermDomain.
+     */
+    private static final LazyFinalReference<java.security.ProtectionDomain> allPermDomainReference = new LazyFinalReference<>(() -> {
         java.security.Permissions perms = new java.security.Permissions();
         perms.add(SecurityConstants.ALL_PERMISSION);
         return new java.security.ProtectionDomain(null, perms);
     });
 
-    private static final LazyFinalReference<Target_java_lang_Module> singleModule = new LazyFinalReference<>(Target_java_lang_Module::new);
+    private static final LazyFinalReference<Target_java_lang_Module> singleModulReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 
-    private final LazyFinalReference<String> packageName = new LazyFinalReference<>(this::computePackageName);
+    /**
+     * Final fields in subsituted classes are treated as implicitly RecomputeFieldValue even when
+     * not annotated with @RecomputeFieldValue. Their name must not match a field in the original
+     * class, i.e., packageName.
+     */
+    private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
@@ -1076,7 +1086,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public String getPackageName() {
-        return packageName.get();
+        return packageNameReference.get();
     }
 
     private String computePackageName() {
@@ -1114,7 +1124,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public ProtectionDomain getProtectionDomain() {
-        return allPermDomain.get();
+        return allPermDomainReference.get();
     }
 
     @Substitute
@@ -1125,7 +1135,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public Target_java_lang_Module getModule() {
-        return singleModule.get();
+        return singleModulReference.get();
     }
 
     @Substitute //
