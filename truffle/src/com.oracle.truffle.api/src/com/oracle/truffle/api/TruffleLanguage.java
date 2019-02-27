@@ -432,6 +432,8 @@ public abstract class TruffleLanguage<C> {
          * @return list of service types that this language can provide
          */
         Class<?>[] services() default {};
+
+        Class<?>[] mimeTypeDetectors() default {};
     }
 
     /**

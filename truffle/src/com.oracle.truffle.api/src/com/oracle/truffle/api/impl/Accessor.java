@@ -369,6 +369,8 @@ public abstract class Accessor {
         public abstract FileSystem getFileSystem(Object contextVMObject);
 
         public abstract FileSystem getDefaultFileSystem();
+
+        public abstract List<? extends TruffleFile.MIMETypeDetector> getMIMETypeDetectors();
     }
 
     public abstract static class LanguageSupport {

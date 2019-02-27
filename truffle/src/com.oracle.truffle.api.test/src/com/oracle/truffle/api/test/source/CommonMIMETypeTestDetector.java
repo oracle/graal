@@ -41,13 +41,13 @@
 package com.oracle.truffle.api.test.source;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleFileTypeDetector;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@TruffleFileTypeDetector.Registration
-public final class CommonMIMETypeTestDetector implements TruffleFileTypeDetector {
+public final class CommonMIMETypeTestDetector implements TruffleFile.MIMETypeDetector {
 
     private static final Pattern DOC_TYPE_PATTERN = Pattern.compile("<!DOCTYPE\\s+(\\S+)\\s+");
     private static final Pattern ENCODING_PATTERN = Pattern.compile("<\\?xml version=\"1.0\" encoding=\"(.*)\"\\?>");
@@ -92,4 +92,7 @@ public final class CommonMIMETypeTestDetector implements TruffleFileTypeDetector
         return null;
     }
 
+    @TruffleLanguage.Registration(id = "TestFooXML", name = "", byteMimeTypes = "text/foo+xml", mimeTypeDetectors = {CommonMIMETypeTestDetector.class})
+    public static class TestJSLanguage extends ProxyLanguage {
+    }
 }

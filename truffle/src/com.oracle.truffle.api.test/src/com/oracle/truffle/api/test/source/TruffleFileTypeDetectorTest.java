@@ -41,9 +41,7 @@
 package com.oracle.truffle.api.test.source;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -234,9 +232,5 @@ public class TruffleFileTypeDetectorTest extends AbstractPolyglotTest {
         }
         tmpFile.deleteOnExit();
         return tmpFile;
-    }
-
-    @TruffleLanguage.Registration(id = "TestFooXML", name = "", byteMimeTypes = "text/foo+xml")
-    public static class TestJSLanguage extends ProxyLanguage {
     }
 }

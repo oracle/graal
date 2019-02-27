@@ -70,6 +70,7 @@ import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -136,10 +137,14 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             p.setProperty(prefix + "interactive", Boolean.toString(annotation.interactive()));
             p.setProperty(prefix + "internal", Boolean.toString(annotation.internal()));
 
-            int serviceCounter = 0;
             AnnotationMirror registration = ElementUtils.findAnnotationMirror(l.getAnnotationMirrors(), ProcessorContext.getInstance().getType(Registration.class));
+            int serviceCounter = 0;
             for (TypeMirror serviceTypeMirror : ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services")) {
-                p.setProperty(prefix + "service" + serviceCounter++, ElementUtils.getQualifiedName(serviceTypeMirror));
+                p.setProperty(prefix + "service" + serviceCounter++, processingEnv.getElementUtils().getBinaryName(ElementUtils.fromTypeMirror(serviceTypeMirror)).toString());
+            }
+            int mimeTypeDetectorCounter = 0;
+            for (TypeMirror mimeTypeDetectorTypeMirror : ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "mimeTypeDetectors")) {
+                p.setProperty(prefix + "mimeTypeDetector" + mimeTypeDetectorCounter++, processingEnv.getElementUtils().getBinaryName(ElementUtils.fromTypeMirror(mimeTypeDetectorTypeMirror)).toString());
             }
         }
         if (cnt > 0) {
@@ -267,6 +272,10 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                         }
                     }
 
+                    if (!validateMimeTypeDetectors(e, mirror)) {
+                        continue;
+                    }
+
                     if (valid) {
                         assertNoErrorExpected(e);
                     }
@@ -304,6 +313,42 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
         if (mimeType.indexOf('/', index + 1) != -1) {
             emitError(String.format("Invalid MIME type '%s' provided. MIME types consist of a type and a subtype separated by '/'.", mimeType), type, mirror, value);
             return false;
+        }
+        return true;
+    }
+
+    private boolean validateMimeTypeDetectors(Element annotatedElement, AnnotationMirror mirror) {
+        TypeMirror mimeTypeDetectorInterfaceType = ProcessorContext.getInstance().getDeclaredType(TruffleFile.MIMETypeDetector.class);
+        AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "mimeTypeDetectors");
+        for (TypeMirror mimeTypeDetectorType : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "mimeTypeDetectors")) {
+            TypeElement mimeTypeDetectorElement = ElementUtils.fromTypeMirror(mimeTypeDetectorType);
+            if (!mimeTypeDetectorElement.getModifiers().contains(Modifier.PUBLIC)) {
+                emitError("Registered MIMETypeDetector class must be public.", annotatedElement, mirror, value);
+                return false;
+            }
+            if (mimeTypeDetectorElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !mimeTypeDetectorElement.getModifiers().contains(Modifier.STATIC)) {
+                emitError("Registered MIMETypeDetector inner-class must be static.", annotatedElement, mirror, value);
+                return false;
+            }
+            if (!ElementUtils.isAssignable(mimeTypeDetectorType, mimeTypeDetectorInterfaceType)) {
+                emitError("Registered MIMETypeDetector class must subclass MIMETypeDetector.", annotatedElement, mirror, value);
+                return false;
+            }
+            boolean foundConstructor = false;
+            for (ExecutableElement constructor : ElementFilter.constructorsIn(mimeTypeDetectorElement.getEnclosedElements())) {
+                if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
+                    continue;
+                }
+                if (!constructor.getParameters().isEmpty()) {
+                    continue;
+                }
+                foundConstructor = true;
+                break;
+            }
+            if (!foundConstructor) {
+                emitError("A MIMETypeDetector subclass must have a public no argument constructor.", annotatedElement, mirror, value);
+                return false;
+            }
         }
         return true;
     }

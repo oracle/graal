@@ -99,6 +99,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
+import java.util.List;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -1148,6 +1149,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public FileSystem getDefaultFileSystem() {
             return FileSystems.newDefaultFileSystem();
+        }
+
+        @Override
+        public List<? extends TruffleFile.MIMETypeDetector> getMIMETypeDetectors() {
+            return LanguageCache.mimeTypeDetectors();
         }
     }
 }

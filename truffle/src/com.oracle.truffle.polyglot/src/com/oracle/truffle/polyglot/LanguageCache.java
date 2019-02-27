@@ -61,6 +61,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.oracle.truffle.api.TruffleFile.MIMETypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -91,9 +92,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final ClassLoader loader;
     private final TruffleLanguage<?> globalInstance;
     private final Set<String> services;
+    private final List<String> mimeTypeDetectorClassNames;
     private String languageHome;
     private volatile ContextPolicy policy;
     private volatile Class<? extends TruffleLanguage<?>> languageClass;
+    private volatile List<? extends MIMETypeDetector> mimeTypeDetectors;
 
     private LanguageCache(String id, String prefix, Properties info, ClassLoader loader, String url) {
         this.loader = loader;
@@ -135,8 +138,20 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
         this.services = Collections.unmodifiableSet(servicesClassNames);
 
+        List<String> detectorClassNames = new ArrayList<>();
+        for (int mimeTypeDetectorCounter = 0;; mimeTypeDetectorCounter++) {
+            String nth = prefix + "mimeTypeDetector" + mimeTypeDetectorCounter;
+            String mimeTypeDetectorClassName = info.getProperty(nth);
+            if (mimeTypeDetectorClassName == null) {
+                break;
+            }
+            detectorClassNames.add(mimeTypeDetectorClassName);
+        }
+        this.mimeTypeDetectorClassNames = Collections.unmodifiableList(detectorClassNames);
+
         if (TruffleOptions.AOT) {
             initializeLanguageClass();
+            initializeMimeTypeDetectors();
             assert languageClass != null;
             assert policy != null;
         }
@@ -182,6 +197,15 @@ final class LanguageCache implements Comparable<LanguageCache> {
             Collections.addAll(servicesClassNames, services);
             this.services = Collections.unmodifiableSet(servicesClassNames);
         }
+        this.mimeTypeDetectorClassNames = Collections.emptyList();
+    }
+
+    static List<MIMETypeDetector> mimeTypeDetectors() {
+        List<MIMETypeDetector> res = new ArrayList<>();
+        for (LanguageCache cache : languages(null).values()) {
+            res.addAll(cache.getMIMETypeDetectors());
+        }
+        return res;
     }
 
     static Map<String, LanguageCache> languageMimes() {
@@ -436,6 +460,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return services.contains(clazz.getName()) || services.contains(clazz.getCanonicalName());
     }
 
+    List<? extends MIMETypeDetector> getMIMETypeDetectors() {
+        initializeMimeTypeDetectors();
+        return mimeTypeDetectors;
+    }
+
     @SuppressWarnings("unchecked")
     private void initializeLanguageClass() {
         if (languageClass == null) {
@@ -453,6 +482,26 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     } catch (ClassNotFoundException e) {
                         throw new IllegalStateException("Cannot load language " + name + ". Language implementation class " + className + " failed to load.", e);
                     }
+                }
+            }
+        }
+    }
+
+    private void initializeMimeTypeDetectors() {
+        if (mimeTypeDetectors == null) {
+            synchronized (this) {
+                if (mimeTypeDetectors == null) {
+                    List<MIMETypeDetector> instances = new ArrayList<>(mimeTypeDetectorClassNames.size());
+                    for (String className : mimeTypeDetectorClassNames) {
+                        try {
+                            Class<? extends MIMETypeDetector> detectorClass = Class.forName(className, true, loader).asSubclass(MIMETypeDetector.class);
+                            MIMETypeDetector instance = detectorClass.getDeclaredConstructor().newInstance();
+                            instances.add(instance);
+                        } catch (ReflectiveOperationException e) {
+                            throw new IllegalStateException("Cannot instantiate MIMETypeDetector, class  " + className + ".", e);
+                        }
+                    }
+                    mimeTypeDetectors = Collections.unmodifiableList(instances);
                 }
             }
         }
