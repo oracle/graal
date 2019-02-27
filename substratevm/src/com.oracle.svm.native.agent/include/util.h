@@ -62,6 +62,10 @@ static inline const char * nn_str(const char *cstr) {
   return (cstr != NULL) ? cstr : TRACE_VALUE_NULL;
 }
 
+static inline char *nn_bool(void *p) {
+  return (p != NULL) ? TRACE_VALUE_TRUE : TRACE_VALUE_FALSE;
+}
+
 #ifdef __cplusplus
 }
 #endif

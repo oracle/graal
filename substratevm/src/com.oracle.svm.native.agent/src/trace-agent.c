@@ -42,6 +42,8 @@ static pthread_mutex_t trace_mtx;
 const char * trace_sep = "";
 const jclass TRACE_OBJECT_NULL = (jclass) -1; // unlikely to be a valid jclass
 const char * const TRACE_VALUE_NULL = "null";
+const char * const TRACE_VALUE_TRUE = "true";
+const char * const TRACE_VALUE_FALSE = "false";
 const char * const TRACE_VALUE_UNKNOWN = "\"\\u0000\"";
 const char * const TRACE_ARG_IGNORE = "@ignore@";
 const char * const TRACE_NEXT_ARG_UNQUOTED_TAG = "@next_unquoted@";
@@ -117,7 +119,7 @@ static void mtx_trace_print(const char *s) {
 }
 
 static bool should_quote(const char *s) {
-  return (s != TRACE_VALUE_NULL && s != TRACE_VALUE_UNKNOWN);
+  return (s != TRACE_VALUE_NULL && s != TRACE_VALUE_TRUE && s != TRACE_VALUE_FALSE && s != TRACE_VALUE_UNKNOWN);
 }
 
 static void quote_or_append(bool condition, struct sbuf *b, const char *s) {

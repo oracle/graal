@@ -48,6 +48,10 @@ class JniProcessor extends AbstractProcessor {
 
     @Override
     void processEntry(Map<String, ?> entry) {
+        boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
+        if (invalidResult) {
+            return;
+        }
         String function = (String) entry.get("function");
         String clazz = (String) entry.get("class");
         String callerClass = (String) entry.get("caller_class");

@@ -39,6 +39,8 @@ void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller
 
 extern const jobject TRACE_OBJECT_NULL;
 extern const char * const TRACE_VALUE_NULL;
+extern const char * const TRACE_VALUE_TRUE;
+extern const char * const TRACE_VALUE_FALSE;
 extern const char * const TRACE_VALUE_UNKNOWN;
 extern const char * const TRACE_ARG_IGNORE;
 extern const char * const TRACE_NEXT_ARG_UNQUOTED_TAG;
