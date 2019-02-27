@@ -34,49 +34,66 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.URLConnectionFactory;
 
 /**
- * Creates URLConnections to the given destination. Caches the decision about proxy.
+ * Creates URLConnections to the given destination. Caches the decision about proxy. For the first
+ * {@link #openConnection(java.net.URI, java.util.function.Consumer)}, the code wil open
+ * <ul>
+ * <li>a direct connection to the proxy
+ * <li>a connection through http proxy, if configured
+ * <li>a connection through https proxy, if configured
+ * </ul>
+ * Users may forget to set both the http/https proxies, so the code will attempt to use whetaver is
+ * known. All those connections will attempt to connect to the destination. The first connection
+ * attempt that succeeds will be used. The mechanism (proxy setting, direct) that established the
+ * connection will be cached for subsequent requests to the same authority. Additional requests to
+ * the same location should not open additional probes then.
+ * <p/>
+ * The factory is caching threads; initially at most 3 threads will be created for probes, then each
+ * request will reuse a thread from the thread pool (to watch time out the operation on the main
+ * thread).
  * 
  * @author sdedic
  */
 public class ProxyConnectionFactory implements URLConnectionFactory {
-    enum ProxyType {
-        DIRECT,
-        HTTP,
-        HTTPS
-    }
-
     /**
      * The max delay to connect to the final destination or open a proxy connection. In seconds.
      */
     private static final int DEFAULT_CONNECT_DELAY = Integer.getInteger("org.graalvm.component.installer.connectDelaySec", 5);
+    private static final String PROXY_SCHEME_PREFIX = "http://"; // NOI18N
 
     private final Feedback feedback;
     private final URL urlBase;
 
-    /**
-     * Remembered type of proxy / no proxy.
-     */
-    private volatile ProxyType detectedType;
+    // @GuardedBy(this)
+    private Connector winningConnector;
 
     /**
-     * HTTP proxy settings. The default is taken from system environment variables.
+     * Thread pool for connection attempts. Subsequent connections do not send unnecessary probes,
+     * but are done in a thread so the main thread may time out the operation. Most likely the
+     * threads will be allocated from this pool.
      */
-    String envHttpProxy = System.getenv("http_proxy"); // NOI18N
+    private final ExecutorService connectors = Executors.newCachedThreadPool();
 
     /**
-     * HTTPS proxy settings. The default is taken from system environment variables.
+     * HTTP proxy settings. The default is taken from system environment variables and system
+     * property
      */
-    String envHttpsProxy = System.getenv("https_proxy"); // NOI18N
+    String envHttpProxy = System.getProperty("http_proxy", System.getenv("http_proxy")); // NOI18N
+
+    /**
+     * HTTPS proxy settings. The default is taken from system environment variables and system
+     * property
+     */
+    String envHttpsProxy = System.getProperty("https_proxy", System.getenv("https_proxy")); // NOI18N
 
     /**
      * The configurable delay for this factory. Initialized to {@link #DEFAULT_CONNECT_DELAY}.
@@ -109,144 +126,221 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
         }
     }
 
+    private class ConnectionContext {
+        private final Consumer<URLConnection> configCallback;
+        private final CountDownLatch countDown;
+        private final URL url;
+        // @GuardedBy(this)
+        private Connector winner;
+        // @GuardedBy(this)
+        private URLConnection openedConnection;
+        // @GuardedBy(this)
+        private IOException exProxy;
+        // @GuardedBy(this)
+        private IOException exDirect;
+
+        ConnectionContext(URL url, Consumer<URLConnection> configCallback, CountDownLatch latch) {
+            this.configCallback = configCallback;
+            this.countDown = latch;
+            this.url = url;
+        }
+
+        synchronized URLConnection getConnection() throws IOException {
+            if (openedConnection == null) {
+                if (exDirect != null) {
+                    throw exDirect;
+                } else if (exProxy != null) {
+                    throw exProxy;
+                }
+                throw new ConnectException(feedback.l10n("EXC_CannotConnectTo", url));
+            } else {
+                return openedConnection;
+            }
+        }
+
+        boolean setOutcome(Connector w, URLConnection opened) {
+            synchronized (this) {
+                if (winner != null) {
+                    return false;
+                }
+                winner = w;
+                openedConnection = opened;
+            }
+            if (countDown != null) {
+                countDown.countDown();
+            }
+            return true;
+        }
+
+        void setOutcome(boolean direct, IOException e) {
+            synchronized (this) {
+                if (direct) {
+                    exDirect = e;
+                } else {
+                    exProxy = e;
+                }
+            }
+        }
+
+        synchronized IOException getConnectException() {
+            if (exDirect != null) {
+                return exDirect;
+            }
+            return new ConnectException(feedback.l10n("EXC_TimeoutConnectTo", url));
+        }
+    }
+
+    final class Connector implements Runnable {
+        private final String proxySpec;
+        private URL url;
+        private ConnectionContext context;
+
+        Connector(String proxySpec) {
+            this.proxySpec = proxySpec;
+        }
+
+        boolean isDirect() {
+            return proxySpec == null;
+        }
+
+        boolean accepts(URL u) {
+            synchronized (this) {
+                return Objects.equals(u.getAuthority(), url.getAuthority());
+            }
+        }
+
+        Connector bind(ConnectionContext ctx) {
+            synchronized (this) {
+                context = ctx;
+                url = ctx.url;
+            }
+            return this;
+        }
+
+        @Override
+        public void run() {
+            ConnectionContext ctx;
+
+            synchronized (this) {
+                ctx = context;
+                context = null;
+            }
+            runWithContext(ctx);
+        }
+
+        void runWithContext(ConnectionContext ctx) {
+            final Proxy proxy;
+            if (isDirect()) {
+                proxy = null;
+            } else {
+                if (proxySpec == null || proxySpec.isEmpty()) {
+                    return;
+                }
+                try {
+                    // the URI is created just to parse the proxy specification. It won't be
+                    // actually used as a whole to form URL or open connection
+                    URI uri = new URI(proxySpec);
+                    // if the user forgets the scheme (http://) the string is misparsed and hostname
+                    // becomes the scheme while the host part will be empty. Adding the "http://" in
+                    // front
+                    // fixes parsing at least for the host/port part.
+                    if (uri.getScheme() == null || uri.getHost() == null) {
+                        try {
+                            uri = new URI(PROXY_SCHEME_PREFIX + proxySpec);
+                        } catch (URISyntaxException ex) {
+                            // better leave the specified value without the scheme.
+                        }
+                    }
+                    InetSocketAddress address = InetSocketAddress.createUnresolved(uri.getHost(), uri.getPort());
+                    proxy = new Proxy(Proxy.Type.HTTP, address);
+                } catch (URISyntaxException ex) {
+                    ctx.setOutcome(false, new IOException(ex.getLocalizedMessage(), ex));
+                    return;
+                }
+            }
+            Consumer<URLConnection> configCallback;
+            configCallback = ctx.configCallback;
+            boolean won = false;
+            URLConnection test = null;
+            try {
+                test = proxy == null ? url.openConnection() : url.openConnection(proxy);
+                if (configCallback != null) {
+                    configCallback.accept(test);
+                }
+                test.connect();
+                if (test instanceof HttpURLConnection) {
+                    HttpURLConnection htest = (HttpURLConnection) test;
+                    int rcode = htest.getResponseCode();
+                    // using bad request 400 as a marker. All 4xx, 5xx codes should be handled this
+                    // way to force
+                    // the appropriate exception out.
+                    if (rcode >= HttpURLConnection.HTTP_BAD_REQUEST) {
+                        // force the exception, should fail with IOException
+                        InputStream stm = test.getInputStream();
+                        try {
+                            stm.close();
+                        } catch (IOException ex) {
+                            // let the exception through for direct connections, maybe better error
+                            // message
+                            // will come out.
+                            if (isDirect()) {
+                                throw ex;
+                            }
+                            // swallow, we want to report just proxy failed.
+                        }
+                        throw new IOException(feedback.l10n("EXC_ProxyFailed", rcode));
+                    }
+                }
+                won = ctx.setOutcome(this, test);
+            } catch (IOException ex) {
+                ctx.setOutcome(isDirect(), ex);
+            } finally {
+                if (!won) {
+                    if (test instanceof HttpURLConnection) {
+                        ((HttpURLConnection) test).disconnect();
+                    }
+                }
+            }
+        }
+    }
+
     private URLConnection openConnectionWithProxies(URL url, Consumer<URLConnection> configCallback) throws IOException {
-        final URLConnection[] conn = {null};
         final CountDownLatch connected = new CountDownLatch(1);
-        ExecutorService connectors = Executors.newFixedThreadPool(3);
-        AtomicReference<IOException> ex3 = new AtomicReference<>();
-        AtomicReference<IOException> ex2 = new AtomicReference<>();
         String httpProxy;
         String httpsProxy;
+
+        Connector winner;
+        ConnectionContext ctx = new ConnectionContext(url, configCallback, connected);
 
         synchronized (this) {
             httpProxy = envHttpProxy;
             httpsProxy = envHttpsProxy;
+            winner = winningConnector;
         }
-
-        class Connector implements Runnable {
-            private final String proxySpec;
-            private final boolean directConnect;
-            private final ProxyType type;
-
-            Connector() {
-                directConnect = true;
-                proxySpec = null;
-                this.type = ProxyType.DIRECT;
+        // reuse the same detected direct / proxy for matching URLs.
+        if (winner != null && winner.accepts(url)) {
+            winner.bind(ctx);
+            // submit the winner so we can also recover from long connect delays
+            connectors.submit(winner);
+        } else {
+            if (httpProxy != null) {
+                connectors.submit(new Connector(httpProxy).bind(ctx));
             }
-
-            Connector(String proxySpec, ProxyType pt) {
-                this.proxySpec = proxySpec;
-                this.directConnect = false;
-                this.type = pt;
+            // do not attempt 2nd probe try if http+https are set to the same value.
+            if (httpsProxy != null && !Objects.equals(httpProxy, httpsProxy)) {
+                connectors.submit(new Connector(httpsProxy).bind(ctx));
             }
-
-            @Override
-            public void run() {
-                final Proxy proxy;
-                if (directConnect) {
-                    proxy = null;
-                } else {
-                    if (proxySpec == null || proxySpec.isEmpty()) {
-                        return;
-                    }
-                    try {
-                        URI uri = new URI(httpsProxy);
-                        InetSocketAddress address = InetSocketAddress.createUnresolved(uri.getHost(), uri.getPort());
-                        proxy = new Proxy(Proxy.Type.HTTP, address);
-                    } catch (URISyntaxException ex) {
-                        return;
-                    }
-                }
-                try {
-                    URLConnection test = directConnect ? url.openConnection() : url.openConnection(proxy);
-                    if (configCallback != null) {
-                        configCallback.accept(test);
-                    }
-                    test.connect();
-                    if (test instanceof HttpURLConnection) {
-                        HttpURLConnection htest = (HttpURLConnection) test;
-                        int rcode = htest.getResponseCode();
-                        if (rcode >= 400) {
-                            // force the exception, should fail with IOException
-                            InputStream stm = test.getInputStream();
-                            try {
-                                stm.close();
-                            } catch (IOException ex) {
-                                // swallow, we want to report just proxy failed.
-                            }
-                            throw new IOException(feedback.l10n("EXC_ProxyFailed", rcode));
-                        }
-                    }
-                    synchronized (conn) {
-                        if (conn[0] == null) {
-                            conn[0] = test;
-                            detectedType = type;
-                        }
-                    }
-                    connected.countDown();
-                } catch (IOException ex) {
-                    if (directConnect) {
-                        ex3.set(ex);
-                    } else {
-                        ex2.set(ex);
-                    }
-                }
-            }
-
-        }
-        if (detectedType != null) {
-            Connector c;
-            switch (detectedType) {
-                case DIRECT:
-                    c = new Connector();
-                    break;
-                case HTTP:
-                    c = new Connector(httpProxy, ProxyType.HTTP);
-                    break;
-                case HTTPS:
-                    c = new Connector(httpsProxy, ProxyType.HTTPS);
-                    break;
-                default:
-                    // cannot happen.
-                    throw new AssertionError(detectedType.name());
-            }
-            c.run();
-            synchronized (conn) {
-                if (conn[0] == null) {
-                    if (ex3.get() != null) {
-                        throw ex3.get();
-                    } else if (ex2.get() != null) {
-                        throw ex2.get();
-                    }
-                    throw new ConnectException(feedback.l10n("EXC_CannotConnectTo", url));
-                } else {
-                    return conn[0];
-                }
-            }
+            connectors.submit(new Connector(null).bind(ctx));
         }
 
         URLConnection res = null;
 
-        connectors.submit(new Connector(httpProxy, ProxyType.HTTP));
-        connectors.submit(new Connector(httpsProxy, ProxyType.HTTPS));
-        connectors.submit(new Connector());
         try {
             if (!connected.await(connectDelay, TimeUnit.SECONDS)) {
-                if (ex3.get() != null) {
-                    throw ex3.get();
-                }
-                throw new ConnectException(feedback.l10n("EXC_TimeoutConnectTo", url));
-            }
-            synchronized (conn[0]) {
-                res = conn[0];
-            }
-            if (res == null) {
-                if (ex3.get() != null) {
-                    throw ex3.get();
-                } else if (ex2.get() != null) {
-                    throw ex2.get();
-                }
-                throw new ConnectException(feedback.l10n("EXC_CannotConnectTo", url));
+                throw ctx.getConnectException();
+            } else {
+                // may also throw exception
+                res = ctx.getConnection();
             }
         } catch (InterruptedException ex) {
             throw new ConnectException(feedback.l10n("EXC_InterruptedConnectingTo", url));
