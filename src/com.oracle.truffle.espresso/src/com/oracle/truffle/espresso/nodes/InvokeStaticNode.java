@@ -47,6 +47,7 @@ public final class InvokeStaticNode extends QuickNode {
         }
         BytecodeNode root = (BytecodeNode) getParent();
         Object[] args = root.peekArguments(frame, top, false, method.getParsedSignature());
+
         Object result = directCallNode.call(args);
         int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
                                                                                          // receiver

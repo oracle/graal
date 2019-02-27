@@ -344,38 +344,11 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             return StaticObject.NULL;
         }
         if (reflectedMethod.getReturnKind().isPrimitive()) {
-            return box(meta, result);
+            return Meta.box(meta, result);
         }
 
         // Result is not void nor primitive, pass through.
         return (StaticObject) result;
     }
 
-    private static StaticObject box(Meta meta, Object arg) {
-        if (arg instanceof Boolean) {
-            return meta.boxBoolean((boolean) arg);
-        }
-        if (arg instanceof Character) {
-            return meta.boxCharacter((char) arg);
-        }
-        if (arg instanceof Short) {
-            return meta.boxShort((short) arg);
-        }
-        if (arg instanceof Byte) {
-            return meta.boxByte((byte) arg);
-        }
-        if (arg instanceof Integer) {
-            return meta.boxInteger((int) arg);
-        }
-        if (arg instanceof Long) {
-            return meta.boxLong((long) arg);
-        }
-        if (arg instanceof Float) {
-            return meta.boxFloat((float) arg);
-        }
-        if (arg instanceof Double) {
-            return meta.boxDouble((double) arg);
-        }
-        throw EspressoError.shouldNotReachHere();
-    }
 }

@@ -51,10 +51,7 @@ import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
-import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.*;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class Method implements ModifiersProvider, ContextAccess {
@@ -231,6 +228,9 @@ public final class Method implements ModifiersProvider, ContextAccess {
                         throw getMeta().throwEx(UnsatisfiedLinkError.class);
                     }
                 } else {
+                    if (!hasBytecodes()) {
+
+                    }
                     FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
                     EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
                     callTarget = Truffle.getRuntime().createCallTarget(rootNode);
@@ -368,11 +368,16 @@ public final class Method implements ModifiersProvider, ContextAccess {
             getDeclaringKlass().safeInitialize();
             return getCallTarget().call(args);
         } else {
-            assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
-            Object[] fullArgs = new Object[args.length + 1];
-            System.arraycopy(args, 0, fullArgs, 1, args.length);
-            fullArgs[0] = self;
-            return getCallTarget().call(fullArgs);
+            if (((StaticObject) self).isCallSite()) {
+                CallSiteObject cso = (CallSiteObject) self;
+                return cso.getTarget().getCallTarget().call(cso.getArgs());
+            } else {
+                assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
+                Object[] fullArgs = new Object[args.length + 1];
+                System.arraycopy(args, 0, fullArgs, 1, args.length);
+                fullArgs[0] = self;
+                return getCallTarget().call(fullArgs);
+            }
         }
     }
 

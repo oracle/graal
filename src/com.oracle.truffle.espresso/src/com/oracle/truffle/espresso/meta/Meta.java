@@ -334,6 +334,34 @@ public final class Meta implements ContextAccess {
         return clazz.getClassLoader() == null;
     }
 
+    public static StaticObject box(Meta meta, Object arg) {
+        if (arg instanceof Boolean) {
+            return meta.boxBoolean((boolean) arg);
+        }
+        if (arg instanceof Character) {
+            return meta.boxCharacter((char) arg);
+        }
+        if (arg instanceof Short) {
+            return meta.boxShort((short) arg);
+        }
+        if (arg instanceof Byte) {
+            return meta.boxByte((byte) arg);
+        }
+        if (arg instanceof Integer) {
+            return meta.boxInteger((int) arg);
+        }
+        if (arg instanceof Long) {
+            return meta.boxLong((long) arg);
+        }
+        if (arg instanceof Float) {
+            return meta.boxFloat((float) arg);
+        }
+        if (arg instanceof Double) {
+            return meta.boxDouble((double) arg);
+        }
+        throw EspressoError.shouldNotReachHere();
+    }
+
     public StaticObject initEx(java.lang.Class<?> clazz) {
         assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);

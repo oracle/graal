@@ -28,16 +28,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.espresso.classfile.MethodHandleConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.CallSiteObject;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public abstract class InvokeInterfaceNode extends QuickNode {
 
@@ -96,21 +93,8 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
         assert receiver != null;
         if (receiver.isCallSite()) {
-            StaticObject newObj;
             CallSiteObject cso = (CallSiteObject) receiver;
-            Method method = cso.getTarget();
-            if (cso.getKind() == MethodHandleConstant.RefKind.NEWINVOKESPECIAL) {
-                Klass klass = method.getDeclaringKlass();
-                klass.safeInitialize();
-                newObj = InterpreterToVM.newObject(klass);
-                root.putKind(frame, top - 1, newObj, JavaKind.Object);
-            }
-            Object[] targetArgs = root.peekArgumentsWithCSO(frame, top, cso.hasReceiver(), method.getParsedSignature(), cso);
-            Object result = cso.call(targetArgs);
-            int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) + cso.getStackEffect(); // pop CSO
-            int ret = (resultAt - top) + root.putKind(frame, resultAt, result, Signatures.returnKind(method.getParsedSignature()));
-            //return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind()); //
-            return ret + cso.getEndModif();
+            return cso.invoke(frame, top, root);
         }
         final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";

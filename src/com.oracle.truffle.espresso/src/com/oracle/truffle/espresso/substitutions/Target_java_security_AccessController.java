@@ -46,7 +46,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Target_java_security_AccessController {
     @Substitution
     public static @Host(Object.class) StaticObject doPrivileged(@Host(PrivilegedAction.class) StaticObject action) {
-        Method run = action.getKlass().lookupMethod(Name.run, Signature.Object);
+        Method run = action.lookupMethod(Name.run, Signature.Object);
         return (StaticObject) run.invokeDirect(action);
     }
 

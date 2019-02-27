@@ -250,10 +250,7 @@ import com.oracle.truffle.espresso.classfile.*;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.*;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -845,6 +842,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                         RuntimeConstantPool pool = getConstantPool();
                         InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
                         BootstrapMethodsAttribute bms = getBootstrapMethods();
+
                         assert(bms != null);
                         BootstrapMethodsAttribute.Entry bsEntry = getBootstrapMethods().at(inDy.getBootstrapMethodAttrIndex());
 
@@ -853,11 +851,23 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
                         Symbol<Type>[] parsed = getMethod().getContext().getSignatures().parsed(inDy.getSignature(pool));
                         Object[] args = peekArguments(frame, top, false, parsed);
+
                         top -= Signatures.parameterCount(parsed, false);
+
                         MethodHandleConstant mh = (MethodHandleConstant) pool.at(bsEntry.argAt(1));
                         Method target = resolveMethod(curOpcode, mh.getRefIndex());
 
-                        CallSiteObject cso = new CallSiteObject(getMethod().getDeclaringKlass(), target, parsed, args, mh);
+                        ObjectKlass CSOKlass = (ObjectKlass)  getMethod().getContext().getRegistries().loadKlassWithBootClassLoader(Signatures.returnType(parsed));
+
+
+                        StaticObject emulatedThis;
+
+                        if (getMethod().isStatic()) {
+                            emulatedThis = null;
+                        } else {
+                            emulatedThis = getLocalObject(frame, 0);
+                        }
+                        CallSiteObject cso = new CallSiteObject(CSOKlass, target, parsed, args, mh, emulatedThis);
                         putObject(frame, top, cso);
                         break;
 
