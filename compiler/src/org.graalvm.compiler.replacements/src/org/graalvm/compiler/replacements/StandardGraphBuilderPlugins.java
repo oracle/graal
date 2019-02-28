@@ -1090,16 +1090,18 @@ public class StandardGraphBuilderPlugins {
             if (accessKind.emitBarriers) {
                 // link the unsafe node to its leading and trailing membars
                 final MembarNode pre = new MembarNode(accessKind.preReadBarriers);
-                final RawLoadNode[] rawLoadNodes = new RawLoadNode[1];
                 final MembarNode post = new MembarNode(accessKind.postReadBarriers);
                 b.add(pre);
-                createUnsafeAccess(object, b, (obj, loc) -> {
-                    rawLoadNodes[0] = new RawLoadNode(obj, offset, unsafeAccessKind, loc);
-                    return rawLoadNodes[0];
-                });
+                createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
                 b.add(post);
-                post.setAccess(rawLoadNodes[0]);
-                post.setLeading(pre);
+                // associate the membars with the raw load they bracket
+                // if there are no other intervening nodes
+                final Node n = pre.next();
+                if (post.predecessor() == n && n instanceof RawLoadNode) {
+                    final RawLoadNode rawLoadNode = (RawLoadNode) n;
+                    post.setAccess(rawLoadNode);
+                    post.setLeading(pre);
+                }
             } else {
                 createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
             }
@@ -1138,18 +1140,19 @@ public class StandardGraphBuilderPlugins {
                 // link the unsafe node to its leading and trailing membars
                 final MembarNode pre = new MembarNode(accessKind.preWriteBarriers);
                 final MembarNode post = new MembarNode(accessKind.postWriteBarriers);
-                final RawStoreNode[] rawStoreNodes = new RawStoreNode[1];
                 b.add(pre);
-                createUnsafeAccess(object, b, (obj, loc) -> {
-                    rawStoreNodes[0] = new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc);
-                    return rawStoreNodes[0];
-                });
-                b.add(post);
-                post.setAccess(rawStoreNodes[0]);
-                post.setLeading(pre);
-            } else {
                 createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
-            }
+                b.add(post);
+                // associate the membars with the raw store they bracket
+                // if there are no other intervening nodes
+                final Node n = pre.next();
+                if (post.predecessor() == n && n instanceof RawStoreNode) {
+                    final RawStoreNode rawStoreNode = (RawStoreNode) n;
+                    post.setAccess(rawStoreNode);
+                    post.setLeading(pre);
+                }
+            } else {
+                createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));}
             return true;
         }
     }
