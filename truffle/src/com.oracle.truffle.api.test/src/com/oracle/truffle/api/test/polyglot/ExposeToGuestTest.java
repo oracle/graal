@@ -46,9 +46,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.IamSafe;
-import org.graalvm.polyglot.SafetyConf;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
@@ -75,13 +73,13 @@ public class ExposeToGuestTest {
     }
 
     public static class ExportedValue {
-        @IamSafe
+        @HostAccess.Export
         public int value = 42;
     }
 
     @Test
     public void exportingAllPublicIsEasy() {
-        Context context = Context.newBuilder().safety(SafetyConf.PUBLIC).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
         Value readValue = context.eval("sl", ""
                 + "function readValue(x) {\n"
                 + "  return x.value;\n"
@@ -96,8 +94,8 @@ public class ExposeToGuestTest {
 
     @Test
     public void customExportedAnnotation() {
-        SafetyConf accessMeConfig = SafetyConf.newConfig().safeToAccessIfAnnotatedBy(AccessMe.class).build();
-        Context context = Context.newBuilder().safety(accessMeConfig).build();
+        HostAccess accessMeConfig = HostAccess.newBuilder().allowAccessAnnotatedBy(AccessMe.class).build();
+        Context context = Context.newBuilder().allowHostAccess(accessMeConfig).build();
         Value readValue = context.eval("sl", ""
                 + "function readValue(x) {\n"
                 + "  return x.value;\n"
@@ -123,11 +121,10 @@ public class ExposeToGuestTest {
 
     @Test
     public void explicitlyEnumeratingField() throws Exception {
-        SafetyConf explictConfig = SafetyConf.newConfig().
-                safeToAccess(AccessibleValue.class.getField("value")).
+        HostAccess explictConfig = HostAccess.newBuilder().
+                allowAccess(AccessibleValue.class.getField("value")).
                 build();
-        Engine engine = Engine.newBuilder().safety(explictConfig).build();
-        Context context = Context.newBuilder().engine(engine).build();
+        Context context = Context.newBuilder().allowHostAccess(explictConfig).build();
         Value readValue = context.eval("sl", ""
                 + "function readValue(x) {\n"
                 + "  return x.value;\n"

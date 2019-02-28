@@ -43,17 +43,17 @@ package com.oracle.truffle.polyglot;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import java.util.Map;
 import java.util.WeakHashMap;
-import org.graalvm.polyglot.SafetyConf;
+import org.graalvm.polyglot.HostAccess;
 
 final class HostClassCache {
-    private static final Map<SafetyConf, HostClassCache> CACHES = new WeakHashMap<>();
-    private final SafetyConf conf;
+    private static final Map<HostAccess, HostClassCache> CACHES = new WeakHashMap<>();
+    private final HostAccess conf;
 
-    private HostClassCache(SafetyConf conf) {
+    private HostClassCache(HostAccess conf) {
         this.conf = conf;
     }
 
-    public static synchronized HostClassCache find(SafetyConf conf) {
+    public static synchronized HostClassCache find(HostAccess conf) {
         assert conf != null;
         HostClassCache c = CACHES.get(conf);
         if (c == null) {
