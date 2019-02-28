@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -257,7 +257,8 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
                         // HotSpot MacroAssembler-based intrinsic
                         "sun/nio/cs/ISO_8859_1$Encoder.encodeISOArray([CI[BII)I",
-                        // Stub based intrinsics but implementation seems complex in C2
+                        // We have implemented implCompressMultiBlock0 on JDK9+. Does it worth
+                        // backporting as corresponding HotSpot stubs are only generated on SPARC?
                         "sun/security/provider/DigestBase.implCompressMultiBlock([BII)I");
 
         // See JDK-8207146.
@@ -289,9 +290,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             // Control flow, deopts, and a cast
                             "jdk/internal/util/Preconditions.checkIndex(IILjava/util/function/BiFunction;)I",
                             // HotSpot MacroAssembler-based intrinsic
-                            "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I",
-                            // Runtime call and some complex compiler logic
-                            "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
+                            "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I");
 
             /*
              * Per default, all these operations are mapped to some generic method for which we
