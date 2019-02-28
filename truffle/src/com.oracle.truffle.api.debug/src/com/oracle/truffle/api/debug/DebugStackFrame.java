@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
@@ -78,7 +75,7 @@ import java.util.Objects;
  * @see SuspendedEvent#getTopStackFrame()
  * @since 0.17
  */
-public final class DebugStackFrame implements Iterable<DebugValue> {
+public final class DebugStackFrame {
 
     final SuspendedEvent event;
     private final FrameInstance currentFrame;
@@ -236,38 +233,6 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         }
     }
 
-    /**
-     * Lookup a stack value with a given name. If no value is available in the current stack frame
-     * with that name <code>null</code> is returned. Stack values are only accessible as as long as
-     * the {@link DebugStackFrame debug stack frame} is valid. Debug stack frames are only valid as
-     * long as the source {@link SuspendedEvent suspended event} is valid.
-     * <p>
-     * This method is not thread-safe and will throw an {@link IllegalStateException} if called on
-     * another thread than it was created with.
-     *
-     * @param name the name of the local variable to query.
-     * @return the value from the stack
-     * @since 0.17
-     * @deprecated Use {@link #getScope()} and {@link DebugScope#getDeclaredValue(java.lang.String)}
-     *             .
-     */
-    @Deprecated
-    public DebugValue getValue(String name) {
-        DebugScope scope = getScope();
-        while (scope != null) {
-            DebugValue value = scope.getDeclaredValue(name);
-            if (value != null) {
-                return value;
-            }
-            // Search for the value up to the function root, to be compatible.
-            if (scope.isFunctionScope()) {
-                break;
-            }
-            scope = scope.getParent();
-        }
-        return null;
-    }
-
     DebugValue wrapHeapValue(Object result) {
         LanguageInfo language;
         RootNode root = findCurrentRoot();
@@ -300,79 +265,6 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         verifyValidState(false);
         Object result = DebuggerSession.evalInContext(event, code, currentFrame);
         return wrapHeapValue(result);
-    }
-
-    /**
-     * Returns an {@link Iterator iterator} for all stack values available in this frame. The
-     * returned stack values remain valid as long as the current stack frame remains valid.
-     *
-     * <p>
-     * This method is not thread-safe and will throw an {@link IllegalStateException} if called on
-     * another thread than it was created with.
-     *
-     * @since 0.17
-     * @deprecated Use {@link #getScope()} and {@link DebugScope#getDeclaredValues()}.
-     */
-    @Deprecated
-    public Iterator<DebugValue> iterator() {
-        DebugScope cscope = getScope();
-        // Merge non-masked variables from all scopes:
-        return new Iterator<DebugValue>() {
-            private DebugScope scope = cscope;
-            private Iterator<DebugValue> variables;
-            private DebugValue nextVar;
-            private Set<String> names = new HashSet<>();
-
-            @Override
-            public boolean hasNext() {
-                if (nextVar != null) {
-                    return true;
-                }
-                for (;;) {
-                    if (variables == null && scope != null) {
-                        variables = scope.getDeclaredValues().iterator();
-                        if (!variables.hasNext()) {
-                            variables = null;
-                        }
-                        if (scope.isFunctionScope()) {
-                            // Stop at the function, do not go to closures, to be compatible.
-                            scope = null;
-                        } else {
-                            scope = scope.getParent();
-                        }
-                        if (variables == null) {
-                            continue;
-                        }
-                    }
-                    if (variables != null && variables.hasNext()) {
-                        nextVar = variables.next();
-                        String name = nextVar.getName();
-                        if (!names.contains(name)) {
-                            names.add(name);
-                            return true;
-                        }
-                    } else {
-                        variables = null;
-                        if (scope == null) {
-                            return false;
-                        }
-                    }
-                }
-            }
-
-            @Override
-            public DebugValue next() {
-                if (nextVar == null) {
-                    hasNext();
-                }
-                DebugValue var = nextVar;
-                if (var == null) {
-                    throw new NoSuchElementException();
-                }
-                nextVar = null;
-                return var;
-            }
-        };
     }
 
     /**

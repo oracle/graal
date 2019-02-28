@@ -112,19 +112,14 @@ supr java.lang.Object
 hfds debugger,event,frame,iterator,language,parent,root,scope,variables
 
 CLSS public final com.oracle.truffle.api.debug.DebugStackFrame
-intf java.lang.Iterable<com.oracle.truffle.api.debug.DebugValue>
 meth public boolean equals(java.lang.Object)
 meth public boolean isInternal()
 meth public com.oracle.truffle.api.debug.DebugScope getScope()
 meth public com.oracle.truffle.api.debug.DebugValue eval(java.lang.String)
-meth public com.oracle.truffle.api.debug.DebugValue getValue(java.lang.String)
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguage()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 meth public int hashCode()
 meth public java.lang.String getName()
-meth public java.util.Iterator<com.oracle.truffle.api.debug.DebugValue> iterator()
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
 hfds currentFrame,depth,event
 

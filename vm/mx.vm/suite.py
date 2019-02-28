@@ -37,7 +37,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "dd198f9c34e4e7bb5e1ed599b5d88eafb999b332",
+                "version": "ea48af25ccebf1af8ce752b8cc886204d27566a3",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -61,7 +61,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "6af23b2db13ba09242a46a7a7114a289a048abf5",
+                "version": "2358e9762f9b102d3539a2e673e653e470a1bbf3",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},

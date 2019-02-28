@@ -41,6 +41,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     - GraalTruffleRuntime.getQueuedCallTargets
     - PrimitiveValueProfile.exactCompare
     - BranchProfile.isVisited
+    - DebugStackFrame.iterator and DebugStackFrame.getValue
 * The [@Option](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html) annotation can now specify the [stability](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionStability.html) of an option.
 * Fixed the case of the method [`TruffleStackTrace.getStacktrace`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleStackTrace.html#getStacktrace-java.lang.Throwable-) to `TruffleStackTrace.getStackTrace`.
 
