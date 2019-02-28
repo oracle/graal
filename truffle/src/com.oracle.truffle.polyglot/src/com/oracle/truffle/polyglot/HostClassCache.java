@@ -46,19 +46,22 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.WeakHashMap;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 final class HostClassCache {
     private static final Map<HostAccess, HostClassCache> CACHES = new WeakHashMap<>();
+    private static AbstractPolyglotImpl.APIAccess ACCESS;
     private final HostAccess conf;
 
     private HostClassCache(HostAccess conf) {
         this.conf = conf;
     }
 
-    public static synchronized HostClassCache find(HostAccess conf) {
+    public static synchronized HostClassCache find(AbstractPolyglotImpl.APIAccess access, HostAccess conf) {
         assert conf != null;
         HostClassCache c = CACHES.get(conf);
         if (c == null) {
+            ACCESS = access;
             c = new HostClassCache(conf);
             CACHES.put(conf, c);
         }
@@ -78,16 +81,10 @@ final class HostClassCache {
     }
 
     boolean allowsAccess(Method m) {
-        if (conf == HostAccess.EXPLICIT) {
-            return m.getAnnotation(HostAccess.Export.class) != null;
-        }
-        return true;
+        return ACCESS.allowAccess(conf, m);
     }
 
     boolean allowsAccess(Field f) {
-        if (conf == HostAccess.EXPLICIT) {
-            return f.getAnnotation(HostAccess.Export.class) != null;
-        }
-        return true;
+        return ACCESS.allowAccess(conf, f);
     }
 }

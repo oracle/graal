@@ -60,6 +60,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
@@ -604,6 +605,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl) {
             return e.new StackFrame(impl);
+        }
+
+        @Override
+        public boolean allowAccess(HostAccess conf, AccessibleObject member) {
+            return conf.allowAccess(member);
         }
     }
 

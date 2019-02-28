@@ -48,6 +48,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.lang.reflect.AccessibleObject;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
@@ -141,6 +142,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
+        public abstract boolean allowAccess(HostAccess conf, AccessibleObject member);
     }
 
     // shared SPI

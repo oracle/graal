@@ -45,37 +45,53 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.util.HashSet;
 import java.util.Set;
 
 public final class HostAccess {
     private final Set<Class<? extends Annotation>> annotations;
+    private final Set<Member> members;
 
     /**
      * Configuration via {@link Export}. Default configuration if
      * {@link Context.Builder#allowAllAccess(boolean)} is false.
      */
-    public static final HostAccess EXPLICIT = new HostAccess(null);
+    public static final HostAccess EXPLICIT = new HostAccess(null, null);
 
     /**
      * All public access, but no reflection access.
      */
-    public static final HostAccess PUBLIC = new HostAccess(null);
+    public static final HostAccess PUBLIC = new HostAccess(null, null);
 
-    /**
-     * All public access + reflective access. Default if
-     * {@link Context.Builder#allowAllAccess(boolean)} is true.
-     */
-    public static final HostAccess ALL = new HostAccess(null);
-
-    HostAccess(Set<Class<? extends Annotation>> annotations) {
+    HostAccess(Set<Class<? extends Annotation>> annotations, Set<Member> members) {
         this.annotations = annotations;
+        this.members = members;
     }
 
     public static Builder newBuilder() {
         return EXPLICIT.new Builder();
+    }
+
+    boolean allowAccess(AccessibleObject member) {
+        if (this == HostAccess.EXPLICIT) {
+            return member.getAnnotation(HostAccess.Export.class) != null;
+        }
+        if (this == HostAccess.PUBLIC) {
+            return true;
+        }
+        if (members.contains((Member) member)) {
+            return true;
+        }
+        for (Class<? extends Annotation> ann : annotations) {
+            if (member.getAnnotation(ann) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -87,29 +103,29 @@ public final class HostAccess {
     }
 
     public final class Builder {
-        private Set<Class<? extends Annotation>> annotations;
+        private final Set<Class<? extends Annotation>> annotations = new HashSet<>();
+        private final Set<Member> members = new HashSet<>();
 
         Builder() {
         }
 
         public Builder allowAccessAnnotatedBy(Class<? extends Annotation> annotation) {
-            if (annotations == null) {
-                annotations = new HashSet<>();
-            }
             annotations.add(annotation);
             return this;
         }
 
         public Builder allowAccess(Executable element) {
+            members.add(element);
             return this;
         }
 
         public Builder allowAccess(Field element) {
+            members.add(element);
             return this;
         }
 
         public HostAccess build() {
-            return null;
+            return new HostAccess(annotations, members);
         }
     }
 }
