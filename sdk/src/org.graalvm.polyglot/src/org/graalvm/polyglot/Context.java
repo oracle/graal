@@ -1102,7 +1102,7 @@ public final class Context implements AutoCloseable {
             boolean hostClassLoading = orAllAccess(allowHostClassLoading);
             boolean experimentalOptions = orAllAccess(allowExperimentalOptions);
 
-            if (this.allowHostAccess != null ^ this.hostAccess != null) {
+            if (this.allowHostAccess != null && this.hostAccess != null) {
                 throw new IllegalArgumentException("The method allowHostAccess with boolean and with HostAccess are mutually exclusive.");
             }
 
@@ -1157,6 +1157,9 @@ public final class Context implements AutoCloseable {
                     engineBuilder.logHandler((OutputStream) customLogHandler);
                 }
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
+                if (hostAccess != null) {
+                    engineBuilder.setHostAccess(hostAccess);
+                }
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
                 return engine.impl.createContext(null, null, null, hostAccessEnabled, nativeAccess, createThread, io,

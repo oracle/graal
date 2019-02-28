@@ -54,18 +54,18 @@ public final class HostAccess {
      * Configuration via {@link Export}. Default configuration if
      * {@link Context.Builder#allowAllAccess(boolean)} is false.
      */
-    public static final HostAccess EXPLICIT = null;
+    public static final HostAccess EXPLICIT = new HostAccess();
 
     /**
      * All public access, but no reflection access.
      */
-    public static final HostAccess PUBLIC = null;
+    public static final HostAccess PUBLIC = new HostAccess();
 
     /**
      * All public access + reflective access. Default if
      * {@link Context.Builder#allowAllAccess(boolean)} is true.
      */
-    public static final HostAccess ALL = null;
+    public static final HostAccess ALL = new HostAccess();
 
     HostAccess() {
     }

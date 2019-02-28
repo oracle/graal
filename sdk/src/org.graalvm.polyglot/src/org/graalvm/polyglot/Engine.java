@@ -293,12 +293,18 @@ public final class Engine implements AutoCloseable {
         private boolean boundEngine;
         private MessageTransport messageTransport;
         private Object customLogHandler;
+        private HostAccess hostAccess = HostAccess.EXPLICIT;
 
         Builder() {
         }
 
         Builder setBoundEngine(boolean boundEngine) {
             this.boundEngine = boundEngine;
+            return this;
+        }
+
+        Builder setHostAccess(HostAccess hostAccess) {
+            this.hostAccess = hostAccess;
             return this;
         }
 
@@ -501,7 +507,7 @@ public final class Engine implements AutoCloseable {
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
                             false, 0, useSystemProperties, allowExperimentalOptions, boundEngine, messageTransport, customLogHandler,
-                            null
+                            hostAccess
             );
         }
 
