@@ -55,6 +55,8 @@ import org.graalvm.options.OptionValues;
 
 final class OptionValuesImpl implements OptionValues {
 
+    private static final boolean CHECK_EXPERIMENTAL_OPTIONS = Boolean.parseBoolean(System.getenv("GRAALVM_CHECK_EXPERIMENTAL_OPTIONS"));
+
     private static final float FUZZY_MATCH_THRESHOLD = 0.7F;
 
     // TODO is this too long? Make sure to update Engine#setUseSystemProperties javadoc.
@@ -183,14 +185,14 @@ final class OptionValuesImpl implements OptionValues {
         if (descriptor == null) {
             throw failNotFound(key);
         }
-        if (!allowExperimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
+        if (CHECK_EXPERIMENTAL_OPTIONS && !allowExperimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
             throw failExperimental(key);
         }
         return descriptor;
     }
 
     private static RuntimeException failExperimental(String key) {
-        final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions().%n", key) +
+        final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions(). ", key) +
                         "Do not use experimental options in production environments.";
         return new IllegalArgumentException(message);
     }

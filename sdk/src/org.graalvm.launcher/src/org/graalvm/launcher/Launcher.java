@@ -91,6 +91,8 @@ public abstract class Launcher {
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("org.graalvm.launcher.verbose");
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
+    private static final boolean CHECK_EXPERIMENTAL_OPTIONS = Boolean.parseBoolean(System.getenv("GRAALVM_CHECK_EXPERIMENTAL_OPTIONS"));
+
     private Engine tempEngine;
 
     public enum VMType {
@@ -690,7 +692,7 @@ public abstract class Launcher {
                 if (descriptor.isDeprecated()) {
                     System.err.println("Warning: Option '" + descriptor.getName() + "' is deprecated and might be removed from future versions.");
                 }
-                if (!allowExperimentalOptions() && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
+                if (CHECK_EXPERIMENTAL_OPTIONS && !allowExperimentalOptions() && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
                     throw abort(String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +
                                     "Do not use experimental options in production environments.", arg));
                 }
