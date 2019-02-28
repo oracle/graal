@@ -807,14 +807,17 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Sets the default value for all privileges. If not explicitly specified, then all access
+         * is <code>false</code>. If all access is enabled then certain privileges may still be
+         * disabled by configuring it explicitly using the builder (either before or after the call
+         * to allowAllAccess()).
+         * <p>
          * If <code>true</code>, grants the context the same access privileges as the host virtual
-         * machine. If not explicitly specified, then all access is <code>false</code>. If the host
-         * VM runs without a {@link SecurityManager security manager} enabled, then enabling all
-         * access gives the guest languages full control over the host process. Otherwise, Java
-         * {@link SecurityManager security manager} is in control of restricting the privileges of
-         * the polyglot context. If new privilege restrictions are added to the polyglot API, then
-         * they will default to full access. If all access is enabled then certain privileges may
-         * still be disabled by configuring it explicitly using the builder.
+         * machine. If the host VM runs without a {@link SecurityManager security manager} enabled,
+         * then enabling all access gives the guest languages full control over the host process.
+         * Otherwise, Java {@link SecurityManager security manager} is in control of restricting the
+         * privileges of the polyglot context. If new privilege restrictions are added to the
+         * polyglot API, then they will default to full access.
          * <p>
          * Grants full access to the following privileges by default:
          * <ul>
