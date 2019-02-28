@@ -80,6 +80,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -106,6 +107,7 @@ public abstract class Launcher {
     private boolean helpTools;
     private boolean helpLanguages;
     private boolean seenPolyglot;
+    private boolean experimentalOptions = false;
     private Path logFile;
 
     private VersionAction versionAction = VersionAction.None;
@@ -131,6 +133,10 @@ public abstract class Launcher {
 
     final void setPolyglot(boolean polyglot) {
         seenPolyglot = polyglot;
+    }
+
+    final boolean allowExperimentalOptions() {
+        return experimentalOptions;
     }
 
     final Path getLogFile() {
@@ -611,6 +617,13 @@ public abstract class Launcher {
             case "--polyglot":
                 seenPolyglot = true;
                 return true;
+            case "--experimental-options":
+            case "--experimental-options=true":
+                experimentalOptions = true;
+                return true;
+            case "--experimental-options=false":
+                experimentalOptions = false;
+                return true;
             default:
                 if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
                     if (isAOT()) {
@@ -676,6 +689,10 @@ public abstract class Launcher {
                 }
                 if (descriptor.isDeprecated()) {
                     System.err.println("Warning: Option '" + descriptor.getName() + "' is deprecated and might be removed from future versions.");
+                }
+                if (!allowExperimentalOptions() && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
+                    throw abort(String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +
+                                    "Do not use experimental options in production environments.", arg));
                 }
                 // use the full name of the found descriptor
                 options.put(descriptor.getName(), value);

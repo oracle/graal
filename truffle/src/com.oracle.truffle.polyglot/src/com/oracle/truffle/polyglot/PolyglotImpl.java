@@ -173,7 +173,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream) {
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
+                    Object logHandlerOrStream) {
         if (TruffleOptions.AOT) {
             VMAccessor.SPI.initializeNativeImageTruffleLocator();
         }
@@ -188,13 +189,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         PolyglotEngineImpl impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;
         if (impl != null) {
-            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, useSystemProperties, contextClassLoader, boundEngine, logHandler)) {
+            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, useSystemProperties, allowExperimentalOptions, contextClassLoader, boundEngine, logHandler)) {
                 impl.ensureClosed(false, true);
                 impl = null;
             }
         }
         if (impl == null) {
-            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, useSystemProperties, contextClassLoader, boundEngine, messageInterceptor, logHandler);
+            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, allowExperimentalOptions, useSystemProperties, contextClassLoader, boundEngine, messageInterceptor,
+                            logHandler);
         }
         Engine engine = getAPIAccess().newEngine(impl);
         impl.creatorApi = engine;

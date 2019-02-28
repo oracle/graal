@@ -706,6 +706,7 @@ public final class Context implements AutoCloseable {
         private boolean allowAllAccess;
         private Boolean allowIO;
         private Boolean allowHostClassLoading;
+        private Boolean allowExperimentalOptions;
         private FileSystem customFileSystem;
         private MessageTransport messageTransport;
         private Object customLogHandler;
@@ -810,7 +811,7 @@ public final class Context implements AutoCloseable {
          * Sets the default value for all privileges. If not explicitly specified, then all access
          * is <code>false</code>. If all access is enabled then certain privileges may still be
          * disabled by configuring it explicitly using the builder (either before or after the call
-         * to allowAllAccess()).
+         * to {@link #allowAllAccess(boolean) allowAllAccess()}).
          * <p>
          * If <code>true</code>, grants the context the same access privileges as the host virtual
          * machine. If the host VM runs without a {@link SecurityManager security manager} enabled,
@@ -828,6 +829,7 @@ public final class Context implements AutoCloseable {
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
          * bindings}.
          * <li>Unrestricted {@link #allowIO(boolean) IO operations} on host system.
+         * <li>Passing {@link #allowExperimentalOptions experimental options}.
          * </ul>
          *
          * @param enabled <code>true</code> for all access by default.
@@ -849,6 +851,19 @@ public final class Context implements AutoCloseable {
          */
         public Builder allowHostClassLoading(boolean enabled) {
             this.allowHostClassLoading = enabled;
+            return this;
+        }
+
+        /**
+         * Allow experimental options to be used for language options. Do not use experimental
+         * options in production environments. If set to {@code false} (the default), then passing
+         * an experimental option results in an {@link IllegalArgumentException} when the context is
+         * built.
+         *
+         * @since 1.0
+         */
+        public Builder allowExperimentalOptions(boolean enabled) {
+            this.allowExperimentalOptions = enabled;
             return this;
         }
 
@@ -1060,6 +1075,7 @@ public final class Context implements AutoCloseable {
             boolean createThread = orAllAccess(allowCreateThread);
             boolean io = orAllAccess(allowIO);
             boolean hostClassLoading = orAllAccess(allowHostClassLoading);
+            boolean experimentalOptions = orAllAccess(allowExperimentalOptions);
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }
@@ -1078,20 +1094,22 @@ public final class Context implements AutoCloseable {
                 if (messageTransport != null) {
                     engineBuilder.serverTransport(messageTransport);
                 }
+                engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
+
                 return engine.impl.createContext(null, null, null, hostAccess, nativeAccess, createThread, io,
-                                hostClassLoading, hostClassFilter,
-                                Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages,
-                                customFileSystem, customLogHandler);
+                                hostClassLoading, experimentalOptions,
+                                hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
+                                onlyLanguages, customFileSystem, customLogHandler);
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
                 }
                 return engine.impl.createContext(out, err, in, hostAccess, nativeAccess, createThread, io,
-                                hostClassLoading, hostClassFilter,
-                                options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages,
-                                customFileSystem, customLogHandler);
+                                hostClassLoading, experimentalOptions,
+                                hostClassFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
+                                onlyLanguages, customFileSystem, customLogHandler);
             }
         }
 

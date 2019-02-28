@@ -50,6 +50,7 @@ import java.util.Map;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
 
 final class OptionValuesImpl implements OptionValues {
@@ -127,14 +128,14 @@ final class OptionValuesImpl implements OptionValues {
         }
     }
 
-    public void putAll(Map<String, String> providedValues) {
+    public void putAll(Map<String, String> providedValues, boolean allowExperimentalOptions) {
         for (String key : providedValues.keySet()) {
-            put(key, providedValues.get(key));
+            put(key, providedValues.get(key), allowExperimentalOptions);
         }
     }
 
-    public void put(String key, String value) {
-        OptionDescriptor descriptor = findDescriptor(key);
+    public void put(String key, String value, boolean allowExperimentalOptions) {
+        OptionDescriptor descriptor = findDescriptor(key, allowExperimentalOptions);
         values.put(descriptor.getKey(), descriptor.getKey().getType().convert(value));
     }
 
@@ -177,12 +178,21 @@ final class OptionValuesImpl implements OptionValues {
         return !values.isEmpty();
     }
 
-    private OptionDescriptor findDescriptor(String key) {
+    private OptionDescriptor findDescriptor(String key, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = descriptors.get(key);
         if (descriptor == null) {
             throw failNotFound(key);
         }
+        if (!allowExperimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
+            throw failExperimental(key);
+        }
         return descriptor;
+    }
+
+    private static RuntimeException failExperimental(String key) {
+        final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions().%n", key) +
+                        "Do not use experimental options in production environments.";
+        return new IllegalArgumentException(message);
     }
 
     private RuntimeException failNotFound(String key) {

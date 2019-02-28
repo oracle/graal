@@ -288,6 +288,7 @@ public final class Engine implements AutoCloseable {
         private OutputStream err = System.err;
         private InputStream in = System.in;
         private Map<String, String> options = new HashMap<>();
+        private boolean allowExperimentalOptions = false;
         private boolean useSystemProperties = true;
         private boolean boundEngine;
         private MessageTransport messageTransport;
@@ -337,6 +338,19 @@ public final class Engine implements AutoCloseable {
         public Builder in(InputStream in) {
             Objects.requireNonNull(in);
             this.in = in;
+            return this;
+        }
+
+        /**
+         * Allow experimental options to be used for instruments and engine options. Do not use
+         * experimental options in production environments. If set to {@code false} (the default),
+         * then passing an experimental option results in an {@link IllegalArgumentException} when
+         * the context is built.
+         *
+         * @since 1.0
+         */
+        public Builder allowExperimentalOptions(boolean enabled) {
+            this.allowExperimentalOptions = enabled;
             return this;
         }
 
@@ -486,7 +500,7 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties, boundEngine, messageTransport, customLogHandler);
+                            false, 0, useSystemProperties, allowExperimentalOptions, boundEngine, messageTransport, customLogHandler);
         }
 
     }
@@ -668,7 +682,8 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream) {
+                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
+                        Object logHandlerOrStream) {
             throw noPolyglotImplementationFound();
         }
 
