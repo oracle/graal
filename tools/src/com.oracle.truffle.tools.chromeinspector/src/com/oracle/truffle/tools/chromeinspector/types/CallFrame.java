@@ -28,20 +28,24 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.SuspendAnchor;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.SourceSection;
 
 public final class CallFrame {
 
+    private final TruffleInstrument.Env env;
     private final DebugStackFrame frame;
     private final int depth;
     private final Location location;
     private final Location functionLocation;
+    private final String url;
     private final RemoteObject thisObject;
     private final RemoteObject returnObject;
     private final Scope[] scopes;
 
-    public CallFrame(DebugStackFrame frame, int depth, Script script, SourceSection sourceSection, SuspendAnchor anchor,
+    public CallFrame(TruffleInstrument.Env env, DebugStackFrame frame, int depth, Script script, SourceSection sourceSection, SuspendAnchor anchor,
                     SourceSection functionSourceSection, RemoteObject thisObject, RemoteObject returnObject, Scope... scopes) {
+        this.env = env;
         this.frame = frame;
         this.depth = depth;
         if (anchor == SuspendAnchor.BEFORE) {
@@ -54,6 +58,7 @@ public final class CallFrame {
         } else {
             this.functionLocation = null;
         }
+        this.url = script.getUrl();
         this.thisObject = thisObject;
         this.returnObject = returnObject;
         this.scopes = scopes;
@@ -85,9 +90,13 @@ public final class CallFrame {
         json.put("functionName", frame.getName());
         json.put("location", location.toJSON());
         json.putOpt("functionLocation", (functionLocation != null) ? functionLocation.toJSON() : null);
+        json.put("url", url);
         json.put("scopeChain", Scope.createScopesJSON(scopes));
         if (thisObject != null) {
             json.put("this", thisObject.toJSON());
+        } else {
+            RemoteObject nullObj = RemoteObject.createNullObject(env, frame.getLanguage());
+            json.put("this", nullObj.toJSON());
         }
         if (returnObject != null) {
             json.put("returnValue", returnObject.toJSON());

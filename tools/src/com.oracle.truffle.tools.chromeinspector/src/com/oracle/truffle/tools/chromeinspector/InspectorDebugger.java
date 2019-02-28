@@ -414,7 +414,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                 returnObj = context.getRemoteObjectsHandler().getRemote(returnValue);
             }
             SuspendAnchor anchor = (depthAll == 0) ? topAnchor : SuspendAnchor.BEFORE;
-            CallFrame cf = new CallFrame(frame, depth++, script, sourceSection, anchor, functionSourceSection,
+            CallFrame cf = new CallFrame(context.getEnv(), frame, depth++, script, sourceSection, anchor, functionSourceSection,
                             null, returnObj, scopes.toArray(new Scope[scopes.size()]));
             cfs.add(cf);
         }
