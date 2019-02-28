@@ -1943,7 +1943,14 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public TruffleFile getTruffleFile(String path) {
-            return new TruffleFile(fileSystem, fileSystem.parsePath(path));
+            checkDisposed();
+            try {
+                return new TruffleFile(fileSystem, fileSystem.parsePath(path));
+            } catch (UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystem);
+            }
         }
 
         /**
@@ -1960,6 +1967,8 @@ public abstract class TruffleLanguage<C> {
                 return new TruffleFile(fileSystem, fileSystem.parsePath(uri));
             } catch (UnsupportedOperationException e) {
                 throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystem);
             }
         }
 
@@ -1991,6 +2000,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public void setCurrentWorkingDirectory(TruffleFile currentWorkingDirectory) {
+            checkDisposed();
             Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
             if (!currentWorkingDirectory.isAbsolute()) {
                 throw new IllegalArgumentException("Current working directory must be absolute.");
@@ -1998,7 +2008,29 @@ public abstract class TruffleLanguage<C> {
             if (!currentWorkingDirectory.isDirectory()) {
                 throw new IllegalArgumentException("Current working directory must be directory.");
             }
-            fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+            try {
+                fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+            } catch (UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystem);
+            }
+        }
+
+        /**
+         * Returns the name separator used to separate names in {@link TruffleFile}'s path string.
+         *
+         * @return the name separator
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public String getTruffleFileSeparator() {
+            checkDisposed();
+            try {
+                return fileSystem.getSeparator();
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystem);
+            }
         }
 
         /**

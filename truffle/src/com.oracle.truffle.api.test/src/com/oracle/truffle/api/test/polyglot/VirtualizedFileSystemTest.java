@@ -1290,6 +1290,15 @@ public class VirtualizedFileSystemTest {
         ctx.eval(LANGAUGE_ID, "");
     }
 
+    @Test
+    public void testGetSeparator() {
+        final Context ctx = cfg.getContext();
+        languageAction = (Env env) -> {
+            Assert.assertEquals(cfg.fileSystem.getSeparator(), env.getTruffleFileSeparator());
+        };
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
     public static final class Configuration implements Closeable {
         private final String name;
         private final Context ctx;

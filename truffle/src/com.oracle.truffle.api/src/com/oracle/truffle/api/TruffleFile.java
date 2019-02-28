@@ -1475,7 +1475,11 @@ public final class TruffleFile {
     }
 
     private <T extends Throwable> RuntimeException wrapHostException(T t) {
-        if (TruffleLanguage.AccessAPI.engineAccess().isDefaultFileSystem(fileSystem)) {
+        throw wrapHostException(t, fileSystem);
+    }
+
+    static <T extends Throwable> RuntimeException wrapHostException(T t, FileSystem fs) {
+        if (TruffleLanguage.AccessAPI.engineAccess().isDefaultFileSystem(fs)) {
             throw sthrow(t);
         }
         throw TruffleLanguage.AccessAPI.engineAccess().wrapHostException(TruffleLanguage.AccessAPI.engineAccess().getCurrentHostContext(), t);
