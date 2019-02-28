@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,14 +78,20 @@ public class NFILanguage extends TruffleLanguage<Context> {
         CharSequence nfiSource = request.getSource().getCharacters();
         NativeSource source = Parser.parseNFISource(nfiSource);
 
+        String mimeType;
         String backendId;
         if (source.isDefaultBackend()) {
-            backendId = "native";
+            mimeType = "trufflenfi/native";
+            backendId = "nfi/native";
         } else {
-            backendId = source.getNFIBackendId();
+            mimeType = "trufflenfi/" + source.getNFIBackendId();
+            backendId = Source.findLanguage(mimeType);
+            if (backendId == null) {
+                backendId = source.getNFIBackendId();
+            }
         }
 
-        Source backendSource = Source.newBuilder(backendId, source.getLibraryDescriptor(), "<nfi-impl>").build();
+        Source backendSource = Source.newBuilder(backendId, source.getLibraryDescriptor(), "<nfi-impl>").mimeType(mimeType).build();
         return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, backendSource, source));
     }
 
