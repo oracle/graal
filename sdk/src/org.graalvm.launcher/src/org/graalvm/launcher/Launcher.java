@@ -1050,12 +1050,11 @@ public abstract class Launcher {
                     iterator.remove();
                 } else if (arg.startsWith("--vm.") && arg.length() > "--vm.".length()) {
                     if (arg.equals("--vm.help")) {
-                        if (vmType == VMType.JVM) {
+                        VMType helpType = vmType != null ? vmType : defaultVmType;
+                        if (helpType == VMType.JVM) {
                             printJvmHelp();
-                        } else if (vmType == VMType.Native) {
-                            printNativeHelp();
                         } else {
-                            printJvmHelp();
+                            assert helpType == VMType.Native;
                             printNativeHelp();
                         }
                         throw exit();
