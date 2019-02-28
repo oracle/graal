@@ -280,6 +280,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
 
+    private String simpleName = null;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     Target_java_lang_ClassLoader classLoader) {
@@ -598,13 +600,21 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @KeepOriginal
-    private native String getSimpleName();
+    @TargetElement(name="getSimpleName", onlyWith = JDK8OrEarlier.class)
+    private native String getSimpleNameJDK8OrEarlier();
 
-    @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    private String getSimpleName0() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getSimpleName0()");
+    @Substitute
+    @TargetElement(name="getSimpleName", onlyWith = JDK9OrLater.class)
+    private String getSimpleNameJDK9OrLater() {
+        if (simpleName == null) {
+            simpleName = getSimpleName0();
+        }
+        return simpleName;
     }
+
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private native String getSimpleName0();
 
     @KeepOriginal
     private native String getCanonicalName();
@@ -641,8 +651,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native boolean isMemberClass();
 
     @Substitute
+    @TargetElement(name="isLocalOrAnonymousClass", onlyWith = JDK8OrEarlier.class)
     private boolean isLocalOrAnonymousClass() {
         return isLocalClass() || isAnonymousClass();
+    }
+
+    @Substitute
+    @TargetElement(name="isLocalOrAnonymousClass", onlyWith = JDK9OrLater.class)
+    private boolean isLocalOrAnonymousClassJDK9OrLater() {
+        return getEnclosingMethod0()!= null;
     }
 
     @Substitute
@@ -1150,8 +1167,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     private boolean isTopLevelClass() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.isTopLevelClass()");
+        return isLocalOrAnonymousClassJDK9OrLater() && getDeclaringClass() == null;
     }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private native Object[] getEnclosingMethod0();
 
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
