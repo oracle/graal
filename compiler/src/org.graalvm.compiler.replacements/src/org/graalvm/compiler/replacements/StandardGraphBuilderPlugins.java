@@ -1152,7 +1152,8 @@ public class StandardGraphBuilderPlugins {
                     post.setLeading(pre);
                 }
             } else {
-                createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));}
+                createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
+            }
             return true;
         }
     }
