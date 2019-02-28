@@ -73,11 +73,21 @@ public final class RuntimeOptions {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).get(optionName);
     }
 
+    /**
+     * Classes of options that can be queried through {@link #getOptions(EnumSet)}.
+     *
+     * @since 1.0
+     */
     public enum OptionClass {
         VM,
         Compiler
     }
 
+    /**
+     * Returns available run time options for the selected {@linkplain OptionClass option classes}.
+     *
+     * @since 1.0
+     */
     public static OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions(classes);
     }
