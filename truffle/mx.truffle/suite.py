@@ -556,7 +556,15 @@ suite = {
             "ignore" : "windows is not supported",  # necessary until Truffle is fully supported (GR-7941)
           },
         },
+        "solaris" : {
+          "<others>" : {
+            "ignore" : "temporarily disabled",  # necessary until GR-13214 is resolved
+          },
+        },
         "<others>" : {
+          "aarch64" : {
+            "ignore" : "temporarily disabled",  # necessary until GR-13214 is resolved
+          },
           "<others>" : {
             "ignore" : False,
           },
