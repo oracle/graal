@@ -289,6 +289,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             for _launcher_config in _get_launcher_configs(_component):
                 _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
                 _launcher_dest = _component_base + _launcher_config.destination
+                if stage1 and mx.get_os() == 'windows':
+                    _launcher_dest += '.cmd'
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
                 if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and GraalVmNativeImage.is_svm_debug_supported():
@@ -456,7 +458,7 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
 
     def _add_link(self):
         if mx.get_os() == 'windows':
-            mx.log('Skip adding symlink ' + self._root_link_path + ' (Windows)')
+            mx.warn('Skip adding symlink ' + self._root_link_path + ' (Platform Windows)')
             return
         self._rm_link()
         os.symlink(self._root_link_target(), self._root_link_path)
@@ -830,7 +832,15 @@ class GraalVmLauncher(GraalVmNativeImage):
         return GraalVmLauncher.is_launcher_native(self.native_image_config, self.stage1)
 
     def output_file(self):
-        return join(self.get_output_base(), self.name, self.native_image_name)
+        if mx.get_os() == 'windows':
+            if self.is_native():
+                suffix = '.exe'
+            else:
+                suffix = '.cmd'
+        else:
+            suffix = ''
+
+        return join(self.get_output_base(), self.name, self.native_image_name + suffix)
 
     def get_containing_graalvm(self):
         if self.stage1:
@@ -964,7 +974,8 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
 
     @staticmethod
     def _template_file():
-        return join(_suite.mxDir, 'launcher_template.sh')
+        ext = 'cmd' if mx.get_os() == 'windows' else 'sh'
+        return join(_suite.mxDir, 'launcher_template.' + ext)
 
     def native_image_needs_build(self, out_file):
         sup = super(GraalVmBashLauncherBuildTask, self).native_image_needs_build(out_file)
@@ -1068,7 +1079,7 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
         if not with_boot_jars and (graalvm_location.startswith(boot_jars_directory) or _cp_entry.isJreLibrary()):
             continue
         _cp.add(relpath(graalvm_location, start))
-    return ":".join(_cp)
+    return os.pathsep.join(_cp)
 
 
 class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
@@ -1335,6 +1346,7 @@ _final_graalvm_distribution = 'uninitialized'
 _stage1_graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _polyglot_launcher_project = 'uninitialized'
+_truffle_on_cp_layout_dest = '<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath'
 _base_graalvm_layout = {
     "<jdk_base>/": [
         "file:GRAALVM-README.md",
@@ -1348,8 +1360,8 @@ _base_graalvm_layout = {
         "dependency:sdk:LAUNCHER_COMMON",
         "dependency:sdk:LAUNCHER_COMMON/*.src.zip",
     ],
-    "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
-        "string:../truffle/truffle-api.jar:../truffle/locator.jar",
+    _truffle_on_cp_layout_dest: [
+        "classpath:../truffle/truffle-api.jar:../truffle/locator.jar",
     ],
     "<jdk_base>/jre/lib/truffle/": [
         "dependency:truffle:TRUFFLE_API",
@@ -1363,6 +1375,8 @@ _base_graalvm_layout = {
     ],
 }
 
+if mx.get_os() == 'windows':
+    del _base_graalvm_layout[_truffle_on_cp_layout_dest]
 
 def get_stage1_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
