@@ -58,13 +58,11 @@ import org.graalvm.options.OptionDescriptors;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, version = "6.0.0", internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE}, //
-                characterMimeTypes = {LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE, LLVMLanguage.LLVM_SULONG_TYPE}, fileTypeDetectors = LLVMFileDetector.class)
+                characterMimeTypes = {LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE}, fileTypeDetectors = LLVMFileDetector.class)
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final Assumption SINGLE_CONTEXT_ASSUMPTION = Truffle.getRuntime().createAssumption("Single Context");
-
-    public static final String LLVM_SULONG_TYPE = "application/x-sulong";
 
     public static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
     public static final String LLVM_BITCODE_EXTENSION = "bc";
