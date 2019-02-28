@@ -71,7 +71,8 @@ import com.oracle.truffle.api.nodes.Node;
  * {@link #fillIn(Throwable)}, unless it can be guaranteed to be re-thrown in the same
  * {@link CallTarget call target}, or that the stack trace will not be used.
  *
- * @see #getStackTrace() getStackTrace() to retrieve the stacktrace from a {@link Throwable}.
+ * @see #getStackTrace(Throwable) getStackTrace(Throwable) to retrieve the guest language stack
+ *      trace from a {@link Throwable}.
  * @since 1.0
  */
 @SuppressWarnings("serial")
