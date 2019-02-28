@@ -47,8 +47,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import org.junit.Test;
 
 
@@ -65,7 +68,12 @@ public class ExposeToGuestTest {
                 + "}\n"
         );
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
-        Assert.assertTrue("Public isn't enough by default", readValue.execute(new PublicValue()).isNull());
+        try {
+            readValue.execute(new PublicValue()).isNull();
+            fail("PublicValue isn't enough by default");
+        } catch (PolyglotException ex) {
+            assertEquals("Undefined property: value", ex.getMessage());
+        }
     }
 
     public static class PublicValue {

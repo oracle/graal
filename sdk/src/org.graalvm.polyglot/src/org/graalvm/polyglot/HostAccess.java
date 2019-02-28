@@ -47,31 +47,35 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class HostAccess {
+    private final Set<Class<? extends Annotation>> annotations;
 
     /**
      * Configuration via {@link Export}. Default configuration if
      * {@link Context.Builder#allowAllAccess(boolean)} is false.
      */
-    public static final HostAccess EXPLICIT = new HostAccess();
+    public static final HostAccess EXPLICIT = new HostAccess(null);
 
     /**
      * All public access, but no reflection access.
      */
-    public static final HostAccess PUBLIC = new HostAccess();
+    public static final HostAccess PUBLIC = new HostAccess(null);
 
     /**
      * All public access + reflective access. Default if
      * {@link Context.Builder#allowAllAccess(boolean)} is true.
      */
-    public static final HostAccess ALL = new HostAccess();
+    public static final HostAccess ALL = new HostAccess(null);
 
-    HostAccess() {
+    HostAccess(Set<Class<? extends Annotation>> annotations) {
+        this.annotations = annotations;
     }
 
     public static Builder newBuilder() {
-        return null;
+        return EXPLICIT.new Builder();
     }
 
     /**
@@ -83,12 +87,16 @@ public final class HostAccess {
     }
 
     public final class Builder {
+        private Set<Class<? extends Annotation>> annotations;
 
-        private Builder() {
+        Builder() {
         }
 
         public Builder allowAccessAnnotatedBy(Class<? extends Annotation> annotation) {
-            // fail if it is used for types which we don't support?
+            if (annotations == null) {
+                annotations = new HashSet<>();
+            }
+            annotations.add(annotation);
             return this;
         }
 

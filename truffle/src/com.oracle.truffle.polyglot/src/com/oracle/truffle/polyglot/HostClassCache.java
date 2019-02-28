@@ -41,6 +41,8 @@
 package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.WeakHashMap;
 import org.graalvm.polyglot.HostAccess;
@@ -66,12 +68,26 @@ final class HostClassCache {
     private final ClassValue<HostClassDesc> CACHED_DESCS = new ClassValue<HostClassDesc>() {
         @Override
         protected HostClassDesc computeValue(Class<?> type) {
-            return new HostClassDesc(type);
+            return new HostClassDesc(HostClassCache.this, type);
         }
     };
 
     @TruffleBoundary
     HostClassDesc forClass(Class<?> clazz) {
         return CACHED_DESCS.get(clazz);
+    }
+
+    boolean allowsAccess(Method m) {
+        if (conf == HostAccess.EXPLICIT) {
+            return m.getAnnotation(HostAccess.Export.class) != null;
+        }
+        return true;
+    }
+
+    boolean allowsAccess(Field f) {
+        if (conf == HostAccess.EXPLICIT) {
+            return f.getAnnotation(HostAccess.Export.class) != null;
+        }
+        return true;
     }
 }
