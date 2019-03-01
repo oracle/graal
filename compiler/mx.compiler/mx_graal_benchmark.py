@@ -102,6 +102,7 @@ mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args):
+        super(JvmciJdkVm, self).__init__()
         self.raw_name = raw_name
         self.raw_config_name = raw_config_name
         self.extra_args = extra_args
