@@ -38,6 +38,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
+import org.graalvm.polyglot.HostAccess;
 
 public class ValueToHostClassCastExceptionDeoptTest {
     private static TruffleRuntimeOptionsOverrideScope backgroundCompilationScope;
@@ -79,7 +80,7 @@ public class ValueToHostClassCastExceptionDeoptTest {
         final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
         final CompilationCountingListener listener = new CompilationCountingListener();
         runtime.addListener(listener);
-        final Value toString = Context.create().asValue(String.class).getMember("toString");
+        final Value toString = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build().asValue(String.class).getMember("toString");
         for (int i = 0; i < 10; i++) {
             try {
                 toString.asNativePointer();
