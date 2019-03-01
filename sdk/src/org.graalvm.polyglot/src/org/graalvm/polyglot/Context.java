@@ -799,10 +799,11 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Configures host access. Does
+         * Configures host access. Use {@link HostAccess#EXPLICIT} or {@link HostAccess#PUBLIC}.
          *
-         * @param config
-         * @return
+         * @param config configuration of host access
+         * @return {@code this} builder
+         * @since 1.0 RC14
          */
         public Builder allowHostAccess(HostAccess config) {
             this.hostAccess = config;
@@ -849,7 +850,8 @@ public final class Context implements AutoCloseable {
          * Grants full access to the following privileges by default:
          * <ul>
          * <li>The {@link #allowCreateThread(boolean) creation} and use of new threads.
-         * <li>The access to public {@link #allowHostAccess(boolean) host classes}.
+         * <li>The access to public {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host
+         * classes}.
          * <li>The loading of new {@link #allowHostClassLoading(boolean) host classes} by adding
          * entries to the class path.
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
@@ -871,7 +873,8 @@ public final class Context implements AutoCloseable {
          * classes via jar or class files. If {@link #allowAllAccess(boolean) all access} is set to
          * <code>true</code>, then the host class loading is enabled if it is not disallowed
          * explicitly. For host class loading to be useful, {@link #allowIO(boolean) IO} operations
-         * and {@link #allowHostAccess(boolean) host access} need to be allowed as well.
+         * and {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access} need to be
+         * allowed as well.
          *
          * @since 1.0
          */
@@ -897,8 +900,8 @@ public final class Context implements AutoCloseable {
          * Sets a class filter that allows to limit the classes that are allowed to be loaded by
          * guest languages. If the filter returns <code>true</code>, then the class is accessible,
          * otherwise it is not accessible and throws a guest language error when accessed. In order
-         * to have an effect, {@link #allowHostAccess(boolean)} or {@link #allowAllAccess(boolean)}
-         * needs to be set to <code>true</code>.
+         * to have an effect, {@link #allowHostAccess(org.graalvm.polyglot.HostAccess)} or
+         * {@link #allowAllAccess(boolean)} needs to be set to <code>true</code>.
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
          *            java qualified class name.
