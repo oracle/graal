@@ -357,7 +357,7 @@ public class AMD64ControlFlow {
                 masm.jcc(ConditionFlag.NotEqual, defaultTarget.label());
 
                 // Shift to the second DWORD
-                masm.shrq(entryScratchReg, 32);
+                masm.sarq(entryScratchReg, 32);
             } else {
 
                 // The jump table has a single DWORD with the label address if there's no
