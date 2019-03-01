@@ -1,15 +1,13 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.Comparator;
 
-public class ResourceConfiguration {
-    private final Set<String> resources = new HashSet<>();
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
+
+public class ResourceConfiguration implements JsonPrintable {
+    private final MatchSet<String> resources = MatchSet.create(Comparator.naturalOrder(), (String s, JsonWriter w) -> w.append('{').quote("pattern").append(':').quote(s).append('}'));
 
     public void add(String resource) {
         resources.add(resource);
@@ -19,12 +17,10 @@ public class ResourceConfiguration {
         add(resource);
     }
 
-    public void write(Writer writer) throws IOException {
-        List<String> sorted = new ArrayList<>(resources);
-        Collections.sort(sorted);
-
-        for (String resource : sorted) {
-            writer.append("-H:IncludeResources=").append(resource).append('\n');
-        }
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.append('{').indent().newline();
+        writer.quote("resources").append(':');
+        resources.printJson(writer);
+        writer.unindent().newline().append('}').newline();
     }
 }

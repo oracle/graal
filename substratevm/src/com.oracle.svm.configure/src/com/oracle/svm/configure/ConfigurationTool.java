@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,6 +79,13 @@ public class ConfigurationTool {
         }
     }
 
+    private static String require(String argKey, String value) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new UsageException("Argument must be provided for: " + argKey);
+        }
+        return value;
+    }
+
     private static void processTrace(Iterator<String> argsIter) throws IOException {
         List<Path> traceInputPaths = new ArrayList<>();
         boolean filter = true;
@@ -89,24 +95,32 @@ public class ConfigurationTool {
         Path resourcesOutputPath = null;
 
         while (argsIter.hasNext()) {
-            String current = argsIter.next();
+            String[] parts = argsIter.next().split("=", 2);
+            String current = parts[0];
+            String value = (parts.length > 1) ? parts[1] : null;
             switch (current) {
                 case "--reflect-output":
-                    reflectOutputPath = Paths.get(argsIter.next());
+                    reflectOutputPath = Paths.get(require(current, value));
                     break;
                 case "--jni-output":
-                    jniOutputPath = Paths.get(argsIter.next());
+                    jniOutputPath = Paths.get(require(current, value));
                     break;
                 case "--proxy-output":
-                    proxyOutputPath = Paths.get(argsIter.next());
+                    proxyOutputPath = Paths.get(require(current, value));
                     break;
-                case "--resources-output":
-                    resourcesOutputPath = Paths.get(argsIter.next());
+                case "--resource-output":
+                    resourcesOutputPath = Paths.get(require(current, value));
                     break;
                 case "--no-filter":
                     filter = false;
                     break;
+                case "--":
+                    argsIter.forEachRemaining(arg -> traceInputPaths.add(Paths.get(arg)));
+                    break;
                 default:
+                    if (current.startsWith("-")) {
+                        throw new UsageException("Unknown argument: " + current);
+                    }
                     traceInputPaths.add(Paths.get(current));
                     break;
             }
@@ -138,8 +152,8 @@ public class ConfigurationTool {
             }
         }
         if (resourcesOutputPath != null) {
-            try (Writer writer = Files.newBufferedWriter(resourcesOutputPath, StandardCharsets.UTF_8)) {
-                p.getResourceConfiguration().write(writer);
+            try (JsonWriter writer = new JsonWriter(resourcesOutputPath)) {
+                p.getResourceConfiguration().printJson(writer);
             }
         }
     }

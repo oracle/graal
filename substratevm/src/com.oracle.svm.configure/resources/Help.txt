@@ -8,23 +8,25 @@ Usage: native-image-configure process-trace [options] tracefile...
        native-image-configure help
 
 process-trace             processes trace file(s) from the agent.
-    --reflect-output <path>
+    --reflect-output=<path>
                           write a reflection configuration file with the given
                           path. This file can be later provided to native-image
                           with -H:ReflectionConfigurationFiles=<path>.
-    --jni-output <path>
+    --jni-output=<path>
                           write a JNI configuration file with the given path.
                           This file can be later provided to native-image with
                           -H:JNIConfigurationFiles=<path>.
-    --proxy-output <path>
+    --proxy-output=<path>
                           write a dynamic proxy configuration file at the given
                           path. This file can be later provided to native-image
                           with -H:DynamicProxyConfigurationFiles=<path>.
-    --resources-output <path>
-                          write a file with used resources (getResource) to the
-                          given path. Each line is an option to native-image
-                          for including a specific resource. The paths might
-                          need to be adjusted to the build directory structure.
+    --resource-output=<path>
+                          write a configuration file containing used resources
+                          (getResource) with the given path. This file can be
+                          later provided to native-image with
+                          -H:ResourceConfigurationFiles=<path>.
+                          The paths in the configuration file might need to be
+                          adjusted for the build directories/classpath.
     --no-filter
                           usage of JNI, reflection and resources in internal
                           classes does not have to be configured for builds
