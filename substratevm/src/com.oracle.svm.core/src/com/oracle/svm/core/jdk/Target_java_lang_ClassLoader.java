@@ -34,6 +34,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -49,6 +50,10 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute //
     private Target_java_lang_ClassLoader parent;
+
+    @Substitute
+    private final ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages
+            = new ConcurrentHashMap<>();
 
     @Substitute
     public Target_java_lang_ClassLoader() {
@@ -197,6 +202,20 @@ public final class Target_java_lang_ClassLoader {
     public Package getDefinedPackage(String name) {
         throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getDefinedPackage(String name)");
     }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    public native Package definePackage(Class<?> clazz);
+
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @SuppressWarnings({"unused"})
+    public native Package definePackage(String name, Module module);
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    private native Package toPackage(String name, Target_java_lang_NamedPackage p, Module m);
+
 }
 
 @TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK9OrLater.class) //
