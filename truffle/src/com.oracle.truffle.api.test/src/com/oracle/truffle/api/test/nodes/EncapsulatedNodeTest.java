@@ -54,6 +54,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -214,8 +215,8 @@ public class EncapsulatedNodeTest {
     @TruffleBoundary
     private static Object captureStack() {
         Exception e = new Exception();
-        TruffleStackTraceElement.fillIn(e);
-        return TruffleStackTraceElement.getStackTrace(e);
+        TruffleStackTrace.fillIn(e);
+        return TruffleStackTrace.getStackTrace(e);
     }
 
     @TruffleBoundary
