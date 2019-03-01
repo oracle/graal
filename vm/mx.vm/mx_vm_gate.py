@@ -101,7 +101,12 @@ def gate_body(args, tasks):
 
             with Task('Test LibGraal', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
-                    mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false"])
+                    def _unittest_config_participant(config):
+                        vmArgs, mainClass, mainClassArgs = config
+                        newVmArgs = [arg for arg in vmArgs if arg != "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime"]
+                        return (newVmArgs, mainClass, mainClassArgs)
+                    mx_unittest.add_config_participant(_unittest_config_participant)
+                    mx_unittest.unittest(extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false", "truffle"])
 
             with Task('LibGraal GraalVM smoke test', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
