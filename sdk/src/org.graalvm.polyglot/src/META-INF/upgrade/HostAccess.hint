@@ -1,0 +1,17 @@
+<!suppress-warnings="sourcebuilder">
+
+'Use HostAccess':
+$cb.allowHostAccess(true) :: $cb instanceof org.graalvm.polyglot.Context.Builder
+=>
+'Use HostAccess.PUBLIC':
+$cb.allowHostAccess(org.graalvm.polyglot.HostAccess.PUBLIC)
+   .hostClassFilter((s) -> true)
+;;
+
+'Use HostAccess':
+$cb.allowHostAccess(false) :: $cb instanceof org.graalvm.polyglot.Context.Builder
+=>
+'Unset HostAccess':
+$cb.allowHostAccess(null)
+;;
+

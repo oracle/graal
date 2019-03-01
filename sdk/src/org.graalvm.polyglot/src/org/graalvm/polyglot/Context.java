@@ -1131,7 +1131,7 @@ public final class Context implements AutoCloseable {
                 }
             }
             // TODO change and implement usage of hostAccess instead of hostAccessEnabled.
-            boolean hostAccessEnabled = orAllAccess(allowHostAccess);
+            boolean hostAccessEnabled = orAllAccess(allowHostAccess) || this.hostAccess != null;
 
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");

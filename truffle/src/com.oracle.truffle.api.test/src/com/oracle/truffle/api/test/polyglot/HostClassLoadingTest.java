@@ -76,6 +76,9 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import java.io.OutputStream;
+import java.nio.file.StandardOpenOption;
+import org.graalvm.polyglot.HostAccess;
 
 public class HostClassLoadingTest extends AbstractPolyglotTest {
 
@@ -112,7 +115,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
 
         // test with only host access rights
-        setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(true).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(HostAccess.PUBLIC).hostClassFilter((String s) -> true).build());
         file = languageEnv.getTruffleFile(tempDir.toString());
         try {
             languageEnv.addToHostClassPath(file);
@@ -142,7 +145,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             assertFalse(((TruffleException) e).isInternalError());
         }
 
-        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(true).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(HostAccess.PUBLIC).hostClassFilter((String s) -> true).build());
         file = languageEnv.getTruffleFile(tempDir.toString());
         // we should fail early
         languageEnv.addToHostClassPath(file);
