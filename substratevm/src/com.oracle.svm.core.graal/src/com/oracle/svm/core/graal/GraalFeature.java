@@ -41,8 +41,6 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 public interface GraalFeature extends Feature {
 
     /**
@@ -60,7 +58,7 @@ public interface GraalFeature extends Feature {
 
     /**
      * Called to register Graal invocation plugins.
-     * 
+     *
      * @param providers Providers that the lowering can use.
      * @param snippetReflection Snippet reflection providers.
      * @param invocationPlugins The invocation plugins to add to.
@@ -73,12 +71,12 @@ public interface GraalFeature extends Feature {
     /**
      * Called to register Graal node plugins.
      *
-     * @param metaAccess MetaAccessProvider that the node plugins can use.
+     * @param providers Providers that the node plugins can use.
      * @param plugins The Plugins object where node plugins can be added to.
      * @param analysis true if registering for analysis, false if registering for compilation
      * @param hosted true if registering for ahead-of-time compilation, false if registering for
      */
-    default void registerNodePlugins(MetaAccessProvider metaAccess, Plugins plugins, boolean analysis, boolean hosted) {
+    default void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
     }
 
     /**

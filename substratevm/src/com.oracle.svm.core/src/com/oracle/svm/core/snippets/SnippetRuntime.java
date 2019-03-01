@@ -71,14 +71,6 @@ public class SnippetRuntime {
     /* Implementation of runtime calls defined in a VM-independent way by Graal. */
     public static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true);
 
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatal", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_OBJ = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalObj", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_OBJ_OBJ = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalObjObj", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_INT = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalInt", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_LONG = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalLong", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_FLOAT = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalFloat", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_DOUBLE = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalDouble", true);
-
     /*
      * Graal-defined math functions where we have optimized machine code sequences: We just register
      * the original Math function as the foreign call. The backend will emit the machine code
@@ -291,68 +283,5 @@ public class SnippetRuntime {
     @SubstrateForeignCallTarget
     private static void registerFinalizer(@SuppressWarnings("unused") Object obj) {
         // We do not support finalizers, so nothing to do.
-    }
-
-    private static String assertionErrorName() {
-        return AssertionError.class.getName();
-    }
-
-    private static Log runtimeAssertionPrefix() {
-        return Log.log().string(assertionErrorName()).string(": ");
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatal(@SuppressWarnings("unused") Object obj) {
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_OBJ}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalObj(@SuppressWarnings("unused") Object obj, Object detailMessage) {
-        if (detailMessage instanceof String) {
-            runtimeAssertionPrefix().string((String) detailMessage).newline();
-        } else {
-            /*
-             * We do not want to convert detailMessage to a string, since that requires allocation.
-             */
-            runtimeAssertionPrefix().string(detailMessage.getClass().getName()).newline();
-        }
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_OBJ_OBJ}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalObjObj(@SuppressWarnings("unused") Object obj, String detailMessage, @SuppressWarnings("unused") Throwable cause) {
-        runtimeAssertionPrefix().string(detailMessage).newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_INT}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalInt(@SuppressWarnings("unused") Object obj, int val) {
-        runtimeAssertionPrefix().signed(val).newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_LONG}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalLong(@SuppressWarnings("unused") Object obj, long val) {
-        runtimeAssertionPrefix().signed(val).newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_FLOAT}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalFloat(@SuppressWarnings("unused") Object obj, @SuppressWarnings("unused") float val) {
-        runtimeAssertionPrefix().string("[float number supressed]").newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_DOUBLE}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalDouble(@SuppressWarnings("unused") Object obj, @SuppressWarnings("unused") double val) {
-        runtimeAssertionPrefix().string("[double number supressed]").newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
     }
 }
