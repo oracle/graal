@@ -149,7 +149,7 @@ if svm_java80():
 else:
     GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['11']
 
-IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
+IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 clibraryDists = ['SVM_HOSTED_NATIVE']
