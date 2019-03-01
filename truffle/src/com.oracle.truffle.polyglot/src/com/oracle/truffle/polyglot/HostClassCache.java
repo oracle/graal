@@ -41,31 +41,33 @@
 package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 final class HostClassCache {
-    private static final Map<HostAccess, HostClassCache> CACHES = new WeakHashMap<>();
-    private static AbstractPolyglotImpl.APIAccess ACCESS;
     private final HostAccess conf;
+    private final BiFunction<HostAccess, AccessibleObject, Boolean> access;
 
-    private HostClassCache(HostAccess conf) {
+    private HostClassCache(BiFunction<HostAccess, AccessibleObject, Boolean> access, HostAccess conf) {
+        this.access = access;
         this.conf = conf;
     }
 
-    public static synchronized HostClassCache find(AbstractPolyglotImpl.APIAccess access, HostAccess conf) {
-        assert conf != null;
-        HostClassCache c = CACHES.get(conf);
-        if (c == null) {
-            ACCESS = access;
-            c = new HostClassCache(conf);
-            CACHES.put(conf, c);
-        }
-        return c;
+    public static HostClassCache find(AbstractPolyglotImpl.APIAccess access, HostAccess conf) {
+        Function<BiFunction<HostAccess, AccessibleObject, Boolean>, HostClassCache> factory = new Function<BiFunction<HostAccess, AccessibleObject, Boolean>, HostClassCache>() {
+            @Override
+            public HostClassCache apply(BiFunction<HostAccess, AccessibleObject, Boolean> access) {
+                return new HostClassCache(access, conf);
+            }
+        };
+        return access.connectHostAccess(HostClassCache.class, conf, factory);
     }
 
     private final ClassValue<HostClassDesc> descs = new ClassValue<HostClassDesc>() {
@@ -81,10 +83,10 @@ final class HostClassCache {
     }
 
     boolean allowsAccess(Method m) {
-        return ACCESS.allowAccess(conf, m);
+        return access.apply(conf, m);
     }
 
     boolean allowsAccess(Field f) {
-        return ACCESS.allowAccess(conf, f);
+        return access.apply(conf, f);
     }
 }

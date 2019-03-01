@@ -76,7 +76,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -607,8 +609,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public boolean allowAccess(HostAccess conf, AccessibleObject member) {
-            return conf.allowAccess(member);
+        public <T> T connectHostAccess(Class<T> impl, HostAccess conf, Function<BiFunction<HostAccess, AccessibleObject, Boolean>, T> factory) {
+            return conf.connectHostAccess(impl, factory);
         }
     }
 

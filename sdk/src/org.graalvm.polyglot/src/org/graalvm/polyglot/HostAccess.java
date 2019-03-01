@@ -51,10 +51,20 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public final class HostAccess {
+    private static final BiFunction<HostAccess, AccessibleObject, Boolean> ACCESS = new BiFunction<HostAccess, AccessibleObject, Boolean>() {
+        @Override
+        public Boolean apply(HostAccess t, AccessibleObject u) {
+            return t.allowAccess(u);
+        }
+    };
+
     private final Set<Class<? extends Annotation>> annotations;
     private final Set<Member> members;
+    private Object impl;
 
     /**
      * Configuration via {@link Export}. Default configuration if
@@ -92,6 +102,13 @@ public final class HostAccess {
             }
         }
         return false;
+    }
+
+    synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccess, AccessibleObject, Boolean>, T> factory) {
+        if (impl == null) {
+            impl = factory.apply(ACCESS);
+        }
+        return type.cast(impl);
     }
 
     /**
