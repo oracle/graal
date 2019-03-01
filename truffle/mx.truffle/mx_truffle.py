@@ -567,7 +567,7 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
             content_file.write(content)
 
 
-class LibffiBuilderProject(mx.AbstractNativeProject):
+class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):
     """Project for building libffi from source.
 
     The build is performed by:
@@ -586,8 +586,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject):
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
                                                            mx.join(self.out_dir, 'libffi-3.2.1'),
-                                                           theLicense=None,
-                                                           kind='static_lib',
+                                                           'static_lib',
                                                            cflags=['-MD', '-O2'])
             self.delegate._source = dict(tree=['include',
                                                'src',
@@ -604,7 +603,11 @@ class LibffiBuilderProject(mx.AbstractNativeProject):
                                                        mx.join('src', 'x86', 'ffi.c')],
                                                 '.S': [mx.join('src', 'x86', 'win64.S')]})
         else:
-            class LibtoolNativeProject(mx.NativeProject):
+            class LibtoolNativeProject(mx.NativeProject,  # pylint: disable=too-many-ancestors
+                                       mx_native.NativeDependency):
+                include_dirs = property(lambda self: [mx.join(self.getOutput(), 'include')])
+                libs = property(lambda self: [next(self.getArchivableResults(single=True))[0]])
+
                 def getArchivableResults(self, use_relpath=True, single=False):
                     for file_path, archive_path in super(LibtoolNativeProject, self).getArchivableResults(use_relpath):
                         path_in_lt_objdir = mx.basename(mx.dirname(file_path)) == '.libs'
@@ -632,13 +635,14 @@ class LibffiBuilderProject(mx.AbstractNativeProject):
                 ])
             )
 
-        # pylint: disable=access-member-before-definition
-        assert len(self.buildDependencies) == 1, '{} must depend only on its sources'.format(self.name)
-        self.buildDependencies += getattr(self.delegate, 'buildDependencies', [])
+        self.buildDependencies = self.delegate.buildDependencies
+        self.include_dirs = self.delegate.include_dirs
+        self.libs = self.delegate.libs
 
     @property
     def sources(self):
-        return self.buildDependencies[0]
+        assert len(self.deps) == 1, '{} must depend only on its sources'.format(self.name)
+        return self.deps[0]
 
     @property
     def patches(self):
@@ -666,16 +670,11 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         return 'Building {}'.format(self.subject.name)
 
     def needsBuild(self, newestInput):
-        is_forced, reason = super(LibffiBuildTask, self).needsBuild(newestInput)
-        if is_forced:
+        is_needed, reason = super(LibffiBuildTask, self).needsBuild(newestInput)
+        if is_needed:
             return True, reason
 
         output = self.newestOutput()
-        if output is None:
-            return True, None
-        elif newestInput and output.isOlderThan(newestInput):
-            return True, '{} is older than {}'.format(output, newestInput)
-
         newest_patch = mx.TimeStampFile.newest(self.subject.patches)
         if newest_patch and output.isOlderThan(newest_patch):
             return True, '{} is older than {}'.format(output, newest_patch)
