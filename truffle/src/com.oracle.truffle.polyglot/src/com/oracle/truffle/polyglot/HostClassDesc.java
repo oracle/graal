@@ -164,7 +164,8 @@ final class HostClassDesc {
             collectPublicMethods(hostAccess, type, methodMap, staticMethodMap, new HashSet<>(), type);
         }
 
-        private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Set<Object> visited, Class<?> startType) {
+        private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Set<Object> visited,
+                        Class<?> startType) {
             boolean isPublicType = Modifier.isPublic(type.getModifiers()) && !Proxy.isProxyClass(type);
             boolean allMethodsPublic = true;
             List<Method> bridgeMethods = null;

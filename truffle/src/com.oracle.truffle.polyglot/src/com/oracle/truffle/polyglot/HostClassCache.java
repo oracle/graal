@@ -68,7 +68,7 @@ final class HostClassCache {
         return c;
     }
 
-    private final ClassValue<HostClassDesc> CACHED_DESCS = new ClassValue<HostClassDesc>() {
+    private final ClassValue<HostClassDesc> descs = new ClassValue<HostClassDesc>() {
         @Override
         protected HostClassDesc computeValue(Class<?> type) {
             return new HostClassDesc(HostClassCache.this, type);
@@ -77,7 +77,7 @@ final class HostClassCache {
 
     @TruffleBoundary
     HostClassDesc forClass(Class<?> clazz) {
-        return CACHED_DESCS.get(clazz);
+        return descs.get(clazz);
     }
 
     boolean allowsAccess(Method m) {

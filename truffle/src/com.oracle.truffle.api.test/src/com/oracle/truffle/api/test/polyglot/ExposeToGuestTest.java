@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -54,24 +53,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
-
 public class ExposeToGuestTest {
     @Test
     public void byDefaultOnlyAnnotatedMethodsCanBeAccessed() {
         Context context = Context.create();
-        Value readValue = context.eval("sl", ""
-                + "function readValue(x) {\n"
-                + "  return x.value;\n"
-                + "}\n"
-                + "function main() {\n"
-                + "  return readValue;\n"
-                + "}\n"
-        );
+        Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
         assertPropertyUndefined("PublicValue isn't enough by default", readValue, new PublicValue());
     }
 
-    private void assertPropertyUndefined(String msg, Value readValue, Object value) {
+    private static void assertPropertyUndefined(String msg, Value readValue, Object value) {
         try {
             readValue.execute(value);
             fail(msg);
@@ -85,21 +76,13 @@ public class ExposeToGuestTest {
     }
 
     public static class ExportedValue {
-        @HostAccess.Export
-        public int value = 42;
+        @HostAccess.Export public int value = 42;
     }
 
     @Test
     public void exportingAllPublicIsEasy() {
         Context context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
-        Value readValue = context.eval("sl", ""
-                + "function readValue(x) {\n"
-                + "  return x.value;\n"
-                + "}\n"
-                + "function main() {\n"
-                + "  return readValue;\n"
-                + "}\n"
-        );
+        Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new PublicValue()).asInt());
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
     }
@@ -108,14 +91,7 @@ public class ExposeToGuestTest {
     public void customExportedAnnotation() {
         HostAccess accessMeConfig = HostAccess.newBuilder().allowAccessAnnotatedBy(AccessMe.class).build();
         Context context = Context.newBuilder().allowHostAccess(accessMeConfig).build();
-        Value readValue = context.eval("sl", ""
-                + "function readValue(x) {\n"
-                + "  return x.value;\n"
-                + "}\n"
-                + "function main() {\n"
-                + "  return readValue;\n"
-                + "}\n"
-        );
+        Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new AccessibleValue()).asInt());
         assertPropertyUndefined("Default annotation isn't enough", readValue, new ExportedValue());
         assertPropertyUndefined("Public isn't enough by default", readValue, new PublicValue());
@@ -127,24 +103,14 @@ public class ExposeToGuestTest {
     }
 
     public static class AccessibleValue {
-        @AccessMe
-        public int value = 42;
+        @AccessMe public int value = 42;
     }
 
     @Test
     public void explicitlyEnumeratingField() throws Exception {
-        HostAccess explictConfig = HostAccess.newBuilder().
-                allowAccess(AccessibleValue.class.getField("value")).
-                build();
+        HostAccess explictConfig = HostAccess.newBuilder().allowAccess(AccessibleValue.class.getField("value")).build();
         Context context = Context.newBuilder().allowHostAccess(explictConfig).build();
-        Value readValue = context.eval("sl", ""
-                + "function readValue(x) {\n"
-                + "  return x.value;\n"
-                + "}\n"
-                + "function main() {\n"
-                + "  return readValue;\n"
-                + "}\n"
-        );
+        Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new AccessibleValue()).asInt());
         assertPropertyUndefined("Default annotation isn't enough", readValue, new ExportedValue());
         assertPropertyUndefined("Public isn't enough by default", readValue, new PublicValue());

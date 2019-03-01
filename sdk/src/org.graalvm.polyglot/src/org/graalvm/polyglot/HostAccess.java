@@ -83,7 +83,7 @@ public final class HostAccess {
         if (this == HostAccess.PUBLIC) {
             return true;
         }
-        if (members.contains((Member) member)) {
+        if (members.contains(member)) {
             return true;
         }
         for (Class<? extends Annotation> ann : annotations) {
