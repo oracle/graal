@@ -55,9 +55,11 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.sl.SLLanguage;
+import org.graalvm.polyglot.HostAccess;
 
 public class SLJavaInteropConversionTest {
     public static class Validator {
+        @HostAccess.Export
         @SuppressWarnings("unchecked")
         public int validateObject(Object value1, Value value2) {
             assertThat(value1, instanceOf(Map.class));
@@ -69,6 +71,7 @@ public class SLJavaInteropConversionTest {
             return 42;
         }
 
+        @HostAccess.Export
         public int validateMap(Map<String, Object> map1, Map<String, Value> map2) {
             assertEquals(2, map1.size());
             assertThat(map1.keySet(), hasItems("a", "b"));
@@ -84,6 +87,7 @@ public class SLJavaInteropConversionTest {
             return 42;
         }
 
+        @HostAccess.Export
         public int validateList(List<Object> list1, List<Value> list2) {
             assertEquals(2, list1.size());
             for (Object value : list1) {

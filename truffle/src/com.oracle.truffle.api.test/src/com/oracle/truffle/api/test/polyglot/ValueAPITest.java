@@ -105,6 +105,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
+import org.graalvm.polyglot.HostAccess;
 
 public class ValueAPITest {
 
@@ -117,7 +118,7 @@ public class ValueAPITest {
 
     @Before
     public void setUp() {
-        context = Context.create();
+        context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
     }
 
     @After
@@ -1401,7 +1402,7 @@ public class ValueAPITest {
     }
 
     public static class RecursiveObject {
-
+        @HostAccess.Export
         public RecursiveObject rec;
 
     }

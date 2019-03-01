@@ -85,10 +85,21 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
+import org.graalvm.polyglot.HostAccess;
+import org.junit.BeforeClass;
 
 public class ContextAPITest {
+    private static HostAccess CONFIG;
 
     static LanguageContext langContext;
+
+    @BeforeClass
+    public static void initHostAccess() throws Exception {
+        CONFIG = HostAccess.newBuilder().
+            allowAccess(Runnable.class.getMethod("run")).
+            allowAccessAnnotatedBy(HostAccess.Export.class).
+            build();
+    }
 
     @Test
     public void testContextCreateSingleLanguage() {
@@ -388,8 +399,10 @@ public class ContextAPITest {
 
     public static class MyClass {
 
+        @HostAccess.Export
         public Object field = "bar";
 
+        @HostAccess.Export
         public int bazz() {
             return 42;
         }
@@ -481,7 +494,7 @@ public class ContextAPITest {
     public void testEnteredContext() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
-        Context context = Context.create();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
 
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
@@ -500,7 +513,7 @@ public class ContextAPITest {
     @Test
     public void testEnteredContextInJava() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
-        Context context = Context.create();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         Value v = context.asValue(new Runnable() {
             public void run() {
@@ -522,10 +535,10 @@ public class ContextAPITest {
 
     @Test
     public void testChangeContextInJava() {
-        Context context = Context.create();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
         Value v = context.asValue(new Runnable() {
             public void run() {
-                Context innerContext = Context.create();
+                Context innerContext = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
                 testGetContext(context);
                 innerContext.enter();
                 testGetContext(innerContext);
@@ -576,7 +589,7 @@ public class ContextAPITest {
 
     @Test
     public void testTransferControlToOtherThreadWhileEntered() {
-        Context context = Context.create();
+        Context context = Context.newBuilder().allowHostAccess(CONFIG).build();
 
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override

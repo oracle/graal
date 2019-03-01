@@ -73,6 +73,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import org.graalvm.polyglot.HostAccess;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class AsCollectionsTest {
@@ -207,6 +208,7 @@ public class AsCollectionsTest {
     }
 
     public static class Validator {
+        @HostAccess.Export
         public boolean validateMap(Map<String, Object> mapGen, Map mapRaw) {
             for (Map map : new Map[]{mapGen, mapRaw}) {
                 assertEquals(1, map.size());
@@ -215,6 +217,7 @@ public class AsCollectionsTest {
             return true;
         }
 
+        @HostAccess.Export
         public boolean validateArrayOfMap(Map<String, Object>[] arrayOfMapGen, Map[] arrayOfMapRaw) {
             for (Map[] arrayOfMap : new Map[][]{arrayOfMapGen, arrayOfMapRaw}) {
                 assertEquals(1, arrayOfMap.length);
@@ -225,6 +228,7 @@ public class AsCollectionsTest {
             return true;
         }
 
+        @HostAccess.Export
         public boolean validateListOfMap(List<Map<String, Object>> listOfMapGen, List<Map> listOfMapRaw) {
             for (List<Map> listOfMap : new List[]{listOfMapGen, listOfMapRaw}) {
                 assertEquals(1, listOfMap.size());
@@ -260,6 +264,7 @@ public class AsCollectionsTest {
     }
 
     public interface ProxyValidator {
+        @HostAccess.Export
         boolean test(List<Map> list);
     }
 

@@ -149,7 +149,6 @@ final class HostClassDesc {
                 String functionalInterfaceMethodName = findFunctionalInterfaceMethodName(type);
                 if (functionalInterfaceMethodName != null) {
                     functionalInterfaceMethod = methodMap.get(functionalInterfaceMethodName);
-                    assert functionalInterfaceMethod != null;
                 }
             }
 
