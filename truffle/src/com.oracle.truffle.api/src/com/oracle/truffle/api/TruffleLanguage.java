@@ -433,7 +433,14 @@ public abstract class TruffleLanguage<C> {
          */
         Class<?>[] services() default {};
 
-        Class<?>[] mimeTypeDetectors() default {};
+        /**
+         * Declarative list of {@link TruffleFile.FileTypeDetector} classes provided by this
+         * language.
+         * 
+         * @return list of file type detectors
+         * @since 1.0
+         */
+        Class<? extends TruffleFile.FileTypeDetector>[] fileTypeDetectors() default {};
     }
 
     /**

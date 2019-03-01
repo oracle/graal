@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.test.source;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleFile.MIMETypeDetector;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.io.IOException;
@@ -49,9 +48,10 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.Enumeration;
 import static org.junit.Assert.assertNotNull;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 
 public final class CommonMIMETypeLocator extends TruffleLocator {
-    public static final class Detector implements MIMETypeDetector {
+    public static final class Detector implements FileTypeDetector {
 
         @Override
         public String findMimeType(TruffleFile file) throws IOException {

@@ -1419,7 +1419,7 @@ public final class TruffleFile {
             if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
                 return result;
             }
-            for (MIMETypeDetector detector : TruffleLanguage.AccessAPI.engineAccess().getMIMETypeDetectors()) {
+            for (FileTypeDetector detector : TruffleLanguage.AccessAPI.engineAccess().getFileTypeDetectors()) {
                 result = detector.findMimeType(this);
                 if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
                     return result;
@@ -1449,7 +1449,7 @@ public final class TruffleFile {
             if (result != null) {
                 return result;
             }
-            for (MIMETypeDetector detector : TruffleLanguage.AccessAPI.engineAccess().getMIMETypeDetectors()) {
+            for (FileTypeDetector detector : TruffleLanguage.AccessAPI.engineAccess().getFileTypeDetectors()) {
                 result = detector.findEncoding(this);
                 if (result != null) {
                     return result;
@@ -1464,7 +1464,7 @@ public final class TruffleFile {
     }
 
     /**
-     * A MIME type detector for finding {@link TruffleFile file}'s MIME type and encoding.
+     * A detector for finding {@link TruffleFile file}'s MIME type and encoding.
      *
      * <p>
      * The means by which the detector determines the MIME is highly implementation specific. A
@@ -1473,13 +1473,13 @@ public final class TruffleFile {
      * type.
      * <p>
      * The implementations are registered using
-     * {@link TruffleLanguage.Registration#mimeTypeDetectors() TruffleLanguage registration}.
+     * {@link TruffleLanguage.Registration#fileTypeDetectors() TruffleLanguage registration}.
      *
      * @see TruffleFile#getMimeType()
-     * @see TruffleLanguage.Registration#mimeTypeDetectors()
+     * @see TruffleLanguage.Registration#fileTypeDetectors()
      * @since 1.0
      */
-    public interface MIMETypeDetector {
+    public interface FileTypeDetector {
         /**
          * Finds a MIME type for given {@link TruffleFile}.
          *

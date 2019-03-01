@@ -1152,8 +1152,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public List<? extends TruffleFile.MIMETypeDetector> getMIMETypeDetectors() {
-            return LanguageCache.mimeTypeDetectors();
+        public List<? extends TruffleFile.FileTypeDetector> getFileTypeDetectors() {
+            return LanguageCache.fileTypeDetectors();
         }
     }
 }

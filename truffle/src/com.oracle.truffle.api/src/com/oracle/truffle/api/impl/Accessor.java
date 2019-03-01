@@ -370,7 +370,7 @@ public abstract class Accessor {
 
         public abstract FileSystem getDefaultFileSystem();
 
-        public abstract List<? extends TruffleFile.MIMETypeDetector> getMIMETypeDetectors();
+        public abstract List<? extends TruffleFile.FileTypeDetector> getFileTypeDetectors();
     }
 
     public abstract static class LanguageSupport {

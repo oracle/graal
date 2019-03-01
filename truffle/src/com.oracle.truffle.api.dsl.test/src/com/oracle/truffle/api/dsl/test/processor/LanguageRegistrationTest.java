@@ -44,11 +44,11 @@ import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleFile.MIMETypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 
 public class LanguageRegistrationTest {
 
@@ -139,35 +139,30 @@ public class LanguageRegistrationTest {
     public static class InvalidIDError5 extends ProxyLanguage {
     }
 
-    @Registration(id = "filedetector1", name = "filedetector1", mimeTypeDetectors = {MIMETypeDetectorRegistration1.Detector.class})
-    public static class MIMETypeDetectorRegistration1 extends ProxyLanguage {
-        public static class Detector extends ProxyMIMETypeDetector {
+    @Registration(id = "filedetector1", name = "filedetector1", fileTypeDetectors = {FileTypeDetectorRegistration1.Detector.class})
+    public static class FileTypeDetectorRegistration1 extends ProxyLanguage {
+        public static class Detector extends ProxyFileTypeDetector {
         }
     }
 
-    @ExpectError("Registered MIMETypeDetector class must be public.")
-    @Registration(id = "filedetector2", name = "filedetector2", mimeTypeDetectors = {MIMETypeDetectorRegistration2.Detector.class})
-    public static class MIMETypeDetectorRegistration2 extends ProxyLanguage {
-        static class Detector extends ProxyMIMETypeDetector {
+    @ExpectError("Registered FileTypeDetector class must be public.")
+    @Registration(id = "filedetector2", name = "filedetector2", fileTypeDetectors = {FileTypeDetectorRegistration2.Detector.class})
+    public static class FileTypeDetectorRegistration2 extends ProxyLanguage {
+        static class Detector extends ProxyFileTypeDetector {
         }
     }
 
-    @ExpectError("Registered MIMETypeDetector inner-class must be static.")
-    @Registration(id = "filedetector3", name = "filedetector3", mimeTypeDetectors = {MIMETypeDetectorRegistration3.Detector.class})
-    public static class MIMETypeDetectorRegistration3 extends ProxyLanguage {
-        public class Detector extends ProxyMIMETypeDetector {
+    @ExpectError("Registered FileTypeDetector inner-class must be static.")
+    @Registration(id = "filedetector3", name = "filedetector3", fileTypeDetectors = {FileTypeDetectorRegistration3.Detector.class})
+    public static class FileTypeDetectorRegistration3 extends ProxyLanguage {
+        public class Detector extends ProxyFileTypeDetector {
         }
     }
 
-    @ExpectError("Registered MIMETypeDetector class must subclass MIMETypeDetector.")
-    @Registration(id = "filedetector4", name = "filedetector4", mimeTypeDetectors = {MIMETypeDetectorRegistration4.class})
-    public static class MIMETypeDetectorRegistration4 extends ProxyLanguage {
-    }
-
-    @ExpectError("A MIMETypeDetector subclass must have a public no argument constructor.")
-    @Registration(id = "filedetector5", name = "filedetector5", mimeTypeDetectors = {MIMETypeDetectorRegistration5.Detector.class})
-    public static class MIMETypeDetectorRegistration5 extends ProxyLanguage {
-        public static class Detector extends ProxyMIMETypeDetector {
+    @ExpectError("A FileTypeDetector subclass must have a public no argument constructor.")
+    @Registration(id = "filedetector5", name = "filedetector5", fileTypeDetectors = {FileTypeDetectorRegistration5.Detector.class})
+    public static class FileTypeDetectorRegistration5 extends ProxyLanguage {
+        public static class Detector extends ProxyFileTypeDetector {
             Detector() {
             }
 
@@ -177,7 +172,7 @@ public class LanguageRegistrationTest {
         }
     }
 
-    static class ProxyMIMETypeDetector implements MIMETypeDetector {
+    static class ProxyFileTypeDetector implements FileTypeDetector {
 
         @Override
         @SuppressWarnings("unused")

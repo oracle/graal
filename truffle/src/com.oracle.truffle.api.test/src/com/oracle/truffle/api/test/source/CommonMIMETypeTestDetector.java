@@ -47,7 +47,7 @@ import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class CommonMIMETypeTestDetector implements TruffleFile.MIMETypeDetector {
+public final class CommonMIMETypeTestDetector implements TruffleFile.FileTypeDetector {
 
     private static final Pattern DOC_TYPE_PATTERN = Pattern.compile("<!DOCTYPE\\s+(\\S+)\\s+");
     private static final Pattern ENCODING_PATTERN = Pattern.compile("<\\?xml version=\"1.0\" encoding=\"(.*)\"\\?>");
@@ -92,7 +92,7 @@ public final class CommonMIMETypeTestDetector implements TruffleFile.MIMETypeDet
         return null;
     }
 
-    @TruffleLanguage.Registration(id = "TestFooXML", name = "", byteMimeTypes = "text/foo+xml", mimeTypeDetectors = {CommonMIMETypeTestDetector.class})
+    @TruffleLanguage.Registration(id = "TestFooXML", name = "", byteMimeTypes = "text/foo+xml", fileTypeDetectors = {CommonMIMETypeTestDetector.class})
     public static class TestJSLanguage extends ProxyLanguage {
     }
 }
