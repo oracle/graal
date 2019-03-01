@@ -45,6 +45,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         :type extra_java_args: list[str] | None
         :type extra_launcher_args: list[str] | None
         """
+        super(GraalVm, self).__init__()
         self._name = name
         self._config_name = config_name
         self.extra_java_args = extra_java_args or []
@@ -100,6 +101,7 @@ class GuVm(GraalVm):
 
 class NativeImageBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def __init__(self, name, benchmarks, registry):
+        super(NativeImageBenchmarkSuite, self).__init__()
         self._name = name
         self._benchmarks = benchmarks
         self._registry = registry
