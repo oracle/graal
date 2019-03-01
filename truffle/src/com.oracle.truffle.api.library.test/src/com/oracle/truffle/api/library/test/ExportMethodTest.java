@@ -320,6 +320,34 @@ public class ExportMethodTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportsTestLibrary1.class)
+    static final class ExportsWithCachedBindsToThis {
+
+        static final Object DELEGATE = new ExportsTestStaticWithCachedNode();
+
+        @ExportMessage
+        public String foo(int arg,
+                        @Cached("this") ExportsWithCachedBindsToThis lib) {
+            return "foo";
+        }
+    }
+
+    @ExportLibrary(ExportsTestLibrary1.class)
+    static final class ExportsWithCachedBindsToReceiverMethod {
+
+        static final Object DELEGATE = new ExportsTestStaticWithCachedNode();
+
+        @ExportMessage
+        public String foo(int arg,
+                        @Cached(value = "this.boundMethod()", allowUncached = true) String lib) {
+            return "foo";
+        }
+
+        String boundMethod() {
+            return "boundMethod";
+        }
+    }
+
+    @ExportLibrary(ExportsTestLibrary1.class)
     @ExpectError("Class 'com.oracle.truffle.api.library.test.ExportMethodTest.NoLibrary' is not a library annotated with @GenerateLibrary.")
     static final class ExportsTestObjectError2 {
 

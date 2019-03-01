@@ -45,7 +45,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -83,8 +85,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
-import java.nio.file.Path;
-import java.util.List;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -185,7 +185,7 @@ public abstract class Accessor {
         public static final int SUSPENDED_EVENT = 2;
 
         @SuppressWarnings("rawtypes")
-        public abstract Env findEnv(Object vm, Class<? extends TruffleLanguage> languageClass, boolean failIfNotFound);
+        public abstract Env findEnv(Object vm, Class<? extends TruffleLanguage> languageClass);
 
         public abstract Object getInstrumentationHandler(Object languageShared);
 
@@ -223,7 +223,7 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getObjectLanguage(Object obj, Object vmObject);
 
-        public abstract Object getCurrentContext(Object languageVMObject);
+        public abstract Supplier<Object> getCurrentContextSupplier(Object languageVMObject);
 
         public abstract boolean isDisposed(Object vmInstance);
 
@@ -351,11 +351,21 @@ public abstract class Accessor {
 
         public abstract Object convertPrimitive(Object value, Class<?> requestedType);
 
+        public abstract <S> S lookupService(Object languageContextVMObject, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
+
+        public abstract <T extends TruffleLanguage<?>> Supplier<T> lookupLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
+
+        public abstract <T extends TruffleLanguage<?>> Supplier<T> getDirectLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
+
+        public abstract <T extends TruffleLanguage<C>, C> Supplier<C> lookupContextSupplier(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
+
+        public abstract <T extends TruffleLanguage<C>, C> Supplier<C> getDirectContextSupplier(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
+
     }
 
     public abstract static class LanguageSupport {
 
-        public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object vmObject);
+        public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object languageVmObject, Object languageInstanceVMObject);
 
         public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
                         String[] applicationArguments, FileSystem fileSystem);
@@ -380,7 +390,7 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getLanguageInfo(TruffleLanguage<?> language);
 
-        public abstract LanguageInfo getLegacyLanguageInfo(Object vm, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass);
+        public abstract Object getVMObject(TruffleLanguage<?> language);
 
         public abstract CallTarget parse(Env env, Source code, Node context, String... argumentNames);
 
@@ -450,6 +460,9 @@ public abstract class Accessor {
         public abstract Path getPath(TruffleFile file);
 
         public abstract TruffleFile getTruffleFile(FileSystem fs, String path);
+
+        public abstract Object getLanguageInstance(TruffleLanguage<?> language);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -778,7 +791,7 @@ public abstract class Accessor {
      * Do not remove: This is accessed reflectively in AccessorTest
      */
     static <T extends TruffleLanguage<?>> T findLanguageByClass(Object vm, Class<T> languageClass) {
-        Env env = SPI.findEnv(vm, languageClass, true);
+        Env env = SPI.findEnv(vm, languageClass);
         TruffleLanguage<?> language = API.getLanguage(env);
         return languageClass.cast(language);
     }

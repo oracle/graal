@@ -110,7 +110,7 @@ abstract class HostToGuestRootNode extends RootNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             profile = localProfile = ((PolyglotLanguageContext) languageContext).language.profile;
         }
-        return profile.profile(languageContext);
+        return localProfile.profile(languageContext);
     }
 
     protected abstract Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args);

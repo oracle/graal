@@ -56,7 +56,6 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -124,12 +123,6 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public abstract class RootNode extends ExecutableNode {
 
-    /*
-     * Since languages were singletons in the past, we cannot use the Env instance stored in
-     * TruffleLanguage for languages that are not yet migrated. We use this sourceVM reference
-     * instead for compatibility.
-     */
-    @CompilationFinal Object sourceVM;
     private volatile RootCallTarget callTarget;
     private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
@@ -166,22 +159,7 @@ public abstract class RootNode extends ExecutableNode {
     protected RootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language);
         CompilerAsserts.neverPartOfCompilation();
-        if (this.language != null) {
-            this.sourceVM = Node.ACCESSOR.engineSupport().getVMFromLanguageObject(Node.ACCESSOR.languageSupport().getLanguageInfo(this.language).getEngineObject());
-        } else {
-            this.sourceVM = getCurrentVM();
-        }
-
         this.frameDescriptor = frameDescriptor == null ? new FrameDescriptor() : frameDescriptor;
-    }
-
-    private static Object getCurrentVM() {
-        EngineSupport engine = Node.ACCESSOR.engineSupport();
-        if (engine != null) {
-            return engine.getCurrentVM();
-        } else {
-            return null;
-        }
     }
 
     /**

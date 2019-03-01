@@ -49,6 +49,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -56,6 +57,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionCategory;
@@ -86,7 +88,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.nio.file.Path;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -228,6 +229,7 @@ public abstract class TruffleLanguage<C> {
     // get and isFinal are frequent operations -> cache the engine access call
     @CompilationFinal private LanguageInfo languageInfo;
     @CompilationFinal private ContextReference<C> reference;
+    @CompilationFinal private Object vmObject; // PolyglotLanguageInstance
 
     /**
      * Constructor to be called by subclasses.
@@ -2198,10 +2200,10 @@ public abstract class TruffleLanguage<C> {
      */
     public static final class ContextReference<C> {
 
-        private final Object languageShared;
+        private final Supplier<Object> supplier;
 
         private ContextReference(Object languageShared) {
-            this.languageShared = languageShared;
+            this.supplier = AccessAPI.engineAccess().getCurrentContextSupplier(languageShared);
         }
 
         /**
@@ -2218,9 +2220,8 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("unchecked")
         public C get() {
-            return (C) AccessAPI.engineAccess().getCurrentContext(languageShared);
+            return (C) supplier.get();
         }
-
     }
 
     /**
@@ -2384,8 +2385,10 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object vmObject) {
-            impl.initialize(language, vmObject);
+        public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object languageVmObject, Object languageInstanceVMObject) {
+            impl.languageInfo = language;
+            impl.reference = new ContextReference<>(languageVmObject);
+            impl.vmObject = languageInstanceVMObject;
         }
 
         @Override
@@ -2526,17 +2529,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        @SuppressWarnings("rawtypes")
-        public LanguageInfo getLegacyLanguageInfo(Object vm, Class<? extends TruffleLanguage> languageClass) {
-            if (vm == null) {
-                return null;
-            }
-            Env env = AccessAPI.engineAccess().findEnv(vm, languageClass, false);
-            if (env != null) {
-                return env.getSpi().languageInfo;
-            } else {
-                return null;
-            }
+        public Object getVMObject(TruffleLanguage<?> language) {
+            return language.vmObject;
         }
 
         @Override
@@ -2632,13 +2626,19 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers) {
-            for (Object loggerCache : loggers) {
-                if (logLevels == null) {
-                    ((TruffleLogger.LoggerCache) loggerCache).removeLogLevelsForContext(polyglotContext);
-                } else {
-                    ((TruffleLogger.LoggerCache) loggerCache).addLogLevelsForContext(polyglotContext, logLevels);
-                }
+        public Object getLanguageInstance(TruffleLanguage<?> language) {
+            if (language == null) {
+                return null;
+            }
+            return language.vmObject;
+        }
+
+        @Override
+        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels) {
+            if (logLevels == null) {
+                TruffleLogger.LoggerCache.getInstance().removeLogLevelsForContext(polyglotContext);
+            } else {
+                TruffleLogger.LoggerCache.getInstance().addLogLevelsForContext(polyglotContext, logLevels);
             }
         }
 

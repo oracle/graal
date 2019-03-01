@@ -453,8 +453,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Object getCurrentContext(Object vmObject) {
-            return ((PolyglotLanguage) vmObject).profile.get();
+        public Supplier<Object> getCurrentContextSupplier(Object polyglotLanguage) {
+            return ((PolyglotLanguage) polyglotLanguage).getContextImplSupplier();
         }
 
         @Override
@@ -513,8 +513,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
             CompilerAsserts.partialEvaluationConstant(languageClass);
-            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            Env env = context.getLanguageContext(languageClass).env;
+            PolyglotLanguageContext context = PolyglotContextImpl.requireContext().getLanguageContext(languageClass);
+            context.ensureInitialized(null);
+            Env env = context.env;
             if (env == null) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Current context is not yet initialized or already disposed.");
@@ -640,8 +641,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         @SuppressWarnings("rawtypes")
-        public Env findEnv(Object vmObject, Class<? extends TruffleLanguage> languageClass, boolean failIfNotFound) {
-            PolyglotLanguageContext findLanguageContext = PolyglotContextImpl.requireContext().findLanguageContext(languageClass, failIfNotFound);
+        public Env findEnv(Object vmObject, Class<? extends TruffleLanguage> languageClass) {
+            PolyglotLanguageContext findLanguageContext = PolyglotContextImpl.requireContext().findLanguageContext(languageClass);
             if (findLanguageContext != null) {
                 return findLanguageContext.env;
             }
@@ -1083,5 +1084,42 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public Object convertPrimitive(Object value, Class<?> requestedType) {
             return ToHostNode.convertLossLess(value, requestedType, InteropLibrary.getFactory().getUncached());
         }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        @TruffleBoundary
+        public <T extends TruffleLanguage<C>, C> Supplier<C> lookupContextSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+            assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() != targetLanguageClass;
+            PolyglotLanguageInstance instance = ((PolyglotEngineImpl) polyglotEngineImpl).getCurrentLanguageInstance(targetLanguageClass);
+            return (Supplier<C>) instance.lookupContextSupplier(resolveLanguage(sourceLanguageSPI));
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T extends TruffleLanguage<C>, C> Supplier<C> getDirectContextSupplier(Object sourceVM, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+            assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() == targetLanguageClass;
+            return (Supplier<C>) resolveLanguage(sourceLanguageSPI).getDirectContextSupplier();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T extends TruffleLanguage<?>> Supplier<T> getDirectLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+            assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() == targetLanguageClass;
+            return (Supplier<T>) resolveLanguage(sourceLanguageSPI).getDirectLanguageSupplier();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        @TruffleBoundary
+        public <T extends TruffleLanguage<?>> Supplier<T> lookupLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+            assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() != targetLanguageClass;
+            PolyglotLanguageInstance instance = ((PolyglotEngineImpl) polyglotEngineImpl).getCurrentLanguageInstance(targetLanguageClass);
+            return (Supplier<T>) instance.lookupLanguageSupplier(resolveLanguage(sourceLanguageSPI));
+        }
+
+        private static PolyglotLanguageInstance resolveLanguage(TruffleLanguage<?> sourceLanguageSPI) {
+            return (PolyglotLanguageInstance) VMAccessor.LANGUAGE.getLanguageInstance(sourceLanguageSPI);
+        }
+
     }
 }

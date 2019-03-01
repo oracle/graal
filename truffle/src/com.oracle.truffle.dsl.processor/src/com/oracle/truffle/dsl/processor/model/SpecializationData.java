@@ -155,7 +155,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public boolean isCacheBoundByGuard(CacheExpression cacheExpression) {
-        if (cacheExpression.isInitializedInFastPath()) {
+        if (cacheExpression.isAlwaysInitialized()) {
             return false;
         }
         VariableElement cachedVariable = cacheExpression.getParameter().getVariableElement();
@@ -199,7 +199,7 @@ public final class SpecializationData extends TemplateMethod {
             return false;
         }
         for (CacheExpression cache : resolvedCaches) {
-            if (cache.isInitializedInFastPath()) {
+            if (cache.isAlwaysInitialized()) {
                 continue;
             }
             VariableElement cacheVar = cache.getParameter().getVariableElement();
@@ -342,7 +342,7 @@ public final class SpecializationData extends TemplateMethod {
 
         if (!getCaches().isEmpty()) {
             for (CacheExpression cache : getCaches()) {
-                if (!cache.isInitializedInFastPath()) {
+                if (!cache.isAlwaysInitialized() || cache.isCachedContext() || cache.isCachedLanguage()) {
                     return true;
                 }
             }
@@ -503,7 +503,7 @@ public final class SpecializationData extends TemplateMethod {
                 Set<VariableElement> boundVariables = guardExpression.findBoundVariableElements();
                 if (isDynamicParameterBound(guardExpression)) {
                     for (CacheExpression cache : getCaches()) {
-                        if (cache.isInitializedInFastPath()) {
+                        if (cache.isAlwaysInitialized()) {
                             continue;
                         } else if (!guard.isLibraryAcceptsGuard() && cache.isCachedLibrary()) {
                             continue;

@@ -362,7 +362,7 @@ public class FlatNodeGenFactory {
 
         int size = 0;
         for (CacheExpression expression : specialization.getCaches()) {
-            if (expression.isInitializedInFastPath()) {
+            if (expression.isAlwaysInitialized()) {
                 // no space needed
                 continue;
             }
@@ -539,7 +539,8 @@ public class FlatNodeGenFactory {
             CodeTypeElement type = specializationClasses.get(specialization);
             if (getInsertAccessorSet(true).contains(specialization)) {
                 type.add(createInsertAccessor(true));
-            } else if (getInsertAccessorSet(false).contains(specialization)) {
+            }
+            if (getInsertAccessorSet(false).contains(specialization)) {
                 type.add(createInsertAccessor(false));
             }
         }
@@ -550,6 +551,7 @@ public class FlatNodeGenFactory {
 
         if (node.isUncachable() && node.isGenerateUncached()) {
             CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", node.getTemplateType().asType());
+            uncached.getEnclosedElements().addAll(createUncachedFields());
 
             for (ExecutableTypeData type : genericExecutableTypes) {
                 uncached.add(createUncachedExecute(type));
@@ -576,6 +578,23 @@ public class FlatNodeGenFactory {
         }
 
         return clazz;
+    }
+
+    public List<CodeVariableElement> createUncachedFields() {
+        List<CodeVariableElement> fields = new ArrayList<>();
+        List<CacheExpression> cacheExpressions = computeUniqueSupplierCaches();
+        for (CacheExpression cache : cacheExpressions) {
+            CodeVariableElement supplierField = new CodeVariableElement(modifiers(PRIVATE, FINAL),
+                            cache.getSupplierType(), createSupplierName(cache));
+            CodeTreeBuilder builder = supplierField.createInitBuilder();
+            if (cache.isCachedContext()) {
+                builder.startCall("getContextSupplier").typeLiteral(cache.getLanguageType()).end();
+            } else {
+                builder.startCall("getLanguageSupplier").typeLiteral(cache.getLanguageType()).end();
+            }
+            fields.add(supplierField);
+        }
+        return fields;
     }
 
     private static boolean shouldReportPolymorphism(NodeData node, List<SpecializationData> reachableSpecializations) {
@@ -705,7 +724,7 @@ public class FlatNodeGenFactory {
                 if (expressions.contains(fieldName)) {
                     continue;
                 }
-                if (cache.isInitializedInFastPath()) {
+                if (cache.isAlwaysInitialized()) {
                     continue;
                 }
                 expressions.add(fieldName);
@@ -728,12 +747,22 @@ public class FlatNodeGenFactory {
             }
         }
 
+        if (primaryNode) {
+            List<CacheExpression> cacheExpressions = computeUniqueSupplierCaches();
+            for (CacheExpression cache : cacheExpressions) {
+                CodeVariableElement supplierField = new CodeVariableElement(modifiers(PRIVATE),
+                                cache.getSupplierType(), createSupplierName(cache));
+                supplierField.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(CompilationFinal.class)));
+                clazz.getEnclosedElements().add(supplierField);
+            }
+        }
+
         for (SpecializationData specialization : reachableSpecializations) {
             List<CodeVariableElement> fields = new ArrayList<>();
             boolean useSpecializationClass = useSpecializationClass(specialization);
 
             for (CacheExpression cache : specialization.getCaches()) {
-                if (cache.isInitializedInFastPath()) {
+                if (cache.isAlwaysInitialized()) {
                     // no field required for fast path caches.
                     continue;
                 }
@@ -754,9 +783,11 @@ public class FlatNodeGenFactory {
                     cachedField = createNodeField(visibility, type, fieldName, Children.class);
                 } else {
                     cachedField = createNodeField(visibility, type, fieldName, null);
-                    AnnotationMirror mirror = findAnnotationMirror(parameter.getVariableElement().getAnnotationMirrors(), context.getType(Cached.class));
-                    int dimensions = getAnnotationValue(Integer.class, mirror, "dimensions");
-                    setFieldCompilationFinal(cachedField, dimensions);
+                    if (cache.isCached()) {
+                        AnnotationMirror mirror = cache.getMessageAnnotation();
+                        int dimensions = getAnnotationValue(Integer.class, mirror, "dimensions");
+                        setFieldCompilationFinal(cachedField, dimensions);
+                    }
                 }
                 fields.add(cachedField);
             }
@@ -831,6 +862,40 @@ public class FlatNodeGenFactory {
             }
 
         }
+    }
+
+    private List<CacheExpression> computeUniqueSupplierCaches() {
+        List<CacheExpression> cacheExpressions = new ArrayList<>();
+        for (NodeData sharedNode : this.sharingNodes) {
+            List<SpecializationData> specializations = calculateReachableSpecializations(sharedNode);
+            Set<String> computedContextSuppliers = new HashSet<>();
+            Set<String> computedLanguageSuppliers = new HashSet<>();
+            for (SpecializationData specialization : specializations) {
+                for (CacheExpression cache : specialization.getCaches()) {
+                    if (!cache.isCachedContext() && !cache.isCachedLanguage()) {
+                        continue;
+                    }
+                    TypeMirror languageType = cache.getSupplierType();
+                    String qualifiedLanguageTypeName = ElementUtils.getQualifiedName(languageType);
+                    if (cache.isCachedLanguage()) {
+                        if (computedLanguageSuppliers.contains(qualifiedLanguageTypeName)) {
+                            continue;
+                        } else {
+                            computedLanguageSuppliers.add(qualifiedLanguageTypeName);
+                        }
+                    }
+                    if (cache.isCachedContext()) {
+                        if (computedContextSuppliers.contains(qualifiedLanguageTypeName)) {
+                            continue;
+                        } else {
+                            computedContextSuppliers.add(qualifiedLanguageTypeName);
+                        }
+                    }
+                    cacheExpressions.add(cache);
+                }
+            }
+        }
+        return cacheExpressions;
     }
 
     private static final String INSERT_ACCESSOR_NAME = "insertAccessor";
@@ -1065,7 +1130,7 @@ public class FlatNodeGenFactory {
                             return true;
                         } else if (p != null && p.getSpecification().isCached()) {
                             CacheExpression cache = specialization.findCache(p);
-                            if (cache != null && cache.isInitializedInFastPath()) {
+                            if (cache != null && cache.isAlwaysInitialized()) {
                                 // allowed access as is initialized in fast path.
                                 return false;
                             }
@@ -1231,10 +1296,6 @@ public class FlatNodeGenFactory {
         return method;
     }
 
-    private CodeExecutableElement createUncachedExecute(ExecutableTypeData type) {
-        return createUncachedImpl(type);
-    }
-
     public CodeExecutableElement createUncached() {
         SpecializationData fallback = node.getGenericSpecialization();
         TypeMirror returnType = fallback.getReturnType().getType();
@@ -1243,10 +1304,10 @@ public class FlatNodeGenFactory {
             parameterTypes.add(parameter.getType());
         }
         ExecutableTypeData forType = new ExecutableTypeData(node, returnType, "uncached", null, parameterTypes);
-        return createUncachedImpl(forType);
+        return createUncachedExecute(forType);
     }
 
-    private CodeExecutableElement createUncachedImpl(ExecutableTypeData forType) {
+    private CodeExecutableElement createUncachedExecute(ExecutableTypeData forType) {
         final Collection<SpecializationData> allSpecializations = node.computeUncachedSpecializations(reachableSpecializations);
         final List<SpecializationData> compatibleSpecializations = filterCompatibleSpecializations(allSpecializations, forType);
 
@@ -3081,7 +3142,7 @@ public class FlatNodeGenFactory {
 
     private static boolean cachesRequireFastPathBoundary(Collection<CacheExpression> caches) {
         for (CacheExpression cache : caches) {
-            if (cache.isInitializedInFastPath() && cache.isRequiresBoundary()) {
+            if (cache.isAlwaysInitialized() && cache.isRequiresBoundary()) {
                 return true;
             }
         }
@@ -3293,11 +3354,7 @@ public class FlatNodeGenFactory {
         builder.startStatement();
         builder.string("this.", createSpecializationFieldName(specialization));
         builder.string(" = ");
-        if (specializationClassIsNode(specialization)) {
-            builder.startCall("super", "insert").tree(ref).end();
-        } else {
-            builder.tree(ref);
-        }
+        builder.tree(ref);
         builder.end();
         return Arrays.asList(new IfTriple(builder.build(), null, null));
     }
@@ -3324,12 +3381,18 @@ public class FlatNodeGenFactory {
                 GeneratedTypeMirror type = new GeneratedTypeMirror("", typeName);
 
                 CodeTreeBuilder initBuilder = new CodeTreeBuilder(null);
-
+                boolean isNode = specializationClassIsNode(specialization);
+                if (isNode) {
+                    initBuilder.startCall("super", "insert");
+                }
                 initBuilder.startNew(typeName);
                 if (specialization.getMaximumNumberOfInstances() > 1) {
                     initBuilder.string(createSpecializationFieldName(specialization));
                 }
                 initBuilder.end(); // new
+                if (isNode) {
+                    initBuilder.end();
+                }
 
                 CodeTree init = initBuilder.build();
 
@@ -3744,7 +3807,7 @@ public class FlatNodeGenFactory {
         }
         List<IfTriple> triples = new ArrayList<>();
         for (CacheExpression cache : caches) {
-            if (mode.isFastPath() && !cache.isInitializedInFastPath()) {
+            if (mode.isFastPath() && !cache.isAlwaysInitialized()) {
                 continue;
             }
             triples.addAll(initializeCasts(frameState, group, cache.getDefaultExpression(), mode));
@@ -3760,7 +3823,7 @@ public class FlatNodeGenFactory {
             // store as local variable
             triples.addAll(storeCache(frameState, specialization, cache, init));
         }
-        if (persist && !cache.isInitializedInFastPath()) {
+        if (persist) {
             // persist to node instance
             triples.addAll(persistCache(frameState, specialization, cache, init));
         }
@@ -3768,32 +3831,54 @@ public class FlatNodeGenFactory {
     }
 
     private Collection<IfTriple> persistCache(FrameState frameState, SpecializationData specialization, CacheExpression cache, CodeTree cacheValue) {
-        String name = createFieldName(specialization, cache.getParameter());
-        LocalVariable local = frameState.get(name);
-        CodeTree value;
-        if (local != null) {
-            // already initialized and stored don't use init.
-            value = local.createReference();
-        } else if (cacheValue == null) {
+        if (cache.isAlwaysInitialized()) {
+            if (cache.isCachedContext() || cache.isCachedLanguage()) {
+                String supplierName = createSupplierName(cache);
+
+                CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+                String supplierLocalName = supplierName + "_";
+                builder.declaration(cache.getSupplierType(), supplierLocalName, "this." + supplierName);
+                builder.startIf().string(supplierLocalName).string(" == null").end().startBlock();
+                String method = cache.isCachedContext() ? "super.getContextSupplier" : "super.getLanguageSupplier";
+                builder.startStatement().string("this.", supplierName).string(" = ").string(supplierLocalName).string(" = ").startCall(method).typeLiteral(cache.getLanguageType()).end().end();
+                builder.end();
+
+                String supplierInitialized = supplierName + "$initialized";
+                if (frameState.getBoolean(supplierInitialized, false)) {
+                    return Collections.emptyList();
+                } else {
+                    frameState.setBoolean(supplierInitialized, true);
+                }
+                frameState.set(supplierName, new LocalVariable(cache.getSupplierType(), supplierLocalName, null));
+                return Arrays.asList(new IfTriple(builder.build(), null, null));
+            }
             return Collections.emptyList();
         } else {
-            value = cacheValue;
-        }
+            String name = createFieldName(specialization, cache.getParameter());
+            LocalVariable local = frameState.get(name);
+            CodeTree value;
+            if (local != null) {
+                // already initialized and stored don't use init.
+                value = local.createReference();
+            } else if (cacheValue == null) {
+                return Collections.emptyList();
+            } else {
+                value = cacheValue;
+            }
 
-        TypeMirror type = cache.getParameter().getType();
-        String frameStateInitialized = name + "$initialized";
-        if (frameState.getBoolean(frameStateInitialized, false)) {
-            return Collections.emptyList();
-        } else {
-            frameState.setBoolean(frameStateInitialized, true);
-        }
+            TypeMirror type = cache.getParameter().getType();
+            String frameStateInitialized = name + "$initialized";
+            if (frameState.getBoolean(frameStateInitialized, false)) {
+                return Collections.emptyList();
+            } else {
+                frameState.setBoolean(frameStateInitialized, true);
+            }
 
-        List<IfTriple> triples = new ArrayList<>();
-        CodeTreeBuilder builder = new CodeTreeBuilder(null);
-        Parameter parameter = cache.getParameter();
+            List<IfTriple> triples = new ArrayList<>();
+            CodeTreeBuilder builder = new CodeTreeBuilder(null);
+            Parameter parameter = cache.getParameter();
+            boolean useSpecializationClass = useSpecializationClass(specialization);
 
-        boolean useSpecializationClass = useSpecializationClass(specialization);
-        if (!useSpecializationClass || frameState.getBoolean(createSpecializationClassPersisted(specialization), false)) {
             String insertTarget;
             if (useSpecializationClass) {
                 insertTarget = createSpecializationLocalName(specialization);
@@ -3811,7 +3896,7 @@ public class FlatNodeGenFactory {
             if (isNodeInterface || isNodeInterfaceArray) {
                 builder = new CodeTreeBuilder(null);
                 String fieldName = createFieldName(specialization, cache.getParameter()) + "__";
-                String insertName = useSpecializationClass ? useInsertAccessor(specialization, !isNodeInterface) : "insert";
+                String insertName = useSpecializationClass ? useInsertAccessor(specialization, isNodeInterfaceArray) : "insert";
                 final TypeMirror castType;
                 if (isNodeInterface) {
                     if (isNode) {
@@ -3843,19 +3928,20 @@ public class FlatNodeGenFactory {
                     value = CodeTreeBuilder.singleString(fieldName);
                 }
             }
+
+            CodeTree cacheReference = createCacheReference(frameState, specialization, cache);
+            if (sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
+                builder.startIf().tree(cacheReference).string(" == null").end().startBlock();
+                builder.startStatement().tree(cacheReference).string(" = ").tree(value).end();
+                builder.end();
+            } else {
+                builder.startStatement().tree(cacheReference).string(" = ").tree(value).end();
+            }
+
+            triples.add(new IfTriple(builder.build(), null, null));
+            return triples;
         }
 
-        CodeTree cacheReference = createCacheReference(frameState, specialization, cache);
-        if (sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
-            builder.startIf().tree(cacheReference).string(" == null").end().startBlock();
-            builder.startStatement().tree(cacheReference).string(" = ").tree(value).end();
-            builder.end();
-        } else {
-            builder.startStatement().tree(cacheReference).string(" = ").tree(value).end();
-        }
-
-        triples.add(new IfTriple(builder.build(), null, null));
-        return triples;
     }
 
     private Collection<IfTriple> storeCache(FrameState frameState, SpecializationData specialization, CacheExpression cache, CodeTree value) {
@@ -3874,7 +3960,7 @@ public class FlatNodeGenFactory {
         String refName = name + "_";
         CodeTree useValue;
         if ((ElementUtils.isAssignable(type, context.getType(Node.class)) || ElementUtils.isAssignable(type, context.getType(Node[].class))) &&
-                        (!cache.isInitializedInFastPath())) {
+                        (!cache.isAlwaysInitialized())) {
             useValue = builder.create().startCall("super.insert").tree(value).end().build();
         } else {
             useValue = value;
@@ -3891,9 +3977,42 @@ public class FlatNodeGenFactory {
             // already initialized
             return null;
         }
-        CodeTree tree = DSLExpressionGenerator.write(optimizeExpression(cache.getDefaultExpression()), null,
-                        castBoundTypes(bindExpressionValues(frameState, cache.getDefaultExpression(), specialization)));
+        CodeTree tree;
+        if (cache.isCachedContext() || cache.isCachedLanguage()) {
+            String fieldName = createSupplierName(cache);
+            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+
+            LocalVariable var = frameState.get(fieldName);
+            if (var != null) {
+                builder.tree(var.createReference());
+            } else {
+                builder.string("this.").string(fieldName);
+            }
+            if (!cache.isSupplier()) {
+                builder.string(".get()");
+            }
+            tree = builder.build();
+        } else {
+            DSLExpression expression;
+            if (frameState.getMode().isUncached()) {
+                expression = cache.getUncachedExpression();
+            } else {
+                expression = cache.getDefaultExpression();
+            }
+            expression = optimizeExpression(expression);
+            tree = DSLExpressionGenerator.write(expression, null, castBoundTypes(bindExpressionValues(frameState, expression, specialization)));
+        }
         return tree;
+    }
+
+    private static String createSupplierName(CacheExpression cache) {
+        if (cache.isCachedContext()) {
+            return ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(cache.getLanguageType())) + "ContextSupplier_";
+        } else if (cache.isCachedLanguage()) {
+            return ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(cache.getLanguageType())) + "Supplier_";
+        } else {
+            throw new AssertionError();
+        }
     }
 
     private IfTriple createMethodGuardCheck(FrameState frameState, SpecializationData specialization, GuardExpression guard, NodeExecutionMode mode) {
@@ -4021,12 +4140,10 @@ public class FlatNodeGenFactory {
             return CodeTreeBuilder.singleString("null /* cache not resolved */");
         }
         if (frameState.getMode().isUncached()) {
-            DSLExpression expression = optimizeExpression(cache.getUncachedExpression());
-            return DSLExpressionGenerator.write(expression, null, castBoundTypes(bindExpressionValues(frameState, expression, specialization)));
+            return initializeCache(frameState, specialization, cache);
         } else {
-            if (cache.isInitializedInFastPath()) {
-                DSLExpression expression = optimizeExpression(cache.getDefaultExpression());
-                return DSLExpressionGenerator.write(expression, null, castBoundTypes(bindExpressionValues(frameState, expression, specialization)));
+            if (cache.isAlwaysInitialized()) {
+                return initializeCache(frameState, specialization, cache);
             } else {
                 String sharedName = sharedCaches.get(cache);
                 if (sharedName != null) {

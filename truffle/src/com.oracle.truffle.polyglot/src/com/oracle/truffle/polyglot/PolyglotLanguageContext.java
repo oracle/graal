@@ -119,7 +119,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     volatile boolean finalized;
     @CompilationFinal private volatile Value hostBindings;
     @CompilationFinal private volatile Lazy lazy;
-
     @CompilationFinal volatile Env env; // effectively final
     @CompilationFinal private volatile List<Object> languageServices = Collections.emptyList();
 
@@ -163,6 +162,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (env != null) {
             return LANGUAGE.getContext(env);
         } else {
+            CompilerDirectives.transferToInterpreter();
             return null;
         }
     }
@@ -282,6 +282,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             seenThreads.remove(thread);
         }
         VMAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.truffleContext, thread);
+    }
+
+    boolean isCreated() {
+        return lazy != null;
     }
 
     void ensureCreated(PolyglotLanguage accessingLanguage) {

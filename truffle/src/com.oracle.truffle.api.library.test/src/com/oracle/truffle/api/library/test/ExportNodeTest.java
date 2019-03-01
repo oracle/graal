@@ -542,7 +542,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
             @Specialization
             static void doFoo(TestObjectError14 receiver,
-                            @ExpectError("@ExportMessage annotated nodes must only refer to static cache initializer methods or fields. Add a static modifier to the bound cache initializer method or field to resolve this.") //
+                            @ExpectError("@ExportMessage annotated nodes must only refer to static cache initializer methods or fields. %") //
                             @Cached("instanceVar") Object c) {
             }
         }
@@ -562,8 +562,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
             @Specialization
             static void doFoo(TestObjectError15 receiver,
-                            @ExpectError("@ExportMessage annotated nodes must only refer to static cache initializer methods or fields. " +
-                                            "Add a static modifier to the bound cache initializer method or field to resolve this.") //
+                            @ExpectError("@ExportMessage annotated nodes must only refer to static cache initializer methods or fields. %") //
                             @Cached(value = "instanceMethod()", allowUncached = true) Object c) {
             }
         }
@@ -616,7 +615,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
             int limit = 42;
 
-            @ExpectError("@ExportMessage annotated nodes must only refer to static limit initializer methods or fields. Add a static modifier to the bound limit initializer method or field to resolve this.")
+            @ExpectError("@ExportMessage annotated nodes must only refer to static limit initializer methods or fields. %")
             @Specialization(guards = "receiver == cache", limit = "limit")
             static void doFoo(TestObjectError18 receiver, @Cached("receiver") TestObjectError18 cache) {
             }
@@ -635,7 +634,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
                 return 42;
             }
 
-            @ExpectError("@ExportMessage annotated nodes must only refer to static limit initializer methods or fields. Add a static modifier to the bound limit initializer method or field to resolve this.")
+            @ExpectError("@ExportMessage annotated nodes must only refer to static limit initializer methods or fields. %")
             @Specialization(guards = "receiver == cache", limit = "limit()")
             static void doFoo(TestObjectError19 receiver, @Cached("receiver") TestObjectError19 cache) {
             }

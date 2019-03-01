@@ -42,14 +42,21 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotValue.InteropCodeCache;
 
-final class PolyglotLanguageInstance {
+final class PolyglotLanguageInstance implements VMObject {
 
     final PolyglotLanguage language;
     final TruffleLanguage<?> spi;
@@ -61,22 +68,43 @@ final class PolyglotLanguageInstance {
     private volatile OptionValuesImpl firstOptionValues;
     private volatile boolean needsInitializeMultiContext;
 
+    private final DirectLanguageSupplier directLanguageSupplier;
+    private final DirectOrMultiLanguageSupplier singleOrMultiLanguageSupplier;
+    private final Supplier<Object> directContextSupplier;
+    final Assumption singleContext;
+
     PolyglotLanguageInstance(PolyglotLanguage language) {
         this.language = language;
+        this.sourceCache = new PolyglotSourceCache();
+        this.valueCodeCache = new ConcurrentHashMap<>();
+        this.hostInteropCodeCache = new ConcurrentHashMap<>();
+        this.singleContext = Truffle.getRuntime().createAssumption("Single context per language instance.");
         try {
             this.spi = language.cache.loadLanguage();
-            LANGUAGE.initializeLanguage(spi, language.info, language);
+            LANGUAGE.initializeLanguage(spi, language.info, language, this);
             if (!language.engine.singleContext.isValid()) {
                 initializeMultiContext();
             } else {
-                needsInitializeMultiContext = !language.engine.boundEngine;
+                this.needsInitializeMultiContext = !language.engine.boundEngine;
             }
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
-        this.sourceCache = new PolyglotSourceCache();
-        this.valueCodeCache = new ConcurrentHashMap<>();
-        this.hostInteropCodeCache = new ConcurrentHashMap<>();
+        if (language.engine.boundEngine && language.cache.getPolicy() == ContextPolicy.EXCLUSIVE) {
+            this.directContextSupplier = new DirectSingleContextSupplier(this);
+        } else {
+            if (this.singleContext.isValid()) {
+                this.directContextSupplier = new DirectSingleOrMultiContextSupplier(this);
+            } else {
+                this.directContextSupplier = language.getContextImplSupplier();
+            }
+        }
+        this.directLanguageSupplier = new DirectLanguageSupplier(this);
+        this.singleOrMultiLanguageSupplier = new DirectOrMultiLanguageSupplier(this, directLanguageSupplier);
+    }
+
+    public PolyglotEngineImpl getEngine() {
+        return language.engine;
     }
 
     boolean areOptionsCompatible(OptionValuesImpl newOptionValues) {
@@ -107,12 +135,153 @@ final class PolyglotLanguageInstance {
     void initializeMultiContext() {
         assert !language.engine.singleContext.isValid();
         if (language.cache.getPolicy() != ContextPolicy.EXCLUSIVE) {
+            this.singleContext.invalidate();
             LANGUAGE.initializeMultiContext(spi);
         }
     }
 
     PolyglotSourceCache getSourceCache() {
         return sourceCache;
+    }
+
+    Supplier<Object> getDirectContextSupplier() {
+        return directContextSupplier;
+    }
+
+    Supplier<Object> lookupContextSupplier(PolyglotLanguageInstance sourceLanguage) {
+        assert this != sourceLanguage;
+        switch (getEffectiveContextPolicy(sourceLanguage)) {
+            case EXCLUSIVE:
+                return this.directContextSupplier;
+            case REUSE:
+            case SHARED:
+                return this.language.getContextImplSupplier();
+            default:
+                throw new AssertionError();
+        }
+    }
+
+    Supplier<TruffleLanguage<? extends Object>> getDirectLanguageSupplier() {
+        return directLanguageSupplier;
+    }
+
+    Supplier<TruffleLanguage<?>> lookupLanguageSupplier(PolyglotLanguageInstance sourceLanguage) {
+        assert this != sourceLanguage;
+        switch (getEffectiveContextPolicy(sourceLanguage)) {
+            case EXCLUSIVE:
+                return this.directLanguageSupplier;
+            case REUSE:
+            case SHARED:
+                if (this.language.singleLanguage.isValid()) {
+                    return this.singleOrMultiLanguageSupplier;
+                } else {
+                    return this.language.getLanguageSupplier();
+                }
+            default:
+                throw new AssertionError();
+        }
+    }
+
+    private ContextPolicy getEffectiveContextPolicy(PolyglotLanguageInstance sourceRootLanguage) {
+        ContextPolicy sourcePolicy;
+        if (language.engine.boundEngine) {
+            // with a bound engine context policy is effectively always exclusive
+            sourcePolicy = ContextPolicy.EXCLUSIVE;
+        } else {
+            if (sourceRootLanguage != null) {
+                sourcePolicy = sourceRootLanguage.language.cache.getPolicy();
+            } else {
+                // null source language means shared policy
+                sourcePolicy = ContextPolicy.SHARED;
+            }
+        }
+        return sourcePolicy;
+    }
+
+    private static final class DirectLanguageSupplier implements Supplier<TruffleLanguage<?>> {
+
+        private final TruffleLanguage<?> spi;
+
+        DirectLanguageSupplier(PolyglotLanguageInstance instance) {
+            this.spi = instance.spi;
+        }
+
+        @Override
+        public TruffleLanguage<?> get() {
+            return this.spi;
+        }
+
+    }
+
+    private static final class DirectOrMultiLanguageSupplier implements Supplier<TruffleLanguage<?>> {
+
+        private final WeakReference<DirectLanguageSupplier> singleLanguageSupplier;
+        private final Supplier<TruffleLanguage<?>> multiLanguageSupplier;
+        private final Assumption singleLanguage;
+
+        DirectOrMultiLanguageSupplier(PolyglotLanguageInstance targetLanguage, DirectLanguageSupplier directSupplier) {
+            this.singleLanguageSupplier = new WeakReference<>(directSupplier);
+            this.singleLanguage = targetLanguage.language.singleLanguage;
+            this.multiLanguageSupplier = targetLanguage.language.getLanguageSupplier();
+        }
+
+        @Override
+        public TruffleLanguage<?> get() {
+            if (singleLanguage.isValid()) {
+                DirectLanguageSupplier supplier = singleLanguageSupplier.get();
+                if (supplier != null) {
+                    return supplier.get();
+                }
+            }
+            return multiLanguageSupplier.get();
+        }
+    }
+
+    private static final class DirectSingleContextSupplier implements Supplier<Object> {
+
+        private static final Object UNSET = new Object();
+
+        final PolyglotLanguageInstance instance;
+        @CompilationFinal private Object contextInstance = UNSET;
+
+        DirectSingleContextSupplier(PolyglotLanguageInstance instance) {
+            this.instance = instance;
+        }
+
+        @Override
+        public Object get() {
+            assert instance.language.assertCorrectEngine();
+            Object context = this.contextInstance;
+            if (context == UNSET) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                contextInstance = context = instance.language.getCurrentLanguageContext().getContextImpl();
+            }
+            return context;
+        }
+    }
+
+    private static final class DirectSingleOrMultiContextSupplier implements Supplier<Object> {
+
+        private final WeakReference<DirectSingleContextSupplier> singleContextSupplier;
+        private final Supplier<Object> multiContextSupplier;
+        private final Assumption singleContext;
+
+        DirectSingleOrMultiContextSupplier(PolyglotLanguageInstance instance) {
+            this.singleContext = instance.singleContext;
+            this.singleContextSupplier = new WeakReference<>(new DirectSingleContextSupplier(instance));
+            this.multiContextSupplier = instance.language.getContextImplSupplier();
+        }
+
+        @Override
+        public Object get() {
+            if (singleContext.isValid()) {
+                DirectSingleContextSupplier supplier = singleContextSupplier.get();
+                if (supplier != null) {
+                    return supplier.get();
+                }
+            }
+            return multiContextSupplier.get();
+        }
     }
 
 }

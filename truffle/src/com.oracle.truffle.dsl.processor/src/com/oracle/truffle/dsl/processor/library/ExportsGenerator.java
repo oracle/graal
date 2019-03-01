@@ -47,6 +47,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -472,11 +473,20 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         uncachedClass.addOptional(createCastMethod(libraryExports, exportReceiverType, false));
 
+        Set<NodeData> uncachedSharedNodes = new LinkedHashSet<>();
+        for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+            if (export.getSpecializedNode() != null) {
+                uncachedSharedNodes.add(export.getSpecializedNode());
+            }
+        }
+
         CodeExecutableElement isAdoptable = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "isAdoptable")));
         isAdoptable.createBuilder().returnFalse();
 
         CodeExecutableElement getCost = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "getCost")));
         getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(context.getDeclaredType(NodeCost.class), "MEGAMORPHIC")).end();
+
+        boolean primaryNode = true;
 
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
             LibraryMessage message = export.getResolvedMessage();
@@ -498,8 +508,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     directCall.getModifiers().add(Modifier.STATIC);
                 }
             } else {
-                FlatNodeGenFactory factory = new FlatNodeGenFactory(context, uncachedSpecializedNode, libraryConstants);
+                FlatNodeGenFactory factory = new FlatNodeGenFactory(context, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), libraryConstants);
                 CodeExecutableElement generatedUncached = factory.createUncached();
+                if (primaryNode) {
+                    uncachedClass.getEnclosedElements().addAll(factory.createUncachedFields());
+                }
                 generatedUncached.getModifiers().remove(STATIC);
                 ElementUtils.setVisibility(generatedUncached.getModifiers(), Modifier.PUBLIC);
                 generatedUncached.setSimpleName(CodeNames.of(message.getName()));

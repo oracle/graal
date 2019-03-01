@@ -51,6 +51,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -109,8 +111,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
 public class LanguageSPITest {
 
@@ -647,6 +647,10 @@ public class LanguageSPITest {
             return getCurrentLanguage(OneContextLanguage.class);
         }
 
+        public static LanguageContext getCurrentContext() {
+            return getCurrentContext(OneContextLanguage.class);
+        }
+
     }
 
     @TruffleLanguage.Registration(id = MultiContextLanguage.ID, name = MultiContextLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED)
@@ -706,10 +710,10 @@ public class LanguageSPITest {
             return MultiContextLanguage.getCurrentLanguage(MultiContextLanguage.class);
         }
 
-        static MultiContextLanguage getInstance(Context context) {
+        static MultiContextLanguage getInstance(Class<? extends MultiContextLanguage> lang, Context context) {
             context.enter();
             try {
-                return MultiContextLanguage.getCurrentLanguage(MultiContextLanguage.class);
+                return MultiContextLanguage.getCurrentLanguage(lang);
             } finally {
                 context.leave();
             }
@@ -726,7 +730,7 @@ public class LanguageSPITest {
         Context context = Context.create();
 
         context.initialize(MultiContextLanguage.ID);
-        MultiContextLanguage lang = MultiContextLanguage.getInstance(context);
+        MultiContextLanguage lang = MultiContextLanguage.getInstance(MultiContextLanguage.class, context);
 
         assertEquals(1, lang.createContextCalled.size());
         assertTrue(lang.initializeMultiContextCalled.isEmpty());
@@ -761,7 +765,7 @@ public class LanguageSPITest {
         context.enter();
 
         context.initialize(MultiContextLanguage.ID);
-        MultiContextLanguage lang = MultiContextLanguage.getInstance(context);
+        MultiContextLanguage lang = MultiContextLanguage.getInstance(MultiContextLanguage.class, context);
 
         assertEquals(1, lang.createContextCalled.size());
         assertTrue(lang.initializeMultiContextCalled.isEmpty());
@@ -814,7 +818,7 @@ public class LanguageSPITest {
         context.enter();
 
         context.initialize(OneContextLanguage.ID);
-        MultiContextLanguage lang = OneContextLanguage.getInstance(context);
+        MultiContextLanguage lang = OneContextLanguage.getInstance(OneContextLanguage.class, context);
         assertEquals(1, lang.createContextCalled.size());
         assertTrue(lang.initializeMultiContextCalled.isEmpty());
         assertTrue(lang.parseCalled.isEmpty());
@@ -870,8 +874,8 @@ public class LanguageSPITest {
         Context context2 = Context.newBuilder().engine(engine).build();
         context1.initialize(OneContextLanguage.ID);
         context2.initialize(OneContextLanguage.ID);
-        MultiContextLanguage lang1 = OneContextLanguage.getInstance(context1);
-        MultiContextLanguage lang2 = OneContextLanguage.getInstance(context2);
+        MultiContextLanguage lang1 = OneContextLanguage.getInstance(OneContextLanguage.class, context1);
+        MultiContextLanguage lang2 = OneContextLanguage.getInstance(OneContextLanguage.class, context2);
         assertEquals(0, lang1.initializeMultiContextCalled.size());
         assertEquals(0, lang2.initializeMultiContextCalled.size());
     }
@@ -881,7 +885,7 @@ public class LanguageSPITest {
         Engine engine = Engine.newBuilder().option(MultiContextLanguage.ID + ".DummyOption", "42").build();
         Context context = Context.newBuilder().engine(engine).build();
         context.initialize(MultiContextLanguage.ID);
-        MultiContextLanguage lang = MultiContextLanguage.getInstance(context);
+        MultiContextLanguage lang = MultiContextLanguage.getInstance(MultiContextLanguage.class, context);
         assertEquals(1, lang.initializeMultiContextCalled.size());
         assertEquals(1, lang.initializeMultipleContextsCalled.size());
         assertEquals(1, (int) lang.initializeMultipleContextsCalled.get(0));
@@ -901,7 +905,7 @@ public class LanguageSPITest {
         Context context1 = Context.newBuilder().engine(engine).build();
 
         context1.initialize(MultiContextLanguage.ID);
-        MultiContextLanguage lang1 = MultiContextLanguage.getInstance(context1);
+        MultiContextLanguage lang1 = MultiContextLanguage.getInstance(MultiContextLanguage.class, context1);
 
         assertTrue(lang1.parseCalled.isEmpty());
         assertEquals(1, lang1.initializeMultiContextCalled.size());
@@ -925,7 +929,7 @@ public class LanguageSPITest {
         // pass a dummy option to avoid caching
         Context context2 = Context.newBuilder().engine(engine).option(MultiContextLanguage.ID + ".DummyOption", "42").build();
         context2.initialize(MultiContextLanguage.ID);
-        MultiContextLanguage lang2 = MultiContextLanguage.getInstance(context2);
+        MultiContextLanguage lang2 = MultiContextLanguage.getInstance(MultiContextLanguage.class, context2);
 
         assertEquals(2, lang1.parseCalled.size());
         assertEquals(0, lang2.parseCalled.size());
@@ -965,7 +969,7 @@ public class LanguageSPITest {
         Context context1 = Context.newBuilder().engine(engine).build();
 
         context1.initialize(MultiContextLanguage.ID);
-        MultiContextLanguage lang = MultiContextLanguage.getInstance(context1);
+        MultiContextLanguage lang = MultiContextLanguage.getInstance(MultiContextLanguage.class, context1);
 
         assertTrue(lang.parseCalled.isEmpty());
         assertEquals(1, lang.initializeMultiContextCalled.size());

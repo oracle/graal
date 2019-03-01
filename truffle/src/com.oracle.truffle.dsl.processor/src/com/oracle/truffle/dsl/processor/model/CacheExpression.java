@@ -45,9 +45,12 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationVa
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
@@ -60,10 +63,13 @@ public final class CacheExpression extends MessageContainer {
     private int dimensions = -1;
     private DSLExpression defaultExpression;
     private DSLExpression uncachedExpression;
-    private boolean initializedInFastPath = false;
+    private boolean alwaysInitialized = false;
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
     private String sharedGroup;
+
+    private TypeMirror languageType;
+    private TypeMirror supplierType;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
@@ -75,9 +81,33 @@ public final class CacheExpression extends MessageContainer {
         copy.dimensions = this.dimensions;
         copy.defaultExpression = this.defaultExpression;
         copy.uncachedExpression = this.uncachedExpression;
-        copy.initializedInFastPath = this.initializedInFastPath;
+        copy.alwaysInitialized = this.alwaysInitialized;
         copy.sharedGroup = this.sharedGroup;
         return copy;
+    }
+
+    public void setLanguageType(TypeMirror languageType) {
+        this.languageType = languageType;
+    }
+
+    public boolean isSupplier() {
+        if (isCachedLanguage()) {
+            return !ElementUtils.typeEquals(getLanguageType(), getParameter().getType());
+        } else {
+            return ElementUtils.typeEquals(getSupplierType(), getParameter().getType());
+        }
+    }
+
+    public TypeMirror getSupplierType() {
+        return supplierType;
+    }
+
+    public void setSupplierType(TypeMirror supplierType) {
+        this.supplierType = supplierType;
+    }
+
+    public TypeMirror getLanguageType() {
+        return languageType;
     }
 
     public void setSharedGroup(String sharedGroup) {
@@ -124,12 +154,12 @@ public final class CacheExpression extends MessageContainer {
         return uncachedExpression;
     }
 
-    public void setInitializedInFastPath(boolean fastPathCache) {
-        this.initializedInFastPath = fastPathCache;
+    public void setAlwaysInitialized(boolean fastPathCache) {
+        this.alwaysInitialized = fastPathCache;
     }
 
-    public boolean isInitializedInFastPath() {
-        return initializedInFastPath;
+    public boolean isAlwaysInitialized() {
+        return alwaysInitialized;
     }
 
     public void setDimensions(int dimensions) {
@@ -150,6 +180,14 @@ public final class CacheExpression extends MessageContainer {
 
     public boolean isCachedLibrary() {
         return isType(CachedLibrary.class);
+    }
+
+    public boolean isCachedContext() {
+        return isType(CachedContext.class);
+    }
+
+    public boolean isCachedLanguage() {
+        return isType(CachedLanguage.class);
     }
 
     private boolean isType(Class<?> type) {

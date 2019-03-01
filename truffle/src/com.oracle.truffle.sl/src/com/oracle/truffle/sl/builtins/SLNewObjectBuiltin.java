@@ -40,8 +40,7 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -49,6 +48,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
@@ -59,15 +59,9 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @NodeInfo(shortName = "new")
 public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
 
-    @CompilationFinal SLContext context;
-
     @Specialization
     @SuppressWarnings("unused")
-    public Object newObject(SLNull o) {
-        if (context != getContext()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            context = getContext();
-        }
+    public Object newObject(SLNull o, @CachedContext(SLLanguage.class) SLContext context) {
         return context.createObject();
     }
 

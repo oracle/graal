@@ -79,6 +79,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 /**
  * A test of {@link AllocationReporter}.
@@ -583,23 +584,26 @@ public class AllocationReporterTest {
         });
         context.eval(source);
         context.enter();
-        AllocationReporter reporter = ProxyLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
-        AtomicInteger listenerCalls = new AtomicInteger(0);
-        AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
-        assertEquals(0, listenerCalls.get());
-        assertFalse(reporter.isActive());
-        allocation.setEnabled(true);
-        assertEquals(1, listenerCalls.get());
-        activatedListener.unregister();
-        listenerCalls.set(0);
+        try {
+            AllocationReporter reporter = AllocationReporterLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
+            AtomicInteger listenerCalls = new AtomicInteger(0);
+            AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
+            assertEquals(0, listenerCalls.get());
+            assertFalse(reporter.isActive());
+            allocation.setEnabled(true);
+            assertEquals(1, listenerCalls.get());
+            activatedListener.unregister();
+            listenerCalls.set(0);
 
-        AllocationDeactivatedListener deactivatedListener = AllocationDeactivatedListener.register(listenerCalls, reporter);
-        assertEquals(0, listenerCalls.get());
-        assertTrue(reporter.isActive());
-        allocation.setEnabled(false);
-        assertEquals(1, listenerCalls.get());
-        deactivatedListener.unregister();
-        context.leave();
+            AllocationDeactivatedListener deactivatedListener = AllocationDeactivatedListener.register(listenerCalls, reporter);
+            assertEquals(0, listenerCalls.get());
+            assertTrue(reporter.isActive());
+            allocation.setEnabled(false);
+            assertEquals(1, listenerCalls.get());
+            deactivatedListener.unregister();
+        } finally {
+            context.leave();
+        }
     }
 
     /**
@@ -865,6 +869,10 @@ public class AllocationReporterTest {
                 }
             }
 
+        }
+
+        public static LanguageContext getCurrentContext() {
+            return getCurrentContext(AllocationReporterLanguage.class);
         }
     }
 

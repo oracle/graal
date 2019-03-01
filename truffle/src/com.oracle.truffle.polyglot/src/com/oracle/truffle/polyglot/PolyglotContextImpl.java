@@ -681,26 +681,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @SuppressWarnings("rawtypes")
-    PolyglotLanguageContext findLanguageContext(Class<? extends TruffleLanguage> languageClazz, boolean failIfNotFound) {
-        for (PolyglotLanguageContext lang : contexts) {
-            if (lang.isInitialized()) {
-                TruffleLanguage<?> language = VMAccessor.LANGUAGE.getLanguage(lang.env);
-                if (languageClazz != TruffleLanguage.class && languageClazz.isInstance(language)) {
-                    return lang;
-                }
-            }
-        }
-        if (failIfNotFound) {
-            Set<String> languageNames = new HashSet<>();
-            for (PolyglotLanguageContext lang : contexts) {
-                if (lang.isInitialized()) {
-                    languageNames.add(lang.language.cache.getClassName());
-                }
-            }
-            throw new IllegalStateException("Cannot find language " + languageClazz + " among " + languageNames);
-        } else {
-            return null;
-        }
+    PolyglotLanguageContext findLanguageContext(Class<? extends TruffleLanguage> languageClazz) {
+        return getContext(engine.getLanguage(languageClazz));
     }
 
     private PolyglotLanguageContext getLanguageContextImpl(Class<? extends TruffleLanguage<?>> languageClass) {
@@ -714,7 +696,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 }
                 indexValue = languageIndexMap.get(languageClass);
                 if (indexValue == -1) {
-                    PolyglotLanguageContext context = findLanguageContext(languageClass, true);
+                    PolyglotLanguageContext context = findLanguageContext(languageClass);
                     indexValue = context.language.index;
                     this.languageIndexMap.put(languageClass, indexValue);
                 }

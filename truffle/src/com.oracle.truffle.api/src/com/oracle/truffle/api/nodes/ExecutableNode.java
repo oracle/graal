@@ -40,10 +40,17 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.util.concurrent.locks.Lock;
+import java.util.function.Supplier;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
 /**
  * Represents an executable node in a Truffle AST. The executable node represents an AST fragment
@@ -54,8 +61,14 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * @since 0.31
  */
 public abstract class ExecutableNode extends Node {
-
+    /*
+     * Since languages were singletons in the past, we cannot use the Env instance stored in
+     * TruffleLanguage for languages that are not yet migrated. We use this sourceVM reference
+     * instead for compatibility.
+     */
+    @CompilationFinal Object sourceVM;
     final TruffleLanguage<?> language;
+    @CompilationFinal SupplierCache supplierCache;
 
     /**
      * Creates new executable node with a given language instance. The language instance is
@@ -67,8 +80,22 @@ public abstract class ExecutableNode extends Node {
     protected ExecutableNode(TruffleLanguage<?> language) {
         CompilerAsserts.neverPartOfCompilation();
         this.language = language;
+        if (this.language != null) {
+            this.sourceVM = Node.ACCESSOR.engineSupport().getVMFromLanguageObject(Node.ACCESSOR.languageSupport().getVMObject(this.language));
+        } else {
+            this.sourceVM = getCurrentVM();
+        }
         if (language != null && getLanguageInfo() == null) {
             throw new IllegalArgumentException("Truffle language instance is not initialized.");
+        }
+    }
+
+    private static Object getCurrentVM() {
+        EngineSupport engine = Node.ACCESSOR.engineSupport();
+        if (engine != null) {
+            return engine.getCurrentVM();
+        } else {
+            return null;
         }
     }
 
@@ -106,7 +133,9 @@ public abstract class ExecutableNode extends Node {
      *
      * @see #getLanguageInfo()
      * @since 0.31
+     * @deprecated use {@link #getLanguageSupplier(Class)} instead.
      */
+    @Deprecated
     @SuppressWarnings({"rawtypes", "unchecked"})
     public final <C extends TruffleLanguage> C getLanguage(Class<C> languageClass) {
         if (language == null) {
@@ -120,6 +149,76 @@ public abstract class ExecutableNode extends Node {
             }
         }
         return (C) spi;
+    }
+
+    static class SupplierCache {
+
+        final Class<?> languageClass;
+        final Supplier<?> languageReference;
+        final Supplier<?> contextReference;
+        final SupplierCache next;
+
+        @SuppressWarnings("unchecked")
+        SupplierCache(ExecutableNode executableNode, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass, SupplierCache next) {
+            this.languageClass = languageClass;
+            if (languageClass != null) {
+                this.languageReference = Node.ACCESSOR.engineSupport().lookupLanguageSupplier(executableNode.sourceVM,
+                                executableNode.language, languageClass);
+                this.contextReference = Node.ACCESSOR.engineSupport().lookupContextSupplier(executableNode.sourceVM,
+                                executableNode.language, languageClass);
+            } else {
+                this.languageReference = null;
+                this.contextReference = null;
+            }
+            this.next = next;
+        }
+    }
+
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @SuppressWarnings("rawtypes")
+    final SupplierCache lookupSupplierCache(Class<? extends TruffleLanguage> languageClass) {
+        do {
+            SupplierCache current = this.supplierCache;
+            if (current == GENERIC) {
+                return null;
+            }
+            while (current != null) {
+                if ((current.languageClass == languageClass)) {
+                    return current;
+                }
+                current = current.next;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            specializeSupplierCache(languageClass);
+        } while (true);
+    }
+
+    private static final SupplierCache GENERIC = new SupplierCache(null, null, null);
+
+    @SuppressWarnings("rawtypes")
+    private void specializeSupplierCache(Class<? extends TruffleLanguage> languageClass) {
+        Lock lock = getLock();
+        lock.lock();
+        try {
+            SupplierCache current = this.supplierCache;
+            if (current == null) {
+                this.supplierCache = new SupplierCache(this, languageClass, null);
+            } else {
+                int count = 0;
+                SupplierCache original = current;
+                do {
+                    count++;
+                    current = current.next;
+                } while (current != null);
+                if (count >= 5) {
+                    this.supplierCache = GENERIC;
+                } else {
+                    this.supplierCache = new SupplierCache(this, languageClass, original);
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
 }

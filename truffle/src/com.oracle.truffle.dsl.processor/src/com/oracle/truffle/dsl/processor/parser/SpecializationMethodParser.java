@@ -53,6 +53,8 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -77,6 +79,8 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
         spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(Cached.class)));
         spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(CachedLibrary.class)));
+        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(CachedContext.class)));
+        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(CachedLanguage.class)));
         return spec;
     }
 

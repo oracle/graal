@@ -566,6 +566,8 @@ public class ElementUtils {
                 return ((TypeVariable) mirror).asElement().getSimpleName().toString();
             case ERROR:
                 throw new CompileErrorException("Type error " + mirror);
+            case NONE:
+                return "None";
             default:
                 throw new RuntimeException("Unknown type specified " + mirror.getKind() + " mirror: " + mirror);
         }

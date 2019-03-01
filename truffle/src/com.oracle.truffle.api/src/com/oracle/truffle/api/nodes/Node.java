@@ -49,13 +49,16 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -63,6 +66,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
+import com.oracle.truffle.api.nodes.ExecutableNode.SupplierCache;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -632,6 +636,192 @@ public abstract class Node implements NodeInterface, Cloneable {
             return info.description();
         }
         return "";
+    }
+
+    private static final Map<Class<?>, Supplier<?>> UNCACHED_LANGUAGE_REFERENCES = new ConcurrentHashMap<>();
+
+    /**
+     * Returns a supplier that returns the current language instance. The returned language supplier
+     * is intended to be cached in the currently adopted AST. If this node is {@link #isAdoptable()
+     * adoptable} then the method must be invoked after the AST was adopted otherwise an
+     * {@link IllegalStateException} is thrown. The supplier lookup decides which lookup method is
+     * the best given the parent {@link ExecutableNode} or {@link RootNode} and the provided
+     * languageClass. It is recommended to use
+     * {@link com.oracle.truffle.api.dsl.CachedLanguage @CachedLanguage} instead whenever possible.
+     * The given language class must not be <code>null</code>. If the given language class is not
+     * known to the current engine then an {@link IllegalArgumentException} is thrown.
+     * <p>
+     * Usage example:
+     *
+     * <pre>
+     * class ExampleNode extends Node {
+     *
+     *     &#64;CompilationFinal private Supplier<MyLanguage> supplier;
+     *
+     *     void execute() {
+     *         if (supplier == null) {
+     *             CompilerDirectives.transferToInterpreterAndInvalidate();
+     *             this.supplier = getContextSupplier(MyLanguage.class);
+     *         }
+     *         MyLanguage language = this.supplier.get();
+     *         // use language
+     *     }
+     * }
+     *
+     * </pre>
+     * <p>
+     * The current language might vary between {@link ExecutableNode#execute(VirtualFrame)
+     * executions} if resources or code was shared between multiple contexts and the node was
+     * inserted into an AST that was not associated with this language. It is not recommended to
+     * cache the language in the AST directly.
+     * <p>
+     * This method is designed for partial evaluation and will reliably return a constant when
+     * called with a class literal and the number of accessed languages does not exceed the limit of
+     * 5 per root executable node. If possible the supplier should be cached in the AST in order to
+     * avoid the repeated lookup of the parent executable or root node.
+     *
+     * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context supplier in
+     *      specializations or exported messages.
+     * @since 1.0
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    protected final <T extends TruffleLanguage> Supplier<T> getLanguageSupplier(Class<T> languageClass) {
+        if (languageClass == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new NullPointerException();
+        }
+        ExecutableNode executableNode = getExecutableNode();
+        if (executableNode != null) {
+            if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
+                return Node.ACCESSOR.engineSupport().getDirectLanguageSupplier(executableNode.sourceVM,
+                                executableNode.language, languageClass);
+            } else {
+                SupplierCache cache = executableNode.lookupSupplierCache(languageClass);
+                if (cache != null) {
+                    return (Supplier<T>) cache.languageReference;
+                } else {
+                    return Node.ACCESSOR.engineSupport().lookupLanguageSupplier(executableNode.sourceVM,
+                                    executableNode.language, languageClass);
+                }
+            }
+        }
+        return lookupUncachedLanguageSupplier(languageClass);
+    }
+
+    @SuppressWarnings("unchecked")
+    @TruffleBoundary
+    private static <T extends TruffleLanguage<?>> Supplier<T> lookupUncachedLanguageSupplier(Class<T> languageClass) {
+        Supplier<?> result = UNCACHED_LANGUAGE_REFERENCES.get(languageClass);
+        if (result == null) {
+            result = new Supplier<Object>() {
+                @TruffleBoundary
+                public Object get() {
+                    return Node.ACCESSOR.engineSupport().getCurrentLanguage(languageClass);
+                }
+            };
+            UNCACHED_LANGUAGE_REFERENCES.put(languageClass, result);
+        }
+        return (Supplier<T>) result;
+    }
+
+    @ExplodeLoop
+    private ExecutableNode getExecutableNode() {
+        Node node = this;
+        while (node != null) {
+            if (node instanceof ExecutableNode) {
+                return (ExecutableNode) node;
+            }
+            node = node.getParent();
+        }
+        if (isAdoptable()) {
+            throw new IllegalStateException("Node must be adopted before a supplier can be looked up.");
+        }
+        return null;
+    }
+
+    /**
+     * Returns a supplier that returns the current execution context associated with the given
+     * language. The returned context supplier is intended to be cached in the currently adopted
+     * AST. If this node is {@link #isAdoptable() adoptable} then the method must be invoked after
+     * the AST was adopted otherwise an {@link IllegalStateException} is thrown. The supplier lookup
+     * decides which lookup method is the best given the parent {@link ExecutableNode} or
+     * {@link RootNode} and the provided languageClass. It is recommended to use
+     * {@link com.oracle.truffle.api.dsl.CachedContext @CachedContext} instead whenever possible.
+     * The given language class must not be null. If the given language class is not known to the
+     * current engine then an {@link IllegalArgumentException} is thrown.
+     * <p>
+     * Usage example:
+     *
+     * <pre>
+     * class ExampleNode extends Node {
+     *
+     *     &#64;CompilationFinal private Supplier<MyContext> supplier;
+     *
+     *     void execute() {
+     *         if (supplier == null) {
+     *             CompilerDirectives.transferToInterpreterAndInvalidate();
+     *             this.supplier = getContextSupplier(MyLanguage.class);
+     *         }
+     *         MyContext context = this.supplier.get();
+     *         // use context
+     *     }
+     * }
+     *
+     * </pre>
+     * <p>
+     * The current context might vary between {@link ExecutableNode#execute(VirtualFrame)
+     * executions} if resources or code is shared between multiple contexts. It is not recommended
+     * to cache the context in the AST directly.
+     * <p>
+     * This method is designed for partial evaluation and will reliably return a constant when
+     * called with a class literal and the number of accessed languages does not exceed the limit of
+     * 5 per root executable node. If possible the supplier should be cached in the AST in order to
+     * avoid the repeated lookup of the parent executable or root node.
+     *
+     * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context supplier in
+     *      specializations or exported messages.
+     * @since 1.0
+     */
+    @SuppressWarnings("unchecked")
+    protected final <C, T extends TruffleLanguage<C>> Supplier<C> getContextSupplier(Class<T> languageClass) {
+        if (languageClass == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new NullPointerException();
+        }
+        ExecutableNode executableNode = getExecutableNode();
+        if (executableNode != null) {
+            if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
+                return Node.ACCESSOR.engineSupport().getDirectContextSupplier(executableNode.sourceVM,
+                                executableNode.language, languageClass);
+            } else {
+                SupplierCache cache = executableNode.lookupSupplierCache(languageClass);
+                if (cache != null) {
+                    return (Supplier<C>) cache.contextReference;
+                } else {
+                    return Node.ACCESSOR.engineSupport().lookupContextSupplier(executableNode.sourceVM,
+                                    executableNode.language, languageClass);
+                }
+            }
+        }
+        return lookupUncachedContextSupplier(languageClass);
+    }
+
+    private static final Map<Class<?>, Supplier<?>> UNCACHED_CONTEXT_REFERENCES = new ConcurrentHashMap<>();
+
+    @SuppressWarnings("unchecked")
+    @TruffleBoundary
+    private static <T extends TruffleLanguage<C>, C> Supplier<C> lookupUncachedContextSupplier(Class<T> language) {
+        Supplier<?> result = UNCACHED_CONTEXT_REFERENCES.get(language);
+        if (result == null) {
+            result = new Supplier<Object>() {
+                @TruffleBoundary
+                public Object get() {
+                    return Node.ACCESSOR.engineSupport().getCurrentContext(language);
+                }
+            };
+            UNCACHED_CONTEXT_REFERENCES.put(language, result);
+        }
+        return (Supplier<C>) result;
     }
 
     private static final ReentrantLock GIL_LOCK = new ReentrantLock(false);
