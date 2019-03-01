@@ -3253,6 +3253,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(5, dst);
     }
 
+    public final void sarq(Register dst, int imm8) {
+        assert isShiftCount(imm8 >> 1) : "illegal shift count";
+        prefixq(dst);
+        if (imm8 == 1) {
+            emitByte(0xD1);
+            emitModRM(7, dst);
+        } else {
+            emitByte(0xC1);
+            emitModRM(7, dst);
+            emitByte(imm8);
+        }
+    }
+
     public final void sbbq(Register dst, Register src) {
         SBB.rmOp.emit(this, QWORD, dst, src);
     }
