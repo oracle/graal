@@ -784,7 +784,7 @@ public abstract class DSLExpression {
 
     }
 
-    public abstract class AbstractDSLExpressionVisitor implements DSLExpressionVisitor {
+    public abstract static class AbstractDSLExpressionVisitor implements DSLExpressionVisitor {
         @Override
         public void visitBinary(Binary binary) {
         }

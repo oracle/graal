@@ -158,4 +158,18 @@ public class CheckedExceptionTest {
 
     }
 
+    abstract static class ExceptionTestNode extends Node {
+
+        protected Node createSubnode() throws Exception {
+            return null;
+        }
+
+        public abstract Object execute() throws Exception;
+
+        @Specialization
+        Object callDirectCached(@Cached("createSubnode()") Node subNode) {
+            return null;
+        }
+    }
+
 }
