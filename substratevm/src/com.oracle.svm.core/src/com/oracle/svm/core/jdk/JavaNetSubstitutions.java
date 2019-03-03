@@ -123,6 +123,8 @@ public final class JavaNetSubstitutions {
     public static final String HTTP_PROTOCOL = "http";
     public static final String HTTPS_PROTOCOL = "https";
 
+    public static final String RESOURCE_PROTOCOL = "resource";
+
     static final List<String> defaultProtocols = Collections.singletonList(FILE_PROTOCOL);
     static final List<String> onDemandProtocols = Arrays.asList(HTTP_PROTOCOL, HTTPS_PROTOCOL);
 
@@ -131,6 +133,10 @@ public final class JavaNetSubstitutions {
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean addURLStreamHandler(String protocol) {
         try {
+            if (RESOURCE_PROTOCOL.equals(protocol)) {
+                URLProtocolsSupport.put(RESOURCE_PROTOCOL,ImageSingletons.lookup(Resources.ResourcesSupport.class).resourcesURLStreamHandler);
+                return true;
+            }
             Method method = URL.class.getDeclaredMethod("getURLStreamHandler", String.class);
             method.setAccessible(true);
             URLStreamHandler handler = (URLStreamHandler) method.invoke(null, protocol);

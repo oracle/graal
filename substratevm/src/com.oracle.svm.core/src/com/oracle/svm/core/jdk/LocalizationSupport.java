@@ -29,6 +29,7 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
 import org.graalvm.compiler.options.Option;
@@ -95,12 +96,13 @@ public class LocalizationSupport {
      *
      * @param locale this parameter is not currently used.
      */
-    public ResourceBundle getCached(String baseName, Locale locale) {
+    public ResourceBundle getCached(String baseName, Locale locale) throws MissingResourceException {
         ResourceBundle result = cache.get(baseName);
         if (result == null) {
             String errorMessage = "Resource bundle not found " + baseName + ". " +
                             "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
-            throw VMError.unsupportedFeature(errorMessage);
+            System.err.println(errorMessage);
+            throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);//VMError.unsupportedFeature(errorMessage);
         }
         return result;
     }
