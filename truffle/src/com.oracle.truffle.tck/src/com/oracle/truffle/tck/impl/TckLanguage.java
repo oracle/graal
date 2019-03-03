@@ -98,7 +98,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         @Override
         @Ignore
         public Object execute(VirtualFrame frame) {
-            Env env = getLanguage(TckLanguage.class).getContextReference().get();
+            Env env = getContextSupplier(TckLanguage.class).get();
             Object[] arguments = frame.getArguments();
             return parseAndEval(env, arguments);
         }

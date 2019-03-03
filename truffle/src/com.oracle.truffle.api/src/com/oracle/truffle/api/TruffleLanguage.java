@@ -1195,11 +1195,6 @@ public abstract class TruffleLanguage<C> {
         return reference;
     }
 
-    void initialize(LanguageInfo language, Object vmObject) {
-        this.languageInfo = language;
-        this.reference = new ContextReference<>(vmObject);
-    }
-
     CallTarget parse(Source source, String... argumentNames) {
         ParsingRequest request = new ParsingRequest(source, argumentNames);
         CallTarget target;

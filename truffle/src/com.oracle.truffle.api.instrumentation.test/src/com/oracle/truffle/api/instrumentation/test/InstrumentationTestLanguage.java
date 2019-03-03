@@ -1042,7 +1042,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private void defineFunction() {
-            InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            InstrumentContext context = getContextSupplier(InstrumentationTestLanguage.class).get();
             if (context.callFunctions.callTargets.containsKey(identifier)) {
                 if (context.callFunctions.callTargets.get(identifier) != target) {
                     throw new IllegalArgumentException("Identifier redefinition not supported.");
@@ -1082,7 +1082,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private TruffleContext createInnerContext() {
-            InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            InstrumentContext context = getContextSupplier(InstrumentationTestLanguage.class).get();
             return context.env.newContextBuilder().build();
         }
     }
@@ -1101,7 +1101,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                InstrumentContext context = getContextSupplier(InstrumentationTestLanguage.class).get();
                 CallTarget target = context.callFunctions.callTargets.get(identifier);
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
@@ -1123,7 +1123,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                InstrumentContext context = getContextSupplier(InstrumentationTestLanguage.class).get();
                 CallTarget target = context.callFunctions.callTargets.get(identifier);
                 callNode = Truffle.getRuntime().createDirectCallNode(target);
             }
@@ -1133,7 +1133,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private void spawnCall() {
-            InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            InstrumentContext context = getContextSupplier(InstrumentationTestLanguage.class).get();
             Thread t = context.env.createThread(new Runnable() {
                 @Override
                 public void run() {
@@ -1161,7 +1161,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private void joinSpawnedThreads() {
-            InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            InstrumentContext context = getContextSupplier(InstrumentationTestLanguage.class).get();
             List<Thread> threads;
             do {
                 threads = new ArrayList<>();
@@ -1202,7 +1202,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 currentDepth++;
                 if (callNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                    InstrumentContext context = getContextSupplier(InstrumentationTestLanguage.class).get();
                     CallTarget target = context.callFunctions.callTargets.get(identifier);
                     callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
                 }
@@ -1627,7 +1627,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (writer == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                InstrumentContext context = getContextSupplier(InstrumentationTestLanguage.class).get();
                 switch (where) {
                     case OUT:
                         writer = new PrintWriter(new OutputStreamWriter(context.out));

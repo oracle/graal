@@ -25,11 +25,14 @@
 package org.graalvm.compiler.truffle.test.builtins;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -42,9 +45,10 @@ public abstract class SLCallFunctionsWithBuiltin extends SLGraalRuntimeBuiltin {
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
-    public SLNull runTests(String startsWith, SLFunction harness) {
+    public SLNull runTests(String startsWith, SLFunction harness,
+                    @CachedContext(SLLanguage.class) SLContext context) {
         boolean found = false;
-        for (SLFunction function : getContext().getFunctionRegistry().getFunctions()) {
+        for (SLFunction function : context.getFunctionRegistry().getFunctions()) {
             if (function.getName().startsWith(startsWith) && getSource(function) == getSource(harness) && getSource(function) != null) {
                 indirectCall.call(harness.getCallTarget(), new Object[]{function});
                 found = true;

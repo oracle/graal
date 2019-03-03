@@ -45,8 +45,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -85,9 +85,9 @@ public final class JSONHelper {
             String language = "";
             RootNode root = newNode.getRootNode();
             if (root != null) {
-                TruffleLanguage<?> clazz = root.getLanguage(TruffleLanguage.class);
+                LanguageInfo clazz = root.getLanguageInfo();
                 if (clazz != null) {
-                    language = clazz.getClass().getName();
+                    language = clazz.getId();
                 }
             }
             AstJsonDumpBuilder.append("{ \"action\": \"createNode\", \"newId\": \"" + getID(newNode) + "\", \"type\": \"" + getType(newNode) + "\", \"description\": \"" + newNode.getDescription() +

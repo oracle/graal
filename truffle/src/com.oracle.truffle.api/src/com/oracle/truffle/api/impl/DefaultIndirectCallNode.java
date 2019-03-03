@@ -65,7 +65,7 @@ final class DefaultIndirectCallNode extends IndirectCallNode {
 
             @Override
             @TruffleBoundary
-            public Object call(CallTarget target, Object[] arguments) {
+            public Object call(CallTarget target, Object... arguments) {
                 Node parent = NodeUtil.pushEncapsulatingNode(null);
                 try {
                     return ((DefaultCallTarget) target).callDirectOrIndirect(parent, arguments);

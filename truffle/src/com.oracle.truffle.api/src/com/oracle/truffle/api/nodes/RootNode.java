@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -163,18 +162,13 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * Returns the current context associated with the root node {@link #getLanguage(Class)
-     * language} and {@link Thread thread}. The current context is <code>null</code> if the root
-     * node is associated with a <code>null</code> language. This is a short-cut for
-     * <code>this</code>. {@link #getLanguage(Class) getLanguage(languageClass)}.
-     * {@link TruffleLanguage#getContextReference() getContextReference()}.
-     * {@link ContextReference#get() get()}. If invoked on the fast-path then
-     * <code>languageClass</code> must be a compilation final value.
-     *
      * @see #getLanguage(Class)
      * @see TruffleLanguage#getContextReference()
      * @since 0.27
+     * @deprecated use {@link #getContextSupplier(Class)} instead.
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public final <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
         if (language == null) {
             return null;

@@ -777,6 +777,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * called with a class literal and the number of accessed languages does not exceed the limit of
      * 5 per root executable node. If possible the supplier should be cached in the AST in order to
      * avoid the repeated lookup of the parent executable or root node.
+     * <p>
      *
      * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context supplier in
      *      specializations or exported messages.

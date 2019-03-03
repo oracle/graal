@@ -79,7 +79,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 /**
  * A test of {@link AllocationReporter}.
