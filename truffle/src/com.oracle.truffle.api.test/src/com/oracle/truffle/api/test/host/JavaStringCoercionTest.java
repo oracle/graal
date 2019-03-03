@@ -54,18 +54,20 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class JavaStringCoercionTest {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
     private Context context;
     private Env env;
 
@@ -136,44 +138,42 @@ public class JavaStringCoercionTest {
 
     @Test
     public void testPreferWrappingToStringCoercion() throws InteropException {
-        Node invoke = Message.INVOKE.createNode();
         TruffleObject api = (TruffleObject) env.asGuestValue(new StringConsumer2());
-        Object list = call(invoke, api, new UnboxableArrayObject(4));
+        Object list = call(api, new UnboxableArrayObject(4));
         assertEquals("UnboxableArray(4):[0, 1, 2, 3]", list);
     }
 
     private static void testStringCoercion(TruffleObject api) throws InteropException {
-        Node invoke = Message.INVOKE.createNode();
-        assertEquals("ok", call(invoke, api, "ok"));
-        assertEquals("42", call(invoke, api, 42));
-        assertEquals("true", call(invoke, api, true));
-        assertEquals("-128", call(invoke, api, Byte.MIN_VALUE));
-        assertEquals("-32768", call(invoke, api, Short.MIN_VALUE));
-        assertEquals("9223372036854775807", call(invoke, api, Long.MAX_VALUE));
-        assertEquals("3.14", call(invoke, api, 3.14));
-        assertEquals("3.14", call(invoke, api, 3.14f));
-        assertEquals("NaN", call(invoke, api, Double.NaN));
-        assertEquals("Infinity", call(invoke, api, Double.POSITIVE_INFINITY));
-        assertEquals("-Infinity", call(invoke, api, Double.NEGATIVE_INFINITY));
-        assertEquals("-0.0", call(invoke, api, -0.0));
-        assertEquals("\uffff", call(invoke, api, Character.MAX_VALUE));
+        assertEquals("ok", call(api, "ok"));
+        assertEquals("42", call(api, 42));
+        assertEquals("true", call(api, true));
+        assertEquals("-128", call(api, Byte.MIN_VALUE));
+        assertEquals("-32768", call(api, Short.MIN_VALUE));
+        assertEquals("9223372036854775807", call(api, Long.MAX_VALUE));
+        assertEquals("3.14", call(api, 3.14));
+        assertEquals("3.14", call(api, 3.14f));
+        assertEquals("NaN", call(api, Double.NaN));
+        assertEquals("Infinity", call(api, Double.POSITIVE_INFINITY));
+        assertEquals("-Infinity", call(api, Double.NEGATIVE_INFINITY));
+        assertEquals("-0.0", call(api, -0.0));
+        assertEquals("\uffff", call(api, Character.MAX_VALUE));
 
-        assertEquals("42", call(invoke, api, new UnboxableToInt(42)));
+        assertEquals("42", call(api, new UnboxableToInt(42)));
 
-        callUnsupported(invoke, api, new NotCoercibleObject());
+        callUnsupported(api, new NotCoercibleObject());
     }
 
-    private static Object call(Node invoke, TruffleObject obj, Object value) throws InteropException {
+    private static Object call(TruffleObject obj, Object value) throws InteropException {
         try {
-            return ForeignAccess.sendInvoke(invoke, obj, "call", value);
+            return INTEROP.invokeMember(obj, "call", value);
         } catch (UnsupportedTypeException e) {
             throw new AssertionError("String coercion failed for: " + value + " (" + (value == null ? null : value.getClass().getName()) + ")", e);
         }
     }
 
-    private static void callUnsupported(Node invoke, TruffleObject obj, Object value) throws InteropException {
+    private static void callUnsupported(TruffleObject obj, Object value) throws InteropException {
         try {
-            ForeignAccess.sendInvoke(invoke, obj, "call", value);
+            INTEROP.invokeMember(obj, "call", value);
             fail("Expected coercion to fail");
         } catch (UnsupportedTypeException e) {
         }
@@ -244,117 +244,155 @@ public class JavaStringCoercionTest {
     @Test
     public void testStringToPrimitiveSingleMethod() throws InteropException {
         for (Object consumer : new Object[]{new IntConsumer(), new IntegerConsumer()}) {
-            Node invoke = Message.INVOKE.createNode();
             TruffleObject api = (TruffleObject) env.asGuestValue(consumer);
-            assertEquals(42, call(invoke, api, "42"));
-            assertEquals(42, call(invoke, api, "+42"));
-            assertEquals(-42, call(invoke, api, "-42"));
+            assertEquals(42, call(api, "42"));
+            assertEquals(42, call(api, "+42"));
+            assertEquals(-42, call(api, "-42"));
 
-            callUnsupported(invoke, api, "42garbage");
-            callUnsupported(invoke, api, "2147483648");
-            callUnsupported(invoke, api, "42.0");
-            callUnsupported(invoke, api, " 42");
-            callUnsupported(invoke, api, "42 ");
+            callUnsupported(api, "42garbage");
+            callUnsupported(api, "2147483648");
+            callUnsupported(api, "42.0");
+            callUnsupported(api, " 42");
+            callUnsupported(api, "42 ");
         }
     }
 
     @Test
     public void testStringToPrimitiveOverloadedMethod() throws InteropException {
         for (Object consumer : new Object[]{new PrimitiveConsumer(), new BoxedPrimitiveConsumer()}) {
-            Node invoke = Message.INVOKE.createNode();
             TruffleObject api = (TruffleObject) env.asGuestValue(consumer);
-            assertEquals(2147483648L, call(invoke, api, "2147483648"));
-            assertEquals(42, call(invoke, api, "42"));
-            assertEquals(42, call(invoke, api, "+42"));
-            assertEquals(-42, call(invoke, api, "-42"));
-            assertEquals(4.2, call(invoke, api, "4.2"));
-            assertEquals(true, call(invoke, api, "true"));
-            assertEquals(false, call(invoke, api, "false"));
-            assertEquals(42.0, call(invoke, api, "42.0"));
+            assertEquals(2147483648L, call(api, "2147483648"));
+            assertEquals(42, call(api, "42"));
+            assertEquals(42, call(api, "+42"));
+            assertEquals(-42, call(api, "-42"));
+            assertEquals(4.2, call(api, "4.2"));
+            assertEquals(true, call(api, "true"));
+            assertEquals(false, call(api, "false"));
+            assertEquals(42.0, call(api, "42.0"));
 
-            invoke = Message.INVOKE.createNode();
-            assertEquals(42, call(invoke, api, "42"));
-            assertEquals(true, call(invoke, api, "true"));
-            invoke = Message.INVOKE.createNode();
-            assertEquals(false, call(invoke, api, "false"));
-            assertEquals(42, call(invoke, api, "42"));
+            assertEquals(42, call(api, "42"));
+            assertEquals(true, call(api, "true"));
+            assertEquals(false, call(api, "false"));
+            assertEquals(42, call(api, "42"));
 
-            callUnsupported(invoke, api, "42garbage");
-            callUnsupported(invoke, api, "0x42");
-            callUnsupported(invoke, api, "True");
-            callUnsupported(invoke, api, " 42");
-            callUnsupported(invoke, api, "42 ");
+            callUnsupported(api, "42garbage");
+            callUnsupported(api, "0x42");
+            callUnsupported(api, "True");
+            callUnsupported(api, " 42");
+            callUnsupported(api, "42 ");
         }
     }
 
     @Test
     public void testStringToPrimitiveLowPriority() throws InteropException {
-        Node invoke = Message.INVOKE.createNode();
         TruffleObject api = (TruffleObject) env.asGuestValue(new ObjectOrIntConsumer());
         // String to int conversion would be possible, but Object overload has higher priority.
-        assertEquals("42", call(invoke, api, "42"));
+        assertEquals("42", call(api, "42"));
     }
 
-    @MessageResolution(receiverType = NotCoercibleObject.class)
     static final class NotCoercibleObject implements TruffleObject {
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return NotCoercibleObjectForeign.ACCESS;
-        }
 
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof NotCoercibleObject;
-        }
     }
 
-    @MessageResolution(receiverType = UnboxableArrayObject.class)
+    @SuppressWarnings("unused")
+    @ExportLibrary(InteropLibrary.class)
     static final class UnboxableArrayObject implements TruffleObject {
-        final int size;
+        final int value;
 
         UnboxableArrayObject(int size) {
-            this.size = size;
+            this.value = size;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return UnboxableArrayObjectForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof UnboxableArrayObject;
-        }
-
-        @Resolve(message = "GET_SIZE")
-        abstract static class ArrayGetSizeNode extends Node {
-            Object access(UnboxableArrayObject obj) {
-                return obj.size;
+        @ExportMessage
+        Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
+            if (index < 0 || index >= value) {
+                CompilerDirectives.transferToInterpreter();
+                throw InvalidArrayIndexException.create(index);
             }
+            return index;
         }
 
-        @Resolve(message = "READ")
-        abstract static class ArrayReadSizeNode extends Node {
-            Object access(UnboxableArrayObject obj, int index) {
-                if (index < 0 || index >= obj.size) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnknownIdentifierException.raise(String.valueOf(index));
-                }
-                return index;
-            }
+        @ExportMessage
+        long getArraySize() throws UnsupportedMessageException {
+            return value;
         }
 
-        @Resolve(message = "IS_BOXED")
-        abstract static class IsBoxedINode extends Node {
-            @SuppressWarnings("unused")
-            Object access(UnboxableArrayObject obj) {
-                return true;
-            }
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < value;
         }
 
-        @Resolve(message = "UNBOX")
-        abstract static class UnboxINode extends Node {
-            Object access(UnboxableArrayObject obj) {
-                return obj.size;
-            }
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        public boolean isNumber() {
+            return true;
         }
+
+        @ExportMessage(limit = "5")
+        boolean fitsInByte(@CachedLibrary("this.value") InteropLibrary delegate) {
+            return delegate.fitsInByte(value);
+        }
+
+        @ExportMessage(limit = "5")
+        boolean fitsInShort(@CachedLibrary("this.value") InteropLibrary delegate) {
+            return delegate.fitsInShort(value);
+        }
+
+        @ExportMessage(limit = "5")
+        boolean fitsInInt(@CachedLibrary("this.value") InteropLibrary delegate) {
+            return delegate.fitsInInt(value);
+        }
+
+        @ExportMessage(limit = "5")
+        boolean fitsInLong(@CachedLibrary("this.value") InteropLibrary delegate) {
+            return delegate.fitsInLong(value);
+        }
+
+        @ExportMessage(limit = "5")
+        boolean fitsInFloat(@CachedLibrary("this.value") InteropLibrary delegate) {
+            return delegate.fitsInFloat(value);
+        }
+
+        @ExportMessage(limit = "5")
+        boolean fitsInDouble(@CachedLibrary("this.value") InteropLibrary delegate) {
+            return delegate.fitsInDouble(value);
+        }
+
+        @ExportMessage(limit = "5")
+        byte asByte(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+            return delegate.asByte(value);
+        }
+
+        @ExportMessage(limit = "5")
+        short asShort(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+            return delegate.asShort(value);
+        }
+
+        @ExportMessage(limit = "5")
+        int asInt(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+            return delegate.asInt(value);
+        }
+
+        @ExportMessage(limit = "5")
+        long asLong(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+            return delegate.asLong(value);
+        }
+
+        @ExportMessage(limit = "5")
+        float asFloat(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+            return delegate.asFloat(value);
+        }
+
+        @ExportMessage(limit = "5")
+        double asDouble(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+            return delegate.asDouble(value);
+        }
+
     }
 }

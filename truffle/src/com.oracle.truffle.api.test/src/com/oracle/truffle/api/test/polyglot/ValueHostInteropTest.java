@@ -82,12 +82,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -843,6 +839,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         List<Data> data();
     }
 
+    @SuppressWarnings("deprecation")
     static class ListArray extends ProxyLegacyInteropObject {
 
         private final List<String> array;
@@ -854,7 +851,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         @Override
         public int keyInfo(Number key) {
             if (key.intValue() < array.size() && key.intValue() >= 0) {
-                return KeyInfo.READABLE | KeyInfo.REMOVABLE;
+                return com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
             }
             return super.keyInfo(key);
         }
@@ -882,6 +879,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     }
 
+    @SuppressWarnings("deprecation")
     static final class RemoveKeysObject implements TruffleObject {
 
         private final Map<String, ?> keys;
@@ -891,7 +889,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return RemoveKeysObjectMessageResolutionForeign.ACCESS;
         }
 
@@ -899,10 +897,10 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
             return obj instanceof RemoveKeysObject;
         }
 
-        @MessageResolution(receiverType = RemoveKeysObject.class)
+        @com.oracle.truffle.api.interop.MessageResolution(receiverType = RemoveKeysObject.class)
         static final class RemoveKeysObjectMessageResolution {
 
-            @Resolve(message = "KEYS")
+            @com.oracle.truffle.api.interop.Resolve(message = "KEYS")
             public abstract static class PropertiesKeysOnlyNode extends Node {
 
                 public Object access(RemoveKeysObject receiver) {
@@ -938,7 +936,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
                 }
             }
 
-            @Resolve(message = "READ")
+            @com.oracle.truffle.api.interop.Resolve(message = "READ")
             public abstract static class ReadKeyNode extends Node {
 
                 public Object access(RemoveKeysObject receiver, String name) {
@@ -950,7 +948,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
                 }
             }
 
-            @Resolve(message = "REMOVE")
+            @com.oracle.truffle.api.interop.Resolve(message = "REMOVE")
             public abstract static class RemoveKeyNode extends Node {
 
                 public Object access(RemoveKeysObject receiver, String name) {
@@ -962,19 +960,20 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
                 }
             }
 
-            @Resolve(message = "KEY_INFO")
+            @com.oracle.truffle.api.interop.Resolve(message = "KEY_INFO")
             public abstract static class KeyInfoNode extends Node {
 
                 public Object access(RemoveKeysObject receiver, String name) {
                     if (!receiver.keys.containsKey(name)) {
-                        return KeyInfo.NONE;
+                        return com.oracle.truffle.api.interop.KeyInfo.NONE;
                     }
-                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
+                    return com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
                 }
             }
         }
     }
 
+    @SuppressWarnings("deprecation")
     static final class ArrayTruffleObject implements TruffleObject {
 
         private int size;
@@ -984,7 +983,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return ArrayTruffleObjectMessageResolutionForeign.ACCESS;
         }
 
@@ -992,10 +991,10 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
             return obj instanceof ArrayTruffleObject;
         }
 
-        @MessageResolution(receiverType = ArrayTruffleObject.class)
+        @com.oracle.truffle.api.interop.MessageResolution(receiverType = ArrayTruffleObject.class)
         static final class ArrayTruffleObjectMessageResolution {
 
-            @Resolve(message = "HAS_SIZE")
+            @com.oracle.truffle.api.interop.Resolve(message = "HAS_SIZE")
             public abstract static class ArrayHasSizeNode extends Node {
 
                 public Object access(ArrayTruffleObject receiver) {
@@ -1004,7 +1003,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
                 }
             }
 
-            @Resolve(message = "GET_SIZE")
+            @com.oracle.truffle.api.interop.Resolve(message = "GET_SIZE")
             public abstract static class ArrayGetSizeNode extends Node {
 
                 public Object access(ArrayTruffleObject receiver) {
@@ -1012,7 +1011,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
                 }
             }
 
-            @Resolve(message = "READ")
+            @com.oracle.truffle.api.interop.Resolve(message = "READ")
             public abstract static class ArrayReadSizeNode extends Node {
 
                 public Object access(ArrayTruffleObject receiver, Number number) {
@@ -1024,7 +1023,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
                 }
             }
 
-            @Resolve(message = "REMOVE")
+            @com.oracle.truffle.api.interop.Resolve(message = "REMOVE")
             public abstract static class ArrayRemoveNode extends Node {
 
                 public Object access(ArrayTruffleObject receiver, Number number) {
@@ -1037,23 +1036,24 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
                 }
             }
 
-            @Resolve(message = "KEY_INFO")
+            @com.oracle.truffle.api.interop.Resolve(message = "KEY_INFO")
             public abstract static class KeyInfoNode extends Node {
 
                 public int access(ArrayTruffleObject receiver, Number number) {
                     int index = number.intValue();
                     if (index != number.doubleValue() || index < 0 || index >= receiver.size) {
-                        return KeyInfo.NONE;
+                        return com.oracle.truffle.api.interop.KeyInfo.NONE;
                     }
-                    return KeyInfo.MODIFIABLE | KeyInfo.READABLE | KeyInfo.REMOVABLE;
+                    return com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
                 }
             }
         }
     }
 
-    @MessageResolution(receiverType = FunctionObject.class)
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.interop.MessageResolution(receiverType = FunctionObject.class)
     static final class FunctionObject implements TruffleObject {
-        @Resolve(message = "IS_EXECUTABLE")
+        @com.oracle.truffle.api.interop.Resolve(message = "IS_EXECUTABLE")
         abstract static class IsExecutable extends Node {
             @SuppressWarnings("unused")
             protected Object access(FunctionObject obj) {
@@ -1061,7 +1061,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
             }
         }
 
-        @Resolve(message = "EXECUTE")
+        @com.oracle.truffle.api.interop.Resolve(message = "EXECUTE")
         @SuppressWarnings("unused")
         abstract static class Execute extends Node {
 
@@ -1076,7 +1076,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return FunctionObjectForeign.ACCESS;
         }
     }
