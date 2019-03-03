@@ -79,6 +79,7 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.AbstractAnnotationValueVisitor8;
 import javax.lang.model.util.ElementFilter;
+import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -379,7 +380,10 @@ public class ElementUtils {
         }
         ProcessorContext context = ProcessorContext.getInstance();
         if (!(from instanceof CodeTypeMirror) && !(to instanceof CodeTypeMirror)) {
-            return context.getEnvironment().getTypeUtils().isAssignable(context.reloadType(from), context.reloadType(to));
+            Types typeUtils = context.getEnvironment().getTypeUtils();
+            TypeMirror erasedFrom = typeUtils.erasure(context.reloadType(from));
+            TypeMirror erasedTo = typeUtils.erasure(context.reloadType(to));
+            return typeUtils.isAssignable(erasedFrom, erasedTo);
         } else {
             return isAssignableImpl(from, to);
         }
