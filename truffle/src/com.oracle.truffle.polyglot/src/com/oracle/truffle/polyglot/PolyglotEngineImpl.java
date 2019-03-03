@@ -731,9 +731,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @TruffleBoundary
-    <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(Class<T> languageClass) {
+    <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(Class<T> languageClass, boolean fail) {
         PolyglotLanguage foundLanguage = classToLanguage.get(languageClass.getName());
-        if (foundLanguage == null) {
+        if (foundLanguage == null && fail) {
             Set<String> languageNames = classToLanguage.keySet();
             throw new IllegalArgumentException("Cannot find language " + languageClass + " among " + languageNames);
         }
@@ -741,7 +741,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     <T extends TruffleLanguage<?>> PolyglotLanguageInstance getCurrentLanguageInstance(Class<T> languageClass) {
-        PolyglotLanguage foundLanguage = getLanguage(languageClass);
+        PolyglotLanguage foundLanguage = getLanguage(languageClass, true);
         PolyglotLanguageContext context = foundLanguage.getCurrentLanguageContext();
         if (!context.isCreated()) {
             CompilerDirectives.transferToInterpreter();
