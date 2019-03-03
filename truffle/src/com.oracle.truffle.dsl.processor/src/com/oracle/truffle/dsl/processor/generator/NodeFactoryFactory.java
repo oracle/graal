@@ -211,6 +211,9 @@ public class NodeFactoryFactory {
                 builder.startGroup();
                 if (!ElementUtils.isObject(param.asType())) {
                     builder.string("(").type(param.asType()).string(") ");
+                    if (ElementUtils.hasGenericTypes(param.asType())) {
+                        GeneratorUtils.mergeSupressWarnings(method, "unchecked");
+                    }
                 }
                 builder.string("arguments[").string(String.valueOf(index)).string("]");
                 builder.end();

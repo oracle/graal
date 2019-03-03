@@ -351,11 +351,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         castMethod.getModifiers().remove(Modifier.ABSTRACT);
         castMethod.renameArguments("receiver");
         builder = castMethod.createBuilder();
-        if (cached) {
-            builder.startReturn().tree(createReceiverCast(libraryExports, castMethod.getParameters().get(0).asType(), exportReceiverType, CodeTreeBuilder.singleString("receiver"), cached)).end();
-        } else {
-            builder.startReturn().string("receiver").end();
+        if ((!cached || libraryExports.isFinalReceiver()) && ElementUtils.needsCastTo(castMethod.getParameters().get(0).asType(), exportReceiverType)) {
+            GeneratorUtils.mergeSupressWarnings(castMethod, "cast");
         }
+        builder.startReturn().tree(createReceiverCast(libraryExports, castMethod.getParameters().get(0).asType(), exportReceiverType, CodeTreeBuilder.singleString("receiver"), cached)).end();
         return castMethod;
     }
 
