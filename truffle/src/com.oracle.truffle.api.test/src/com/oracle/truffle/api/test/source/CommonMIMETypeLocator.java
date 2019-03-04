@@ -49,6 +49,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import static org.junit.Assert.assertNotNull;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
+import java.nio.charset.Charset;
 
 public final class CommonMIMETypeLocator extends TruffleLocator {
     public static final class Detector implements FileTypeDetector {
@@ -63,7 +64,7 @@ public final class CommonMIMETypeLocator extends TruffleLocator {
         }
 
         @Override
-        public String findEncoding(TruffleFile file) throws IOException {
+        public Charset findEncoding(TruffleFile file) throws IOException {
             return null;
         }
     }

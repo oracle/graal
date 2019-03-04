@@ -46,6 +46,7 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -157,7 +158,11 @@ final class FileSystems {
 
         @Override
         public Path parsePath(URI path) {
-            return delegate.parsePath(path);
+            try {
+                return delegate.parsePath(path);
+            } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         @Override
@@ -264,7 +269,11 @@ final class FileSystems {
 
         @Override
         public Path parsePath(URI uri) {
-            return delegate.getPath(uri);
+            try {
+                return delegate.getPath(uri);
+            } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         @Override
@@ -396,7 +405,11 @@ final class FileSystems {
 
         @Override
         public Path parsePath(final URI uri) {
-            return Paths.get(uri);
+            try {
+                return Paths.get(uri);
+            } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         @Override

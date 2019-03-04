@@ -78,16 +78,6 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.loaders();
     }
 
-    /**
-     * Returns the probed MIME type for a given file, or {@code null} if no MIME type could be
-     * resolved.
-     *
-     * @param file the file to find a MIME type for
-     * @param validMimeTypes MIME types which can be used for file
-     * @return the file MIME type or {@code null} if no MIME type could be resolved
-     * @throws IOException in case of IO error
-     * @throws SecurityException if {@code FileSystem} denied the IO operation
-     */
     static String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
         return ACCESSOR.languageSupport().getMimeType(file, validMimeTypes);
     }
@@ -139,7 +129,7 @@ final class SourceAccessor extends Accessor {
 
         @Override
         public SourceBuilder newBuilder(String language, URL origin) {
-            return Source.newBuilderForURL(language, origin);
+            return Source.newBuilder(language, origin);
         }
 
         @Override
@@ -147,5 +137,9 @@ final class SourceAccessor extends Accessor {
             return source.isLegacy();
         }
 
+        @Override
+        public void setEmbedderBuilder(SourceBuilder builder, boolean embedder) {
+            builder.embedder(embedder);
+        }
     }
 }

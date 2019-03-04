@@ -52,7 +52,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
@@ -66,6 +65,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import java.nio.charset.Charset;
+import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * Representation of a source code unit and its contents that can be evaluated in a language. Each
@@ -833,14 +834,8 @@ public abstract class Source {
      * @param language the language id, must not be <code>null</code>
      * @param url the URL to use and load, must not be <code>null</code>
      * @since 1.0
-     * @deprecated as it breaks sand boxing.
      */
-    @Deprecated
     public static SourceBuilder newBuilder(String language, URL url) {
-        return newBuilderForURL(language, url);
-    }
-
-    static SourceBuilder newBuilderForURL(String language, URL url) {
         return EMPTY.new LiteralBuilder(language, url);
     }
 
@@ -951,15 +946,12 @@ public abstract class Source {
      * contents. Probing the MIME type of an {@link TruffleFile} may require to opening the file.
      *
      * @throws IOException if an error opening the file occurred.
+     * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading.
      * @see #findLanguage(TruffleFile)
      * @since 1.0
      */
     public static String findMimeType(TruffleFile file) throws IOException {
-        try {
-            return file.getMimeType();
-        } catch (SecurityException se) {
-            return null;
-        }
+        return file.getMimeType();
     }
 
     /**
@@ -970,11 +962,10 @@ public abstract class Source {
      * connection.
      *
      * @throws IOException if an error opening the url occurred.
+     * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading.
      * @see #findLanguage(URL)
      * @since 1.0
-     * @deprecated as it breaks sand boxing.
      */
-    @Deprecated
     public static String findMimeType(URL url) throws IOException {
         return findMimeType(url, url.openConnection(), null, false);
     }
@@ -1014,15 +1005,23 @@ public abstract class Source {
     };
 
     static Source buildSource(String language, Object origin, String name, String mimeType, Object content, URI uri,
-                    boolean internal, boolean interactive, boolean cached, boolean legacy) throws IOException {
+                    boolean internal, boolean interactive, boolean cached, boolean legacy, boolean embedder) throws IOException {
         String useName = name;
         URI useUri = uri;
         Object useContent = content;
         String useMimeType = mimeType;
         String usePath = null;
         URL useUrl = null;
-        if (origin instanceof TruffleFile) {
-            TruffleFile file = (TruffleFile) origin;
+        Object useOrigin = origin;
+
+        if (useOrigin instanceof File) {
+            final File file = (File) useOrigin;
+            TruffleFile truffleFile = SourceAccessor.getTruffleFile(file.toPath(), embedder);
+            useOrigin = truffleFile;
+        }
+
+        if (useOrigin instanceof TruffleFile) {
+            TruffleFile file = (TruffleFile) useOrigin;
             if (!file.isAbsolute() && useContent == CONTENT_NONE) {
                 if (useUri == null) {
                     useUri = file.toRelativeUri();
@@ -1036,26 +1035,6 @@ public abstract class Source {
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? file.getPath() : usePath;
             useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
-            if (useContent == CONTENT_UNSET) {
-                if (isCharacterBased(language, useMimeType)) {
-                    useContent = new String(file.readAllBytes(), StandardCharsets.UTF_8);
-                } else {
-                    useContent = ByteSequence.create(file.readAllBytes());
-                }
-            }
-        } else if (origin instanceof File) {
-            final File file = (File) origin;
-            File absoluteFile = file.exists() ? file.getCanonicalFile() : file;
-            useName = useName == null ? file.getName() : useName;
-            usePath = usePath == null ? absoluteFile.getPath() : usePath;
-            useUri = useUri == null ? absoluteFile.toPath().toUri() : useUri;
-            try {
-                useMimeType = useMimeType == null ? SourceAccessor.getMimeType(SourceAccessor.getTruffleFile(absoluteFile.toPath(), !legacy), getValidMimeTypes(language)) : useMimeType;
-            } catch (SecurityException se) {
-                if (!legacy) {
-                    throw se;
-                }
-            }
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
                 useContent = useContent == CONTENT_UNSET ? read(file) : useContent;
@@ -1064,46 +1043,63 @@ public abstract class Source {
                     if (isCharacterBased(language, useMimeType)) {
                         useContent = read(file);
                     } else {
-                        useContent = ByteSequence.create(readBytes(file));
+                        useContent = ByteSequence.create(file.readAllBytes());
                     }
                 }
             }
-        } else if (origin instanceof Reader) {
-            final Reader r = (Reader) origin;
-            useContent = useContent == CONTENT_UNSET ? read(r) : useContent;
-        } else if (origin instanceof URL) {
-            final URL url = (URL) origin;
+        } else if (useOrigin instanceof URL) {
+            final URL url = (URL) useOrigin;
             String urlPath = url.getPath();
             int lastIndex = urlPath.lastIndexOf('/');
             useName = useName == null && lastIndex != -1 ? url.getPath().substring(lastIndex + 1) : useName;
-            // avoid opening connection twice for guessing the MIME type
-            if (useUri == null) {
-                try {
-                    useUri = url.toURI();
-                } catch (URISyntaxException ex) {
-                    throw new IOException("Bad URL: " + url, ex);
-                }
+            URI tmpUri;
+            try {
+                tmpUri = url.toURI();
+            } catch (URISyntaxException ex) {
+                throw new IOException("Bad URL: " + url, ex);
             }
+            useUri = useUri == null ? tmpUri : useUri;
             usePath = usePath == null ? url.toExternalForm() : usePath;
-            URLConnection connection = url.openConnection();
-            if (legacy) {
-                useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language), false) : useMimeType;
-                useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream())) : useContent;
-            } else {
-                if (useContent == CONTENT_UNSET) {
-                    if (isCharacterBased(language, useMimeType)) {
-                        useContent = read(new InputStreamReader(connection.getInputStream()));
-                    } else {
-                        useContent = ByteSequence.create(readBytes(connection));
+            try {
+                TruffleFile truffleFile = SourceAccessor.getTruffleFile(tmpUri, embedder);
+                if (legacy) {
+                    useMimeType = useMimeType == null ? SourceAccessor.getMimeType(truffleFile, getValidMimeTypes(language)) : useMimeType;
+                    useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
+                    useContent = useContent == CONTENT_UNSET ? read(truffleFile) : useContent;
+                } else {
+                    if (useContent == CONTENT_UNSET) {
+                        if (isCharacterBased(language, useMimeType)) {
+                            useContent = read(truffleFile);
+                        } else {
+                            useContent = ByteSequence.create(truffleFile.readAllBytes());
+                        }
+                    }
+                }
+            } catch (FileSystemNotFoundException fsnf) {
+                // Not a recognized by FileSystem, fall back to URLConnection
+                URLConnection connection = url.openConnection();
+                if (legacy) {
+                    useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language), false) : useMimeType;
+                    useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
+                    useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream())) : useContent;
+                } else {
+                    if (useContent == CONTENT_UNSET) {
+                        if (isCharacterBased(language, useMimeType)) {
+                            useContent = read(new InputStreamReader(connection.getInputStream()));
+                        } else {
+                            useContent = ByteSequence.create(readBytes(connection));
+                        }
                     }
                 }
             }
-        } else if (origin instanceof ByteSequence) {
-            useContent = useContent == CONTENT_UNSET ? origin : useContent;
+        } else if (useOrigin instanceof Reader) {
+            final Reader r = (Reader) useOrigin;
+            useContent = useContent == CONTENT_UNSET ? read(r) : useContent;
+        } else if (useOrigin instanceof ByteSequence) {
+            useContent = useContent == CONTENT_UNSET ? useOrigin : useContent;
         } else {
-            assert origin instanceof CharSequence;
-            useContent = useContent == CONTENT_UNSET ? origin : useContent;
+            assert useOrigin instanceof CharSequence;
+            useContent = useContent == CONTENT_UNSET ? useOrigin : useContent;
         }
         if (!legacy && useName == null) {
             useName = "Unnamed";
@@ -1112,10 +1108,6 @@ public abstract class Source {
         useContent = enforceInterfaceContracts(useContent);
         SourceImpl.Key key = new SourceImpl.Key(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy);
         return SOURCES.intern(key);
-    }
-
-    static byte[] readBytes(File file) throws IOException {
-        return Files.readAllBytes(file.toPath());
     }
 
     static byte[] readBytes(URLConnection connection) throws IOException {
@@ -1166,8 +1158,12 @@ public abstract class Source {
         return (capacity == nread) ? buf : Arrays.copyOf(buf, nread);
     }
 
-    static String read(File file) throws IOException {
-        return new String(readBytes(file), StandardCharsets.UTF_8);
+    static String read(TruffleFile file) throws IOException {
+        Charset encoding = file.getEncoding();
+        if (encoding == null) {
+            encoding = StandardCharsets.UTF_8;
+        }
+        return new String(file.readAllBytes(), encoding);
     }
 
     static String read(Reader reader) throws IOException {
@@ -1350,11 +1346,6 @@ public abstract class Source {
             }
         } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException ex) {
             // swallow and go on
-        } catch (SecurityException se) {
-            // when FileSytem denied the operation don't return result of
-            // URLConnection.getContentType,
-            // custom URLStreamHandler may perform IO
-            return null;
         }
         String contentType = connection.getContentType();
         if (contentType != null && (validMimeTypes == null || validMimeTypes.contains(contentType))) {
@@ -1440,6 +1431,7 @@ public abstract class Source {
         private boolean internal;
         private boolean interactive;
         private boolean cached = true;
+        private boolean embedder;
 
         SourceBuilder(String language, Object origin) {
             Objects.requireNonNull(language);
@@ -1593,20 +1585,23 @@ public abstract class Source {
             return this;
         }
 
+        SourceBuilder embedder(boolean enabled) {
+            this.embedder = enabled;
+            return this;
+        }
+
         /**
          * Uses configuration of this builder to create new {@link Source} object. The method throws
          * an {@link IOException} if an error loading the source occured.
          *
          * @return the source object
          * @throws IOException if an error reading the content occurred
-         * @throws SecurityException if this {@link SourceBuilder} was created for a
-         *             {@link TruffleFile} and the used {@link org.graalvm.polyglot.io.FileSystem
-         *             filesystem} denied its reading
+         * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading
          * @since 1.0
          */
         public Source build() throws IOException {
             assert this.language != null;
-            Source source = buildSource(this.language, this.origin, this.name, this.mimeType, this.content, this.uri, this.internal, this.interactive, this.cached, false);
+            Source source = buildSource(this.language, this.origin, this.name, this.mimeType, this.content, this.uri, this.internal, this.interactive, this.cached, false, embedder);
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
@@ -1702,6 +1697,7 @@ public abstract class Source {
          * Uses configuration of this builder to create new {@link Source} object.
          *
          * @return the source object
+         * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading
          * @since 1.0
          */
         @Override
@@ -1839,13 +1835,14 @@ public abstract class Source {
 
         /**
          * @since 0.15
+         * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading
          * @deprecated see {@link SourceBuilder#build()}
          */
         @SuppressWarnings("unused")
         @Deprecated
         public Source build() throws E1, E2, E3 {
             try {
-                Source source = buildSource(this.language, this.origin, this.name, this.mime, this.characters, this.uri, this.internal, this.interactive, this.cached, true);
+                Source source = buildSource(this.language, this.origin, this.name, this.mime, this.characters, this.uri, this.internal, this.interactive, this.cached, true, false);
 
                 // legacy sources must have character sources
                 assert source.hasCharacters();

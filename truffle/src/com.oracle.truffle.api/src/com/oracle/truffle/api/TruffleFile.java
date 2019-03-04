@@ -1443,9 +1443,9 @@ public final class TruffleFile {
      * @since 1.0
      */
     @TruffleBoundary
-    public String getEncoding() throws IOException {
+    public Charset getEncoding() throws IOException {
         try {
-            String result = fileSystem.getEncoding(normalizedPath);
+            Charset result = fileSystem.getEncoding(normalizedPath);
             if (result != null) {
                 return result;
             }
@@ -1501,7 +1501,7 @@ public final class TruffleFile {
          * @throws SecurityException if the {@link FileSystem} denies the file access
          * @since 1.0
          */
-        String findEncoding(TruffleFile file) throws IOException;
+        Charset findEncoding(TruffleFile file) throws IOException;
     }
 
     private boolean isNormalized() {

@@ -53,7 +53,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TruffleFileTypeDetectorTest extends AbstractPolyglotTest {
+public class FileTypeDetectorTest extends AbstractPolyglotTest {
 
     private File testFile1;
     private File testFile2;
@@ -105,15 +105,23 @@ public class TruffleFileTypeDetectorTest extends AbstractPolyglotTest {
         Assert.assertEquals("application/test-js", mimeType);
         mimeType = com.oracle.truffle.api.source.Source.findMimeType(truffleFile2);
         Assert.assertEquals("text/plain", mimeType);
-        mimeType = com.oracle.truffle.api.source.Source.findMimeType(truffleFile3);
-        Assert.assertNull(mimeType);
+        try {
+            mimeType = com.oracle.truffle.api.source.Source.findMimeType(truffleFile3);
+            Assert.fail("SecurityException is expected");
+        } catch (SecurityException se) {
+            // Expected
+        }
 
         mimeType = com.oracle.truffle.api.source.Source.findMimeType(truffleFile1.toUri().toURL());
         Assert.assertEquals("application/test-js", mimeType);
         mimeType = com.oracle.truffle.api.source.Source.findMimeType(truffleFile2.toUri().toURL());
         Assert.assertEquals("text/plain", mimeType);
-        mimeType = com.oracle.truffle.api.source.Source.findMimeType(truffleFile3.toUri().toURL());
-        Assert.assertNull(mimeType);
+        try {
+            mimeType = com.oracle.truffle.api.source.Source.findMimeType(truffleFile3.toUri().toURL());
+            Assert.fail("SecurityException is expected");
+        } catch (SecurityException se) {
+            // Expected
+        }
     }
 
     @Test
@@ -165,32 +173,47 @@ public class TruffleFileTypeDetectorTest extends AbstractPolyglotTest {
         source = org.graalvm.polyglot.Source.newBuilder("TestFooXML", testFile3).build();
         Assert.assertEquals("text/foo+xml", source.getMimeType());
 
-        com.oracle.truffle.api.source.Source truffleSource;
         try {
-            truffleSource = com.oracle.truffle.api.source.Source.newBuilder("TestJS", truffleFile1).build();
+            com.oracle.truffle.api.source.Source.newBuilder("TestJS", truffleFile1).build();
             Assert.fail("Expected SecurityException");
-        } catch (SecurityException ioe) {
+        } catch (SecurityException se) {
         }
         try {
-            truffleSource = com.oracle.truffle.api.source.Source.newBuilder("TestFooXML", truffleFile3).build();
+            com.oracle.truffle.api.source.Source.newBuilder("TestFooXML", truffleFile3).build();
             Assert.fail("Expected SecurityException");
-        } catch (SecurityException ioe) {
+        } catch (SecurityException se) {
         }
 
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder("TestJS", truffleFile1.toUri().toURL()).build();
-        Assert.assertNull(truffleSource.getMimeType());
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder("TestFooXML", truffleFile3.toUri().toURL()).build();
-        Assert.assertNull(truffleSource.getMimeType());
-
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder(testFile1).build();
-        Assert.assertEquals("application/test-js", truffleSource.getMimeType());
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder(testFile3).build();
-        Assert.assertEquals("content/unknown", truffleSource.getMimeType());
-
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder(testFile1.toURI().toURL()).build();
-        Assert.assertEquals("application/test-js", truffleSource.getMimeType());
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder(testFile3.toURI().toURL()).build();
-        Assert.assertEquals("content/unknown", truffleSource.getMimeType());
+        try {
+            com.oracle.truffle.api.source.Source.newBuilder("TestJS", truffleFile1.toUri().toURL()).build();
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+        }
+        try {
+            com.oracle.truffle.api.source.Source.newBuilder("TestFooXML", truffleFile3.toUri().toURL()).build();
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+        }
+        try {
+            com.oracle.truffle.api.source.Source.newBuilder(testFile1).build();
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+        }
+        try {
+            com.oracle.truffle.api.source.Source.newBuilder(testFile3).build();
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+        }
+        try {
+            com.oracle.truffle.api.source.Source.newBuilder(testFile1.toURI().toURL()).build();
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+        }
+        try {
+            com.oracle.truffle.api.source.Source.newBuilder(testFile3.toURI().toURL()).build();
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+        }
     }
 
     @Test

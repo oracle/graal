@@ -53,6 +53,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.Context;
 
 @SuppressWarnings("deprecation")
 public class SourceSectionLegacyTest {
@@ -306,18 +307,25 @@ public class SourceSectionLegacyTest {
         try (FileWriter w = new FileWriter(sample)) {
             w.write("Hello world!");
         }
-        Source complexHello = Source.newBuilder(sample).mimeType("").build();
-        SourceSection helloTo = complexHello.createSection(6, 5);
-        assertEquals("world", helloTo.getCharacters());
+        try (Context ctx = Context.newBuilder().allowIO(true).build()) {
+            ctx.enter();
+            try {
+                Source complexHello = Source.newBuilder(sample).mimeType("").build();
+                SourceSection helloTo = complexHello.createSection(6, 5);
+                assertEquals("world", helloTo.getCharacters());
 
-        try (FileWriter w = new FileWriter(sample)) {
-            w.write("Hi world!");
+                try (FileWriter w = new FileWriter(sample)) {
+                    w.write("Hi world!");
+                }
+                Source simpleHi = Source.newBuilder(sample).mimeType("").build();
+                SourceSection hiTo = simpleHi.createSection(3, 5);
+                assertEquals("world", hiTo.getCharacters());
+
+                assertEquals("Previously allocated sections remain the same", "world", helloTo.getCharacters());
+            } finally {
+                ctx.leave();
+            }
         }
-        Source simpleHi = Source.newBuilder(sample).mimeType("").build();
-        SourceSection hiTo = simpleHi.createSection(3, 5);
-        assertEquals("world", hiTo.getCharacters());
-
-        assertEquals("Previously allocated sections remain the same", "world", helloTo.getCharacters());
 
         sample.delete();
     }

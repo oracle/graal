@@ -267,6 +267,7 @@ class PolyglotSource extends AbstractSourceImpl {
         } else {
             throw new AssertionError();
         }
+        VMAccessor.SOURCE.setEmbedderBuilder(builder, true);
 
         if (content instanceof CharSequence) {
             builder.content((CharSequence) content);

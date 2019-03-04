@@ -49,6 +49,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
+import java.nio.charset.Charset;
 
 public class LanguageRegistrationTest {
 
@@ -182,7 +183,7 @@ public class LanguageRegistrationTest {
 
         @Override
         @SuppressWarnings("unused")
-        public String findEncoding(TruffleFile file) throws IOException {
+        public Charset findEncoding(TruffleFile file) throws IOException {
             return null;
         }
     }

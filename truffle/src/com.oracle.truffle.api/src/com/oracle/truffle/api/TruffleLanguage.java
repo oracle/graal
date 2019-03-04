@@ -2671,7 +2671,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public TruffleFile getTruffleFile(URI uri, boolean embedder) {
             FileSystem fileSystem = getFileSystem(embedder);
-            return new TruffleFile(fileSystem, fileSystem.parsePath(uri));
+            try {
+                return new TruffleFile(fileSystem, fileSystem.parsePath(uri));
+            } catch (UnsupportedOperationException e) {
+                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+            }
         }
 
         private static FileSystem getFileSystem(boolean embedder) {

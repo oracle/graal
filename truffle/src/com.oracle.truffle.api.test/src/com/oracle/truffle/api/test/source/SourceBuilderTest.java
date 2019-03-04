@@ -320,7 +320,6 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void mimeTypeIsDetectedRandomBytesForURI() throws IOException {
         setupEnv();
         File file = File.createTempFile("Hello", ".bin").getCanonicalFile();
@@ -431,7 +430,6 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void assignMimeTypeAndIdentityForURL() throws IOException {
         setupEnv();
         File file = File.createTempFile("Hello", ".java");
@@ -514,8 +512,8 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void jarURLGetsAName() throws IOException {
+        setupEnv();
         File sample = File.createTempFile("sample", ".jar");
         sample.deleteOnExit();
         JarOutputStream os = new JarOutputStream(new FileOutputStream(sample));
@@ -716,7 +714,6 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void throwsErrorIfLangIsNull3() throws MalformedURLException {
         try {
             URL url = new URL("file://test.bar");

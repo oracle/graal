@@ -44,6 +44,9 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -79,14 +82,18 @@ public final class CommonMIMETypeTestDetector implements TruffleFile.FileTypeDet
     }
 
     @Override
-    public String findEncoding(TruffleFile file) throws IOException {
+    public Charset findEncoding(TruffleFile file) throws IOException {
         String name = file.getName();
         if (name.endsWith(".xml")) {
             String content = new String(file.readAllBytes(), "UTF-8");
             Matcher m = ENCODING_PATTERN.matcher(content);
             if (m.find()) {
                 String encoding = m.group(1);
-                return encoding;
+                try {
+                    return Charset.forName(encoding);
+                } catch (IllegalCharsetNameException | UnsupportedCharsetException e) {
+                    // pass and return null
+                }
             }
         }
         return null;

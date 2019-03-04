@@ -43,6 +43,7 @@ package org.graalvm.polyglot.io;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.Charset;
 import java.nio.file.AccessMode;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.CopyOption;
@@ -349,7 +350,7 @@ public interface FileSystem {
     /**
      * Returns a MIME type for given path. An optional operation for {@link FileSystem filesystem}
      * implementations which can provide MIME types in an efficient way.
-     * 
+     *
      * @param path the file to find a MIME type for
      * @return the MIME type or {@code null} if the MIME type is not recognized or the
      *         {@link FileSystem filesystem} does not support MIME type detection
@@ -362,13 +363,13 @@ public interface FileSystem {
     /**
      * Returns an file encoding for given path. An optional operation for {@link FileSystem
      * filesystem} implementations which can provide file encodings in an efficient way.
-     * 
+     *
      * @param path the file to find an file encoding for
      * @return the file encoding or {@code null} if the file encoding is not detected or the
      *         {@link FileSystem filesystem} does not support file encoding detection
      * @since 1.0
      */
-    default String getEncoding(Path path) {
+    default Charset getEncoding(Path path) {
         return null;
     }
 }

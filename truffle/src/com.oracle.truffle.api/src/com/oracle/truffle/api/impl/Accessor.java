@@ -168,6 +168,8 @@ public abstract class Accessor {
 
         public abstract SourceBuilder newBuilder(String language, URL origin);
 
+        public abstract void setEmbedderBuilder(SourceBuilder builder, boolean embedder);
+
     }
 
     public abstract static class DumpSupport {
