@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,20 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNode.AccessLocation;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNodeGen.GetValueSizeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMInteropWriteNode extends LLVMNode {
@@ -51,44 +48,57 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
         return LLVMInteropWriteNodeGen.create();
     }
 
-    @Child Node write = Message.WRITE.createNode();
-
-    public abstract void execute(LLVMInteropType.Structured type, TruffleObject foreign, long offset, Object value);
+    public abstract void execute(LLVMInteropType.Structured type, Object foreign, long offset, Object value);
 
     @Specialization(guards = "type != null")
-    void doKnownType(LLVMInteropType.Structured type, TruffleObject foreign, long offset, Object value,
-                    @Cached("create()") LLVMInteropAccessNode access) {
+    void doKnownType(LLVMInteropType.Structured type, Object foreign, long offset, Object value,
+                    @Cached LLVMInteropAccessNode access,
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
+                    @Cached BranchProfile exception) {
         AccessLocation location = access.execute(type, foreign, offset);
-        write(location, value);
+        write(interop, location, value, exception);
     }
 
-    @Child GetValueSizeNode getSize;
-
-    @Fallback
-    void doUnknownType(@SuppressWarnings("unused") LLVMInteropType.Structured type, TruffleObject foreign, long offset, Object value) {
-        if (getSize == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getSize = insert(GetValueSizeNodeGen.create());
-        }
-
+    @Specialization(guards = "type == null", limit = "3")
+    void doUnknownType(@SuppressWarnings("unused") LLVMInteropType.Structured type, Object foreign, long offset, Object value,
+                    @Cached GetValueSizeNode getSize,
+                    @CachedLibrary("foreign") InteropLibrary interop,
+                    @Cached BranchProfile exception) {
         // type unknown: fall back to "array of unknown value type"
         int elementAccessSize = getSize.execute(value);
         AccessLocation location = new AccessLocation(foreign, Long.divideUnsigned(offset, elementAccessSize), null);
-        write(location, value);
+        write(interop, location, value, exception);
     }
 
-    private void write(AccessLocation location, Object value) {
-        try {
-            ForeignAccess.sendWrite(write, location.base, location.identifier, value);
-        } catch (UnknownIdentifierException ex) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(this, "Member '%s' not found.", location.identifier);
-        } catch (UnsupportedMessageException ex) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(this, "Can not write member '%s'.", location.identifier);
-        } catch (UnsupportedTypeException ex) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(this, "Wrong type writing to member '%s'.", location.identifier);
+    private void write(InteropLibrary interop, AccessLocation location, Object value, BranchProfile exception) {
+        if (location.identifier instanceof String) {
+            String name = (String) location.identifier;
+            try {
+                interop.writeMember(location.base, name, value);
+            } catch (UnsupportedMessageException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Can not write member '%s'.", name);
+            } catch (UnknownIdentifierException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Member '%s' not found.", name);
+            } catch (UnsupportedTypeException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Wrong type writing to member '%s'.", name);
+            }
+        } else {
+            long idx = (Long) location.identifier;
+            try {
+                interop.writeArrayElement(location.base, idx, value);
+            } catch (InvalidArrayIndexException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Invalid array index %d.", idx);
+            } catch (UnsupportedMessageException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Can not write array element %d.", idx);
+            } catch (UnsupportedTypeException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Wrong type writing to array element %d.", idx);
+            }
         }
     }
 
