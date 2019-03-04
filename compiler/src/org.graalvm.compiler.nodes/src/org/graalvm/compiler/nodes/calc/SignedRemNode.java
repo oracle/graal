@@ -113,12 +113,6 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                         return PiNode.create(canonicalized, foldStampForRem(forX, forY));
                     }
                 }
-            } else if (!CodeUtil.isPowerOf2(constY)) {
-                ValueNode value = canonicalizeSignedDivConstant(forX, forY.asJavaConstant().asLong(), view);
-                if (value != null) {
-                    ValueNode canonicalized = SubNode.create(forX, new MulNode(value, forY), view);
-                    return PiNode.create(canonicalized, foldStampForRem(forX, forY));
-                }
             }
         }
         return self != null ? self : new SignedRemNode(forX, forY, zeroCheck);

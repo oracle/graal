@@ -27,13 +27,11 @@ package org.graalvm.compiler.nodes.calc;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -136,12 +134,6 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
                     return NegateNode.create(shift, view);
                 }
                 return shift;
-            } else {
-                ValueNode canonicalized = canonicalizeSignedDivConstant(forX, c, view);
-                if (canonicalized != null) {
-                    Stamp newStamp = IntegerStamp.OPS.getDiv().foldStamp(forX.stamp(NodeView.DEFAULT), StampFactory.forInteger(stampX.getBits(), c, c));
-                    return PiNode.create(canonicalized, newStamp);
-                }
             }
         }
         return null;
