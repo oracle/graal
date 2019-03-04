@@ -122,7 +122,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return id;
     }
 
-    public CharMatcher[] getMatchers() {
+    public final CharMatcher[] getMatchers() {
         return matchers;
     }
 

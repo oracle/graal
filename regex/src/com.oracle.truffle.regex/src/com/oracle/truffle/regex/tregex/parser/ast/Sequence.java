@@ -43,7 +43,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * <p>
  * Corresponds to the goal symbol <em>Alternative</em> in the ECMAScript RegExp syntax.
  */
-public class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
+public final class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
 
     private final ArrayList<Term> terms = new ArrayList<>();
     private short visitorIterationIndex = 0;
