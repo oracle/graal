@@ -60,7 +60,7 @@ public class LocalizationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    void addBundleToCache(String bundleName) {
+    public void addBundleToCache(String bundleName) {
         if (bundleName.isEmpty()) {
             return;
         }
