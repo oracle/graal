@@ -345,6 +345,16 @@ public class NFAState implements IndexedState, JsonConvertible {
         return idToString();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof NFAState && id == ((NFAState) o).id;
+    }
+
+    @Override
+    public int hashCode() {
+        return id;
+    }
+
     @TruffleBoundary
     private JsonArray sourceSectionsToJson() {
         return Json.array(getStateSet().stream().map(RegexASTNode::getSourceSection).filter(Objects::nonNull).map(x -> Json.obj(
