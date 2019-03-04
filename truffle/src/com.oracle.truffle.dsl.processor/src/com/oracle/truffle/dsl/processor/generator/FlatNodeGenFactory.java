@@ -165,6 +165,8 @@ class FlatNodeGenFactory {
     private final Set<SpecializationData> usedInsertAccessorsArray = new HashSet<>();
     private final Set<SpecializationData> usedInsertAccessorsSimple = new HashSet<>();
 
+    private final boolean needsLocking;
+
     FlatNodeGenFactory(ProcessorContext context, NodeData node) {
         this.context = context;
         this.node = node;
@@ -199,6 +201,7 @@ class FlatNodeGenFactory {
         this.state = new StateBitSet(objects.toArray(new Object[0]));
         this.exclude = new ExcludeBitSet(reachableSpecializationsArray);
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
+        this.needsLocking = exclude.computeStateLength() != 0 || reachableSpecializations.stream().anyMatch((s) -> !s.getCaches().isEmpty());
     }
 
     private static String createSpecializationTypeName(SpecializationData s) {
@@ -1116,17 +1119,23 @@ class FlatNodeGenFactory {
 
         CodeExecutableElement method = frameState.createMethod(modifiers(PRIVATE), returnType, "executeAndSpecialize", frame);
         final CodeTreeBuilder builder = method.createBuilder();
-        builder.declaration(context.getType(Lock.class), "lock", "getLock()");
-        builder.declaration(context.getType(boolean.class), "hasLock", "true");
-        builder.statement("lock.lock()");
+        boolean reportPolymorphism = shouldReportPolymorphism(node, reachableSpecializations);
+        if (needsLocking) {
+            builder.declaration(context.getType(Lock.class), "lock", "getLock()");
+            builder.declaration(context.getType(boolean.class), "hasLock", "true");
+            builder.statement("lock.lock()");
+        }
+
         builder.tree(state.createLoad(frameState));
         if (requiresExclude()) {
             builder.tree(exclude.createLoad(frameState));
         }
-        if (shouldReportPolymorphism(node, reachableSpecializations)) {
+        if (reportPolymorphism) {
             generateSaveOldPolymorphismState(builder, frameState);
         }
-        builder.startTryBlock();
+        if (needsLocking || reportPolymorphism) {
+            builder.startTryBlock();
+        }
 
         FrameState originalFrameState = frameState.copy();
         SpecializationGroup group = createSpecializationGroups();
@@ -1135,17 +1144,21 @@ class FlatNodeGenFactory {
         builder.tree(execution);
 
         if (group.hasFallthrough()) {
-            builder.tree(createTransferToInterpreterAndInvalidate());
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
-        builder.end().startFinallyBlock();
-        if (shouldReportPolymorphism(node, reachableSpecializations)) {
-            generateCheckNewPolymorphismState(builder);
+
+        if (needsLocking || reportPolymorphism) {
+            builder.end().startFinallyBlock();
+            if (reportPolymorphism) {
+                generateCheckNewPolymorphismState(builder);
+            }
+            if (needsLocking) {
+                builder.startIf().string("hasLock").end().startBlock();
+                builder.statement("lock.unlock()");
+                builder.end();
+            }
+            builder.end();
         }
-        builder.startIf().string("hasLock").end().startBlock();
-        builder.statement("lock.unlock()");
-        builder.end();
-        builder.end();
 
         return method;
     }
@@ -2130,7 +2143,7 @@ class FlatNodeGenFactory {
     private CodeTree createExecute(CodeTreeBuilder parent, FrameState frameState, final ExecutableTypeData forType, SpecializationData specialization, NodeExecutionMode mode) {
         CodeTreeBuilder builder = parent.create();
 
-        if (mode.isSlowPath()) {
+        if (needsLocking && mode.isSlowPath()) {
             builder.statement("lock.unlock()");
             builder.statement("hasLock = false");
         }
@@ -2968,8 +2981,10 @@ class FlatNodeGenFactory {
             builder.declaration(context.getType(Lock.class), "lock", "getLock()");
         }
 
-        builder.statement("lock.lock()");
-        builder.startTryBlock();
+        if (needsLocking) {
+            builder.statement("lock.lock()");
+            builder.startTryBlock();
+        }
         // pass null frame state to ensure values are reloaded.
         builder.tree(this.exclude.createSet(null, new Object[]{specialization}, true, true));
         builder.tree(this.state.createSet(null, new Object[]{specialization}, false, true));
@@ -2978,9 +2993,11 @@ class FlatNodeGenFactory {
             String fieldName = createSpecializationFieldName(specialization);
             builder.statement("this." + fieldName + " = null");
         }
-        builder.end().startFinallyBlock();
-        builder.statement("lock.unlock()");
-        builder.end();
+        if (needsLocking) {
+            builder.end().startFinallyBlock();
+            builder.statement("lock.unlock()");
+            builder.end();
+        }
         boolean hasUnexpectedResultRewrite = specialization.hasUnexpectedResultRewrite();
         boolean hasReexecutingRewrite = !hasUnexpectedResultRewrite || specialization.getExceptions().size() > 1;
 
@@ -3013,9 +3030,11 @@ class FlatNodeGenFactory {
                 method.addParameter(new CodeVariableElement(context.getType(Object.class), specializationLocalName));
             }
             CodeTreeBuilder builder = method.createBuilder();
-            builder.declaration(context.getType(Lock.class), "lock", "getLock()");
-            builder.statement("lock.lock()");
-            builder.startTryBlock();
+            if (needsLocking) {
+                builder.declaration(context.getType(Lock.class), "lock", "getLock()");
+                builder.statement("lock.lock()");
+                builder.startTryBlock();
+            }
             String fieldName = createSpecializationFieldName(specialization);
             if (!useSpecializationClass || specialization.getMaximumNumberOfInstances() == 1) {
                 // single instance remove
@@ -3054,10 +3073,11 @@ class FlatNodeGenFactory {
                 builder.tree((state.createSet(null, Arrays.asList(specialization).toArray(new SpecializationData[0]), false, true)));
                 builder.end();
             }
-
-            builder.end().startFinallyBlock();
-            builder.statement("lock.unlock()");
-            builder.end();
+            if (needsLocking) {
+                builder.end().startFinallyBlock();
+                builder.statement("lock.unlock()");
+                builder.end();
+            }
             removeThisMethods.put(specialization, method);
         }
         CodeTreeBuilder builder = parent.create();

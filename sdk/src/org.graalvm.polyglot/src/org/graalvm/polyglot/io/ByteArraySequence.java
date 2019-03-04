@@ -51,6 +51,9 @@ final class ByteArraySequence implements ByteSequence {
     private final int start;
     private final int length;
 
+    /** Cache the hash code for the byte array sequences. */
+    private int hash; // Default to 0
+
     ByteArraySequence(byte[] buffer, int start, int length) {
         assert buffer.length >= start + length;
         assert start >= 0;
@@ -88,6 +91,12 @@ final class ByteArraySequence implements ByteSequence {
             if (length != other.length) {
                 return false;
             }
+            int thisHash = this.hash;
+            int otherHash = other.hash;
+            if (thisHash != 0 && otherHash != 0 && thisHash != otherHash) {
+                // hash was already computed and hash is not equal
+                return false;
+            }
             int otherStart = other.start;
             for (int i = 0; i < length; i++) {
                 if (buffer[start + i] != other.buffer[otherStart + i]) {
@@ -112,11 +121,24 @@ final class ByteArraySequence implements ByteSequence {
 
     @Override
     public int hashCode() {
-        int result = 1;
-        for (int i = start; i < start + length; i++) {
-            result = 31 * result + buffer[i];
+        int h = hash;
+        if (h == 0 && length > 0) {
+            int end = start + length;
+            h = 1;
+            int i = start;
+            for (; i + 3 < end; i += 4) {
+                int h0 = buffer[i + 0] & 0xff << 0;
+                int h1 = buffer[i + 1] & 0xff << 8;
+                int h2 = buffer[i + 2] & 0xff << 16;
+                int h3 = buffer[i + 3] & 0xff << 24;
+                h = 31 * h + (h0 | h1 | h2 | h3);
+            }
+            for (; i < end; i++) {
+                h = 31 * h + buffer[i];
+            }
+            hash = h;
         }
-        return result;
+        return h;
     }
 
     public ByteSequence subSequence(int startIndex, int endIndex) {
