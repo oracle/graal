@@ -172,7 +172,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Internal method do not use.
      */
     @Override
-    public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
+    public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                     long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
                     Object logHandlerOrStream) {
         if (TruffleOptions.AOT) {
@@ -189,13 +189,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         PolyglotEngineImpl impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;
         if (impl != null) {
-            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, useSystemProperties, allowExperimentalOptions, contextClassLoader, boundEngine, logHandler)) {
+            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, options, useSystemProperties, allowExperimentalOptions, contextClassLoader, boundEngine, logHandler)) {
                 impl.ensureClosed(false, true);
                 impl = null;
             }
         }
         if (impl == null) {
-            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, allowExperimentalOptions, useSystemProperties, contextClassLoader, boundEngine, messageInterceptor,
+            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, options, allowExperimentalOptions, useSystemProperties, contextClassLoader, boundEngine, messageInterceptor,
                             logHandler);
         }
         Engine engine = getAPIAccess().newEngine(impl);
