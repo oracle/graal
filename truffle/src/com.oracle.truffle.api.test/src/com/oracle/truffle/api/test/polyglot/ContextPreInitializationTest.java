@@ -68,6 +68,7 @@ import java.util.logging.LogRecord;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -1122,8 +1123,11 @@ public class ContextPreInitializationTest {
 
     @TruffleLanguage.Registration(id = FIRST, name = FIRST, version = "1.0", dependentLanguages = INTERNAL)
     public static final class ContextPreInitializationTestFirstLanguage extends BaseLanguage {
-        @Option(category = OptionCategory.USER, help = "Option 1") public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
-        @Option(category = OptionCategory.USER, help = "Option 2") public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 1") //
+        public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 2") //
+        public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
+
         private static boolean callDependentLanguage;
         private static boolean patchException = false;
 

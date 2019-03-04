@@ -186,7 +186,7 @@ public class OptionProcessorTest {
         assertEquals("test", optionValues.get(optionKey1));
         assertEquals("defaultValue", optionValues.get(optionKey2));
 
-        engine = Engine.newBuilder().option("optiontestlang1.StringOption1", "testLang").build();
+        engine = Engine.newBuilder().allowExperimentalOptions(true).option("optiontestlang1.StringOption1", "testLang").build();
         optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
         // A language option was set, not the instrument one. Instrument sees no option set:
         assertFalse(optionValues.hasSetOptions());
@@ -264,7 +264,7 @@ public class OptionProcessorTest {
     @TruffleInstrument.Registration(id = "optiontestinstr1", services = OptionValues.class)
     public static class OptionTestInstrument1 extends TruffleInstrument {
 
-        @Option(help = "StringOption1 help", deprecated = true, category = OptionCategory.USER) //
+        @Option(help = "StringOption1 help", deprecated = true, category = OptionCategory.USER, stability = OptionStability.STABLE) //
         static final OptionKey<String> StringOption1 = new OptionKey<>("defaultValue");
 
         @Option(help = "StringOption2 help", deprecated = false, category = OptionCategory.EXPERT) //

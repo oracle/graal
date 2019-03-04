@@ -92,7 +92,7 @@ public class SLDebugALot {
 
     @Test
     public void test() {
-        try (Engine engine = Engine.newBuilder().out(out).err(err).option("debugalot", "true").build()) {
+        try (Engine engine = Engine.newBuilder().out(out).err(err).allowExperimentalOptions(true).option("debugalot", "true").build()) {
             try (Context context = Context.newBuilder().engine(engine).build()) {
                 context.eval(slCode);
             }
