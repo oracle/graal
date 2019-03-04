@@ -1152,8 +1152,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public List<? extends TruffleFile.FileTypeDetector> getFileTypeDetectors() {
-            return LanguageCache.fileTypeDetectors();
+        public List<? extends TruffleFile.FileTypeDetector> getFileTypeDetectors(ClassLoader loader) {
+            return LanguageCache.fileTypeDetectors(loader);
+        }
+
+        @Override
+        public boolean isLanguageCacheUsingContextClassLoader(Object contextVMObject) {
+            return ((VMObject) contextVMObject).getAPIAccess().useContextClassLoader();
         }
     }
 }

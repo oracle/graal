@@ -1303,6 +1303,7 @@ public abstract class TruffleLanguage<C> {
         private final OptionValues options;
         private final String[] applicationArguments;
         private final FileSystem fileSystem;
+        private final boolean languageCacheUsesContextClassLoader;
 
         @CompilationFinal private volatile List<Object> services;
 
@@ -1315,7 +1316,7 @@ public abstract class TruffleLanguage<C> {
 
         @SuppressWarnings("unchecked")
         private Env(Object vmObject, TruffleLanguage<?> language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem) {
+                        FileSystem fileSystem, boolean languageCacheUsesContextClassLoader) {
             this.vmObject = vmObject;
             this.spi = (TruffleLanguage<Object>) language;
             this.in = in;
@@ -1326,6 +1327,7 @@ public abstract class TruffleLanguage<C> {
             this.applicationArguments = applicationArguments == null ? new String[0] : applicationArguments;
             this.valid = true;
             this.fileSystem = fileSystem;
+            this.languageCacheUsesContextClassLoader = languageCacheUsesContextClassLoader;
         }
 
         Object getVMObject() {
@@ -1954,7 +1956,7 @@ public abstract class TruffleLanguage<C> {
         public TruffleFile getTruffleFile(String path) {
             checkDisposed();
             try {
-                return new TruffleFile(fileSystem, fileSystem.parsePath(path));
+                return new TruffleFile(fileSystem, fileSystem.parsePath(path), languageCacheUsesContextClassLoader);
             } catch (UnsupportedOperationException e) {
                 throw e;
             } catch (Throwable t) {
@@ -1973,7 +1975,7 @@ public abstract class TruffleLanguage<C> {
         public TruffleFile getTruffleFile(URI uri) {
             checkDisposed();
             try {
-                return new TruffleFile(fileSystem, fileSystem.parsePath(uri));
+                return new TruffleFile(fileSystem, fileSystem.parsePath(uri), languageCacheUsesContextClassLoader);
             } catch (UnsupportedOperationException e) {
                 throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
             } catch (Throwable t) {
@@ -2456,8 +2458,8 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem) {
-            Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config, options, applicationArguments, fileSystem);
+                        String[] applicationArguments, FileSystem fileSystem, boolean languageCacheUsesContextClassLoader) {
+            Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config, options, applicationArguments, fileSystem, languageCacheUsesContextClassLoader);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             LanguageInfo info = language.languageInfo;
             AccessAPI.instrumentAccess().collectEnvServices(collectedServices, API.nodes().getEngineObject(info), language);
@@ -2654,7 +2656,7 @@ public abstract class TruffleLanguage<C> {
                             stdIn,
                             config,
                             options,
-                            applicationArguments, fileSystem);
+                            applicationArguments, fileSystem, env.languageCacheUsesContextClassLoader);
 
             newEnv.initialized = env.initialized;
             newEnv.context = env.context;
@@ -2663,30 +2665,31 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public TruffleFile getTruffleFile(Path path, boolean embedder) {
-            FileSystem fileSystem = getFileSystem(embedder);
-            return new TruffleFile(fileSystem, fileSystem.parsePath(path.toString()));
-        }
-
-        @Override
-        public TruffleFile getTruffleFile(URI uri, boolean embedder) {
-            FileSystem fileSystem = getFileSystem(embedder);
-            try {
-                return new TruffleFile(fileSystem, fileSystem.parsePath(uri));
-            } catch (UnsupportedOperationException e) {
-                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
-            }
-        }
-
-        private static FileSystem getFileSystem(boolean embedder) {
+        public TruffleFile getTruffleFile(Object origin, boolean embedder, boolean languageCacheUsesContextClassLoader) {
+            FileSystem fileSystem;
+            boolean useContextClassLoader;
             if (embedder) {
-                return AccessAPI.engineAccess().getDefaultFileSystem();
+                fileSystem = AccessAPI.engineAccess().getDefaultFileSystem();
+                useContextClassLoader = languageCacheUsesContextClassLoader;
             } else {
                 Object polyglotContextImpl = AccessAPI.engineAccess().getCurrentOuterContext();
                 if (polyglotContextImpl == null) {
                     throw new IllegalStateException("No current context");
                 }
-                return AccessAPI.engineAccess().getFileSystem(polyglotContextImpl);
+                fileSystem = AccessAPI.engineAccess().getFileSystem(polyglotContextImpl);
+                useContextClassLoader = AccessAPI.engineAccess().isLanguageCacheUsingContextClassLoader(polyglotContextImpl);
+            }
+            if (origin instanceof Path) {
+                return new TruffleFile(fileSystem, fileSystem.parsePath(origin.toString()), useContextClassLoader);
+            } else if (origin instanceof URI) {
+                URI uri = (URI) origin;
+                try {
+                    return new TruffleFile(fileSystem, fileSystem.parsePath(uri), useContextClassLoader);
+                } catch (UnsupportedOperationException e) {
+                    throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+                }
+            } else {
+                throw new IllegalArgumentException("Origin must be Path of URI, origin " + Objects.toString(origin));
             }
         }
 

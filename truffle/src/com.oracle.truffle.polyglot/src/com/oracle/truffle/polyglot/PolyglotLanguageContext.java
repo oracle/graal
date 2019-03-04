@@ -300,7 +300,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                         creatorConfig,
                                         envConfig.getOptionValues(language),
                                         envConfig.getApplicationArguments(language),
-                                        envConfig.fileSystem);
+                                        envConfig.fileSystem,
+                                        getAPIAccess().useContextClassLoader());
                         Lazy localLazy = new Lazy(lang);
                         PolyglotValue.createDefaultValues(getImpl(), PolyglotLanguageContext.this, localLazy.valueCache);
                         checkThreadAccess(localEnv);

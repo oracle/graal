@@ -203,13 +203,13 @@ class PolyglotSource extends AbstractSourceImpl {
     @Override
     public String findMimeType(File file) throws IOException {
         Objects.requireNonNull(file);
-        return VMAccessor.SOURCE.findMimeType(file);
+        return VMAccessor.SOURCE.findMimeType(file, engineImpl.getAPIAccess().useContextClassLoader());
     }
 
     @Override
     public String findMimeType(URL url) throws IOException {
         Objects.requireNonNull(url);
-        return VMAccessor.SOURCE.findMimeType(url);
+        return VMAccessor.SOURCE.findMimeType(url, engineImpl.getAPIAccess().useContextClassLoader());
     }
 
     @Override
@@ -268,6 +268,7 @@ class PolyglotSource extends AbstractSourceImpl {
             throw new AssertionError();
         }
         VMAccessor.SOURCE.setEmbedderBuilder(builder, true);
+        VMAccessor.SOURCE.setLanguageCacheUsesContextClassLoader(builder, engineImpl.getAPIAccess().useContextClassLoader());
 
         if (content instanceof CharSequence) {
             builder.content((CharSequence) content);
