@@ -56,7 +56,6 @@ public final class Resources {
 
     static class ResourcesSupport {
         final Map<String, List<byte[]>> resources = new HashMap<>();
-        final URLStreamHandler resourcesURLStreamHandler = createResourcesURLStreamHandler();
     }
 
     @AutomaticFeature
@@ -136,31 +135,5 @@ public final class Resources {
         }
     }
 
-    static URLStreamHandler createResourcesURLStreamHandler() {
-        URLStreamHandler answer = new URLStreamHandler() {
-            @Override
-            protected URLConnection openConnection(URL url) throws IOException {
-                return new URLConnection(url) {
-                    @Override
-                    public void connect() throws IOException {
-                    }
 
-                    @Override
-                    public InputStream getInputStream() throws IOException {
-                        ResourcesSupport support = ImageSingletons.lookup(ResourcesSupport.class);
-                        // remove "protcol:" from url to get the resource name
-                        String resName = url.toString().substring(1+JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
-                        final List<byte[]> bytes = support.resources.get(resName);
-                        if (bytes == null || bytes.size() < 1) {
-                            System.err.println("Couldn't find resource "+resName);
-                            return null;
-                        } else {
-                            return new ByteArrayInputStream(bytes.get(0));
-                        }
-                    }
-                };
-            }
-        };
-        return answer;
-    }
 }
