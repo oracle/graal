@@ -938,13 +938,16 @@ public class ContextPreInitializationTest {
         }
         if (languagesOptionValue.length() > 0) {
             languagesOptionValue.replace(languagesOptionValue.length() - 1, languagesOptionValue.length(), "");
-            System.setProperty(
-                            "polyglot.engine.PreinitializeContexts",
-                            languagesOptionValue.toString());
+            System.setProperty("polyglot.engine.PreinitializeContexts", languagesOptionValue.toString());
         }
         final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
         preInitMethod.setAccessible(true);
-        preInitMethod.invoke(null);
+        try {
+            preInitMethod.invoke(null);
+        } finally {
+            // PreinitializeContexts should only be set during pre-initialization, not at runtime
+            System.clearProperty("polyglot.engine.PreinitializeContexts");
+        }
     }
 
     private static Collection<? extends CountingContext> findContexts(
