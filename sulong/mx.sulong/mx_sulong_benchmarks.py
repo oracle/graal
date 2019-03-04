@@ -261,12 +261,9 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             def _filter_properties(args):
                 props = []
                 remaining_args = []
-                jvm_prefix = "--jvm.D"
                 vm_prefix = "--vm.D"
                 for arg in args:
-                    if arg.startswith(jvm_prefix):
-                        props.append('-D' + arg[len(jvm_prefix):])
-                    elif arg.startswith(vm_prefix):
+                    if arg.startswith(vm_prefix):
                         props.append('-D' + arg[len(vm_prefix):])
                     else:
                         remaining_args.append(arg)
@@ -312,17 +309,6 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             '--vm.Dgraal.TruffleInliningMaxCallerSize=10000',
             '--vm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
             '--llvm.libraries=libgmp.so.10'] + args
-        if self.host_vm().config_name() == "native":
-            def _convert_arg(arg):
-                jvm_prefix = "--jvm."
-                if arg.startswith(jvm_prefix):
-                    replacement = "--vm." + arg[len(jvm_prefix):]
-                    mx.warn("Use of --native.* and --jvm.* options is deprecated, use --vm.* instead. Translating '{}' to '{}'.".format(arg, replacement))
-                    return replacement
-                return arg
-
-            launcher_args = [_convert_arg(arg) for arg in launcher_args]
-
         return launcher_args
 
     def hosting_registry(self):

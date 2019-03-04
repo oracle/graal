@@ -50,7 +50,7 @@ GraalVM native image.
 List available JVM options with `--vm.help`.
 
 - `--vm.Dgraal.<property>=<value>` passes settings to the Graal compiler.
-For example, `--graal.DumpOnError=true` sends the compiler intermediate
+For example, `--vm.Dgraal.DumpOnError=true` sends the compiler intermediate
 representation (IR) to dump handlers if errors occur.
 
 #### Polyglot Options

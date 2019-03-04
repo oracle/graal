@@ -65,6 +65,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -371,6 +372,17 @@ public abstract class Launcher {
         }
     }
 
+    protected void warn(String message) {
+        System.err.println("Warning: " + message);
+    }
+
+    protected void warn(String message, Object... args) {
+        StringBuilder sb = new StringBuilder("Warning: ");
+        new Formatter(sb).format(message, args);
+        sb.append(System.lineSeparator());
+        System.err.print(sb.toString());
+    }
+
     /**
      * Prints a help message to {@linkplain System#out stdout}. This only prints options that belong
      * to categories {@code maxCategory or less}.
@@ -589,7 +601,7 @@ public abstract class Launcher {
                 help = true;
                 return true;
             case "--help:debug":
-                System.err.println("Warning: --help:debug is deprecated, use --help:internal instead.");
+                warn("--help:debug is deprecated, use --help:internal instead.");
                 helpInternal = true;
                 return true;
             case "--help:internal":
@@ -679,7 +691,7 @@ public abstract class Launcher {
                     throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
                 }
                 if (descriptor.isDeprecated()) {
-                    System.err.println("Warning: Option '" + descriptor.getName() + "' is deprecated and might be removed from future versions.");
+                    warn("Option '" + descriptor.getName() + "' is deprecated and might be removed from future versions.");
                 }
                 // use the full name of the found descriptor
                 options.put(descriptor.getName(), value);
@@ -1002,6 +1014,8 @@ public abstract class Launcher {
                 }
             }
 
+            boolean jvmDotWarned = false;
+
             Iterator<String> iterator = args.iterator();
             List<String> vmOptions = new ArrayList<>();
             while (iterator.hasNext()) {
@@ -1011,7 +1025,7 @@ public abstract class Launcher {
                         throw abort("'--jvm' and '--native' options can not be used together.");
                     }
                     if (!isGraalVMAvailable()) {
-                        throw abort("--jvm.* options are only supported when this launcher is part of a GraalVM.");
+                        throw abort("'--jvm.*' options are deprecated and only supported when this launcher is part of a GraalVM.");
                     }
                     if (arg.equals("--jvm.help")) {
                         printJvmHelp();
@@ -1019,12 +1033,16 @@ public abstract class Launcher {
                     }
                     vmType = VMType.JVM;
                     if (arg.startsWith("--jvm.")) {
+                        if (!jvmDotWarned) {
+                            warn("'--jvm.*' options are deprecated, use '--vm.*' instead.");
+                            jvmDotWarned = true;
+                        }
                         String jvmArg = arg.substring("--jvm.".length());
                         if (jvmArg.equals("classpath")) {
-                            throw abort("--jvm.classpath argument must be of the form --jvm.classpath=<classpath>, not two separate arguments");
+                            throw abort("'--jvm.classpath' argument must be of the form '--jvm.classpath=<classpath>', not two separate arguments");
                         }
                         if (jvmArg.equals("cp")) {
-                            throw abort("--jvm.cp argument must be of the form --jvm.cp=<classpath>, not two separate arguments");
+                            throw abort("'--jvm.cp' argument must be of the form '--jvm.cp=<classpath>', not two separate arguments");
                         }
                         if (jvmArg.startsWith("classpath=") || jvmArg.startsWith("cp=")) {
                             int eqIndex = jvmArg.indexOf('=');
@@ -1045,6 +1063,10 @@ public abstract class Launcher {
                         throw exit();
                     }
                     if (arg.startsWith("--native.")) {
+                        if (!jvmDotWarned) {
+                            warn("'--native.*' options are deprecated, use '--vm.*' instead.");
+                            jvmDotWarned = true;
+                        }
                         setNativeOption(arg.substring("--native.".length()));
                     }
                     iterator.remove();
@@ -1059,13 +1081,21 @@ public abstract class Launcher {
                         }
                         throw exit();
                     }
-                    if (arg.startsWith("--vm.classpath")) {
-                        throw abort("Unrecognized argument '" + arg + "', did you mean '--jvm.classpath=<classpath>'?");
+                    String vmArg = arg.substring("--vm.".length());
+                    if (vmArg.equals("classpath")) {
+                        throw abort("'--vm.classpath' argument must be of the form '--vm.classpath=<classpath>', not two separate arguments");
                     }
-                    if (arg.startsWith("--vm.cp")) {
-                        throw abort("Unrecognized argument '" + arg + "', did you mean '--jvm.cp=<classpath>'?");
+                    if (vmArg.equals("cp")) {
+                        throw abort("'--vm.cp' argument must be of the form '--vm.cp=<classpath>', not two separate arguments");
                     }
-                    vmOptions.add(arg.substring("--vm.".length()));
+                    if (vmArg.startsWith("classpath=") || vmArg.startsWith("cp=")) {
+                        int eqIndex = vmArg.indexOf('=');
+                        jvmArgs.add('-' + vmArg.substring(0, eqIndex));
+                        jvmArgs.add(vmArg.substring(eqIndex + 1));
+                    } else {
+                        jvmArgs.add('-' + vmArg);
+                    }
+                    vmOptions.add(vmArg);
                     iterator.remove();
                 } else if (arg.equals("--polyglot")) {
                     polyglot = true;
@@ -1167,10 +1197,10 @@ public abstract class Launcher {
                 descriptor = getVMOptions().get(key);
                 if (descriptor != null) {
                     if (isBooleanOption(descriptor)) {
-                        System.err.printf("Warning: VM options such as '%s' should be set with '--vm.XX:\u00b1%<s'.%n" +
+                        warn("VM options such as '%s' should be set with '--vm.XX:\u00b1%<s'.%n" +
                                         "Support for setting them with '--vm.Dgraal.%<s=<value>' is deprecated and will be removed.%n", key);
                     } else {
-                        System.err.printf("Warning: VM options such as '%s' should be set with '--vm.XX:%<s=<value>'.%n" +
+                        warn("VM options such as '%s' should be set with '--vm.XX:%<s=<value>'.%n" +
                                         "Support for setting them with '--vm.Dgraal.%<s=<value>' is deprecated and will be removed.%n", key);
                     }
                 }
@@ -1235,7 +1265,7 @@ public abstract class Launcher {
             if (descriptor == null) {
                 descriptor = getCompilerOptions().get(key);
                 if (descriptor != null) {
-                    System.err.printf("Warning: compiler options such as '%s' should be set with '--vm.Dgraal.%<s=<value>'.%n" +
+                    warn("compiler options such as '%s' should be set with '--vm.Dgraal.%<s=<value>'.%n" +
                                     "Support for setting them with '--vm.XX:...' is deprecated and will be removed.%n", key);
                 }
             }
@@ -1257,14 +1287,6 @@ public abstract class Launcher {
             } catch (RuntimeException re) {
                 throw abort("Invalid argument: '--vm.X" + arg + "' does not specify a valid number.");
             }
-        }
-
-        private void helpXOption() {
-            /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
-            printOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
-            printOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
-            printOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
-            printOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
         }
 
         private boolean isBooleanOption(OptionDescriptor descriptor) {
@@ -1313,14 +1335,18 @@ public abstract class Launcher {
                 } else {
                     Object def = descriptor.getKey().getDefaultValue();
                     if (def instanceof String) {
-                        def = '"' + (String) def + '"';
+                        def = "\"" + def + "\"";
                     }
                     printOption("--vm.XX:" + entry.getKey() + "=" + def, helpMsg);
                 }
             }
-            printOption("--vm.D<property>=<value>", "Sets a system property");
-            helpXOption();
             printCompilerOptions();
+            printOption("--vm.D<property>=<value>", "Sets a system property");
+            /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
+            printOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
+            printOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
+            printOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
+            printOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
         }
 
         private void printCompilerOptions() {
@@ -1379,7 +1405,7 @@ public abstract class Launcher {
                 for (String entry : CLASSPATH.split(File.pathSeparator)) {
                     Path resolved = graalVMHome.resolve(entry);
                     if (isVerbose() && !Files.exists(resolved)) {
-                        System.err.println(String.format("Warning: %s does not exit", resolved));
+                        warn("%s does not exist", resolved);
                     }
                     sb.append(resolved);
                     sb.append(File.pathSeparatorChar);
