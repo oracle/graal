@@ -1028,6 +1028,11 @@ public abstract class Launcher {
                         throw abort("'--jvm.*' options are deprecated and only supported when this launcher is part of a GraalVM.");
                     }
                     if (arg.equals("--jvm.help")) {
+                        if (defaultVmType == VMType.JVM) {
+                            warn("'--jvm.help' is deprecated, use '--vm.help' instead.");
+                        } else {
+                            warn("'--jvm.help' is deprecated, use '--jvm --vm.help' instead.");
+                        }
                         printJvmHelp();
                         throw exit();
                     }
@@ -1059,6 +1064,11 @@ public abstract class Launcher {
                     }
                     vmType = VMType.Native;
                     if (arg.equals("--native.help")) {
+                        if (defaultVmType == VMType.Native) {
+                            warn("'--native.help' is deprecated, use '--vm.help' instead.");
+                        } else {
+                            warn("'--native.help' is deprecated, use '--native --vm.help' instead.");
+                        }
                         printNativeHelp();
                         throw exit();
                     }
@@ -1093,9 +1103,8 @@ public abstract class Launcher {
                         jvmArgs.add('-' + vmArg.substring(0, eqIndex));
                         jvmArgs.add(vmArg.substring(eqIndex + 1));
                     } else {
-                        jvmArgs.add('-' + vmArg);
+                        vmOptions.add(vmArg);
                     }
-                    vmOptions.add(vmArg);
                     iterator.remove();
                 } else if (arg.equals("--polyglot")) {
                     polyglot = true;
