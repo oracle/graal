@@ -2024,7 +2024,7 @@ public abstract class TruffleLanguage<C> {
          * @since 1.0
          */
         @TruffleBoundary
-        public String getTruffleFileSeparator() {
+        public String getFileNameSeparator() {
             checkDisposed();
             try {
                 return fileSystem.getSeparator();

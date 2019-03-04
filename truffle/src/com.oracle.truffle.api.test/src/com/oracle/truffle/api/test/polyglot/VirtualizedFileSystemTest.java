@@ -109,7 +109,7 @@ import org.junit.Assume;
 @RunWith(Parameterized.class)
 public class VirtualizedFileSystemTest {
 
-    private static final String LANGAUGE_ID = "virtualised-fs-lang";
+    private static final String LANGUAGE_ID = "virtualised-fs-lang";
     private static final String FOLDER_EXISTING = "folder";
     private static final String FOLDER_EXISTING_INNER1 = "folder1";
     private static final String FOLDER_EXISTING_INNER2 = "folder2";
@@ -144,17 +144,17 @@ public class VirtualizedFileSystemTest {
         Path accessibleDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
-        Context ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).build();
+        Context ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).build();
         setCwd(ctx, accessibleDir, null);
         result.add(new Configuration("Full IO", ctx, accessibleDir, fullIO, true, true, true, true));
         // No IO
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
         Path privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
         result.add(new Configuration("No IO", ctx, privateDir, Paths.get("").toAbsolutePath(), fullIO, false, false, false, true));
         // No IO under language home
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
         privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
@@ -175,7 +175,7 @@ public class VirtualizedFileSystemTest {
         FileSystem fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(accessibleDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Conditional IO - read/write part", ctx, accessibleDir, fullIO, false, true, true, true));
         read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         write = new AccessPredicate(Collections.singleton(accessibleDir));
@@ -183,14 +183,14 @@ public class VirtualizedFileSystemTest {
                         FileSystemProviderTest.newFullIOFileSystem(readOnlyDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Conditional IO - read only part", ctx, readOnlyDir, fullIO, false, true, false, true));
         read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         write = new AccessPredicate(Collections.singleton(accessibleDir));
         fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(privateDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Conditional IO - private part", ctx, privateDir, fullIO, false, false, false, true));
 
         // Memory
@@ -198,7 +198,7 @@ public class VirtualizedFileSystemTest {
         Path memDir = mkdirs(fileSystem.parsePath(URI.create("file:///work")), fileSystem);
         ((MemoryFileSystem) fileSystem).setCurrentWorkingDirectory(memDir);
         createContent(memDir, fileSystem);
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, true, true, true));
         cfgs = result;
         return result;
@@ -248,7 +248,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -272,7 +272,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -293,7 +293,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -325,7 +325,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -353,7 +353,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -380,7 +380,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -404,7 +404,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -428,7 +428,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -448,7 +448,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -467,7 +467,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -484,7 +484,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -504,7 +504,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -525,7 +525,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -544,7 +544,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -563,7 +563,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -582,7 +582,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -601,7 +601,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -620,7 +620,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -641,7 +641,7 @@ public class VirtualizedFileSystemTest {
             }
         };
         try {
-            ctx.eval(LANGAUGE_ID, "");
+            ctx.eval(LANGUAGE_ID, "");
         } catch (PolyglotException pe) {
             if (pe.isHostException()) {
                 throw pe.asHostException();
@@ -675,7 +675,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -696,7 +696,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -715,7 +715,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -733,7 +733,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertTrue(uri.isAbsolute());
             Assert.assertEquals(cfg.formatErrorMessage("Absolute URI"), Paths.get("/").resolve(FOLDER_EXISTING).resolve(FILE_EXISTING).toUri(), uri);
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -758,7 +758,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertEquals("..", fileNonNormalized.getParent().getName());
             Assert.assertEquals("lib", fileNonNormalized.getParent().getParent().getName());
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -779,7 +779,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertEquals("../sibling", relative.getPath());
             Assert.assertEquals(sibling.normalize(), parent.resolve(relative.getPath()).normalize());
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -804,7 +804,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -860,7 +860,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertFalse(testParentChildRelative.startsWith(testParentChildAbsolute));
             Assert.assertFalse(testParentChildRelative.startsWith(testParentChildAbsolute.getPath()));
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -924,7 +924,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertFalse(testParentInnerRelative.endsWith(testParentInnerChildRelative));
             Assert.assertFalse(testParentInnerRelative.endsWith(testParentInnerChildRelative.getPath()));
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -950,7 +950,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1081,7 +1081,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1104,7 +1104,7 @@ public class VirtualizedFileSystemTest {
                 // Links may not be supported on file system
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1129,7 +1129,7 @@ public class VirtualizedFileSystemTest {
                 // Symbolik links may not be supported on file system
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1152,7 +1152,7 @@ public class VirtualizedFileSystemTest {
                 // Onwer may not be supported on file system
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1175,7 +1175,7 @@ public class VirtualizedFileSystemTest {
                 // Group may not be supported on file system
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1219,7 +1219,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1239,7 +1239,7 @@ public class VirtualizedFileSystemTest {
                 }
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1287,16 +1287,16 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
-    public void testGetSeparator() {
+    public void testGetFileNameSeparator() {
         final Context ctx = cfg.getContext();
         languageAction = (Env env) -> {
-            Assert.assertEquals(cfg.fileSystem.getSeparator(), env.getTruffleFileSeparator());
+            Assert.assertEquals(cfg.fileSystem.getSeparator(), env.getFileNameSeparator());
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     public static final class Configuration implements Closeable {
@@ -1440,7 +1440,7 @@ public class VirtualizedFileSystemTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = LANGAUGE_ID, name = LANGAUGE_ID, version = "1.0")
+    @TruffleLanguage.Registration(id = LANGUAGE_ID, name = LANGUAGE_ID, version = "1.0")
     public static class VirtualizedFileSystemTestLanguage extends TruffleLanguage<LanguageContext> {
 
         @Override
@@ -1577,10 +1577,10 @@ public class VirtualizedFileSystemTest {
             env.setCurrentWorkingDirectory(env.getTruffleFile(cwd.toString()));
         };
         if (langHome != null) {
-            System.setProperty(LANGAUGE_ID + ".home", langHome.toString());
+            System.setProperty(LANGUAGE_ID + ".home", langHome.toString());
             resetLanguageHomes();
         }
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     static class ForwardingFileSystem implements FileSystem {
