@@ -1904,7 +1904,6 @@ class SourceSnippets {
         return source;
     }
 
-    @SuppressWarnings("deprecation")
     public static Source fromURL(Class<?> relativeClass) throws IOException, URISyntaxException {
         // BEGIN: SourceSnippets#fromURL
         URL resource = relativeClass.getResource("sample.js");
@@ -1917,7 +1916,6 @@ class SourceSnippets {
         return source;
     }
 
-    @SuppressWarnings("deprecation")
     public static Source fromURLWithOwnContent(Class<?> relativeClass) {
         // BEGIN: SourceSnippets#fromURLWithOwnContent
         URL resource = relativeClass.getResource("sample.js");

@@ -122,11 +122,6 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public SourceBuilder newBuilder(String language, URL origin) {
-            return Source.newBuilder(language, origin);
-        }
-
-        @Override
         public boolean isLegacySource(Source source) {
             return source.isLegacy();
         }

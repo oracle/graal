@@ -440,13 +440,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             text = "// Hello";
             w.write(text);
         }
-        SourceBuilder builder;
-        context.enter();
-        try {
-            builder = Source.newBuilder("TestJava", file.toURI().toURL()).name("Hello.java").mimeType(Source.findMimeType(file.toURI().toURL()));
-        } finally {
-            context.leave();
-        }
+        SourceBuilder builder = Source.newBuilder("TestJava", file.toURI().toURL()).name("Hello.java").mimeType(Source.findMimeType(file.toURI().toURL()));
         Source s1 = builder.build();
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();

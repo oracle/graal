@@ -164,8 +164,6 @@ public abstract class Accessor {
 
         public abstract SourceBuilder newBuilder(String language, File origin);
 
-        public abstract SourceBuilder newBuilder(String language, URL origin);
-
         public abstract void setEmbedderBuilder(SourceBuilder builder, boolean embedder);
 
         public abstract void setLanguageCacheUsesContextClassLoader(SourceBuilder builder, boolean useContextClassLoader);

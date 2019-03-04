@@ -263,7 +263,7 @@ class PolyglotSource extends AbstractSourceImpl {
         } else if (origin instanceof Reader) {
             builder = com.oracle.truffle.api.source.Source.newBuilder(language, (Reader) origin, name);
         } else if (origin instanceof URL) {
-            builder = VMAccessor.SOURCE.newBuilder(language, (URL) origin);
+            builder = com.oracle.truffle.api.source.Source.newBuilder(language, (URL) origin);
         } else {
             throw new AssertionError();
         }
