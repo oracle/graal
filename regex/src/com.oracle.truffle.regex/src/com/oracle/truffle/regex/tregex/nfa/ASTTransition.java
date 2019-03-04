@@ -66,7 +66,7 @@ public class ASTTransition implements JsonConvertible {
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof ASTTransition && target.equals(((ASTTransition) obj).target);
+        return obj instanceof ASTTransition && target == ((ASTTransition) obj).target;
     }
 
     @TruffleBoundary
