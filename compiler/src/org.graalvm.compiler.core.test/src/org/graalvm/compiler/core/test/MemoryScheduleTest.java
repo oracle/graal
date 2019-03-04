@@ -260,7 +260,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testLoop5() {
         ScheduleResult schedule = getFinalSchedule("testLoop5Snippet", TestMode.WITHOUT_FRAMESTATES);
-        assertDeepEquals(9, schedule.getCFG().getBlocks().length);
+        assertDeepEquals(10, schedule.getCFG().getBlocks().length);
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
     }
@@ -289,7 +289,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testLoop6() {
         ScheduleResult schedule = getFinalSchedule("testLoop6Snippet", TestMode.WITHOUT_FRAMESTATES);
-        assertDeepEquals(12, schedule.getCFG().getBlocks().length);
+        assertDeepEquals(13, schedule.getCFG().getBlocks().length);
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
     }
@@ -322,7 +322,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testLoop7() {
         ScheduleResult schedule = getFinalSchedule("testLoop7Snippet", TestMode.WITHOUT_FRAMESTATES);
-        assertDeepEquals(17, schedule.getCFG().getBlocks().length);
+        assertDeepEquals(18, schedule.getCFG().getBlocks().length);
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinAllReturnBlocks(schedule, false);
     }

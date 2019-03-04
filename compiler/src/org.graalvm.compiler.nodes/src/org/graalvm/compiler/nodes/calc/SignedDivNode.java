@@ -117,24 +117,22 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             return NegateNode.create(forX, view);
         }
         long abs = Math.abs(c);
-        if (forX.stamp(view) instanceof IntegerStamp) {
+        if (CodeUtil.isPowerOf2(abs) && forX.stamp(view) instanceof IntegerStamp) {
             IntegerStamp stampX = (IntegerStamp) forX.stamp(view);
-            if (CodeUtil.isPowerOf2(abs)) {
-                ValueNode dividend = forX;
-                int log2 = CodeUtil.log2(abs);
-                // no rounding if dividend is positive or if its low bits are always 0
-                if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
-                    int bits = PrimitiveStamp.getBits(forX.stamp(view));
-                    RightShiftNode sign = new RightShiftNode(forX, ConstantNode.forInt(bits - 1));
-                    UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));
-                    dividend = BinaryArithmeticNode.add(dividend, round, view);
-                }
-                RightShiftNode shift = new RightShiftNode(dividend, ConstantNode.forInt(log2));
-                if (c < 0) {
-                    return NegateNode.create(shift, view);
-                }
-                return shift;
+            ValueNode dividend = forX;
+            int log2 = CodeUtil.log2(abs);
+            // no rounding if dividend is positive or if its low bits are always 0
+            if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
+                int bits = PrimitiveStamp.getBits(forX.stamp(view));
+                RightShiftNode sign = new RightShiftNode(forX, ConstantNode.forInt(bits - 1));
+                UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));
+                dividend = BinaryArithmeticNode.add(dividend, round, view);
             }
+            RightShiftNode shift = new RightShiftNode(dividend, ConstantNode.forInt(log2));
+            if (c < 0) {
+                return NegateNode.create(shift, view);
+            }
+            return shift;
         }
         return null;
     }
