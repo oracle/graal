@@ -964,7 +964,17 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public boolean isInstrumentExceptionsAreThrown(Object vmObject) {
-            return getEngine(vmObject).engineOptionValues.get(PolyglotEngineOptions.InstrumentExceptionsAreThrown);
+            // We want to enable this option for testing in general, to ensure tests fail if
+            // instruments throw.
+            return areAssertionsEnabled() || getEngine(vmObject).engineOptionValues.get(PolyglotEngineOptions.InstrumentExceptionsAreThrown);
+        }
+
+        @SuppressWarnings("all")
+        private static boolean areAssertionsEnabled() {
+            boolean assertsEnabled = false;
+            // Next assignment will be executed when asserts are enabled.
+            assert assertsEnabled = true;
+            return assertsEnabled;
         }
 
         @Override
