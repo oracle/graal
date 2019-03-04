@@ -374,19 +374,26 @@ public class ElementUtils {
         } else if (isObject(to)) {
             return true;
         }
-        if (from.getKind() == TypeKind.NONE || to.getKind() == TypeKind.NONE) {
-            // workaround for eclipse compiler bug: v4.7.3a throws IllegalArgumentException
+        if (isInvalidType(from) || isInvalidType(to)) {
+            // workaround for eclipse compiler bug: v4.7.3a throws IllegalArgumentException or
+            // ClassCastException
             return false;
         }
         ProcessorContext context = ProcessorContext.getInstance();
         if (!(from instanceof CodeTypeMirror) && !(to instanceof CodeTypeMirror)) {
             Types typeUtils = context.getEnvironment().getTypeUtils();
-            TypeMirror erasedFrom = typeUtils.erasure(context.reloadType(from));
-            TypeMirror erasedTo = typeUtils.erasure(context.reloadType(to));
+            TypeMirror reloadFrom = context.reloadType(from);
+            TypeMirror reloadTo = context.reloadType(to);
+            TypeMirror erasedFrom = typeUtils.erasure(reloadFrom);
+            TypeMirror erasedTo = typeUtils.erasure(reloadTo);
             return typeUtils.isAssignable(erasedFrom, erasedTo);
         } else {
             return isAssignableImpl(from, to);
         }
+    }
+
+    private static boolean isInvalidType(TypeMirror reloadFrom) {
+        return reloadFrom.getKind() == TypeKind.NONE || reloadFrom.getKind() == TypeKind.ERROR || reloadFrom.getKind() == TypeKind.VOID;
     }
 
     private static boolean isAssignableImpl(TypeMirror from, TypeMirror to) {
@@ -698,7 +705,7 @@ public class ElementUtils {
     }
 
     public static boolean isNone(TypeMirror mirror) {
-        return mirror != null && mirror.getKind() == TypeKind.NONE;
+        return mirror != null && isInvalidType(mirror);
     }
 
     public static boolean isVoid(TypeMirror mirror) {
