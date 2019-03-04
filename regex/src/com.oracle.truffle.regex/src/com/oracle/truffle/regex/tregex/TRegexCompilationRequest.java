@@ -264,7 +264,7 @@ final class TRegexCompilationRequest {
 
     private void debugAST() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
-            ASTLaTexExportVisitor.exportLatex(ast, "./ast.tex", ASTLaTexExportVisitor.DrawPointers.LOOKBEHIND_ENTRIES);
+            ASTLaTexExportVisitor.exportLatex(ast, "./ast.tex");
             ast.getWrappedRoot().toJson().dump("ast.json");
         }
     }

@@ -46,10 +46,6 @@ import java.util.List;
 
 public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-    public enum DrawPointers {
-        LOOKBEHIND_ENTRIES
-    }
-
     private final RegexAST ast;
     private final BufferedWriter writer;
     private int indent = 0;
@@ -61,7 +57,7 @@ public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisi
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static void exportLatex(RegexAST ast, String path, DrawPointers pointers) {
+    public static void exportLatex(RegexAST ast, String path) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
             ASTLaTexExportVisitor visitor = new ASTLaTexExportVisitor(ast, writer);
             visitor.writeln("\\documentclass{standalone}");
@@ -75,11 +71,7 @@ public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisi
             visitor.writeln("},");
             visitor.writeln("forked edges,");
             visitor.run(ast.getWrappedRoot());
-            switch (pointers) {
-                case LOOKBEHIND_ENTRIES:
-                    visitor.drawLookBehindEntries();
-                    break;
-            }
+            visitor.drawLookBehindEntries();
             visitor.writeln("\\end{forest}");
             visitor.writeln("\\end{document}");
         } catch (IOException e) {
