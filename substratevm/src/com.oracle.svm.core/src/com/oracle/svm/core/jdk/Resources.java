@@ -108,7 +108,6 @@ public final class Resources {
         return ImageSingletons.lookup(ResourcesSupport.class).resources.get(name);
     }
 
-
     public static URL createURL(String name, byte[] resourceBytes) {
         class Conn extends URLConnection {
             Conn(URL url) {
@@ -149,7 +148,8 @@ public final class Resources {
                     @Override
                     public InputStream getInputStream() throws IOException {
                         ResourcesSupport support = ImageSingletons.lookup(ResourcesSupport.class);
-                        String resName = url.toString().substring(9);
+                        // remove "protcol:" from url to get the resource name
+                        String resName = url.toString().substring(1+JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
                         final List<byte[]> bytes = support.resources.get(resName);
                         if (bytes == null || bytes.size() < 1) {
                             System.err.println("Couldn't find resource "+resName);

@@ -101,8 +101,7 @@ public class LocalizationSupport {
         if (result == null) {
             String errorMessage = "Resource bundle not found " + baseName + ". " +
                             "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
-            System.err.println(errorMessage);
-            throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);//VMError.unsupportedFeature(errorMessage);
+            throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);
         }
         return result;
     }

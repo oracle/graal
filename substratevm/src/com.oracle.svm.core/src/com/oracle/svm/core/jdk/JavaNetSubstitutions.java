@@ -132,11 +132,11 @@ public final class JavaNetSubstitutions {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean addURLStreamHandler(String protocol) {
+        if (RESOURCE_PROTOCOL.equals(protocol)) {
+            URLProtocolsSupport.put(RESOURCE_PROTOCOL,ImageSingletons.lookup(Resources.ResourcesSupport.class).resourcesURLStreamHandler);
+            return true;
+        }
         try {
-            if (RESOURCE_PROTOCOL.equals(protocol)) {
-                URLProtocolsSupport.put(RESOURCE_PROTOCOL,ImageSingletons.lookup(Resources.ResourcesSupport.class).resourcesURLStreamHandler);
-                return true;
-            }
             Method method = URL.class.getDeclaredMethod("getURLStreamHandler", String.class);
             method.setAccessible(true);
             URLStreamHandler handler = (URLStreamHandler) method.invoke(null, protocol);
