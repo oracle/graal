@@ -66,7 +66,7 @@ public class OptimizeDivPhase extends Phase {
         return 5.0f;
     }
 
-    protected final boolean divByNonZeroConstant(IntegerDivRemNode divRemNode) {
+    protected final static boolean divByNonZeroConstant(IntegerDivRemNode divRemNode) {
         return divRemNode.getY().isConstant() && divRemNode.getY().asJavaConstant().asLong() != 0;
     }
 
