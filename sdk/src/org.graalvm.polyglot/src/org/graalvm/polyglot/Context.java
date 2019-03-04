@@ -829,7 +829,7 @@ public final class Context implements AutoCloseable {
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
          * bindings}.
          * <li>Unrestricted {@link #allowIO(boolean) IO operations} on host system.
-         * <li>Passing {@link #allowExperimentalOptions experimental options}.
+         * <li>Passing {@link #allowExperimentalOptions(boolean) experimental options}.
          * </ul>
          *
          * @param enabled <code>true</code> for all access by default.
