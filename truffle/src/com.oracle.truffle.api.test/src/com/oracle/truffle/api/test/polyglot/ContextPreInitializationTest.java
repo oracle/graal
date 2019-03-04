@@ -451,7 +451,7 @@ public class ContextPreInitializationTest {
         assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
-        System.getProperties().remove(SYS_OPTION1_KEY);
+        System.clearProperty(SYS_OPTION1_KEY);
         System.setProperty(SYS_OPTION2_KEY, "true");
         Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
@@ -478,7 +478,7 @@ public class ContextPreInitializationTest {
         assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
-        System.getProperties().remove(SYS_OPTION1_KEY);
+        System.clearProperty(SYS_OPTION1_KEY);
         System.setProperty(SYS_OPTION2_KEY, "true");
         final Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
@@ -884,7 +884,7 @@ public class ContextPreInitializationTest {
             doContextPreinitialize(FIRST);
         } finally {
             System.setErr(origErr);
-            System.getProperties().remove("polyglot.log.engine.level");
+            System.clearProperty("polyglot.log.engine.level");
         }
         final String preInitLog = preInitErr.toString("UTF-8");
         assertTrue(preInitLog.contains("Pre-initialized context for language: ContextPreInitializationFirst"));
@@ -925,9 +925,9 @@ public class ContextPreInitializationTest {
     }
 
     private static void resetSystemPropertiesOptions() {
-        System.getProperties().remove("polyglot.engine.PreinitializeContexts");
-        System.getProperties().remove(SYS_OPTION1_KEY);
-        System.getProperties().remove(SYS_OPTION2_KEY);
+        System.clearProperty("polyglot.engine.PreinitializeContexts");
+        System.clearProperty(SYS_OPTION1_KEY);
+        System.clearProperty(SYS_OPTION2_KEY);
     }
 
     private static void doContextPreinitialize(String... languages) throws ReflectiveOperationException {
