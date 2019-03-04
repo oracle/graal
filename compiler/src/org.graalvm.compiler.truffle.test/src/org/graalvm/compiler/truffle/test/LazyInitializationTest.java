@@ -86,7 +86,7 @@ public class LazyInitializationTest {
     public void testSLTck() throws IOException, InterruptedException {
         Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
         List<String> vmCommandLine = getVMCommandLine();
-        Assume.assumeFalse("Explicitly enables JVMCI compiler", vmCommandLine.contains("-XX:JVMCIJavaMode=SharedLibrary") || vmCommandLine.contains("-XX:+UseJVMCICompiler"));
+        Assume.assumeFalse("Explicitly enables JVMCI compiler", vmCommandLine.contains("-XX:+UseJVMCINativeLibrary") || vmCommandLine.contains("-XX:+UseJVMCICompiler"));
         List<String> vmArgs = withoutDebuggerArguments(vmCommandLine);
         vmArgs.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
         vmArgs.add("-dsa");
