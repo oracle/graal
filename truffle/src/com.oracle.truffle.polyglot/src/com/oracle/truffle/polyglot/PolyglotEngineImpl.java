@@ -218,7 +218,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
-        parseOptions(options, useSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, logLevels, preInitialization);
+        parseOptions(options, useSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, logLevels);
 
         this.engineOptionValues.putAll(originalEngineOptions, allowExperimentalOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions, allowExperimentalOptions);
@@ -265,7 +265,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
         assert this.logLevels.isEmpty();
-        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, logLevels, false);
+        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, logLevels);
 
         this.engineOptionValues.putAll(originalEngineOptions, newAllowExperimentalOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions, newAllowExperimentalOptions);
@@ -322,8 +322,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private void parseOptions(Map<String, String> options, boolean useSystemProperties,
                     Map<String, String> originalEngineOptions, Map<String, String> originalCompilerOptions,
                     Map<PolyglotLanguage, Map<String, String>> languagesOptions, Map<PolyglotInstrument, Map<String, String>> instrumentsOptions,
-                    Map<String, Level> logOptions, boolean preInitialization) {
-        // When changing this logic, make sure it is in synch with #isEngineGroup()
+                    Map<String, Level> logOptions) {
         final Map<String, String> optionsWithSystemProperties;
         if (useSystemProperties) {
             Properties properties = System.getProperties();
@@ -333,10 +332,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     String key = (String) systemKey;
                     if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
                         String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
-                        String optionGroup = parseOptionGroup(engineKey);
-                        if (!options.containsKey(engineKey) && (!preInitialization || idToPublicLanguage.containsKey(optionGroup) ||
-                                        engineKey.equals(PolyglotImpl.OPTION_GROUP_ENGINE + '.' + PolyglotEngineOptions.PREINITIALIZE_CONTEXT_NAME) ||
-                                        PolyglotEngineOptions.OPTION_GROUP_LOG.equals(optionGroup))) {
+                        if (!options.containsKey(engineKey)) {
                             optionsWithSystemProperties.put(engineKey, System.getProperty(key));
                         }
                     }
@@ -391,7 +387,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
      * Find if there is an "engine option" (covers engine, compiler and instruments options) present
      * among the given options.
      */
-    // The implementation must be in synch with #parseOptions()
     boolean isEngineGroup(String group) {
         return idToPublicInstrument.containsKey(group) ||
                         group.equals(PolyglotImpl.OPTION_GROUP_ENGINE) ||
