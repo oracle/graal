@@ -29,6 +29,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.util.VMError;
 
 public final class MemoryUtil {
 
@@ -144,6 +145,65 @@ public final class MemoryUtil {
             byte fill = value;
             for (UnsignedWord offset = WordFactory.zero(); offset.belowThan(size); offset = offset.add(1)) {
                 to.writeByte(offset, fill);
+            }
+        }
+    }
+
+    /**
+     * Copy memory and unconditionally reverse bytes based on the element size.
+     */
+    @Uninterruptible(reason = "Arguments may be managed objects")
+    public static void copyConjointSwap(Pointer from, Pointer to, UnsignedWord size, UnsignedWord elementSize) {
+        assert from.isNonNull() : "address must not be NULL";
+        assert to.isNonNull() : "address must not be NULL";
+        assert size.unsignedRemainder(elementSize).equal(0) : "byte count must be multiple of element size";
+
+        if (elementSize.equal(2)) {
+            copyConjointSwap2(from, to, size);
+        } else if (elementSize.equal(4)) {
+            copyConjointSwap4(from, to, size);
+        } else if (elementSize.equal(8)) {
+            copyConjointSwap8(from, to, size);
+        } else {
+            throw VMError.shouldNotReachHere("incorrect element size");
+        }
+    }
+
+    @Uninterruptible(reason = "Arguments may be managed objects")
+    private static void copyConjointSwap2(Pointer from, Pointer to, UnsignedWord size) {
+        if (from.aboveThan(to)) {
+            for (UnsignedWord offset = WordFactory.zero(); offset.belowThan(size); offset = offset.add(2)) {
+                to.writeShort(offset, Short.reverseBytes(from.readShort(offset)));
+            }
+        } else if (from.belowThan(to)) {
+            for (UnsignedWord offset = size; offset.aboveThan(0); offset = offset.subtract(2)) {
+                to.writeShort(offset.subtract(2), Short.reverseBytes(from.readShort(offset.subtract(2))));
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Arguments may be managed objects")
+    private static void copyConjointSwap4(Pointer from, Pointer to, UnsignedWord size) {
+        if (from.aboveThan(to)) {
+            for (UnsignedWord offset = WordFactory.zero(); offset.belowThan(size); offset = offset.add(4)) {
+                to.writeInt(offset, Integer.reverseBytes(from.readInt(offset)));
+            }
+        } else if (from.belowThan(to)) {
+            for (UnsignedWord offset = size; offset.aboveThan(0); offset = offset.subtract(4)) {
+                to.writeInt(offset.subtract(4), Integer.reverseBytes(from.readInt(offset.subtract(4))));
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Arguments may be managed objects")
+    private static void copyConjointSwap8(Pointer from, Pointer to, UnsignedWord size) {
+        if (from.aboveThan(to)) {
+            for (UnsignedWord offset = WordFactory.zero(); offset.belowThan(size); offset = offset.add(8)) {
+                to.writeLong(offset, Long.reverseBytes(from.readLong(offset)));
+            }
+        } else if (from.belowThan(to)) {
+            for (UnsignedWord offset = size; offset.aboveThan(0); offset = offset.subtract(8)) {
+                to.writeLong(offset.subtract(8), Long.reverseBytes(from.readLong(offset.subtract(8))));
             }
         }
     }

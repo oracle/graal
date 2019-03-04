@@ -116,15 +116,14 @@ import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -133,16 +132,15 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
@@ -152,7 +150,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.log.Log;
@@ -192,8 +189,6 @@ import com.oracle.svm.core.posix.headers.linux.Mntent.mntent;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-
-import jdk.vm.ci.meta.JavaKind;
 
 @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
 @AutomaticFeature
@@ -3070,72 +3065,6 @@ public final class PosixJavaNIOSubstitutions {
                     pos = pos.add(n);
                     len = len.subtract(n);
                 } while (len.greaterThan(0));
-            }
-        }
-    }
-
-    /** This class exists in JDK-9, but these methods do not. */
-    @TargetClass(className = "java.nio.Bits", onlyWith = JDK8OrEarlier.class)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-    static final class Target_java_nio_Bits {
-
-        @Substitute
-        private static void copyFromShortArray(Object src, long srcPos, long dstAddr, long length) {
-            Pointer dstPointer = WordFactory.pointer(dstAddr);
-            SignedWord srcOffset = WordFactory.signed(ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Short) + srcPos);
-
-            for (SignedWord i = WordFactory.zero(); i.lessOrEqual(WordFactory.signed(length)); i = i.add(2)) {
-                dstPointer.writeShort(i, Short.reverseBytes(ObjectAccess.readShort(src, srcOffset.add(i))));
-            }
-        }
-
-        @Substitute
-        private static void copyToShortArray(long srcAddr, Object dst, long dstPos, long length) {
-            Pointer srcPointer = WordFactory.pointer(srcAddr);
-            SignedWord dstOffset = WordFactory.signed(ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Short) + dstPos);
-
-            for (SignedWord i = WordFactory.zero(); i.lessOrEqual(WordFactory.signed(length)); i = i.add(2)) {
-                ObjectAccess.writeShort(dst, dstOffset.add(i), Short.reverseBytes(srcPointer.readShort(i)));
-            }
-        }
-
-        @Substitute
-        private static void copyFromIntArray(Object src, long srcPos, long dstAddr, long length) {
-            Pointer dstPointer = WordFactory.pointer(dstAddr);
-            SignedWord srcOffset = WordFactory.signed(ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Int) + srcPos);
-
-            for (SignedWord i = WordFactory.zero(); i.lessOrEqual(WordFactory.signed(length)); i = i.add(4)) {
-                dstPointer.writeInt(i, Integer.reverseBytes(ObjectAccess.readInt(src, srcOffset.add(i))));
-            }
-        }
-
-        @Substitute
-        private static void copyToIntArray(long srcAddr, Object dst, long dstPos, long length) {
-            Pointer srcPointer = WordFactory.pointer(srcAddr);
-            SignedWord dstOffset = WordFactory.signed(ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Int) + dstPos);
-
-            for (SignedWord i = WordFactory.zero(); i.lessOrEqual(WordFactory.signed(length)); i = i.add(4)) {
-                ObjectAccess.writeInt(dst, dstOffset.add(i), Integer.reverseBytes(srcPointer.readInt(i)));
-            }
-        }
-
-        @Substitute
-        private static void copyFromLongArray(Object src, long srcPos, long dstAddr, long length) {
-            Pointer dstPointer = WordFactory.pointer(dstAddr);
-            SignedWord srcOffset = WordFactory.signed(ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Long) + srcPos);
-
-            for (SignedWord i = WordFactory.zero(); i.lessOrEqual(WordFactory.signed(length)); i = i.add(8)) {
-                dstPointer.writeLong(i, Long.reverseBytes(ObjectAccess.readLong(src, srcOffset.add(i))));
-            }
-        }
-
-        @Substitute
-        private static void copyToLongArray(long srcAddr, Object dst, long dstPos, long length) {
-            Pointer srcPointer = WordFactory.pointer(srcAddr);
-            SignedWord dstOffset = WordFactory.signed(ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Short) + dstPos);
-
-            for (SignedWord i = WordFactory.zero(); i.lessOrEqual(WordFactory.signed(length)); i = i.add(8)) {
-                ObjectAccess.writeLong(dst, dstOffset.add(i), Long.reverseBytes(srcPointer.readLong(i)));
             }
         }
     }
