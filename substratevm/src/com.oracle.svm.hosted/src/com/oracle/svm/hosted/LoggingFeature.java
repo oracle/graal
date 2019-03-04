@@ -26,15 +26,28 @@ package com.oracle.svm.hosted;
 
 import java.util.logging.LogManager;
 
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 @AutomaticFeature
-final class LoggingFeature implements Feature {
+public class LoggingFeature implements Feature {
+
+    public static class Options {
+        @Option(help = "When enabled, logging feature details are printed.", type = OptionType.Debug) //
+        public static final HostedOptionKey<Boolean> TraceLoggingFeature = new HostedOptionKey<>(false);
+    }
+
+    private final boolean trace = LoggingFeature.Options.TraceLoggingFeature.getValue();
+
+    private boolean reflectionConfigured = false;
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -47,23 +60,39 @@ final class LoggingFeature implements Feature {
          * LoggingSupport.DEFAULT_FORMAT default value.
          */
 
+        trace("Registering " + java.util.logging.SimpleFormatter.class + " for runtime re-initialization.");
         RuntimeClassInitialization.rerunClassInitialization(java.util.logging.SimpleFormatter.class);
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        try {
-            RuntimeReflection.register(java.util.logging.ConsoleHandler.class);
-            RuntimeReflection.register(java.util.logging.ConsoleHandler.class.getConstructor());
-            RuntimeReflection.register(java.util.logging.FileHandler.class);
-            RuntimeReflection.register(java.util.logging.FileHandler.class.getConstructor());
-            RuntimeReflection.register(java.util.logging.SimpleFormatter.class);
-            RuntimeReflection.register(java.util.logging.SimpleFormatter.class.getConstructor());
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+
+        if (!reflectionConfigured && access.getMetaAccess().optionalLookupJavaType(java.util.logging.Logger.class).isPresent()) {
+            registerForReflection(java.util.logging.ConsoleHandler.class);
+            registerForReflection(java.util.logging.FileHandler.class);
+            registerForReflection(java.util.logging.SimpleFormatter.class);
+
+            reflectionConfigured = true;
+
+            access.requireAnalysisIteration();
         }
     }
-}
 
-public class LoggingSupport {
+    private void registerForReflection(Class<?> clazz) {
+        try {
+            trace("Registering " + clazz + " for reflection.");
+            RuntimeReflection.register(clazz);
+            RuntimeReflection.register(clazz.getConstructor());
+        } catch (NoSuchMethodException e) {
+            VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private void trace(String msg) {
+        if (trace) {
+            System.out.println("LoggingFeature: " + msg);
+        }
+    }
+
 }
