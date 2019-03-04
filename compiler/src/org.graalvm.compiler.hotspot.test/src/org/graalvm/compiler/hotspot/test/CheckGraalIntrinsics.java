@@ -367,6 +367,10 @@ public class CheckGraalIntrinsics extends GraalTest {
                 add(ignore,
                                 "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
             }
+            if (!(config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics())) {
+                add(ignore,
+                                "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
+            }
         }
 
         if (isJDK10OrHigher()) {
