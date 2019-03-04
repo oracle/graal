@@ -38,6 +38,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 
@@ -55,7 +56,7 @@ import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
  * who sends C signals to interrupt blocked operations.
  */
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-public class PosixInterruptSignalHandler {
+public class PosixInterruptSignalUtils {
 
     /**
      *
@@ -81,12 +82,8 @@ public class PosixInterruptSignalHandler {
     // 049 #else
     // 050   #error "missing platform-specific definition here"
     // 051 #endif
-    static final Signal.SignalEnum INTERRUPT_SIGNAL = Signal.SignalEnum.SIGIO;
+    private static final Signal.SignalEnum INTERRUPT_SIGNAL = Signal.SignalEnum.SIGIO;
     /* } Do not re-format commented code: @formatter:on */
-
-    public static Signal.SignalEnum getInterruptSignal() {
-        return INTERRUPT_SIGNAL;
-    }
 
     @CEntryPoint
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
@@ -95,10 +92,10 @@ public class PosixInterruptSignalHandler {
     }
 
     /** The address of the null signal handler. */
-    private static final CEntryPointLiteral<SignalDispatcher> nullDispatcher = CEntryPointLiteral.create(PosixInterruptSignalHandler.class, "nullHandler", int.class);
+    private static final CEntryPointLiteral<SignalDispatcher> nullDispatcher = CEntryPointLiteral.create(PosixInterruptSignalUtils.class, "nullHandler", int.class);
 
     /** Set up a null signal handler for the interrupt signal. */
-    static void ensureInitialized() throws IOException {
+    public static void ensureInitialized() throws IOException {
         /* I avoid overwriting any previous signal handler by checking for initialization, first. */
         if (!initialized) {
             /* { Do not re-format commented code: @formatter:off */
@@ -114,7 +111,7 @@ public class PosixInterruptSignalHandler {
                 Signal.sigaction saPointer = StackValue.get(Signal.sigaction.class);
                 Signal.sigaction osaPointer = StackValue.get(Signal.sigaction.class);
                 // 070     sa.sa_handler = nullHandler;
-                saPointer.sa_handler(PosixInterruptSignalHandler.nullDispatcher.getFunctionPointer());
+                saPointer.sa_handler(PosixInterruptSignalUtils.nullDispatcher.getFunctionPointer());
                 // 071     sa.sa_flags = 0;
                 saPointer.sa_flags(0);
                 // 072     sigemptyset(&sa.sa_mask);
@@ -127,5 +124,10 @@ public class PosixInterruptSignalHandler {
                 /* } Do not re-format commented code: @formatter:on */
             initialized = true;
         }
+    }
+
+    public static int interruptPThread(Pthread.pthread_t pThread) throws IOException {
+        ensureInitialized();
+        return Pthread.pthread_kill(pThread, INTERRUPT_SIGNAL);
     }
 }

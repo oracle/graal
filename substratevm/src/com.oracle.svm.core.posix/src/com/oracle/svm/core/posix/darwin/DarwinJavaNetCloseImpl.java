@@ -37,9 +37,9 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.posix.PosixJavaNetClose;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.SysSelect;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.SysParam;
+import com.oracle.svm.core.posix.headers.SysSelect;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 
@@ -86,7 +86,7 @@ public final class DarwinJavaNetCloseImpl extends PosixJavaNetClose {
             /* Send a wakeup signal to all threads blocked on this file descriptor. */
             fdEntry.getThreadList().forEach((threadEntry) -> {
                 threadEntry.setIntr(true);
-                threadEntry.getThread().interrupt();
+                interruptThread(threadEntry.getPThread());
             });
             /* And close/dup the file descriptor (restart if interrupted by signal) */
             do {
