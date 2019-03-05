@@ -670,8 +670,7 @@ public class CompileQueue {
             if (plugin != null && !plugin.inlineOnly()) {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
                 // DebugContext debug = new DebugContext(options, providers.getSnippetReflection());
-                graph = new SubstrateIntrinsicGraphBuilder(debug.getOptions(), debug, providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(),
-                                providers.getStampProvider(), code).buildGraph(plugin);
+                graph = new SubstrateIntrinsicGraphBuilder(debug.getOptions(), debug, providers, code).buildGraph(plugin);
             }
         }
         if (graph == null && method.isNative() && NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
@@ -688,8 +687,7 @@ public class CompileQueue {
             try {
                 if (needParsing) {
                     GraphBuilderConfiguration gbConf = createHostedGraphBuilderConfiguration(providers, method);
-                    new HostedGraphBuilderPhase(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), gbConf,
-                                    optimisticOpts, null, providers.getWordTypes()).apply(graph);
+                    new HostedGraphBuilderPhase(providers, gbConf, optimisticOpts, null, providers.getWordTypes()).apply(graph);
 
                 } else {
                     graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);

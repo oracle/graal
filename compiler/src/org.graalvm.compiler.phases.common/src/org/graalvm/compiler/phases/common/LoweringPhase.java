@@ -38,6 +38,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
@@ -166,6 +167,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public Replacements getReplacements() {
             return context.getReplacements();
+        }
+
+        @Override
+        public ForeignCallsProvider getForeignCalls() {
+            return context.getForeignCalls();
         }
 
         @Override

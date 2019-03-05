@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.phases;
 
 import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -37,8 +36,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
@@ -51,22 +50,20 @@ import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
     final WordTypes wordTypes;
 
-    public SharedGraphBuilderPhase(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
-        super(metaAccess, stampProvider, constantReflection, constantFieldProvider, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+    public SharedGraphBuilderPhase(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext,
+                    WordTypes wordTypes) {
+        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         this.wordTypes = wordTypes;
     }
 
@@ -307,7 +304,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         public void notifyReplacedCall(ResolvedJavaMethod targetMethod, ConstantNode node) {
             JavaConstant constant = node.asJavaConstant();
-            if (metaAccess instanceof AnalysisMetaAccess && constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
+            if (getMetaAccess() instanceof AnalysisMetaAccess && constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
                 SubstrateObjectConstant sValue = (SubstrateObjectConstant) node.asJavaConstant();
                 sValue.setRoot(targetMethod);
             }

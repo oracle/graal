@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.tiers;
+package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.CoreProvidersImpl;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 
-public class PhaseContext extends CoreProvidersImpl {
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
-    public PhaseContext(CoreProviders providers) {
-        super(providers);
-    }
+public interface CoreProviders {
+
+    MetaAccessProvider getMetaAccess();
+
+    ConstantReflectionProvider getConstantReflection();
+
+    ConstantFieldProvider getConstantFieldProvider();
+
+    LoweringProvider getLowerer();
+
+    Replacements getReplacements();
+
+    StampProvider getStampProvider();
+
+    ForeignCallsProvider getForeignCalls();
 }
