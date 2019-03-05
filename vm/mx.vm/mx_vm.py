@@ -459,7 +459,7 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
 
     def _add_link(self):
         if mx.get_os() == 'windows':
-            mx.warn('Skip adding symlink ' + self._root_link_path + ' (Platform Windows)')
+            mx.warn('Skip adding symlink to ' + self._home_link_target() + ' (Platform Windows)')
             return
         self._rm_link()
         os.symlink(self._root_link_target(), self._root_link_path)
