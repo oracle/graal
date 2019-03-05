@@ -686,6 +686,10 @@ public class LanguageSPITest {
             return super.createContext(env);
         }
 
+        public static LanguageContext getCurrentContext() {
+            return getCurrentContext(MultiContextLanguage.class);
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             executionIndex++;
@@ -778,7 +782,7 @@ public class LanguageSPITest {
 
         TruffleContext innerContext = env.newContextBuilder().build();
         Object prev = innerContext.enter();
-        Env innerEnv = ProxyLanguage.getCurrentContext().env;
+        Env innerEnv = MultiContextLanguage.getCurrentContext().env;
         innerEnv.parse(truffleSource1);
         assertEquals(1, lang.parseCalled.size());
         assertEquals(1, lang.initializeMultiContextCalled.size());
