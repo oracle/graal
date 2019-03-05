@@ -91,6 +91,7 @@ public abstract class Launcher {
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("org.graalvm.launcher.verbose");
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
+    // Temporary to help languages transition, see GR-13740
     private static final boolean CHECK_EXPERIMENTAL_OPTIONS = Boolean.parseBoolean(System.getenv("GRAALVM_CHECK_EXPERIMENTAL_OPTIONS"));
 
     private Engine tempEngine;
