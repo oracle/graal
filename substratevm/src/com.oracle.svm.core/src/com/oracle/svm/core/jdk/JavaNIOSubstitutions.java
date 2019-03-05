@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -37,7 +38,7 @@ final class Target_java_nio_file_TempFileHelper {
     @Alias @InjectAccessors(TempFileHelperRandomAccessors.class)//
     static SecureRandom random;
 
-    @Alias @InjectAccessors(TempFileHelperDir.class)
+    @Alias @InjectAccessors(TempFileHelperDir.class)//
     static Path tmpdir;
 
     static final class TempFileHelperRandomAccessors {
@@ -56,7 +57,7 @@ final class Target_java_nio_file_TempFileHelper {
 
         static Path get() {
             if (dir == null) {
-                dir = Path.of(System.getProperty("java.io.tmpdir"));
+                dir = Paths.get(System.getProperty("java.io.tmpdir"));
             }
             return dir;
         }
