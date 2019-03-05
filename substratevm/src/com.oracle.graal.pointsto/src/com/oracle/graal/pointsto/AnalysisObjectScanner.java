@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto;
 
-import com.oracle.graal.pointsto.ObjectScanner.ReusableSet;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;

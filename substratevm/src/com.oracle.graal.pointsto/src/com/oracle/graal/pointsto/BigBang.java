@@ -78,6 +78,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
@@ -596,13 +597,20 @@ public abstract class BigBang {
     private ReusableSet scannedObjects = new ReusableSet();
 
     @SuppressWarnings("try")
-    private void checkObjectGraph() {
+    private void checkObjectGraph() throws InterruptedException {
         scannedObjects.reset();
         // scan constants
         ObjectScanner objectScanner = new AnalysisObjectScanner(this, scannedObjects);
         checkObjectGraph(objectScanner);
-        objectScanner.scanBootImageHeapRoots();
-
+        if (PointstoOptions.ScanObjectsParallel.getValue(options)) {
+            executor.start();
+            objectScanner.scanBootImageHeapRoots(executor);
+            executor.complete();
+            executor.shutdown();
+            executor.init(timing);
+        } else {
+            objectScanner.scanBootImageHeapRoots(null);
+        }
         AnalysisType.updateAssignableTypes(this);
     }
 

@@ -101,6 +101,9 @@ public class PointstoOptions {
     @Option(help = "Path to the contents of the Inspect web server.")//
     public static final OptionKey<String> InspectServerContentPath = new OptionKey<>("inspect");
 
+    @Option(help = "Object scanning in parallel")//
+    public static final OptionKey<Boolean> ScanObjectsParallel = new OptionKey<>(true);
+
     /**
      * Controls the static analysis context sensitivity. Available values:
      * <p/>

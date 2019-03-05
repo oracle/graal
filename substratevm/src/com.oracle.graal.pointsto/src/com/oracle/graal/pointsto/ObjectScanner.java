@@ -25,12 +25,15 @@
 package com.oracle.graal.pointsto;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.word.WordBase;
@@ -40,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -50,7 +54,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public abstract class ObjectScanner {
 
     protected final BigBang bb;
-
     private final ReusableSet scannedObjects;
     protected final Deque<WorklistEntry> worklist;
 
@@ -60,12 +63,15 @@ public abstract class ObjectScanner {
         this.scannedObjects = scannedObjects;
     }
 
-    public void scanBootImageHeapRoots() {
-        scanBootImageHeapRoots((f1, f2) -> 0, (m1, m2) -> 0);
+    public void scanBootImageHeapRoots(CompletionExecutor executor) {
+        scanBootImageHeapRoots(executor, (f1, f2) -> 0, (m1, m2) -> 0);
     }
 
     public void scanBootImageHeapRoots(Comparator<AnalysisField> fieldComparator, Comparator<AnalysisMethod> methodComparator) {
+        scanBootImageHeapRoots(null, fieldComparator, methodComparator);
+    }
 
+    private void scanBootImageHeapRoots(CompletionExecutor exec, Comparator<AnalysisField> fieldComparator, Comparator<AnalysisMethod> methodComparator) {
         // scan the original roots
         // the original roots are all the static fields, of object type, that were accessed
 
@@ -75,11 +81,33 @@ public abstract class ObjectScanner {
                         .forEach(field -> scanField(field, null, field));
 
         // scan the constant nodes
-        bb.getUniverse().getMethods().stream()
-                        .filter(method -> method.getTypeFlow().getGraph() != null)
-                        .sorted(methodComparator)
-                        .forEach(this::scanMethod);
-
+        Collection<AnalysisMethod> methods = bb.getUniverse().getMethods();
+        if (methodComparator != null) {
+            ArrayList<AnalysisMethod> methodsList = new ArrayList<>(methods);
+            methodsList.sort(methodComparator);
+            methods = methodsList;
+        }
+        for (AnalysisMethod method : methods) {
+            if (method.getTypeFlow().getGraph() != null) {
+                if (exec != null) {
+                    exec.execute(new CompletionExecutor.DebugContextRunnable() {
+                        @Override
+                        public void run(DebugContext debug) {
+                            scanMethod(method);
+                        }
+                    });
+                } else {
+                    scanMethod(method);
+                }
+            }
+        }
+        if (exec != null) {
+            try {
+                exec.complete();
+            } catch (InterruptedException e) {
+                throw AnalysisError.shouldNotReachHere(e);
+            }
+        }
         finish();
     }
 
