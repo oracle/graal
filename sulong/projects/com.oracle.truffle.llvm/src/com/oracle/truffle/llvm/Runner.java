@@ -67,6 +67,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -220,7 +221,7 @@ public final class Runner {
         @ExportMessage
         Object invokeMember(String name, Object[] arguments,
                         @Shared("lookup") @Cached LookupNode lookup,
-                        @Cached LLVMForeignCallNode call) throws ArityException, UnknownIdentifierException {
+                        @Cached LLVMForeignCallNode call) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
             LLVMFunctionDescriptor fn = lookup.execute(this, name);
             if (fn == null) {
                 CompilerDirectives.transferToInterpreter();

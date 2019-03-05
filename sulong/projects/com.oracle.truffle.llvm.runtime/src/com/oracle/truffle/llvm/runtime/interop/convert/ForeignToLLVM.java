@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,13 +32,9 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -59,33 +55,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
     public abstract Object executeWithForeignToLLVMType(Object value, LLVMInteropType.Structured type, ForeignToLLVMType ftlType);
 
-    @Child protected Node isPointer = Message.IS_POINTER.createNode();
-    @Child protected Node asPointer = Message.AS_POINTER.createNode();
-    @Child protected Node isBoxed = Message.IS_BOXED.createNode();
-    @Child protected Node unbox = Message.UNBOX.createNode();
-    @Child protected Node toNativeNode = Message.TO_NATIVE.createNode();
-
-    public Object fromForeign(TruffleObject value) {
-        try {
-            if (ForeignAccess.sendIsPointer(isPointer, value)) {
-                return ForeignAccess.sendAsPointer(asPointer, value);
-            } else if (ForeignAccess.sendIsBoxed(isBoxed, value)) {
-                return ForeignAccess.sendUnbox(unbox, value);
-            } else {
-                return ForeignAccess.sendAsPointer(asPointer, (TruffleObject) ForeignAccess.sendToNative(toNativeNode, value));
-            }
-        } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{value});
-        }
-    }
-
-    protected static boolean notLLVM(TruffleObject value) {
+    protected static boolean notLLVM(Object value) {
         return LLVMExpressionNode.notLLVM(value);
-    }
-
-    protected boolean checkIsPointer(TruffleObject object) {
-        return ForeignAccess.sendIsPointer(isPointer, object);
     }
 
     protected char getSingleStringCharacter(String value) {
@@ -93,7 +64,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
             return value.charAt(0);
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{value});
+            throw new LLVMPolyglotException(this, "Expected number but got string.");
         }
     }
 
@@ -215,7 +186,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
                 case DOUBLE:
                     return ForeignToLLVMType.DOUBLE;
                 default:
-                    throw UnsupportedTypeException.raise(new Object[]{type});
+                    throw new IllegalStateException("unexpected primitive kind " + ((PrimitiveType) type).getPrimitiveKind());
             }
         } else if (type instanceof PointerType) {
             return ForeignToLLVMType.POINTER;
@@ -228,7 +199,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
         } else if (type instanceof StructureType) {
             return ForeignToLLVMType.STRUCT;
         } else {
-            throw UnsupportedTypeException.raise(new Object[]{type});
+            throw new IllegalStateException("unexpected type " + type);
         }
     }
 
@@ -243,12 +214,12 @@ public abstract class ForeignToLLVM extends LLVMNode {
         @CompilationFinal private LLVMMemory memory;
 
         @TruffleBoundary
-        public Object convert(Type type, Object value, LLVMInteropType.Structured interopType) {
+        public Object convert(Type type, Object value, LLVMInteropType.Structured interopType) throws UnsupportedTypeException {
             return convert(ForeignToLLVM.convert(type), value, interopType);
         }
 
         @TruffleBoundary
-        public Object convert(ForeignToLLVMType type, Object value, LLVMInteropType.Structured interopType) {
+        public Object convert(ForeignToLLVMType type, Object value, LLVMInteropType.Structured interopType) throws UnsupportedTypeException {
             if (type == ForeignToLLVMType.ANY) {
                 return ToAnyLLVM.slowPathPrimitiveConvert(value);
             } else if (type == ForeignToLLVMType.POINTER) {
@@ -293,7 +264,12 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
         @Override
         public Object executeWithForeignToLLVMType(Object value, LLVMInteropType.Structured type, ForeignToLLVMType ftlType) {
-            return convert(ftlType, value, type);
+            try {
+                return convert(ftlType, value, type);
+            } catch (UnsupportedTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(this, "Unexpected foreign object type.");
+            }
         }
 
         @Override

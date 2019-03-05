@@ -160,7 +160,7 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
         return getRootNode().getName();
     }
 
-    public static boolean notLLVM(TruffleObject object) {
+    public static boolean notLLVM(Object object) {
         return !(object instanceof LLVMInternalTruffleObject) && !LLVMPointer.isInstance(object);
     }
 }

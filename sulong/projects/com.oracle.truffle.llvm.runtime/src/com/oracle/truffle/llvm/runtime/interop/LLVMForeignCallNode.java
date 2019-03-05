@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -107,7 +108,7 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         return new PackForeignArgumentsNode(getNodeFactory(), descriptor.getType().getArgumentTypes(), descriptor.getInteropType(), length);
     }
 
-    static Object[] slowPathPack(LLVMFunctionDescriptor function, Object[] arguments, StackPointer stackPointer) {
+    static Object[] slowPathPack(LLVMFunctionDescriptor function, Object[] arguments, StackPointer stackPointer) throws UnsupportedTypeException {
         SlowPathForeignToLLVM slowConvert = ForeignToLLVM.getUncached();
         Type[] argumentTypes = function.getType().getArgumentTypes();
         int actualArgumentsLength = Math.max(arguments.length, argumentTypes.length);
@@ -139,7 +140,7 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         return packedArguments;
     }
 
-    public abstract Object executeCall(LLVMFunctionDescriptor function, Object[] arguments) throws ArityException;
+    public abstract Object executeCall(LLVMFunctionDescriptor function, Object[] arguments) throws ArityException, UnsupportedTypeException;
 
     @SuppressWarnings("unused")
     @Specialization(limit = "3", guards = {"function == cachedFunction", "cachedLength == arguments.length"})
@@ -164,7 +165,7 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
     static Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode,
                     @Cached LLVMDataEscapeNode prepareValueForEscape,
-                    @Cached LLVMGetStackNode getStack) {
+                    @Cached LLVMGetStackNode getStack) throws UnsupportedTypeException {
         assert !(function.getType().getReturnType() instanceof StructureType);
         LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());
         Object result;

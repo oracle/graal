@@ -33,11 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
 import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
  */
 @ExportLibrary(LLVMNativeLibrary.class)
 @ExportLibrary(InteropLibrary.class)
-public final class LLVMBoxedPrimitive implements LLVMInternalTruffleObject {
+public final class LLVMBoxedPrimitive implements TruffleObject {
 
     final Object value;
 
