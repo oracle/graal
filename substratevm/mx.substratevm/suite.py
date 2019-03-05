@@ -487,6 +487,18 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",  # necessary until GR-11751 is resolved
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
         },
 
         "com.oracle.svm.jline": {
