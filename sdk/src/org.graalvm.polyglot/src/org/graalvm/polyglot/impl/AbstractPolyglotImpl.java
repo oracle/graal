@@ -374,9 +374,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions();
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, boolean allowNativeAccess,
-                        boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions,
-                        Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+                        HostAccess hostAccess,
+                        boolean allowNativeAccess,
+                        boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
                         String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream);
 
         public abstract String getImplementationName();

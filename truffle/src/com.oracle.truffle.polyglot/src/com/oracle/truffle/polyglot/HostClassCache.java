@@ -82,6 +82,10 @@ final class HostClassCache {
         return access.apply(conf, f);
     }
 
+    boolean checkHostAccess(HostAccess hostAccess) {
+        return this.conf == hostAccess;
+    }
+
     private static class Factory implements Function<BiFunction<HostAccess, AccessibleObject, Boolean>, HostClassCache> {
         private final HostAccess conf;
 

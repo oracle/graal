@@ -96,6 +96,7 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
+import org.graalvm.polyglot.HostAccess;
 
 class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -157,7 +158,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     volatile Object runtimeData;
     Map<String, Level> logLevels;    // effectively final
     private volatile Object engineLoggers;
-    HostClassCache conf; // effectively final
+    private HostClassCache conf; // effectively final
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine,
@@ -937,6 +938,21 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         ENGINES.clear();
     }
 
+    void assignHostAccess(HostAccess hostAccess) {
+        HostAccess nonNullAccess = hostAccess == null ? HostAccess.EXPLICIT : hostAccess;
+        if (conf != null) {
+            if (!conf.checkHostAccess(nonNullAccess)) {
+                throw new IllegalStateException("Cannot share engine between contexts with different HostAccess");
+            }
+        } else {
+            conf = HostClassCache.find(getAPIAccess(), nonNullAccess);
+        }
+    }
+
+    final HostClassDesc findHostClassDesc(Class<?> clazz) {
+        return conf.forClass(clazz);
+    }
+
     private static final class PolyglotShutDownHook implements Runnable {
 
         public void run() {
@@ -1086,6 +1102,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @Override
     @SuppressWarnings({"all"})
     public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostAccess,
+                    HostAccess access,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
                     boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
                     String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream) {
@@ -1094,6 +1111,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
                             "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
         }
+
+        assignHostAccess(access);
 
         Set<String> allowedLanguages;
         if (onlyLanguages.length == 0) {

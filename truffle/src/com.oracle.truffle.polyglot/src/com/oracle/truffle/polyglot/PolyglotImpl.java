@@ -205,7 +205,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         Engine engine = getAPIAccess().newEngine(impl);
         impl.creatorApi = engine;
         impl.currentApi = getAPIAccess().newEngine(impl);
-        impl.conf = HostClassCache.find(getAPIAccess(), conf);
         return engine;
     }
 

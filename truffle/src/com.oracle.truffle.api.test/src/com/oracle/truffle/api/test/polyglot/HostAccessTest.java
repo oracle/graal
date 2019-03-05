@@ -82,4 +82,21 @@ public class HostAccessTest {
         Assert.assertEquals(42, readValue.execute(new OK()).asInt());
         ExposeToGuestTest.assertPropertyUndefined("public isn't enough by default", "value", readValue, new Ban());
     }
+
+    @Test
+    public void onlyOneHostAccessPerEngine() throws Exception {
+        Engine shared = Engine.create();
+
+        HostAccess config = HostAccess.newBuilder().allowAccess(OK.class.getField("value")).build();
+
+        Context c1 = Context.newBuilder().engine(shared).allowHostAccess(config).build();
+        Context c2;
+        try {
+            c2 = Context.newBuilder().engine(shared).allowHostAccess(HostAccess.PUBLIC).build();
+        } catch (IllegalStateException ex) {
+            Assert.assertNotEquals("Can't have one engine between two HostAccess configs: " + ex.getMessage(), -1, ex.getMessage().indexOf("Cannot share engine"));
+            return;
+        }
+        Assert.assertNotEquals("cannot share engine for different HostAccess configs", c1.getEngine(), c2.getEngine());
+    }
 }
