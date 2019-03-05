@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,8 +87,8 @@ public class StringNFITest extends NFITest {
     public static class NativeStringArgNode extends NFITestRootNode {
 
         final TruffleObject function = lookupAndBind("string_arg", "(string):sint32");
-        final TruffleObject strdup = lookupAndBind(defaultLibrary, "strdup", "(string):string");
-        final TruffleObject free = lookupAndBind(defaultLibrary, "free", "(pointer):void");
+        final TruffleObject strdup = lookupAndBindDefault("strdup", "(string):string");
+        final TruffleObject free = lookupAndBindDefault("free", "(pointer):void");
 
         @Child Node executeFunction = Message.EXECUTE.createNode();
         @Child Node executeStrdup = Message.EXECUTE.createNode();

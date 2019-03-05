@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,57 +39,20 @@
  * SOFTWARE.
  */
 
-#if !defined(_WIN32)
+#include <stdint.h>
 
-#define _GNU_SOURCE
-#include <dlfcn.h>
-
-#include "native.h"
-
-#include <string.h>
-#include "internal.h"
-
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
-    const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
-    void *ret = dlopen(utfName, flags);
-    if (ret == NULL) {
-        const char *error = dlerror();
-        struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
-        (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
-    }
-    (*env)->ReleaseStringUTFChars(env, name, utfName);
-    return (jlong) ret;
-}
-
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
-    dlclose((void*) handle);
-}
-
-static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
-    const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
-    void *ret;
-
-    // clear previous errors
-    dlerror();
-    ret = dlsym(handle, utfName);
-    if (ret == NULL) {
-        const char *error = dlerror();
-        // if error == NULL, the symbol was found, but really points to NULL
-        if (error != NULL) {
-            (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
-        }
-    }
-    (*env)->ReleaseStringUTFChars(env, name, utfName);
-    return (jlong) check_intrinsify(ctx, ret);
-}
-
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
-    if (library == 0) {
-        return lookup(env, context, RTLD_DEFAULT, name);
-    } else {
-        return lookup(env, context, (void *) library, name);
-    }
-}
-
+#if defined(_WIN32)
+#define __DLLEXPORT __declspec(dllexport)
+#else
+#define __DLLEXPORT
 #endif
+
+#if defined(__cplusplus)
+#define __EXTERNC extern "C"
+#else
+#define __EXTERNC
+#endif
+
+#define EXPORT __EXTERNC __DLLEXPORT
+
+EXPORT int format_string(char *buffer, uint64_t size, const char *format, ...);

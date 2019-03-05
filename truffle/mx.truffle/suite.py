@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.213.1",
+  "mxversion" : "5.213.3",
   "name" : "truffle",
   "version" : "1.0.0-rc14",
   "release" : False,
@@ -551,11 +551,6 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "workingSets" : "Truffle",
       "os_arch" : {
-        "windows" : {
-          "<others>" : {
-            "ignore" : "windows is not supported",  # necessary until Truffle is fully supported (GR-7941)
-          },
-        },
         "solaris" : {
           "<others>" : {
             "ignore" : "temporarily disabled",  # necessary until GR-13214 is resolved
@@ -600,25 +595,19 @@ suite = {
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "ignore" : "windows is not supported",
-          },
+            "cflags" : []
+          }
         },
         "solaris" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-DOS_solaris", "-m64", "-pthread"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64", "-pthread"],
             "ldflags" : ["-m64", "-pthread"],
-            "ldlibs" : ["-ldl"],
-          },
-        },
-        "darwin" : {
-          "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-DOS_darwin"],
             "ldlibs" : ["-ldl"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-DOS_linux"],
+            "cflags" : ["-g", "-Wall", "-Werror"],
             "ldlibs" : ["-ldl"],
           },
         },
@@ -646,18 +635,30 @@ suite = {
 
     "com.oracle.truffle.nfi.test.native" : {
       "subDir" : "src",
-      "native" : True,
-      "vpath" : True,
-      "results" : [
-        "bin/<lib:nativetest>",
-      ],
+      "native" : "shared_lib",
+      "deliverable" : "nativetest",
       "buildDependencies" : [
-        "TRUFFLE_NFI_NATIVE",
+        "com.oracle.truffle.nfi.native",
       ],
-      "buildEnv" : {
-        "TARGET" : "bin/<lib:nativetest>",
-        "CPPFLAGS" : "-I<path:TRUFFLE_NFI_NATIVE>/include",
-        "OS" : "<os>",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cflags" : []
+          }
+        },
+        "solaris" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+            "ldflags" : ["-m64"],
+            "ldlibs" : ["-lm"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror"],
+            "ldlibs" : ["-lm"],
+          },
+        },
       },
       "testProject" : True,
     },

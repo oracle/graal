@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,15 +41,17 @@
 
 #include <errno.h>
 
-int getErrno() {
+#include "common.h"
+
+EXPORT int getErrno() {
     return errno;
 }
 
-void setErrno(int value) {
+EXPORT void setErrno(int value) {
     errno = value;
 }
 
-int errnoCallback(int value, void (*callback)()) {
+EXPORT int errnoCallback(int value, void (*callback)()) {
     errno = value;
     callback();
     return errno;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,13 @@
  */
 #include <stdlib.h>
 
-void *return_null() {
+#include "common.h"
+
+EXPORT void *return_null() {
     return NULL;
 }
 
-const char *null_arg(void *arg) {
+EXPORT const char *null_arg(void *arg) {
     if (arg == NULL) {
         return "null";
     } else {
@@ -52,11 +54,11 @@ const char *null_arg(void *arg) {
     }
 }
 
-void callback_null_arg(void (*callback)(void *)) {
+EXPORT void callback_null_arg(void (*callback)(void *)) {
     callback(NULL);
 }
 
-const char *callback_null_ret(void *(*callback)()) {
+EXPORT const char *callback_null_ret(void *(*callback)()) {
     void *ret = callback();
     if (ret == NULL) {
         return "null";
