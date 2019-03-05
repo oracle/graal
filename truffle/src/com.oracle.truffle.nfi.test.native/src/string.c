@@ -43,11 +43,13 @@
 #include <stdint.h>
 #include <string.h>
 
-int string_arg(const char *str) {
+#include "common.h"
+
+EXPORT int string_arg(const char *str) {
     return atof(str);
 }
 
-const char *string_ret_const() {
+EXPORT const char *string_ret_const() {
     return "Hello, World!";
 }
 
@@ -56,15 +58,15 @@ struct dynamic_string {
     char str[16];
 };
 
-char *string_ret_dynamic(int nr) {
+EXPORT char *string_ret_dynamic(int nr) {
     struct dynamic_string *alloc = malloc(sizeof(*alloc));
     alloc->magic = nr;
-    snprintf(alloc->str, sizeof(alloc->str), "%d", nr);
+    format_string(alloc->str, sizeof(alloc->str), "%d", nr);
     return alloc->str;
 }
 
 // wrapper around "free" that has a return value that can be verified
-int free_dynamic_string(char *str) {
+EXPORT int free_dynamic_string(char *str) {
     struct dynamic_string *dynamic = NULL;
     intptr_t offset = dynamic->str - (char *) dynamic;
     int magic;
@@ -74,7 +76,7 @@ int free_dynamic_string(char *str) {
     return magic;
 }
 
-int string_callback(int (*str_arg)(const char *), char *(*str_ret)()) {
+EXPORT int string_callback(int (*str_arg)(const char *), char *(*str_ret)()) {
     int ret;
     char *str = str_ret();
     if (str != NULL) {
@@ -92,7 +94,7 @@ int string_callback(int (*str_arg)(const char *), char *(*str_ret)()) {
     return ret;
 }
 
-const char *native_string_callback(const char *(*str_ret)()) {
+EXPORT const char *native_string_callback(const char *(*str_ret)()) {
     const char *str = str_ret();
     if (str == NULL) {
         return "null";
@@ -102,3 +104,13 @@ const char *native_string_callback(const char *(*str_ret)()) {
         return "different";
     }
 }
+
+#if defined(_WIN32)
+EXPORT char *reexport_strdup(const char *str) {
+  return strdup(str);
+}
+
+EXPORT void reexport_free(char *str) {
+  free(str);
+}
+#endif

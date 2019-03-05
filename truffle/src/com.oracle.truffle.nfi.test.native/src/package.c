@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "common.h"
+
 static double square(double arg) {
     return arg * arg;
 }
@@ -49,7 +51,7 @@ static double add(double a, double b) {
     return a + b;
 }
 
-void initialize_package(void (*registerFunction)(const char *name, const char *signature, void *fn)) {
+EXPORT void initialize_package(void (*registerFunction)(const char *name, const char *signature, void *fn)) {
     registerFunction("add", "(double,double):double", add);
     registerFunction("square", "(double):double", square);
     registerFunction("sqrt", "(double):double", sqrt);

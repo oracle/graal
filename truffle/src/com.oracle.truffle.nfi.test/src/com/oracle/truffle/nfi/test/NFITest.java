@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -164,7 +164,17 @@ public class NFITest {
         return lookupAndBind(testLibrary, name, signature);
     }
 
-    protected static TruffleObject lookupAndBind(TruffleObject library, String name, String signature) {
+    static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
+
+    protected static TruffleObject lookupAndBindDefault(String name, String signature) {
+        if (IS_WINDOWS) {
+            return lookupAndBind(testLibrary, "reexport_" + name, signature);
+        } else {
+            return lookupAndBind(defaultLibrary, name, signature);
+        }
+    }
+
+    private static TruffleObject lookupAndBind(TruffleObject library, String name, String signature) {
         return (TruffleObject) lookupAndBind.call(library, name, signature);
     }
 

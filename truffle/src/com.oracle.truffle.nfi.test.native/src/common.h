@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,24 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#include "common.h"
 
-EXPORT double foldVector(double *vector, int size) {
-    double ret = 0.0;
-    int i;
-    for (i = 0; i < size; i++) {
-        ret += vector[i];
-    }
-    return ret;
-}
+#include <stdint.h>
 
-EXPORT void incVector(double *vector, int size, double inc) {
-    int i;
-    for (i = 0; i < size; i++) {
-        vector[i] += inc;
-    }
-}
+#if defined(_WIN32)
+#define __DLLEXPORT __declspec(dllexport)
+#else
+#define __DLLEXPORT
+#endif
 
-EXPORT double getFirstElement(double *vector) {
-    return *vector;
-}
+#if defined(__cplusplus)
+#define __EXTERNC extern "C"
+#else
+#define __EXTERNC
+#endif
+
+#define EXPORT __EXTERNC __DLLEXPORT
+
+EXPORT int format_string(char *buffer, uint64_t size, const char *format, ...);

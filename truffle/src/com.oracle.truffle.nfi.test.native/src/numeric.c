@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,24 +41,25 @@
 #include <stdint.h>
 #include <trufflenfi.h>
 
+#include "common.h"
 
 #define GEN_NUMERIC_TEST(name, type) \
     \
-    type increment_##name(type arg) { \
+    EXPORT type increment_##name(type arg) { \
         return arg + 1; \
     } \
     \
-    type callback_##name(type (*fn)(type), type arg) { \
+    EXPORT type callback_##name(type (*fn)(type), type arg) { \
         return fn(arg + 1) * 2; \
     } \
     \
     typedef type (*fnptr_##name)(type); \
     \
-    fnptr_##name callback_ret_##name() { \
+    EXPORT fnptr_##name callback_ret_##name() { \
         return increment_##name; \
     } \
     \
-    type pingpong_##name(TruffleEnv *env, fnptr_##name (*wrapFn)(TruffleEnv *env, fnptr_##name), type arg) { \
+    EXPORT type pingpong_##name(TruffleEnv *env, fnptr_##name (*wrapFn)(TruffleEnv *env, fnptr_##name), type arg) { \
         fnptr_##name wrapped = wrapFn(env, increment_##name); \
         int ret = wrapped(arg + 1) * 2; \
         (*env)->releaseClosureRef(env, wrapped); \

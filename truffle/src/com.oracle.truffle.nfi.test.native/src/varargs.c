@@ -42,6 +42,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#include "common.h"
+
 static char *add_int(char *dest, char *end, int64_t value, int base) {
     char buffer[64];
     int pos;
@@ -112,7 +114,7 @@ static char *add_pointer(char *dest, char *end, void *value) {
  * Simple reimplementation of snprintf, to get rid of platform and locale dependent behavior
  * differences.
  */
-int format_string(char *buffer, uint64_t size, const char *format, ...) {
+EXPORT int format_string(char *buffer, uint64_t size, const char *format, ...) {
     char *dest = buffer;
     char *end = buffer + size;
 
