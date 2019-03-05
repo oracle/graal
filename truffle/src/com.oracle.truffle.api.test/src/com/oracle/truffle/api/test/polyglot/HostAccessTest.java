@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -53,6 +54,16 @@ public class HostAccessTest {
 
     public static class Ban {
         public int value = 24;
+    }
+
+    @Test
+    public void usefulToStringExplicit() {
+        Assert.assertEquals("HostAccess.EXPLICIT", HostAccess.EXPLICIT.toString());
+    }
+
+    @Test
+    public void usefulToStringPublic() {
+        Assert.assertEquals("HostAccess.PUBLIC", HostAccess.PUBLIC.toString());
     }
 
     @Test

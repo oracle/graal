@@ -71,6 +71,7 @@ public final class HostAccess {
         }
     };
 
+    private final String name;
     private final Set<Class<? extends Annotation>> annotations;
     private final Set<Member> members;
     private Object impl;
@@ -81,18 +82,19 @@ public final class HostAccess {
      * 
      * @since 1.0 RC14
      */
-    public static final HostAccess EXPLICIT = new HostAccess(null, null);
+    public static final HostAccess EXPLICIT = new HostAccess(null, null, "HostAccess.EXPLICIT");
 
     /**
      * All public access, but no reflection access.
      * 
      * @since 1.0 RC14
      */
-    public static final HostAccess PUBLIC = new HostAccess(null, null);
+    public static final HostAccess PUBLIC = new HostAccess(null, null, "HostAccess.PUBLIC");
 
-    HostAccess(Set<Class<? extends Annotation>> annotations, Set<Member> members) {
+    HostAccess(Set<Class<? extends Annotation>> annotations, Set<Member> members, String name) {
         this.annotations = annotations;
         this.members = members;
+        this.name = name;
     }
 
     /**
@@ -128,6 +130,11 @@ public final class HostAccess {
             impl = factory.apply(ACCESS);
         }
         return type.cast(impl);
+    }
+
+    @Override
+    public String toString() {
+        return name == null ? super.toString() : name;
     }
 
     /**
@@ -197,7 +204,7 @@ public final class HostAccess {
          * @since 1.0 RC14
          */
         public HostAccess build() {
-            return new HostAccess(annotations, members);
+            return new HostAccess(annotations, members, null);
         }
     }
 }
