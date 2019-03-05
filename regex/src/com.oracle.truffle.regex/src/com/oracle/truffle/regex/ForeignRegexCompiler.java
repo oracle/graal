@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -31,7 +32,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 /**
  * {@link ForeignRegexCompiler} wraps a {@link TruffleObject} that is compatible with
  * {@link RegexCompiler} and lets us use it as if it were an actual {@link RegexCompiler}.
- * 
+ *
  * @author Jirka Marsik <jiri.marsik@oracle.com>
  */
 public class ForeignRegexCompiler extends RegexCompiler {
@@ -52,6 +53,7 @@ public class ForeignRegexCompiler extends RegexCompiler {
     }
 
     @Override
+    @TruffleBoundary
     public TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException {
         try {
             return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(foreignCompiler, source.getPattern(), source.getFlags());
