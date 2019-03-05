@@ -40,6 +40,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.debug.WeakCounterNode;
+import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
@@ -173,6 +175,20 @@ public final class GraphEffectList extends EffectList {
      */
     public void deleteNode(Node node) {
         add("delete fixed node", (graph, obsoleteNodes) -> {
+            if (node instanceof AccessFieldNode && node.hasUsages()) {
+                // see if it is associated with any membar nodes
+                // and if so remove the association
+                for (int i = 0; i < node.getUsageCount(); i++) {
+                    Node usage = node.getUsageAt(i);
+                    if (usage instanceof MembarNode) {
+                        MembarNode membar = (MembarNode) usage;
+                        if (membar.getAccess() == node) {
+                            membar.setAccess(null);
+                            membar.setLeading(null);
+                        }
+                    }
+                }
+            }
             if (node instanceof FixedWithNextNode) {
                 GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
             }
@@ -242,6 +258,20 @@ public final class GraphEffectList extends EffectList {
              */
             if (!node.stamp(NodeView.DEFAULT).equals(replacementNode.stamp(NodeView.DEFAULT))) {
                 replacementNode = graph.unique(new PiNode(replacementNode, node.stamp(NodeView.DEFAULT)));
+            }
+            if (node instanceof AccessFieldNode && node.hasUsages()) {
+                // see if it is associated with any membar nodes
+                // and if so remove the association
+                for (int i = 0; i < node.getUsageCount(); i++) {
+                    Node usage = node.getUsageAt(i);
+                    if (usage instanceof MembarNode) {
+                        MembarNode membar = (MembarNode) usage;
+                        if (membar.getAccess() == node) {
+                            membar.setAccess(null);
+                            membar.setLeading(null);
+                        }
+                    }
+                }
             }
             node.replaceAtUsages(replacementNode);
             if (node instanceof FixedWithNextNode) {
