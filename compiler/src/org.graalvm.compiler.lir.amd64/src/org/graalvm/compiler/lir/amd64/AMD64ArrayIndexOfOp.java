@@ -24,14 +24,15 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+
+import java.util.Objects;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp;
@@ -45,9 +46,12 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  */
@@ -55,15 +59,18 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64ArrayIndexOfOp> TYPE = LIRInstructionClass.create(AMD64ArrayIndexOfOp.class);
 
-    private final JavaKind kind;
+    private final JavaKind valueKind;
     private final int vmPageSize;
     private final int nValues;
     private final boolean findTwoConsecutive;
     private final AMD64Kind vectorKind;
+    private final int arrayBaseOffset;
+    private final Scale arrayIndexScale;
 
     @Def({REG}) protected Value resultValue;
     @Alive({REG}) protected Value arrayPtrValue;
     @Use({REG}) protected Value arrayLengthValue;
+    @Alive({REG}) protected Value fromIndexValue;
     @Alive({REG}) protected Value searchValue1;
     @Alive({REG, ILLEGAL}) protected Value searchValue2;
     @Alive({REG, ILLEGAL}) protected Value searchValue3;
@@ -82,31 +89,34 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected Value vectorArray3;
     @Temp({REG, ILLEGAL}) protected Value vectorArray4;
 
-    public AMD64ArrayIndexOfOp(JavaKind kind, boolean findTwoConsecutive, int vmPageSize, int maxVectorSize, LIRGeneratorTool tool, Value result, Value arrayPtr, Value arrayLength,
-                    Value... searchValues) {
+    public AMD64ArrayIndexOfOp(JavaKind arrayKind, JavaKind valueKind, boolean findTwoConsecutive, int vmPageSize, int maxVectorSize, LIRGeneratorTool tool,
+                    Value result, Value arrayPtr, Value arrayLength, Value fromIndex, Value... searchValues) {
         super(TYPE);
-        this.kind = kind;
+        this.valueKind = valueKind;
+        this.arrayBaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(arrayKind);
+        this.arrayIndexScale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind)));
         this.findTwoConsecutive = findTwoConsecutive;
         this.vmPageSize = vmPageSize;
         assert 0 < searchValues.length && searchValues.length <= 4;
-        assert byteMode(kind) || charMode(kind);
+        assert byteMode(valueKind) || charMode(valueKind);
         assert supports(tool, CPUFeature.SSE2) || supports(tool, CPUFeature.AVX) || supportsAVX2(tool);
         nValues = searchValues.length;
         assert !findTwoConsecutive || nValues == 1;
         resultValue = result;
         arrayPtrValue = arrayPtr;
         arrayLengthValue = arrayLength;
+        fromIndexValue = fromIndex;
         searchValue1 = searchValues[0];
         searchValue2 = nValues > 1 ? searchValues[1] : Value.ILLEGAL;
         searchValue3 = nValues > 2 ? searchValues[2] : Value.ILLEGAL;
         searchValue4 = nValues > 3 ? searchValues[3] : Value.ILLEGAL;
-        arraySlotsRemaining = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
-        comparisonResult1 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
-        comparisonResult2 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
-        comparisonResult3 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
-        comparisonResult4 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
-        vectorKind = supportsAVX2(tool) && (maxVectorSize < 0 || maxVectorSize >= 32) ? byteMode(kind) ? AMD64Kind.V256_BYTE : AMD64Kind.V256_WORD
-                        : byteMode(kind) ? AMD64Kind.V128_BYTE : AMD64Kind.V128_WORD;
+        arraySlotsRemaining = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
+        comparisonResult1 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
+        comparisonResult2 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
+        comparisonResult3 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
+        comparisonResult4 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
+        vectorKind = supportsAVX2(tool) && (maxVectorSize < 0 || maxVectorSize >= 32) ? byteMode(valueKind) ? AMD64Kind.V256_BYTE : AMD64Kind.V256_WORD
+                        : byteMode(valueKind) ? AMD64Kind.V128_BYTE : AMD64Kind.V128_WORD;
         vectorCompareVal1 = tool.newVariable(LIRKind.value(vectorKind));
         vectorCompareVal2 = nValues > 1 ? tool.newVariable(LIRKind.value(vectorKind)) : Value.ILLEGAL;
         vectorCompareVal3 = nValues > 2 ? tool.newVariable(LIRKind.value(vectorKind)) : Value.ILLEGAL;
@@ -126,7 +136,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     }
 
     private JavaKind getComparisonKind() {
-        return findTwoConsecutive ? (byteMode(kind) ? JavaKind.Char : JavaKind.Int) : kind;
+        return findTwoConsecutive ? (byteMode(valueKind) ? JavaKind.Char : JavaKind.Int) : valueKind;
     }
 
     private AVXKind.AVXSize getVectorSize() {
@@ -137,6 +147,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
         Register arrayPtr = asRegister(arrayPtrValue);
         Register arrayLength = asRegister(arrayLengthValue);
+        Register fromIndex = asRegister(fromIndexValue);
         Register result = asRegister(resultValue);
         Register slotsRemaining = asRegister(arraySlotsRemaining);
         Register[] searchValue = {
@@ -172,7 +183,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         // annotated with @Use
         asm.movl(slotsRemaining, arrayLength);
         // load array pointer
-        asm.movq(result, arrayPtr);
+        asm.leaq(result, new AMD64Address(arrayPtr, fromIndex, arrayIndexScale, arrayBaseOffset));
         // move search values to vectors
         for (int i = 0; i < nValues; i++) {
             if (asm.supports(CPUFeature.AVX)) {
@@ -186,6 +197,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
             emitBroadcast(asm, getComparisonKind(), vecCmp[i], vecArray[0], getVectorSize());
         }
 
+        asm.subl(slotsRemaining, fromIndex);
+
         emitArrayIndexOfChars(crb, asm, result, slotsRemaining, searchValue, vecCmp, vecArray, cmpResult, retFound, retNotFound);
 
         // return -1 (no match)
@@ -196,7 +209,10 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         asm.bind(retFound);
         // convert array pointer to offset
         asm.subq(result, arrayPtr);
-        if (charMode(kind)) {
+        if (arrayBaseOffset != 0) {
+            asm.subq(result, arrayBaseOffset);
+        }
+        if (charMode(valueKind)) {
             asm.shrq(result, 1);
         }
         asm.bind(end);
@@ -226,20 +242,20 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         Label lessThanVectorSizeRemainingLoop = new Label();
         Label bulkVectorLoopExit = nVectors == 1 ? lessThanVectorSizeRemaining : singleVectorLoop;
         int bytesPerVector = vectorSize.getBytes();
-        int arraySlotsPerVector = vectorSize.getBytes() / kind.getByteCount();
+        int arraySlotsPerVector = vectorSize.getBytes() / valueKind.getByteCount();
         int singleVectorLoopCondition = arraySlotsPerVector;
         int bulkSize = arraySlotsPerVector * nVectors;
         int bulkSizeBytes = bytesPerVector * nVectors;
         int bulkLoopCondition = bulkSize;
         int[] vectorOffsets;
-        JavaKind vectorCompareKind = kind;
+        JavaKind vectorCompareKind = valueKind;
         if (findTwoConsecutive) {
             singleVectorLoopCondition++;
             bulkLoopCondition++;
             bulkSize /= 2;
             bulkSizeBytes /= 2;
-            vectorOffsets = new int[]{0, kind.getByteCount(), bytesPerVector, bytesPerVector + kind.getByteCount()};
-            vectorCompareKind = byteMode(kind) ? JavaKind.Char : JavaKind.Int;
+            vectorOffsets = new int[]{0, valueKind.getByteCount(), bytesPerVector, bytesPerVector + valueKind.getByteCount()};
+            vectorCompareKind = byteMode(valueKind) ? JavaKind.Char : JavaKind.Int;
         } else {
             vectorOffsets = new int[]{0, bytesPerVector, bytesPerVector * 2, bytesPerVector * 3};
         }
@@ -266,7 +282,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         asm.subl(slotsRemaining, bulkSize);
         // get offset to bulk size alignment
         asm.andl(tmpArrayPtrLow, bulkSizeBytes - 1);
-        emitBytesToArraySlots(asm, kind, tmpArrayPtrLow);
+        emitBytesToArraySlots(asm, valueKind, tmpArrayPtrLow);
         // adjust array pointer to bulk size alignment
         asm.andq(arrayPtr, ~(bulkSizeBytes - 1));
         // adjust number of array slots remaining
@@ -317,7 +333,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         asm.movl(tmpArrayPtrLow, arrayPtr);
         // check if pointer + vector size would cross the page boundary
         asm.andl(tmpArrayPtrLow, (vmPageSize - 1));
-        asm.cmpl(tmpArrayPtrLow, (vmPageSize - (findTwoConsecutive ? bytesPerVector + kind.getByteCount() : bytesPerVector)));
+        asm.cmpl(tmpArrayPtrLow, (vmPageSize - (findTwoConsecutive ? bytesPerVector + valueKind.getByteCount() : bytesPerVector)));
         // if the page boundary would be crossed, do byte/character-wise comparison instead.
         asm.jccb(AMD64Assembler.ConditionFlag.Above, lessThanVectorSizeRemainingLoop);
 
@@ -331,13 +347,13 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
             asm.bind(overBoundsMatch[1]);
             // get match offset of second result
             asm.bsfq(cmpResult[1], cmpResult[1]);
-            asm.addl(cmpResult[1], kind.getByteCount());
+            asm.addl(cmpResult[1], valueKind.getByteCount());
             // replace first result with second and continue
             asm.movl(cmpResult[0], cmpResult[1]);
             asm.jmpb(overBoundsFinish);
 
             asm.bind(overBoundsMatch[0]);
-            emitFindTwoCharPrefixMinResult(asm, kind, cmpResult, overBoundsFinish);
+            emitFindTwoCharPrefixMinResult(asm, valueKind, cmpResult, overBoundsFinish);
         } else {
             asm.bind(overBoundsMatch[0]);
             // find match offset
@@ -346,7 +362,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
 
         // adjust array pointer for match result
         asm.addq(arrayPtr, cmpResult[0]);
-        if (charMode(kind)) {
+        if (charMode(valueKind)) {
             // convert byte offset to chars
             asm.shrl(cmpResult[0], 1);
         }
@@ -372,7 +388,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         asm.cmpl(slotsRemaining, findTwoConsecutive ? 1 : 0);
         asm.jcc(AMD64Assembler.ConditionFlag.LessEqual, retNotFound);
         // load char / byte
-        if (byteMode(kind)) {
+        if (byteMode(valueKind)) {
             if (findTwoConsecutive) {
                 asm.movzwl(cmpResult[0], new AMD64Address(arrayPtr));
             } else {
@@ -393,23 +409,23 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         // adjust number of array slots remaining
         asm.decrementl(slotsRemaining);
         // adjust array pointer
-        asm.addq(arrayPtr, kind.getByteCount());
+        asm.addq(arrayPtr, valueKind.getByteCount());
         // continue loop
         asm.jmpb(lessThanVectorSizeRemainingLoop);
 
         for (int i = 1; i < nVectors; i += (findTwoConsecutive ? 2 : 1)) {
-            emitVectorFoundWithOffset(asm, kind, vectorOffsets[i], arrayPtr, cmpResult[i], slotsRemaining, vectorFound[i], retFound);
+            emitVectorFoundWithOffset(asm, valueKind, vectorOffsets[i], arrayPtr, cmpResult[i], slotsRemaining, vectorFound[i], retFound);
         }
 
         if (findTwoConsecutive) {
             asm.bind(vectorFound[2]);
             asm.addq(arrayPtr, vectorOffsets[2]);
             // adjust number of array slots remaining
-            asm.subl(slotsRemaining, charMode(kind) ? vectorOffsets[2] / 2 : vectorOffsets[2]);
+            asm.subl(slotsRemaining, charMode(valueKind) ? vectorOffsets[2] / 2 : vectorOffsets[2]);
             asm.movl(cmpResult[0], cmpResult[2]);
             asm.movl(cmpResult[1], cmpResult[3]);
             asm.bind(vectorFound[0]);
-            emitFindTwoCharPrefixMinResult(asm, kind, cmpResult, new Label());
+            emitFindTwoCharPrefixMinResult(asm, valueKind, cmpResult, new Label());
         } else {
             asm.bind(vectorFound[0]);
             // find index of first set bit in bit mask
@@ -417,7 +433,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         }
         // add offset to array pointer
         asm.addq(arrayPtr, cmpResult[0]);
-        if (charMode(kind)) {
+        if (charMode(valueKind)) {
             // convert byte offset to chars
             asm.shrl(cmpResult[0], 1);
         }
