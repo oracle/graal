@@ -44,6 +44,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     - DebugStackFrame.iterator and DebugStackFrame.getValue
 * The [@Option](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html) annotation can now specify the [stability](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionStability.html) of an option.
 * Fixed the case of the method [`TruffleStackTrace.getStacktrace`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleStackTrace.html#getStacktrace-java.lang.Throwable-) to `TruffleStackTrace.getStackTrace`.
+* Added a getter for [name separator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getFileNameSeparator--) used by `TruffleFile`'s paths.
 
 ## Version 1.0.0 RC13
 * Added [Debugger.getSessionCount()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getSessionCount--) to return the number of active debugger sessions.
