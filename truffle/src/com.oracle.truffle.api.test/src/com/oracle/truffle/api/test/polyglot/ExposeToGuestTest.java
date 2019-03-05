@@ -50,7 +50,6 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
@@ -67,7 +66,7 @@ public class ExposeToGuestTest {
         assertPropertyUndefined(msg, "value", readValue, value);
     }
 
-    private static void assertPropertyUndefined(String msg, String propName, Value readValue, Object value) {
+    static void assertPropertyUndefined(String msg, String propName, Value readValue, Object value) {
         try {
             readValue.execute(value);
             fail(msg);
