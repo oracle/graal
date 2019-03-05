@@ -30,8 +30,8 @@ import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.StreamSupport;
 
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.word.WordBase;
 
@@ -292,14 +292,15 @@ public abstract class ObjectScanner {
 
     private void scanMethod(AnalysisMethod method) {
         try {
-            StreamSupport.stream(method.getTypeFlow().getGraph().getNodes().spliterator(), false)
-                            .filter(n -> n instanceof ConstantNode).forEach(n -> {
-                                ConstantNode cn = (ConstantNode) n;
-                                JavaConstant c = (JavaConstant) cn.getValue();
-                                if (c.getJavaKind() == JavaKind.Object) {
-                                    scanConstant(c, method);
-                                }
-                            });
+            for (Node n : method.getTypeFlow().getGraph().getNodes()) {
+                if (n instanceof ConstantNode) {
+                    ConstantNode cn = (ConstantNode) n;
+                    JavaConstant c = (JavaConstant) cn.getValue();
+                    if (c.getJavaKind() == JavaKind.Object) {
+                        scanConstant(c, method);
+                    }
+                }
+            }
         } catch (UnsupportedFeatureException ex) {
             bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getMessage(), null, ex);
         }
