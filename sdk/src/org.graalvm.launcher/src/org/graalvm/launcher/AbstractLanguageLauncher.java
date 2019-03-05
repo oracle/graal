@@ -57,13 +57,13 @@ public abstract class AbstractLanguageLauncher extends Launcher {
 
     /**
      * This starts the launcher. it should be called from the main method:
-     * 
+     *
      * <pre>
      * public static void main(String[] args) {
      *     new MyLauncher().launch(args);
      * }
      * </pre>
-     * 
+     *
      * @param args the command line arguments.
      */
     protected final void launch(String[] args) {
@@ -120,6 +120,8 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             builder = Context.newBuilder(getDefaultLanguages()).options(polyglotOptions);
         }
         builder.allowAllAccess(true);
+        builder.allowExperimentalOptions(allowExperimentalOptions());
+
         final Path logFile = getLogFile();
         if (logFile != null) {
             try {
@@ -135,7 +137,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
     /**
      * This is called to abort execution when an argument can neither be recognized by the launcher
      * or as an option for the polyglot engine.
-     * 
+     *
      * @param argument the argument that was not recognized.
      */
     protected AbortException abortUnrecognizedArgument(String argument) {
@@ -164,7 +166,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
 
     /**
      * Validates arguments after all arguments have been parsed.
-     * 
+     *
      * @param polyglotOptions the options that will be used to create engine.
      */
     protected void validateArguments(Map<String, String> polyglotOptions) {
@@ -174,7 +176,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
     /**
      * Launch the scripts as required by the arguments received during the previous call to
      * {@link #preprocessArguments(List, Map)}.
-     * 
+     *
      * @param contextBuilder a {@linkplain Context.Builder context builder} configured with the
      *            proper language and polyglot options.
      */

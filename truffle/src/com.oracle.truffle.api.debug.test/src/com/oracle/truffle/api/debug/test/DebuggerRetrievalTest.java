@@ -78,7 +78,7 @@ public class DebuggerRetrievalTest {
     @Test
     public void testFromInstrument() {
         InstrumentThatNeedsDebugger.haveDebugger = false;
-        Context.newBuilder().option(InstrumentThatNeedsDebugger.ID + ".dbg", "").build();
+        Context.newBuilder().allowExperimentalOptions(true).option(InstrumentThatNeedsDebugger.ID + ".dbg", "").build();
         Assert.assertTrue(InstrumentThatNeedsDebugger.haveDebugger);
     }
 

@@ -74,6 +74,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -659,7 +660,8 @@ public class LanguageSPITest {
         boolean contextCachingEnabled = false;
         int executionIndex;
 
-        @Option(help = "", category = OptionCategory.INTERNAL) static final OptionKey<Integer> DummyOption = new OptionKey<>(0);
+        @Option(help = "", category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
+        static final OptionKey<Integer> DummyOption = new OptionKey<>(0);
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {
@@ -1122,7 +1124,7 @@ public class LanguageSPITest {
             final List<OptionDescriptor> descriptors;
             {
                 descriptors = new ArrayList<>();
-                descriptors.add(OptionDescriptor.newBuilder(option, ProxyLanguage.ID + ".option").build());
+                descriptors.add(OptionDescriptor.newBuilder(option, ProxyLanguage.ID + ".option").stability(OptionStability.STABLE).build());
             }
 
             @Override

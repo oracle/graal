@@ -68,6 +68,7 @@ import java.util.logging.LogRecord;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -451,7 +452,7 @@ public class ContextPreInitializationTest {
         assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
-        System.getProperties().remove(SYS_OPTION1_KEY);
+        System.clearProperty(SYS_OPTION1_KEY);
         System.setProperty(SYS_OPTION2_KEY, "true");
         Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
@@ -478,7 +479,7 @@ public class ContextPreInitializationTest {
         assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
-        System.getProperties().remove(SYS_OPTION1_KEY);
+        System.clearProperty(SYS_OPTION1_KEY);
         System.setProperty(SYS_OPTION2_KEY, "true");
         final Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
@@ -884,7 +885,7 @@ public class ContextPreInitializationTest {
             doContextPreinitialize(FIRST);
         } finally {
             System.setErr(origErr);
-            System.getProperties().remove("polyglot.log.engine.level");
+            System.clearProperty("polyglot.log.engine.level");
         }
         final String preInitLog = preInitErr.toString("UTF-8");
         assertTrue(preInitLog.contains("Pre-initialized context for language: ContextPreInitializationFirst"));
@@ -925,9 +926,9 @@ public class ContextPreInitializationTest {
     }
 
     private static void resetSystemPropertiesOptions() {
-        System.getProperties().remove("polyglot.engine.PreinitializeContexts");
-        System.getProperties().remove(SYS_OPTION1_KEY);
-        System.getProperties().remove(SYS_OPTION2_KEY);
+        System.clearProperty("polyglot.engine.PreinitializeContexts");
+        System.clearProperty(SYS_OPTION1_KEY);
+        System.clearProperty(SYS_OPTION2_KEY);
     }
 
     private static void doContextPreinitialize(String... languages) throws ReflectiveOperationException {
@@ -938,13 +939,16 @@ public class ContextPreInitializationTest {
         }
         if (languagesOptionValue.length() > 0) {
             languagesOptionValue.replace(languagesOptionValue.length() - 1, languagesOptionValue.length(), "");
-            System.setProperty(
-                            "polyglot.engine.PreinitializeContexts",
-                            languagesOptionValue.toString());
+            System.setProperty("polyglot.engine.PreinitializeContexts", languagesOptionValue.toString());
         }
         final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
         preInitMethod.setAccessible(true);
-        preInitMethod.invoke(null);
+        try {
+            preInitMethod.invoke(null);
+        } finally {
+            // PreinitializeContexts should only be set during pre-initialization, not at runtime
+            System.clearProperty("polyglot.engine.PreinitializeContexts");
+        }
     }
 
     private static Collection<? extends CountingContext> findContexts(
@@ -1119,8 +1123,11 @@ public class ContextPreInitializationTest {
 
     @TruffleLanguage.Registration(id = FIRST, name = FIRST, version = "1.0", dependentLanguages = INTERNAL)
     public static final class ContextPreInitializationTestFirstLanguage extends BaseLanguage {
-        @Option(category = OptionCategory.USER, help = "Option 1") public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
-        @Option(category = OptionCategory.USER, help = "Option 2") public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 1") //
+        public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 2") //
+        public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
+
         private static boolean callDependentLanguage;
         private static boolean patchException = false;
 
