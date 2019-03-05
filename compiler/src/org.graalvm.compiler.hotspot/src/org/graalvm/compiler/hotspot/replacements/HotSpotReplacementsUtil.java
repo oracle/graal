@@ -587,7 +587,7 @@ public class HotSpotReplacementsUtil {
      * Calls {@link #arrayAllocationSize(int, int, int, int)} using an injected VM configuration
      * object.
      */
-    public static int arrayAllocationSize(int length, int headerSize, int log2ElementSize) {
+    public static long arrayAllocationSize(int length, int headerSize, int log2ElementSize) {
         return arrayAllocationSize(length, headerSize, log2ElementSize, objectAlignment(INJECTED_VMCONFIG));
     }
 
@@ -603,9 +603,9 @@ public class HotSpotReplacementsUtil {
      *            requirement}
      * @return the size of the memory chunk
      */
-    public static int arrayAllocationSize(int length, int headerSize, int log2ElementSize, int alignment) {
-        int size = (length << log2ElementSize) + headerSize + (alignment - 1);
-        int mask = ~(alignment - 1);
+    public static long arrayAllocationSize(int length, int headerSize, int log2ElementSize, int alignment) {
+        long size = ((long) length << log2ElementSize) + headerSize + (alignment - 1);
+        long mask = ~(alignment - 1);
         return size & mask;
     }
 
