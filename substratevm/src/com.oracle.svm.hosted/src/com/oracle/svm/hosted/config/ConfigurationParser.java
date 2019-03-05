@@ -32,6 +32,7 @@ import java.io.Reader;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
@@ -53,9 +54,12 @@ public abstract class ConfigurationParser {
      * {@link #parseAndRegister(Reader, String, Object, HostedOptionKey)} .
      *
      * @param featureName name of the feature using the configuration (e.g., "JNI")
+     * @param directoryFileName file name for searches via {@link ConfigurationDirectories}.
      */
-    public void parseAndRegisterConfigurations(String featureName, HostedOptionKey<String[]> configFilesOption, HostedOptionKey<String[]> configResourcesOption) {
-        for (String path : OptionUtils.flatten(",", configFilesOption.getValue())) {
+    public void parseAndRegisterConfigurations(String featureName, HostedOptionKey<String[]> configFilesOption, HostedOptionKey<String[]> configResourcesOption, String directoryFileName) {
+        Stream<String> files = Stream.concat(OptionUtils.flatten(",", configFilesOption.getValue()).stream(),
+                        ConfigurationDirectories.findConfigurationFiles(directoryFileName).stream());
+        files.forEach(path -> {
             File file = new File(path).getAbsoluteFile();
             if (!file.exists()) {
                 throw UserError.abort("The " + featureName + " configuration file \"" + file + "\" does not exist.");
@@ -65,8 +69,11 @@ public abstract class ConfigurationParser {
             } catch (IOException e) {
                 throw UserError.abort("Could not open " + file + ": " + e.getMessage());
             }
-        }
-        for (String resource : OptionUtils.flatten(",", configResourcesOption.getValue())) {
+        });
+
+        Stream<String> resources = Stream.concat(OptionUtils.flatten(",", configResourcesOption.getValue()).stream(),
+                        ConfigurationDirectories.findConfigurationResources(directoryFileName, classLoader).stream());
+        resources.forEach(resource -> {
             URL url = classLoader.findResourceByName(resource);
             if (url == null) {
                 throw UserError.abort("Could not find " + featureName + " configuration resource \"" + resource + "\".");
@@ -76,7 +83,7 @@ public abstract class ConfigurationParser {
             } catch (IOException e) {
                 throw UserError.abort("Could not open " + url + ": " + e.getMessage());
             }
-        }
+        });
     }
 
     protected abstract void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String[]> configFilesOption);

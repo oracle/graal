@@ -640,7 +640,7 @@ suite = {
                 "resources",
             ],
             "dependencies": [
-                "com.oracle.svm.core",
+                "com.oracle.svm.hosted",
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",

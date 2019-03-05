@@ -31,6 +31,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.config.ConfigurationDirectories;
 
 public class ConfigurationTool {
 
@@ -89,27 +91,37 @@ public class ConfigurationTool {
     private static void processTrace(Iterator<String> argsIter) throws IOException {
         List<Path> traceInputPaths = new ArrayList<>();
         boolean filter = true;
-        Path reflectOutputPath = null;
-        Path jniOutputPath = null;
-        Path proxyOutputPath = null;
-        Path resourcesOutputPath = null;
+        List<Path> reflectOutputPaths = new ArrayList<>();
+        List<Path> jniOutputPaths = new ArrayList<>();
+        List<Path> proxyOutputPaths = new ArrayList<>();
+        List<Path> resourcesOutputPaths = new ArrayList<>();
 
         while (argsIter.hasNext()) {
             String[] parts = argsIter.next().split("=", 2);
             String current = parts[0];
             String value = (parts.length > 1) ? parts[1] : null;
             switch (current) {
+                case "--output-dir":
+                    Path directory = Paths.get(require(current, value));
+                    if (!Files.isDirectory(directory)) {
+                        throw new NoSuchFileException(value);
+                    }
+                    reflectOutputPaths.add(directory.resolve(ConfigurationDirectories.FileNames.REFLECTION_NAME));
+                    jniOutputPaths.add(directory.resolve(ConfigurationDirectories.FileNames.JNI_NAME));
+                    proxyOutputPaths.add(directory.resolve(ConfigurationDirectories.FileNames.DYNAMIC_PROXY_NAME));
+                    resourcesOutputPaths.add(directory.resolve(ConfigurationDirectories.FileNames.RESOURCES_NAME));
+                    break;
                 case "--reflect-output":
-                    reflectOutputPath = Paths.get(require(current, value));
+                    reflectOutputPaths.add(Paths.get(require(current, value)));
                     break;
                 case "--jni-output":
-                    jniOutputPath = Paths.get(require(current, value));
+                    jniOutputPaths.add(Paths.get(require(current, value)));
                     break;
                 case "--proxy-output":
-                    proxyOutputPath = Paths.get(require(current, value));
+                    proxyOutputPaths.add(Paths.get(require(current, value)));
                     break;
                 case "--resource-output":
-                    resourcesOutputPath = Paths.get(require(current, value));
+                    resourcesOutputPaths.add(Paths.get(require(current, value)));
                     break;
                 case "--no-filter":
                     filter = false;
@@ -136,23 +148,23 @@ public class ConfigurationTool {
                 p.process(reader);
             }
         }
-        if (reflectOutputPath != null) {
-            try (JsonWriter writer = new JsonWriter(reflectOutputPath)) {
+        for (Path path : reflectOutputPaths) {
+            try (JsonWriter writer = new JsonWriter(path)) {
                 p.getReflectionConfiguration().printJson(writer);
             }
         }
-        if (jniOutputPath != null) {
-            try (JsonWriter writer = new JsonWriter(jniOutputPath)) {
+        for (Path path : jniOutputPaths) {
+            try (JsonWriter writer = new JsonWriter(path)) {
                 p.getJniConfiguration().printJson(writer);
             }
         }
-        if (proxyOutputPath != null) {
-            try (JsonWriter writer = new JsonWriter(proxyOutputPath)) {
+        for (Path path : proxyOutputPaths) {
+            try (JsonWriter writer = new JsonWriter(path)) {
                 p.getProxyConfiguration().printJson(writer);
             }
         }
-        if (resourcesOutputPath != null) {
-            try (JsonWriter writer = new JsonWriter(resourcesOutputPath)) {
+        for (Path path : resourcesOutputPaths) {
+            try (JsonWriter writer = new JsonWriter(path)) {
                 p.getResourceConfiguration().printJson(writer);
             }
         }

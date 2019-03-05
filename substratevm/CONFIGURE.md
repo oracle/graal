@@ -15,28 +15,47 @@ During execution, the agent interfaces with the Java VM to intercept all calls t
 Next, the `native-image-configure` tool can transform the trace file to configuration files for native image builds. This tool itself must first be built with the command `native-image --tool:native-image-configure`. Then, the tool can be used as follows:
 
 ```
-native-image-configure process-trace                           \
-                       --jni-output=jni-config.json            \
-                       --reflect-output=reflect-config.json    \
-                       --proxy-output=proxy-config.json        \
-                       --resource-output=resource-config.json  \
-                       /path/to/trace-file.json
+native-image-configure process-trace --output-dir=/path/to/config-dir/ /path/to/trace-file.json
 ```
 
-This invocation reads and processes `trace-file.json` and generates the files `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json` (but not all these arguments must always be specified, see `native-image-configure help`). These are stand-alone configuration files in _JSON_ format which contain all dynamic accesses from the trace file.
+This invocation reads and processes `trace-file.json` and, in the specified directory `/path/to/config-dir/`, generates the files `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json`. These are stand-alone configuration files in _JSON_ format which contain all dynamic accesses from the trace file.
+
+It is possible to specify multiple trace files to `native-image-configure`, which will then generate configuration files that include the dynamic accesses from all trace files. This can be used to improve the overall coverage of the configuration files by running the target application several times with multiple inputs that trigger different execution paths.
 
 Failed lookups of classes, methods, fields or resources are recorded in the trace, but are not included in the generated configurations by default. Likewise, accesses from inside the Java class library or the Java VM (such as in `java.nio`) are filtered by default. For testing purposes, filtering can be disabled by passing `--no-filter` to `native-image-configure`, but the generated configuration files are generally unsuitable for a native image build.
 
-It is advisable to manually review the generated configuration files. Because the agent observes only a single execution, the resulting configurations can be missing elements that are used in code paths that were not executed. It could also make sense to simplify the generated configurations to make any future manual maintenance easier.
+It is advisable to manually review the generated configuration files. Because the agent observes only code that was executed, the resulting configurations can be missing elements that are used in other code paths. It could also make sense to simplify the generated configurations to make any future manual maintenance easier.
 
 Finally, the generated configuration files can be used in a `native-image` build as follows:
 
 ```
-native-image -H:JNIConfigurationFiles=jni-config.json             \
-             -H:ReflectionConfigurationFiles=reflect-config.json  \
-             -H:DynamicProxyConfigurationFiles=proxy-config.json  \
-             -H:ResourceConfigurationFiles=resource-config.json   \
+native-image -H:ConfigurationFileDirectories=/path/to/config-dir/ ...
+```
+
+Providing `ConfigurationFileDirectories` will search the specified directory (or multiple directories) for the files `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json` and include these configuration files in the build.
+
+## Individual Configuration Files
+
+The configuration files to be generated can also be specified individually, and not all types of configuration files must be generated (see `native-image-configure help`). The command `native-image-configure process-trace --output-dir=/path/to/config-dir/` is equivalent to the following:
+
+```
+native-image-configure process-trace                                               \
+                       --jni-output=/path/to/config-dir/jni-config.json            \
+                       --reflect-output=/path/to/config-dir/reflect-config.json    \
+                       --proxy-output=/path/to/config-dir/proxy-config.json        \
+                       --resource-output=/path/to/config-dir/resource-config.json  \
+                       /path/to/trace-file.json
+```
+
+Similarly, configuration files can be specified individually instead of providing an entire directory:
+```
+native-image -H:JNIConfigurationFiles=/path/to/config-dir/jni-config.json             \
+             -H:ReflectionConfigurationFiles=/path/to/config-dir/reflect-config.json  \
+             -H:DynamicProxyConfigurationFiles=/path/to/config-dir/proxy-config.json  \
+             -H:ResourceConfigurationFiles=/path/to/config-dir/resource-config.json   \
              ...
 ```
 
-It is possible to specify multiple trace files to `native-image-configure`, which will then generate configuration files that include the dynamic accesses from all trace files. This can be used to improve the overall coverage of the configuration files by running the target application several times with multiple inputs that trigger different execution paths.
+Moreover, the above options (as well as `ConfigurationFileDirectories`) can take multiple, comma-separated paths.
+
+Instead of file paths, configuration files can also be provided via Java resources on the classpath, for example from within a _JAR_ file. This is done via the options `-H:ConfigurationResourceRoots=path/to/resources/` and/or individually with `-H:JNIConfigurationResources=path/to/resources/jni-config.json`, `-H:ReflectionConfigurationResources=...`, `-H:DynamicProxyConfigurationResources=...` and `-H:ResourceConfigurationResources=...`.
