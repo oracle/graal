@@ -66,7 +66,11 @@ import com.oracle.truffle.api.nodes.NodeUtil;
  */
 public abstract class LibraryFactory<T extends Library> {
 
-    private static final ConcurrentHashMap<Class<? extends Library>, LibraryFactory<?>> LIBRARIES = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<? extends Library>, LibraryFactory<?>> LIBRARIES;
+
+    static {
+        LIBRARIES = new ConcurrentHashMap<>();
+    }
 
     private final Class<T> libraryClass;
     private final List<Message> messages;
@@ -129,6 +133,7 @@ public abstract class LibraryFactory<T extends Library> {
      *
      * @since 1.0
      */
+    @TruffleBoundary
     public final T createDispatched(int limit) {
         if (limit <= 0) {
             return getUncached();
@@ -147,6 +152,7 @@ public abstract class LibraryFactory<T extends Library> {
      * @see CachedLibrary
      * @since 1.0
      */
+    @TruffleBoundary
     public final T create(Object receiver) {
         Class<?> dispatchClass = dispatch(receiver);
         T cached = cachedCache.get(dispatchClass);
@@ -189,6 +195,7 @@ public abstract class LibraryFactory<T extends Library> {
      * @see Library#getUncached(Class, Object) for further details.
      * @since 1.0
      */
+    @TruffleBoundary
     public final T getUncached(Object receiver) {
         Class<?> dispatchClass = dispatch(receiver);
         T uncached = uncachedCache.get(dispatchClass);
@@ -315,6 +322,7 @@ public abstract class LibraryFactory<T extends Library> {
      * @see Library
      * @since 1.0
      */
+    @TruffleBoundary
     public static <T extends Library> LibraryFactory<T> resolve(Class<T> library) {
         Objects.requireNonNull(library);
         return resolveImpl(library, true);
@@ -324,10 +332,8 @@ public abstract class LibraryFactory<T extends Library> {
     private static <T extends Library> LibraryFactory<T> resolveImpl(Class<T> library, boolean fail) {
         LibraryFactory<?> lib = LIBRARIES.get(library);
         if (lib == null) {
-            if (!TruffleOptions.AOT) {
-                loadGeneratedClass(library);
-                lib = LIBRARIES.get(library);
-            }
+            loadGeneratedClass(library);
+            lib = LIBRARIES.get(library);
             if (lib == null) {
                 if (fail) {
                     throw new IllegalArgumentException(
@@ -417,8 +423,6 @@ public abstract class LibraryFactory<T extends Library> {
         return "LibraryFactory [library=" + libraryClass.getName() + "]";
     }
 
-    private static final LibraryFactory<ReflectionLibrary> REFLECTION_FACTORY = LibraryFactory.resolve(ReflectionLibrary.class);
-
     final class ProxyExports extends LibraryExport<T> {
         protected ProxyExports() {
             super(libraryClass, Object.class, true);
@@ -426,12 +430,12 @@ public abstract class LibraryFactory<T extends Library> {
 
         @Override
         public T createUncached(Object receiver) {
-            return createProxy(REFLECTION_FACTORY.getUncached(receiver));
+            return createProxy(ReflectionLibrary.getFactory().getUncached(receiver));
         }
 
         @Override
         public T createCached(Object receiver) {
-            return createProxy(REFLECTION_FACTORY.create(receiver));
+            return createProxy(ReflectionLibrary.getFactory().create(receiver));
         }
     }
 
@@ -517,10 +521,8 @@ public abstract class LibraryFactory<T extends Library> {
                  * We can omit loading classes in AOT mode as they are resolved eagerly using the
                  * TruffleFeature. We can also omit if the type was already resolved.
                  */
-                if (!TruffleOptions.AOT) {
-                    loadGeneratedClass(dispatchClass);
-                    libs = REGISTRY.get(dispatchClass);
-                }
+                loadGeneratedClass(dispatchClass);
+                libs = REGISTRY.get(dispatchClass);
                 if (libs == null) {
                     throw new AssertionError(String.format("Libraries for class '%s' could not be resolved. Not registered?", dispatchClass.getName()));
                 }
