@@ -58,16 +58,16 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.impl.LibFFIClosureFactory.UnboxStringNodeGen;
 import java.nio.ByteBuffer;
+import java.util.function.Supplier;
 
 @ExportLibrary(InteropLibrary.class)
 final class LibFFIClosure implements TruffleObject {
 
     final ClosureNativePointer nativePointer;
 
-    static LibFFIClosure create(LibFFISignature signature, Object executable) {
+    static LibFFIClosure create(LibFFISignature signature, Object executable, Supplier<NFIContext> ctxRef) {
         CompilerAsserts.neverPartOfCompilation();
-        NFIContext context = NFILanguageImpl.getCurrentContextReference().get();
-        LibFFIClosure ret = new LibFFIClosure(context, signature, executable);
+        LibFFIClosure ret = new LibFFIClosure(ctxRef.get(), signature, executable);
         ret.nativePointer.registerManagedRef(ret);
         return ret;
     }

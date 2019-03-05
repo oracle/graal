@@ -41,8 +41,8 @@
 package com.oracle.truffle.nfi.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -71,17 +71,24 @@ abstract class BindSignatureNode extends Node {
         @SuppressWarnings("unused")
         protected LibFFISignature cached(String signature,
                         @Cached("signature") String cachedSignature,
-                        @Cached("getCurrentContextReference()") ContextReference<NFIContext> ctxRef,
-                        @Cached("parse(signature, ctxRef)") LibFFISignature ret) {
+                        @Cached("parse(signature)") LibFFISignature ret) {
             return ret;
         }
 
         @Specialization(replaces = "cached")
+        static protected LibFFISignature uncached(String signature,
+                        @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+            return parse(signature, ctx);
+        }
+
+        protected LibFFISignature parse(String signature) {
+            return parse(signature, getContextSupplier(NFILanguageImpl.class).get());
+        }
+
         @TruffleBoundary
-        static protected LibFFISignature parse(String signature,
-                        @Cached(value = "getCurrentContextReference()", allowUncached = true) ContextReference<NFIContext> ctxRef) {
+        static protected LibFFISignature parse(String signature, NFIContext ctx) {
             NativeSignature parsed = Parser.parseSignature(signature);
-            return LibFFISignature.create(ctxRef.get(), parsed);
+            return LibFFISignature.create(ctx, parsed);
         }
 
         protected static boolean checkSignature(String signature, String cachedSignature) {

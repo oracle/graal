@@ -44,10 +44,10 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -80,6 +80,7 @@ import static com.oracle.truffle.nfi.types.NativeSimpleType.UINT64;
 import static com.oracle.truffle.nfi.types.NativeSimpleType.UINT8;
 import static com.oracle.truffle.nfi.types.NativeSimpleType.VOID;
 import java.lang.reflect.Array;
+import java.util.function.Supplier;
 
 abstract class LibFFIType {
 
@@ -395,39 +396,39 @@ abstract class LibFFIType {
 
             abstract void execute(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
 
-            static boolean isHostObject(ContextReference<NFIContext> ctxRef, Object value) {
-                return ctxRef.get().env.isHostObject(value);
+            static boolean isHostObject(NFIContext ctx, Object value) {
+                return ctx.env.isHostObject(value);
             }
 
-            @Specialization(guards = "isHostObject(ctxRef, value)", rewriteOn = WrongTypeException.class)
+            @Specialization(guards = "isHostObject(ctx, value)", rewriteOn = WrongTypeException.class)
             static void doHostObject(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
-                            @Cached(value = "getCurrentContextReference()", allowUncached = true) ContextReference<NFIContext> ctxRef,
+                            @CachedContext(NFILanguageImpl.class) NFIContext ctx,
                             @Cached(parameters = "type") HostObjectHelperNode helper) throws UnsupportedTypeException, WrongTypeException {
-                Object hostObject = ctxRef.get().env.asHostObject(value);
+                Object hostObject = ctx.env.asHostObject(value);
                 helper.execute(buffer, hostObject);
             }
 
-            @Specialization(guards = "!isHostObject(ctxRef, value)", limit = "3")
+            @Specialization(guards = "!isHostObject(ctx, value)", limit = "3")
             static void doInteropObject(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
-                            @Cached(value = "getCurrentContextReference()", allowUncached = true) ContextReference<NFIContext> ctxRef,
+                            @CachedContext(NFILanguageImpl.class) NFIContext ctx,
                             @CachedLibrary("value") SerializeArgumentLibrary serialize) throws UnsupportedTypeException {
                 serialize.putPointer(value, buffer, type.size);
             }
 
             @Specialization(limit = "3", replaces = {"doHostObject", "doInteropObject"})
             static void doGeneric(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
-                            @Cached(value = "getCurrentContextReference()", allowUncached = true) ContextReference<NFIContext> ctxRef,
+                            @CachedContext(NFILanguageImpl.class) NFIContext ctx,
                             @CachedLibrary("value") SerializeArgumentLibrary serialize,
                             @Cached(parameters = "type") HostObjectHelperNode helper) throws UnsupportedTypeException {
-                if (isHostObject(ctxRef, value)) {
+                if (isHostObject(ctx, value)) {
                     try {
-                        doHostObject(type, buffer, value, ctxRef, helper);
+                        doHostObject(type, buffer, value, ctx, helper);
                         return;
                     } catch (WrongTypeException e) {
                         // fall back to "doInteropObject" case
                     }
                 }
-                doInteropObject(type, buffer, value, ctxRef, serialize);
+                doInteropObject(type, buffer, value, ctx, serialize);
             }
         }
 
@@ -605,16 +606,18 @@ abstract class LibFFIType {
             static void doExecutableCached(LibFFIType.ClosureType type, NativeArgumentBuffer buffer, Object value,
                             @Cached("value") Object cachedValue,
                             @CachedLibrary("cachedValue") InteropLibrary interop,
-                            @Cached("create(type.signature, value)") LibFFIClosure cachedClosure) {
+                            @CachedContext(NFILanguageImpl.class) Supplier<NFIContext> ctxRef,
+                            @Cached("create(type.signature, value, ctxRef)") LibFFIClosure cachedClosure) {
                 doClosure(type, buffer, cachedClosure);
             }
 
             @Specialization(limit = "0", replaces = "doExecutableCached", guards = {"isOther(value)", "interop.isExecutable(value)"})
             @TruffleBoundary
             static void doExecutableSlowPath(LibFFIType.ClosureType type, NativeArgumentBuffer buffer, Object value,
+                            @CachedContext(NFILanguageImpl.class) Supplier<NFIContext> ctxRef,
                             @CachedLibrary("value") InteropLibrary interop) {
                 // TODO performance warning
-                LibFFIClosure closure = LibFFIClosure.create(type.signature, value);
+                LibFFIClosure closure = LibFFIClosure.create(type.signature, value, ctxRef);
                 doClosure(type, buffer, closure);
             }
 

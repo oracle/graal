@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import java.util.function.Supplier;
 
 @ExportLibrary(InteropLibrary.class)
 final class LibFFILibrary implements TruffleObject {
@@ -97,20 +98,21 @@ final class LibFFILibrary implements TruffleObject {
         static TruffleObject doCached(LibFFILibrary receiver, String symbol,
                         @Cached("receiver") LibFFILibrary cachedReceiver,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached("lookupCached(cachedReceiver, cachedSymbol)") TruffleObject cachedRet) {
+                        @CachedContext(NFILanguageImpl.class) Supplier<NFIContext> ctxRef,
+                        @Cached("lookupCached(cachedReceiver, cachedSymbol, ctxRef)") TruffleObject cachedRet) {
             return cachedRet;
         }
 
-        static TruffleObject lookupCached(LibFFILibrary receiver, String symbol) throws UnknownIdentifierException {
-            return doGeneric(receiver, symbol, BranchProfile.getUncached(), NFILanguageImpl.getCurrentContextReference());
+        static TruffleObject lookupCached(LibFFILibrary receiver, String symbol, Supplier<NFIContext> ctxRef) throws UnknownIdentifierException {
+            return doGeneric(receiver, symbol, BranchProfile.getUncached(), ctxRef.get());
         }
 
         @Specialization(replaces = "doCached")
         static TruffleObject doGeneric(LibFFILibrary receiver, String symbol,
                         @Cached BranchProfile exception,
-                        @Cached(value = "getCurrentContextReference()", allowUncached = true) ContextReference<NFIContext> ctxRef) throws UnknownIdentifierException {
+                        @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws UnknownIdentifierException {
             try {
-                return ctxRef.get().lookupSymbol(receiver, symbol);
+                return ctx.lookupSymbol(receiver, symbol);
             } catch (UnsatisfiedLinkError ex) {
                 exception.enter();
                 throw UnknownIdentifierException.create(symbol);
