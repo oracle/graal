@@ -514,7 +514,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
             CompilerAsserts.partialEvaluationConstant(languageClass);
             PolyglotLanguageContext context = PolyglotContextImpl.requireContext().getLanguageContext(languageClass);
-            context.ensureInitialized(null);
             Env env = context.env;
             if (env == null) {
                 CompilerDirectives.transferToInterpreter();
