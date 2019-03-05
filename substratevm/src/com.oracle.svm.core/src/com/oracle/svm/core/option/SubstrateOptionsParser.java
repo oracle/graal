@@ -26,20 +26,6 @@ package com.oracle.svm.core.option;
 
 // Checkstyle: allow reflection
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.VMError;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.CompilationWrapper;
-import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.io.PrintStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -52,6 +38,21 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.CompilationWrapper;
+import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class contains methods for parsing options and matching them against
