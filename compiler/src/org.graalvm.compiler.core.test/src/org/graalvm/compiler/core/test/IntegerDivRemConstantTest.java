@@ -203,6 +203,19 @@ public class IntegerDivRemConstantTest extends GraalCompilerTest {
         return val % 35170432;
     }
 
+    public static int intRemPowerOf2(int val) {
+        return val % 4;
+    }
+
+    @Test
+    public void testIntRemPowerOf2() {
+        test("intRemPowerOf2", -10);
+        test("intRemPowerOf2", 0);
+        test("intRemPowerOf2", 4256);
+        test("intRemPowerOf2", Integer.MAX_VALUE);
+        test("intRemPowerOf2", Integer.MIN_VALUE);
+    }
+
     @Test
     public void testLongRemPositiveConstant() {
         test("longRemPositiveConstant", -1234L);
@@ -263,5 +276,18 @@ public class IntegerDivRemConstantTest extends GraalCompilerTest {
         test("longRemMin", 147065L);
         test("longRemMin", Long.MAX_VALUE);
         test("longRemMin", Long.MIN_VALUE);
+    }
+
+    public static long longRemPowerOf2(long val) {
+        return val % 4L;
+    }
+
+    @Test
+    public void testLongRemPowerOf2() {
+        test("longRemPowerOf2", -43L);
+        test("longRemPowerOf2", 0L);
+        test("longRemPowerOf2", 147065L);
+        test("longRemPowerOf2", Long.MAX_VALUE);
+        test("longRemPowerOf2", Long.MIN_VALUE);
     }
 }

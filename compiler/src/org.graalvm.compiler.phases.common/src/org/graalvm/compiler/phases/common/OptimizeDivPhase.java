@@ -66,7 +66,7 @@ public class OptimizeDivPhase extends Phase {
         return 5.0f;
     }
 
-    protected final static boolean divByNonZeroConstant(IntegerDivRemNode divRemNode) {
+    protected static boolean divByNonZeroConstant(IntegerDivRemNode divRemNode) {
         return divRemNode.getY().isConstant() && divRemNode.getY().asJavaConstant().asLong() != 0;
     }
 
@@ -108,7 +108,7 @@ public class OptimizeDivPhase extends Phase {
         return SignedDivNode.create(rem.getX(), rem.getY(), rem.getZeroCheck(), NodeView.DEFAULT);
     }
 
-    protected final static void optimizeSignedDiv(SignedDivNode div) {
+    protected static void optimizeSignedDiv(SignedDivNode div) {
         ValueNode forX = div.getX();
         long c = div.getY().asJavaConstant().asLong();
         assert c != 1 && c != -1 && c != 0;
