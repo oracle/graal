@@ -125,7 +125,7 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
 
     void setWeightAndHeaders(StateIndex<GraphNode> index, GraphNode headerNode, Set<GraphNode> scc) {
         weight = nodeWeight();
-        for (GraphNode child : domChildren(index)) {
+        for (GraphNode child : getDomChildren(index)) {
             if (scc.contains(child)) {
                 child.setWeightAndHeaders(index, headerNode, scc);
                 weight += child.weight;
@@ -194,7 +194,7 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
         this.postOrderIndex = postOrderIndex;
     }
 
-    Iterable<GraphNode> successors(StateIndex<GraphNode> index) {
+    Iterable<GraphNode> getSuccessors(StateIndex<GraphNode> index) {
         return () -> new Iterator<GraphNode>() {
 
             private int i = 0;
@@ -211,11 +211,11 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
         };
     }
 
-    Iterable<GraphNode> predecessors() {
+    Iterable<GraphNode> getPredecessors() {
         return predecessorSet;
     }
 
-    Iterable<GraphNode> domChildren(StateIndex<GraphNode> index) {
+    Iterable<GraphNode> getDomChildren(StateIndex<GraphNode> index) {
         return () -> new Iterator<GraphNode>() {
 
             private int i = 0;
