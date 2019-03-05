@@ -24,13 +24,18 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.windows.headers.WinBase;
+import org.graalvm.nativeimage.*;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
+import java.nio.ByteBuffer;
 
 @Platforms(Platform.WINDOWS.class)
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
@@ -47,7 +52,10 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 
     @Override
     protected String userDirValue() {
-        return "C:\\Users\\somebody";
+        CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
+        int result = WinBase.GetCurrentDirectoryA(WinBase.MAX_PATH, path);
+        VMError.guarantee(result > 0, "Could not determine value of user.dir");
+        return CTypeConversion.toJavaString(path);
     }
 
     @Override
@@ -57,7 +65,11 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 
     @Override
     protected String osVersionValue() {
-        return "Unknown";
+        ByteBuffer versionBytes = ByteBuffer.allocate(4);
+        versionBytes.putInt(WinBase.GetVersion());
+        int majorVersion = versionBytes.get(3);
+        int minorVersion = versionBytes.get(2);
+        return majorVersion + "." + minorVersion;
     }
 }
 
