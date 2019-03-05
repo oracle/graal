@@ -244,6 +244,11 @@ public final class SpecializationData extends TemplateMethod {
                 return true;
             }
         }
+        for (CacheExpression cache : getBoundCaches(expression)) {
+            if (cache.isCachedContext() || cache.isCachedLanguage()) {
+                return true;
+            }
+        }
         return false;
     }
 

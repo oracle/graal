@@ -42,18 +42,23 @@ package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertNotSame;
 
 import java.util.function.Supplier;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.Valid1NodeGen;
+import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.Valid2NodeGen;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
@@ -61,7 +66,7 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 public class CachedContextTest extends AbstractPolyglotTest {
 
     @Test
-    public void testContextLookup() {
+    public void testContextLookup1() {
         setupEnv();
         context.initialize(TEST_LANGUAGE);
         CachedContextTestLanguage testLanguage = CachedContextTestLanguage.getCurrentLanguage();
@@ -107,9 +112,47 @@ public class CachedContextTest extends AbstractPolyglotTest {
         }
     }
 
+    @Test
+    public void testContextLookup2() {
+        Engine engine = Engine.create();
+        setupEnv(Context.newBuilder().engine(engine).build());
+        context.initialize(TEST_LANGUAGE);
+        CachedContextTestLanguage testLanguage = CachedContextTestLanguage.getCurrentLanguage();
+        Env currentContext = CachedContextTestLanguage.getCurrentContext();
+        Valid2Node node;
+        node = adoptNode(testLanguage, Valid2NodeGen.create()).get();
+        assertEquals(currentContext, node.execute());
+        assertEquals(1, node.guardExecuted);
+
+        setupEnv(Context.newBuilder().engine(engine).build());
+        context.initialize(TEST_LANGUAGE);
+        assertSame(testLanguage, CachedContextTestLanguage.getCurrentLanguage());
+        Env otherContext = CachedContextTestLanguage.getCurrentContext();
+        assertNotSame(currentContext, otherContext);
+        assertEquals(otherContext, node.execute());
+        assertEquals(2, node.guardExecuted);
+    }
+
+    public abstract static class Valid2Node extends Node {
+
+        abstract Object execute();
+
+        int guardExecuted = 0;
+
+        boolean g0(Env ctx) {
+            guardExecuted++;
+            return true;
+        }
+
+        @Specialization(guards = "g0(ctx)")
+        Object s0(@CachedContext(CachedContextTestLanguage.class) Env ctx) {
+            return ctx;
+        }
+    }
+
     private static final String TEST_LANGUAGE = "CachedContextTestLanguage";
 
-    @Registration(id = TEST_LANGUAGE, name = TEST_LANGUAGE)
+    @Registration(id = TEST_LANGUAGE, name = TEST_LANGUAGE, contextPolicy = ContextPolicy.SHARED)
     public static class CachedContextTestLanguage extends TruffleLanguage<Env> {
 
         @Override

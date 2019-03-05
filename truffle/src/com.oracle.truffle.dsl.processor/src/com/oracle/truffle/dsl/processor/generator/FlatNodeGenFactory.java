@@ -3806,14 +3806,11 @@ public class FlatNodeGenFactory {
     }
 
     private List<IfTriple> initializeCaches(FrameState frameState, NodeExecutionMode mode, SpecializationGroup group, Collection<CacheExpression> caches, boolean store, boolean forcePersist) {
-        if (group.getSpecialization() == null || caches.isEmpty()) {
+        if (group.getSpecialization() == null || caches.isEmpty() || mode.isFastPath()) {
             return Collections.emptyList();
         }
         List<IfTriple> triples = new ArrayList<>();
         for (CacheExpression cache : caches) {
-            if (mode.isFastPath() && !cache.isAlwaysInitialized()) {
-                continue;
-            }
             triples.addAll(initializeCasts(frameState, group, cache.getDefaultExpression(), mode));
             triples.addAll(persistAndInitializeCache(frameState, group.getSpecialization(), cache, store, forcePersist));
         }
@@ -3822,6 +3819,7 @@ public class FlatNodeGenFactory {
 
     private Collection<IfTriple> persistAndInitializeCache(FrameState frameState, SpecializationData specialization, CacheExpression cache, boolean store, boolean persist) {
         List<IfTriple> triples = new ArrayList<>();
+        triples.addAll(initializeSuppliers(frameState, cache));
         CodeTree init = initializeCache(frameState, specialization, cache);
         if (store) {
             // store as local variable
@@ -3836,28 +3834,9 @@ public class FlatNodeGenFactory {
 
     private Collection<IfTriple> persistCache(FrameState frameState, SpecializationData specialization, CacheExpression cache, CodeTree cacheValue) {
         if (cache.isAlwaysInitialized()) {
-            if (cache.isCachedContext() || cache.isCachedLanguage()) {
-                String supplierName = createSupplierName(cache);
-
-                CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-                String supplierLocalName = supplierName + "_";
-                builder.declaration(cache.getSupplierType(), supplierLocalName, "this." + supplierName);
-                builder.startIf().string(supplierLocalName).string(" == null").end().startBlock();
-                String method = cache.isCachedContext() ? "super.getContextSupplier" : "super.getLanguageSupplier";
-                builder.startStatement().string("this.", supplierName).string(" = ").string(supplierLocalName).string(" = ").startCall(method).typeLiteral(cache.getLanguageType()).end().end();
-                builder.end();
-
-                String supplierInitialized = supplierName + "$initialized";
-                if (frameState.getBoolean(supplierInitialized, false)) {
-                    return Collections.emptyList();
-                } else {
-                    frameState.setBoolean(supplierInitialized, true);
-                }
-                frameState.set(supplierName, new LocalVariable(cache.getSupplierType(), supplierLocalName, null));
-                return Arrays.asList(new IfTriple(builder.build(), null, null));
-            }
             return Collections.emptyList();
         } else {
+            List<IfTriple> triples = new ArrayList<>();
             String name = createFieldName(specialization, cache.getParameter());
             LocalVariable local = frameState.get(name);
             CodeTree value;
@@ -3878,7 +3857,6 @@ public class FlatNodeGenFactory {
                 frameState.setBoolean(frameStateInitialized, true);
             }
 
-            List<IfTriple> triples = new ArrayList<>();
             CodeTreeBuilder builder = new CodeTreeBuilder(null);
             Parameter parameter = cache.getParameter();
             boolean useSpecializationClass = useSpecializationClass(specialization);
@@ -3948,6 +3926,30 @@ public class FlatNodeGenFactory {
 
     }
 
+    private static List<IfTriple> initializeSuppliers(FrameState frameState, CacheExpression cache) {
+        if (cache.isCachedContext() || cache.isCachedLanguage()) {
+            String supplierName = createSupplierName(cache);
+
+            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+            String supplierLocalName = supplierName + "_";
+            builder.declaration(cache.getSupplierType(), supplierLocalName, "this." + supplierName);
+            builder.startIf().string(supplierLocalName).string(" == null").end().startBlock();
+            String method = cache.isCachedContext() ? "super.getContextSupplier" : "super.getLanguageSupplier";
+            builder.startStatement().string("this.", supplierName).string(" = ").string(supplierLocalName).string(" = ").startCall(method).typeLiteral(cache.getLanguageType()).end().end();
+            builder.end();
+
+            String supplierInitialized = supplierName + "$initialized";
+            if (frameState.getBoolean(supplierInitialized, false)) {
+                return Collections.emptyList();
+            } else {
+                frameState.setBoolean(supplierInitialized, true);
+            }
+            frameState.set(supplierName, new LocalVariable(cache.getSupplierType(), supplierLocalName, null));
+            return Arrays.asList(new IfTriple(builder.build(), null, null));
+        }
+        return Collections.emptyList();
+    }
+
     private Collection<IfTriple> storeCache(FrameState frameState, SpecializationData specialization, CacheExpression cache, CodeTree value) {
         if (value == null) {
             return Collections.emptyList();
@@ -3972,7 +3974,9 @@ public class FlatNodeGenFactory {
         builder.declaration(type, refName, useValue);
 
         frameState.set(name, new LocalVariable(type, name, CodeTreeBuilder.singleString(refName)));
-        return Arrays.asList(new IfTriple(builder.build(), null, null));
+        List<IfTriple> triples = new ArrayList<>();
+        triples.add(new IfTriple(builder.build(), null, null));
+        return triples;
     }
 
     private CodeTree initializeCache(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
