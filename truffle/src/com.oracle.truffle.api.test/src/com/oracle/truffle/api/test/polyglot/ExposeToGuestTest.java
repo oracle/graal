@@ -167,4 +167,18 @@ public class ExposeToGuestTest {
         Assert.assertEquals("basic foo", readValue.execute(new PrivateFoo<>()).asString());
         Assert.assertEquals("overriden foo", readValue.execute(new PrivateChangedFoo<>()).asString());
     }
+
+    @FunctionalInterface
+    public static interface FooInterface<T extends Number> {
+        @HostAccess.Export
+        Object foo(T value);
+    }
+
+    @Test
+    public void functionalInterfaceCall() throws Exception {
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
+        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1);\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        FooInterface<Number> foo = (ignore) -> "functional foo";
+        Assert.assertEquals("functional foo", readValue.execute(foo).asString());
+    }
 }
