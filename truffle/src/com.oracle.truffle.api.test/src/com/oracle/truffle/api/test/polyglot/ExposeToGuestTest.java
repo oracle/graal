@@ -50,6 +50,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
@@ -116,4 +117,25 @@ public class ExposeToGuestTest {
         assertPropertyUndefined("Public isn't enough by default", readValue, new PublicValue());
     }
 
+    public static class Foo {
+        @HostAccess.Export
+        public Object foo() {
+            return "basic foo";
+        }
+    }
+
+    static class Bar extends Foo {
+        @Override
+        public Object foo() {
+            return "enhanced bar";
+        }
+    }
+
+    @Test
+    public void fooBarExposedByInheritance() throws Exception {
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
+        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo();\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        Assert.assertEquals("basic foo", readValue.execute(new Foo()).asString());
+        Assert.assertEquals("enhanced bar", readValue.execute(new Bar()).asString());
+    }
 }
