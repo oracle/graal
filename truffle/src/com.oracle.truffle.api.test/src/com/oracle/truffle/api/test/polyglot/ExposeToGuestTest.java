@@ -64,11 +64,15 @@ public class ExposeToGuestTest {
     }
 
     private static void assertPropertyUndefined(String msg, Value readValue, Object value) {
+        assertPropertyUndefined(msg, "value", readValue, value);
+    }
+
+    private static void assertPropertyUndefined(String msg, String propName, Value readValue, Object value) {
         try {
             readValue.execute(value);
             fail(msg);
         } catch (PolyglotException ex) {
-            assertEquals("Undefined property: value", ex.getMessage());
+            assertEquals("Undefined property: " + propName, ex.getMessage());
         }
     }
 
@@ -117,25 +121,50 @@ public class ExposeToGuestTest {
         assertPropertyUndefined("Public isn't enough by default", readValue, new PublicValue());
     }
 
-    public static class Foo {
+    public static class Foo<T extends Number> {
         @HostAccess.Export
-        public Object foo() {
+        public Object foo(T x) {
             return "basic foo";
         }
     }
 
-    static class Bar extends Foo {
+    static class Bar extends Foo<Number> {
         @Override
-        public Object foo() {
+        public Object foo(Number x) {
             return "enhanced bar";
+        }
+    }
+
+    static class PackagePrivateBar {
+        public Object foo(Number x) {
+            fail("Never called");
+            return "hidden bar";
+        }
+    }
+
+    static class PrivateFoo<T extends Number> extends Foo<T> {
+        private Object foo(Integer y) {
+            fail("Never called");
+            return "hidden foo";
+        }
+    }
+
+    public static class PrivateChangedFoo<T extends Integer> extends PrivateFoo<T> {
+        @HostAccess.Export
+        @Override
+        public Object foo(T x) {
+            return "overriden foo";
         }
     }
 
     @Test
     public void fooBarExposedByInheritance() throws Exception {
         Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
-        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo();\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
-        Assert.assertEquals("basic foo", readValue.execute(new Foo()).asString());
+        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1);\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        Assert.assertEquals("basic foo", readValue.execute(new Foo<>()).asString());
         Assert.assertEquals("enhanced bar", readValue.execute(new Bar()).asString());
+        assertPropertyUndefined("Cannot call public method in package private class", "foo", readValue, new PackagePrivateBar());
+        Assert.assertEquals("basic foo", readValue.execute(new PrivateFoo<>()).asString());
+        Assert.assertEquals("overriden foo", readValue.execute(new PrivateChangedFoo<>()).asString());
     }
 }
