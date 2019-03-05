@@ -58,18 +58,18 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final SourceSection sourceLocation;
     private final String rootName;
     private final boolean host;
-    private final FileSystem fileSystem;
+    private final PolyglotExceptionImpl source;
     private StackTraceElement stackTrace;
 
-    private PolyglotExceptionFrame(com.oracle.truffle.polyglot.PolyglotImpl.VMObject source, PolyglotLanguage language,
-                    SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace, FileSystem fileSystem) {
+    private PolyglotExceptionFrame(PolyglotExceptionImpl source, PolyglotLanguage language,
+                    SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
         super(source.getImpl());
         this.language = language;
         this.sourceLocation = sourceLocation;
         this.rootName = rootName;
         this.host = isHost;
         this.stackTrace = stackTrace;
-        this.fileSystem = fileSystem;
+        this.source = source;
     }
 
     @Override
@@ -119,7 +119,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         } else {
             b.append(rootName);
             b.append("(");
-            b.append(formatSource(sourceLocation, fileSystem));
+            b.append(formatSource(sourceLocation, source.getFileSystem()));
             b.append(")");
         }
         return b.toString();
@@ -156,8 +156,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         } else {
             location = first ? exception.getSourceLocation() : null;
         }
-        FileSystem fs = exception.context == null ? null : exception.context.config.fileSystem;
-        return new PolyglotExceptionFrame(exception, language, location, rootName, false, null, fs);
+        return new PolyglotExceptionFrame(exception, language, location, rootName, false, null);
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
@@ -169,8 +168,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         SourceSection location = null;
 
         String rootname = hostStack.getClassName() + "." + hostStack.getMethodName();
-        FileSystem fs = exception.context == null ? null : exception.context.config.fileSystem;
-        return new PolyglotExceptionFrame(exception, language, location, rootname, true, hostStack, fs);
+        return new PolyglotExceptionFrame(exception, language, location, rootname, true, hostStack);
     }
 
     private static String spaces(int length) {
