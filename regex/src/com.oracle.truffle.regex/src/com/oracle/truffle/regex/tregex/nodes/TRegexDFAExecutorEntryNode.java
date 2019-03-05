@@ -72,14 +72,14 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
     private static Unsafe getUnsafe() {
         try {
             return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        } catch (SecurityException e1) {
+            try {
+                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafeInstance.setAccessible(true);
+                return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+            } catch (Exception e2) {
+                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
+            }
         }
     }
 
