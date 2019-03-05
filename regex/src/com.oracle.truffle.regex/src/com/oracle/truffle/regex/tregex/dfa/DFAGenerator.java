@@ -551,10 +551,10 @@ public final class DFAGenerator implements JsonConvertible {
             if (s.hasBackwardPrefixState()) {
                 successors[successors.length - 1] = s.getBackwardPrefixState();
             }
-            byte flags = DFAStateNode.flags(s.isFinalState(), s.isAnchoredFinalState(), s.hasBackwardPrefixState());
+            byte flags = DFAStateNode.buildFlags(s.isFinalState(), s.isAnchoredFinalState(), s.hasBackwardPrefixState());
             DFAStateNode.LoopOptimizationNode loopOptimizationNode = null;
             if (loopToSelf != -1) {
-                loopOptimizationNode = DFAStateNode.loopOptimizationNode(loopToSelf, indexOfChars);
+                loopOptimizationNode = DFAStateNode.buildLoopOptimizationNode(loopToSelf, indexOfChars);
             }
             DFAStateNode stateNode;
             if (trackCaptureGroups) {

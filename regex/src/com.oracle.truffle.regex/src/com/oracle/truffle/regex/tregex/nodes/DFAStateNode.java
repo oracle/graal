@@ -94,7 +94,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         this.allTransitionsInOneTreeMatcher = allTransitionsInOneTreeMatcher;
     }
 
-    public static byte flags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState) {
+    public static byte buildFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState) {
         byte flags = 0;
         if (finalState) {
             flags |= FLAG_FINAL_STATE;
@@ -108,7 +108,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return flags;
     }
 
-    public static LoopOptimizationNode loopOptimizationNode(short loopTransitionIndex, char[] indexOfChars) {
+    public static LoopOptimizationNode buildLoopOptimizationNode(short loopTransitionIndex, char[] indexOfChars) {
         return new LoopOptimizationNode(loopTransitionIndex, indexOfChars);
     }
 
