@@ -168,7 +168,7 @@ public class ExposeToGuestTest {
     }
 
     @FunctionalInterface
-    public static interface FooInterface<T extends Number> {
+    public interface FooInterface<T extends Number> {
         @HostAccess.Export
         Object foo(T value);
     }

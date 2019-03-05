@@ -44,8 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.graalvm.polyglot.HostAccess;
@@ -60,14 +58,8 @@ final class HostClassCache {
         this.conf = conf;
     }
 
-    public static HostClassCache find(AbstractPolyglotImpl.APIAccess access, HostAccess conf) {
-        Function<BiFunction<HostAccess, AccessibleObject, Boolean>, HostClassCache> factory = new Function<BiFunction<HostAccess, AccessibleObject, Boolean>, HostClassCache>() {
-            @Override
-            public HostClassCache apply(BiFunction<HostAccess, AccessibleObject, Boolean> access) {
-                return new HostClassCache(access, conf);
-            }
-        };
-        return access.connectHostAccess(HostClassCache.class, conf, factory);
+    public static HostClassCache find(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
+        return apiAccess.connectHostAccess(HostClassCache.class, conf, new Factory(conf));
     }
 
     private final ClassValue<HostClassDesc> descs = new ClassValue<HostClassDesc>() {
@@ -88,5 +80,18 @@ final class HostClassCache {
 
     boolean allowsAccess(Field f) {
         return access.apply(conf, f);
+    }
+
+    private static class Factory implements Function<BiFunction<HostAccess, AccessibleObject, Boolean>, HostClassCache> {
+        private final HostAccess conf;
+
+        Factory(HostAccess conf) {
+            this.conf = conf;
+        }
+
+        @Override
+        public HostClassCache apply(BiFunction<HostAccess, AccessibleObject, Boolean> access) {
+            return new HostClassCache(access, conf);
+        }
     }
 }
