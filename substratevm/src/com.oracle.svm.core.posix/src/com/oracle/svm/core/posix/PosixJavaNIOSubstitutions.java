@@ -123,8 +123,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -140,9 +140,9 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
@@ -430,11 +430,11 @@ public final class PosixJavaNIOSubstitutions {
                 // 092     ret = thr_kill((thread_t)thread, INTERRUPT_SIGNAL);
                 // 093 #else
                 // 094     ret = pthread_kill((pthread_t)thread, INTERRUPT_SIGNAL);
-                ret = Pthread.pthread_kill(WordFactory.pointer(thread), PosixInterruptSignalHandler.INTERRUPT_SIGNAL);
                 // 095 #endif
+                ret = PosixInterruptSignalUtils.interruptPThread(WordFactory.pointer(thread));
                 // 096     if (ret != 0)
                 if (ret != 0) {
-                    // 097         JNU_ThrowIOExceptionWithLastError(env, "Thread signal failed");
+                // 097         JNU_ThrowIOExceptionWithLastError(env, "Thread signal failed");
                     throw PosixUtils.newIOExceptionWithLastError("Thread signal failed");
                 }
             }
@@ -459,7 +459,7 @@ public final class PosixJavaNIOSubstitutions {
             // 72      sigemptyset(&sa.sa_mask);
             // 73      if (sigaction(INTERRUPT_SIGNAL, &sa, &osa) < 0)
             // 74          JNU_ThrowIOExceptionWithLastError(env, "sigaction");
-            PosixInterruptSignalHandler.ensureInitialized();
+            PosixInterruptSignalUtils.ensureInitialized();
         }
 
         /* } Do not re-format commented code: @formatter:on */
