@@ -64,7 +64,7 @@ public abstract class ObjectScanner {
     }
 
     public void scanBootImageHeapRoots(CompletionExecutor executor) {
-        scanBootImageHeapRoots(executor, (f1, f2) -> 0, (m1, m2) -> 0);
+        scanBootImageHeapRoots(executor, null, null);
     }
 
     public void scanBootImageHeapRoots(Comparator<AnalysisField> fieldComparator, Comparator<AnalysisMethod> methodComparator) {
@@ -74,11 +74,34 @@ public abstract class ObjectScanner {
     private void scanBootImageHeapRoots(CompletionExecutor exec, Comparator<AnalysisField> fieldComparator, Comparator<AnalysisMethod> methodComparator) {
         // scan the original roots
         // the original roots are all the static fields, of object type, that were accessed
+        Collection<AnalysisField> fields = bb.getUniverse().getFields();
+        if (fieldComparator != null) {
+            ArrayList<AnalysisField> fieldsList = new ArrayList<>(fields);
+            fieldsList.sort(fieldComparator);
+            fields = fieldsList;
+        }
+        for (AnalysisField field : fields) {
+            if (Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isAccessed()) {
+                if (exec != null) {
+                    exec.execute(new CompletionExecutor.DebugContextRunnable() {
+                        @Override
+                        public void run(DebugContext debug) {
+                            scanField(field, null, field);
+                        }
+                    });
+                } else {
+                    scanField(field, null, field);
+                }
+            }
+        }
 
-        bb.getUniverse().getFields().stream()
-                        .filter(field -> Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isAccessed())
-                        .sorted(fieldComparator)
-                        .forEach(field -> scanField(field, null, field));
+        if (exec != null) {
+            try {
+                exec.complete();
+            } catch (InterruptedException e) {
+                throw AnalysisError.shouldNotReachHere(e);
+            }
+        }
 
         // scan the constant nodes
         Collection<AnalysisMethod> methods = bb.getUniverse().getMethods();
