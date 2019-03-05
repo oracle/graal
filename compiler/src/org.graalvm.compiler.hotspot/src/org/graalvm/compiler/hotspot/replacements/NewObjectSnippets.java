@@ -316,7 +316,7 @@ public class NewObjectSnippets implements Snippets {
                     @ConstantParameter Counters counters) {
         // Primitive array types are eagerly pre-resolved. We can use a floating load.
         KlassPointer picHub = LoadConstantIndirectlyNode.loadKlass(hub);
-        return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, false, counters);
+        return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, counters);
     }
 
     @Snippet
@@ -325,7 +325,7 @@ public class NewObjectSnippets implements Snippets {
                     @ConstantParameter Counters counters) {
         // Array type would be resolved by dominating resolution.
         KlassPointer picHub = LoadConstantIndirectlyFixedNode.loadKlass(hub);
-        return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, false, counters);
+        return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, counters);
     }
 
     @Snippet
@@ -348,7 +348,6 @@ public class NewObjectSnippets implements Snippets {
                         threadRegister,
                         maybeUnroll,
                         typeContext,
-                        false,
 
                         counters);
         return piArrayCastToSnippetReplaceeStamp(verifyOop(result), length);
@@ -364,14 +363,14 @@ public class NewObjectSnippets implements Snippets {
     }
 
     private static Object allocateArrayImpl(KlassPointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, Register threadRegister,
-                    boolean maybeUnroll, String typeContext, boolean skipNegativeCheck, Counters counters) {
+                    boolean maybeUnroll, String typeContext, Counters counters) {
         Object result;
         long allocationSize = arrayAllocationSize(length, headerSize, log2ElementSize);
         Word thread = registerAsWord(threadRegister);
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
         Word newTop = top.add(WordFactory.unsigned(allocationSize));
-        if (probability(FREQUENT_PROBABILITY, skipNegativeCheck || belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) && useTLAB(INJECTED_VMCONFIG) &&
+        if (probability(FREQUENT_PROBABILITY, belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) && useTLAB(INJECTED_VMCONFIG) &&
                         probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
@@ -486,7 +485,7 @@ public class NewObjectSnippets implements Snippets {
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
-        Object result = allocateArrayImpl(nonNullKlass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true, counters);
+        Object result = allocateArrayImpl(nonNullKlass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", counters);
         return piArrayCastToSnippetReplaceeStamp(verifyOop(result), length);
     }
 
