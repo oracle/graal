@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -50,6 +50,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -99,7 +101,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
             LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal.getPointeeType());
             LLVMNativePointer fn = readFn(memory, vtable, langStartVtable);
             LLVMNativePointer dropInPlace = readDropInPlace(memory, vtable, langStartVtable);
-            LLVMNativePointer main = derefMain(memory, mainPointer);
+            LLVMNativePointer main = coerceMainForFn(memory, langStartVtable, mainPointer);
             Integer exitCode = (Integer) fnDispatchNode.executeDispatch(fn, new Object[]{stackPointer, main});
             dropInPlaceDispatchNode.executeDispatch(dropInPlace, new Object[]{stackPointer, mainPointer});
             return exitCode.longValue();
@@ -113,19 +115,28 @@ public abstract class LLVMStart extends LLVMIntrinsic {
             return LLVMNativePointer.create(langStartVtable.readDropInPlace(memory, vtablePointer.asNative()));
         }
 
-        protected LLVMNativePointer derefMain(LLVMMemory memory, LLVMNativePointer mainPointer) {
-            return memory.getPointer(mainPointer);
+        protected LLVMNativePointer coerceMainForFn(LLVMMemory memory, LangStartVtableType langStartVtable, LLVMNativePointer mainPointer) {
+            return LLVMNativePointer.create(langStartVtable.coerceMainForFn(memory, mainPointer.asNative()));
         }
 
         static final class LangStartVtableType {
             private final long offsetFn;
+            private final boolean fnExpectsCoercedMain;
 
-            private LangStartVtableType(DataLayout datalayout, StructureType type) {
+            private LangStartVtableType(DataLayout datalayout, StructureType type, FunctionType fnType) {
                 this.offsetFn = type.getOffsetOf(5, datalayout);
+                this.fnExpectsCoercedMain = !(((PointerType) fnType.getArgumentTypes()[0]).getPointeeType() instanceof PointerType);
             }
 
             long readFn(LLVMMemory memory, long address) {
                 return memory.getPointer(address + offsetFn).asNative();
+            }
+
+            long coerceMainForFn(LLVMMemory memory, long mainAddress) {
+                if (fnExpectsCoercedMain) {
+                    return memory.getPointer(mainAddress).asNative();
+                }
+                return mainAddress;
             }
 
             @SuppressWarnings("static-method")
@@ -134,7 +145,8 @@ public abstract class LLVMStart extends LLVMIntrinsic {
             }
 
             static LangStartVtableType create(DataLayout datalayout, Type vtableType) {
-                return new LangStartVtableType(datalayout, (StructureType) vtableType);
+                FunctionType fnType = (FunctionType) ((PointerType) ((StructureType) vtableType).getElementTypes()[5]).getPointeeType();
+                return new LangStartVtableType(datalayout, (StructureType) vtableType, fnType);
             }
 
         }
