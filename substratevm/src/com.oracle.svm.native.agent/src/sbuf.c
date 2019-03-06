@@ -24,8 +24,9 @@
  */
 #include "trace-agent.h"
 #include "sbuf.h"
+#include "util.h"
 
-#include <malloc.h>
+#include <stdlib.h>
 
 void sbuf_new(struct sbuf *b) {
   const int capacity = 1024;
@@ -74,7 +75,7 @@ void sbuf_quote(struct sbuf *b, const char *s) {
   maybe_grow(b, 1);
   b->buffer[b->length++] = '"';
 
-  for (char *p = s; *p != '\0'; p++) {
+  for (const char *p = s; *p != '\0'; p++) {
     maybe_grow(b, 2);
     if (*p == '"' || *p == '\\') {
       b->buffer[b->length++] = '\\';

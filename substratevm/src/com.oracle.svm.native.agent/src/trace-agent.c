@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#define _POSIX_C_SOURCE 200112L // gmtime_r
+
 #include "trace-agent.h"
 
 #include <stdlib.h>
@@ -79,7 +81,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
     const char ts_str[] = "{datetime}";
     struct sbuf s;
     sbuf_new(&s);
-    char *position = output;
+    const char *position = output;
     do {
       if (strncmp(pid_str, lbrace, sizeof(pid_str) - 1) == 0) {
         sbuf_printf(&s, "%.*s%ld", (int) (lbrace - position), position, (long) getpid());

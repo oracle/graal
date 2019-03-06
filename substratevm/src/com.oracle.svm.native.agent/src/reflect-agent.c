@@ -30,8 +30,8 @@ extern "C" {
 #include "sbuf.h"
 #include "util.h"
 
+#include <stdlib.h>
 #include <string.h>
-#include <malloc.h>
 #include <assert.h>
 
 static void reflect_trace(JNIEnv *env, jclass clazz, jclass caller_class, const char *function, const char *result, ... /* args */) {
@@ -70,7 +70,7 @@ struct reflect_breakpoint_entry {
 
 static void OnBreakpoint_forName(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp) {
   jstring name = get_object_arg(0);
-  jboolean initialize;
+  jint initialize;
   jobject class_loader;
   bool initialize_valid = true;
   bool class_loader_valid = true;
@@ -229,7 +229,7 @@ static void OnBreakpoint_getSystemResource(jvmtiEnv *jvmti, JNIEnv* jni, jthread
   }
 
   const char *name_cstr = get_cstr(jni, name);
-  reflect_trace(jni, NULL, caller_class, bp->name, NULL, name_cstr, NULL);
+  reflect_trace(jni, NULL, caller_class, bp->name, nn_bool(result), name_cstr, NULL);
   release_cstr(jni, name, name_cstr);
 }
 
@@ -248,8 +248,8 @@ static void OnBreakpoint_getEnclosingMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthrea
   sbuf_new(&b);
   sbuf_printf(&b, "%s.%s%s", class_name_cstr, name, signature);
   release_cstr(jni, clazz, class_name_cstr);
-  (*jvmti)->Deallocate(jvmti, name);
-  (*jvmti)->Deallocate(jvmti, signature);
+  (*jvmti)->Deallocate(jvmti, (unsigned char *) name);
+  (*jvmti)->Deallocate(jvmti, (unsigned char *) signature);
   reflect_trace(jni, NULL, caller_class, bp->name, sbuf_as_cstr(&b), NULL);
   sbuf_destroy(&b);
 }

@@ -9,7 +9,7 @@ Usage: native-image-configure process-trace [options] tracefile...
 
 process-trace             processes trace file(s) from the agent.
     --output-dir=<path>   writes a set of configuration files to the directory
-                          that exists at the given path. Existing files are.
+                          that exists at the given path. Existing files are
                           replaced. This is equivalent to specifying all of:
                            --reflect-output=<path>/reflect-config.json
                            --jni-output=<path>/jni-config.json

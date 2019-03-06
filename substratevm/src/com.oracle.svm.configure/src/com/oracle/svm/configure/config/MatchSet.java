@@ -94,6 +94,7 @@ public class MatchSet<T> implements JsonPrintable {
         return u;
     }
 
+    @Override
     public void printJson(JsonWriter writer) throws IOException {
         if (all) {
             throw new RuntimeException("Must be handled in caller");

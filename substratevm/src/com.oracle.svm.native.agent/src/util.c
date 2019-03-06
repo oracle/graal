@@ -29,6 +29,7 @@ extern "C" {
 #include "trace-agent.h"
 #include "util.h"
 
+#include <stdlib.h>
 #include <assert.h>
 
 // JVMTI environments, unlike JNI, can be safely shared across threads

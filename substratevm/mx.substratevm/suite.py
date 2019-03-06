@@ -319,12 +319,12 @@ suite = {
             "os_arch" : {
                 "linux": {
                     "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2"],
+                        "cflags": ["-g", "-fPIC", "-O2", "-std=c99", "-Wall", "-Werror"],
                     },
                 },
                 "darwin": {
                     "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2"],
+                        "cflags": ["-g", "-fPIC", "-O2", "-std=c99", "-Wall", "-Werror"],
                     },
                 },
                 "<others>": {
@@ -642,7 +642,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
             ],
-            "checkstyle": "com.oracle.svm.core",
+            "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",
             "annotationProcessors": [
             ],

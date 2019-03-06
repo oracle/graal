@@ -97,32 +97,32 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "getDeclaredFields":
-                declared = true; // fall-through
+                declared = true; // fall through
             case "getFields": {
                 getMemberSet(clazz, declared).getFields().includeAll();
                 break;
             }
             case "getDeclaredMethods":
-                declared = true; // fall-through
+                declared = true; // fall through
             case "getMethods": {
                 getMemberSet(clazz, declared).getMethods().includeAll();
                 break;
             }
             case "getDeclaredConstructors":
-                declared = true; // fall-through
+                declared = true; // fall through
             case "getConstructors": {
                 getMemberSet(clazz, declared).getConstructors().includeAll();
                 break;
             }
 
             case "getDeclaredField":
-                declared = true; // fall-through
+                declared = true; // fall through
             case "getField": {
                 getMemberSet(clazz, declared).getFields().add(singleElement(args));
                 break;
             }
             case "getDeclaredMethod":
-                declared = true; // fall-through
+                declared = true; // fall through
             case "getMethod": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
@@ -131,7 +131,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
             case "getDeclaredConstructor":
-                declared = true; // fall-through
+                declared = true; // fall through
             case "getConstructor": {
                 List<String> parameterTypes = singleElement(args);
                 ReflectionMethod constructor = new ReflectionMethod(ReflectionMethod.CONSTRUCTOR_NAME, parameterTypes.toArray(new String[0]));

@@ -55,7 +55,7 @@ public class ReflectionMemberSet {
         return constructors;
     }
 
-    private MatchSet<ReflectionMethod> createMethodSet() {
+    private static MatchSet<ReflectionMethod> createMethodSet() {
         return MatchSet.create(Comparator.comparing(ReflectionMethod::getName).thenComparingInt(m -> m.getParameterTypes().length)
                         .thenComparing(m -> String.join("|", m.getParameterTypes())));
     }

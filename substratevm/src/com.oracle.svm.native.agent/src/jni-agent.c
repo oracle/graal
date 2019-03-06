@@ -29,8 +29,7 @@ extern "C" {
 #include "trace-agent.h"
 #include "util.h"
 
-#include <stdarg.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 static void jni_trace_call(JNIEnv *env, const char *function, jclass clazz, const char *result, ...) {
   jclass caller_class = get_caller_class(0);
