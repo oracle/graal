@@ -52,10 +52,13 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 @GenerateUncached
 @ImportStatic(NFILanguageImpl.class)
 abstract class FunctionExecuteNode extends Node {
+
+    static final int ARG_DISPATCH_LIMIT = 5;
 
     public abstract Object execute(LibFFIFunction receiver, Object[] args) throws ArityException, UnsupportedTypeException;
 
@@ -103,7 +106,8 @@ abstract class FunctionExecuteNode extends Node {
     @Specialization(replaces = "cachedSignature", guards = "receiver.getSignature().getArgTypes().length == libs.length")
     protected Object cachedArgCount(LibFFIFunction receiver, Object[] args,
             @Cached("getGenericNativeArgumentLibraries(receiver.getSignature().getArgTypes().length)") NativeArgumentLibrary[] libs,
-            @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws ArityException, UnsupportedTypeException {
+            @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+            @Cached BranchProfile exception) throws ArityException, UnsupportedTypeException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
 
@@ -114,14 +118,17 @@ abstract class FunctionExecuteNode extends Node {
                 raiseArityException(argTypes, args.length);
             }
 
+            Object arg;
             if (argTypes[i].injectedArgument) {
-                libs[i].serialize(argTypes[i], buffer, null);
+                arg = null;
             } else {
-                libs[i].serialize(argTypes[i], buffer, args[argIdx++]);
+                arg = args[argIdx++];
             }
+            libs[i].serialize(argTypes[i], buffer, arg);
         }
 
         if (argIdx != args.length) {
+            exception.enter();
             throw ArityException.create(argIdx, args.length);
         }
 
@@ -142,14 +149,14 @@ abstract class FunctionExecuteNode extends Node {
     protected static NativeArgumentLibrary[] getGenericNativeArgumentLibraries(int argCount) {
         NativeArgumentLibrary[] ret = new NativeArgumentLibrary[argCount];
         for (int i = 0; i < argCount; i++) {
-            ret[i] = NativeArgumentLibrary.getFactory().createDispatched(5);
+            ret[i] = NativeArgumentLibrary.getFactory().createDispatched(ARG_DISPATCH_LIMIT);
         }
         return ret;
     }
 
     @Specialization(replaces = "cachedArgCount")
     static Object genericExecute(LibFFIFunction receiver, Object[] args,
-            @CachedLibrary(limit = "5") NativeArgumentLibrary nativeArguments,
+            @CachedLibrary(limit = "ARG_DISPATCH_LIMIT") NativeArgumentLibrary nativeArguments,
             @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws ArityException, UnsupportedTypeException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();

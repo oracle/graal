@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -116,9 +118,11 @@ final class NFILibrary implements TruffleObject {
 
     @ExportMessage
     Object invokeMember(String symbol, Object[] args,
-                        @CachedLibrary(limit = "3") InteropLibrary executables) throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
+                        @CachedLibrary(limit = "3") InteropLibrary executables,
+                        @Cached BranchProfile exception) throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
         Object preBound = findSymbol(symbol);
         if (preBound == null) {
+            exception.enter();
             throw UnknownIdentifierException.create(symbol);
         }
         return executables.execute(preBound, args);
@@ -149,8 +153,10 @@ final class NFILibrary implements TruffleObject {
         }
 
         @ExportMessage
-        Object readArrayElement(long idx) throws InvalidArrayIndexException {
+        Object readArrayElement(long idx,
+                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(idx)) {
+                exception.enter();
                 throw InvalidArrayIndexException.create(idx);
             }
             return keys[(int) idx];
