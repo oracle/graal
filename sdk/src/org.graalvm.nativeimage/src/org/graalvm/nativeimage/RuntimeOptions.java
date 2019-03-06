@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 import org.graalvm.options.OptionDescriptors;
 
@@ -72,12 +74,31 @@ public final class RuntimeOptions {
     }
 
     /**
+     * Classes of options that can be queried through {@link #getOptions(EnumSet)}.
+     *
+     * @since 1.0
+     */
+    public enum OptionClass {
+        VM,
+        Compiler
+    }
+
+    /**
+     * Returns available run time options for the selected {@linkplain OptionClass option classes}.
+     *
+     * @since 1.0
+     */
+    public static OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
+        return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions(classes);
+    }
+
+    /**
      * Returns all available run time options.
      *
      * @since 1.0
      */
     public static OptionDescriptors getOptions() {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions();
+        return getOptions(EnumSet.allOf(OptionClass.class));
     }
 
 }

@@ -36,7 +36,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.option.HostedOptionKey;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
@@ -51,6 +50,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -99,7 +99,8 @@ public class JNIAccessFeature implements Feature {
     private boolean haveJavaRuntimeReflectionSupport;
 
     public static class Options {
-        @Option(help = "Print JNI methods added to generated image") public static final HostedOptionKey<Boolean> PrintJNIMethods = new HostedOptionKey<>(false);
+        @Option(help = "Print JNI methods added to generated image")//
+        public static final HostedOptionKey<Boolean> PrintJNIMethods = new HostedOptionKey<>(false);
     }
 
     private void abortIfSealed() {

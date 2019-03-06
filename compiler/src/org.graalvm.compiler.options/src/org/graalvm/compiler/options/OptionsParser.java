@@ -193,7 +193,7 @@ public class OptionsParser {
             }
         }
 
-        desc.optionKey.update(values, value);
+        desc.getOptionKey().update(values, value);
     }
 
     private static long parseLong(String v) {
