@@ -43,11 +43,11 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.BigBang.ConstantObjectsProfiler;
-import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
@@ -937,7 +937,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public AnalysisType getEnclosingType() {
-        return universe.lookup(wrapped.getEnclosingType());
+        ResolvedJavaType wrappedEnclosingType;
+        try {
+            wrappedEnclosingType = wrapped.getEnclosingType();
+        } catch (NoClassDefFoundError e) {
+            /* Ignore NoClassDefFoundError thrown by enclosing type resolution. */
+            return null;
+        }
+        return universe.lookup(wrappedEnclosingType);
     }
 
     @Override
