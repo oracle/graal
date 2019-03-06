@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Iterator;
 import java.util.Objects;
 
@@ -57,10 +58,13 @@ public class BuggyLanguageInspectDebugTest {
 
     private InspectorTester tester;
     private final MessageNodes messageNodes = new MessageNodes();
+    private final ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
 
     @After
     public void tearDown() {
+        assertTrue(errorStream.size() > 0); // Errors were printed
         tester = null;
+        errorStream.reset();
     }
 
     @Test
@@ -186,6 +190,7 @@ public class BuggyLanguageInspectDebugTest {
     // CheckStyle: stop line length check
     private void testBuggyCalls(ProxyLanguage language, String prefix, boolean haveScope, BugVerifier bugVerifier) throws Exception {
         tester = InspectorTester.start(true);
+        tester.setErr(errorStream);
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         assertTrue(tester.compareReceivedMessages(
@@ -207,6 +212,7 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":" + endLine + ",\"scriptId\":\"0\",\"endColumn\":" + endColumn + ",\"startColumn\":0,\"startLine\":0,\"length\":" +
                                         source.getLength() + ",\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"" + hash + "\"}}\n"));
 
+        skipConsoleMessages(tester);
         assertPaused(prefix + "1", haveScope, 1, 0);
         bugVerifier.verifyMessages(tester, 1);
         tester.sendMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
@@ -224,6 +230,7 @@ public class BuggyLanguageInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":" + endLine + ",\"scriptId\":\"1\",\"endColumn\":" + endColumn + ",\"startColumn\":0,\"startLine\":0,\"length\":" +
                                         source.getLength() + ",\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"" + hash + "\"}}\n"));
+        skipConsoleMessages(tester);
         assertPaused(prefix + "2", haveScope, 3, 1);
         bugVerifier.verifyMessages(tester, 2);
         tester.sendMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
@@ -241,6 +248,7 @@ public class BuggyLanguageInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":" + endLine + ",\"scriptId\":\"2\",\"endColumn\":" + endColumn + ",\"startColumn\":0,\"startLine\":0,\"length\":" +
                                         source.getLength() + ",\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"" + hash + "\"}}\n"));
+        skipConsoleMessages(tester);
         assertPaused(prefix + "3", haveScope, 5, 2);
         bugVerifier.verifyMessages(tester, 3);
         tester.sendMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
@@ -249,6 +257,14 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"method\":\"Debugger.resumed\"}\n"));
 
         tester.finish();
+        assertTrue(errorStream.size() > 0);
+    }
+
+    private static void skipConsoleMessages(InspectorTester tester) throws InterruptedException {
+        String consoleMessage;
+        do {
+            consoleMessage = tester.receiveMessages(true, "{\"method\":\"Runtime.consoleAPICalled\"", "\"type\":\"error\",\"timestamp\":", "}}\n");
+        } while (consoleMessage != null);
     }
 
     private interface BugVerifier {
@@ -264,6 +280,7 @@ public class BuggyLanguageInspectDebugTest {
             String description = (errNum == 2) ? "A TruffleException" : Integer.toString(errNum);
             String errObject = "ErrorObject " + errNum;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
+            skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + " " + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (2 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
@@ -292,6 +309,7 @@ public class BuggyLanguageInspectDebugTest {
                                                      "{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + " " + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (2 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]},\"id\":7}\n"));
             tester.sendMessage("{\"id\":8,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + (2 * errNum) + "\"}}");
+            skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"B\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
@@ -309,6 +327,7 @@ public class BuggyLanguageInspectDebugTest {
             String description = (errNum == 2) ? "A TruffleException" : Integer.toString(errNum);
             String errObject = "ErrorObject " + errNum;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
+            skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + " " + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (2 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
@@ -331,6 +350,7 @@ public class BuggyLanguageInspectDebugTest {
                                          "\"internalProperties\":[]},\"id\":7}\n"));
             tester.sendMessage("{\"id\":8,\"method\":\"Debugger.setVariableValue\",\"params\":{\"scopeNumber\":0,\"variableName\":\"a\",\"newValue\":{\"value\":1000},\"callFrameId\":\"0\"}}");
             // The protocol does not allow to provide an exception. It's consumed
+            skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{},\"id\":8}\n"));
         }
@@ -349,6 +369,7 @@ public class BuggyLanguageInspectDebugTest {
                                                      "{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + " " + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (2 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]},\"id\":7}\n"));
             tester.sendMessage("{\"id\":8,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + (2 * errNum) + "\"}}");
+            skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"A\",\"value\":{\"description\":\"" + errNum + "\",\"type\":\"number\",\"value\":" + errNum + "},\"configurable\":true,\"writable\":true}," +
                                                      "{\"isOwn\":true,\"enumerable\":true,\"name\":\"B\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}]," +

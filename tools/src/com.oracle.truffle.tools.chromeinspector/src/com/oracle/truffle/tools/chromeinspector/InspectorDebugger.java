@@ -659,10 +659,19 @@ public final class InspectorDebugger extends DebuggerDomain {
                         DebugScope debugScope = scope.getObject().getScope();
                         DebugValue debugValue = debugScope.getDeclaredValue(variableName);
                         Pair<DebugValue, Object> evaluatedValue = susp.lastEvaluatedValue.getAndSet(null);
-                        if (evaluatedValue != null && Objects.equals(evaluatedValue.getRight(), newValue.getPrimitiveValue())) {
-                            debugValue.set(evaluatedValue.getLeft());
-                        } else {
-                            context.setValue(debugValue, newValue);
+                        try {
+                            if (evaluatedValue != null && Objects.equals(evaluatedValue.getRight(), newValue.getPrimitiveValue())) {
+                                debugValue.set(evaluatedValue.getLeft());
+                            } else {
+                                context.setValue(debugValue, newValue);
+                            }
+                        } catch (DebugException ex) {
+                            PrintWriter err = context.getErr();
+                            if (err != null) {
+                                err.println("set of " + debugValue.getName() + " has caused " + ex);
+                                ex.printStackTrace(err);
+                            }
+                            throw ex;
                         }
                     }
                     return null;
