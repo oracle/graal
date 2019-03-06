@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -91,7 +92,7 @@ class Console extends AbstractInspectorObject {
     }
 
     @Override
-    protected TruffleObject getKeys() {
+    protected TruffleObject getMembers(boolean includeInternal) {
         return KEYS;
     }
 
@@ -140,13 +141,13 @@ class Console extends AbstractInspectorObject {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    protected Object invokeMethod(String name, Object[] arguments) {
+    protected Object invokeMember(String name, Object[] arguments) throws UnsupportedTypeException, UnknownIdentifierException {
         Object arg;
         if (arguments.length < 1) {
             arg = UNKNOWN;
         } else {
             if (!(arguments[0] instanceof String || arguments[0] instanceof Number)) {
-                throw UnsupportedTypeException.raise(arguments);
+                throw UnsupportedTypeException.create(arguments);
             }
             arg = arguments[0];
         }
@@ -223,7 +224,7 @@ class Console extends AbstractInspectorObject {
             case METHOD_TIME_STAMP:
                 break;
             default:
-                throw UnknownIdentifierException.raise(name);
+                throw UnknownIdentifierException.create(name);
         }
         connection.consoleAPICall(type, arg);
         return NullObject.INSTANCE;
@@ -232,17 +233,17 @@ class Console extends AbstractInspectorObject {
     static final class Keys extends AbstractInspectorArray {
 
         @Override
-        int getLength() {
+        int getArraySize() {
             return METHOD_NAMES.length;
         }
 
         @Override
-        Object getElementAt(int index) {
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
             if (index < 0 || index >= METHOD_NAMES.length) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(Integer.toString(index));
+                throw InvalidArrayIndexException.create(index);
             }
-            return METHOD_NAMES[index];
+            return METHOD_NAMES[(int) index];
         }
     }
 

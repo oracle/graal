@@ -28,38 +28,26 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * A base class for objects returned by Inspector module.
  */
-@MessageResolution(receiverType = AbstractInspectorObject.class)
+@ExportLibrary(InteropLibrary.class)
 abstract class AbstractInspectorObject implements TruffleObject {
-
-    private static final int METHOD_KEY_INFO = KeyInfo.READABLE | KeyInfo.INVOCABLE;
 
     protected AbstractInspectorObject() {
     }
 
-    @Override
-    public final ForeignAccess getForeignAccess() {
-        return AbstractInspectorObjectForeign.ACCESS;
-    }
-
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof AbstractInspectorObject;
-    }
-
-    protected abstract TruffleObject getKeys();
+    @ExportMessage
+    protected abstract Object getMembers(boolean includeInternal);
 
     protected abstract boolean isField(String name);
 
@@ -67,16 +55,53 @@ abstract class AbstractInspectorObject implements TruffleObject {
 
     protected abstract Object getFieldValueOrNull(String name);
 
-    protected abstract Object invokeMethod(String name, Object[] arguments);
+    @ExportMessage
+    protected abstract Object invokeMember(String name, Object[] arguments) throws UnsupportedTypeException, UnknownIdentifierException, ArityException, UnsupportedMessageException;
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    final boolean isMemberReadable(String member) {
+        return isMethod(member) || isField(member);
+    }
+
+    @ExportMessage
+    final boolean isMemberInvocable(String member) {
+        return isMethod(member);
+    }
+
+    @ExportMessage
+    protected final Object readMember(String name) throws UnknownIdentifierException {
+        Object value = getFieldValueOrNull(name);
+        if (value == null) {
+            value = getMethodExecutable(name);
+        }
+        return value;
+    }
+
+    @TruffleBoundary
+    final TruffleObject getMethodExecutable(String name) throws UnknownIdentifierException {
+        if (isMethod(name)) {
+            return createMethodExecutable(name);
+        } else {
+            throw UnknownIdentifierException.create(name);
+        }
+    }
+
+    @ExportMessage
     protected boolean isInstantiable() {
         return false;
     }
 
     @SuppressWarnings("unused")
-    protected Object createNew(Object[] arguments) {
+    @ExportMessage
+    protected Object instantiate(Object[] arguments) throws UnsupportedMessageException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.NEW);
+        throw UnsupportedMessageException.create();
     }
 
     private TruffleObject createMethodExecutable(String name) {
@@ -84,86 +109,10 @@ abstract class AbstractInspectorObject implements TruffleObject {
         return new MethodExecutable(this, name);
     }
 
-    @Resolve(message = "HAS_KEYS")
-    abstract static class InspectorHasKeysNode extends Node {
-
-        @SuppressWarnings("unused")
-        public Object access(AbstractInspectorObject inspector) {
-            return true;
-        }
-    }
-
-    @Resolve(message = "KEYS")
-    abstract static class InspectorKeysNode extends Node {
-
-        public Object access(AbstractInspectorObject inspector) {
-            return inspector.getKeys();
-        }
-    }
-
-    @Resolve(message = "KEY_INFO")
-    abstract static class InspectorKeyInfoNode extends Node {
-
-        public Object access(AbstractInspectorObject inspector, String name) {
-            if (inspector.isField(name)) {
-                return KeyInfo.READABLE;
-            } else if (inspector.isMethod(name)) {
-                return METHOD_KEY_INFO;
-            } else {
-                return 0;
-            }
-        }
-    }
-
-    @Resolve(message = "READ")
-    abstract static class InspectorReadNode extends Node {
-
-        public Object access(AbstractInspectorObject inspector, String name) {
-            Object value = inspector.getFieldValueOrNull(name);
-            if (value == null) {
-                value = getMethodExecutable(inspector, name);
-            }
-            return value;
-        }
-
-        @TruffleBoundary
-        TruffleObject getMethodExecutable(AbstractInspectorObject inspector, String name) {
-            if (inspector.isMethod(name)) {
-                return inspector.createMethodExecutable(name);
-            } else {
-                throw UnknownIdentifierException.raise(name);
-            }
-        }
-    }
-
-    @Resolve(message = "INVOKE")
-    abstract static class InspectorInvokeNode extends Node {
-
-        public Object access(AbstractInspectorObject inspector, String name, Object[] arguments) {
-            return inspector.invokeMethod(name, arguments);
-        }
-    }
-
-    @Resolve(message = "IS_INSTANTIABLE")
-    abstract static class InspectorIsInstantiableNode extends Node {
-
-        public Object access(AbstractInspectorObject inspector) {
-            return inspector.isInstantiable();
-        }
-    }
-
-    @Resolve(message = "NEW")
-    abstract static class InspectorNewNode extends Node {
-
-        public Object access(AbstractInspectorObject inspector, Object[] arguments) {
-            return inspector.createNew(arguments);
-        }
-    }
-
-    @MessageResolution(receiverType = MethodExecutable.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class MethodExecutable implements TruffleObject {
 
-        private final AbstractInspectorObject inspector;
+        final AbstractInspectorObject inspector;
         private final String name;
 
         MethodExecutable(AbstractInspectorObject inspector, String name) {
@@ -171,46 +120,20 @@ abstract class AbstractInspectorObject implements TruffleObject {
             this.name = name;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return MethodExecutableForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof MethodExecutable;
-        }
-
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class IsExecutableNode extends Node {
-
-            @SuppressWarnings("unused")
-            public Object access(MethodExecutable exec) {
-                return true;
-            }
-        }
-
-        @Resolve(message = "EXECUTE")
-        abstract static class ExecuteNode extends Node {
-
-            @Child private Node invokeNode;
-
-            public Object access(MethodExecutable exec, Object[] arguments) {
-                if (invokeNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    invokeNode = insert(Message.INVOKE.createNode());
-                }
-                try {
-                    return ForeignAccess.sendInvoke(invokeNode, exec.inspector, exec.name, arguments);
-                } catch (ArityException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw ArityException.raise(ex.getExpectedArity(), ex.getActualArity());
-                } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedMessageException.raise(Message.EXECUTE);
-                } catch (UnsupportedTypeException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedTypeException.raise(ex.getSuppliedValues());
-                }
+        @ExportMessage(limit = "3")
+        Object execute(Object[] arguments, @CachedLibrary("this.inspector") InteropLibrary interop)
+                        throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+            try {
+                return interop.invokeMember(inspector, name, arguments);
+            } catch (UnknownIdentifierException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError();
             }
         }
     }

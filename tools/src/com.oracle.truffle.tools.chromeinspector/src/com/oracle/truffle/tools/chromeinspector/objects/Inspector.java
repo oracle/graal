@@ -52,8 +52,8 @@ public final class Inspector extends AbstractInspectorObject {
     private static final String METHOD_CLOSE = "close";
     private static final String METHOD_OPEN = "open";
     private static final String METHOD_URL = "url";
-    private static final String[] NAMES = new String[]{FIELD_CONSOLE, FIELD_SESSION, METHOD_CLOSE, METHOD_OPEN, METHOD_URL};
-    private static final TruffleObject KEYS = new Keys();
+    static final String[] NAMES = new String[]{FIELD_CONSOLE, FIELD_SESSION, METHOD_CLOSE, METHOD_OPEN, METHOD_URL};
+    private static final TruffleObject KEYS = new Keys(NAMES);
 
     private InspectorServerConnection connection;
     private final InspectorServerConnection.Open open;
@@ -74,7 +74,7 @@ public final class Inspector extends AbstractInspectorObject {
     }
 
     @Override
-    protected TruffleObject getKeys() {
+    protected TruffleObject getMembers(boolean includeInternal) {
         return KEYS;
     }
 
@@ -114,7 +114,7 @@ public final class Inspector extends AbstractInspectorObject {
     }
 
     @Override
-    protected Object invokeMethod(String name, Object[] arguments) {
+    protected Object invokeMember(String name, Object[] arguments) throws UnknownIdentifierException {
         switch (name) {
             case METHOD_CLOSE:
                 return methodClose();
@@ -124,7 +124,7 @@ public final class Inspector extends AbstractInspectorObject {
                 return methodUrl();
             default:
                 CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(name);
+                throw UnknownIdentifierException.create(name);
         }
     }
 
@@ -189,23 +189,6 @@ public final class Inspector extends AbstractInspectorObject {
             return connection.getURL();
         } else {
             return NullObject.INSTANCE;
-        }
-    }
-
-    static final class Keys extends AbstractInspectorArray {
-
-        @Override
-        int getLength() {
-            return NAMES.length;
-        }
-
-        @Override
-        Object getElementAt(int index) {
-            if (index < 0 || index >= NAMES.length) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(Integer.toString(index));
-            }
-            return NAMES[index];
         }
     }
 

@@ -24,53 +24,33 @@
  */
 package com.oracle.truffle.tools.chromeinspector.objects;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * A base class for arrays returned by Inspector module.
  */
-@MessageResolution(receiverType = AbstractInspectorArray.class)
+@ExportLibrary(InteropLibrary.class)
 abstract class AbstractInspectorArray implements TruffleObject {
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return AbstractInspectorArrayForeign.ACCESS;
+    @ExportMessage
+    abstract int getArraySize();
+
+    @ExportMessage
+    abstract Object readArrayElement(long index) throws InvalidArrayIndexException;
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean hasArrayElements() {
+        return true;
     }
 
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof AbstractInspectorArray;
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < getArraySize();
     }
 
-    abstract int getLength();
-
-    abstract Object getElementAt(int index);
-
-    @Resolve(message = "HAS_SIZE")
-    abstract static class InspectorArrayHasSizeNode extends Node {
-
-        @SuppressWarnings("unused")
-        public Object access(AbstractInspectorArray array) {
-            return true;
-        }
-    }
-
-    @Resolve(message = "GET_SIZE")
-    abstract static class InspectorArrayGetSizeNode extends Node {
-
-        public Object access(AbstractInspectorArray array) {
-            return array.getLength();
-        }
-    }
-
-    @Resolve(message = "READ")
-    abstract static class InspectorArrayReadNode extends Node {
-
-        public Object access(AbstractInspectorArray array, int index) {
-            return array.getElementAt(index);
-        }
-    }
 }

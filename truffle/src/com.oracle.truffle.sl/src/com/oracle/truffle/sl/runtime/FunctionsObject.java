@@ -102,7 +102,7 @@ final class FunctionsObject implements TruffleObject {
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
-            return index > 0 && index < names.length;
+            return index >= 0 && index < names.length;
         }
 
         @ExportMessage

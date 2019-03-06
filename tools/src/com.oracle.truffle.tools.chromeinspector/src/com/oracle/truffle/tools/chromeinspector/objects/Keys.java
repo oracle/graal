@@ -24,36 +24,29 @@
  */
 package com.oracle.truffle.tools.chromeinspector.objects;
 
-import static com.oracle.truffle.tools.chromeinspector.objects.JSONTruffleObject.getTruffleValueFromJSONValue;
-
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.tools.utils.json.JSONArray;
 
-/**
- * TruffleObject of a JSON array.
- */
-public final class JSONTruffleArray extends AbstractInspectorArray {
+final class Keys extends AbstractInspectorArray {
 
-    private final JSONArray json;
+    @CompilationFinal(dimensions = 1) private final String[] names;
 
-    public JSONTruffleArray(JSONArray json) {
-        this.json = json;
+    Keys(String[] names) {
+        this.names = names;
     }
 
     @Override
     int getArraySize() {
-        return json.length();
+        return names.length;
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
     Object readArrayElement(long index) throws InvalidArrayIndexException {
-        if (index < 0 || index >= json.length()) {
+        if (index < 0 || index >= Inspector.NAMES.length) {
+            CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        Object value = json.get((int) index);
-        return getTruffleValueFromJSONValue(value);
+        return names[(int) index];
     }
-
 }
