@@ -358,7 +358,7 @@ def build_native_image_image():
     native_image_on_jvm(['--tool:native-image', '-H:Path=' + image_dir])
 
 svmDistribution = ['substratevm:SVM']
-llvmDistributions = []
+llvmDistributions = ['compiler:GRAAL_LLVM', 'substratevm:SVM_LLVM']
 graalDistribution = ['compiler:GRAAL']
 librarySupportDistribution = ['substratevm:LIBRARY_SUPPORT']
 

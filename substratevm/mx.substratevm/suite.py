@@ -21,6 +21,8 @@ suite = {
 
     "versionConflictResolution": "latest",
 
+    "javac.lint.overrides": "-path",
+
     "imports": {
         "suites": [
             {
@@ -141,6 +143,23 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.core.graal",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
+        "com.oracle.svm.core.graal.llvm": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+                "compiler:GRAAL_LLVM"
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
@@ -866,5 +885,15 @@ suite = {
                 "native-image.properties" : "file:mx.substratevm/tools-junit.properties",
             },
         },
+
+        "SVM_LLVM" : {
+            "subDir" : "src",
+            "dependencies" : ["com.oracle.svm.core.graal.llvm"],
+            "distDependencies" : [
+                "SVM",
+                "compiler:GRAAL_LLVM"
+            ],
+            "maven" : False,
+        }
     },
 }
