@@ -1118,10 +1118,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return pn;
     }
 
-    private String computeSimpleName() {
-        return getSimpleName0();
-    }
-
     @Override
     @Substitute
     public String toString() {
