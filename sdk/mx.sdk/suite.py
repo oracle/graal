@@ -73,11 +73,11 @@ suite = {
   "imports": {},
   "libraries" : {
     "JLINE" : {
-      "sha1" : "fdedd5f2522122102f0b3db85fe7aa563a009926",
+      "sha1" : "c3aeac59c022bdc497c8c48ed86fa50450e4896a",
       "maven" : {
         "groupId" : "jline",
         "artifactId" : "jline",
-        "version" : "2.14.5",
+        "version" : "2.14.6",
       },
       "license" : "BSD-new"
     },
