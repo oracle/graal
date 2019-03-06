@@ -57,6 +57,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.config.ConfigurationDirectories;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess.JNIRuntimeAccessibilitySupport;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
@@ -117,7 +118,7 @@ public class JNIAccessFeature implements Feature {
         ImageSingletons.add(JNIRuntimeAccessibilitySupport.class, registry);
 
         ReflectionConfigurationParser parser = new ReflectionConfigurationParser(registry, access.getImageClassLoader());
-        parser.parseAndRegisterConfigurations("JNI", SubstrateOptions.JNIConfigurationFiles, SubstrateOptions.JNIConfigurationResources);
+        parser.parseAndRegisterConfigurations("JNI", SubstrateOptions.JNIConfigurationFiles, SubstrateOptions.JNIConfigurationResources, ConfigurationDirectories.FileNames.JNI_NAME);
     }
 
     private class JNIRuntimeAccessibilitySupportImpl implements JNIRuntimeAccessibilitySupport, ReflectionRegistry {

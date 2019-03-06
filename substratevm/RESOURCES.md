@@ -1,4 +1,5 @@
 # Accessing resources in Substrate VM images
+(See also the [guide on assisted configuration of Java resources and other dynamic features](CONFIGURE.md))
 
 By default, the native-image builder will not integrate any of the resources which are on the classpath during image building into the image it creates.
 To make calls such as `Class.getResource()`, `Class.getResourceAsStream()` (or the corresponding ClassLoader methods) return specific resources (instead of null), the resources that should be accessible at image runtime need to be explicitly specified. This can be done via a configuration file such as the following:

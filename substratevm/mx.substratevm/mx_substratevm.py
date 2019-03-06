@@ -331,6 +331,7 @@ tools_map = {
     'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
+    'native-image-configure' : ToolDescriptor(),
 }
 
 def native_image_path(native_image_root):
@@ -374,7 +375,7 @@ def layout_native_image_root(native_image_root):
     def native_image_extract_dists(subdir, dist_names):
         native_image_extract(names_to_dists(dist_names), subdir, native_image_root)
 
-    native_image_layout_dists(join('lib', 'graalvm'), ['substratevm:SVM_DRIVER', 'sdk:LAUNCHER_COMMON'])
+    native_image_layout_dists(join('lib', 'graalvm'), ['substratevm:SVM_DRIVER', 'substratevm:SVM_CONFIGURE', 'sdk:LAUNCHER_COMMON'])
 
     # Create native-image layout for sdk parts
     graal_sdk_dists = ['sdk:GRAAL_SDK']
@@ -908,6 +909,17 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=suite,
+    name='SubstrateVM agent',
+    short_name='svmag',
+    dir_name='.',
+    license_files=[],
+    third_party_license_files=[],
+    support_distributions=['substratevm:SVM_GRAALVM_AGENT_SUPPORT'],
+))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+    suite=suite,
     name='Polyglot.Native',
     short_name='polynative',
     dir_name='polyglot',
@@ -1066,6 +1078,18 @@ def native_image_on_jvm(args, **kwargs):
         '-Dnative-image.root=' + suite_native_image_root(),
         '-cp', os.pathsep.join(driver_cp),
         mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
+
+
+@mx.command(suite.name, 'native-image-configure')
+def native_image_configure_on_jvm(args, **kwargs):
+    configure_cp = [join(suite_native_image_root(), 'lib', 'graalvm', 'svm-configure.jar')]
+    configure_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
+    configure_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in configure_cp))
+    svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
+    run_java([
+        '-Dorg.graalvm.version=' + svm_version,
+        '-cp', os.pathsep.join(configure_cp),
+        mx.dependency('substratevm:SVM_CONFIGURE').mainClass] + args, **kwargs)
 
 
 @mx.command(suite.name, 'native-unittest')

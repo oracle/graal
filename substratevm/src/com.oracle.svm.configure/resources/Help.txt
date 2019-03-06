@@ -1,0 +1,44 @@
+
+GraalVM native-image-configure tool
+
+This tool can be used to prepare a configuration of JNI, reflection and
+resources for a native-image build.
+
+Usage: native-image-configure process-trace [options] tracefile...
+       native-image-configure help
+
+process-trace             processes trace file(s) from the agent.
+    --output-dir=<path>   writes a set of configuration files to the directory
+                          that exists at the given path. Existing files are
+                          replaced. This is equivalent to specifying all of:
+                           --reflect-output=<path>/reflect-config.json
+                           --jni-output=<path>/jni-config.json
+                           --proxy-output=<path>/proxy-config.json
+                           --resource-output=<path>/resource-config.json
+    --reflect-output=<path>
+                          write a reflection configuration file with the given
+                          path. This file can be later provided to native-image
+                          with -H:ReflectionConfigurationFiles=<path>.
+    --jni-output=<path>
+                          write a JNI configuration file with the given path.
+                          This file can be later provided to native-image with
+                          -H:JNIConfigurationFiles=<path>.
+    --proxy-output=<path>
+                          write a dynamic proxy configuration file at the given
+                          path. This file can be later provided to native-image
+                          with -H:DynamicProxyConfigurationFiles=<path>.
+    --resource-output=<path>
+                          write a configuration file containing used resources
+                          (getResource) with the given path. This file can be
+                          later provided to native-image with
+                          -H:ResourceConfigurationFiles=<path>.
+                          The paths in the configuration file might need to be
+                          adjusted for the build directories/classpath.
+    --no-filter
+                          usage of JNI, reflection and resources in internal
+                          classes does not have to be configured for builds
+                          with native-image and by default, is excluded from
+                          the generated configurations. This option disables
+                          this filter.
+
+help                      prints this help message.

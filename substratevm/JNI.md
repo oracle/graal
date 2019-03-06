@@ -1,4 +1,5 @@
 # Java Native Interface (JNI) on Substrate VM
+(See also the [guide on assisted configuration of JNI and other dynamic features](CONFIGURE.md))
 
 JNI is a native API that enables Java code to interact with native code and vice versa.
 This page gives an overview over the JNI implementation in Substrate VM.

@@ -1,4 +1,5 @@
 # Reflection on Substrate VM
+(See also the [guide on assisted configuration of Java reflection and other dynamic features](CONFIGURE.md))
 
 Java reflection support (the `java.lang.reflect.*` API) enables Java code to examine its own classes, methods and fields and their properties at runtime.
 

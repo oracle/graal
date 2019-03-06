@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.json;
+package com.oracle.svm.configure.config;
 
-@SuppressWarnings("serial")
-public final class JSONParserException extends RuntimeException {
+import java.io.IOException;
+import java.util.Comparator;
 
-    public JSONParserException(final String msg) {
-        super(msg);
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
+
+public class ResourceConfiguration implements JsonPrintable {
+    private final MatchSet<String> resources = MatchSet.create(Comparator.naturalOrder(), (String s, JsonWriter w) -> w.append('{').quote("pattern").append(':').quote(s).append('}'));
+
+    public void add(String resource) {
+        resources.add(resource);
+    }
+
+    public void addLocationIndependent(String resource) {
+        add(resource);
+    }
+
+    @Override
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.append('{').indent().newline();
+        writer.quote("resources").append(':');
+        resources.printJson(writer);
+        writer.unindent().newline().append('}').newline();
     }
 }

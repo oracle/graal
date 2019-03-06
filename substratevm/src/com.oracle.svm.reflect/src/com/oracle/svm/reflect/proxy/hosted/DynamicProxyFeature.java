@@ -36,6 +36,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.config.ConfigurationDirectories;
 import com.oracle.svm.hosted.config.ProxyConfigurationParser;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.proxy.DynamicProxySupport;
@@ -65,6 +66,7 @@ public final class DynamicProxyFeature implements Feature {
         ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
 
         ProxyConfigurationParser parser = new ProxyConfigurationParser(access.getImageClassLoader(), dynamicProxySupport);
-        parser.parseAndRegisterConfigurations("dynamic proxy", Options.DynamicProxyConfigurationFiles, Options.DynamicProxyConfigurationResources);
+        parser.parseAndRegisterConfigurations("dynamic proxy", Options.DynamicProxyConfigurationFiles, Options.DynamicProxyConfigurationResources,
+                        ConfigurationDirectories.FileNames.DYNAMIC_PROXY_NAME);
     }
 }
