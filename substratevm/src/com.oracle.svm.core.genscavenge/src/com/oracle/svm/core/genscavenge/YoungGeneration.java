@@ -92,7 +92,7 @@ public class YoungGeneration extends Generation {
     }
 
     @Override
-    protected Object promoteObject(Object original) {
+    protected Object promoteObject(Object original, Pointer objRef, int innerOffset, boolean compressed) {
         throw VMError.shouldNotReachHere("Can not promote to a YoungGeneration.");
     }
 
