@@ -34,7 +34,6 @@ import subprocess
 
 from abc import ABCMeta
 from argparse import ArgumentParser
-from contextlib import contextmanager
 from os.path import relpath, join, dirname, basename, exists, isfile
 from collections import OrderedDict
 from zipfile import ZipFile
