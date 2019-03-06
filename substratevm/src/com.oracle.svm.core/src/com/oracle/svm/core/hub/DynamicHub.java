@@ -281,9 +281,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
 
-    private final LazyFinalReference<String> simpleNameReference = new LazyFinalReference<>(this::computeSimpleName);
-
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     Target_java_lang_ClassLoader classLoader) {
@@ -608,7 +605,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(name="getSimpleName", onlyWith = JDK9OrLater.class)
     private String getSimpleNameJDK9OrLater() {
-        return simpleNameReference.get();
+        return getSimpleName0();
     }
 
     @KeepOriginal //
