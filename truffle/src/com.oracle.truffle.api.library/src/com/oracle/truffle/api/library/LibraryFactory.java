@@ -165,7 +165,10 @@ public abstract class LibraryFactory<T extends Library> {
         assert (cached = createAssertionsImpl(export, cached)) != null;
         if (!NodeUtil.isAdoptable(cached)) {
             assert cached.accepts(receiver) : String.format("Invalid accepts implementation detected in '%s'", dispatchClass.getName());
-            cachedCache.putIfAbsent(dispatchClass, cached);
+            T otherCached = cachedCache.putIfAbsent(dispatchClass, cached);
+            if (otherCached != null) {
+                return otherCached;
+            }
         }
         return cached;
     }
@@ -208,7 +211,10 @@ public abstract class LibraryFactory<T extends Library> {
         assert validateExport(receiver, dispatchClass, uncached);
         assert uncached.accepts(receiver);
         assert (uncached = createAssertionsImpl(export, uncached)) != null;
-        uncachedCache.putIfAbsent(dispatchClass, uncached);
+        T otherUncached = uncachedCache.putIfAbsent(dispatchClass, uncached);
+        if (otherUncached != null) {
+            return otherUncached;
+        }
         return uncached;
     }
 

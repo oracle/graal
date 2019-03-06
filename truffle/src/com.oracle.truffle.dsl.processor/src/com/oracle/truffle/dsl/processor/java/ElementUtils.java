@@ -741,10 +741,11 @@ public class ElementUtils {
 
     public static List<Element> getElementHierarchy(Element e) {
         List<Element> elements = new ArrayList<>();
+        Element enclosing = null;
         if (e != null) {
             elements.add(e);
+            enclosing = e.getEnclosingElement();
         }
-        Element enclosing = e.getEnclosingElement();
         while (enclosing != null && enclosing.getKind() != ElementKind.PACKAGE) {
             elements.add(enclosing);
             enclosing = enclosing.getEnclosingElement();

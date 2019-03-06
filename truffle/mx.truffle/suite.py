@@ -153,15 +153,13 @@ suite = {
       "uses" : ["com.oracle.truffle.api.impl.TruffleLocator",],
       "dependencies" : [
         "sdk:GRAAL_SDK",
-        "com.oracle.truffle.api.library",
-        "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.interop",
+        "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.utilities",
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
-      "forceJavac" : "true",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
@@ -284,7 +282,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.library",
         "com.oracle.truffle.api.instrumentation",
         "truffle:ANTLR4"
@@ -344,7 +341,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.library",
       ],
@@ -467,7 +463,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.object.dsl",
-        "com.oracle.truffle.api.library",
         "com.oracle.truffle.dsl.processor"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -499,7 +494,7 @@ suite = {
     "com.oracle.truffle.object.basic" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.object", "com.oracle.truffle.api.library"],
+      "dependencies" : ["com.oracle.truffle.object"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle",

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.test.ExpectError;
 
 @ExpectError("Missing isInstance method in class com.oracle.truffle.api.dsl.test.interop.InvalidTruffleObject")
 @com.oracle.truffle.api.interop.MessageResolution(receiverType = InvalidTruffleObject.class)
-@SuppressWarnings("deprecation") public class InvalidTruffleObjectMR {
+@SuppressWarnings("deprecation")
+public class InvalidTruffleObjectMR {
 
 }

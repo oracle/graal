@@ -50,7 +50,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation") public class ValidTruffleObject15Test {
+@SuppressWarnings("deprecation")
+public class ValidTruffleObject15Test {
 
     @Test(expected = UnsupportedSpecializationException.class)
     public void expectUnsupportedSpecializationException() {

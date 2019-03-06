@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.dsl.test.interop;
 
 @com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject0.class)
-@SuppressWarnings("deprecation") public class MyMessageImplementations extends MySuperMessageImplementations {
+@SuppressWarnings("deprecation")
+public class MyMessageImplementations extends MySuperMessageImplementations {
 
 }

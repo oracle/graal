@@ -42,7 +42,8 @@ package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 
-@SuppressWarnings("deprecation") public class ValidTruffleObject1 extends ValidTruffleObject0 {
+@SuppressWarnings("deprecation")
+public class ValidTruffleObject1 extends ValidTruffleObject0 {
     public static boolean isInstance(TruffleObject obj) {
         return obj instanceof ValidTruffleObject1;
     }

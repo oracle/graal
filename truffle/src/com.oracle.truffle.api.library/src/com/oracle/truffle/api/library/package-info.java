@@ -44,8 +44,9 @@
  * Libraries enable modularity and encapsulation for representation types in language
  * implementations.
  * <p>
- * Before reading the javadoc make sure you have read the <a href=
- * "https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibaries.md">tutorial</a>.
+ * Before reading the javadoc make sure you have read the
+ * <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibaries.md">tutorial
+ * </a>.
  * <p>
  * Start learning Truffle Libraries by reading the following articles:
  * <ul>

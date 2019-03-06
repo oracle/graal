@@ -355,61 +355,59 @@ final class LegacyToLibraryNode extends Node {
 
     Object send(TruffleObject receiver, Object[] a) throws InteropException {
         if (message instanceof KnownMessage) {
-            if (message instanceof KnownMessage) {
-                switch (message.hashCode()) {
-                    case Read.HASH:
-                        Object id = a.length >= 1 ? a[0] : null;
-                        return sendRead(receiver, id);
-                    case Write.HASH:
-                        id = a.length >= 1 ? a[0] : null;
-                        Object value = a.length >= 2 ? a[1] : null;
-                        sendWrite(receiver, id, value);
-                        return a[1];
-                    case Remove.HASH:
-                        id = a.length >= 1 ? a[0] : null;
-                        return sendRemove(receiver, id);
-                    case KeyInfoMsg.HASH:
-                        id = a.length >= 1 ? a[0] : null;
-                        return sendKeyInfo(receiver, id);
-                    case Invoke.HASH:
-                        id = a.length >= 1 ? a[0] : null;
-                        Object[] args;
-                        if (a.length >= 2) {
-                            args = new Object[a.length - 1];
-                            System.arraycopy(a, 1, args, 0, args.length);
-                        } else {
-                            args = new Object[0];
-                        }
-                        return sendInvoke(receiver, (String) id, args);
-                    case HasKeys.HASH:
-                        return sendHasKeys(receiver);
-                    case Keys.HASH:
-                        return sendKeys(receiver);
-                    case Unbox.HASH:
-                        return sendUnbox(receiver);
-                    case IsBoxed.HASH:
-                        return sendIsBoxed(receiver);
-                    case HasSize.HASH:
-                        return sendHasSize(receiver);
-                    case GetSize.HASH:
-                        return sendGetSize(receiver);
-                    case Execute.HASH:
-                        return sendExecute(receiver, a);
-                    case IsExecutable.HASH:
-                        return sendIsExecutable(receiver);
-                    case New.HASH:
-                        return sendNew(receiver, a);
-                    case IsInstantiable.HASH:
-                        return sendIsInstantiable(receiver);
-                    case IsPointer.HASH:
-                        return sendIsPointer(receiver);
-                    case AsPointer.HASH:
-                        return sendAsPointer(receiver);
-                    case ToNative.HASH:
-                        return sendToNative(receiver);
-                    case IsNull.HASH:
-                        return sendIsNull(receiver);
-                }
+            switch (message.hashCode()) {
+                case Read.HASH:
+                    Object id = a.length >= 1 ? a[0] : null;
+                    return sendRead(receiver, id);
+                case Write.HASH:
+                    id = a.length >= 1 ? a[0] : null;
+                    Object value = a.length >= 2 ? a[1] : null;
+                    sendWrite(receiver, id, value);
+                    return a[1];
+                case Remove.HASH:
+                    id = a.length >= 1 ? a[0] : null;
+                    return sendRemove(receiver, id);
+                case KeyInfoMsg.HASH:
+                    id = a.length >= 1 ? a[0] : null;
+                    return sendKeyInfo(receiver, id);
+                case Invoke.HASH:
+                    id = a.length >= 1 ? a[0] : null;
+                    Object[] args;
+                    if (a.length >= 2) {
+                        args = new Object[a.length - 1];
+                        System.arraycopy(a, 1, args, 0, args.length);
+                    } else {
+                        args = new Object[0];
+                    }
+                    return sendInvoke(receiver, (String) id, args);
+                case HasKeys.HASH:
+                    return sendHasKeys(receiver);
+                case Keys.HASH:
+                    return sendKeys(receiver);
+                case Unbox.HASH:
+                    return sendUnbox(receiver);
+                case IsBoxed.HASH:
+                    return sendIsBoxed(receiver);
+                case HasSize.HASH:
+                    return sendHasSize(receiver);
+                case GetSize.HASH:
+                    return sendGetSize(receiver);
+                case Execute.HASH:
+                    return sendExecute(receiver, a);
+                case IsExecutable.HASH:
+                    return sendIsExecutable(receiver);
+                case New.HASH:
+                    return sendNew(receiver, a);
+                case IsInstantiable.HASH:
+                    return sendIsInstantiable(receiver);
+                case IsPointer.HASH:
+                    return sendIsPointer(receiver);
+                case AsPointer.HASH:
+                    return sendAsPointer(receiver);
+                case ToNative.HASH:
+                    return sendToNative(receiver);
+                case IsNull.HASH:
+                    return sendIsNull(receiver);
             }
         }
         // TODO allow sending custom messages

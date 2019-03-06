@@ -317,6 +317,9 @@ public class FlatNodeGenFactory {
     }
 
     private static String createSpecializationLocalName(SpecializationData s) {
+        if (s == null) {
+            return null;
+        }
         return "s" + s.getIndex() + "_";
     }
 

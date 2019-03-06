@@ -493,8 +493,8 @@ public abstract class Message {
      * @since 0.8 or earlier
      * @see ForeignAccess#sendHasSize(com.oracle.truffle.api.nodes.Node,
      *      com.oracle.truffle.api.interop.TruffleObject)
-     * @deprecated use {@link ArrayLibrary#hasArrayElements(Object)} instead. See {@link InteropLibrary} for
-     *             an overview of the new interop messages.
+     * @deprecated use {@link ArrayLibrary#hasArrayElements(Object)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated public static final Message HAS_SIZE = HasSize.INSTANCE;
 
@@ -749,9 +749,8 @@ public abstract class Message {
      *         {@link ForeignAccess#send(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...)}
      *         method.
      * @since 0.8 or earlier
-     * @deprecated use {@link Library#create(Class)} or
-     *             {@link Library#getUncached(Class, Object)} instead. see {@link InteropLibrary}
-     *             for examples.
+     * @deprecated use {@link Library#create(Class)} or {@link Library#getUncached(Class, Object)}
+     *             instead. see {@link InteropLibrary} for examples.
      */
     @Deprecated
     @SuppressWarnings("all")

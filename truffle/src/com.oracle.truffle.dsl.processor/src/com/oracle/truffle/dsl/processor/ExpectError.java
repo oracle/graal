@@ -74,7 +74,6 @@ public class ExpectError {
         }
     }
 
-
     public static boolean isExpectedError(ProcessingEnvironment processingEnv, Element element, String actualText) {
         List<String> expectedErrors = getExpectedErrors(processingEnv, element);
         for (String expectedText : expectedErrors) {

@@ -44,7 +44,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 @com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject9.class)
-@SuppressWarnings("deprecation") public class ValidTruffleObject9MR {
+@SuppressWarnings("deprecation")
+public class ValidTruffleObject9MR {
     @SuppressWarnings("unknown-message")
     @com.oracle.truffle.api.interop.Resolve(message = "unknownMsg")
     public abstract static class UnknownMessage extends Node {

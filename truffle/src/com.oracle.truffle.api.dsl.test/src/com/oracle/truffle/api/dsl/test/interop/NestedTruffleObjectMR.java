@@ -45,7 +45,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 @com.oracle.truffle.api.interop.MessageResolution(receiverType = NestedTruffleObject.class)
-@SuppressWarnings("deprecation") public class NestedTruffleObjectMR {
+@SuppressWarnings("deprecation")
+public class NestedTruffleObjectMR {
     @com.oracle.truffle.api.interop.Resolve(message = "READ")
     public abstract static class ReadNode8 extends Node {
 
