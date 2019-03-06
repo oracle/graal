@@ -1347,7 +1347,12 @@ _final_graalvm_distribution = 'uninitialized'
 _stage1_graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _polyglot_launcher_project = 'uninitialized'
-_truffle_on_cp_layout_dest = '<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath'
+
+def _platform_classpath(cp):
+    if mx.get_os() == 'windows':
+        return os.pathsep.join(mx.normpath(entry) for entry in cp.split(':'))
+    return cp
+
 _base_graalvm_layout = {
     "<jdk_base>/": [
         "file:GRAALVM-README.md",
@@ -1361,8 +1366,8 @@ _base_graalvm_layout = {
         "dependency:sdk:LAUNCHER_COMMON",
         "dependency:sdk:LAUNCHER_COMMON/*.src.zip",
     ],
-    _truffle_on_cp_layout_dest: [
-        "classpath:../truffle/truffle-api.jar:../truffle/locator.jar",
+    "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
+        "string:" + _platform_classpath("../truffle/truffle-api.jar:../truffle/locator.jar"),
     ],
     "<jdk_base>/jre/lib/truffle/": [
         "dependency:truffle:TRUFFLE_API",
@@ -1376,8 +1381,6 @@ _base_graalvm_layout = {
     ],
 }
 
-if mx.get_os() == 'windows':
-    del _base_graalvm_layout[_truffle_on_cp_layout_dest]
 
 def get_stage1_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
