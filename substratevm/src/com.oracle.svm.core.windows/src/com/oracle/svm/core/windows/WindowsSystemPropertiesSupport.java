@@ -24,18 +24,16 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.windows.headers.WinBase;
+import java.nio.ByteBuffer;
+
 import org.graalvm.nativeimage.*;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
-
-import java.nio.ByteBuffer;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.windows.headers.WinBase;
 
 @Platforms(Platform.WINDOWS.class)
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {

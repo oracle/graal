@@ -24,27 +24,22 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
+
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
+import org.graalvm.nativeimage.c.function.CLibrary;
+
+import com.oracle.svm.core.annotate.*;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
