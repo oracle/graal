@@ -45,6 +45,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * The [@Option](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html) annotation can now specify the [stability](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionStability.html) of an option.
 * Fixed the case of the method [`TruffleStackTrace.getStacktrace`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleStackTrace.html#getStacktrace-java.lang.Throwable-) to `TruffleStackTrace.getStackTrace`.
 * Added a getter for [name separator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getFileNameSeparator--) used by `TruffleFile`'s paths.
+* Added support for receiver object in a frame's Scope: [Scope.Builder receiver(String, Object)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.Builder.html#receiver-java.lang.String-java.lang.Object-), [Scope.getReceiver()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.html#getReceiver--), [Scope.getReceiverName()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.html#getReceiverName--) and [DebugScope.getReceiver()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugScope.html#getReceiver--).
 
 ## Version 1.0.0 RC13
 * Added [Debugger.getSessionCount()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getSessionCount--) to return the number of active debugger sessions.

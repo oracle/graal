@@ -28,12 +28,10 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.SuspendAnchor;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.SourceSection;
 
 public final class CallFrame {
 
-    private final TruffleInstrument.Env env;
     private final DebugStackFrame frame;
     private final int depth;
     private final Location location;
@@ -43,9 +41,8 @@ public final class CallFrame {
     private final RemoteObject returnObject;
     private final Scope[] scopes;
 
-    public CallFrame(TruffleInstrument.Env env, DebugStackFrame frame, int depth, Script script, SourceSection sourceSection, SuspendAnchor anchor,
+    public CallFrame(DebugStackFrame frame, int depth, Script script, SourceSection sourceSection, SuspendAnchor anchor,
                     SourceSection functionSourceSection, RemoteObject thisObject, RemoteObject returnObject, Scope... scopes) {
-        this.env = env;
         this.frame = frame;
         this.depth = depth;
         if (anchor == SuspendAnchor.BEFORE) {
@@ -92,12 +89,7 @@ public final class CallFrame {
         json.putOpt("functionLocation", (functionLocation != null) ? functionLocation.toJSON() : null);
         json.put("url", url);
         json.put("scopeChain", Scope.createScopesJSON(scopes));
-        if (thisObject != null) {
-            json.put("this", thisObject.toJSON());
-        } else {
-            RemoteObject nullObj = RemoteObject.createNullObject(env, frame.getLanguage());
-            json.put("this", nullObj.toJSON());
-        }
+        json.put("this", thisObject.toJSON());
         if (returnObject != null) {
             json.put("returnValue", returnObject.toJSON());
         }

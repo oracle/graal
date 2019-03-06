@@ -376,6 +376,7 @@ public final class InspectorDebugger extends DebuggerDomain {
             String scopeType = "block";
             boolean wasFunction = false;
             SourceSection functionSourceSection = null;
+            DebugValue thisValue = null;
             if (dscope == null) {
                 functionSourceSection = sourceSection;
             }
@@ -385,6 +386,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                 } else if (dscope.isFunctionScope()) {
                     scopeType = "local";
                     functionSourceSection = dscope.getSourceSection();
+                    thisValue = dscope.getReceiver();
                     wasFunction = true;
                 }
                 if (dscope.isFunctionScope() || dscope.getDeclaredValues().iterator().hasNext()) {
@@ -414,8 +416,14 @@ public final class InspectorDebugger extends DebuggerDomain {
                 returnObj = context.getRemoteObjectsHandler().getRemote(returnValue);
             }
             SuspendAnchor anchor = (depthAll == 0) ? topAnchor : SuspendAnchor.BEFORE;
-            CallFrame cf = new CallFrame(context.getEnv(), frame, depth++, script, sourceSection, anchor, functionSourceSection,
-                            null, returnObj, scopes.toArray(new Scope[scopes.size()]));
+            RemoteObject thisObj;
+            if (thisValue != null) {
+                thisObj = context.getRemoteObjectsHandler().getRemote(thisValue);
+            } else {
+                thisObj = RemoteObject.createNullObject(context.getEnv(), frame.getLanguage());
+            }
+            CallFrame cf = new CallFrame(frame, depth++, script, sourceSection, anchor, functionSourceSection,
+                            thisObj, returnObj, scopes.toArray(new Scope[scopes.size()]));
             cfs.add(cf);
         }
         return cfs.toArray(new CallFrame[cfs.size()]);

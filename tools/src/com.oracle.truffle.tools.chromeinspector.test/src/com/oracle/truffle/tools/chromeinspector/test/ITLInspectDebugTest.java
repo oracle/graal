@@ -194,6 +194,52 @@ public class ITLInspectDebugTest {
         tester.finish();
     }
 
+    @Test
+    public void testThis() throws Exception {
+        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(DEFINE(a,ROOT(\n" +
+                        "  STATEMENT())\n" +
+                        "),\n" +
+                        "CALL_WITH(a, 42))\n", "code").build();
+        String sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+
+        // Suspend after the initilization (by default):
+        tester = InspectorTester.start(true, false, false);
+        tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
+        assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
+        tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
+        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
+        tester.eval(source);
+        long id = tester.getContextId();
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":3,\"scriptId\":\"0\",\"endColumn\":17,\"startColumn\":0,\"startLine\":0,\"length\":56," +
+                                "\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"f4399823ddd23020fa0ce116fd2aa5d1ffffffff\"}}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"a\"," +
+                                                 "\"scopeChain\":[{\"name\":\"a\",\"type\":\"local\",\"object\":{\"description\":\"a\",\"type\":\"object\",\"objectId\":\"1\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
+                                                 "\"this\":{\"description\":\"42\",\"type\":\"number\",\"value\":42}," +
+                                                 "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":14,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"0\",\"columnNumber\":2,\"lineNumber\":1}," +
+                                                 "\"url\":\"" + sourceURI + "\"}," +
+                                                "{\"callFrameId\":\"1\",\"functionName\":\"\"," +
+                                                 "\"scopeChain\":[{\"name\":\"\",\"type\":\"local\",\"object\":{\"description\":\"\",\"type\":\"object\",\"objectId\":\"3\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"4\"}}]," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"5\"}," +
+                                                 "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":3}," +
+                                                 "\"url\":\"" + sourceURI + "\"}]}}\n"));
+
+        tester.sendMessage("{\"id\":4,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":4}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        tester.finish();
+    }
+
     // @formatter:on
     // CheckStyle: resume line length check
 }

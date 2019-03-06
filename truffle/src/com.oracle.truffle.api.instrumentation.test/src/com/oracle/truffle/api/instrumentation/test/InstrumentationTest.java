@@ -74,8 +74,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
 import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
@@ -875,6 +877,73 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             return parseOriginal(request);
         }
 
+    }
+
+    @Test
+    public void testReceiver() throws IOException {
+        TestReceiver.Tester tester = engine.getInstruments().get("testReceiver").lookup(TestReceiver.Tester.class);
+        Source source = Source.create(InstrumentationTestLanguage.ID,
+                        "ROOT(DEFINE(foo1, ROOT(STATEMENT))," +
+                                        "DEFINE(foo2, ROOT(CALL(foo1), STATEMENT))," +
+                                        "CALL(foo1)," +
+                                        "CALL_WITH(foo2, 42)," +
+                                        "CALL_WITH(foo1, 43))");
+        run(source);
+        tester.assertReceivers(null, null, "42", "43");
+    }
+
+    @Registration(name = "", version = "", id = "testReceiver", services = TestReceiver.Tester.class)
+    public static class TestReceiver extends TruffleInstrument {
+
+        @Override
+        protected void onCreate(final Env env) {
+            final Tester tester = new Tester(env);
+            env.registerService(tester);
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), tester);
+        }
+
+        final class Tester implements ExecutionEventListener {
+
+            private Env env;
+            private final List<String> receiverObjects = new ArrayList<>();
+
+            Tester(Env env) {
+                this.env = env;
+            }
+
+            @Override
+            public void onEnter(EventContext context, VirtualFrame frame) {
+                addReceiverObject(context, frame.materialize());
+            }
+
+            @TruffleBoundary
+            private void addReceiverObject(EventContext context, MaterializedFrame frame) {
+                RootNode rootNode = context.getInstrumentedNode().getRootNode();
+                Scope frameScope = env.findLocalScopes(rootNode, frame).iterator().next();
+                Object receiver = frameScope.getReceiver();
+                if (receiver != null) {
+                    assertEquals("THIS", frameScope.getReceiverName());
+                    receiverObjects.add(env.toString(rootNode.getLanguageInfo(), receiver));
+                } else {
+                    receiverObjects.add(null);
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+
+            private void assertReceivers(String... objects) {
+                assertEquals(objects.length, receiverObjects.size());
+                for (int i = 0; i < objects.length; i++) {
+                    assertEquals(objects[i], receiverObjects.get(i));
+                }
+            }
+        }
     }
 
     @Test
