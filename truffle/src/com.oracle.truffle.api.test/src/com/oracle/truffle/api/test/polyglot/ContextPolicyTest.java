@@ -43,7 +43,6 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -63,6 +62,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -72,6 +73,8 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -83,6 +86,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.ContextPolicyTestFactory.SupplierAccessorNodeGen;
 
 public class ContextPolicyTest {
 
@@ -589,6 +593,27 @@ public class ContextPolicyTest {
         }
     }
 
+    @GenerateUncached
+    abstract static class SupplierAccessor extends Node {
+
+        @SuppressWarnings("rawtypes")
+        public final <T extends TruffleLanguage> Supplier<T> getLanguageSupplier0(Class<T> languageClass) {
+            return getLanguageSupplier(languageClass);
+        }
+
+        public final <C, T extends TruffleLanguage<C>> Supplier<C> getContextSupplier0(Class<T> languageClass) {
+            return getContextSupplier(languageClass);
+        }
+
+        public abstract void execute();
+
+        @Specialization
+        void s0() {
+
+        }
+
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static class SharedObject implements TruffleObject {
 
@@ -603,16 +628,26 @@ public class ContextPolicyTest {
             this.expectedEnvironment = env;
             this.target = Truffle.getRuntime().createCallTarget(new RootNode(language) {
                 @Child InteropLibrary library = InteropLibrary.getFactory().createDispatched(5);
-                private final Supplier<? extends Object> cachedLanguageSupplier = lookupLanguageSupplier(this);
-                private final Supplier<? extends Object> cachedContextSupplier = lookupContextSupplier(this);
+                @Child SupplierAccessor accessor = SupplierAccessorNodeGen.create();
+                @CompilationFinal private Supplier<? extends Object> cachedLanguageSupplier;
+                @CompilationFinal private Supplier<? extends Object> cachedContextSupplier;
 
+                @SuppressWarnings("unchecked")
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    if (cachedLanguageSupplier == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        cachedLanguageSupplier = lookupLanguageSupplier(accessor);
+                    }
+                    if (cachedContextSupplier == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        cachedContextSupplier = lookupContextSupplier(accessor);
+                    }
                     Object[] args = frame.getArguments();
-                    assertSame(expectedLanguage, lookupLanguageSupplier(library).get());
-                    assertSame(expectedEnvironment, lookupContextSupplier(library).get());
-                    assertSame(cachedLanguageSupplier, lookupLanguageSupplier(library));
-                    assertSame(cachedContextSupplier, lookupContextSupplier(library));
+                    assertSame(expectedLanguage, lookupLanguageSupplier(accessor).get());
+                    assertSame(expectedEnvironment, lookupContextSupplier(accessor).get());
+                    assertSame(cachedLanguageSupplier, lookupLanguageSupplier(accessor));
+                    assertSame(cachedContextSupplier, lookupContextSupplier(accessor));
                     assertSame(expectedLanguage, cachedLanguageSupplier.get());
                     assertSame(expectedEnvironment, cachedContextSupplier.get());
 
@@ -648,20 +683,21 @@ public class ContextPolicyTest {
         @ExportMessage
         Object execute(Object[] args,
                         @CachedLibrary(limit = "5") InteropLibrary library,
-                        @Cached(value = "this.lookupLanguageSupplier(library)", allowUncached = true) Supplier<? extends Object> cachedLanguageSupplier,
-                        @Cached(value = "this.lookupContextSupplier(library)", allowUncached = true) Supplier<? extends Object> cachedContextSupplier,
+                        @Cached SupplierAccessor accessor,
+                        @Cached(value = "this.lookupLanguageSupplier(accessor)", allowUncached = true) Supplier<? extends Object> cachedLanguageSupplier,
+                        @Cached(value = "this.lookupContextSupplier(accessor)", allowUncached = true) Supplier<? extends Object> cachedContextSupplier,
                         @Cached(value = "this.getContextReference()", allowUncached = true) ContextReference<Env> contextReference)
                         throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
 
             Object prev = enterInner();
 
             try {
-                assertSame(expectedLanguage, lookupLanguageSupplier(library).get());
-                assertSame(expectedEnvironment, lookupContextSupplier(library).get());
+                assertSame(expectedLanguage, lookupLanguageSupplier(accessor).get());
+                assertSame(expectedEnvironment, lookupContextSupplier(accessor).get());
                 assertSame(expectedLanguage, cachedLanguageSupplier.get());
                 assertSame(expectedEnvironment, cachedContextSupplier.get());
-                assertSame(cachedLanguageSupplier, lookupLanguageSupplier(library));
-                assertSame(cachedContextSupplier, lookupContextSupplier(library));
+                assertSame(cachedLanguageSupplier, lookupLanguageSupplier(accessor));
+                assertSame(cachedContextSupplier, lookupContextSupplier(accessor));
                 assertSame(expectedEnvironment, contextReference.get());
 
                 target.call(args);
@@ -694,18 +730,10 @@ public class ContextPolicyTest {
         }
 
         @SuppressWarnings("rawtypes")
-        Supplier<? extends Object> lookupLanguageSupplier(Node node) {
+        Supplier<? extends Object> lookupLanguageSupplier(SupplierAccessor node) {
             Object prev = enterInner();
             try {
-                // ensure initialized
-                Supplier<?> o;
-                try {
-                    Method method = Node.class.getDeclaredMethod("getLanguageSupplier", Class.class);
-                    method.setAccessible(true);
-                    o = (Supplier<?>) method.invoke(node, expectedLanguage.getClass());
-                } catch (Exception e) {
-                    throw new AssertionError(e);
-                }
+                Supplier<?> o = node.getLanguageSupplier0(expectedLanguage.getClass());
                 assertSame(expectedLanguage, ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()));
                 assertSame(o.get(), expectedLanguage);
                 return o;
@@ -726,18 +754,10 @@ public class ContextPolicyTest {
         }
 
         @SuppressWarnings("unchecked")
-        Supplier<? extends Object> lookupContextSupplier(Node node) {
+        Supplier<? extends Object> lookupContextSupplier(SupplierAccessor node) {
             Object prev = enterInner();
             try {
-                Supplier<? extends Object> o;
-                try {
-                    Method method = Node.class.getDeclaredMethod("getContextSupplier", Class.class);
-                    method.setAccessible(true);
-                    o = (Supplier<? extends Object>) method.invoke(node, expectedLanguage.getClass());
-                } catch (Exception e) {
-                    throw new AssertionError(e);
-                }
-                return o;
+                return node.getContextSupplier0(expectedLanguage.getClass());
             } finally {
                 leaveInner(prev);
             }
