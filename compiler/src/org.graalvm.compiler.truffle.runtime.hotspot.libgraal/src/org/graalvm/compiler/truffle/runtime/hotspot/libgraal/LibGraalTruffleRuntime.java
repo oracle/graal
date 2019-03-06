@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,6 +37,7 @@ import com.oracle.truffle.api.TruffleRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.services.Services;
 
 /**
  * A {@link TruffleRuntime} that uses libgraal for compilation.
@@ -75,7 +74,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     static final long isolateId = initializeLibgraal();
-    private static UnsatisfiedLinkError initializationError;
+    private static LinkageError initializationError;
 
     private final long handle;
 
@@ -113,9 +112,20 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
      */
     private static long initializeLibgraal() {
         try {
-            long[] nativeInterface = runtime().registerNativeMethods(HotSpotToSVMCalls.class);
+            // Initialize JVMCI to ensure JVMCI opens its packages to
+            // Graal otherwise the call to HotSpotJVMCIRuntime.runtime()
+            // below will fail on JDK9+.
+            Services.initializeJVMCI();
+
+            long[] nativeInterface = HotSpotJVMCIRuntime.runtime().registerNativeMethods(HotSpotToSVMCalls.class);
             return nativeInterface[1];
         } catch (UnsatisfiedLinkError e) {
+            initializationError = e;
+            return 0L;
+        } catch (NoSuchMethodError e) {
+            // The signature of HotSpotJVMCIRuntime.registerNativeMethods changed
+            // to support libgraal. JDKs that don't have full JVMCI support for
+            // libgraal will have the old signature.
             initializationError = e;
             return 0L;
         }
