@@ -308,14 +308,6 @@ public abstract class JavaThreads {
         return tearDownIsolateThreads();
     }
 
-    private static void detachParkEvent(AtomicReference<ParkEvent> ref) {
-        ParkEvent event = ref.get();
-        if (event != null) {
-            ref.set(null);
-            ParkEvent.release(event);
-        }
-    }
-
     /**
      * Detach the provided Java thread. Note that the Java thread might not have been created, in
      * which case it is null and we have nothing to do.
@@ -336,8 +328,8 @@ public abstract class JavaThreads {
             return;
         }
 
-        detachParkEvent(getUnsafeParkEvent(thread));
-        detachParkEvent(getSleepParkEvent(thread));
+        ParkEvent.detach(getUnsafeParkEvent(thread));
+        ParkEvent.detach(getSleepParkEvent(thread));
         if (!thread.isDaemon()) {
             singleton().nonDaemonThreads.decrementAndGet();
         }
