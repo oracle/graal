@@ -178,14 +178,10 @@ public final class GraphEffectList extends EffectList {
             if (node instanceof AccessFieldNode && node.hasUsages()) {
                 // see if it is associated with any membar nodes
                 // and if so remove the association
-                for (int i = 0; i < node.getUsageCount(); i++) {
-                    Node usage = node.getUsageAt(i);
-                    if (usage instanceof MembarNode) {
-                        MembarNode membar = (MembarNode) usage;
-                        if (membar.getAccess() == node) {
-                            membar.setAccess(null);
-                            membar.setLeading(null);
-                        }
+                for (MembarNode membar : node.usages().filter(MembarNode.class).snapshot()) {
+                    if (membar.getAccess() == node) {
+                        membar.setAccess(null);
+                        membar.setLeading(null);
                     }
                 }
             }
@@ -262,14 +258,10 @@ public final class GraphEffectList extends EffectList {
             if (node instanceof AccessFieldNode && node.hasUsages()) {
                 // see if it is associated with any membar nodes
                 // and if so remove the association
-                for (int i = 0; i < node.getUsageCount(); i++) {
-                    Node usage = node.getUsageAt(i);
-                    if (usage instanceof MembarNode) {
-                        MembarNode membar = (MembarNode) usage;
-                        if (membar.getAccess() == node) {
-                            membar.setAccess(null);
-                            membar.setLeading(null);
-                        }
+                for (MembarNode membar : node.usages().filter(MembarNode.class).snapshot()) {
+                    if (membar.getAccess() == node) {
+                        membar.setAccess(null);
+                        membar.setLeading(null);
                     }
                 }
             }
