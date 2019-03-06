@@ -31,6 +31,8 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <time.h>
 
 #include "jni-agent.h"
 #include "reflect-agent.h"
@@ -69,7 +71,36 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
   const char output_opt[] = "output=";
   guarantee(strstr(options, output_opt) == options);
   const char *output = options + sizeof(output_opt) - 1;
-  guarantee((trace_file = fopen(output, "w")) != NULL);
+  char *lbrace = strchr(output, '{');
+  if (lbrace == NULL) {
+    guarantee((trace_file = fopen(output, "w")) != NULL);
+  } else { // placeholders
+    const char pid_str[] = "{pid}";
+    const char ts_str[] = "{datetime}";
+    struct sbuf s;
+    sbuf_new(&s);
+    char *position = output;
+    do {
+      if (strncmp(pid_str, lbrace, sizeof(pid_str) - 1) == 0) {
+        sbuf_printf(&s, "%.*s%ld", (int) (lbrace - position), position, (long) getpid());
+        position = lbrace + sizeof(pid_str) - 1;
+      } else if (strncmp(ts_str, lbrace, sizeof(ts_str) - 1) == 0) {
+        time_t now = time(NULL);
+        struct tm utc;
+        guarantee(gmtime_r(&now, &utc) == &utc);
+        sbuf_printf(&s, "%.*s%04d%02d%02dT%02d%02d%02dZ", (int) (lbrace - position), position,
+                utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday, utc.tm_hour, utc.tm_min, utc.tm_sec);
+        position = lbrace + sizeof(ts_str) - 1;
+      } else {
+        sbuf_printf(&s, "%.*s", (int) (lbrace + 1 - position), position);
+        position = lbrace + 1;
+      }
+      lbrace = strchr(position, '{');
+    } while (lbrace != NULL);
+    sbuf_printf(&s, "%s", position);
+    guarantee((trace_file = fopen(sbuf_as_cstr(&s), "w")) != NULL);
+    sbuf_destroy(&s);
+  }
   guarantee(fputs("[\n", trace_file) > 0);
 
   guarantee(pthread_mutex_init(&trace_mtx, NULL) == 0);
