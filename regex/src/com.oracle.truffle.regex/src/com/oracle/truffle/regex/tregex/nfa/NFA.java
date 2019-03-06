@@ -39,7 +39,7 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 import java.util.Arrays;
 import java.util.Collection;
 
-public class NFA implements StateIndex<NFAState>, JsonConvertible {
+public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
     private final RegexAST ast;
     private final NFAState dummyInitialState;
