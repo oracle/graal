@@ -54,6 +54,7 @@ import java.util.Set;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -259,7 +260,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
-
 
     /**
      * Final fields in subsituted classes are treated as implicitly RecomputeFieldValue even when
@@ -599,11 +599,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @KeepOriginal
-    @TargetElement(name="getSimpleName", onlyWith = JDK8OrEarlier.class)
+    @TargetElement(name = "getSimpleName", onlyWith = JDK8OrEarlier.class)
     private native String getSimpleNameJDK8OrEarlier();
 
     @Substitute
-    @TargetElement(name="getSimpleName", onlyWith = JDK9OrLater.class)
+    @TargetElement(name = "getSimpleName", onlyWith = JDK9OrLater.class)
     private String getSimpleNameJDK9OrLater() {
         return getSimpleName0();
     }
@@ -647,15 +647,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native boolean isMemberClass();
 
     @Substitute
-    @TargetElement(name="isLocalOrAnonymousClass", onlyWith = JDK8OrEarlier.class)
-    private boolean isLocalOrAnonymousClass() {
-        return isLocalClass() || isAnonymousClass();
-    }
-
-    @Substitute
-    @TargetElement(name="isLocalOrAnonymousClass", onlyWith = JDK9OrLater.class)
-    private boolean isLocalOrAnonymousClassJDK9OrLater() {
-        return rd.enclosingMethodOrConstructor!= null;
+    public boolean isLocalOrAnonymousClass() {
+        if (JavaVersionUtil.Java8OrEarlier) {
+            return isLocalClass() || isAnonymousClass();
+        } else {
+            return rd.enclosingMethodOrConstructor != null;
+        }
     }
 
     @Substitute
@@ -1163,7 +1160,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     private boolean isTopLevelClass() {
-        return !isLocalOrAnonymousClassJDK9OrLater() && getDeclaringClass() == null;
+        return !isLocalOrAnonymousClass() && getDeclaringClass() == null;
     }
 
     @KeepOriginal
@@ -1173,11 +1170,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     private String getSimpleBinaryName0() {
-        if (enclosingClass == null)
+        if (enclosingClass == null) {
             return null;
+        }
         try {
-            String answer = getName().substring(enclosingClass.getName().length()+1);
-            return answer;
+            return getName().substring(enclosingClass.getName().length() + 1);
         } catch (IndexOutOfBoundsException ex) {
             throw new InternalError("Malformed class name", ex);
         }
