@@ -10,6 +10,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 		* `InteropException.raise`, with libraries there should be no need to convert checked exceptions to runtime exceptions.
 		* `TruffleObject.getForeignAccess()`.
 	* Introduced new classes: `InteropLibrary` and `InvalidArrayIndexException`.
+	* Added `ObjectType.dispatch` to configure the dynamic dispatch and deprecated `ObjectType.getForeignAccessFactory`.
 * Added Truffle Library API that allows language implementations to use polymorphic dispatch for receiver types with support for implementation specific caching/profiling with support for uncached dispatch. 
 	* Please see the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibaries.md) for further details.
 	* Introduced new package: `com.oracle.truffle.api.library`.
