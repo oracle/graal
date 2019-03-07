@@ -54,6 +54,7 @@ import java.util.Set;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -598,13 +599,18 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @KeepOriginal
-    private native String getSimpleName();
+    @TargetElement(name = "getSimpleName", onlyWith = JDK8OrEarlier.class)
+    private native String getSimpleNameJDK8OrEarlier();
 
-    @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    private String getSimpleName0() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getSimpleName0()");
+    @Substitute
+    @TargetElement(name = "getSimpleName", onlyWith = JDK9OrLater.class)
+    private String getSimpleNameJDK9OrLater() {
+        return getSimpleName0();
     }
+
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private native String getSimpleName0();
 
     @KeepOriginal
     private native String getCanonicalName();
@@ -641,8 +647,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native boolean isMemberClass();
 
     @Substitute
-    private boolean isLocalOrAnonymousClass() {
-        return isLocalClass() || isAnonymousClass();
+    public boolean isLocalOrAnonymousClass() {
+        if (JavaVersionUtil.Java8OrEarlier) {
+            return isLocalClass() || isAnonymousClass();
+        } else {
+            return rd.enclosingMethodOrConstructor != null;
+        }
     }
 
     @Substitute
@@ -1150,14 +1160,25 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     private boolean isTopLevelClass() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.isTopLevelClass()");
+        return !isLocalOrAnonymousClass() && getDeclaringClass() == null;
     }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private native Object[] getEnclosingMethod0();
 
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
-    private /* native */ String getSimpleBinaryName0() {
+    private String getSimpleBinaryName0() {
+        if (enclosingClass == null) {
+            return null;
+        }
+        try {
+            return getName().substring(enclosingClass.getName().length() + 1);
+        } catch (IndexOutOfBoundsException ex) {
+            throw new InternalError("Malformed class name", ex);
+        }
         /* See open/src/hotspot/share/prims/jvm.cpp#1522. */
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getSimpleBinaryName0()");
     }
 
     @Substitute //
