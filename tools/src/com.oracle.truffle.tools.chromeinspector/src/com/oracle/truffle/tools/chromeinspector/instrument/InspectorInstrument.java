@@ -247,7 +247,8 @@ public final class InspectorInstrument extends TruffleInstrument {
                 if (server != null) {
                     return server.getConnection().getExecutionContext();
                 } else {
-                    return new InspectorExecutionContext("Main Context", options.get(Internal), options.get(Initialization), env, Collections.emptyList(), new PrintWriter(env.err()));
+                    PrintWriter err = (options.get(HideErrors)) ? null : new PrintWriter(env.err(), true);
+                    return new InspectorExecutionContext("Main Context", options.get(Internal), options.get(Initialization), env, Collections.emptyList(), err);
                 }
             }
         }));
@@ -376,7 +377,7 @@ public final class InspectorInstrument extends TruffleInstrument {
         Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
                         final boolean inspectInternal, final boolean inspectInitialization, final String pathOrNull, final boolean secure, final KeyStoreOptions keyStoreOptions,
                         final List<URI> sourcePath, final ConnectionWatcher connectionWatcher) throws IOException {
-            PrintWriter info = new PrintWriter(env.err());
+            PrintWriter info = new PrintWriter(env.err(), true);
             if (pathOrNull == null || pathOrNull.isEmpty()) {
                 wsspath = "/" + Long.toHexString(System.identityHashCode(env)) + "-" + Long.toHexString(System.nanoTime() ^ System.identityHashCode(env));
             } else {
