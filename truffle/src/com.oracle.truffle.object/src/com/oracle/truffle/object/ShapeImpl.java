@@ -1251,9 +1251,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @SuppressWarnings("deprecation")
     public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        com.oracle.truffle.api.interop.ForeignAccess access = getObjectType().getForeignAccessFactory(object);
-        assert access == null || getObjectType().dispatch() == null : "Cannot use getForeignAccessFactory() and dispatch() at the same time.";
-        return access;
+        return getObjectType().getForeignAccessFactory(object);
 
     }
 
