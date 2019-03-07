@@ -26,9 +26,13 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.util.Arrays;
 import java.util.Collections;
@@ -123,6 +127,8 @@ public final class JavaNetSubstitutions {
     public static final String HTTP_PROTOCOL = "http";
     public static final String HTTPS_PROTOCOL = "https";
 
+    public static final String RESOURCE_PROTOCOL = "resource";
+
     static final List<String> defaultProtocols = Collections.singletonList(FILE_PROTOCOL);
     static final List<String> onDemandProtocols = Arrays.asList(HTTP_PROTOCOL, HTTPS_PROTOCOL);
 
@@ -130,6 +136,11 @@ public final class JavaNetSubstitutions {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean addURLStreamHandler(String protocol) {
+        if (RESOURCE_PROTOCOL.equals(protocol)) {
+            final URLStreamHandler resourcesURLStreamHandler = createResourcesURLStreamHandler();
+            URLProtocolsSupport.put(RESOURCE_PROTOCOL, resourcesURLStreamHandler);
+            return true;
+        }
         try {
             Method method = URL.class.getDeclaredMethod("getURLStreamHandler", String.class);
             method.setAccessible(true);
@@ -158,6 +169,34 @@ public final class JavaNetSubstitutions {
             }
         }
         return result;
+    }
+
+    static URLStreamHandler createResourcesURLStreamHandler() {
+        URLStreamHandler answer = new URLStreamHandler() {
+            @Override
+            protected URLConnection openConnection(URL url) throws IOException {
+                return new URLConnection(url) {
+                    @Override
+                    public void connect() throws IOException {
+                    }
+
+                    @Override
+                    public InputStream getInputStream() throws IOException {
+                        Resources.ResourcesSupport support = ImageSingletons.lookup(Resources.ResourcesSupport.class);
+                        // remove "protcol:" from url to get the resource name
+                        String resName = url.toString().substring(1+JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
+                        final List<byte[]> bytes = support.resources.get(resName);
+                        if (bytes == null || bytes.size() < 1) {
+                            System.err.println("Couldn't find resource "+resName);
+                            return null;
+                        } else {
+                            return new ByteArrayInputStream(bytes.get(0));
+                        }
+                    }
+                };
+            }
+        };
+        return answer;
     }
 
     private static void unsupported(String message) {
