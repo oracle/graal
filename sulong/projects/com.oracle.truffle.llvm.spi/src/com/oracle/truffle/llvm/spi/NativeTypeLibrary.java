@@ -29,32 +29,23 @@
  */
 package com.oracle.truffle.llvm.spi;
 
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
+import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
+import com.oracle.truffle.api.library.Library;
+
 /**
- * Interop message to get the type of a foreign object.
- *
- * Access to objects supporting this message behaves as if the object has been manually cast with
- * the {@code polyglot_as_typed} function, using the return value of this message as typeId
- * argument.
- *
- * Casting objects that support this message with {@code polyglot_to_Struct} functions has no
- * effect, the dynamic type returned from this message always has precedence.
+ * Library for objects that want to simulate the behavior of native memory. If an object implements
+ * this interface, raw memory access to this object will simulate the layout of the given type.
  */
-@SuppressWarnings("deprecation")
-@Deprecated
-public final class GetDynamicType extends com.oracle.truffle.api.interop.Message {
+@GenerateLibrary
+@DefaultExport(LegacyLibrary.class)
+public abstract class NativeTypeLibrary extends Library {
 
-    public static final com.oracle.truffle.api.interop.Message INSTANCE = new GetDynamicType();
-
-    private GetDynamicType() {
+    @Abstract
+    public boolean hasNativeType(Object receiver) {
+        return false;
     }
 
-    @Override
-    public boolean equals(Object message) {
-        return message instanceof GetDynamicType;
-    }
-
-    @Override
-    public int hashCode() {
-        return System.identityHashCode(INSTANCE);
-    }
+    public abstract Object getNativeType(Object receiver);
 }
