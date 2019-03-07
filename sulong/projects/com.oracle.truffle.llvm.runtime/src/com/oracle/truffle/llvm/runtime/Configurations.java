@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,45 +27,49 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 
-/**
- * Used by Truffle (via the ServiceLoader infrastructure) to determine the mime-type of input files.
- */
-public class LLVMFileDetector extends FileTypeDetector {
-    private static final long BC_MAGIC_WORD = 0xdec04342L; // 'BC' c0de
-    private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;
-    private static final long ELF_MAGIC_WORD = 0x464C457FL;
+final class Configurations {
 
-    @Override
-    public String probeContentType(Path path) throws IOException {
-        long magicWord = readMagicWord(path);
-        if (magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD) {
-            return LLVMLanguage.LLVM_BITCODE_MIME_TYPE;
-        } else if (magicWord == ELF_MAGIC_WORD) {
-            return LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE;
+    private static final Configuration[] configurations;
+
+    static {
+        ArrayList<Configuration> cfgs = new ArrayList<>();
+
+        ClassLoader cl = LLVMLanguage.class.getClassLoader();
+        for (Configuration f : ServiceLoader.load(Configuration.class, cl)) {
+            cfgs.add(f);
         }
-        return null;
+
+        cfgs.sort((o1, o2) -> {
+            // higher priority first
+            return o2.getPriority() - o1.getPriority();
+        });
+
+        configurations = cfgs.toArray(new Configuration[cfgs.size()]);
     }
 
-    private static long readMagicWord(Path path) {
-        try (InputStream is = new FileInputStream(path.toString())) {
-            byte[] buffer = new byte[4];
-            if (is.read(buffer) != buffer.length) {
-                return 0;
+    static Configuration findActiveConfiguration(Env env) {
+        for (Configuration config : configurations) {
+            if (config.isActive(env)) {
+                return config;
             }
-            return Integer.toUnsignedLong(ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getInt());
-        } catch (IOException e) {
-            return 0;
         }
+        throw new IllegalStateException("should not reach here: no configuration found");
+    }
+
+    static OptionDescriptors getOptionDescriptors() {
+        List<OptionDescriptor> optionDescriptors = new ArrayList<>();
+        for (Configuration c : configurations) {
+            optionDescriptors.addAll(c.getOptionDescriptors());
+        }
+        return OptionDescriptors.create(optionDescriptors);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,43 +29,44 @@
  */
 package com.oracle.truffle.llvm;
 
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-/**
- * Used by Truffle (via the ServiceLoader infrastructure) to determine the mime-type of input files.
- */
-public class LLVMFileDetector extends FileTypeDetector {
-    private static final long BC_MAGIC_WORD = 0xdec04342L; // 'BC' c0de
-    private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;
-    private static final long ELF_MAGIC_WORD = 0x464C457FL;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 
-    @Override
-    public String probeContentType(Path path) throws IOException {
-        long magicWord = readMagicWord(path);
-        if (magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD) {
-            return LLVMLanguage.LLVM_BITCODE_MIME_TYPE;
-        } else if (magicWord == ELF_MAGIC_WORD) {
-            return LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE;
+public final class DefaultLoader extends Loader {
+
+    private volatile List<LLVMParserResult> cachedDefaultDependencies;
+    private volatile ExternalLibrary[] cachedSulongLibraries;
+
+    private synchronized void parseDefaultDependencies(Runner runner) {
+        if (cachedDefaultDependencies == null) {
+            ArrayList<LLVMParserResult> parserResults = new ArrayList<>();
+            cachedSulongLibraries = runner.parseDefaultLibraries(parserResults);
+            parserResults.trimToSize();
+            cachedDefaultDependencies = Collections.unmodifiableList(parserResults);
         }
-        return null;
     }
 
-    private static long readMagicWord(Path path) {
-        try (InputStream is = new FileInputStream(path.toString())) {
-            byte[] buffer = new byte[4];
-            if (is.read(buffer) != buffer.length) {
-                return 0;
-            }
-            return Integer.toUnsignedLong(ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getInt());
-        } catch (IOException e) {
-            return 0;
+    ExternalLibrary[] getDefaultDependencies(Runner runner, List<LLVMParserResult> parserResults) {
+        if (cachedDefaultDependencies == null) {
+            parseDefaultDependencies(runner);
+        }
+        parserResults.addAll(cachedDefaultDependencies);
+        return cachedSulongLibraries;
+    }
+
+    @Override
+    public CallTarget load(LLVMContext context, Source source) {
+        // per context, only one thread must do any parsing
+        synchronized (context.getGlobalScope()) {
+            return new Runner(context, this).parse(source);
         }
     }
 }

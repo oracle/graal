@@ -40,7 +40,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.Sulong;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.test.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.test.options.TestOptions;
@@ -1087,7 +1087,7 @@ public class LLVMInteropTest {
         }
 
         static TruffleObject getTestToNative() {
-            return (TruffleObject) Sulong.getLLVMContextReference().get().getEnv().importSymbol("test_to_native");
+            return (TruffleObject) LLVMLanguage.getLLVMContextReference().get().getEnv().importSymbol("test_to_native");
         }
 
         @ExportMessage

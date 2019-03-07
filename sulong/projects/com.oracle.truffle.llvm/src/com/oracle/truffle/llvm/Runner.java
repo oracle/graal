@@ -50,29 +50,14 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
@@ -103,13 +88,13 @@ import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.SulongLibrary;
 import com.oracle.truffle.llvm.runtime.SystemContextExtension;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
-import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -143,154 +128,20 @@ public final class Runner {
     private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() - p2.getFirst();
     private static final Comparator<Pair<Integer, ?>> DESCENDING_PRIORITY = (p1, p2) -> p2.getFirst() - p1.getFirst();
 
-    /**
-     * Object that is returned when a bitcode library is parsed.
-     */
-    @ExportLibrary(InteropLibrary.class)
-    static final class SulongLibrary implements TruffleObject {
-
-        private final String name;
-        private final LLVMScope scope;
-        private final CallTarget main;
-
-        private SulongLibrary(String name, LLVMScope scope, CallTarget main) {
-            this.name = name;
-            this.scope = scope;
-            this.main = main;
-        }
-
-        private LLVMFunctionDescriptor lookupFunctionDescriptor(String symbolName) {
-            LLVMSymbol symbol = scope.get(symbolName);
-            if (symbol != null && symbol.isFunction()) {
-                return symbol.asFunction();
-            }
-            return null;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        @GenerateUncached
-        abstract static class LookupNode extends LLVMNode {
-
-            abstract LLVMFunctionDescriptor execute(SulongLibrary library, String name);
-
-            @Specialization(guards = {"library == cachedLibrary", "name.equals(cachedName)"})
-            @SuppressWarnings("unused")
-            LLVMFunctionDescriptor doCached(SulongLibrary library, String name,
-                            @Cached("library") SulongLibrary cachedLibrary,
-                            @Cached("name") String cachedName,
-                            @Cached("lookupFunctionDescriptor(cachedLibrary, cachedName)") LLVMFunctionDescriptor cachedDescriptor) {
-                return cachedDescriptor;
-            }
-
-            @Specialization(replaces = "doCached")
-            @TruffleBoundary
-            static LLVMFunctionDescriptor doGeneric(SulongLibrary library, String name) {
-                return lookupFunctionDescriptor(library, name);
-            }
-
-            protected static LLVMFunctionDescriptor lookupFunctionDescriptor(SulongLibrary library, String name) {
-                if (name.startsWith("@")) {
-                    // safeguard: external users are never supposed to see the "@"
-                    // TODO remove after getting rid of the @
-                    return null;
-                }
-
-                String atname = "@" + name;
-                LLVMFunctionDescriptor d = library.lookupFunctionDescriptor(atname);
-                if (d != null) {
-                    return d;
-                }
-                return library.lookupFunctionDescriptor(name);
-            }
-        }
-
-        @ExportMessage
-        Object readMember(String name,
-                        @Shared("lookup") @Cached LookupNode lookup) throws UnknownIdentifierException {
-            Object ret = lookup.execute(this, name);
-            if (ret == null) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.create(name);
-            }
-            return ret;
-        }
-
-        @ExportMessage
-        Object invokeMember(String name, Object[] arguments,
-                        @Shared("lookup") @Cached LookupNode lookup,
-                        @Cached LLVMForeignCallNode call) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-            LLVMFunctionDescriptor fn = lookup.execute(this, name);
-            if (fn == null) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.create(name);
-            }
-
-            return call.executeCall(fn, arguments);
-        }
-
-        @ExportMessage
-        boolean hasMembers() {
-            return true;
-        }
-
-        @ExportMessage
-        Object getMembers(boolean includeInternal) {
-            return scope.getKeys();
-        }
-
-        @ExportMessage(name = "isMemberReadable")
-        @ExportMessage(name = "isMemberInvocable")
-        boolean memberExists(String name,
-                        @Shared("lookup") @Cached LookupNode lookup) {
-            return lookup.execute(this, name) != null;
-        }
-
-        @ExportMessage
-        boolean isExecutable() {
-            return main != null;
-        }
-
-        @ExportMessage
-        abstract static class Execute {
-
-            @Specialization(guards = "library == cachedLibrary")
-            @SuppressWarnings("unused")
-            static Object doCached(SulongLibrary library, Object[] args,
-                            @Cached("library") SulongLibrary cachedLibrary,
-                            @Cached("createMainCall(cachedLibrary)") DirectCallNode call) {
-                return call.call(args);
-            }
-
-            static DirectCallNode createMainCall(SulongLibrary library) {
-                return DirectCallNode.create(library.main);
-            }
-
-            @Specialization(replaces = "doCached")
-            static Object doGeneric(SulongLibrary library, Object[] args,
-                            @Cached("create()") IndirectCallNode call) {
-                return call.call(library.main, args);
-            }
-        }
-    }
-
     private final LLVMContext context;
+    private final DefaultLoader loader;
 
-    public Runner(LLVMContext context) {
+    public Runner(LLVMContext context, DefaultLoader loader) {
         this.context = context;
+        this.loader = loader;
     }
 
     /**
      * Parse bitcode data and do first initializations to prepare bitcode execution.
      */
     public CallTarget parse(Source source) {
-        // per context, only one thread must do any parsing
-        synchronized (context.getGlobalScope()) {
-            ParserInput input = getParserData(source);
-            return parse(source, input.bytes, input.library);
-        }
+        ParserInput input = getParserData(source);
+        return parse(source, input.bytes, input.library);
     }
 
     private ParserInput getParserData(Source source) {
@@ -667,8 +518,7 @@ public final class Runner {
         }
 
         // then, we are parsing the default libraries
-        Sulong language = (Sulong) context.getLanguage();
-        ExternalLibrary[] sulongLibraries = language.getDefaultDependencies(this, parserResults);
+        ExternalLibrary[] sulongLibraries = loader.getDefaultDependencies(this, parserResults);
 
         // finally we are dealing with all indirect dependencies
         while (!dependencyQueue.isEmpty()) {
