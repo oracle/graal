@@ -43,13 +43,11 @@ import com.oracle.svm.core.windows.headers.WinBase;
 @Platforms(Platform.WINDOWS.class)
 public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport {
 
-    static final int MAX_PATH = 260;
-
     @Override
     public String getExecutableName() {
-        CCharPointer path = StackValue.get(MAX_PATH, CCharPointer.class);
+        CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
         Pointer hModule = WinBase.GetModuleHandleA(WordFactory.nullPointer());
-        int result = WinBase.GetModuleFileNameA(hModule, path, MAX_PATH);
+        int result = WinBase.GetModuleFileNameA(hModule, path, WinBase.MAX_PATH);
         return result == 0 ? null : CTypeConversion.toJavaString(path);
     }
 
