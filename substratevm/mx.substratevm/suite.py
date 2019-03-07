@@ -522,7 +522,21 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.truffle",
                 "truffle:TRUFFLE_NFI",
-                "com.oracle.svm.core.posix", # Posix dependency is temporary, see GR-11751
+            ],
+            "checkstyle": "com.oracle.svm.truffle",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
+        "com.oracle.svm.truffle.nfi.posix": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.core.posix",
             ],
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "8+",
@@ -533,12 +547,39 @@ suite = {
             "os_arch": {
                 "windows": {
                     "<others>": {
-                        "ignore": "windows is not supported",  # necessary until GR-11751 is resolved
+                        "ignore": "posix only project",
                     },
                 },
                 "<others>": {
                     "<others>": {
                         "ignore": False,
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.truffle.nfi.windows": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.core.windows",
+            ],
+            "checkstyle": "com.oracle.svm.truffle",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only windows is supported",
                     },
                 },
             },
@@ -682,6 +723,8 @@ suite = {
                 "com.oracle.svm.truffle",  # necessary until Truffle is fully supported on Windows (GR-7941)
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.truffle.nfi.posix",
+                "com.oracle.svm.truffle.nfi.windows",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.jdk8",

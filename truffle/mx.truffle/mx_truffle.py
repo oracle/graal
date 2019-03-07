@@ -585,6 +585,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
                                                            mx.join(self.out_dir, 'libffi-3.2.1'),
                                                            'static_lib',
+                                                           deliverable='ffi',
                                                            cflags=['-MD', '-O2'])
             self.delegate._source = dict(tree=['include',
                                                'src',

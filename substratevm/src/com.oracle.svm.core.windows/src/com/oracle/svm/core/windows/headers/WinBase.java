@@ -324,6 +324,12 @@ public class WinBase {
     public static native Pointer LoadLibraryExA(PointerBase lpFileName, int dummy, int flags);
 
     /**
+     * FreeLibrary
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native void FreeLibrary(PointerBase pointer);
+
+    /**
      * SetDllDirectoryA
      */
     @CFunction(transition = Transition.NO_TRANSITION)

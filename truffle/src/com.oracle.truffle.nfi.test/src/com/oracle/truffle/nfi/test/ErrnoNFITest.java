@@ -54,11 +54,19 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.io.File;
 import java.io.FileReader;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(TruffleRunner.class)
 public class ErrnoNFITest extends NFITest {
+
+
+    @Before
+    public void checkOS() {
+        Assume.assumeFalse("Testcase not supported on Windows (GR-14522)", IS_WINDOWS);
+    }
 
     @TruffleBoundary
     private static void destroyErrno() {

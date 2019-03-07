@@ -397,8 +397,7 @@ def layout_native_image_root(native_image_root):
                 symlink_or_copy(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
 
     # Create native-image layout for truffle parts
-    if mx.get_os() != 'windows':  # necessary until Truffle is fully supported (GR-7941)
-        native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API'])
+    native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API'])
 
     # Create native-image layout for tools parts
     for tool_name in tools_map:
