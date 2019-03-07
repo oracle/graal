@@ -120,7 +120,7 @@ def mktemp_libfile():
 
 
 common_opts_variants = [
-    [gc, ops]
+    [gc, ops, '-ea', '-esa']
     for gc in ['-XX:+UseParallelGC', '-XX:+UseG1GC']
     for ops in ['-XX:-UseCompressedOops', '-XX:+UseCompressedOops']
 ]
@@ -141,7 +141,7 @@ def test_class(classpath, main_class, program_args=None):
 
         with mktemp_libfile() as lib_module:
             run_jaotc(['-J' + opt for opt in common_opts] +
-                      ['--info', '--output', lib_module.name, main_class],
+                      ['--exit-on-error', '--info', '--output', lib_module.name, main_class],
                       classpath=classpath)
             check_aot(classpath, main_class, common_opts, expected_out.data, lib_module, program_args)
 
@@ -165,7 +165,7 @@ def test_modules(classpath, main_class, modules, program_args=None):
         with mktemp_libfile() as lib_module:
             run_jaotc(['-J' + opt for opt in common_opts] +
                       ['--module', module_list] +
-                      ['--info', '--output', lib_module.name])
+                      ['--exit-on-error', '--info', '--output', lib_module.name])
 
             check_aot(classpath, main_class, common_opts, expected_out.data, lib_module, program_args)
 
@@ -189,7 +189,7 @@ def test_javac(project_name):
             mx.log('(jaotc) Compiling module(s) {} with {}'.format(modules, ' '.join(common_opts)))
             with mktemp_libfile() as lib_module:
                 run_jaotc(['-J' + opt for opt in common_opts] +
-                          ['--info', '--module', modules, '--output', lib_module.name])
+                          ['--exit-on-error', '--info', '--module', modules, '--output', lib_module.name])
 
                 aot_opts = [
                     '-XX:+UnlockDiagnosticVMOptions',
