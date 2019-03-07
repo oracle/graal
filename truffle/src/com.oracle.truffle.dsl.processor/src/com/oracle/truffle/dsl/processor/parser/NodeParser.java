@@ -201,11 +201,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
         this.mode = mode;
         this.exportLibraryType = exportLibraryType;
         this.exportDeclarationType = exportDeclarationType;
-        TypeMirror cacheAnnotation = context.getType(Cached.class);
-        TypeMirror cachedLibraryAnnotation = context.getType(CachedLibrary.class);
-        TypeMirror cachedContextAnnotation = context.getType(CachedContext.class);
-        TypeMirror cachedLanguageAnnotation = context.getType(CachedLanguage.class);
-        this.cachedAnnotations = Arrays.asList(cacheAnnotation, cachedLibraryAnnotation, cachedContextAnnotation, cachedLanguageAnnotation);
+        this.cachedAnnotations = getCachedAnnotations();
+    }
+
+    public static List<TypeMirror> getCachedAnnotations() {
+        ProcessorContext localContext = ProcessorContext.getInstance();
+        TypeMirror cacheAnnotation = localContext.getType(Cached.class);
+        TypeMirror cachedLibraryAnnotation = localContext.getType(CachedLibrary.class);
+        TypeMirror cachedContextAnnotation = localContext.getType(CachedContext.class);
+        TypeMirror cachedLanguageAnnotation = localContext.getType(CachedLanguage.class);
+        return Arrays.asList(cacheAnnotation, cachedLibraryAnnotation, cachedContextAnnotation, cachedLanguageAnnotation);
     }
 
     public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType) {

@@ -867,16 +867,16 @@ public class FlatNodeGenFactory {
 
     private List<CacheExpression> computeUniqueSupplierCaches() {
         List<CacheExpression> cacheExpressions = new ArrayList<>();
+        Set<String> computedContextSuppliers = new HashSet<>();
+        Set<String> computedLanguageSuppliers = new HashSet<>();
         for (NodeData sharedNode : this.sharingNodes) {
             List<SpecializationData> specializations = calculateReachableSpecializations(sharedNode);
-            Set<String> computedContextSuppliers = new HashSet<>();
-            Set<String> computedLanguageSuppliers = new HashSet<>();
             for (SpecializationData specialization : specializations) {
                 for (CacheExpression cache : specialization.getCaches()) {
                     if (!cache.isCachedContext() && !cache.isCachedLanguage()) {
                         continue;
                     }
-                    TypeMirror languageType = cache.getSupplierType();
+                    TypeMirror languageType = cache.getLanguageType();
                     String qualifiedLanguageTypeName = ElementUtils.getQualifiedName(languageType);
                     if (cache.isCachedLanguage()) {
                         if (computedLanguageSuppliers.contains(qualifiedLanguageTypeName)) {

@@ -84,7 +84,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -735,30 +734,41 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                             "Increase visibility to resolve this.");
             return;
         }
-
-        TypeMirror cached = context.getType(Cached.class);
-        TypeMirror cachedLibrary = context.getType(CachedLibrary.class);
+        List<TypeMirror> cachedAnnotations = NodeParser.getCachedAnnotations();
 
         List<VariableElement> cachedNodes = new ArrayList<>();
         List<VariableElement> cachedLibraries = new ArrayList<>();
         int realParameterCount = 0;
-        for (VariableElement exportParameter : exportedMethod.getParameters()) {
-            AnnotationMirror cachedMirror = findAnnotationMirror(exportParameter.getAnnotationMirrors(), cached);
-            AnnotationMirror cachedLibraryMirror = findAnnotationMirror(exportParameter.getAnnotationMirrors(), cachedLibrary);
-            if (cachedMirror != null) {
-                if (cachedLibraryMirror != null) {
-                    exportedElement.addError(exportParameter, "@%s and @%s cannot be used at the same time.", Cached.class.getSimpleName(), CachedLibrary.class.getSimpleName());
-                    break;
+        parameters: for (VariableElement exportParameter : exportedMethod.getParameters()) {
+
+            AnnotationMirror cachedMirror = null;
+            for (TypeMirror cachedAnnotation : cachedAnnotations) {
+                AnnotationMirror found = ElementUtils.findAnnotationMirror(exportParameter.getAnnotationMirrors(), cachedAnnotation);
+                if (found == null) {
+                    continue;
                 }
-                cachedNodes.add(exportParameter);
-            } else if (cachedLibraryMirror != null) {
+                if (cachedMirror == null) {
+                    cachedMirror = found;
+                } else {
+                    StringBuilder b = new StringBuilder();
+                    String sep = "";
+                    for (TypeMirror stringCachedAnnotation : cachedAnnotations) {
+                        b.append(sep);
+                        b.append("@");
+                        b.append(ElementUtils.getSimpleName(stringCachedAnnotation));
+                        sep = ", ";
+                    }
+                    exportedElement.addError(exportParameter, "The following annotations are mutually exclusive for a parameter: %s.", b.toString());
+                    continue parameters;
+                }
+            }
+
+            AnnotationMirror cachedLibraryMirror = findAnnotationMirror(exportParameter.getAnnotationMirrors(), context.getType(CachedLibrary.class));
+            if (cachedLibraryMirror != null) {
                 cachedLibraries.add(exportParameter);
+            } else if (cachedMirror != null) {
+                cachedNodes.add(exportParameter);
             } else {
-                if (!cachedNodes.isEmpty() || !cachedLibraries.isEmpty()) {
-                    exportedElement.addError(exportParameter, "@%s and @%s must be declared at the end of the method.", Cached.class.getSimpleName(),
-                                    CachedLibrary.class.getSimpleName());
-                    break;
-                }
                 realParameterCount++;
             }
         }

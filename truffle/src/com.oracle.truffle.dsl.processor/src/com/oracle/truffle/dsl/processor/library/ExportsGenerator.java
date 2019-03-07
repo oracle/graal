@@ -484,7 +484,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeExecutableElement getCost = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "getCost")));
         getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(context.getDeclaredType(NodeCost.class), "MEGAMORPHIC")).end();
 
-        boolean primaryNode = true;
+        boolean firstNode = true;
 
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
             LibraryMessage message = export.getResolvedMessage();
@@ -508,8 +508,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             } else {
                 FlatNodeGenFactory factory = new FlatNodeGenFactory(context, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), libraryConstants);
                 CodeExecutableElement generatedUncached = factory.createUncached();
-                if (primaryNode) {
+                if (firstNode) {
                     uncachedClass.getEnclosedElements().addAll(factory.createUncachedFields());
+                    firstNode = false;
                 }
                 generatedUncached.getModifiers().remove(STATIC);
                 ElementUtils.setVisibility(generatedUncached.getModifiers(), Modifier.PUBLIC);

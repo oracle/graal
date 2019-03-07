@@ -50,10 +50,17 @@ import org.junit.Test;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.CachedContextTest.CachedContextTestLanguage;
+import com.oracle.truffle.api.dsl.test.CachedContextTest.CachedContextTestLibrary;
 import com.oracle.truffle.api.dsl.test.CachedLanguageTestFactory.Valid1NodeGen;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
@@ -214,4 +221,28 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
             throw new AssertionError();
         }
     }
+
+    @GenerateLibrary
+    public abstract static class CachedLanguageTestLibrary extends Library {
+
+        public abstract Object m0(Object receiver);
+
+        public abstract Object m1(Object receiver);
+    }
+
+    @ExportLibrary(CachedLanguageTestLibrary.class)
+    @SuppressWarnings("static-method")
+    static class LibraryReceiver {
+
+        @ExportMessage
+        final Object m0(@CachedLanguage CachedLanguageTestLanguage env) {
+            return "m0";
+        }
+
+        @ExportMessage
+        final Object m1(@CachedLanguage Supplier<CachedLanguageTestLanguage> env) {
+            return "m1";
+        }
+    }
+
 }
