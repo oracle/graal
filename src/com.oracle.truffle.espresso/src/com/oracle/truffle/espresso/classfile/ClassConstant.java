@@ -57,6 +57,8 @@ public interface ClassConstant extends PoolConstant {
         return getName(pool).toString();
     }
 
+
+
     final class Index implements ClassConstant, Resolvable {
         private final char classNameIndex;
 
@@ -154,6 +156,83 @@ public interface ClassConstant extends PoolConstant {
         @Override
         public Klass value() {
             return resolved;
+        }
+    }
+
+    final class WithString implements ClassConstant, Resolvable {
+        private final Symbol<Name> name;
+
+        WithString(Symbol<Name> name) {
+            this.name = name;
+        }
+
+        @Override
+        public Symbol<Name> getName(ConstantPool pool) {
+            return name;
+        }
+
+        @Override
+        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+            resolveKlassCount.inc();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            Symbol<Name> name = getName(pool);
+            try {
+                EspressoContext context = pool.getContext();
+                Klass klass = context.getRegistries().loadKlass(
+                        context.getTypes().fromName(name), accessingKlass.getDefiningClassLoader());
+
+                if (!checkAccess(klass.getElementalType(), accessingKlass)) {
+                    Meta meta = context.getMeta();
+                    System.err.println(EspressoOptions.INCEPTION_NAME + " Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
+                    throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(name));
+                }
+
+                return new Resolved(klass);
+
+            } catch (VirtualMachineError e) {
+                // Comment from Hotspot:
+                // Just throw the exception and don't prevent these classes from
+                // being loaded for virtual machine errors like StackOverflow
+                // and OutOfMemoryError, etc.
+                // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
+                throw e;
+            }
+        }
+
+        /**
+         * A class or interface C is accessible to a class or interface D if and only if either of
+         * the following is true:
+         * <ul>
+         * <li>C is public.
+         * <li>C and D are members of the same run-time package (§5.3).
+         * </ul>
+         */
+        private static boolean checkAccess(Klass klass, Klass accessingKlass) {
+            if (klass.isPublic() || klass.getRuntimePackage().equals(accessingKlass.getRuntimePackage())) {
+                return true;
+            }
+            if (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    final class PreResolved implements ClassConstant, Resolvable {
+        private final Klass resolved;
+
+        PreResolved(Klass resolved) {
+            this.resolved = Objects.requireNonNull(resolved);
+        }
+
+        @Override
+        public Symbol<Name> getName(ConstantPool pool) {
+            return resolved.getName();
+        }
+
+        @Override
+        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+            return new Resolved(resolved);
         }
     }
 }

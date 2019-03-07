@@ -120,6 +120,19 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
                     return method;
                 }
             }
+            if (seed.getType() == Symbol.Type.MethodHandle) {
+                return lookupPolysigMethod(seed, name, signature);
+            }
+            return null;
+        }
+
+        private static Method lookupPolysigMethod(Klass klass, Symbol<Name> name, Symbol<Signature> signature) {
+            assert(klass.getType() == Symbol.Type.MethodHandle);
+            for (Method m: klass.getDeclaredMethods()) {
+                if ((m.isNative()) && m.getName() == name) {
+                    return m;
+                }
+            }
             return null;
         }
 

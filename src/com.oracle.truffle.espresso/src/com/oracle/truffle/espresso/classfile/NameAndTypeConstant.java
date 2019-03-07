@@ -45,6 +45,12 @@ public interface NameAndTypeConstant extends PoolConstant {
      */
     Symbol<? extends Descriptor> getDescriptor(ConstantPool pool);
 
+    Symbol<Symbol.Signature> getSignature(ConstantPool pool);
+
+    int getNameIndex();
+
+    int getTypeIndex();
+
     @Override
     default Tag tag() {
         return Tag.NAME_AND_TYPE;
@@ -56,6 +62,16 @@ public interface NameAndTypeConstant extends PoolConstant {
     }
 
     final class Indexes implements NameAndTypeConstant {
+        @Override
+        public int getNameIndex() {
+            return nameIndex;
+        }
+
+        @Override
+        public int getTypeIndex() {
+            return typeIndex;
+        }
+
         private final char nameIndex;
         private final char typeIndex;
 
@@ -72,6 +88,11 @@ public interface NameAndTypeConstant extends PoolConstant {
         @Override
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
             return pool.utf8At(typeIndex);
+        }
+
+        @Override
+        public Symbol<Symbol.Signature> getSignature(ConstantPool pool) {
+            return (Symbol<Symbol.Signature>) getDescriptor(pool);
         }
     }
 }

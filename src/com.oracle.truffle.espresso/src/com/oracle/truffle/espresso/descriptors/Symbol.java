@@ -28,6 +28,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.jni.Utf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Modified-UTF8 byte string (symbol) for internal use in Espresso.
@@ -124,6 +125,9 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
         public static final Symbol<Name> clazz = StaticSymbols.putName("clazz");
+        public static final Symbol<Name> type = StaticSymbols.putName("type");
+        public static final Symbol<Name> slot = StaticSymbols.putName("slot");
+        public static final Symbol<Name> flags = StaticSymbols.putName("flags");
         public static final Symbol<Name> root = StaticSymbols.putName("root");
         public static final Symbol<Name> value = StaticSymbols.putName("value");
         public static final Symbol<Name> hash = StaticSymbols.putName("hash");
@@ -156,6 +160,27 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
+        public static final Symbol<Name> form = StaticSymbols.putName("form");
+        public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
+
+
+        public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
+        public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");
+        public static final Symbol<Name> linkMethod = StaticSymbols.putName("linkMethod");
+        public static final Symbol<Name> linkCallSite = StaticSymbols.putName("linkCallSite");
+        public static final Symbol<Name> linkMethodHandleConstant = StaticSymbols.putName("linkMethodHandleConstant");
+        public static final Symbol<Name> toMethodDescriptorString = StaticSymbols.putName("toMethodDescriptorString");
+        public static final Symbol<Name> fromMethodDescriptorString = StaticSymbols.putName("fromMethodDescriptorString");
+        public static final Symbol<Name> getSignature = StaticSymbols.putName("getSignature");
+
+        // Polymorphic signature method names
+        public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
+        public static final Symbol<Name> invokeExact = StaticSymbols.putName("invokeExact");
+        public static final Symbol<Name> invokeBasic = StaticSymbols.putName("invokeBasic");
+        public static final Symbol<Name> linkToVirtual = StaticSymbols.putName("linkToVirtual");
+        public static final Symbol<Name> linkToStatic = StaticSymbols.putName("linkToStatic");
+        public static final Symbol<Name> linkToInterface = StaticSymbols.putName("linkToInterface");
+        public static final Symbol<Name> linkToSpecial = StaticSymbols.putName("linkToSpecial");
 
         // Attribute names
         public static final Symbol<Name> Code = StaticSymbols.putName("Code");
@@ -171,7 +196,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
         public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
         public static final Symbol<Name> Signature = StaticSymbols.putName("Signature");
-        public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
     }
 
     public static final class Type extends Descriptor {
@@ -272,6 +296,18 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> IllegalAccessError = StaticSymbols.putType(IllegalAccessError.class);
         public static final Symbol<Type> IncompatibleClassChangeError = StaticSymbols.putType(IncompatibleClassChangeError.class);
         public static final Symbol<Type> AbstractMethodError = StaticSymbols.putType(AbstractMethodError.class);
+
+        public static final Symbol<Type> MethodType = StaticSymbols.putType(java.lang.invoke.MethodType.class);
+
+        public static final Symbol<Type> MethodHandles = StaticSymbols.putType(java.lang.invoke.MethodHandles.class);
+        public static final Symbol<Type> Lookup = StaticSymbols.putType(java.lang.invoke.MethodHandles.Lookup.class);
+        public static final Symbol<Type> CallSite = StaticSymbols.putType(java.lang.invoke.CallSite.class);
+
+        // MethodHandleNatives is not public.
+        public static final Symbol<Type> MethodHandleNatives = StaticSymbols.putType("Ljava/lang/invoke/MethodHandleNatives;");
+        public static final Symbol<Type> MemberName = StaticSymbols.putType("Ljava/lang/invoke/MemberName;");
+        public static final Symbol<Type> MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
+        public static final Symbol<Type> LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
     }
 
     public static final class Signature extends Descriptor {
@@ -311,5 +347,16 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Integer_int = StaticSymbols.putSignature(Type.Integer, Type._int);
         public static final Symbol<Signature> Double_double = StaticSymbols.putSignature(Type.Double, Type._double);
         public static final Symbol<Signature> Long_long = StaticSymbols.putSignature(Type.Long, Type._long);
+
+        public static final Symbol<Signature> Object_ObjectArray = StaticSymbols.putSignature(Type.Object, Type.Object_array);
+
+        public static final Symbol<Signature> MethodType_cons = StaticSymbols.putSignature(Type.MethodType, Type.Class, Type.Class_array);
+        public static final Symbol<Signature> fromMethodDescriptorString_signature = StaticSymbols.putSignature(Type.MethodType, Type.String, Type.ClassLoader);
+
+        public static final Symbol<Signature> linkMethod_signature = StaticSymbols.putSignature(Type.MemberName, Type.Class, Type._int, Type.Class, Type.String, Type.Object, Type.Object_array);
+        public static final Symbol<Signature> linkMethodHandleConstant_signature = StaticSymbols.putSignature(Type.MethodHandle, Type.Class, Type._int, Type.Class, Type.String, Type.Object);
+        public static final Symbol<Signature> linkCallSite_signature = StaticSymbols.putSignature(Type.MemberName, Type.Object, Type.Object, Type.Object, Type.Object, Type.Object, Type.Object_array);
+        public static final Symbol<Signature> lookup_signature = StaticSymbols.putSignature(Type.Lookup);
+
     }
 }

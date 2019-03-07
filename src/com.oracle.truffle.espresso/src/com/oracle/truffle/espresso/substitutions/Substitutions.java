@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -90,7 +91,8 @@ public final class Substitutions implements ContextAccess {
                     Target_sun_misc_URLClassPath.class,
                     Target_sun_misc_VM.class,
                     Target_sun_reflect_NativeConstructorAccessorImpl.class,
-                    Target_sun_reflect_NativeMethodAccessorImpl.class));
+                    Target_sun_reflect_NativeMethodAccessorImpl.class,
+                    Target_java_lang_invoke_MethodHandleNatives.class));
 
     static {
         for (Class<?> clazz : ESPRESSO_SUBSTITUTIONS) {
@@ -184,7 +186,12 @@ public final class Substitutions implements ContextAccess {
                 Symbol<Type> parameterType;
                 Host annotatedType = parameter.getAnnotatedType().getAnnotation(Host.class);
                 if (annotatedType != null) {
-                    parameterType = StaticSymbols.putType(annotatedType.value());
+                    Class<?> guestType = annotatedType.value();
+                    if (guestType == Host.class) {
+                        parameterType = StaticSymbols.putType(annotatedType.typeName());
+                    } else {
+                        parameterType = StaticSymbols.putType(guestType);
+                    }
                 } else {
                     parameterType = StaticSymbols.putType(parameter.getType());
                 }
@@ -194,7 +201,12 @@ public final class Substitutions implements ContextAccess {
             Host annotatedReturnType = method.getAnnotatedReturnType().getAnnotation(Host.class);
             Symbol<Type> returnType;
             if (annotatedReturnType != null) {
-                returnType = StaticSymbols.putType(annotatedReturnType.value());
+                Class<?> guestType = annotatedReturnType.value();
+                if (guestType == Host.class) {
+                    returnType = StaticSymbols.putType(annotatedReturnType.typeName());
+                } else {
+                    returnType = StaticSymbols.putType(guestType);
+                }
             } else {
                 returnType = StaticSymbols.putType(method.getReturnType());
             }
@@ -235,6 +247,7 @@ public final class Substitutions implements ContextAccess {
 
     public EspressoRootNode get(Method method) {
         MethodRef key = getMethodKey(method);
+        EconomicMap<MethodRef, EspressoRootNodeFactory> ST_SUB = STATIC_SUBSTITUTIONS;
         EspressoRootNodeFactory factory = STATIC_SUBSTITUTIONS.get(key);
         if (factory == null) {
             factory = runtimeSubstitutions.get(key);

@@ -100,6 +100,16 @@ public final class RuntimeConstantPool extends ConstantPool {
         return (Method) resolved.value();
     }
 
+    public StaticObject resolvedMethodHandleAt(Klass accessingKlass, int index) {
+        Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method handle");
+        return (StaticObject) resolved.value();
+    }
+
+    public StaticObject resolvedMethodTypeAt(Klass accessingKlass, int index) {
+        Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method type");
+        return (StaticObject) resolved.value();
+    }
+
     public StaticObject getClassLoader() {
         return classLoader;
     }

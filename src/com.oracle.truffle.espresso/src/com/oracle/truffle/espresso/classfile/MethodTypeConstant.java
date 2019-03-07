@@ -26,6 +26,11 @@ import static com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface MethodTypeConstant extends PoolConstant {
 
@@ -46,7 +51,7 @@ public interface MethodTypeConstant extends PoolConstant {
         return getSignature(pool).toString();
     }
 
-    final class Index implements MethodTypeConstant {
+    final class Index implements MethodTypeConstant, Resolvable {
         private final char descriptorIndex;
 
         Index(int descriptorIndex) {
@@ -57,6 +62,34 @@ public interface MethodTypeConstant extends PoolConstant {
         public Symbol<Signature> getSignature(ConstantPool pool) {
             // TODO(peterssen): Assert valid signature.
             return pool.utf8At(descriptorIndex);
+        }
+
+        public Resolved resolve(RuntimeConstantPool pool, int index, Klass accessingKlass) {
+            Symbol<Signature> sig = getSignature(pool);
+            StaticObject classLoader = accessingKlass.getDefiningClassLoader();
+            Meta meta = accessingKlass.getContext().getMeta();
+
+            // TODO call java.lang.invoke.MethodHandleNatives::findMethodType(Class rt, Class[] pts)
+
+            return new Resolved((StaticObject)meta.fromMethodDescriptorString.invokeDirect(null, meta.toGuestString(sig), classLoader));
+        }
+    }
+
+    final class Resolved implements MethodTypeConstant, Resolvable.ResolvedConstant {
+        private final StaticObject resolved;
+
+        Resolved(StaticObject resolved) {
+            this.resolved = resolved;
+        }
+
+        @Override
+        public Symbol<Signature> getSignature(ConstantPool pool) {
+            // TODO(peterssen): Assert valid signature.
+            throw EspressoError.shouldNotReachHere("Method type already resolved !");
+        }
+
+        public Object value() {
+            return resolved;
         }
     }
 }

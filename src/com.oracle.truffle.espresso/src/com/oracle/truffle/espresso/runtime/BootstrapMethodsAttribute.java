@@ -33,7 +33,7 @@ public class BootstrapMethodsAttribute extends Attribute {
         return entries;
     }
 
-    public static class Entry {
+    public static class Entry{
         final char bootstrapMethodRef;
         final char[] bootstrapArguments;
 
@@ -48,6 +48,10 @@ public class BootstrapMethodsAttribute extends Attribute {
 
         public char argAt(int index) {
             return bootstrapArguments[index];
+        }
+
+        public char getBootstrapMethodRef() {
+            return bootstrapMethodRef;
         }
     }
 

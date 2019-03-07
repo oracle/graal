@@ -71,6 +71,7 @@ public final class Meta implements ContextAccess {
 
         String = knownKlass(Type.String);
         Class = knownKlass(Type.Class);
+        Class_Array = Class.array();
         Class_forName_String = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
 
         // Primitives.
@@ -192,6 +193,29 @@ public final class Meta implements ContextAccess {
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
         System_exit = System.lookupDeclaredMethod(Name.exit, Signature._void_int);
+
+        MethodType = knownKlass(Type.MethodType);
+        toMethodDescriptorString = MethodType.lookupMethod(Name.toMethodDescriptorString, Signature.String);
+        fromMethodDescriptorString = MethodType.lookupMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
+        //MethodType_cons = MethodType.lookupDeclaredMethod(Name.MethodType, Signature.MethodType_cons);
+
+        MemberName = knownKlass(Type.MemberName);
+        getSignature = MemberName.lookupMethod(Name.getSignature, Signature.String);
+
+        MethodHandle = knownKlass(Type.MethodHandle);
+        invokeExact = MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_ObjectArray);
+        invoke = MethodHandle.lookupDeclaredMethod(Name.invoke, Signature.Object_ObjectArray);
+
+        MethodHandles = knownKlass(Type.MethodHandles);
+        lookup = MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
+
+        CallSite = knownKlass(Type.CallSite);
+
+        MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
+        linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
+        linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
+        linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
+        findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
     }
 
     public final ObjectKlass Object;
@@ -199,6 +223,7 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass String;
     public final ObjectKlass Class;
+    public final ArrayKlass Class_Array;
     public final Method Class_forName_String;
 
     // Primitives.
@@ -325,6 +350,28 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass System;
     public final Method System_initializeSystemClass;
     public final Method System_exit;
+
+    public final ObjectKlass MethodType;
+    public final Method toMethodDescriptorString;
+
+    public final ObjectKlass MemberName;
+    public final Method getSignature;
+    public final Method fromMethodDescriptorString;
+
+    public final ObjectKlass MethodHandle;
+    public final Method invoke;
+    public final Method invokeExact;
+
+    public final ObjectKlass MethodHandles;
+    public final Method lookup;
+
+    public final ObjectKlass CallSite;
+
+    public final ObjectKlass MethodHandleNatives;
+    public final Method linkMethod;
+    public final Method linkMethodHandleConstant;
+    public final Method findMethodHandleType;
+    public final Method linkCallSite;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;

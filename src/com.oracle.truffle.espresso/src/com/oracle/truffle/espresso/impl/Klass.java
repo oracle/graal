@@ -462,10 +462,22 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         methodLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
         Method method = lookupDeclaredMethod(methodName, signature);
+        if (method == null && type == Type.MethodHandle) {
+            method = lookupPolysigMethod(methodName, signature);
+        }
         if (method == null && getSuperKlass() != null) {
             return getSuperKlass().lookupMethod(methodName, signature);
         }
         return method;
+    }
+
+    private final Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        for (Method m: getDeclaredMethods()) {
+            if (m.isNative() && m.getName() == methodName) {
+                return m;
+            }
+        }
+        return null;
     }
 
     @Override

@@ -22,7 +22,24 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.runtime.StaticObjectMessageResolutionForeign;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 
 public interface MethodHandleConstant extends PoolConstant {
     default Tag tag() {
@@ -73,7 +90,7 @@ public interface MethodHandleConstant extends PoolConstant {
         return getRefKind() + " " + pool.at(getRefIndex()).toString(pool);
     }
 
-    final class Index implements MethodHandleConstant {
+    final class Index implements MethodHandleConstant, Resolvable {
 
         private final byte refKind;
         private final char refIndex;
@@ -91,6 +108,58 @@ public interface MethodHandleConstant extends PoolConstant {
 
         public char getRefIndex() {
             return refIndex;
+        }
+
+        @Override
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+
+            Meta meta = pool.getContext().getMeta();
+            Method payload = pool.resolvedMethodAt(accessingKlass, getRefIndex());
+            StaticObject mname = meta.toGuestString(payload.getName().toString());
+
+            StaticObject[] ptypes = new StaticObject[payload.getParameterCount()];
+            int i = 0;
+            for (Klass k: payload.resolveParameterKlasses()) {
+                ptypes[i] = k.mirror();
+                i++;
+            }
+            StaticObject rtype = payload.resolveReturnKlass().mirror();
+            StaticObjectImpl mtype = (StaticObjectImpl) meta.findMethodHandleType.invokeDirect(
+                    null,
+                    rtype, new StaticObjectArray(meta.Class_Array, ptypes)
+            );
+
+            Klass mklass = payload.getDeclaringKlass();
+            return new Resolved((StaticObject) meta.linkMethodHandleConstant.invokeDirect(
+                        null,
+                        accessingKlass.mirror(), (int)refKind,
+                        mklass.mirror(), mname, mtype
+                    )
+            );
+
+            //throw EspressoError.unimplemented();
+        }
+    }
+
+    final class Resolved implements Resolvable.ResolvedConstant {
+        private StaticObject payload;
+
+        Resolved(StaticObject payload) {
+            this.payload = payload;
+        }
+
+        @Override
+        public Object value() {
+            return payload;
+        }
+
+        public Tag tag() {
+            return Tag.METHODHANDLE;
+        }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return payload.toString();
         }
     }
 }

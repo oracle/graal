@@ -27,7 +27,9 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 public interface StringConstant extends PoolConstant {
 
@@ -83,6 +85,25 @@ public interface StringConstant extends PoolConstant {
         @Override
         public Symbol<Constant> getSymbol(ConstantPool pool) {
             throw EspressoError.shouldNotReachHere("String already resolved");
+        }
+    }
+
+    final class PreResolved implements StringConstant, Resolvable {
+        private final StaticObject resolved;
+        //private final Symbol<Constant> symbol;
+
+        @Override
+        public Symbol<Constant> getSymbol(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere("String already Pre-Resolved");
+        }
+
+        PreResolved(StaticObject resolved) {
+            this.resolved = resolved;
+        }
+
+        @Override
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+            return new Resolved(resolved);
         }
     }
 }

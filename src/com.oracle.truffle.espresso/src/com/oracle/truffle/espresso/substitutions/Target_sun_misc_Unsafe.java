@@ -28,18 +28,15 @@ import java.security.ProtectionDomain;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.*;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.runtime.*;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
 import sun.misc.Unsafe;
 
 @EspressoSubstitutions
@@ -57,6 +54,65 @@ public final class Target_sun_misc_Unsafe {
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+    }
+
+
+    @Substitution(hasReceiver = true)
+    public static @Host(Class.class) StaticObject
+    defineAnonymousClass(
+            @Host(Unsafe.class) StaticObject self,
+            @Host(Class.class) StaticObjectClass hostClass,
+            @Host(typeName = "[B") StaticObjectArray data,
+            @Host(typeName = "[Ljava/lang/Object;") StaticObjectArray constantPoolPatches) {
+
+        EspressoContext context = self.getKlass().getContext();
+        //Meta meta = context.getMeta();
+        byte[] bytes = data.unwrap();
+        StaticObject[] patches = constantPoolPatches.unwrap();
+        Klass hostKlass = hostClass.getMirrorKlass();
+        ClassfileStream cfs = new ClassfileStream(bytes, null);
+
+        ParserKlass parserKlass = new ClassfileParser(cfs, null, hostKlass, context, patches).parseClass();
+        StaticObject classLoader = hostKlass.getDefiningClassLoader();
+        return defineAnonymousKlass(parserKlass, context, classLoader).mirror();
+    }
+
+    private static ObjectKlass defineAnonymousKlass (ParserKlass parserKlass, EspressoContext context, StaticObject classLoader) {
+
+        Symbol<Symbol.Type> superKlassType = parserKlass.getSuperKlass();
+        ClassRegistries classRegistry = context.getRegistries();
+
+        // TODO(peterssen): Superclass must be a class, and non-final.
+        ObjectKlass superKlass = superKlassType != null
+                ? (ObjectKlass) classRegistry.loadKlass(superKlassType, classLoader) // Should only be an ObjectKlass,
+                // not primitives nor arrays.
+                : null;
+
+        assert superKlass == null || !superKlass.isInterface();
+
+        final Symbol<Symbol.Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
+
+        LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
+                ? LinkedKlass.EMPTY_ARRAY
+                : new LinkedKlass[superInterfacesTypes.length];
+
+        ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0
+                ? ObjectKlass.EMPTY_ARRAY
+                : new ObjectKlass[superInterfacesTypes.length];
+
+        // TODO(peterssen): Superinterfaces must be interfaces.
+        for (int i = 0; i < superInterfacesTypes.length; ++i) {
+            ObjectKlass interf = (ObjectKlass) classRegistry.loadKlass(superInterfacesTypes[i], classLoader);
+            superInterfaces[i] = interf;
+            linkedInterfaces[i] = interf.getLinkedKlass();
+        }
+
+        // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
+        LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+
+        ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, classLoader);
+
+        return klass;
     }
 
     /**
@@ -227,6 +283,8 @@ public final class Target_sun_misc_Unsafe {
     public static synchronized void registerNatives() {
         /* nop */
     }
+
+
 
     /**
      * Allocates a new block of native memory, of the given size in bytes. The contents of the
@@ -486,6 +544,12 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         ((StaticObjectImpl) holder).setFieldVolatile(f, value);
+    }
+
+    @Substitution(methodName = "shouldBeInitialized", hasReceiver = true)
+    public static boolean shouldBeInit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObjectClass clazz) {
+        Klass k = clazz.getMirrorKlass();
+        return (k != null);
     }
 
     /**

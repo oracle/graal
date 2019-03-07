@@ -47,11 +47,14 @@ import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.*;
+import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class Method implements ModifiersProvider, ContextAccess {
@@ -185,6 +188,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         // TODO(peterssen): Make lazy call target thread-safe.
         if (callTarget == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+
             EspressoRootNode redirectedMethod = getSubstitutions().get(this);
             if (redirectedMethod != null) {
                 callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
@@ -390,10 +394,10 @@ public final class Method implements ModifiersProvider, ContextAccess {
     }
 
     public final boolean isClassInitializer() {
-        assert Signatures.returnKind(getParsedSignature()) == JavaKind.Void;
-        assert isStatic();
-        assert Signatures.parameterCount(getParsedSignature(), false) == 0;
-        assert !Name.CLINIT.equals(getName()) || Signature._void.equals(getRawSignature());
+//        assert Signatures.returnKind(getParsedSignature()) == JavaKind.Void;
+//        assert isStatic();
+//        assert Signatures.parameterCount(getParsedSignature(), false) == 0;
+//        assert !Name.CLINIT.equals(getName()) || Signature._void.equals(getRawSignature());
         return Name.CLINIT.equals(getName());
     }
 
@@ -431,5 +435,18 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public int getParameterCount() {
         return Signatures.parameterCount(getParsedSignature(), false);
+    }
+
+    public static Method getHostReflectiveMethodRoot(StaticObject seed) {
+        Meta meta = seed.getKlass().getMeta();
+        StaticObject curMethod = seed;
+        Method target = null;
+        while (target == null) {
+            target = (Method) ((StaticObjectImpl) curMethod).getHiddenField(Target_java_lang_Class.HIDDEN_METHOD_KEY);
+            if (target == null) {
+                curMethod = (StaticObject) meta.Method_root.get(curMethod);
+            }
+        }
+        return target;
     }
 }

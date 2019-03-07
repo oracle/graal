@@ -227,6 +227,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
+import java.lang.invoke.CallSite;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -1178,9 +1179,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert (Bytecodes.INVOKEDYNAMIC == opCode);
 
+        Meta meta = getMeta();
+
         RuntimeConstantPool pool = getConstantPool();
         InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
         BootstrapMethodsAttribute bms = getBootstrapMethods();
+        NameAndTypeConstant specifier = pool.nameAndTypeAt(inDy.getNameAndTypeIndex());
 
         assert (bms != null);
         BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
@@ -1188,25 +1192,110 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         // TODO(garcia) add support for non-lambda invokedynamic
         assert (bsEntry.numBootstrapArguments() == 3);
 
-        MethodHandleConstant mh = (MethodHandleConstant) pool.at(bsEntry.argAt(1));
-        Method target = resolveMethod(opCode, mh.getRefIndex());
+        Klass declaringKlass = getMethod().getDeclaringKlass();
+        StaticObject bsmMH = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
 
-        Symbol<Symbol.Type>[] parsed = getMethod().getContext().getSignatures().parsed(inDy.getSignature(pool));
-        ObjectKlass CSOKlass = (ObjectKlass) getMethod().getContext().getRegistries().loadKlassWithBootClassLoader(Signatures.returnType(parsed));
-
-        StaticObject emulatedThis;
-
-        if (getMethod().isStatic()) {
-            emulatedThis = null;
-        } else {
-            emulatedThis = getLocalObject(frame, 0);
+        Object[] args = new Object[bsEntry.numBootstrapArguments()];
+        for (int i = 0; i < args.length ; i++) {
+            PoolConstant pc = pool.at(bsEntry.argAt(i));
+            switch (pc.tag()) {
+                case METHODHANDLE:
+                    args[i] = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.argAt(i));
+                    break;
+                case METHODTYPE:
+                    args[i] = pool.resolvedMethodTypeAt(declaringKlass, bsEntry.argAt(i));
+                    break;
+                case CLASS:
+                    args[i] = pool.resolvedKlassAt(declaringKlass, bsEntry.argAt(i)).mirror();
+                    break;
+                case STRING:
+                    args[i] = pool.resolvedStringAt(bsEntry.argAt(i));
+                    break;
+                    //TODO(Garcia) Perhaps no need to box them ?
+                case INTEGER:
+                    args[i] = pool.intAt(bsEntry.argAt(i));
+                    break;
+                case LONG:
+                    args[i] = pool.longAt(bsEntry.argAt(i));
+                    break;
+                case DOUBLE:
+                    args[i] = pool.doubleAt(bsEntry.argAt(i));
+                    break;
+                case FLOAT:
+                    args[i] = pool.floatAt(bsEntry.argAt(i));
+                    break;
+                default:
+                    throw EspressoError.shouldNotReachHere();
+            }
         }
-        CallSiteObject cso = new CallSiteObject(CSOKlass, target, parsed, mh.getRefKind(), emulatedThis);
-        return injectAndCall(frame, top, curBCI, new InvokeDynamicNode(cso), opCode);
+
+        StaticObject name = meta.toGuestString(specifier.getName(pool));
+        StaticObject methodType = signatureToMethodType(getSignatures().parsed(specifier.getSignature(pool)), declaringKlass, getMeta());
+        StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1]);
+
+        StaticObject memberName = (StaticObject)getMeta().linkCallSite.invokeDirect(
+                null,
+                declaringKlass.mirror(),
+                bsmMH,
+                name, methodType,
+                new StaticObjectArray(meta.Object_array, args),
+                appendix);
+
+        StaticObject unboxedAppendix = appendix.get(0);
+
+
+        //getMeta().findMethodHandleType();
+
+
+        // call java.lang.invoke.MethodHandleNatives::linkCallSite(caller, bsm, name, mtype, info, &appendix)
+
+        //getMeta().invokeExact.invokeDirect(bsmMH, )
+
+        throw EspressoError.unimplemented("success!");
+//        Method target = resolveMethod(opCode, mh.getRefIndex());
+//
+//        Symbol<Symbol.Type>[] parsed = getMethod().getContext().getSignatures().parsed(inDy.getSignature(pool));
+//        ObjectKlass CSOKlass = (ObjectKlass) getMethod().getContext().getRegistries().loadKlassWithBootClassLoader(Signatures.returnType(parsed));
+//
+//        StaticObject emulatedThis;
+//
+//        if (getMethod().isStatic()) {
+//            emulatedThis = null;
+//        } else {
+//            emulatedThis = getLocalObject(frame, 0);
+//        }
+//        CallSiteObject cso = new CallSiteObject(CSOKlass, target, parsed, mh.getRefKind(), emulatedThis);
+//        return injectAndCall(frame, top, curBCI, new InvokeDynamicNode(cso), opCode);
 
         // return putKind(frame, top, cso, JavaKind.Object);
     }
 
+    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {
+        Symbol<Type> rt = Signatures.returnType(signature);
+        int pcount = Signatures.parameterCount(signature, false);
+
+        StaticObject[] ptypes =  new StaticObject[pcount];
+        for (int i = 0; i < pcount; i++) {
+            Symbol<Type> paramType = Signatures.parameterType(signature, i);
+            ptypes[i] = meta.loadKlass(paramType, declaringKlass.getDefiningClassLoader()).mirror();
+        }
+        StaticObject rtype = meta.loadKlass(rt, declaringKlass.getDefiningClassLoader()).mirror();
+
+        return (StaticObject) meta.findMethodHandleType.invokeDirect(
+                null,
+                rtype, new StaticObjectArray(meta.Class_Array, ptypes)
+        );
+    }
+
+
+    private CallSite executeBootstrapMethod(int curBCI) {
+        RuntimeConstantPool pool = getConstantPool();
+        InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
+        BootstrapMethodsAttribute.Entry bsEntry = getBootstrapMethods().at(inDy.getBootstrapMethodAttrIndex());
+
+        MethodHandleConstant bsmMH = (MethodHandleConstant) pool.at(bsEntry.getBootstrapMethodRef());
+        throw EspressoError.unimplemented();
+    }
     // endregion Bytecode quickening
 
     // region Class/Method/Field resolution
@@ -1521,9 +1610,11 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     }
 
     @ExplodeLoop
-    public Object[] peekArgumentsWithCSO(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature, CallSiteObject cso) {
+    public Object[] peekArgumentsWithCSO(VirtualFrame frame, int top, boolean hasReceiver, final CallSiteObject cso) {
         Object[] CSOargs = cso.getArgs();
-        final int nCSOargs = CSOargs.length;
+        final int nCSOargs = cso.getCapturedArgs();
+
+        Symbol<Type>[] signature = cso.getTargetParsedSig();
 
         int argCount = Signatures.parameterCount(signature, false);
 
@@ -1533,6 +1624,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         CompilerAsserts.partialEvaluationConstant(argCount);
         CompilerAsserts.partialEvaluationConstant(signature);
         CompilerAsserts.partialEvaluationConstant(hasReceiver);
+        CompilerAsserts.partialEvaluationConstant(nCSOargs);
 
         for (int j = 0; j < nCSOargs; j++) {
             args[j] = CSOargs[j];

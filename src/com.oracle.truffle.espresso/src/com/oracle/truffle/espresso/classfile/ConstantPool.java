@@ -44,6 +44,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.object.DebugCounter;
 
 /**
@@ -325,6 +329,13 @@ public abstract class ConstantPool {
      * Creates a constant pool from a class file.
      */
     public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser) {
+        return parse(language, stream, parser, null, null);
+    }
+
+    /**
+     * Creates a constant pool from a class file.
+     */
+    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, EspressoContext context) {
         final int length = stream.readU2();
         if (length < 1) {
             throw stream.classFormatError("Invalid constant pool size (" + length + ")");
@@ -342,11 +353,23 @@ public abstract class ConstantPool {
             }
             switch (tag) {
                 case CLASS: {
+                    if (existsAt(patches, i)) {
+                        StaticObject classSpecifier = patches[i];
+                        if (classSpecifier instanceof StaticObjectClass) {
+                            entries[i] = new ClassConstant.PreResolved(((StaticObjectClass)classSpecifier).getMirrorKlass());
+                        } else {
+                            entries[i] = new ClassConstant.WithString(context.getNames().lookup(Meta.toHostString(patches[i])));
+                        }
+                        break;
+                    }
                     int classNameIndex = stream.readU2();
                     entries[i] = new ClassConstant.Index(classNameIndex);
                     break;
                 }
                 case STRING: {
+                    if (existsAt(patches, i)) {
+                        entries[i] = new StringConstant.PreResolved(patches[i]);
+                    }
                     entries[i] = new StringConstant.Index(stream.readU2());
                     break;
                 }
@@ -375,15 +398,27 @@ public abstract class ConstantPool {
                     break;
                 }
                 case INTEGER: {
+                    if (existsAt(patches, i)) {
+                        entries[i] = new IntegerConstant(context.getMeta().unboxInteger(patches[i]));
+                        break;
+                    }
                     entries[i] = new IntegerConstant(stream.readS4());
                     break;
                 }
                 case FLOAT: {
+                    if (existsAt(patches, i)) {
+                        entries[i] = new FloatConstant(context.getMeta().unboxFloat(patches[i]));
+                        break;
+                    }
                     entries[i] = new FloatConstant(stream.readFloat());
                     break;
                 }
                 case LONG: {
-                    entries[i] = new LongConstant(stream.readS8());
+                    if (existsAt(patches, i)) {
+                        entries[i] = new LongConstant(context.getMeta().unboxLong(patches[i]));
+                    } else {
+                        entries[i] = new LongConstant(stream.readS8());
+                    }
                     ++i;
                     try {
                         entries[i] = InvalidConstant.VALUE;
@@ -393,7 +428,11 @@ public abstract class ConstantPool {
                     break;
                 }
                 case DOUBLE: {
-                    entries[i] = new DoubleConstant(stream.readDouble());
+                    if (existsAt(patches, i)) {
+                        entries[i] = new DoubleConstant(context.getMeta().unboxDouble(patches[i]));
+                    } else {
+                        entries[i] = new DoubleConstant(stream.readDouble());
+                    }
                     ++i;
                     try {
                         entries[i] = InvalidConstant.VALUE;
@@ -447,5 +486,9 @@ public abstract class ConstantPool {
         }
 
         return new ConstantPoolImpl(entries);
+    }
+
+    private static boolean existsAt(Object[] patches, int index) {
+        return patches != null && index <= patches.length && patches[index] != StaticObject.NULL;
     }
 }
