@@ -379,7 +379,7 @@ public class ExecuteEvaluatedTest {
          * Avoid locking optimization to trigger.
          */
         @Specialization(replaces = "doInt")
-        public double doInt(Void receiver, int intValue) {
+        public double doInt2(Void receiver, int intValue) {
             return 42;
         }
 
@@ -435,7 +435,7 @@ public class ExecuteEvaluatedTest {
          * Avoid locking optimization to trigger.
          */
         @Specialization(replaces = "doInt")
-        public double doInt(Void receiver, int intValue) {
+        public double doInt2(Void receiver, int intValue) {
             return 42;
         }
 
@@ -493,7 +493,7 @@ public class ExecuteEvaluatedTest {
          * Avoid locking optimization to trigger.
          */
         @Specialization(replaces = "doInt")
-        public double doInt(Void receiver, int intValue) {
+        public double doInt2(Void receiver, int intValue) {
             return 42;
         }
     }
