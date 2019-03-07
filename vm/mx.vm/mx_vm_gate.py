@@ -111,7 +111,7 @@ def gate_body(args, tasks):
                     excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
                     if excluded_tests:
                         with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
-                            fp.file.writelines(map(lambda l: l + '\n', excluded_tests.split()))
+                            fp.file.writelines([l + '\n' for l in excluded_tests.split()])
                             exclude_args = ["--blacklist", fp.name]
                     else:
                         exclude_args = []
