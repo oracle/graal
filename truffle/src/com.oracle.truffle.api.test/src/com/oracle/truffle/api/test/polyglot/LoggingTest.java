@@ -66,15 +66,19 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.function.Consumer;
 import org.graalvm.polyglot.Engine;
 
 public class LoggingTest {
@@ -635,6 +639,230 @@ public class LoggingTest {
         }
     }
 
+    @Test
+    public void testNoContextLoggingBasic() {
+        // Engine handler overriden by context handler, logging from language with context
+        final Level defaultLevel = Level.INFO;
+        TestHandler engineHandler = new TestHandler();
+        try (Engine eng = Engine.newBuilder().logHandler(engineHandler).build()) {
+            TestHandler handler = new TestHandler();
+            try (Context ctx = Context.newBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                ctx.eval(LoggingLanguageSecond.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                // All levels from log1 language and logs >= defaultLevel from log2 language
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageSecond.ID, defaultLevel, Collections.emptyMap()));
+                Assert.assertEquals(expected, handler.getLog());
+            }
+        }
+        Assert.assertTrue(engineHandler.getLog().isEmpty());
+
+        // Engine handler as default, logging from language with context
+        engineHandler = new TestHandler();
+        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(engineHandler).build()) {
+            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                ctx.eval(LoggingLanguageSecond.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                // All levels from log1 language and logs >= defaultLevel from log2 language
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageSecond.ID, defaultLevel, Collections.emptyMap()));
+                Assert.assertEquals(expected, engineHandler.getLog());
+            }
+        }
+        Assert.assertTrue(engineHandler.getLog().isEmpty());
+
+        // Engine handler as default, logging from instrument and language with context
+        engineHandler = new TestHandler();
+        ProxyInstrument delegate = new ProxyInstrument();
+        delegate.setOnCreate(new InstrumentLogging(false));
+        ProxyInstrument.setDelegate(delegate);
+        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), ProxyInstrument.ID, null, Level.FINEST.toString())).logHandler(
+                        engineHandler).build()) {
+            LoggingLanguageFirst.action = new LookupInstrumentAction(true);
+            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINEST, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+                Assert.assertEquals(expected, engineHandler.getLog());
+            }
+        }
+
+        // Engine handler as default, logging from instrument without context, logging from language
+        // with context
+        engineHandler = new TestHandler();
+        delegate = new ProxyInstrument();
+        delegate.setOnCreate(new InstrumentLogging(true));
+        ProxyInstrument.setDelegate(delegate);
+        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), ProxyInstrument.ID, null, Level.FINEST.toString())).logHandler(
+                        engineHandler).build()) {
+            LoggingLanguageFirst.action = new LookupInstrumentAction(true);
+            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINEST, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+                Assert.assertEquals(expected, engineHandler.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testNoContextLoggingDefault() {
+        final Level defaultLevel = Level.INFO;
+        // Logging from instrument and language with context
+        TestHandler engineHandler = new TestHandler();
+        ProxyInstrument delegate = new ProxyInstrument();
+        delegate.setOnCreate(new InstrumentLogging(false));
+        ProxyInstrument.setDelegate(delegate);
+        try (Engine eng = Engine.newBuilder().logHandler(engineHandler).build()) {
+            LoggingLanguageFirst.action = new LookupInstrumentAction(true);
+            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(ProxyInstrument.ID, defaultLevel, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                Assert.assertEquals(expected, engineHandler.getLog());
+            }
+        }
+
+        // Logging from instrument without context, logging from language with context
+        engineHandler = new TestHandler();
+        delegate = new ProxyInstrument();
+        delegate.setOnCreate(new InstrumentLogging(true));
+        ProxyInstrument.setDelegate(delegate);
+        try (Engine eng = Engine.newBuilder().logHandler(engineHandler).build()) {
+            LoggingLanguageFirst.action = new LookupInstrumentAction(true);
+            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(ProxyInstrument.ID, defaultLevel, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                Assert.assertEquals(expected, engineHandler.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testNoContextLoggingEngineAndContextHandler() {
+        // Logging from instrument and language with context
+        TestHandler engineHandler = new TestHandler();
+        ProxyInstrument delegate = new ProxyInstrument();
+        delegate.setOnCreate(new InstrumentLogging(false));
+        ProxyInstrument.setDelegate(delegate);
+        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
+                        engineHandler).build()) {
+            LoggingLanguageFirst.action = new LookupInstrumentAction(true);
+            TestHandler contextHandler = new TestHandler();
+            try (Context ctx = Context.newBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINER.toString())).logHandler(contextHandler).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINE, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINER, Collections.emptyMap()));
+                Assert.assertEquals(expected, contextHandler.getLog());
+                Assert.assertTrue(engineHandler.getLog().isEmpty());
+            }
+        }
+
+        // Logging from instrument without context, logging from language with context
+        engineHandler = new TestHandler();
+        delegate = new ProxyInstrument();
+        delegate.setOnCreate(new InstrumentLogging(true));
+        ProxyInstrument.setDelegate(delegate);
+        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
+                        engineHandler).build()) {
+            LoggingLanguageFirst.action = new LookupInstrumentAction(true);
+            TestHandler contextHandler = new TestHandler();
+            try (Context ctx = Context.newBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINER.toString())).logHandler(contextHandler).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expectedInEngine = new ArrayList<>();
+                expectedInEngine.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINE, Collections.emptyMap()));
+                Assert.assertEquals(expectedInEngine, engineHandler.getLog());
+                List<Map.Entry<Level, String>> expectedInContext = new ArrayList<>();
+                expectedInContext.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINER, Collections.emptyMap()));
+                Assert.assertEquals(expectedInContext, contextHandler.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testNoContextLoggingMultipleEngines() {
+        TestHandler engine1Handler = new TestHandler();
+        TestHandler engine2Handler = new TestHandler();
+        ProxyInstrument delegate = new ProxyInstrument();
+        delegate.setOnCreate(new InstrumentLogging(true));
+        ProxyInstrument.setDelegate(delegate);
+        try (Engine eng1 = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), ProxyInstrument.ID, null, Level.FINEST.toString())).logHandler(
+                        engine1Handler).build()) {
+            try (Engine eng2 = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
+                            engine2Handler).build()) {
+                LoggingLanguageFirst.action = new LookupInstrumentAction(true);
+                try (Context ctx = Context.newBuilder().engine(eng1).build()) {
+                    ctx.eval(LoggingLanguageFirst.ID, "");
+                }
+                LoggingLanguageFirst.action = new LookupInstrumentAction(true);
+                try (Context ctx = Context.newBuilder().engine(eng2).build()) {
+                    ctx.eval(LoggingLanguageFirst.ID, "");
+                }
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINEST, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+                Assert.assertEquals(expected, engine1Handler.getLog());
+                expected.clear();
+                expected.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINE, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
+                Assert.assertEquals(expected, engine2Handler.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testEngineLoggerIdentity() {
+        ProxyInstrument delegate = new ProxyInstrument();
+        AtomicReferenceArray<TruffleLogger> eng1Loggers = new AtomicReferenceArray<>(2);
+        delegate.setOnCreate(new Consumer<TruffleInstrument.Env>() {
+            @Override
+            public void accept(TruffleInstrument.Env env) {
+                TruffleLogger logger1 = env.getLogger("a.b.c");
+                TruffleLogger logger2 = env.getLogger("a.b");
+                Assert.assertNotSame(logger1, logger2);
+                Assert.assertSame(logger1, env.getLogger("a.b.c"));
+                Assert.assertSame(logger2, env.getLogger("a.b"));
+                Assert.assertNotSame(logger1, TruffleLogger.getLogger("a.b.c"));
+                Assert.assertNotSame(logger2, TruffleLogger.getLogger("a.b"));
+                eng1Loggers.set(0, logger1);
+                eng1Loggers.set(1, logger2);
+            }
+        });
+        ProxyInstrument.setDelegate(delegate);
+        try (Engine eng = Engine.create()) {
+            LoggingLanguageFirst.action = new LookupInstrumentAction(false);
+            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+            }
+        }
+        delegate = new ProxyInstrument();
+        delegate.setOnCreate(new Consumer<TruffleInstrument.Env>() {
+            @Override
+            public void accept(TruffleInstrument.Env env) {
+                TruffleLogger logger1 = env.getLogger("a.b.c");
+                TruffleLogger logger2 = env.getLogger("a.b");
+                Assert.assertNotSame(logger1, logger2);
+                Assert.assertNotSame(eng1Loggers.get(0), logger1);
+                Assert.assertNotSame(eng1Loggers.get(1), logger2);
+            }
+        });
+        ProxyInstrument.setDelegate(delegate);
+        try (Engine eng = Engine.create()) {
+            LoggingLanguageFirst.action = new LookupInstrumentAction(false);
+            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+            }
+        }
+    }
+
     private static void testLogToStream(Context.Builder contextBuilder, CloseableByteArrayOutputStream stream, boolean expectStreamClosed) {
         AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
             @Override
@@ -999,6 +1227,60 @@ public class LoggingTest {
 
         void clear() {
             this.count = 0;
+        }
+    }
+
+    private static final class InstrumentLogging implements Consumer<TruffleInstrument.Env> {
+        static final String[] LOGGER_NAMES = {"a", "a.a", "a.b", "a.a.a", "b", "b.a", "b.a.a.a"};
+        static final Level[] LOGGER_LEVELS = {Level.FINEST, Level.FINER, Level.FINE, Level.INFO, Level.SEVERE, Level.WARNING};
+
+        private final boolean detached;
+
+        InstrumentLogging(boolean detached) {
+            this.detached = detached;
+        }
+
+        @Override
+        public void accept(TruffleInstrument.Env env) {
+            if (detached) {
+                Thread t = new Thread(() -> {
+                    doLogging(env);
+                });
+                t.start();
+                try {
+                    t.join(1_000_000);
+                } catch (InterruptedException ie) {
+                    throw new RuntimeException(ie);
+                }
+            } else {
+                doLogging(env);
+            }
+        }
+
+        private static void doLogging(TruffleInstrument.Env env) {
+            for (Level level : LOGGER_LEVELS) {
+                for (String loggerName : LOGGER_NAMES) {
+                    TruffleLogger logger = env.getLogger(loggerName);
+                    logger.log(level, logger.getName());
+                }
+            }
+        }
+    }
+
+    private static final class LookupInstrumentAction implements BiPredicate<LoggingContext, Collection<TruffleLogger>> {
+
+        private final boolean performDefaultLogging;
+
+        LookupInstrumentAction(boolean performDefaultLogging) {
+            this.performDefaultLogging = performDefaultLogging;
+        }
+
+        @Override
+        public boolean test(LoggingContext ctx, Collection<TruffleLogger> loggers) {
+            TruffleLanguage.Env env = ctx.getEnv();
+            InstrumentInfo instrumentInfo = env.getInstruments().get(ProxyInstrument.ID);
+            env.lookup(instrumentInfo, ProxyInstrument.Initialize.class);
+            return performDefaultLogging;
         }
     }
 }

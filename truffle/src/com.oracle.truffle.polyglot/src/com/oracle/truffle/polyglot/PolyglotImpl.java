@@ -79,6 +79,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
@@ -978,8 +979,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Handler getLogHandler() {
-            return PolyglotLogHandler.INSTANCE;
+        public Handler getLogHandler(Object polyglotEngine) {
+            return polyglotEngine == null ? PolyglotLogHandler.INSTANCE : new PolyglotLogHandler((PolyglotEngineImpl) polyglotEngine);
         }
 
         @Override
@@ -993,11 +994,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Map<String, Level> getLogLevels(final Object context) {
-            if (!(context instanceof PolyglotContextImpl)) {
+        public Map<String, Level> getLogLevels(final Object vmObject) {
+            if (vmObject instanceof PolyglotContextImpl) {
+                return ((PolyglotContextImpl) vmObject).config.logLevels;
+            } else if (vmObject instanceof PolyglotEngineImpl) {
+                return ((PolyglotEngineImpl) vmObject).logLevels;
+            } else {
                 throw new AssertionError();
             }
-            return ((PolyglotContextImpl) context).config.logLevels;
         }
 
         @Override
@@ -1061,6 +1065,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             PolyglotLanguageContext context = ((PolyglotLanguageContext) languageContextVMObject).context.getContext(lang);
             context.ensureCreated((PolyglotLanguage) NODES.getEngineObject(accessingLanguage));
             return context.lookupService(type);
+        }
+
+        @Override
+        public TruffleLogger getLogger(Object vmObject, String loggerName) {
+            PolyglotInstrument instrument = (PolyglotInstrument) vmObject;
+            String id = instrument.getId();
+            PolyglotEngineImpl engine = getEngine(vmObject);
+            Object loggerCache = engine.getOrCreateEngineLoggers();
+            return LANGUAGE.getLogger(id, loggerName, loggerCache);
         }
     }
 }

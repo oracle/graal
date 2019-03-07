@@ -70,6 +70,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -313,9 +314,11 @@ public abstract class Accessor {
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
 
-        public abstract Handler getLogHandler();
+        public abstract Handler getLogHandler(Object polyglotEngine);
 
-        public abstract Map<String, Level> getLogLevels(Object context);
+        public abstract Map<String, Level> getLogLevels(Object vmObject);
+
+        public abstract TruffleLogger getLogger(Object vmObject, String name);
 
         public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
@@ -420,7 +423,15 @@ public abstract class Accessor {
 
         public abstract void materializeHostFrames(Throwable original);
 
-        public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
+        public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers);
+
+        public abstract Object getDefaultLoggers();
+
+        public abstract Object createEngineLoggers(Object polyglotEngine, Map<String, Level> logLevels);
+
+        public abstract void closeEngineLoggers(Object loggers);
+
+        public abstract TruffleLogger getLogger(String id, String loggerName, Object loggers);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 

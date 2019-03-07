@@ -56,12 +56,22 @@ final class PolyglotLogHandler extends Handler {
 
     static final Handler INSTANCE = new PolyglotLogHandler();
 
+    private final Handler fallBackHandler;
+
     private PolyglotLogHandler() {
+        this.fallBackHandler = null;
+    }
+
+    PolyglotLogHandler(PolyglotEngineImpl engine) {
+        fallBackHandler = engine.logHandler;
     }
 
     @Override
     public void publish(final LogRecord record) {
-        final Handler handler = findDelegate();
+        Handler handler = findDelegate();
+        if (handler == null) {
+            handler = fallBackHandler;
+        }
         if (handler != null) {
             handler.publish(record);
         }
