@@ -134,6 +134,4 @@ public final class Resources {
             throw new IllegalStateException(ex);
         }
     }
-
-
 }

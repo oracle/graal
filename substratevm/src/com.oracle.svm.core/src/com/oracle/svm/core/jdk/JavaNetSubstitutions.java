@@ -172,7 +172,7 @@ public final class JavaNetSubstitutions {
     }
 
     static URLStreamHandler createResourcesURLStreamHandler() {
-        URLStreamHandler answer = new URLStreamHandler() {
+        return new URLStreamHandler() {
             @Override
             protected URLConnection openConnection(URL url) throws IOException {
                 return new URLConnection(url) {
@@ -184,10 +184,9 @@ public final class JavaNetSubstitutions {
                     public InputStream getInputStream() throws IOException {
                         Resources.ResourcesSupport support = ImageSingletons.lookup(Resources.ResourcesSupport.class);
                         // remove "protcol:" from url to get the resource name
-                        String resName = url.toString().substring(1+JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
+                        String resName = url.toString().substring(1 + JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
                         final List<byte[]> bytes = support.resources.get(resName);
                         if (bytes == null || bytes.size() < 1) {
-                            System.err.println("Couldn't find resource "+resName);
                             return null;
                         } else {
                             return new ByteArrayInputStream(bytes.get(0));
@@ -196,7 +195,6 @@ public final class JavaNetSubstitutions {
                 };
             }
         };
-        return answer;
     }
 
     private static void unsupported(String message) {

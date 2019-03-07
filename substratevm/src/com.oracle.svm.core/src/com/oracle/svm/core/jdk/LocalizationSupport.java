@@ -40,7 +40,6 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.VMError;
 
 public class LocalizationSupport {
     protected final Map<String, Charset> charsets;
