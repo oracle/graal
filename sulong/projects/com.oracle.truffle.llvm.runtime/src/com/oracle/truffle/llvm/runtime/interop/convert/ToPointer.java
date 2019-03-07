@@ -35,8 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -74,11 +72,6 @@ public abstract class ToPointer extends ForeignToLLVM {
         public LLVMInteropType.Structured execute() {
             return type;
         }
-    }
-
-    @Specialization
-    protected LLVMVirtualAllocationAddress fromLLVMByteArrayAddress(LLVMVirtualAllocationAddressTruffleObject value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return value.getObject();
     }
 
     @Specialization

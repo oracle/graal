@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -204,8 +203,8 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     }
 
     @Specialization
-    static protected LLVMVirtualAllocationAddressTruffleObject escapingJavaByteArray(LLVMVirtualAllocationAddress address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return new LLVMVirtualAllocationAddressTruffleObject(address.copy());
+    static protected TruffleObject escapingJavaByteArray(LLVMVirtualAllocationAddress address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        return address.copy();
     }
 
     @Specialization(guards = "escapingValue == null")
