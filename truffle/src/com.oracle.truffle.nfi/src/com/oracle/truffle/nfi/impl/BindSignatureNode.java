@@ -76,7 +76,7 @@ abstract class BindSignatureNode extends Node {
         }
 
         @Specialization(replaces = "cached")
-        static protected LibFFISignature uncached(String signature,
+        protected static LibFFISignature uncached(String signature,
                         @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
             return parse(signature, ctx);
         }
@@ -86,7 +86,7 @@ abstract class BindSignatureNode extends Node {
         }
 
         @TruffleBoundary
-        static protected LibFFISignature parse(String signature, NFIContext ctx) {
+        protected static LibFFISignature parse(String signature, NFIContext ctx) {
             NativeSignature parsed = Parser.parseSignature(signature);
             return LibFFISignature.create(ctx, parsed);
         }
@@ -103,9 +103,9 @@ abstract class BindSignatureNode extends Node {
 
     @Specialization(limit = "3", guards = "!checkNull(receiver)")
     static TruffleObject doFunction(NativePointer receiver, Object signature,
-            @Cached SignatureCacheNode signatureCache,
-            @Cached BranchProfile exceptionProfile,
-            @CachedLibrary("signature") InteropLibrary strings) throws UnsupportedTypeException {
+                    @Cached SignatureCacheNode signatureCache,
+                    @Cached BranchProfile exceptionProfile,
+                    @CachedLibrary("signature") InteropLibrary strings) throws UnsupportedTypeException {
         try {
             String sigString = strings.asString(signature);
             LibFFISignature nativeSignature = signatureCache.execute(sigString);

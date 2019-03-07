@@ -103,6 +103,7 @@ final class LibFFIClosure implements TruffleObject {
         this.nativePointer = nativePointer;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isPointer() {
         return true;
@@ -225,7 +226,7 @@ final class LibFFIClosure implements TruffleObject {
         }
     }
 
-    final static class RetStringBuffer extends NativeArgumentBuffer {
+    static final class RetStringBuffer extends NativeArgumentBuffer {
 
         Object ret;
 

@@ -58,6 +58,7 @@ final class KeysArray implements TruffleObject {
         this.keys = keys;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean hasArrayElements() {
         return true;

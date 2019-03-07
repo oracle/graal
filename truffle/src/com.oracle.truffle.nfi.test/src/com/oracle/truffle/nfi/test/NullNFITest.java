@@ -146,7 +146,7 @@ public class NullNFITest extends NFITest {
     public void testNullCallbackArg(@Inject(TestNullCallbackArgNode.class) CallTarget callTarget) {
         TruffleObject nullCallback = new TestCallback(1, (args) -> {
             Assert.assertThat("callback argument", args[0], is(instanceOf(TruffleObject.class)));
-            Assert.assertTrue("isNull", UNCACHED_INTEROP.isNull((TruffleObject) args[0]));
+            Assert.assertTrue("isNull", UNCACHED_INTEROP.isNull(args[0]));
             return null;
         });
 

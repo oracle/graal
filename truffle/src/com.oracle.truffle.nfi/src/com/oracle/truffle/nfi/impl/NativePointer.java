@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(SerializeArgumentLibrary.class)
+@SuppressWarnings("unused")
 class NativePointer implements TruffleObject {
 
     private static final KeysArray KEYS = new KeysArray(new String[]{"bind"});

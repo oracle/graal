@@ -53,6 +53,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import java.util.function.Supplier;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 final class LibFFILibrary implements TruffleObject {
 
     private static final KeysArray KEYS = new KeysArray(new String[0]);
@@ -80,12 +81,12 @@ final class LibFFILibrary implements TruffleObject {
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return KEYS;
     }
 
     @ExportMessage
-    boolean isMemberReadable(String member) {
+    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
         return true;
     }
 

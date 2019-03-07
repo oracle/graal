@@ -76,6 +76,7 @@ import com.oracle.truffle.nfi.impl.SerializeArgumentLibrary.ShortArrayConversion
 @DefaultExport(FloatArrayConversion.class)
 @DefaultExport(DoubleArrayConversion.class)
 @DefaultExport(DefaultConversion.class)
+@SuppressWarnings("unused")
 abstract class SerializeArgumentLibrary extends Library {
 
     public void putByte(Object arg, NativeArgumentBuffer buffer) throws UnsupportedTypeException {

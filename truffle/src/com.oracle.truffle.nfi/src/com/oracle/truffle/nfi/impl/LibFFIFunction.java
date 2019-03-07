@@ -45,13 +45,13 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.nfi.impl.LibFFIType.Direction;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 final class LibFFIFunction implements TruffleObject {
 
     private static final KeysArray KEYS = new KeysArray(new String[]{"bind"});
@@ -107,18 +107,8 @@ final class LibFFIFunction implements TruffleObject {
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return KEYS;
-    }
-
-    @ExportMessage
-    boolean isMemberReadable(String member) {
-        return false;
-    }
-
-    @ExportMessage
-    Object readMember(String member) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
     }
 
     @ExportMessage

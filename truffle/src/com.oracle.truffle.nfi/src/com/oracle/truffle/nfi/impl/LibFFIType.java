@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.nfi.impl;
 
+import java.lang.reflect.Array;
 import java.nio.ByteOrder;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -63,24 +65,9 @@ import com.oracle.truffle.nfi.impl.ClosureArgumentNode.BufferClosureArgumentNode
 import com.oracle.truffle.nfi.impl.ClosureArgumentNode.ObjectClosureArgumentNode;
 import com.oracle.truffle.nfi.impl.ClosureArgumentNode.StringClosureArgumentNode;
 import com.oracle.truffle.nfi.impl.LibFFIType.ArrayType.HostObjectHelperNode.WrongTypeException;
-import com.oracle.truffle.nfi.impl.LibFFIType.SimpleType;
 import com.oracle.truffle.nfi.impl.LibFFITypeFactory.ArrayTypeFactory.CachedHostObjectHelperNodeGen;
 import com.oracle.truffle.nfi.impl.NativeArgumentBuffer.TypeTag;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.DOUBLE;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.FLOAT;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.POINTER;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.SINT16;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.SINT32;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.SINT64;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.SINT8;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.UINT16;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.UINT32;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.UINT64;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.UINT8;
-import static com.oracle.truffle.nfi.types.NativeSimpleType.VOID;
-import java.lang.reflect.Array;
-import java.util.function.Supplier;
 
 abstract class LibFFIType {
 
@@ -146,8 +133,8 @@ abstract class LibFFIType {
 
         @ExportMessage
         void serialize(NativeArgumentBuffer buffer, Object value,
-                    @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType,
-                    @CachedLibrary(limit = "3") SerializeArgumentLibrary serialize) throws UnsupportedTypeException {
+                        @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType,
+                        @CachedLibrary(limit = "3") SerializeArgumentLibrary serialize) throws UnsupportedTypeException {
             buffer.align(alignment);
             switch (cachedType) {
                 case UINT8:
@@ -240,7 +227,7 @@ abstract class LibFFIType {
             super(ctx, simpleType, size, alignment, 0, ffiType);
         }
 
-        public final Object fromPrimitive(long primitive) {
+        public Object fromPrimitive(long primitive) {
             switch (simpleType) {
                 case VOID:
                     return new NativePointer(0);
@@ -392,6 +379,7 @@ abstract class LibFFIType {
 
         @ImportStatic(NFILanguageImpl.class)
         @GenerateUncached
+        @SuppressWarnings("unused")
         abstract static class SerializeHelperNode extends Node {
 
             abstract void execute(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
@@ -510,6 +498,7 @@ abstract class LibFFIType {
             }
 
             @Fallback
+            @SuppressWarnings("unused")
             void doOther(NativeArgumentBuffer buffer, Object value) throws WrongTypeException {
                 throw new WrongTypeException();
             }
@@ -574,6 +563,7 @@ abstract class LibFFIType {
         }
 
         @ExportMessage
+        @SuppressWarnings("unused")
         static class Serialize {
 
             @Specialization
@@ -650,6 +640,7 @@ abstract class LibFFIType {
     }
 
     @ExportLibrary(NativeArgumentLibrary.class)
+    @SuppressWarnings("unused")
     static class EnvType extends BasePointerType {
 
         EnvType(LibFFIType pointerType) {

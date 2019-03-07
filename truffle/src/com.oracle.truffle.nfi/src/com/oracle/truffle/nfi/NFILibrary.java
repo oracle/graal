@@ -82,6 +82,7 @@ final class NFILibrary implements TruffleObject {
         symbols.put(name, symbol);
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean hasMembers() {
         return true;
@@ -89,7 +90,7 @@ final class NFILibrary implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Keys getMembers(boolean includeInternal) {
+    Keys getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new Keys(symbols.keySet());
     }
 
@@ -102,7 +103,7 @@ final class NFILibrary implements TruffleObject {
 
     @ExportMessage(limit = "3")
     Object readMember(String symbol,
-                      @CachedLibrary("this.getLibrary()") InteropLibrary recursive) throws UnsupportedMessageException, UnknownIdentifierException {
+                    @CachedLibrary("this.getLibrary()") InteropLibrary recursive) throws UnsupportedMessageException, UnknownIdentifierException {
         Object preBound = findSymbol(symbol);
         if (preBound != null) {
             return preBound;
@@ -111,15 +112,16 @@ final class NFILibrary implements TruffleObject {
         }
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
-    boolean isMemberInvocable(String symbol) {
+    boolean isMemberInvocable(@SuppressWarnings("unused") String symbol) {
         return true; // avoid expensive truffleboundary
     }
 
     @ExportMessage
     Object invokeMember(String symbol, Object[] args,
-                        @CachedLibrary(limit = "3") InteropLibrary executables,
-                        @Cached BranchProfile exception) throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
+                    @CachedLibrary(limit = "3") InteropLibrary executables,
+                    @Cached BranchProfile exception) throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
         Object preBound = findSymbol(symbol);
         if (preBound == null) {
             exception.enter();
@@ -137,6 +139,7 @@ final class NFILibrary implements TruffleObject {
             this.keys = keySet.toArray();
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasArrayElements() {
             return true;
