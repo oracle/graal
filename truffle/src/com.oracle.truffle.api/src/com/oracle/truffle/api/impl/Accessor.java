@@ -426,6 +426,7 @@ public abstract class Accessor {
 
         public abstract Path getPath(TruffleFile file);
 
+        public abstract TruffleFile getTruffleFile(FileSystem fs, String path);
     }
 
     public abstract static class InstrumentSupport {

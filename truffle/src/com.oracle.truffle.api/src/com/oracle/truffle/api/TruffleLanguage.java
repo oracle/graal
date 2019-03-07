@@ -2649,6 +2649,11 @@ public abstract class TruffleLanguage<C> {
         public TruffleLanguage<?> getLanguage(Env env) {
             return env.getSpi();
         }
+
+        @Override
+        public TruffleFile getTruffleFile(FileSystem fs, String path) {
+            return new TruffleFile(fs, fs.parsePath(path));
+        }
     }
 }
 
