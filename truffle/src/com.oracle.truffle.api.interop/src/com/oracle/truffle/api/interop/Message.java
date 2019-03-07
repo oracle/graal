@@ -457,27 +457,8 @@ public abstract class Message {
     }
 
     /**
-     * Check for <code>null</code> message. The Truffle languages are suggested to have their own
-     * object representing <code>null</code> like values in their languages. For purposes of
-     * inter-operability it is essential to canonicalize such values from time to time - sending
-     * this message is a way to recognize such <code>null</code> representing values:
-     *
-     * <pre>
-     * {@link Boolean} isNull = ({@link Boolean}) {@link ForeignAccess}.sendIsNull(
-     *   {@link Message#IS_NULL}.{@link Message#createNode() createNode()}, objectToCheckForNull
-     * );
-     * </pre>
-     *
-     * <p>
-     * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
-     * created for this message should yield value of {@link Boolean}.
-     * <p>
-     * To achieve good performance it is essential to cache/keep reference to the
-     * {@link Message#createNode() created node}.
-     *
      * @since 0.8 or earlier
-     * @deprecated use {@link ValueLibrary#isNull(Object)} instead. See {@link InteropLibrary} for
-     *             an overview of the new interop messages.
+     * @deprecated use {@link InteropLibrary#isNull(Object)} instead.
      */
     @Deprecated public static final Message IS_NULL = IsNull.INSTANCE;
 

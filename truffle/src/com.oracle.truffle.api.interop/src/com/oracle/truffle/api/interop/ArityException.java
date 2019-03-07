@@ -98,7 +98,6 @@ public final class ArityException extends InteropException {
     }
 
     /**
-     * @return the exception
      * @since 0.11
      * @deprecated use {@link #create(int, int)} instead. Interop exceptions should directly be
      *             thrown and no longer be hidden as runtime exceptions.

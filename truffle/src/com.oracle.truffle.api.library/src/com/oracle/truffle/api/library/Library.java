@@ -45,14 +45,8 @@ import com.oracle.truffle.api.nodes.Node;
 /**
  * Base class for all Truffle library specifications.
  *
- * Libraries.
- *
- * <h3>Specifying library messages</h3>
- * <h3>Exporting library messages</h3>
- * <h3>Dynamic Dispatch</h3>
- * <h3>Reflection</h3>
- *
- * @see GenerateLibrary further details on how to use.
+ * @see GenerateLibrary On how to specify libraries.
+ * @see ExportLibrary On how to implement / export library messages
  * @since 1.0
  */
 public abstract class Library extends Node {

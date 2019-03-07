@@ -41,31 +41,6 @@
 package com.oracle.truffle.api.interop;
 
 /**
- * This class represents {@link Message#KEY_INFO key info} bit flags. Use this class as a utility to
- * get or set the bit flags when dealing with {@link Message#KEY_INFO} message.
- * <p>
- * The bit flags have following meaning:
- * <ul>
- * <li>{@link #READABLE}: if {@link Message#READ reading} an existing key is supported.
- * <li>{@link #MODIFIABLE}: if {@link Message#WRITE writing} an existing key is supported.
- * <li>{@link #INSERTABLE} if {@link Message#WRITE writing} a new key is supported.
- * <li>{@link #INVOCABLE}: if {@link Message#INVOKE invoking} an existing key is supported.
- * <li>{@link #REMOVABLE} if {@link Message#REMOVE removing} an existing key is supported.
- * <li>{@link #INTERNAL} if an existing key is internal.
- * <li>{@link #READ_SIDE_EFFECTS} if {@link Message#READ} of the key value may have side-effects,
- * i.e. may change values of some keys, state of objects, etc.
- * <li>{@link #WRITE_SIDE_EFFECTS} if {@link Message#WRITE} of the key value may have side-effects,
- * i.e. may change values of other keys, state of other objects, etc.
- * <p>
- * When a {@link #isReadable(int) readable} or {@link #isWritable(int) writable} flag is
- * <code>true</code>, it does not necessarily guarantee that subsequent {@link Message#READ} or
- * {@link Message#WRITE} message will succeed. Read or write can fail due to some momentary bad
- * state. An object field is expected not to be readable resp. writable when it's known that the
- * field can not be read (e.g. a bean property without a getter) resp. can not be written to (e.g. a
- * bean property without a setter). The same applies to invocable flag and {@link Message#INVOKE}
- * message.
- * <p>
- *
  * @since 0.26
  * @deprecated see the individual constants and methods for replacements.
  */
@@ -73,7 +48,6 @@ package com.oracle.truffle.api.interop;
 public final class KeyInfo {
 
     /**
-     * Value of the key info if the key has no capability.
      *
      * @since 0.33
      * @deprecated without replacement.
@@ -85,8 +59,8 @@ public final class KeyInfo {
      *
      * @since 0.33
      * @see #READ_SIDE_EFFECTS
-     * @deprecated see {@link ObjectLibrary#isMemberReadable(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementReadable(Object, long)} instead.
+     * @deprecated see {@link InteropLibrary#isMemberReadable(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementReadable(Object, long)} instead.
      */
     @Deprecated public static final int READABLE = 1 << 1;
 
@@ -95,8 +69,8 @@ public final class KeyInfo {
      *
      * @since 0.33
      * @see #WRITE_SIDE_EFFECTS
-     * @deprecated see {@link ObjectLibrary#isMemberModifiable(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementModifiable(Object, long)} instead.
+     * @deprecated see {@link InteropLibrary#isMemberModifiable(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementModifiable(Object, long)} instead.
      */
     @Deprecated public static final int MODIFIABLE = 1 << 2;
 
@@ -104,7 +78,7 @@ public final class KeyInfo {
      * Single bit that is set if {@link Message#INVOKE invoking} an existing key is supported.
      *
      * @since 0.33
-     * @deprecated see {@link ObjectLibrary#isMemberInvocable(Object, String) instead.
+     * @deprecated see {@link InteropLibrary#isMemberInvocable(Object, String) instead.
      */
     @Deprecated public static final int INVOCABLE = 1 << 3;
 
@@ -112,7 +86,7 @@ public final class KeyInfo {
      * Single bit that is set if an existing key is internal.
      *
      * @since 0.33
-     * @deprecated see {@link ObjectLibrary#isMemberInternal(Object, String) instead.
+     * @deprecated see {@link InteropLibrary#isMemberInternal(Object, String) instead.
      */
     @Deprecated public static final int INTERNAL = 1 << 4;
 
@@ -120,8 +94,8 @@ public final class KeyInfo {
      * Single bit that is set if {@link Message#REMOVE removing} an existing key is supported.
      *
      * @since 0.33
-     * @deprecated see {@link ObjectLibrary#isMemberRemovable(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementRemovable(Object, long)} instead.
+     * @deprecated see {@link InteropLibrary#isMemberRemovable(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementRemovable(Object, long)} instead.
      */
     @Deprecated public static final int REMOVABLE = 1 << 5;
 
@@ -129,8 +103,8 @@ public final class KeyInfo {
      * Single bit that is set if {@link Message#WRITE writing} a new key is supported.
      *
      * @since 0.33
-     * @deprecated see {@link ObjectLibrary#isMemberInsertable(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementInsertable(Object, long)} instead.
+     * @deprecated see {@link InteropLibrary#isMemberInsertable(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementInsertable(Object, long)} instead.
      */
     @Deprecated public static final int INSERTABLE = 1 << 6;
 
@@ -141,7 +115,7 @@ public final class KeyInfo {
      * has a getter function.
      *
      * @since 1.0
-     * @deprecated see {@link ObjectLibrary#hasMemberReadSideEffects(Object, String) instead.
+     * @deprecated see {@link InteropLibrary#hasMemberReadSideEffects(Object, String) instead.
      */
     @Deprecated public static final int READ_SIDE_EFFECTS = 1 << 7;
 
@@ -152,7 +126,7 @@ public final class KeyInfo {
      * {@link Message#WRITE} may have side-effects if the property has a setter function.
      *
      * @since 1.0
-     * @deprecated see {@link ObjectLibrary#hasMemberWriteSideEffects(Object, String) instead.
+     * @deprecated see {@link InteropLibrary#hasMemberWriteSideEffects(Object, String) instead.
      */
     @Deprecated public static final int WRITE_SIDE_EFFECTS = 1 << 8;
 
@@ -167,8 +141,8 @@ public final class KeyInfo {
      * Test if the bits represent an existing key.
      *
      * @since 0.26
-     * @deprecated use {@link ObjectLibrary#isMemberExisting(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementExisting(Object, long)} instead.
+     * @deprecated use {@link InteropLibrary#isMemberExisting(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementExisting(Object, long)} instead.
      */
     @Deprecated
     public static boolean isExisting(int infoBits) {
@@ -179,8 +153,8 @@ public final class KeyInfo {
      * Test if {@link Message#READ reading} an existing key is supported.
      *
      * @since 0.26
-     * @deprecated use {@link ObjectLibrary#isMemberReadable(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementReadable(Object, long)} instead.
+     * @deprecated use {@link InteropLibrary#isMemberReadable(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementReadable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isReadable(int infoBits) {
@@ -191,8 +165,8 @@ public final class KeyInfo {
      * Test if {@link Message#READ writing} an existing or new key is supported.
      *
      * @since 0.26
-     * @deprecated use {@link ObjectLibrary#isMemberWritable(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementWritable(Object, long)} instead.
+     * @deprecated use {@link InteropLibrary#isMemberWritable(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementWritable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isWritable(int infoBits) {
@@ -203,7 +177,7 @@ public final class KeyInfo {
      * Test if {@link Message#READ} may have side-effects.
      *
      * @since 1.0
-     * @deprecated use {@link ObjectLibrary#hasMemberReadSideEffects(Object, String)} instead.
+     * @deprecated use {@link InteropLibrary#hasMemberReadSideEffects(Object, String)} instead.
      */
     @Deprecated
     public static boolean hasReadSideEffects(int infoBits) {
@@ -214,7 +188,7 @@ public final class KeyInfo {
      * Test if {@link Message#WRITE} may have side-effects.
      *
      * @since 1.0
-     * @deprecated use {@link ObjectLibrary#hasMemberWriteSideEffects(Object, String)} instead.
+     * @deprecated use {@link InteropLibrary#hasMemberWriteSideEffects(Object, String)} instead.
      */
     @Deprecated
     public static boolean hasWriteSideEffects(int infoBits) {
@@ -225,7 +199,7 @@ public final class KeyInfo {
      * Test if {@link Message#INVOKE invoking} an existing key is supported.
      *
      * @since 0.26
-     * @deprecated use {@link ObjectLibrary#isMemberInvocable(Object, String)} instead.
+     * @deprecated use {@link InteropLibrary#isMemberInvocable(Object, String)} instead.
      */
     @Deprecated
     public static boolean isInvocable(int infoBits) {
@@ -236,7 +210,7 @@ public final class KeyInfo {
      * Test if an existing key is internal.
      *
      * @since 0.26
-     * @deprecated use {@link ObjectLibrary#isMemberInternal(Object, String)} instead.
+     * @deprecated use {@link InteropLibrary#isMemberInternal(Object, String)} instead.
      */
     @Deprecated
     public static boolean isInternal(int infoBits) {
@@ -247,8 +221,8 @@ public final class KeyInfo {
      * Test if {@link Message#WRITE writing} a new key is supported.
      *
      * @since 0.33
-     * @deprecated use {@link ObjectLibrary#isMemberRemovable(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementRemovable(Object, long)} instead.
+     * @deprecated use {@link InteropLibrary#isMemberRemovable(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementRemovable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isRemovable(int infoBits) {
@@ -259,8 +233,8 @@ public final class KeyInfo {
      * Test if {@link Message#WRITE writing} an existing key is supported.
      *
      * @since 0.33
-     * @deprecated use {@link ObjectLibrary#isMemberModifiable(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementModifiable(Object, long)} instead.
+     * @deprecated use {@link InteropLibrary#isMemberModifiable(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementModifiable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isModifiable(int infoBits) {
@@ -271,8 +245,8 @@ public final class KeyInfo {
      * Test if {@link Message#WRITE writing} a new key is supported.
      *
      * @since 0.33
-     * @deprecated use {@link ObjectLibrary#isMemberInsertable(Object, String)} or
-     *             {@link ArrayLibrary#isArrayElementInsertable(Object, long)} instead.
+     * @deprecated use {@link InteropLibrary#isMemberInsertable(Object, String)} or
+     *             {@link InteropLibrary#isArrayElementInsertable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isInsertable(int infoBits) {
