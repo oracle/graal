@@ -39,7 +39,7 @@ from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
 
 _suite = mx.suite('vm')
-
+env_tests = []
 
 class VmGateTasks:
     compiler = 'compiler'
@@ -66,6 +66,15 @@ def gate_body(args, tasks):
             # 1. the build must be a GraalVM
             # 2. the build must be JVMCI-enabled since the 'GraalVM compiler' component is registered
             mx_vm.check_versions(mx_vm.graalvm_output(), graalvm_version_regex=mx_vm.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
+
+    with Task('Vm: GraalVM dist names', tasks, tags=[VmGateTasks.integration]) as t:
+        if t:
+            for suite, env_file_name, graalvm_dist_name in env_tests:
+                out = mx.LinesOutputCapture()
+                mx.run_mx(['--no-warning', '--env', env_file_name, 'graalvm-dist-name'], suite, out=out, err=out, env={})
+                mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(env_file_name, suite.name, graalvm_dist_name))
+                if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
+                    mx.abort("Unexpected GraalVM dist name for env file '{}' in suite '{}'.\nExpected: '{}', actual: '{}'.\nDid you forget to update the registration of the GraalVM config?".format(env_file_name, suite.name, graalvm_dist_name, '\n'.join(out.lines)))
 
     if mx_vm.has_component('LibGraal'):
         libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
