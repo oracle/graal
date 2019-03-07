@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GeneratedBy;
-import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
  * Represents a library factory that allows to create library instances to perform the Truffle
@@ -163,7 +162,7 @@ public abstract class LibraryFactory<T extends Library> {
         LibraryExport<T> export = lookupExport(receiver, dispatchClass);
         cached = export.createCached(receiver);
         assert (cached = createAssertionsImpl(export, cached)) != null;
-        if (!NodeUtil.isAdoptable(cached)) {
+        if (!cached.isAdoptable()) {
             assert cached.accepts(receiver) : String.format("Invalid accepts implementation detected in '%s'", dispatchClass.getName());
             T otherCached = cachedCache.putIfAbsent(dispatchClass, cached);
             if (otherCached != null) {

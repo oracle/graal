@@ -145,7 +145,7 @@ public class EncapsulatedNodeTest {
     public void testNotAdoptableNode() {
         Node node = new Node() {
             @Override
-            protected boolean isAdoptable() {
+            public boolean isAdoptable() {
                 return false;
             }
         };

@@ -181,9 +181,18 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
+     * Returns <code>true</code> if this node can be adopated by a parent. This method is intended
+     * to be overriden by subclasses. If nodes need to be statically shared that they must not be
+     * adoptable, because otherwise the parent reference might cause a memory leak. If a node is not
+     * adoptable then then it is guaranteed that the {@link #getParent() parent} pointer remains
+     * <code>null</code> at all times, even if the node is tried to be adopted by a parent.
+     * <p>
+     * Implementations of {@link #isAdoptable()} are required to fold to a constant result when
+     * compiled with a constant receiver.
      *
+     * @since 1.0
      */
-    protected boolean isAdoptable() {
+    public boolean isAdoptable() {
         return true;
     }
 

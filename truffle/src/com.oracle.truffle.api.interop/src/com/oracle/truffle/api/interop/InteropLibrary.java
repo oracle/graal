@@ -79,11 +79,11 @@ import com.oracle.truffle.api.library.LibraryFactory;
  * <li>{@link TruffleObject}: Any subclass of {@link TruffleObject} is interpreted depending on the
  * interop messages it {@link ExportLibrary exports}. Truffle objects are expected but not required
  * to export interop library messages.
- * <li>{@link String} and {@link Character} are interpreted as {@link StringLibrary#isString(Object)
- * string} value.
- * <li>{@link Boolean} is interpreted as {@link BooleanLibrary#isBoolean(Object) boolean} value.
+ * <li>{@link String} and {@link Character} are interpreted as {@link #isString(Object) string}
+ * value.
+ * <li>{@link Boolean} is interpreted as {@link #isBoolean(Object) boolean} value.
  * <li>{@link Byte}, {@link Short}, {@link Integer}, {@link Long}, {@link Float} and {@link Double}
- * are interpreted as {@link NumberLibrary#isNumber(Object) number} values.
+ * are interpreted as {@link #isNumber(Object) number} values.
  * </ul>
  * <p>
  * The following type combinations are mutually exclusive and cannot return <code>true</code> for
@@ -120,6 +120,9 @@ import com.oracle.truffle.api.library.LibraryFactory;
 @SuppressWarnings("unused")
 public abstract class InteropLibrary extends Library {
 
+    /**
+     * @since 1.0
+     */
     protected InteropLibrary() {
     }
 
@@ -185,7 +188,7 @@ public abstract class InteropLibrary extends Library {
      *             actual arguments.
      * @throws UnsupportedMessageException if and only if {@link #isExecutable(Object)} returns
      *             <code>false</code> for the same receiver.
-     * @see {@link #isExecutable(Object)}
+     * @see #isExecutable(Object)
      * @since 1.0
      */
     @Abstract(ifExported = "isExecutable")
@@ -219,7 +222,7 @@ public abstract class InteropLibrary extends Library {
      *             actual arguments.
      * @throws UnsupportedMessageException if and only if {@link #isInstantiable(Object)} returns
      *             <code>false</code> for the same receiver.
-     * @see {@link #isExecutable(Object)}
+     * @see #isExecutable(Object)
      * @since 1.0
      */
     @Abstract(ifExported = "isInstantiable")
@@ -540,7 +543,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @throws UnsupportedMessageException if the member is not readable
      * @throws UnknownIdentifierException if the given member does not exist.
-     * @see {@link #hasMemberReadSideEffects(Object, String)}
+     * @see #hasMemberReadSideEffects(Object, String)
      * @since 1.0
      */
     @Abstract(ifExported = "isMemberReadable")
@@ -590,7 +593,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if the member is not writable
      * @throws UnknownIdentifierException if the given member is not insertable and does not exist.
      * @throws UnsupportedTypeException if the provided value type is not allowed to be written
-     * @see {@link #hasMemberWriteSideEffects(Object, String)}
+     * @see #hasMemberWriteSideEffects(Object, String)
      * @since 1.0
      */
     @Abstract(ifExported = {"isMemberModifiable", "isMemberInsertable"})
@@ -737,7 +740,7 @@ public abstract class InteropLibrary extends Library {
      * of an array or list datastructure could be interpreted as array elements. Invoking this
      * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
-     * @see {@link #getArraySize(Object)}
+     * @see #getArraySize(Object)
      * @since 1.0
      */
     @Abstract(ifExported = {"readArrayElement", "writeArrayElement", "removeArrayElement", "isArrayElementModifiable", "isArrayElementRemovable", "isArrayElementReadable", "getArraySize"})

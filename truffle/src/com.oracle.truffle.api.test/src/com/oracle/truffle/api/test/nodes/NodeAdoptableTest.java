@@ -59,7 +59,7 @@ public class NodeAdoptableTest {
         @Child Node child;
 
         @Override
-        protected boolean isAdoptable() {
+        public boolean isAdoptable() {
             return super.isAdoptable();
         }
 
@@ -72,7 +72,7 @@ public class NodeAdoptableTest {
 
     static class NonAdoptibleNode extends Node {
         @Override
-        protected boolean isAdoptable() {
+        public boolean isAdoptable() {
             return false;
         }
     }

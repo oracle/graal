@@ -59,13 +59,17 @@ final class DefaultIndirectCallNode extends IndirectCallNode {
     static IndirectCallNode createUncached() {
         return new IndirectCallNode() {
             @Override
-            protected boolean isAdoptable() {
+            public boolean isAdoptable() {
                 return false;
             }
 
             @Override
             @TruffleBoundary
             public Object call(CallTarget target, Object... arguments) {
+                /*
+                 * Clear encapsulating node for uncached indirect call boundary. The encapsulating
+                 * node is not longer needed if a call boundary is crossed.
+                 */
                 Node parent = NodeUtil.pushEncapsulatingNode(null);
                 try {
                     return ((DefaultCallTarget) target).callDirectOrIndirect(parent, arguments);

@@ -83,6 +83,13 @@ public abstract class IndirectCallNode extends Node {
 
     private static final IndirectCallNode UNCACHED = Node.ACCESSOR.createUncachedIndirectCall();
 
+    /**
+     * Returns an uncached version of an indirect call node. Uncached versions of an indirect call
+     * node use the {@link NodeUtil#getCurrentEncapsulatingNode() current encapsulating node} as
+     * source location.
+     *
+     * @since 1.0
+     */
     public static IndirectCallNode getUncached() {
         return UNCACHED;
     }

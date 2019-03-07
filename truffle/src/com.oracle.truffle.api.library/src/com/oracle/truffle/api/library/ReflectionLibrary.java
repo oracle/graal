@@ -299,7 +299,7 @@ final class ReflectionLibraryDefaultGen {
             }
 
             @Override
-            protected boolean isAdoptable() {
+            public boolean isAdoptable() {
                 return false;
             }
 
@@ -461,7 +461,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
         }
 
         @Override
-        protected boolean isAdoptable() {
+        public boolean isAdoptable() {
             return false;
         }
 

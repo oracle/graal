@@ -190,7 +190,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             }
 
             @Override
-            protected boolean isAdoptable() {
+            public boolean isAdoptable() {
                 return false;
             }
 
@@ -222,7 +222,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             }
 
             @Override
-            protected boolean isAdoptable() {
+            public boolean isAdoptable() {
                 return false;
             }
 
@@ -342,10 +342,9 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
         }
 
         @Override
-        protected boolean isAdoptable() {
+        public boolean isAdoptable() {
             return false;
         }
-
     }
 
     @GeneratedBy(DynamicDispatchLibrary.class)

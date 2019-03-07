@@ -72,7 +72,6 @@ import com.oracle.truffle.api.library.LibraryExport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
@@ -259,7 +258,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder = isAdoptable.createBuilder();
             if (libraryExports.needsDynamicDispatch()) {
                 builder.startReturn();
-                builder.startStaticCall(context.getType(NodeUtil.class), "isAdoptable").string("dynamicDispatch_").end();
+                builder.startCall("dynamicDispatch_", "isAdoptable").end();
                 builder.end();
             } else {
                 builder.returnFalse();

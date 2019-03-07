@@ -106,7 +106,13 @@ abstract class GuestToHostRootNode extends RootNode {
     }
 
     static Object guestToHostCall(Node node, CallTarget target, Object... arguments) {
-        return CALL_INLINED.call(NodeUtil.getEncapsulatingNode(node), target, arguments);
+        Node encapsulatingNode;
+        if (node.isAdoptable()) {
+            encapsulatingNode = node;
+        } else {
+            encapsulatingNode = NodeUtil.getCurrentEncapsulatingNode();
+        }
+        return CALL_INLINED.call(encapsulatingNode, target, arguments);
     }
 
 }

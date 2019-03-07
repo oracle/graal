@@ -233,19 +233,22 @@ public final class NodeUtil {
         return replaceChild(parent, oldChild, newChild, false);
     }
 
+    /**
+     * Returns the current encapsulating node for non {@link Node#isAdoptable() adoptable} nodes.
+     *
+     * @since 1.0
+     */
     @TruffleBoundary
     public static Node getCurrentEncapsulatingNode() {
         return (Node) CURRENT_ENCAPSULATING_NODE.get();
     }
 
-    public static Node getEncapsulatingNode(Node node) {
-        if (node.isAdoptable()) {
-            return node;
-        } else {
-            return NodeUtil.getCurrentEncapsulatingNode();
-        }
-    }
-
+    /**
+     * Utility to push the current encapsulating Node for nodes that are not
+     * {@link Node#isAdoptable() adoptable}.
+     *
+     * @since 1.0
+     */
     @TruffleBoundary
     public static Node pushEncapsulatingNode(Node node) {
         assert node == null || node.isAdoptable() : "Node must be adoptable to be pushed as encapsulating node.";
@@ -255,13 +258,15 @@ public final class NodeUtil {
         return (Node) prev;
     }
 
+    /**
+     * Utility to push the pop encapsulating Node for nodes that are not {@link Node#isAdoptable()
+     * adoptable}.
+     *
+     * @since 1.0
+     */
     @TruffleBoundary
     public static void popEncapsulatingNode(Node prev) {
         CURRENT_ENCAPSULATING_NODE.set(prev);
-    }
-
-    public static boolean isAdoptable(Node node) {
-        return node.isAdoptable();
     }
 
     /*

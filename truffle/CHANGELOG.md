@@ -18,13 +18,24 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* Added `@Cached(uncached="")` to specify the expression to use for the uncached node.
 	* Added `@Cached(allowUncached=true)` to allow the cached expression to be reused as uncached expression. Only necessary if the cached expression is not trivial or there is no `getUncached()` static method in the node.
 	* Added `@Cached#parameters` to allow to share the parameter specification for the cached and uncached version of a node.
-	* Added 
+	* Added `getUncached()` method to the following classes:
+        - BranchProfile 
+        - ByteValueProfile
+        - ConditionProfile
+        - DoubleValueProfile
+        - FloatValueProfile
+        - IntValueProfile 
+        - LongValueProfile
+        - LoopConditionProfile
+        - PrimitiveValueProfile
+        - ValueProfile
+        - IndirectCallNode
 * Truffle DSL can now properly handle checked exceptions in execute methods and specializations.
 * Truffle DSL now guarantees to adopt nodes before they are executed in guards. Previously, nodes used in guards were only adopted for their second cached invocation.
 * Added `@Cached.Shared` to allow sharing of cached values between specialization and exported Truffle Library methods.
-* Added `getUncached()` method to the following profiles: `
-	* 
 * Added `Node.isAdoptable()` that allows `Node.getParent()` to always remain `null` even if the node is adopted by a parent. This allows to share nodes statically and avoid the memory leak for the parent reference.
+* Added `NodeUtil.getCurrentEncapsulatingNode` to access the current encapsulating node in nodes that are not adoptable.
+* Added the `Assumption.isValidAssumption` method that allows for simpler checking of assumptions in generated code. 
 * Added Truffle DSL option `-Dtruffle.dsl.ignoreCompilerWarnings=true|false`, to ignore Truffle DSL compiler warnings. This is useful and recommended to be used for downstream testing.
 * Added `@CachedContext` and `@CachedLanguage` for convenient language and context lookup in specialiazations or exported methods.
 * Added `Node.getContextSupplier(Class)` and `Node.getLanguageSupplier(Class)` that allows for a more convenient lookup.

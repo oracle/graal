@@ -422,10 +422,6 @@ public class GenerateUncachedTest {
             return "s0";
         }
 
-        @Override
-        protected boolean isAdoptable() {
-            return super.isAdoptable();
-        }
     }
 
     @Test
@@ -445,10 +441,6 @@ public class GenerateUncachedTest {
             return "s0";
         }
 
-        @Override
-        protected boolean isAdoptable() {
-            return super.isAdoptable();
-        }
     }
 
     @GenerateUncached
