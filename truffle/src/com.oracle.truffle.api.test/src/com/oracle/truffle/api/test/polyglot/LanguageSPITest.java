@@ -110,6 +110,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService2;
+import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService3;
+import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService4;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
 public class LanguageSPITest {
@@ -1810,53 +1813,58 @@ public class LanguageSPITest {
         }
     }
 
+    private static boolean lookupLanguage(Class<?> serviceClass) {
+        Env env = ProxyLanguage.getCurrentContext().env;
+        LanguageInfo languageInfo = env.getLanguages().get(SERVICE_LANGUAGE);
+        return env.lookup(languageInfo, serviceClass) != null;
+    }
+
     @Test
     public void testLookup() {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
-                Env env = ProxyLanguage.getCurrentContext().env;
-                LanguageInfo languageInfo = env.getLanguages().get(LanguageSPITestLanguage.ID);
-                String className = request.getSource().getCharacters().toString();
-                boolean found = env.lookup(languageInfo, Class.forName(className)) != null;
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(found));
-            }
-        });
         // Not loaded language
-        try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
-            Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService.class.getName());
-            assertTrue(result.isBoolean());
-            assertFalse(result.asBoolean());
+        try (Context context = Context.create()) {
+            context.initialize(ProxyLanguage.ID);
+            context.enter();
+            assertFalse(lookupLanguage(LanguageSPITestLanguageService.class));
+            context.leave();
         }
         // Loaded language
-        try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
-            context.initialize(LanguageSPITestLanguage.ID);
-            Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService.class.getName());
-            assertTrue(result.isBoolean());
-            assertTrue(result.asBoolean());
+        try (Context context = Context.create()) {
+            context.initialize(ProxyLanguage.ID);
+            context.initialize(SERVICE_LANGUAGE);
+            context.enter();
+            try {
+                assertTrue(lookupLanguage(LanguageSPITestLanguageService.class));
+            } finally {
+                context.leave();
+            }
         }
         // Registered service
-        langContext = null;
-        try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
-            Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService2.class.getName());
-            assertTrue(result.isBoolean());
-            assertTrue(result.asBoolean());
-            result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService3.class.getName());
-            assertNotNull(langContext);
-            assertTrue(result.isBoolean());
-            assertTrue(result.asBoolean());
+        try (Context context = Context.create()) {
+            context.initialize(ProxyLanguage.ID);
+            context.enter();
+            try {
+                assertTrue(lookupLanguage(LanguageSPITestLanguageService2.class));
+                assertTrue(lookupLanguage(LanguageSPITestLanguageService3.class));
+            } finally {
+                context.leave();
+            }
         }
         // Non registered service
-        langContext = null;
-        resetLoadedLanguage(LanguageSPITestLanguage.ID);
-        try (Context context = Context.create(LanguageSPITestLanguage.ID, ProxyLanguage.ID)) {
-            Value result = context.eval(ProxyLanguage.ID, LanguageSPITestLanguageService4.class.getName());
-            assertFalse(isLanguageLoaded(LanguageSPITestLanguage.ID));
-            assertNull(langContext);
-            assertTrue(result.isBoolean());
-            assertFalse(result.asBoolean());
+        resetLoadedLanguage(SERVICE_LANGUAGE);
+        try (Context context = Context.create()) {
+            context.initialize(ProxyLanguage.ID);
+            context.enter();
+            try {
+                assertFalse(lookupLanguage(LanguageSPITestLanguageService4.class));
+                assertFalse(isLanguageLoaded(SERVICE_LANGUAGE));
+            } finally {
+                context.leave();
+            }
         }
     }
+
+    static final String SERVICE_LANGUAGE = "ServiceTestLanguage";
 
     private static boolean isLanguageLoaded(String languageId) {
         try {
@@ -1986,6 +1994,39 @@ public class LanguageSPITest {
             assertTrue(e.isGuestException());
             assertEquals("testLanguageErrorDuringInitialization", e.getSourceLocation().getSource().getName());
         }
+        context.close();
+    }
+
+    @TruffleLanguage.Registration(id = SERVICE_LANGUAGE, name = SERVICE_LANGUAGE, version = "1.0", contextPolicy = ContextPolicy.SHARED, services = {
+                    LanguageSPITestLanguageService2.class, LanguageSPITestLanguageService3.class})
+    public static class ServiceTestLanguage extends TruffleLanguage<Env> implements LanguageSPITestLanguageService {
+
+        @Override
+        protected Env createContext(Env env) {
+            env.registerService(new LanguageSPITestLanguageService2() {
+            });
+            env.registerService(new LanguageSPITestLanguageService3() {
+            });
+            return env;
+        }
+
+        @Override
+        protected boolean isObjectOfLanguage(Object object) {
+            return false;
+        }
+
+        interface LanguageSPITestLanguageService2 {
+        }
+
+        interface LanguageSPITestLanguageService3 {
+        }
+
+        interface LanguageSPITestLanguageService4 {
+        }
+
+    }
+
+    interface LanguageSPITestLanguageService {
     }
 
 }
