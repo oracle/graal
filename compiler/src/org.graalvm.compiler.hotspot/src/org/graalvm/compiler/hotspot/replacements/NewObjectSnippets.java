@@ -252,7 +252,7 @@ public class NewObjectSnippets implements Snippets {
     private static native Object newInstanceOrNull(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub);
 
     @Snippet
-    public static Object allocateInstancePIC(@ConstantParameter int size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents,
+    public static Object allocateInstancePIC(@ConstantParameter long size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents,
                     @ConstantParameter Register threadRegister, @ConstantParameter boolean constantSize, @ConstantParameter String typeContext,
                     @ConstantParameter Counters counters) {
         // Klass must be initialized by the time the first instance is allocated, therefore we can
