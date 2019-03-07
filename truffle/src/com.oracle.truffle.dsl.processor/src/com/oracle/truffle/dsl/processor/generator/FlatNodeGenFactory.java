@@ -480,7 +480,7 @@ public class FlatNodeGenFactory {
             if (hasGenericTypeMatch) {
                 for (ListIterator<ExecutableTypeData> iterator = genericExecutableTypes.listIterator(); iterator.hasNext();) {
                     ExecutableTypeData executableTypeData = iterator.next();
-                    if (!typeEquals(genericReturnType, executableTypeData.getReturnType())) {
+                    if (!isAssignable(genericReturnType, executableTypeData.getReturnType())) {
                         iterator.remove();
                         specializedExecutableTypes.add(executableTypeData);
                     }
