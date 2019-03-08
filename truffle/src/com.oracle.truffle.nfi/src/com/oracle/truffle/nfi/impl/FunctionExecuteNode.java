@@ -65,8 +65,8 @@ abstract class FunctionExecuteNode extends Node {
     @ExplodeLoop
     @Specialization(guards = "checkSignature(receiver, signature)")
     protected Object cachedSignature(LibFFIFunction receiver, Object[] args, @Cached("receiver.getSignature()") LibFFISignature signature,
-            @Cached("getNativeArgumentLibraries(signature)") NativeArgumentLibrary[] argLibs,
-            @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws ArityException, UnsupportedTypeException {
+                    @Cached("getNativeArgumentLibraries(signature)") NativeArgumentLibrary[] argLibs,
+                    @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws ArityException, UnsupportedTypeException {
         if (args.length != signature.getRealArgCount()) {
             throw ArityException.create(argLibs.length, args.length);
         }
@@ -105,9 +105,9 @@ abstract class FunctionExecuteNode extends Node {
     @ExplodeLoop
     @Specialization(replaces = "cachedSignature", guards = "receiver.getSignature().getArgTypes().length == libs.length")
     protected Object cachedArgCount(LibFFIFunction receiver, Object[] args,
-            @Cached("getGenericNativeArgumentLibraries(receiver.getSignature().getArgTypes().length)") NativeArgumentLibrary[] libs,
-            @CachedContext(NFILanguageImpl.class) NFIContext ctx,
-            @Cached BranchProfile exception) throws ArityException, UnsupportedTypeException {
+                    @Cached("getGenericNativeArgumentLibraries(receiver.getSignature().getArgTypes().length)") NativeArgumentLibrary[] libs,
+                    @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                    @Cached BranchProfile exception) throws ArityException, UnsupportedTypeException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
 
@@ -156,8 +156,8 @@ abstract class FunctionExecuteNode extends Node {
 
     @Specialization(replaces = "cachedArgCount")
     static Object genericExecute(LibFFIFunction receiver, Object[] args,
-            @CachedLibrary(limit = "ARG_DISPATCH_LIMIT") NativeArgumentLibrary nativeArguments,
-            @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws ArityException, UnsupportedTypeException {
+                    @CachedLibrary(limit = "ARG_DISPATCH_LIMIT") NativeArgumentLibrary nativeArguments,
+                    @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws ArityException, UnsupportedTypeException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
 

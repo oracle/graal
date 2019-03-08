@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi.test;
 
-
 import java.util.ArrayList;
 import java.util.Collection;
 
