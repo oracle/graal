@@ -596,7 +596,9 @@ public final class InspectorRuntime extends RuntimeDomain {
 
     @Override
     public void notifyConsoleAPICalled(String type, Object text) {
-        eventHandler.event(new Event("Runtime.consoleAPICalled", Params.createConsoleAPICalled(type, text, context.getId())));
+        if (!context.isLogging()) { // Do not provide our own logging messages
+            eventHandler.event(new Event("Runtime.consoleAPICalled", Params.createConsoleAPICalled(type, text, context.getId())));
+        }
     }
 
     private JSONObject createPropertyJSON(DebugValue v) {
