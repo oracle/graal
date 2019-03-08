@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -72,6 +73,11 @@ public class LLVMGlobalRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        return executeWithoutFrame();
+    }
+
+    @TruffleBoundary
+    private Object executeWithoutFrame() {
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
                 TruffleObject appPath = (TruffleObject) ctxRef.get().getEnv().asGuestValue(applicationPath.getBytes());
