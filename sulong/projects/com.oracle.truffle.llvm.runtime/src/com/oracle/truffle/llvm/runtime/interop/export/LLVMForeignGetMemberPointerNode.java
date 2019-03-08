@@ -45,7 +45,7 @@ public abstract class LLVMForeignGetMemberPointerNode extends LLVMNode {
 
     public abstract LLVMPointer execute(LLVMInteropType type, LLVMPointer pointer, String ident) throws UnsupportedMessageException, UnknownIdentifierException;
 
-    @Specialization(guards = {"cachedMember != null", "cachedMember.getStruct() == struct", "cachedIdent == ident"})
+    @Specialization(guards = {"cachedMember != null", "cachedMember.getStruct() == struct", "cachedIdent.equals(ident)"})
     LLVMPointer doCached(@SuppressWarnings("unused") LLVMInteropType.Struct struct, LLVMPointer pointer, @SuppressWarnings("unused") String ident,
                     @Cached("ident") @SuppressWarnings("unused") String cachedIdent,
                     @Cached("struct.findMember(cachedIdent)") LLVMInteropType.StructMember cachedMember) {
