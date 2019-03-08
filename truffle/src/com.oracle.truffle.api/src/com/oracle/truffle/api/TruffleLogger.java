@@ -59,7 +59,6 @@ import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import org.graalvm.polyglot.Context;
 
 /**
@@ -117,7 +116,7 @@ public final class TruffleLogger {
      * language or instrument already exists it's returned, otherwise a new root logger is created.
      *
      * @param id the unique id of language or instrument
-     * @return a {@link Logger}
+     * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} is null
      * @since 1.0
      */
@@ -132,7 +131,7 @@ public final class TruffleLogger {
      *
      * @param id the unique id of language or instrument
      * @param forClass the {@link Class} to create a logger for
-     * @return a {@link Logger}
+     * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} or {@code forClass} is null
      * @since 1.0
      */
@@ -146,9 +145,9 @@ public final class TruffleLogger {
      * already exists it's returned, otherwise a new logger is created.
      *
      * @param id the unique id of language or instrument
-     * @param loggerName the the name of a {@link Logger}, if a {@code loggerName} is null or empty
-     *            a root logger for language or instrument is returned
-     * @return a {@link Logger}
+     * @param loggerName the the name of a {@link TruffleLogger}, if a {@code loggerName} is null or
+     *            empty a root logger for language or instrument is returned
+     * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} is null
      * @since 1.0
      */
@@ -731,9 +730,20 @@ public final class TruffleLogger {
             currentContext = loggerCache.getOwner();
         }
         if (currentContext == null) {
-            return false;
+            return noContext();
         }
         return isLoggableSlowPath(currentContext, level);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    @SuppressWarnings("all")
+    private static boolean noContext() {
+        boolean assertionsEnabled = false;
+        assert assertionsEnabled = true;
+        if (assertionsEnabled) {
+            throw new IllegalStateException("Thread using TruffleLogger has to have a current context or the TruffleLogger has to be bound to an engine.");
+        }
+        return false;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -1073,8 +1083,8 @@ public final class TruffleLogger {
             if (loggerName == null) {
                 throw new NullPointerException("Logger must have non null name.");
             }
+            cleanupFreedReferences();
             synchronized (this) {
-                cleanupFreedReferences();
                 NamedLoggerRef ref = loggers.get(loggerName);
                 if (ref != null) {
                     final TruffleLogger loggerInstance = ref.get();
@@ -1279,14 +1289,15 @@ public final class TruffleLogger {
 
             @Override
             public void close() {
-                assert Thread.holdsLock(LoggerCache.this);
                 if (shouldClose()) {
-                    if (node != null) {
-                        if (node.loggerRef == this) {
-                            LoggerCache.this.loggers.remove(loggerName);
-                            node.loggerRef = null;
+                    synchronized (LoggerCache.this) {
+                        if (node != null) {
+                            if (node.loggerRef == this) {
+                                LoggerCache.this.loggers.remove(loggerName);
+                                node.loggerRef = null;
+                            }
+                            node = null;
                         }
-                        node = null;
                     }
                 }
             }

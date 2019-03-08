@@ -138,6 +138,16 @@ final class PolyglotLogHandler extends Handler {
         throw new IllegalArgumentException("Unexpected logHandlerOrStream parameter: " + logHandlerOrStream);
     }
 
+    static boolean isSameLogSink(Handler h1, Handler h2) {
+        if (h1 == h2) {
+            return true;
+        }
+        if (h1 instanceof PolyglotStreamHandler && h2 instanceof PolyglotStreamHandler) {
+            return ((PolyglotStreamHandler) h1).sink == ((PolyglotStreamHandler) h2).sink;
+        }
+        return false;
+    }
+
     /**
      * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
      *
@@ -243,7 +253,7 @@ final class PolyglotLogHandler extends Handler {
             if (param == null || PolyglotImpl.EngineImpl.isPrimitive(param)) {
                 return param;
             }
-            if (param instanceof TruffleObject) {
+            if (context != null && param instanceof TruffleObject) {
                 final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(context, null, param);
                 final PolyglotLanguageContext displayLanguageContext;
                 if (resolvedLanguage != null) {
@@ -259,12 +269,14 @@ final class PolyglotLogHandler extends Handler {
 
     private static final class PolyglotStreamHandler extends StreamHandler {
 
+        private final OutputStream sink;
         private final boolean closeStream;
         private final boolean flushOnPublish;
 
         PolyglotStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
             super(out, FormatterImpl.INSTANCE);
             setLevel(Level.ALL);
+            this.sink = out;
             this.closeStream = closeStream;
             this.flushOnPublish = flushOnPublish;
         }

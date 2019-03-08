@@ -77,6 +77,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.Consumer;
 import org.graalvm.polyglot.Engine;
@@ -819,6 +820,34 @@ public class LoggingTest {
     }
 
     @Test
+    public void testNoContextLoggingDefaultTruffleLogger() {
+        TestHandler engineHandler = new TestHandler();
+        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
+                        engineHandler).build()) {
+            AtomicReference<TruffleLogger> loggerRef = new AtomicReference<>();
+            LoggingLanguageFirst.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+                @Override
+                public boolean test(LoggingContext ctx, Collection<TruffleLogger> loggers) {
+                    loggerRef.set(loggers.iterator().next());
+                    return true;
+                }
+            };
+            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                try {
+                    loggerRef.get().log(Level.INFO, "Should not be logged.");
+                    Assert.assertFalse(assertionsEnabled());
+                } catch (IllegalStateException e) {
+                    // Expected
+                }
+                List<Map.Entry<Level, String>> expectedInEngine = new ArrayList<>();
+                expectedInEngine.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
+                Assert.assertEquals(expectedInEngine, engineHandler.getLog());
+            }
+        }
+    }
+
+    @Test
     public void testEngineLoggerIdentity() {
         ProxyInstrument delegate = new ProxyInstrument();
         AtomicReferenceArray<TruffleLogger> eng1Loggers = new AtomicReferenceArray<>(2);
@@ -861,6 +890,13 @@ public class LoggingTest {
                 ctx.eval(LoggingLanguageFirst.ID, "");
             }
         }
+    }
+
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean assertionsEnabled = false;
+        assert assertionsEnabled = true;
+        return assertionsEnabled;
     }
 
     private static void testLogToStream(Context.Builder contextBuilder, CloseableByteArrayOutputStream stream, boolean expectStreamClosed) {
@@ -1248,7 +1284,7 @@ public class LoggingTest {
                 });
                 t.start();
                 try {
-                    t.join(1_000_000);
+                    t.join(10_000);
                 } catch (InterruptedException ie) {
                     throw new RuntimeException(ie);
                 }
