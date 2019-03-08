@@ -42,19 +42,23 @@ import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -491,7 +495,9 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
     @Substitute
     private static OptionValues initializeOptions() {
-        return RuntimeOptionValues.singleton();
+        RuntimeOptionValues options = RuntimeOptionValues.singleton();
+        options.update(HotSpotGraalOptionValues.parseOptions());
+        return options;
     }
 }
 
