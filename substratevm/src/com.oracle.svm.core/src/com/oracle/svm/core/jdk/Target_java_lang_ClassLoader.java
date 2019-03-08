@@ -51,9 +51,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute //
     private Target_java_lang_ClassLoader parent;
 
-    @Substitute
-    private final ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages
-            = new ConcurrentHashMap<>();
+    @Substitute @TargetElement(onlyWith = JDK9OrLater.class) private final ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages = new ConcurrentHashMap<>();
 
     @Substitute
     public Target_java_lang_ClassLoader() {
@@ -210,11 +208,11 @@ public final class Target_java_lang_ClassLoader {
     @KeepOriginal //
     @TargetElement(onlyWith = JDK9OrLater.class) //
     @SuppressWarnings({"unused"})
-    public native Package definePackage(String name, Module module);
+    public native Package definePackage(String name, Target_java_lang_Module module);
 
     @KeepOriginal
     @TargetElement(onlyWith = JDK9OrLater.class) //
-    private native Package toPackage(String name, Target_java_lang_NamedPackage p, Module m);
+    private native Package toPackage(String name, Target_java_lang_NamedPackage p, Target_java_lang_Module m);
 
 }
 
