@@ -36,6 +36,7 @@ public final class CallFrame {
     private final int depth;
     private final Location location;
     private final Location functionLocation;
+    private final String url;
     private final RemoteObject thisObject;
     private final RemoteObject returnObject;
     private final Scope[] scopes;
@@ -54,6 +55,7 @@ public final class CallFrame {
         } else {
             this.functionLocation = null;
         }
+        this.url = script.getUrl();
         this.thisObject = thisObject;
         this.returnObject = returnObject;
         this.scopes = scopes;
@@ -85,10 +87,9 @@ public final class CallFrame {
         json.put("functionName", frame.getName());
         json.put("location", location.toJSON());
         json.putOpt("functionLocation", (functionLocation != null) ? functionLocation.toJSON() : null);
+        json.put("url", url);
         json.put("scopeChain", Scope.createScopesJSON(scopes));
-        if (thisObject != null) {
-            json.put("this", thisObject.toJSON());
-        }
+        json.put("this", thisObject.toJSON());
         if (returnObject != null) {
             json.put("returnValue", returnObject.toJSON());
         }

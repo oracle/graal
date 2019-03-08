@@ -218,7 +218,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             @Override
             @SuppressWarnings("all") // The parameters port and host should not be assigned
             public synchronized InspectorServerConnection open(int port, String host, boolean wait) {
-                if (server != null) {
+                if (server != null && server.wss != null) {
                     return null;
                 }
                 HostAndPort hostAndPort = options.get(Inspect);
@@ -408,8 +408,9 @@ public final class InspectorInstrument extends TruffleInstrument {
                 if (serverEndpoint == null) {
                     interceptor.close(wsspath);
                     wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
-                    wsURL = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
-                    String address = DEV_TOOLS_PREFIX + wsURL;
+                    String wsStr = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
+                    String address = DEV_TOOLS_PREFIX + wsStr;
+                    wsURL = wsStr.replace("=", "://");
                     info.println("Debugger listening on port " + wss.getPort() + ".");
                     info.println("To start debugging, open the following URL in Chrome:");
                     info.println("    " + address);
@@ -505,7 +506,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
                 @Override
                 public void close() throws IOException {
-                    wss.close(getWSPath());
+                    Server.this.close();
                 }
 
                 @Override
@@ -515,7 +516,9 @@ public final class InspectorInstrument extends TruffleInstrument {
 
                 @Override
                 public void consoleAPICall(String type, Object text) {
-                    wss.consoleAPICall(getWSPath(), type, text);
+                    if (wss != null) {
+                        wss.consoleAPICall(getWSPath(), type, text);
+                    }
                 }
             };
         }

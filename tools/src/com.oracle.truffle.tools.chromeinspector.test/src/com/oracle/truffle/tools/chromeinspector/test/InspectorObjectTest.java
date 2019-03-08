@@ -108,11 +108,35 @@ public class InspectorObjectTest {
         url = testUrl.execute(inspector);
         Assert.assertTrue(url.toString(), url.isString());
         String urlStr = url.asString();
-        Assert.assertTrue(urlStr, urlStr.startsWith("ws="));
-        Assert.assertTrue(urlStr, urlStr.indexOf(":" + freePort + "/") > 0);
+        testURL(urlStr);
         testClose.execute(inspector);
         url = testUrl.execute(inspector);
         Assert.assertTrue(url.toString(), url.isNull());
+    }
+
+    private void testURL(String url) {
+        Assert.assertTrue(url, url.startsWith("ws://"));
+        Assert.assertTrue(url, url.indexOf(":" + freePort + "/") > 0);
+    }
+
+    @Test
+    public void testOpenCloseOpen() {
+        context.eval("sl", "function testOpenCloseOpen(inspector) {\n" +
+                        "    inspector.open(" + freePort + ", \"localhost\", false);\n" +
+                        "    url = inspector.url();\n" +
+                        "    inspector.close();\n" +
+                        "    nourl = inspector.url();\n" +
+                        "    inspector.open(" + freePort + ", \"localhost\", false);\n" +
+                        "    url2 = inspector.url();\n" +
+                        "    inspector.close();\n" +
+                        "    return url + \",\" + nourl + \",\" + url2;\n" +
+                        "}\n");
+        Value testOpenCloseOpen = context.getBindings("sl").getMember("testOpenCloseOpen");
+        Value urlsValue = testOpenCloseOpen.execute(inspector);
+        String[] urls = urlsValue.toString().split(",");
+        testURL(urls[0]);
+        Assert.assertEquals(urls[1], "null");
+        testURL(urls[2]);
     }
 
     @Test

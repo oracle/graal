@@ -35,7 +35,9 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugValue;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.tools.chromeinspector.objects.NullObject;
 
 public final class RemoteObject {
 
@@ -74,7 +76,6 @@ public final class RemoteObject {
     private String className;
     private Object value;
     private boolean replicableValue;
-    private boolean nullValue;
     private String unserializableValue;
     private String description;
     private JSONObject jsonObject;
@@ -179,14 +180,12 @@ public final class RemoteObject {
         String toString;
         Object rawValue = null;
         String unserializable = null;
-        boolean rawNullValue = false;
         boolean replicableRawValue = true;
         try {
             toString = debugValue.as(String.class);
             if (!isObject) {
                 if ("null".equals(vsubtype) && "object".equals(vtype)) {
                     replicableRawValue = false;
-                    rawNullValue = true;
                 } else if ("undefined".equals(vtype)) {
                     replicableRawValue = false;
                 } else {
@@ -212,7 +211,6 @@ public final class RemoteObject {
         }
         this.value = rawValue;
         this.replicableValue = replicableRawValue;
-        this.nullValue = rawNullValue;
         this.unserializableValue = unserializable;
         if (vdescription == null && descriptionType != null) {
             this.description = descriptionType + ((toString != null && !toString.isEmpty()) ? " " + toString : "");
@@ -232,22 +230,20 @@ public final class RemoteObject {
         this.className = null;
         this.value = null;
         this.replicableValue = false;
-        this.nullValue = false;
         this.unserializableValue = null;
         this.objectId = Long.toString(LAST_ID.incrementAndGet());
         this.description = scope.getName();
         this.jsonObject = createJSON();
     }
 
-    private RemoteObject(String type, String className, String description, boolean isNullValue) {
+    private RemoteObject(String type, String subtype, String className, String description) {
         this.valueValue = null;
         this.valueScope = null;
         this.type = type;
-        this.subtype = null;
+        this.subtype = subtype;
         this.className = className;
         this.value = null;
         this.replicableValue = false;
-        this.nullValue = isNullValue;
         this.unserializableValue = null;
         this.objectId = Long.toString(LAST_ID.incrementAndGet());
         this.description = description;
@@ -255,11 +251,12 @@ public final class RemoteObject {
     }
 
     public static RemoteObject createSimpleObject(String type, String className, String description) {
-        return new RemoteObject(type, className, description, false);
+        return new RemoteObject(type, null, className, description);
     }
 
-    public static RemoteObject createNullObject() {
-        return new RemoteObject("null", null, "null", true);
+    public static RemoteObject createNullObject(TruffleInstrument.Env env, LanguageInfo language) {
+        String nullStr = env.toString(language, NullObject.INSTANCE);
+        return new RemoteObject("object", "null", null, nullStr);
     }
 
     private JSONObject createJSON() {
@@ -268,11 +265,7 @@ public final class RemoteObject {
         json.putOpt("subtype", subtype);
         json.putOpt("className", className);
         json.putOpt("unserializableValue", unserializableValue);
-        if (nullValue) {
-            json.put("value", JSONObject.NULL);
-        } else {
-            json.putOpt("value", value);
-        }
+        json.putOpt("value", value);
         json.putOpt("description", description);
         json.putOpt("objectId", objectId);
         return json;
