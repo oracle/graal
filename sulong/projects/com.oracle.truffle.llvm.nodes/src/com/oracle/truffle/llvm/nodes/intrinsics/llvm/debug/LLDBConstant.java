@@ -35,6 +35,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -337,7 +339,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 TruffleObject foreign = null;
 
                 if (LLVMNativePointer.isInstance(pointer)) {
-                    foreign = LLDBSupport.getContext().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
+                    foreign = LLVMLanguage.getLLVMContextReference().get().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
 
                 } else if (LLVMManagedPointer.isInstance(pointer)) {
                     foreign = LLVMManagedPointer.cast(pointer).getObject();
@@ -354,7 +356,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
         @TruffleBoundary
         public boolean isInteropValue() {
             if (LLVMNativePointer.isInstance(pointer)) {
-                return LLDBSupport.getContext().isHandle(LLVMNativePointer.cast(pointer));
+                return LLVMLanguage.getLLVMContextReference().get().isHandle(LLVMNativePointer.cast(pointer));
             } else if (LLVMManagedPointer.isInstance(pointer)) {
                 return !LLDBSupport.pointsToObjectAccess(pointer);
             } else {

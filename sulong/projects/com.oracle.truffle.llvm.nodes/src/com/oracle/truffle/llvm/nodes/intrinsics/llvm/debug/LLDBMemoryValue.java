@@ -29,13 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -75,9 +77,9 @@ final class LLDBMemoryValue implements LLVMDebugValue {
     }
 
     private Object loadValue(Type loadtype, int byteOffset) {
-        final LLVMLoadNode loadNode = LLDBSupport.getNodeFactory().createLoad(loadtype, null);
         final LLVMPointer offsetPointer = pointer.increment(byteOffset);
-        return loadNode.executeWithTarget(offsetPointer);
+        CallTarget loadFunction = LLVMLanguage.getLLDBSupport().getLoadFunction(loadtype);
+        return loadFunction.call(offsetPointer);
     }
 
     @Override
@@ -387,7 +389,7 @@ final class LLDBMemoryValue implements LLVMDebugValue {
 
         final Object pointerRead = readAddress(bitOffset);
         if (LLVMPointer.isInstance(pointerRead)) {
-            return LLDBSupport.getNodeFactory().createDebugDeclarationBuilder().build(pointerRead);
+            return LLVMLanguage.getLLDBSupport().createDebugDeclarationBuilder().build(pointerRead);
         }
 
         return null;

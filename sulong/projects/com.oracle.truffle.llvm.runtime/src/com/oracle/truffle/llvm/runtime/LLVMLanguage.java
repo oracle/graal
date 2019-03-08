@@ -42,6 +42,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -98,10 +99,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return getCurrentLanguage(LLVMLanguage.class);
     }
 
+    public static LLDBSupport getLLDBSupport() {
+        return getLanguage().lldbSupport;
+    }
+
     private LLVMContext mainContext = null;
 
     private @CompilationFinal Configuration activeConfiguration = null;
     private @CompilationFinal Loader loader;
+
+    private final LLDBSupport lldbSupport = new LLDBSupport(this);
 
     public <E> E getCapability(Class<E> type) {
         return activeConfiguration.getCapability(type);

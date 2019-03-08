@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -111,9 +112,8 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         return ToPointer.create();
     }
 
-    @Specialization(limit = "3")
-    protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer value,
-                    @CachedLibrary("value.getObject()") InteropLibrary interop) {
+    @Specialization
+    protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer value) {
         final TruffleObject target = value.getObject();
 
         if (target instanceof LLVMGlobalContainer) {
@@ -121,6 +121,11 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         }
 
         try {
+            /*
+             * We're using the uncached library here because this node is only used from the slow
+             * path, and usually not adopted in an AST.
+             */
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (interop.isNumber(target)) {
                 Object unboxedValue;
                 if (interop.fitsInLong(target)) {
