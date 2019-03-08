@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.nodes.Cancellable;
@@ -92,6 +93,10 @@ public class LazyInitializationTest {
         vmArgs.add("-dsa");
         vmArgs.add("-da");
         vmArgs.add("-XX:-UseJVMCICompiler");
+
+        // Remove -Dgraal.CompilationFailureAction as it drags in CompilationWrapper
+        vmArgs = vmArgs.stream().filter(e -> !e.contains(GraalCompilerOptions.CompilationFailureAction.getName())).collect(Collectors.toList());
+
         Subprocess proc = SubprocessUtil.java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", "com.oracle.truffle.sl.test.SLFactorialTest");
         int exitCode = proc.exitCode;
         if (exitCode != 0) {
