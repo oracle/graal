@@ -66,6 +66,7 @@ import com.oracle.svm.core.jdk.SunMiscSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMOperation;
@@ -1621,14 +1622,21 @@ public class GCImpl implements GC {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while collecting")
         public void operate() {
+            /*
+             * Exceptions during collections are fatal. The heap is likely in an inconsistent state.
+             * The GC must also be allocation free, i.e., we cannot allocate exception stack traces
+             * while in the GC. This is bad for diagnosing errors in the GC. To improve the
+             * situation a bit, we switch on the flag to make implicit exceptions such as
+             * NullPointerExceptions fatal errors. This ensures that we fail early at the place
+             * where the fatal error reporting can still dump the full stack trace.
+             */
+            ImplicitExceptions.activateImplicitExceptionsAreFatal();
             try {
                 result = HeapImpl.getHeapImpl().getGCImpl().collectOperation(cause, requestingEpoch);
             } catch (Throwable t) {
-                /*
-                 * Exceptions during collections are fatal. The heap is likely in an inconsistent
-                 * state.
-                 */
                 throw VMError.shouldNotReachHere(t);
+            } finally {
+                ImplicitExceptions.deactivateImplicitExceptionsAreFatal();
             }
         }
 
