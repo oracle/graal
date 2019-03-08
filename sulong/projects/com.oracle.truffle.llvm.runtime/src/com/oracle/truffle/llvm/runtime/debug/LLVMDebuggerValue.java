@@ -59,7 +59,7 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         if (getElementCountForDebugger() == 0) {
             return SubElements.EMPTY;
         }
@@ -97,6 +97,7 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
             this.keys = keys;
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasArrayElements() {
             return true;

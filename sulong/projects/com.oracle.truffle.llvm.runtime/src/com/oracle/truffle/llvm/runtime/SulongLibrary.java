@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -46,9 +45,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMScope;
-import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
@@ -56,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
  * Object that is returned when a bitcode library is parsed.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class SulongLibrary implements TruffleObject {
 
     private final String name;
@@ -117,24 +114,24 @@ public final class SulongLibrary implements TruffleObject {
     }
 
     @ExportMessage
-    Object readMember(String name,
+    Object readMember(String member,
                     @Shared("lookup") @Cached LookupNode lookup) throws UnknownIdentifierException {
-        Object ret = lookup.execute(this, name);
+        Object ret = lookup.execute(this, member);
         if (ret == null) {
             CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.create(name);
+            throw UnknownIdentifierException.create(member);
         }
         return ret;
     }
 
     @ExportMessage
-    Object invokeMember(String name, Object[] arguments,
+    Object invokeMember(String member, Object[] arguments,
                     @Shared("lookup") @Cached LookupNode lookup,
                     @Cached LLVMForeignCallNode call) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        LLVMFunctionDescriptor fn = lookup.execute(this, name);
+        LLVMFunctionDescriptor fn = lookup.execute(this, member);
         if (fn == null) {
             CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.create(name);
+            throw UnknownIdentifierException.create(member);
         }
 
         return call.executeCall(fn, arguments);
@@ -146,15 +143,15 @@ public final class SulongLibrary implements TruffleObject {
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return scope.getKeys();
     }
 
     @ExportMessage(name = "isMemberReadable")
     @ExportMessage(name = "isMemberInvocable")
-    boolean memberExists(String name,
+    boolean memberExists(String member,
                     @Shared("lookup") @Cached LookupNode lookup) {
-        return lookup.execute(this, name) != null;
+        return lookup.execute(this, member) != null;
     }
 
     @ExportMessage

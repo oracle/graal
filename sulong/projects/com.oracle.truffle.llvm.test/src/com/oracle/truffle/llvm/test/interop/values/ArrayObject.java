@@ -35,6 +35,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class ArrayObject implements TruffleObject {
 
     final Object[] array;
@@ -56,7 +57,7 @@ public final class ArrayObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isArrayElementInsertable(long idx) {
+    boolean isArrayElementInsertable(@SuppressWarnings("unused") long idx) {
         return false;
     }
 

@@ -110,8 +110,7 @@ public final class LLVMPolyglotWrite {
         protected Object doIntrinsic(LLVMManagedPointer target, int id, Object value,
                         @Cached LLVMAsForeignNode asForeign,
                         @CachedLibrary(limit = "3") InteropLibrary foreignWrite,
-                        @Cached LLVMDataEscapeNode prepareValueForEscape,
-                        @Cached BranchProfile exception) {
+                        @Cached LLVMDataEscapeNode prepareValueForEscape) {
             TruffleObject foreign = asForeign.execute(target);
             Object escapedValue = prepareValueForEscape.executeWithTarget(value);
             try {

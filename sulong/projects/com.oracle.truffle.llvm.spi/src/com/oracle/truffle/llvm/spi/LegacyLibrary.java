@@ -59,7 +59,7 @@ class LegacyLibrary {
     }
 
     @ExportMessage
-    static boolean hasNativeType(TruffleObject receiver,
+    static boolean hasNativeType(@SuppressWarnings("unused") TruffleObject receiver,
                     @Cached(value = "hasNativeTypeSlowPath(receiver)", allowUncached = true) boolean hasType) {
         return hasType;
     }

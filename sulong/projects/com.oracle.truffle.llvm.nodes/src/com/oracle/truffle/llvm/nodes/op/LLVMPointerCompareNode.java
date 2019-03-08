@@ -189,12 +189,14 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         }
 
         @Specialization(guards = "libA.isPointer(a)", rewriteOn = UnsupportedMessageException.class)
+        @SuppressWarnings("unused")
         protected boolean doNativeManaged(Object a, LLVMNativeLibrary libA, Object b, LLVMNativeLibrary libB, NativePointerCompare op,
                         @Cached("createIgnoreOffset()") ManagedToComparableValue convert) throws UnsupportedMessageException {
             return op.compare(libA.asPointer(a), convert.executeWithTarget(b));
         }
 
         @Specialization(guards = "libB.isPointer(b)", rewriteOn = UnsupportedMessageException.class)
+        @SuppressWarnings("unused")
         protected boolean doManagedNative(Object a, LLVMNativeLibrary libA, Object b, LLVMNativeLibrary libB, NativePointerCompare op,
                         @Cached("createIgnoreOffset()") ManagedToComparableValue convert) throws UnsupportedMessageException {
             return op.compare(convert.executeWithTarget(a), libB.asPointer(b));

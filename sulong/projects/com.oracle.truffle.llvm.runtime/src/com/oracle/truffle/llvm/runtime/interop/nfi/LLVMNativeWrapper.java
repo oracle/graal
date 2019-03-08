@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
  * is used because arguments have to be handled slightly differently in that case.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class LLVMNativeWrapper implements TruffleObject {
 
     private final LLVMFunctionDescriptor function;

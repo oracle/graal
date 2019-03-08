@@ -58,7 +58,7 @@ public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMSyscallOpera
     }
 
     @TruffleBoundary
-    private long exec(LLVMPointer tidptr, LLVMContext ctx) {
+    private static long exec(LLVMPointer tidptr, LLVMContext ctx) {
         ctx.setClearChildTid(tidptr);
         return Thread.currentThread().getId();
     }

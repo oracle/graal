@@ -38,7 +38,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public abstract class ToI1 extends ForeignToLLVM {
 
@@ -100,7 +99,7 @@ public abstract class ToI1 extends ForeignToLLVM {
     }
 
     @TruffleBoundary
-    static boolean slowPathPrimitiveConvert(LLVMMemory memory, ForeignToLLVM thiz, Object value) throws UnsupportedTypeException {
+    static boolean slowPathPrimitiveConvert(ForeignToLLVM thiz, Object value) throws UnsupportedTypeException {
         if (value instanceof Number) {
             return ((Number) value).longValue() != 0;
         } else if (value instanceof Boolean) {

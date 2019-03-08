@@ -116,6 +116,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization(guards = "!interop.isPointer(address)", limit = "3")
+        @SuppressWarnings("unused")
         protected LLVMManagedPointer doFunction(TruffleObject address,
                         @CachedLibrary("address") InteropLibrary interop) {
             /*
@@ -148,6 +149,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization(limit = "10", guards = {"pointer.asNative() == cachedAddress", "cachedAddress != 0", "cachedDescriptor != null", "cachedDescriptor.isNativeFunction()"})
+        @SuppressWarnings("unused")
         protected static TruffleObject doHandleToNativeFunctionCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
                         @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef,
                         @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
@@ -157,6 +159,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization(limit = "10", guards = {"pointer.asNative() == cachedAddress", "cachedAddress != 0", "cachedDescriptor != null", "!cachedDescriptor.isNativeFunction()"})
+        @SuppressWarnings("unused")
         protected static TruffleObject doHandleToDirectFunctionCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
                         @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef,
                         @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
@@ -166,6 +169,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization(limit = "10", guards = {"pointer.asNative() == cachedAddress", "cachedAddress != 0", "cachedDescriptor == null"})
+        @SuppressWarnings("unused")
         protected static TruffleObject doCachedPointer(LLVMNativePointer pointer,
                         @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef,
                         @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,

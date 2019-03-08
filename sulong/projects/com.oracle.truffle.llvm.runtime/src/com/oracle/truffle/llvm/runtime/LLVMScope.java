@@ -46,6 +46,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMSymbol> symbols;
@@ -158,12 +159,12 @@ public final class LLVMScope implements TruffleObject {
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return getKeys();
     }
 
     @ExportMessage
-    boolean isMemberReadable(String name) {
+    boolean isMemberReadable(@SuppressWarnings("unused") String name) {
         return true;
     }
 

@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -61,7 +60,7 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
         String symbolName = readString.executeWithTarget(name);
 
         try {
-            Object ret = interop.readMember((TruffleObject) ctx.getEnv().getPolyglotBindings(), symbolName);
+            Object ret = interop.readMember(ctx.getEnv().getPolyglotBindings(), symbolName);
             return toLLVM.executeWithTarget(ret);
         } catch (UnknownIdentifierException ex) {
             notFound.enter();

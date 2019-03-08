@@ -41,13 +41,14 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 /**
  * Library for things that are considered pointers in LLVM. This is slightly different to
- * {@link InteropLibrary#isPointer}, because some objects that are considered pointers
- * internally in Sulong, should not be considered pointers in interop. These objects implement
- * only {@link LLVMNativeLibrary}, but not {@link InteropLibrary}.
+ * {@link InteropLibrary#isPointer}, because some objects that are considered pointers internally in
+ * Sulong, should not be considered pointers in interop. These objects implement only
+ * {@link LLVMNativeLibrary}, but not {@link InteropLibrary}.
  */
 @GenerateLibrary
 @DefaultExport(LongLibrary.class)
 @DefaultExport(DefaultLibrary.class)
+@SuppressWarnings("unused")
 public abstract class LLVMNativeLibrary extends Library {
 
     @Abstract

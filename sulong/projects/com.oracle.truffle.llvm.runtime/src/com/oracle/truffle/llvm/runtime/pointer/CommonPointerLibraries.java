@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointe
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
+@SuppressWarnings("static-method")
 abstract class CommonPointerLibraries {
 
     @ExportMessage
@@ -56,6 +57,7 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
+    @SuppressWarnings("unused")
     static Object getMembers(LLVMPointerImpl receiver, boolean includeInternal,
                     @Shared("isObject") @Cached("createBinaryProfile()") ConditionProfile isObject) throws UnsupportedMessageException {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
@@ -104,6 +106,7 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
+    @SuppressWarnings("unused")
     static boolean isMemberInsertable(LLVMPointerImpl receiver, String ident) {
         return false;
     }
@@ -168,6 +171,7 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
+    @SuppressWarnings("unused")
     static boolean isArrayElementInsertable(LLVMPointerImpl receiver, long idx) {
         // native arrays have fixed size, new elements can't be inserted
         return false;

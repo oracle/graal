@@ -101,7 +101,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
         @Specialization(guards = "!interop.isString(foreign)", limit = "3")
         String readPointer(LLVMManagedPointer object, @SuppressWarnings("unused") TruffleObject foreign,
-                        @CachedLibrary("foreign") InteropLibrary interop,
+                        @SuppressWarnings("unused") @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached PointerReadStringNode read) {
             return read.execute(object);
         }

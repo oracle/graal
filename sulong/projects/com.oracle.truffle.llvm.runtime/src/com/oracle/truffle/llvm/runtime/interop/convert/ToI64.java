@@ -39,7 +39,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -109,6 +108,7 @@ public abstract class ToI64 extends ForeignToLLVM {
     }
 
     @Specialization(limit = "5", guards = {"notLLVM(obj)", "!interop.isNumber(obj)"})
+    @SuppressWarnings("unused")
     protected long fromForeignPointer(Object obj,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @CachedLibrary("obj") LLVMNativeLibrary nativeLib) {
@@ -116,7 +116,7 @@ public abstract class ToI64 extends ForeignToLLVM {
     }
 
     @TruffleBoundary
-    static long slowPathPrimitiveConvert(LLVMMemory memory, ForeignToLLVM thiz, Object value) throws UnsupportedTypeException {
+    static long slowPathPrimitiveConvert(ForeignToLLVM thiz, Object value) throws UnsupportedTypeException {
         if (value instanceof Number) {
             return ((Number) value).longValue();
         } else if (value instanceof Boolean) {

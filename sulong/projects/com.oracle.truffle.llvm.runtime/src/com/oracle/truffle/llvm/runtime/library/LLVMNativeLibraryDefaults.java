@@ -47,15 +47,16 @@ abstract class LLVMNativeLibraryDefaults {
     static class DefaultLibrary {
 
         @ExportMessage
+        @SuppressWarnings("unused")
         static class IsPointer {
 
-            @Specialization(limit = "1", guards = "interop.isPointer(receiver)")
+            @Specialization(guards = "interop.isPointer(receiver)")
             static boolean doPointer(Object receiver,
                             @CachedLibrary("receiver") InteropLibrary interop) {
                 return true;
             }
 
-            @Specialization(limit = "1", guards = "!interop.isPointer(receiver)")
+            @Specialization(guards = "!interop.isPointer(receiver)")
             static boolean doOther(Object receiver,
                             @CachedLibrary("receiver") InteropLibrary interop) {
                 return interop.isNull(receiver);
@@ -65,7 +66,7 @@ abstract class LLVMNativeLibraryDefaults {
         @ExportMessage
         static class AsPointer {
 
-            @Specialization(limit = "1", guards = "interop.isPointer(receiver)")
+            @Specialization(guards = "interop.isPointer(receiver)")
             static long doPointer(Object receiver,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Shared("exception") @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException {
@@ -81,7 +82,7 @@ abstract class LLVMNativeLibraryDefaults {
                 }
             }
 
-            @Specialization(limit = "1", guards = "!interop.isPointer(receiver)")
+            @Specialization(guards = "!interop.isPointer(receiver)")
             static long doNullCheck(Object receiver,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Shared("exception") @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException {
@@ -95,15 +96,16 @@ abstract class LLVMNativeLibraryDefaults {
         }
 
         @ExportMessage
+        @SuppressWarnings("unused")
         static class ToNativePointer {
 
-            @Specialization(limit = "1", guards = "interop.isNull(receiver)")
+            @Specialization(guards = "interop.isNull(receiver)")
             static LLVMNativePointer doNull(Object receiver,
                             @CachedLibrary("receiver") InteropLibrary interop) {
                 return LLVMNativePointer.createNull();
             }
 
-            @Specialization(limit = "1", guards = "!interop.isNull(receiver)")
+            @Specialization(guards = "!interop.isNull(receiver)")
             static LLVMNativePointer doNotNull(Object receiver,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Shared("exception") @Cached BranchProfile exceptionProfile) {
@@ -122,6 +124,7 @@ abstract class LLVMNativeLibraryDefaults {
     static class LongLibrary {
 
         @ExportMessage
+        @SuppressWarnings("unused")
         static boolean isPointer(Long receiver) {
             return true;
         }

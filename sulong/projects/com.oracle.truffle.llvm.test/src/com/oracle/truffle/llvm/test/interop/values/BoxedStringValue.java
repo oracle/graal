@@ -35,6 +35,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class BoxedStringValue implements TruffleObject {
 
     private final String value;

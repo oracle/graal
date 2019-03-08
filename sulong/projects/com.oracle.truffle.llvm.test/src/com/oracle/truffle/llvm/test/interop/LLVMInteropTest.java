@@ -1066,7 +1066,7 @@ public class LLVMInteropTest {
         }
 
         @ExportMessage
-        boolean isMemberInsertable(String member) {
+        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
             return false;
         }
 
@@ -1082,7 +1082,7 @@ public class LLVMInteropTest {
         }
 
         @ExportMessage
-        Object getMembers(boolean includeInternal) {
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
             return new ArrayObject("foo");
         }
 

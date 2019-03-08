@@ -43,7 +43,7 @@ import com.oracle.truffle.api.library.Library;
 public abstract class NativeTypeLibrary extends Library {
 
     @Abstract
-    public boolean hasNativeType(Object receiver) {
+    public boolean hasNativeType(@SuppressWarnings("unused") Object receiver) {
         return false;
     }
 

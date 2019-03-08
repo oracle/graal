@@ -38,6 +38,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class StructObject implements TruffleObject {
 
     final Map<String, Object> properties;
@@ -92,7 +93,7 @@ public final class StructObject implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new ArrayObject(properties.keySet().toArray());
     }
 }

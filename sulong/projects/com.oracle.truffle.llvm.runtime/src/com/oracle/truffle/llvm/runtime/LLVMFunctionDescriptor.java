@@ -66,6 +66,7 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
  * {@link LLVMFunctionDescriptor}s.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor> {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xDEAD_FACE_0000_0000L;
 
@@ -505,17 +506,18 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new FunctionMembers();
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isMemberInvocable(String member) {
         return "bind".equals(member);
     }
 
     @ExportMessage
-    Object invokeMember(String member, Object[] args) throws UnknownIdentifierException {
+    Object invokeMember(String member, @SuppressWarnings("unused") Object[] args) throws UnknownIdentifierException {
         if ("bind".equals(member)) {
             return this;
         } else {

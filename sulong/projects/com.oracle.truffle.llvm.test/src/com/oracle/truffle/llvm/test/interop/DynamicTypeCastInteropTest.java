@@ -94,7 +94,7 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
         }
 
         @ExportMessage
-        Object getMembers(boolean includeInternal) {
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
             return new ArrayObject(map.keySet().toArray());
         }
 

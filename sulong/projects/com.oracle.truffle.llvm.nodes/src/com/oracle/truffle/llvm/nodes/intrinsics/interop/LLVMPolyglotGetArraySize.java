@@ -47,8 +47,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotGetArraySize extends LLVMIntrinsic {
 
-    @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
-
     @Specialization
     protected long doIntrinsic(LLVMManagedPointer value,
                     @Cached LLVMAsForeignNode asForeign,

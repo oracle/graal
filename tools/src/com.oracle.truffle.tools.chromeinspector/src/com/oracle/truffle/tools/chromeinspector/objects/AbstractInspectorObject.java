@@ -126,7 +126,7 @@ abstract class AbstractInspectorObject implements TruffleObject {
             return true;
         }
 
-        @ExportMessage(limit = "3")
+        @ExportMessage
         Object execute(Object[] arguments, @CachedLibrary("this.inspector") InteropLibrary interop)
                         throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             try {

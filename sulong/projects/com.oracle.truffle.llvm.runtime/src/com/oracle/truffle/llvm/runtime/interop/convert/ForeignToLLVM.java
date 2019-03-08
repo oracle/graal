@@ -30,13 +30,11 @@
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -211,8 +209,6 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
         private static final SlowPathForeignToLLVM INSTANCE = new SlowPathForeignToLLVM();
 
-        @CompilationFinal private LLVMMemory memory;
-
         @TruffleBoundary
         public Object convert(Type type, Object value, LLVMInteropType.Structured interopType) throws UnsupportedTypeException {
             return convert(ForeignToLLVM.convert(type), value, interopType);
@@ -225,25 +221,21 @@ public abstract class ForeignToLLVM extends LLVMNode {
             } else if (type == ForeignToLLVMType.POINTER) {
                 return ToPointer.slowPathPrimitiveConvert(value, interopType);
             } else {
-                if (memory == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    memory = getLLVMMemory();
-                }
                 switch (type) {
                     case DOUBLE:
-                        return ToDouble.slowPathPrimitiveConvert(memory, this, value);
+                        return ToDouble.slowPathPrimitiveConvert(this, value);
                     case FLOAT:
-                        return ToFloat.slowPathPrimitiveConvert(memory, this, value);
+                        return ToFloat.slowPathPrimitiveConvert(this, value);
                     case I1:
-                        return ToI1.slowPathPrimitiveConvert(memory, this, value);
+                        return ToI1.slowPathPrimitiveConvert(this, value);
                     case I16:
-                        return ToI16.slowPathPrimitiveConvert(memory, this, value);
+                        return ToI16.slowPathPrimitiveConvert(this, value);
                     case I32:
-                        return ToI32.slowPathPrimitiveConvert(memory, this, value);
+                        return ToI32.slowPathPrimitiveConvert(this, value);
                     case I64:
-                        return ToI64.slowPathPrimitiveConvert(memory, this, value);
+                        return ToI64.slowPathPrimitiveConvert(this, value);
                     case I8:
-                        return ToI8.slowPathPrimitiveConvert(memory, this, value);
+                        return ToI8.slowPathPrimitiveConvert(this, value);
                     default:
                         throw new IllegalStateException(type.toString());
                 }
