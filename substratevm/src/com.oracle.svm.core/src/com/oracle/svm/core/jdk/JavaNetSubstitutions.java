@@ -187,7 +187,6 @@ public final class JavaNetSubstitutions {
                         String resName = url.toString().substring(1+JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
                         final List<byte[]> bytes = support.resources.get(resName);
                         if (bytes == null || bytes.size() < 1) {
-                            System.err.println("Couldn't find resource "+resName);
                             return null;
                         } else {
                             return new ByteArrayInputStream(bytes.get(0));
