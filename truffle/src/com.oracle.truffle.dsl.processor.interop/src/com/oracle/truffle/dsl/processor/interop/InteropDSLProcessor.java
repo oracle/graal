@@ -63,10 +63,6 @@ import javax.lang.model.type.MirroredTypeException;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -78,13 +74,25 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 @SuppressWarnings("deprecation")
 public final class InteropDSLProcessor extends AbstractProcessor {
 
-    static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{com.oracle.truffle.api.interop.Message.READ, com.oracle.truffle.api.interop.Message.WRITE,
-                    com.oracle.truffle.api.interop.Message.REMOVE, com.oracle.truffle.api.interop.Message.IS_NULL, com.oracle.truffle.api.interop.Message.IS_EXECUTABLE,
-                    com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE, com.oracle.truffle.api.interop.Message.IS_BOXED, com.oracle.truffle.api.interop.Message.UNBOX,
-                    com.oracle.truffle.api.interop.Message.HAS_SIZE, com.oracle.truffle.api.interop.Message.GET_SIZE, com.oracle.truffle.api.interop.Message.KEY_INFO,
-                    com.oracle.truffle.api.interop.Message.HAS_KEYS, com.oracle.truffle.api.interop.Message.KEYS,
-                    com.oracle.truffle.api.interop.Message.IS_POINTER, com.oracle.truffle.api.interop.Message.AS_POINTER, com.oracle.truffle.api.interop.Message.TO_NATIVE,
-                    com.oracle.truffle.api.interop.Message.EXECUTE, com.oracle.truffle.api.interop.Message.INVOKE, com.oracle.truffle.api.interop.Message.NEW});
+    static final List<com.oracle.truffle.api.interop.Message> KNOWN_MESSAGES;
+
+    static {
+        List<com.oracle.truffle.api.interop.Message> msgs;
+        try {
+            msgs = Arrays.asList(
+                            new com.oracle.truffle.api.interop.Message[]{com.oracle.truffle.api.interop.Message.READ, com.oracle.truffle.api.interop.Message.WRITE,
+                                            com.oracle.truffle.api.interop.Message.REMOVE, com.oracle.truffle.api.interop.Message.IS_NULL, com.oracle.truffle.api.interop.Message.IS_EXECUTABLE,
+                                            com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE, com.oracle.truffle.api.interop.Message.IS_BOXED, com.oracle.truffle.api.interop.Message.UNBOX,
+                                            com.oracle.truffle.api.interop.Message.HAS_SIZE, com.oracle.truffle.api.interop.Message.GET_SIZE, com.oracle.truffle.api.interop.Message.KEY_INFO,
+                                            com.oracle.truffle.api.interop.Message.HAS_KEYS, com.oracle.truffle.api.interop.Message.KEYS,
+                                            com.oracle.truffle.api.interop.Message.IS_POINTER, com.oracle.truffle.api.interop.Message.AS_POINTER, com.oracle.truffle.api.interop.Message.TO_NATIVE,
+                                            com.oracle.truffle.api.interop.Message.EXECUTE, com.oracle.truffle.api.interop.Message.INVOKE, com.oracle.truffle.api.interop.Message.NEW});
+        } catch (Exception e) {
+            e.printStackTrace();
+            msgs = Arrays.asList();
+        }
+        KNOWN_MESSAGES = msgs;
+    }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -110,7 +118,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
     private void process0(RoundEnvironment roundEnv) {
         try {
             ProcessorContext.setThreadLocalInstance(new ProcessorContext(processingEnv, null));
-            for (Element e : roundEnv.getElementsAnnotatedWith(MessageResolution.class)) {
+            for (Element e : roundEnv.getElementsAnnotatedWith(com.oracle.truffle.api.interop.MessageResolution.class)) {
                 try {
                     processElement(e);
                 } catch (Throwable ex) {
@@ -128,7 +136,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
         if (e.getKind() != ElementKind.CLASS) {
             return;
         }
-        MessageResolution messageImplementations = e.getAnnotation(MessageResolution.class);
+        com.oracle.truffle.api.interop.MessageResolution messageImplementations = e.getAnnotation(com.oracle.truffle.api.interop.MessageResolution.class);
         if (messageImplementations == null) {
             return;
         }
@@ -153,7 +161,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             if (innerClass.getKind() != ElementKind.CLASS) {
                 continue;
             }
-            if (innerClass.getAnnotation(CanResolve.class) != null) {
+            if (innerClass.getAnnotation(com.oracle.truffle.api.interop.CanResolve.class) != null) {
                 receiverChecks.add((TypeElement) innerClass);
             }
         }
@@ -181,7 +189,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             if (innerClass.getKind() != ElementKind.CLASS) {
                 continue;
             }
-            if (innerClass.getAnnotation(Resolve.class) != null) {
+            if (innerClass.getAnnotation(com.oracle.truffle.api.interop.Resolve.class) != null) {
                 elements.add((TypeElement) innerClass);
             }
 
@@ -192,7 +200,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
         // Process inner classes with an @Resolve annotation
         boolean generationSuccessfull = true;
         for (TypeElement elem : elements) {
-            generationSuccessfull &= processResolveClass(elem.getAnnotation(Resolve.class), messageImplementations, elem, factoryGenerator);
+            generationSuccessfull &= processResolveClass(elem.getAnnotation(com.oracle.truffle.api.interop.Resolve.class), messageImplementations, elem, factoryGenerator);
         }
         if (!generationSuccessfull) {
             return;
@@ -213,7 +221,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
         }
     }
 
-    private boolean processLanguageCheck(MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator) {
+    private boolean processLanguageCheck(com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator) {
         LanguageCheckGenerator generator = new LanguageCheckGenerator(processingEnv, messageResolutionAnnotation, element, factoryGenerator);
 
         if (!ElementUtils.typeEquals(element.getSuperclass(), Utils.getTypeMirror(processingEnv, com.oracle.truffle.api.nodes.Node.class))) {
@@ -253,7 +261,8 @@ public final class InteropDSLProcessor extends AbstractProcessor {
         return true;
     }
 
-    private boolean processResolveClass(Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator) {
+    private boolean processResolveClass(com.oracle.truffle.api.interop.Resolve resolveAnnotation, com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator factoryGenerator) {
         MessageGenerator currentGenerator = MessageGenerator.getGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, factoryGenerator);
 
         if (currentGenerator == null) {
@@ -323,7 +332,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
         return true;
     }
 
-    private static boolean isReceiverNonStaticInner(MessageResolution message) {
+    private static boolean isReceiverNonStaticInner(com.oracle.truffle.api.interop.MessageResolution message) {
         try {
             message.receiverType();
             throw new AssertionError();
