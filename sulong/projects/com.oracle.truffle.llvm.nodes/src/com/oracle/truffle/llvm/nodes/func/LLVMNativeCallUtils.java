@@ -34,12 +34,12 @@ import java.util.StringJoiner;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import java.util.function.Supplier;
 
 public final class LLVMNativeCallUtils {
 
@@ -52,7 +52,7 @@ public final class LLVMNativeCallUtils {
         }
     }
 
-    static Object callNativeFunction(boolean enabled, ContextReference<LLVMContext> context, InteropLibrary nativeCall, Object function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
+    static Object callNativeFunction(boolean enabled, Supplier<LLVMContext> context, InteropLibrary nativeCall, Object function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.partialEvaluationConstant(enabled);
         if (enabled) {
             if (descriptor != null) {

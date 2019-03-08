@@ -32,13 +32,11 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 import java.io.PrintStream;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -48,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import java.util.function.Supplier;
 
 @TypeSystemReference(LLVMTypes.class)
 public abstract class LLVMNode extends Node {
@@ -73,59 +72,24 @@ public abstract class LLVMNode extends Node {
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
-    public final ContextReference<LLVMContext> getContextReference() {
-        return getLLVMLanguage().getContextReference();
-    }
-
-    public final LLVMLanguage getLLVMLanguage() {
-        LLVMLanguage ret = null;
-
-        final RootNode rootNode = getRootNode();
-        if (rootNode != null) {
-            // for the debugger nodes, a RootNode is not available
-            ret = rootNode.getLanguage(LLVMLanguage.class);
-        }
-
-        if (ret == null) {
-            ret = LLVMLanguage.getLanguage();
-        }
-
-        return ret;
-    }
-
     public final NodeFactory getNodeFactory() {
         CompilerAsserts.neverPartOfCompilation();
-        RootNode rootNode = getRootNode();
-        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
-            return rootNode.getLanguage(LLVMLanguage.class).getContextReference().get().getNodeFactory();
-        } else {
-            return LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory();
-        }
+        return getContextSupplier(LLVMLanguage.class).get().getNodeFactory();
     }
 
     public final LLVMMemory getLLVMMemory() {
-        RootNode rootNode = getRootNode();
-        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
-            return rootNode.getLanguage(LLVMLanguage.class).getCapability(LLVMMemory.class);
-        } else {
-            return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
-        }
+        return getLanguageSupplier(LLVMLanguage.class).get().getCapability(LLVMMemory.class);
     }
 
     public final UnsafeArrayAccess getUnsafeArrayAccess() {
-        RootNode rootNode = getRootNode();
-        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
-            return rootNode.getLanguage(LLVMLanguage.class).getCapability(UnsafeArrayAccess.class);
-        } else {
-            return LLVMLanguage.getLanguage().getCapability(UnsafeArrayAccess.class);
-        }
+        return getLanguageSupplier(LLVMLanguage.class).get().getCapability(UnsafeArrayAccess.class);
     }
 
-    protected static PrintStream nativeCallStatisticsStream(ContextReference<LLVMContext> context) {
+    protected static PrintStream nativeCallStatisticsStream(Supplier<LLVMContext> context) {
         return SulongEngineOption.getStream(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 
-    protected static boolean nativeCallStatisticsEnabled(ContextReference<LLVMContext> context) {
+    protected static boolean nativeCallStatisticsEnabled(Supplier<LLVMContext> context) {
         return SulongEngineOption.isTrue(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 

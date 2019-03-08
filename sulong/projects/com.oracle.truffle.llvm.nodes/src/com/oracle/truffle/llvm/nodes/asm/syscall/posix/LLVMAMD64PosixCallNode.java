@@ -36,6 +36,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
@@ -49,7 +50,7 @@ public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
     }
 
     protected TruffleObject createFunction() {
-        LLVMContext context = getContextReference().get();
+        LLVMContext context = getContextSupplier(LLVMLanguage.class).get();
         NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
         return nfiContextExtension.getNativeFunction(context, "@__sulong_posix_" + name, signature);
     }

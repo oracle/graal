@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen.Po
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -130,7 +131,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
         boolean isReadOnlyMemory(LLVMPointer address) {
             CompilerAsserts.neverPartOfCompilation();
-            LLVMGlobal global = getContextReference().get().findGlobal(address);
+            LLVMGlobal global = getContextSupplier(LLVMLanguage.class).get().findGlobal(address);
             if (global != null) {
                 return global.isReadOnly();
             } else {

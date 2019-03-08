@@ -273,6 +273,11 @@ public abstract class ForeignToLLVM extends LLVMNode {
         }
 
         @Override
+        public boolean isAdoptable() {
+            return false;
+        }
+
+        @Override
         public NodeCost getCost() {
             return NodeCost.MEGAMORPHIC;
         }

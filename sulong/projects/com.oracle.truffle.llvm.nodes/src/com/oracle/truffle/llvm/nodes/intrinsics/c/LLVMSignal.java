@@ -40,8 +40,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMThread;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -64,9 +65,9 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
 
     @Specialization
     protected LLVMPointer doSignal(int signal, Object handler,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return setSignalHandler(context.get(), signal, toNative.executeWithTarget(handler));
+        return setSignalHandler(context, signal, toNative.executeWithTarget(handler));
     }
 
     private static LLVMPointer setSignalHandler(LLVMContext context, int signalId, LLVMNativePointer function) {

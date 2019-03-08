@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,22 +31,23 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import java.util.function.Supplier;
 
 public class LLVMDerefHandleGetReceiverNode extends LLVMNode {
 
-    @CompilationFinal private ContextReference<LLVMContext> context;
+    @CompilationFinal private Supplier<LLVMContext> context;
 
     protected LLVMContext getContext() {
         if (context == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            context = getContextReference();
+            context = getContextSupplier(LLVMLanguage.class);
         }
         return context.get();
     }

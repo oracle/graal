@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -53,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
@@ -61,13 +61,14 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.function.Supplier;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
 
     @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
 
-    @CompilationFinal private ContextReference<LLVMContext> contextRef;
+    @CompilationFinal private Supplier<LLVMContext> contextRef;
 
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
         if (derefHandleGetReceiverNode == null) {
@@ -199,7 +200,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     private Object decorate(LLVMFunctionDescriptor function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
         FunctionType newFunctionType = new FunctionType(wrapperFunction.getType().getReturnType(), function.getType().getArgumentTypes(), function.getType().isVarargs());
-        NativeDecoratedRoot decoratedRoot = new NativeDecoratedRoot(getLLVMLanguage(), function, wrapperFunction);
+        NativeDecoratedRoot decoratedRoot = new NativeDecoratedRoot(getLanguageSupplier(LLVMLanguage.class).get(), function, wrapperFunction);
         return registerRoot(function.getLibrary(), newFunctionType, decoratedRoot);
     }
 
@@ -207,7 +208,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     private Object decorateForeign(TruffleObject function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
         FunctionType newFunctionType = new FunctionType(wrapperFunction.getType().getReturnType(), Type.EMPTY_ARRAY, true);
-        DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(getLLVMLanguage(), newFunctionType, function, wrapperFunction);
+        DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(getLanguageSupplier(LLVMLanguage.class).get(), newFunctionType, function, wrapperFunction);
         return registerRoot(wrapperFunction.getLibrary(), newFunctionType, decoratedRoot);
     }
 
@@ -224,7 +225,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     private LLVMContext getContext() {
         if (contextRef == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            contextRef = getContextReference();
+            contextRef = getContextSupplier(LLVMLanguage.class);
         }
         return contextRef.get();
     }

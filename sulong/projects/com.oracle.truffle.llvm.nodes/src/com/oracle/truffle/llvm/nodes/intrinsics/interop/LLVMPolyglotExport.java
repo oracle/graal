@@ -30,8 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
@@ -39,6 +38,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -53,10 +53,8 @@ public abstract class LLVMPolyglotExport extends LLVMIntrinsic {
     @Specialization
     protected Object doExport(Object name, Object value,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         String symbolName = readString.executeWithTarget(name);
-
-        LLVMContext ctx = ctxRef.get();
         Object escaped = escape.executeWithTarget(value);
 
         try {

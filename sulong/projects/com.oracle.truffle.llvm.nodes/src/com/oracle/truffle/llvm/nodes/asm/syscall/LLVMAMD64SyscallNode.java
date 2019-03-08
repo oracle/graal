@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.SystemContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -53,7 +54,7 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     protected static final int NUM_SYSCALLS = 332;
 
     protected LLVMSyscallOperationNode createNode(long rax) {
-        return getContextReference().get().getContextExtension(SystemContextExtension.class).createSyscallNode(rax);
+        return getContextSupplier(LLVMLanguage.class).get().getContextExtension(SystemContextExtension.class).createSyscallNode(rax);
     }
 
     @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")
@@ -83,8 +84,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     private void cacheTrace() {
         if (traceStream == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            traceStream = SulongEngineOption.getStream(getContextReference().get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
-            traceEnabledFlag = SulongEngineOption.isTrue(getContextReference().get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
+            traceStream = SulongEngineOption.getStream(getContextSupplier(LLVMLanguage.class).get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
+            traceEnabledFlag = SulongEngineOption.isTrue(getContextSupplier(LLVMLanguage.class).get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
         }
     }
 
