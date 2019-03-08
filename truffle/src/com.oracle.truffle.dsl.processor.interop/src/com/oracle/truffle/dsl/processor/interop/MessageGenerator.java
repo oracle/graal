@@ -172,6 +172,7 @@ abstract class MessageGenerator extends InteropNodeGenerator {
         return clazzName;
     }
 
+    @SuppressWarnings("deprecation")
     public static MessageGenerator getGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.Resolve resolveAnnotation,
                     com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
@@ -207,7 +208,7 @@ abstract class MessageGenerator extends InteropNodeGenerator {
                         com.oracle.truffle.api.interop.Message.NEW.toString().equalsIgnoreCase(messageName)) {
             return new ExecuteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         } else {
-            assert !InteropDSLProcessor.KNOWN_MESSAGES.contains(currentMessage);
+            assert !InteropDSLProcessor.getKnownMessages().contains(currentMessage);
             return new GenericGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         }
     }

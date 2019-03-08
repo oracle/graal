@@ -327,6 +327,10 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
+      # We need to force javac as JDT cannot deal with the amount of deprecations
+      # in this package, together with using it in an annotation processor.
+      # Can be removed when deprecated API was removed.
+      "forceJavac" : "true",
       "imports" : [
         "com.sun.tools.javac.processing",
         "com.sun.tools.javac.model",
@@ -348,6 +352,10 @@ suite = {
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
+      # We need to force javac as JDT cannot deal with the amount of deprecations
+      # in this package, together with using it in an annotation processor.
+      # Can be removed when deprecated API was removed.
+      "forceJavac" : "true",
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",

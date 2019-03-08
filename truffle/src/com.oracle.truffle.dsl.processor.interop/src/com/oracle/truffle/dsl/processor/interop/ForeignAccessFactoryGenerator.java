@@ -373,7 +373,7 @@ final class ForeignAccessFactoryGenerator {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessMessage(com.oracle.truffle.api.interop.Message unknown) {").append("\n");
         for (Object m : messageGenerators.keySet()) {
-            if (!InteropDSLProcessor.KNOWN_MESSAGES.contains(m)) {
+            if (!InteropDSLProcessor.getKnownMessages().contains(m)) {
                 String msg = m instanceof com.oracle.truffle.api.interop.Message ? com.oracle.truffle.api.interop.Message.toString((com.oracle.truffle.api.interop.Message) m) : (String) m;
                 w.append("      if (unknown != null && unknown.getClass().getCanonicalName().equals(\"").append(msg).append("\")) {").append("\n");
                 w.append("        return Truffle.getRuntime().createCallTarget(").append(messageGenerators.get(m).getRootNodeFactoryInvocation()).append(");").append("\n");

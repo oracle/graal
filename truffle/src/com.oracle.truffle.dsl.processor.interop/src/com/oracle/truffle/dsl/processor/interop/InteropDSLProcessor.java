@@ -74,24 +74,15 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 @SuppressWarnings("deprecation")
 public final class InteropDSLProcessor extends AbstractProcessor {
 
-    static final List<com.oracle.truffle.api.interop.Message> KNOWN_MESSAGES;
-
-    static {
-        List<com.oracle.truffle.api.interop.Message> msgs;
-        try {
-            msgs = Arrays.asList(
-                            new com.oracle.truffle.api.interop.Message[]{com.oracle.truffle.api.interop.Message.READ, com.oracle.truffle.api.interop.Message.WRITE,
-                                            com.oracle.truffle.api.interop.Message.REMOVE, com.oracle.truffle.api.interop.Message.IS_NULL, com.oracle.truffle.api.interop.Message.IS_EXECUTABLE,
-                                            com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE, com.oracle.truffle.api.interop.Message.IS_BOXED, com.oracle.truffle.api.interop.Message.UNBOX,
-                                            com.oracle.truffle.api.interop.Message.HAS_SIZE, com.oracle.truffle.api.interop.Message.GET_SIZE, com.oracle.truffle.api.interop.Message.KEY_INFO,
-                                            com.oracle.truffle.api.interop.Message.HAS_KEYS, com.oracle.truffle.api.interop.Message.KEYS,
-                                            com.oracle.truffle.api.interop.Message.IS_POINTER, com.oracle.truffle.api.interop.Message.AS_POINTER, com.oracle.truffle.api.interop.Message.TO_NATIVE,
-                                            com.oracle.truffle.api.interop.Message.EXECUTE, com.oracle.truffle.api.interop.Message.INVOKE, com.oracle.truffle.api.interop.Message.NEW});
-        } catch (Exception e) {
-            e.printStackTrace();
-            msgs = Arrays.asList();
-        }
-        KNOWN_MESSAGES = msgs;
+    static List<com.oracle.truffle.api.interop.Message> getKnownMessages() {
+        return Arrays.asList(
+                        new com.oracle.truffle.api.interop.Message[]{com.oracle.truffle.api.interop.Message.READ, com.oracle.truffle.api.interop.Message.WRITE,
+                                        com.oracle.truffle.api.interop.Message.REMOVE, com.oracle.truffle.api.interop.Message.IS_NULL, com.oracle.truffle.api.interop.Message.IS_EXECUTABLE,
+                                        com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE, com.oracle.truffle.api.interop.Message.IS_BOXED, com.oracle.truffle.api.interop.Message.UNBOX,
+                                        com.oracle.truffle.api.interop.Message.HAS_SIZE, com.oracle.truffle.api.interop.Message.GET_SIZE, com.oracle.truffle.api.interop.Message.KEY_INFO,
+                                        com.oracle.truffle.api.interop.Message.HAS_KEYS, com.oracle.truffle.api.interop.Message.KEYS,
+                                        com.oracle.truffle.api.interop.Message.IS_POINTER, com.oracle.truffle.api.interop.Message.AS_POINTER, com.oracle.truffle.api.interop.Message.TO_NATIVE,
+                                        com.oracle.truffle.api.interop.Message.EXECUTE, com.oracle.truffle.api.interop.Message.INVOKE, com.oracle.truffle.api.interop.Message.NEW});
     }
 
     @Override

@@ -46,6 +46,7 @@ package com.oracle.truffle.api.interop;
 @SuppressWarnings("deprecation")
 abstract class KnownMessage extends Message {
     @Override
+    @SuppressWarnings("deprecation")
     public final String toString() {
         return toString(this);
     }

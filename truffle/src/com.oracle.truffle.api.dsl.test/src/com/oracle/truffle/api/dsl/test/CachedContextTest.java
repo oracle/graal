@@ -293,7 +293,7 @@ public class CachedContextTest extends AbstractPolyglotTest {
 
     @ExportLibrary(CachedContextTestLibrary.class)
     @SuppressWarnings("static-method")
-    static class LibraryReceiver {
+    static class CachedContextLibraryReceiver {
 
         @ExportMessage
         final Object m0(@CachedContext(CachedContextTestLanguage.class) Env env) {

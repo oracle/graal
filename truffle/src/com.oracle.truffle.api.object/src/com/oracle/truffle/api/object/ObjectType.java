@@ -115,6 +115,7 @@ public class ObjectType {
     static com.oracle.truffle.api.interop.ForeignAccess createDefaultForeignAccess() {
         return com.oracle.truffle.api.interop.ForeignAccess.create(new com.oracle.truffle.api.interop.ForeignAccess.Factory() {
             @TruffleBoundary
+            @Override
             public boolean canHandle(TruffleObject obj) {
                 throw new IllegalArgumentException(obj.toString() + " cannot be shared");
             }

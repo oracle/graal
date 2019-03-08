@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -755,62 +754,62 @@ public abstract class Message {
      * @deprecated use {@link com.oracle.truffle.api.library.Message#getSimpleName()} instead.
      */
     @Deprecated
-    public static String toString(Message message) {
-        if (Message.READ == message) {
+    public static String toString(com.oracle.truffle.api.interop.Message message) {
+        if (com.oracle.truffle.api.interop.Message.READ == message) {
             return "READ"; // NOI18N
         }
-        if (Message.WRITE == message) {
+        if (com.oracle.truffle.api.interop.Message.WRITE == message) {
             return "WRITE"; // NOI18N
         }
-        if (Message.REMOVE == message) {
+        if (com.oracle.truffle.api.interop.Message.REMOVE == message) {
             return "REMOVE"; // NOI18N
         }
-        if (Message.UNBOX == message) {
+        if (com.oracle.truffle.api.interop.Message.UNBOX == message) {
             return "UNBOX"; // NOI18N
         }
-        if (Message.GET_SIZE == message) {
+        if (com.oracle.truffle.api.interop.Message.GET_SIZE == message) {
             return "GET_SIZE"; // NOI18N
         }
-        if (Message.HAS_SIZE == message) {
+        if (com.oracle.truffle.api.interop.Message.HAS_SIZE == message) {
             return "HAS_SIZE"; // NOI18N
         }
-        if (Message.IS_NULL == message) {
+        if (com.oracle.truffle.api.interop.Message.IS_NULL == message) {
             return "IS_NULL"; // NOI18N
         }
-        if (Message.IS_BOXED == message) {
+        if (com.oracle.truffle.api.interop.Message.IS_BOXED == message) {
             return "IS_BOXED"; // NOI18N
         }
-        if (Message.IS_EXECUTABLE == message) {
+        if (com.oracle.truffle.api.interop.Message.IS_EXECUTABLE == message) {
             return "IS_EXECUTABLE"; // NOI18N
         }
-        if (Message.IS_INSTANTIABLE == message) {
+        if (com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE == message) {
             return "IS_INSTANTIABLE"; // NOI18N
         }
-        if (Message.HAS_KEYS == message) {
+        if (com.oracle.truffle.api.interop.Message.HAS_KEYS == message) {
             return "HAS_KEYS"; // NOI18N
         }
-        if (Message.KEYS == message) {
+        if (com.oracle.truffle.api.interop.Message.KEYS == message) {
             return "KEYS"; // NOI18N
         }
-        if (Message.KEY_INFO == message) {
+        if (com.oracle.truffle.api.interop.Message.KEY_INFO == message) {
             return "KEY_INFO"; // NOI18N
         }
-        if (Message.IS_POINTER == message) {
+        if (com.oracle.truffle.api.interop.Message.IS_POINTER == message) {
             return "IS_POINTER"; // NOI18N
         }
-        if (Message.AS_POINTER == message) {
+        if (com.oracle.truffle.api.interop.Message.AS_POINTER == message) {
             return "AS_POINTER"; // NOI18N
         }
-        if (Message.TO_NATIVE == message) {
+        if (com.oracle.truffle.api.interop.Message.TO_NATIVE == message) {
             return "TO_NATIVE"; // NOI18N
         }
-        if (Execute.INSTANCE == message) {
+        if (com.oracle.truffle.api.interop.Execute.INSTANCE == message) {
             return "EXECUTE";
         }
-        if (Invoke.INSTANCE == message) {
+        if (com.oracle.truffle.api.interop.Invoke.INSTANCE == message) {
             return "INVOKE";
         }
-        if (New.INSTANCE == message) {
+        if (com.oracle.truffle.api.interop.New.INSTANCE == message) {
             return "NEW";
         }
         return message.getClass().getName();

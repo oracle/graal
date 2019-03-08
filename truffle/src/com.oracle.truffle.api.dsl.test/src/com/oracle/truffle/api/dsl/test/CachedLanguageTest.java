@@ -232,7 +232,7 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
 
     @ExportLibrary(CachedLanguageTestLibrary.class)
     @SuppressWarnings("static-method")
-    static class LibraryReceiver {
+    static class CachedLanguageLibraryReceiver {
 
         @ExportMessage
         final Object m0(@CachedLanguage CachedLanguageTestLanguage env) {

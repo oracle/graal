@@ -94,7 +94,7 @@ final class LibFFILibrary implements TruffleObject {
     @ImportStatic(NFILanguageImpl.class)
     abstract static class ReadMember {
 
-        @Specialization(limit = "3", guards = {"receiver == cachedReceiver", "symbol == cachedSymbol"})
+        @Specialization(limit = "3", guards = {"receiver == cachedReceiver", "symbol.equals(cachedSymbol)"})
         @SuppressWarnings("unused")
         static TruffleObject doCached(LibFFILibrary receiver, String symbol,
                         @Cached("receiver") LibFFILibrary cachedReceiver,

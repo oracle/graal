@@ -55,6 +55,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 @SuppressWarnings("deprecation")
 final class Utils {
 
+    @SuppressWarnings("deprecation")
     static String getReceiverTypeFullClassName(com.oracle.truffle.api.interop.MessageResolution message) {
         String receiverTypeFullClassName;
         try {
