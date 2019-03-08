@@ -72,17 +72,17 @@ public abstract class LLVMNode extends Node {
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
-    public final NodeFactory getNodeFactory() {
+    public static NodeFactory getNodeFactory() {
         CompilerAsserts.neverPartOfCompilation();
-        return getContextSupplier(LLVMLanguage.class).get().getNodeFactory();
+        return LLVMLanguage.getLLVMContextReference().get().getNodeFactory();
     }
 
-    public final LLVMMemory getLLVMMemory() {
-        return getLanguageSupplier(LLVMLanguage.class).get().getCapability(LLVMMemory.class);
+    public static LLVMMemory getLLVMMemory() {
+        return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
     }
 
-    public final UnsafeArrayAccess getUnsafeArrayAccess() {
-        return getLanguageSupplier(LLVMLanguage.class).get().getCapability(UnsafeArrayAccess.class);
+    public static UnsafeArrayAccess getUnsafeArrayAccess() {
+        return LLVMLanguage.getLanguage().getCapability(UnsafeArrayAccess.class);
     }
 
     protected static PrintStream nativeCallStatisticsStream(Supplier<LLVMContext> context) {
