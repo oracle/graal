@@ -86,6 +86,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -155,6 +156,13 @@ public abstract class Launcher {
             tempEngine = Engine.create();
         }
         return tempEngine;
+    }
+
+    protected void argumentsProcessingDone() {
+        if (tempEngine != null) {
+            tempEngine.close();
+            tempEngine = null;
+        }
     }
 
     static void handleAbortException(AbortException e) {

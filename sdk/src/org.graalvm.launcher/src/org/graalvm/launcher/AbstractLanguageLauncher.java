@@ -112,6 +112,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         }
 
         validateArguments(polyglotOptions);
+        argumentsProcessingDone();
 
         Context.Builder builder;
         if (isPolyglot()) {
