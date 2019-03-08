@@ -77,7 +77,7 @@ for o in "$@"; do
             done
         fi
     elif [[ "$o" == --vm.* ]]; then
-        vm_arg=("${o#--vm.}")
+        vm_arg="${o#--vm.}"
         if [[ "$vm_arg" == "cp" ]]; then
             >&2 echo "'--vm.cp' argument must be of the form '--vm.cp=<classpath>', not two separate arguments"
             exit 1
@@ -105,5 +105,9 @@ for o in "$@"; do
 done
 
 cp="$(IFS=: ; echo "${absolute_cp[*]}")"
+
+if [[ "${VERBOSE_GRAALVM_LAUNCHERS}" == "true" ]]; then
+    set -x
+fi
 
 exec "${location}/<jre_bin>/java" "${jvm_args[@]}" -cp "${cp}" "<main_class>" "${launcher_args[@]}"

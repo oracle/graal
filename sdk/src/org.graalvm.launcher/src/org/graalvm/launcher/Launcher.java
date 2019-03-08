@@ -62,6 +62,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -86,7 +87,6 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -1504,7 +1504,8 @@ public abstract class Launcher {
         private void exec(Path executable, List<String> command) {
             assert isAOT();
             if (isVerbose()) {
-                System.out.println(String.format("exec(%s, %s)", executable, command));
+                StringBuilder sb = formatExec(executable, command);
+                System.out.print(sb.toString());
             }
             String[] argv = new String[command.size() + 1];
             int i = 0;
@@ -1518,7 +1519,9 @@ public abstract class Launcher {
             }
             if (execv(executable.toString(), argv) != 0) {
                 int errno = NativeInterface.errno();
-                throw abort(String.format("exec(%s, %s) failed: %s", executable, command, CTypeConversion.toJavaString(NativeInterface.strerror(errno))));
+                StringBuilder sb = formatExec(executable, command);
+                sb.append(" failed! ").append(CTypeConversion.toJavaString(NativeInterface.strerror(errno)));
+                throw abort(sb.toString());
             }
         }
 
@@ -1527,6 +1530,43 @@ public abstract class Launcher {
                             CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(argv)) {
                 return NativeInterface.execv(pathHolder.get(), argvHolder.get());
             }
+        }
+
+        private StringBuilder formatExec(Path executable, List<String> command) {
+            StringBuilder sb = new StringBuilder("exec: ");
+            sb.append(executable);
+            for (String arg : command) {
+                sb.append(' ');
+                sb.append(ShellQuotes.quote(arg));
+            }
+            sb.append(System.lineSeparator());
+            return sb;
+        }
+    }
+
+    private static final class ShellQuotes {
+        private static final BitSet safeChars;
+        static {
+            safeChars = new BitSet();
+            safeChars.set('a', 'z' + 1);
+            safeChars.set('A', 'Z' + 1);
+            safeChars.set('+', ':' + 1); // +,-./0..9:
+            safeChars.set('@');
+            safeChars.set('%');
+            safeChars.set('_');
+            safeChars.set('=');
+        }
+
+        private static String quote(String str) {
+            if (str.isEmpty()) {
+                return "''";
+            }
+            for (int i = 0; i < str.length(); i++) {
+                if (!safeChars.get(str.charAt(i))) {
+                    return "'" + str.replace("'", "'\"'\"'") + "'";
+                }
+            }
+            return str;
         }
     }
 
