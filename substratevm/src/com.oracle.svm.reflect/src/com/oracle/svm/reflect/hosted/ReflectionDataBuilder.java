@@ -52,6 +52,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
 
 public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
@@ -303,8 +304,13 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private static Field[] filterFields(Object fields, Set<Field> filter, AnalysisMetaAccess metaAccess) {
         List<Field> result = new ArrayList<>();
         for (Field field : (Field[]) fields) {
-            if (filter.contains(field) && !metaAccess.lookupJavaField(field).isAnnotationPresent(Delete.class)) {
-                result.add(field);
+            if (filter.contains(field)) {
+                try {
+                    if (!metaAccess.lookupJavaField(field).isAnnotationPresent(Delete.class)) {
+                        result.add(field);
+                    }
+                } catch (DeletedElementException ignored) { // filter
+                }
             }
         }
         return result.toArray(new Field[0]);
@@ -322,8 +328,13 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private static <T extends Executable> T[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess, T[] prototypeArray) {
         List<T> result = new ArrayList<>();
         for (T method : (T[]) methods) {
-            if (filter.contains(method) && !metaAccess.lookupJavaMethod(method).isAnnotationPresent(Delete.class)) {
-                result.add(method);
+            if (filter.contains(method)) {
+                try {
+                    if (!metaAccess.lookupJavaMethod(method).isAnnotationPresent(Delete.class)) {
+                        result.add(method);
+                    }
+                } catch (DeletedElementException ignored) { // filter
+                }
             }
         }
         return result.toArray(prototypeArray);
@@ -332,8 +343,13 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, AnalysisMetaAccess metaAccess) {
         List<Class<?>> result = new ArrayList<>();
         for (Class<?> clazz : (Class<?>[]) classes) {
-            if (filter.contains(clazz) && !metaAccess.lookupJavaType(clazz).isAnnotationPresent(Delete.class)) {
-                result.add(clazz);
+            if (filter.contains(clazz)) {
+                try {
+                    if (!metaAccess.lookupJavaType(clazz).isAnnotationPresent(Delete.class)) {
+                        result.add(clazz);
+                    }
+                } catch (DeletedElementException ignored) { // filter
+                }
             }
         }
         return result.toArray(new Class<?>[0]);
