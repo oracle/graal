@@ -409,7 +409,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         cacheClass.addOptional(createCastMethod(libraryExports, exportReceiverType, true));
         cacheClass.add(accepts);
 
-        if (!libraryExports.needsRewrites()) {
+        if (!libraryExports.needsRewrites() && useSingleton(libraryExports, true)) {
             CodeExecutableElement isAdoptable = cacheClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "isAdoptable")));
             builder = isAdoptable.createBuilder();
             if (libraryExports.needsDynamicDispatch()) {
