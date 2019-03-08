@@ -54,7 +54,13 @@ import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionReducer;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public final class CacheExpression extends MessageContainer {
 
@@ -67,6 +73,7 @@ public final class CacheExpression extends MessageContainer {
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
     private String sharedGroup;
+    private boolean mergedLibrary;
 
     private TypeMirror languageType;
     private TypeMirror supplierType;
@@ -214,6 +221,54 @@ public final class CacheExpression extends MessageContainer {
 
     public DSLExpression getDefaultExpression() {
         return defaultExpression;
+    }
+
+    public void setMergedLibrary(boolean mergedLibrary) {
+        this.mergedLibrary = mergedLibrary;
+    }
+
+    public boolean isMergedLibrary() {
+        return mergedLibrary;
+    }
+
+    public String getMergedLibraryIdentifier() {
+        String libraryName = ElementUtils.getSimpleName(getParameter().getType());
+        DSLExpression identifierExpression = getDefaultExpression().reduce(new DSLExpressionReducer() {
+
+            public DSLExpression visitVariable(Variable binary) {
+                if (binary.getReceiver() == null) {
+                    Variable var = new Variable(binary.getReceiver(), "receiver");
+                    var.setResolvedTargetType(binary.getResolvedTargetType());
+                    var.setResolvedVariable(new CodeVariableElement(binary.getResolvedType(), "receiver"));
+                    return var;
+                } else {
+                    return binary;
+                }
+            }
+
+            public DSLExpression visitNegate(Negate negate) {
+                return negate;
+            }
+
+            public DSLExpression visitCall(Call binary) {
+                return binary;
+            }
+
+            public DSLExpression visitBinary(Binary binary) {
+                return binary;
+            }
+        });
+        String expressionText = identifierExpression.asString();
+        StringBuilder b = new StringBuilder(expressionText);
+        for (int i = 0; i < b.length(); i++) {
+            char charAt = b.charAt(i);
+            if (i == '.') {
+                b.setCharAt(i, '_');
+            } else if (!Character.isJavaIdentifierPart(charAt)) {
+                b.deleteCharAt(i);
+            }
+        }
+        return b.toString() + libraryName;
     }
 
 }

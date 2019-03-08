@@ -124,7 +124,7 @@ abstract class SerializeArgumentLibrary extends Library {
     @ExportLibrary(value = SerializeArgumentLibrary.class, receiverType = Object.class)
     abstract static class DefaultConversion {
 
-        @ExportMessage(limit = "1")
+        @ExportMessage
         static void putByte(Object arg, NativeArgumentBuffer buffer,
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
@@ -140,7 +140,7 @@ abstract class SerializeArgumentLibrary extends Library {
             }
         }
 
-        @ExportMessage(limit = "1")
+        @ExportMessage
         static void putShort(Object arg, NativeArgumentBuffer buffer,
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
@@ -156,7 +156,7 @@ abstract class SerializeArgumentLibrary extends Library {
             }
         }
 
-        @ExportMessage(limit = "1")
+        @ExportMessage
         static void putInt(Object arg, NativeArgumentBuffer buffer,
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
@@ -172,7 +172,7 @@ abstract class SerializeArgumentLibrary extends Library {
             }
         }
 
-        @ExportMessage(limit = "1")
+        @ExportMessage
         static void putLong(Object arg, NativeArgumentBuffer buffer,
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
@@ -188,7 +188,7 @@ abstract class SerializeArgumentLibrary extends Library {
             }
         }
 
-        @ExportMessage(limit = "1")
+        @ExportMessage
         static void putFloat(Object arg, NativeArgumentBuffer buffer,
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
@@ -204,7 +204,7 @@ abstract class SerializeArgumentLibrary extends Library {
             }
         }
 
-        @ExportMessage(limit = "1")
+        @ExportMessage
         static void putDouble(Object arg, NativeArgumentBuffer buffer,
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
@@ -220,7 +220,7 @@ abstract class SerializeArgumentLibrary extends Library {
             }
         }
 
-        @ExportMessage(limit = "1")
+        @ExportMessage
         static void putPointer(Object arg, NativeArgumentBuffer buffer, int ptrSize,
                         @CachedLibrary("arg") InteropLibrary interop,
                         @Shared("exception") @Cached BranchProfile exception) throws UnsupportedTypeException {
@@ -243,7 +243,7 @@ abstract class SerializeArgumentLibrary extends Library {
             }
         }
 
-        @ExportMessage(limit = "1")
+        @ExportMessage
         static void putString(Object arg, NativeArgumentBuffer buffer, int ptrSize,
                         @CachedLibrary("arg") InteropLibrary interop,
                         @Shared("exception") @Cached BranchProfile exception) throws UnsupportedTypeException {

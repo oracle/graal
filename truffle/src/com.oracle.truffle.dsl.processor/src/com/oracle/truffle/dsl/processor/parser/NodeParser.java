@@ -81,6 +81,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -544,7 +545,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
             }
             for (CacheExpression cache : specialization.getCaches()) {
-                if (cache.getDefaultExpression() != null && cache.getDefaultExpression().isNodeReceiverBound()) {
+                if (cache.getDefaultExpression() != null && !cache.isMergedLibrary() && cache.getDefaultExpression().isNodeReceiverBound()) {
                     nodeBound = true;
                     if (requireNodeUnbound) {
                         cache.addError("@%s annotated nodes must only refer to static cache initializer methods or fields. " +
@@ -2186,12 +2187,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             // try substitutions
             if (mode == ParseMode.EXPORTED_MESSAGE) {
+
+                Parameter receiverParameter = specialization.findParameterOrDie(specialization.getNode().getChildExecutions().get(0));
                 if (receiverExpression instanceof DSLExpression.Variable) {
                     DSLExpression.Variable variable = (DSLExpression.Variable) receiverExpression;
                     if (variable.getReceiver() == null) {
                         VariableElement resolvedVariable = variable.getResolvedVariable();
-                        Parameter parameter = specialization.findParameterOrDie(specialization.getNode().getChildExecutions().get(0));
-                        if (ElementUtils.variableEquals(resolvedVariable, parameter.getVariableElement())) {
+                        if (ElementUtils.variableEquals(resolvedVariable, receiverParameter.getVariableElement())) {
                             // found a cached library that refers to a library with the same
                             // receiver
                             if (typeEquals(type.asType(), exportLibraryType)) {
@@ -2203,14 +2205,18 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         }
                     }
                 }
+
+                if (substituteExpression == null && supportsLibraryMerge(receiverExpression, receiverParameter.getVariableElement())) {
+                    substituteExpression = receiverExpression;
+                    cachedLibrary.setMergedLibrary(true);
+                }
             }
 
             if (substituteExpression != null) {
                 cachedLibrary.setDefaultExpression(substituteExpression);
                 cachedLibrary.setUncachedExpression(substituteExpression);
-                uncachedLibrary.setDefaultExpression(substituteExpression);
-                uncachedLibrary.setUncachedExpression(substituteExpression);
                 cachedLibrary.setAlwaysInitialized(true);
+                return null;
             } else {
                 cachedLibrary.setDefaultExpression(receiverExpression);
 
@@ -2258,6 +2264,31 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         return uncachedSpecialization;
+    }
+
+    private static boolean supportsLibraryMerge(DSLExpression receiverExpression, VariableElement receiverParameter) {
+        Set<VariableElement> vars = receiverExpression.findBoundVariableElements();
+        // receiver is the only bound parameter
+        if (vars.size() == 1 && vars.contains(receiverParameter)) {
+            AtomicBoolean supportsMerge = new AtomicBoolean(true);
+            receiverExpression.accept(new DSLExpression.AbstractDSLExpressionVisitor() {
+                @Override
+                public void visitCall(Call binary) {
+                    // no longer all
+                    supportsMerge.set(false);
+                }
+
+                @Override
+                public void visitVariable(Variable binary) {
+                    if (binary.getReceiver() != null && binary.getResolvedVariable().getKind() == ElementKind.FIELD && !binary.getResolvedVariable().getModifiers().contains(Modifier.FINAL)) {
+                        supportsMerge.set(false);
+                    }
+                }
+            });
+
+            return supportsMerge.get();
+        }
+        return false;
     }
 
     private void parseCached(CacheExpression cache, SpecializationData specialization, DSLExpressionResolver originalResolver, Parameter parameter) {
@@ -2820,7 +2851,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     continue;
                 }
                 for (CacheExpression cache : specialization.getCaches()) {
-                    if (cache.isAlwaysInitialized()) {
+                    if (cache.isAlwaysInitialized() || cache.isCachedLibrary()) {
                         continue;
                     }
                     SharableCache sharable = new SharableCache(specialization, cache);

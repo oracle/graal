@@ -334,62 +334,62 @@ public class JavaStringCoercionTest {
             return true;
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         boolean fitsInByte(@CachedLibrary("this.value") InteropLibrary delegate) {
             return delegate.fitsInByte(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         boolean fitsInShort(@CachedLibrary("this.value") InteropLibrary delegate) {
             return delegate.fitsInShort(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         boolean fitsInInt(@CachedLibrary("this.value") InteropLibrary delegate) {
             return delegate.fitsInInt(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         boolean fitsInLong(@CachedLibrary("this.value") InteropLibrary delegate) {
             return delegate.fitsInLong(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         boolean fitsInFloat(@CachedLibrary("this.value") InteropLibrary delegate) {
             return delegate.fitsInFloat(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         boolean fitsInDouble(@CachedLibrary("this.value") InteropLibrary delegate) {
             return delegate.fitsInDouble(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         byte asByte(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
             return delegate.asByte(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         short asShort(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
             return delegate.asShort(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         int asInt(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
             return delegate.asInt(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         long asLong(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
             return delegate.asLong(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         float asFloat(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
             return delegate.asFloat(value);
         }
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         double asDouble(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
             return delegate.asDouble(value);
         }

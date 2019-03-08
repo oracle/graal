@@ -54,7 +54,14 @@ public abstract class AbstractParametrizedLibraryTest extends AbstractLibraryTes
         CACHED,
         UNCACHED,
         DISPATCHED_CACHED,
-        DISPATCHED_UNCACHED,
+        DISPATCHED_UNCACHED;
+        public boolean isDispatched() {
+            return this == DISPATCHED_CACHED || this == DISPATCHED_UNCACHED;
+        }
+
+        public boolean isCached() {
+            return this == CACHED || this == TestRun.DISPATCHED_CACHED;
+        }
     }
 
     @Parameter // first data value (0) is default

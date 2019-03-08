@@ -94,6 +94,23 @@ public final class CodeVariableElement extends CodeElement<Element> implements V
         return builder;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof CodeVariableElement) {
+            CodeVariableElement other = (CodeVariableElement) obj;
+            return Objects.equals(name, other.name) && //
+                            ElementUtils.typeEquals(type, other.type) && //
+                            Objects.equals(constantValue, other.constantValue) && //
+                            Objects.equals(init, other.init) && super.equals(obj);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, ElementUtils.getTypeId(type), constantValue, init, super.hashCode());
+    }
+
     public void setInit(CodeTree init) {
         this.init = init;
     }

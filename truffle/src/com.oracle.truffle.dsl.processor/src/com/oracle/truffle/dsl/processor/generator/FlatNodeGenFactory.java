@@ -1459,7 +1459,6 @@ public class FlatNodeGenFactory {
         if (!needsRewrites()) {
             return null;
         }
-
         String frame = null;
         if (needsFrameToExecute(reachableSpecializations)) {
             frame = FRAME_VALUE;
@@ -3989,7 +3988,18 @@ public class FlatNodeGenFactory {
             return null;
         }
         CodeTree tree;
-        if (cache.isCachedContext() || cache.isCachedLanguage()) {
+        if (cache.isMergedLibrary()) {
+            if (frameState.getMode().isUncached()) {
+                CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+                builder.staticReference(createLibraryConstant(libraryConstants, cache.getParameter().getType()));
+                builder.startCall(".getUncached");
+                builder.tree(writeExpression(frameState, specialization, cache.getDefaultExpression()));
+                builder.end();
+                tree = builder.build();
+            } else {
+                tree = CodeTreeBuilder.singleString("this." + cache.getMergedLibraryIdentifier());
+            }
+        } else if (cache.isCachedContext() || cache.isCachedLanguage()) {
             String fieldName = createSupplierName(cache);
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 

@@ -515,7 +515,7 @@ public class CachedLibraryTest extends AbstractLibraryTest {
     @ExportLibrary(InExportsLibrary.class)
     final class InExportsDifferentLibraryObject {
 
-        @ExportMessage(limit = "4")
+        @ExportMessage
         String m0(@CachedLibrary("this") SomethingLibrary otherLibrary) {
             return otherLibrary.call(this);
         }
@@ -695,7 +695,7 @@ public class CachedLibraryTest extends AbstractLibraryTest {
     @ExportLibrary(LibraryWithExecute.class)
     public abstract static class LibraryThatUsesExecuteMethod {
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         public String execute(@CachedLibrary("this") SomethingLibrary somethings) {
             return somethings.call(this);
         }
@@ -704,10 +704,10 @@ public class CachedLibraryTest extends AbstractLibraryTest {
     @ExportLibrary(LibraryWithExecute.class)
     public abstract static class LibraryThatUsesExecuteNode {
 
-        @ExportMessage(limit = "5")
+        @ExportMessage
         static class Execute {
 
-            @Specialization(limit = "5")
+            @Specialization
             static String doDefault(LibraryThatUsesExecuteNode receiver, @CachedLibrary("receiver") SomethingLibrary somethings) {
                 return somethings.call(receiver);
             }

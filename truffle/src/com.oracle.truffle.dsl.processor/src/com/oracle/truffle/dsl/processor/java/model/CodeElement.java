@@ -50,6 +50,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -65,7 +66,6 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
     private final Set<Modifier> modifiers;
     private List<AnnotationMirror> annotations;
     private List<E> enclosedElements;
-
     private Element enclosingElement;
 
     private Element generatorElement;
@@ -88,6 +88,22 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
     @Override
     public AnnotationMirror getGeneratorAnnotationMirror() {
         return generatorAnnotationMirror;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj != null && this.getClass() == obj.getClass()) {
+            CodeElement<?> other = (CodeElement<?>) obj;
+            return Objects.equals(modifiers, other.modifiers) && //
+                            Objects.equals(annotations, other.annotations) && //
+                            Objects.equals(enclosedElements, other.enclosedElements);
+        }
+        return super.equals(obj);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(modifiers, annotations, enclosedElements);
     }
 
     @Override

@@ -67,87 +67,87 @@ public class BoxedPrimitive implements TruffleObject {
         return toNativeCalled;
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean isBoolean(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.isBoolean(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean asBoolean(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.asBoolean(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean isString(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.isString(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     String asString(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.asString(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean isNumber(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.isNumber(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean fitsInByte(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.fitsInByte(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean fitsInShort(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.fitsInShort(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean fitsInInt(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.fitsInInt(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean fitsInLong(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.fitsInLong(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean fitsInFloat(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.fitsInFloat(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     boolean fitsInDouble(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.fitsInDouble(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     byte asByte(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.asByte(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     short asShort(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.asShort(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     int asInt(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.asInt(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     long asLong(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.asLong(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     float asFloat(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.asFloat(primitive);
     }
 
-    @ExportMessage(limit = "3")
+    @ExportMessage
     double asDouble(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.asDouble(primitive);
     }
