@@ -1094,6 +1094,11 @@ public final class Context implements AutoCloseable {
                 if (messageTransport != null) {
                     engineBuilder.serverTransport(messageTransport);
                 }
+                if (customLogHandler instanceof Handler) {
+                    engineBuilder.logHandler((Handler) customLogHandler);
+                } else if (customLogHandler instanceof OutputStream) {
+                    engineBuilder.logHandler((OutputStream) customLogHandler);
+                }
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();

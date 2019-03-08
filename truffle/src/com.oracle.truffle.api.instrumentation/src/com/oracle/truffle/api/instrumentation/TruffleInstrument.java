@@ -67,6 +67,7 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -636,6 +637,59 @@ public abstract class TruffleInstrument {
             }
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
             return findTopScopes(env);
+        }
+
+        /**
+         * Find or create an engine bound logger for an instrument. When a logging is required from
+         * a thread which entered a context the context's logging handler and options are used.
+         * Otherwise the engine's logging handler and options are used.
+         * <p>
+         * If a logger with given name already exists it's returned, otherwise a new logger is
+         * created.
+         * <p>
+         * Unlike loggers created by
+         * {@link TruffleLogger#getLogger(java.lang.String, java.lang.String)
+         * TruffleLogger.getLogger} loggers created by this method are bound to engine, there may be
+         * more logger instances having the same name but each bound to different engine instance.
+         * Instruments should never store the returned logger into a static fields. A new logger
+         * must be always created in
+         * {@link TruffleInstrument#onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+         * onCreate} method.
+         *
+         * @param loggerName the the name of a {@link TruffleLogger}, if a {@code loggerName} is
+         *            null or empty a root logger for language or instrument is returned
+         * @return a {@link TruffleLogger}
+         * @since 1.0
+         */
+        public TruffleLogger getLogger(String loggerName) {
+            return AccessorInstrumentHandler.engineAccess().getLogger(vmObject, loggerName);
+        }
+
+        /**
+         * Find or create an engine bound logger for an instrument. The engine bound loggers can be
+         * used by threads executing without any current context. When a logging is required from a
+         * thread which entered a context the context's logging handler and options are used.
+         * Otherwise the engine's logging handler and options are used.
+         * <p>
+         * If a logger for the class already exists it's returned, otherwise a new logger is
+         * created.
+         * <p>
+         * Unlike loggers created by
+         * {@link TruffleLogger#getLogger(java.lang.String, java.lang.Class)
+         * TruffleLogger.getLogger} loggers created by this method are bound to engine, there may be
+         * more logger instances having the same name but each bound to different engine instance.
+         * Instruments should never store the returned logger into a static fields. A new logger
+         * must be always created in
+         * {@link TruffleInstrument#onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+         * onCreate} method.
+         *
+         * @param forClass the {@link Class} to create a logger for
+         * @return a {@link TruffleLogger}
+         * @throws NullPointerException if {@code forClass} is null
+         * @since 1.0
+         */
+        public TruffleLogger getLogger(Class<?> forClass) {
+            return getLogger(forClass.getName());
         }
 
         static Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {

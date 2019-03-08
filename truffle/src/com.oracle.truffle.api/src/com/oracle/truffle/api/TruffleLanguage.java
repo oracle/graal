@@ -2632,11 +2632,13 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels) {
-            if (logLevels == null) {
-                TruffleLogger.LoggerCache.getInstance().removeLogLevelsForContext(polyglotContext);
-            } else {
-                TruffleLogger.LoggerCache.getInstance().addLogLevelsForContext(polyglotContext, logLevels);
+        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers) {
+            for (Object loggerCache : loggers) {
+                if (logLevels == null) {
+                    ((TruffleLogger.LoggerCache) loggerCache).removeLogLevelsForContext(polyglotContext);
+                } else {
+                    ((TruffleLogger.LoggerCache) loggerCache).addLogLevelsForContext(polyglotContext, logLevels);
+                }
             }
         }
 
@@ -2653,6 +2655,26 @@ public abstract class TruffleLanguage<C> {
         @Override
         public TruffleFile getTruffleFile(FileSystem fs, String path) {
             return new TruffleFile(fs, fs.parsePath(path));
+        }
+
+        @Override
+        public Object getDefaultLoggers() {
+            return TruffleLogger.LoggerCache.getInstance();
+        }
+
+        @Override
+        public Object createEngineLoggers(Object polyglotEngine, Map<String, Level> logLevels) {
+            return TruffleLogger.createLoggerCache(polyglotEngine, logLevels);
+        }
+
+        @Override
+        public void closeEngineLoggers(Object loggers) {
+            ((TruffleLogger.LoggerCache) loggers).close();
+        }
+
+        @Override
+        public TruffleLogger getLogger(String id, String loggerName, Object loggers) {
+            return TruffleLogger.getLogger(id, loggerName, (TruffleLogger.LoggerCache) loggers);
         }
     }
 }
