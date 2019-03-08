@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -48,6 +46,8 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncreme
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -93,28 +93,17 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
         protected abstract String execute(LLVMManagedPointer foreign);
 
-        @Specialization(guards = "interop.isString(foreign)", limit = "3", rewriteOn = UnsupportedMessageException.class)
-        String readString(@SuppressWarnings("unused") LLVMManagedPointer object, TruffleObject foreign,
-                        @CachedLibrary("foreign") InteropLibrary interop) throws UnsupportedMessageException {
-            return interop.asString(foreign);
-        }
-
-        @Specialization(guards = "!interop.isString(foreign)", limit = "3")
-        String readPointer(LLVMManagedPointer object, @SuppressWarnings("unused") TruffleObject foreign,
-                        @SuppressWarnings("unused") @CachedLibrary("foreign") InteropLibrary interop,
-                        @Cached PointerReadStringNode read) {
-            return read.execute(object);
-        }
-
-        @Specialization(limit = "3", replaces = {"readString", "readPointer"})
-        String readGeneric(LLVMManagedPointer object, TruffleObject foreign,
+        @Specialization(limit = "3")
+        String doDefault(@SuppressWarnings("unused") LLVMManagedPointer object, TruffleObject foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached PointerReadStringNode read) {
-            try {
-                return interop.asString(foreign);
-            } catch (UnsupportedMessageException ex) {
-                return read.execute(object);
+            if (interop.isString(foreign)) {
+                try {
+                    return interop.asString(foreign);
+                } catch (UnsupportedMessageException e) {
+                }
             }
+            return read.execute(object);
         }
 
         public static ForeignReadStringNode create() {
