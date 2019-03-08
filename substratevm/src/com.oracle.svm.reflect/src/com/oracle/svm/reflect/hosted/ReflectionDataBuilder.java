@@ -45,8 +45,10 @@ import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
@@ -330,10 +332,23 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         for (T method : (T[]) methods) {
             if (filter.contains(method)) {
                 try {
-                    if (!metaAccess.lookupJavaMethod(method).isAnnotationPresent(Delete.class)) {
+                    AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
+                    if (aMethod.isAnnotationPresent(Delete.class)) {
+                        // Deleted method, accesses would fail at runtime: do not expose.
+                    } else if (aMethod.isSynthetic() && aMethod.getDeclaringClass().isAnnotationPresent(TargetClass.class)) {
+                        /*
+                         * Synthetic methods are usually methods injected by javac to provide access
+                         * to private fields or methods (access$NNN). In substitution classes, the
+                         * referenced members might have been deleted, so we do not expose their
+                         * synthetic methods for reflection. We could accurately determine affected
+                         * methods by their graphs, but these methods should not be relied on
+                         * anyway.
+                         */
+                    } else {
                         result.add(method);
                     }
-                } catch (DeletedElementException ignored) { // filter
+                } catch (DeletedElementException ignored) {
+                    // Deleted method, reachability would break the image build: drop.
                 }
             }
         }
