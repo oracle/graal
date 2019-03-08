@@ -47,7 +47,7 @@ the library `example` with `--lib /path/to/libexample.so` as opposed to common l
 GraalVM native image.
 
 - `--vm.<option>` passes VM options to GraalVM.
-List available JVM options with `--vm.help`.
+List available JVM options with `--help:vm`.
 
 - `--vm.Dgraal.<property>=<value>` passes settings to the Graal compiler.
 For example, `--vm.Dgraal.DumpOnError=true` sends the compiler intermediate
