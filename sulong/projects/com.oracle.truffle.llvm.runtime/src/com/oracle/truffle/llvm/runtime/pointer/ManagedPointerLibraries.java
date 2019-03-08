@@ -42,59 +42,59 @@ import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 abstract class ManagedPointerLibraries extends CommonPointerLibraries {
 
-    @ExportMessage(limit = "5")
+    @ExportMessage
     static boolean isNull(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.getObject()") InteropLibrary interop) {
+                    @CachedLibrary("receiver.object") InteropLibrary interop) {
         if (receiver.getOffset() == 0) {
-            return interop.isNull(receiver.getObject());
+            return interop.isNull(receiver.object);
         } else {
             return false;
         }
     }
 
-    @ExportMessage(limit = "5")
+    @ExportMessage
     static boolean isExecutable(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.getObject()") InteropLibrary interop) {
+                    @CachedLibrary("receiver.object") InteropLibrary interop) {
         if (receiver.getOffset() == 0) {
-            return interop.isExecutable(receiver.getObject());
+            return interop.isExecutable(receiver.object);
         } else {
             return false;
         }
     }
 
-    @ExportMessage(limit = "5")
+    @ExportMessage
     static Object execute(LLVMPointerImpl receiver, Object[] args,
-                    @CachedLibrary("receiver.getObject()") InteropLibrary interop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                    @CachedLibrary("receiver.object") InteropLibrary interop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         if (receiver.getOffset() == 0) {
-            return interop.execute(receiver.getObject(), args);
+            return interop.execute(receiver.object, args);
         } else {
             throw UnsupportedMessageException.create();
         }
     }
 
-    @ExportMessage(library = LLVMNativeLibrary.class, limit = "5")
-    @ExportMessage(library = InteropLibrary.class, limit = "5")
+    @ExportMessage(library = LLVMNativeLibrary.class)
+    @ExportMessage(library = InteropLibrary.class)
     static boolean isPointer(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.getObject()") LLVMNativeLibrary natives) {
-        return natives.isPointer(receiver.getObject());
+                    @CachedLibrary("receiver.object") LLVMNativeLibrary natives) {
+        return natives.isPointer(receiver.object);
     }
 
-    @ExportMessage(library = LLVMNativeLibrary.class, limit = "5")
-    @ExportMessage(library = InteropLibrary.class, limit = "5")
+    @ExportMessage(library = LLVMNativeLibrary.class)
+    @ExportMessage(library = InteropLibrary.class)
     static long asPointer(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.getObject()") LLVMNativeLibrary natives) throws UnsupportedMessageException {
-        return natives.asPointer(receiver.getObject()) + receiver.getOffset();
+                    @CachedLibrary("receiver.object") LLVMNativeLibrary natives) throws UnsupportedMessageException {
+        return natives.asPointer(receiver.object) + receiver.getOffset();
     }
 
-    @ExportMessage(limit = "5")
+    @ExportMessage
     static void toNative(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.getObject()") InteropLibrary interop) {
-        interop.toNative(receiver.getObject());
+                    @CachedLibrary("receiver.object") InteropLibrary interop) {
+        interop.toNative(receiver.object);
     }
 
-    @ExportMessage(limit = "5")
+    @ExportMessage
     static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.getObject()") LLVMNativeLibrary natives) {
-        return natives.toNativePointer(receiver.getObject()).increment(receiver.getOffset());
+                    @CachedLibrary("receiver.object") LLVMNativeLibrary natives) {
+        return natives.toNativePointer(receiver.object).increment(receiver.getOffset());
     }
 }

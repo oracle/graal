@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 @ExportLibrary(DynamicDispatchLibrary.class)
 class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
 
-    private final TruffleObject object;
+    final TruffleObject object;
     private final long offset;
 
     private final LLVMInteropType exportType;
