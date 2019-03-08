@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.library;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -47,77 +46,51 @@ abstract class LLVMNativeLibraryDefaults {
     static class DefaultLibrary {
 
         @ExportMessage
-        @SuppressWarnings("unused")
-        static class IsPointer {
-
-            @Specialization(guards = "interop.isPointer(receiver)")
-            static boolean doPointer(Object receiver,
-                            @CachedLibrary("receiver") InteropLibrary interop) {
+        static boolean isPointer(Object receiver,
+                        @CachedLibrary("receiver") InteropLibrary interop) {
+            if (interop.isPointer(receiver)) {
                 return true;
-            }
-
-            @Specialization(guards = "!interop.isPointer(receiver)")
-            static boolean doOther(Object receiver,
-                            @CachedLibrary("receiver") InteropLibrary interop) {
+            } else {
                 return interop.isNull(receiver);
             }
         }
 
         @ExportMessage
-        static class AsPointer {
-
-            @Specialization(guards = "interop.isPointer(receiver)")
-            static long doPointer(Object receiver,
-                            @CachedLibrary("receiver") InteropLibrary interop,
-                            @Shared("exception") @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException {
-                try {
+        static long asPointer(Object receiver,
+                        @CachedLibrary("receiver") InteropLibrary interop,
+                        @Shared("exception") @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException {
+            try {
+                if (interop.isPointer(receiver)) {
                     return interop.asPointer(receiver);
-                } catch (UnsupportedMessageException ex) {
-                    exceptionProfile.enter();
-                    if (interop.isNull(receiver)) {
-                        return 0;
-                    } else {
-                        throw ex;
-                    }
                 }
+            } catch (UnsupportedMessageException ex) {
+                exceptionProfile.enter();
             }
-
-            @Specialization(guards = "!interop.isPointer(receiver)")
-            static long doNullCheck(Object receiver,
-                            @CachedLibrary("receiver") InteropLibrary interop,
-                            @Shared("exception") @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException {
-                if (interop.isNull(receiver)) {
-                    return 0;
-                } else {
-                    exceptionProfile.enter();
-                    throw UnsupportedMessageException.create();
-                }
+            if (interop.isNull(receiver)) {
+                return 0;
+            } else {
+                exceptionProfile.enter();
+                throw UnsupportedMessageException.create();
             }
         }
 
         @ExportMessage
-        @SuppressWarnings("unused")
-        static class ToNativePointer {
-
-            @Specialization(guards = "interop.isNull(receiver)")
-            static LLVMNativePointer doNull(Object receiver,
-                            @CachedLibrary("receiver") InteropLibrary interop) {
-                return LLVMNativePointer.createNull();
-            }
-
-            @Specialization(guards = "!interop.isNull(receiver)")
-            static LLVMNativePointer doNotNull(Object receiver,
-                            @CachedLibrary("receiver") InteropLibrary interop,
-                            @Shared("exception") @Cached BranchProfile exceptionProfile) {
-                try {
+        static LLVMNativePointer toNativePointer(Object receiver,
+                        @CachedLibrary("receiver") InteropLibrary interop,
+                        @Shared("exception") @Cached BranchProfile exceptionProfile) {
+            try {
+                if (interop.isNull(receiver)) {
+                    return LLVMNativePointer.createNull();
+                } else {
                     interop.toNative(receiver);
                     return LLVMNativePointer.create(interop.asPointer(receiver));
-                } catch (UnsupportedMessageException ex) {
-                    exceptionProfile.enter();
-                    throw new LLVMPolyglotException(interop, "Cannot convert %s to native pointer.", receiver);
                 }
+            } catch (UnsupportedMessageException ex) {
+                exceptionProfile.enter();
+                throw new LLVMPolyglotException(interop, "Cannot convert %s to native pointer.", receiver);
             }
         }
+
     }
 
     @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class)
