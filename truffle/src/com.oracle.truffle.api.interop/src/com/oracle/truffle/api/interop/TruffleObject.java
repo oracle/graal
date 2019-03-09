@@ -51,9 +51,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
  */
 public interface TruffleObject {
     /**
-     * Provides the {@code ForeignAccessFactory} instance for this {@code TruffleObject} instance.
-     *
-     * @return the {@code ForeignAccessFactory} instance for this {@code TruffleObject} instance.
      * @since 0.8 or earlier
      * @deprecated use {@link ExportLibrary} on the receiver class instead of implementing this
      *             method. See {@link InteropLibrary} for further details.

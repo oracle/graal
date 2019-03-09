@@ -42,6 +42,8 @@ package com.oracle.truffle.api.dsl;
 
 /**
  * Generates a uncached version of a Node.
+ *
+ * @since 1.0
  */
 public @interface GenerateUncached {
 

@@ -54,14 +54,24 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
  * Base library if the receiver export needs to be dispatched.
+ *
+ * @since 1.0
  */
 @GenerateLibrary
 public abstract class DynamicDispatchLibrary extends Library {
 
     /**
+     * @since 1.0
+     */
+    protected DynamicDispatchLibrary() {
+    }
+
+    /**
      * Returns a class that {@link ExportLibrary exports} at least one library with an explicit
      * receiver. Returns <code>null</code> to indicate that the default dispatch of the library
      * should be used.
+     *
+     * @since 1.0
      */
     @Abstract
     public Class<?> dispatch(@SuppressWarnings("unused") Object receiver) {
@@ -73,8 +83,7 @@ public abstract class DynamicDispatchLibrary extends Library {
      * by dynamic dispatch implementer but is automatically implemented when implementing dynamic
      * dispatch.
      *
-     * @param receiver
-     * @return
+     * @since 1.0
      */
     /*
      * Implementation Note: This message is known by the annotation processor directly. No need to
@@ -85,6 +94,10 @@ public abstract class DynamicDispatchLibrary extends Library {
 
     static final LibraryFactory<DynamicDispatchLibrary> FACTORY = LibraryFactory.resolve(DynamicDispatchLibrary.class);
 
+    /**
+     *
+     * @since 1.0
+     */
     public static LibraryFactory<DynamicDispatchLibrary> getFactory() {
         return FACTORY;
     }

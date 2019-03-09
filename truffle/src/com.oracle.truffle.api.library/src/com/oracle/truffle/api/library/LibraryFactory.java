@@ -82,6 +82,9 @@ public abstract class LibraryFactory<T extends Library> {
 
     final DynamicDispatchLibrary dispatchLibrary;
 
+    /**
+     * @since 1.0
+     */
     @SuppressWarnings("unchecked")
     protected LibraryFactory(Class<T> libraryClass, List<Message> messages) {
         assert this.getClass().getName().endsWith(LibraryExport.GENERATED_CLASS_SUFFIX);
@@ -194,7 +197,6 @@ public abstract class LibraryFactory<T extends Library> {
      *
      * Returns an cached and manually dispatched version of this library.
      *
-     * @see Library#getUncached(Class, Object) for further details.
      * @since 1.0
      */
     @TruffleBoundary
@@ -248,6 +250,9 @@ public abstract class LibraryFactory<T extends Library> {
      */
     protected abstract T createDispatchImpl(int limit);
 
+    /***
+     * @since 1.0
+     */
     protected abstract T createUncachedDispatch();
 
     /**
@@ -416,6 +421,9 @@ public abstract class LibraryFactory<T extends Library> {
         }
     }
 
+    /**
+     * @since 1.0
+     */
     protected static <T extends Library> void register(Class<T> libraryClass, LibraryFactory<T> library) {
         LibraryFactory<?> lib = LIBRARIES.putIfAbsent(libraryClass, library);
         if (lib != null) {
@@ -423,6 +431,11 @@ public abstract class LibraryFactory<T extends Library> {
         }
     }
 
+    /***
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
     @Override
     public String toString() {
         return "LibraryFactory [library=" + libraryClass.getName() + "]";

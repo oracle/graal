@@ -1227,14 +1227,16 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the current language instance for the current {@link Thread thread}. If a root node
-     * is accessible then {@link RootNode#getLanguage(Class)} should be used instead. Throws an
-     * {@link IllegalStateException} if the language is not yet initialized or not executing on this
-     * thread. If invoked on the fast-path then <code>languageClass</code> must be a compilation
-     * final value.
+     * Returns the current language instance for the current {@link Thread thread}. If a {@link Node
+     * node} is accessible then {@link Node#getContextSupplier(Class)} should be used instead.
+     * Throws an {@link IllegalStateException} if the language is not yet initialized or not
+     * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
+     * a compilation final value.
      *
      * @param <T> the language type
      * @param languageClass the exact language class needs to be provided for the lookup.
+     * @see Node#getLanguageSupplier(Class)
+     * @see com.oracle.truffle.api.dsl.CachedLanguage
      * @since 0.27
      */
     protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
@@ -1242,17 +1244,17 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the current language context entered on the current thread. If a
-     * {@link TruffleLanguage language} instance is available, a
-     * {@link TruffleLanguage#getContextReference() context reference} should be used instead for
-     * performance reasons. An {@link IllegalStateException} is thrown if the language is not yet
-     * initialized or not executing on this thread. If invoked on the fast-path then
-     * <code>languageClass</code> must be a compilation final value.
+     * Returns the current language context entered on the current thread. If a {@link Node node} is
+     * accessible then {@link Node#getLanguageSupplier(Class)} should be used instead. An
+     * {@link IllegalStateException} is thrown if the language is not yet initialized or not
+     * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
+     * a compilation final value.
      *
      * @param <C> the context type
      * @param <T> the language type
      * @param languageClass the exact language class needs to be provided for the lookup.
-     * @see TruffleLanguage#getContextReference()
+     * @see Node#getContextSupplier(Class)
+     * @see com.oracle.truffle.api.dsl.CachedContext
      * @since 0.27
      */
     protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {

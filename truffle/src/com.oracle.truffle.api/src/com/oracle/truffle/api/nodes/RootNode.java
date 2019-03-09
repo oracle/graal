@@ -73,9 +73,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * available. The language implementation instance is obtainable while
  * {@link TruffleLanguage#createContext(Env)} or {@link TruffleLanguage#parse(ParsingRequest)} is
  * executed. If no language environment is available, then <code>null</code> can be passed. Please
- * note that root nodes with <code>null</code> language are considered not instrumentable and have
- * no access to the {@link #getLanguage(Class) language} or its public {@link #getLanguageInfo()
- * information}.
+ * note that root nodes with <code>null</code> language are considered not instrumentable and don't
+ * have access to its public {@link #getLanguageInfo() language information}.
  *
  * <h4>Execution</h4>
  *
@@ -134,8 +133,8 @@ public abstract class RootNode extends ExecutableNode {
      * while {@link TruffleLanguage#createContext(Env)} or
      * {@link TruffleLanguage#parse(ParsingRequest)} is executed. If no language environment is
      * available, then <code>null</code> can be passed. Please note that root nodes with
-     * <code>null</code> language are considered not instrumentable and have no access to the
-     * {@link #getLanguage(Class) language} or its public {@link #getLanguageInfo() information}.
+     * <code>null</code> language are considered not instrumentable and don't have access to its
+     * public {@link #getLanguageInfo() language information}.
      *
      * @param language the language this root node is associated with
      * @since 0.25
@@ -149,8 +148,8 @@ public abstract class RootNode extends ExecutableNode {
      * instance is obtainable while {@link TruffleLanguage#createContext(Env)} or
      * {@link TruffleLanguage#parse(ParsingRequest)} is executed. If no language environment is
      * available, then <code>null</code> can be passed. Please note that root nodes with
-     * <code>null</code> language are considered not instrumentable and have no access to the
-     * {@link #getLanguage(Class) language} or its public {@link #getLanguageInfo() information}.
+     * <code>null</code> language are considered not instrumentable and don't have access to its
+     * public {@link #getLanguageInfo() language information}.
      *
      * @param language the language this root node is associated with
      * @since 0.25
@@ -162,7 +161,6 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * @see #getLanguage(Class)
      * @see TruffleLanguage#getContextReference()
      * @since 0.27
      * @deprecated use {@link #getContextSupplier(Class)} instead.

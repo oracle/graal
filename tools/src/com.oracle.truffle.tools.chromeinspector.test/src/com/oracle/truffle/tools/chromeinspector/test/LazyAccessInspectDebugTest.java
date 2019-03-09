@@ -114,8 +114,8 @@ public class LazyAccessInspectDebugTest {
         tester.sendMessage("{\"id\":2,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"4\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[" +
-                                "{\"isOwn\":true,\"enumerable\":true,\"name\":\"readReady\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}," +
-                                "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"6\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":true}]," +
+                                "{\"isOwn\":true,\"enumerable\":true,\"name\":\"readReady\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":false}," +
+                                "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"5\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":true}]," +
                                 "\"internalProperties\":[]},\"id\":2}\n"));
         // The lazy value was not read yet:
         assertFalse(readLazyFlag.get());

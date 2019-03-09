@@ -146,25 +146,36 @@ public @interface GenerateLibrary {
      * Customize the receiver type for exports that implement this library. Default exports are not
      * affected by this restriction.
      *
-     * @return
+     * @since 1.0
      */
     Class<?> receiverType() default Object.class;
 
     /**
      * Specifies active {@link GenerateLibrary library} implementations provided by default as a
      * fallback. May only be used on classes annotated with Library.
+     *
+     * @since 1.0
      */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.TYPE})
     @Repeatable(DefaultExport.Repeat.class)
     public @interface DefaultExport {
 
+        /**
+         * @since 1.0
+         */
         Class<?> value();
 
+        /**
+         * @since 1.0
+         */
         @Retention(RetentionPolicy.CLASS)
         @Target({ElementType.TYPE})
         public @interface Repeat {
 
+            /**
+             * @since 1.0
+             */
             DefaultExport[] value();
 
         }

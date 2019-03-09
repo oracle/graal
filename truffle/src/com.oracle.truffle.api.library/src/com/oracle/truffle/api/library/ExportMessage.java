@@ -48,6 +48,8 @@ import java.lang.annotation.Target;
 
 /**
  * Exports the annotated receiver type element as active library message.
+ *
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.TYPE})
@@ -56,25 +58,40 @@ public @interface ExportMessage {
 
     /**
      * The library exported. Default inherited from the method name.
+     *
+     * @since 1.0
      */
     String name() default "";
 
     /**
      * Automatically selected if the name of the message is unique. Needs to be specified if the
      * name is not unique when implementing multiple libraries.
+     *
+     * @since 1.0
      */
     Class<? extends Library> library() default Library.class;
 
+    /***
+     * @since 1.0
+     */
     String limit() default "";
 
+    /***
+     * @since 1.0
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.TYPE})
     public @interface Repeat {
-
+        /***
+         * @since 1.0
+         */
         ExportMessage[] value();
 
     }
 
+    /***
+     * @since 1.0
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.TYPE})
     public @interface Ignore {

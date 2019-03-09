@@ -723,8 +723,8 @@ public abstract class InteropLibrary extends Library {
      * operation of the member. Invoking this message does not cause any observable side-effects. A
      * member write does not cause any side-effects by default.
      * <p>
-     * For instance in JavaScript a property {@link Message#WRITE} may have side-effects if the
-     * property has a setter function.
+     * For instance in JavaScript a property write may have side-effects if the property has a
+     * setter function.
      *
      * @see #writeMember(Object, String, Object)
      * @since 1.0

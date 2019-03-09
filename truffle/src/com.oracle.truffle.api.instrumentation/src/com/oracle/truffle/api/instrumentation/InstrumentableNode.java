@@ -204,8 +204,8 @@ public interface InstrumentableNode extends NodeInterface {
     /**
      * Returns an interop capable object that contains all keys and values of attributes associated
      * with this node. The returned object must return <code>true</code> in response to the
-     * {@link com.oracle.truffle.api.interop.Message#HAS_KEYS has keys} message. If
-     * <code>null</code> is returned then an empty tag object without any readable keys will be
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#hasMembers(Object) has members} message.
+     * If <code>null</code> is returned then an empty tag object without any readable keys will be
      * assumed. Multiple calls to {@link #getNodeObject()} for a particular node may return the same
      * or objects with different identity. The returned object must not support any write operation.
      * The returned object must not support execution or instantiation and must not have a size.

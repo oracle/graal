@@ -112,7 +112,7 @@ public abstract class ExecutableNode extends Node {
     /**
      * Returns public information about the language. The language can be assumed equal if the
      * instances of the language info instance are the same. To access internal details of the
-     * language within the language implementation use {@link #getLanguage(Class)}.
+     * language within the language implementation use {@link #getLanguageSupplier(Class)}.
      *
      * @since 0.31
      */

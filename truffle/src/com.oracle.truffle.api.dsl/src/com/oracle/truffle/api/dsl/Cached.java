@@ -254,6 +254,9 @@ public @interface Cached {
      */
     String value() default "create($parameters)";
 
+    /**
+     * @since 1.0
+     */
     String uncached() default "getUncached($parameters)";
 
     /**
@@ -287,20 +290,30 @@ public @interface Cached {
 
     /**
      * Specifies the bindings used for the $parameters variable in cached or uncached initializers.
+     * 
+     * @since 1.0
      */
     String[] parameters() default {};
 
+    /**
+     * @since 1.0
+     */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.PARAMETER})
     public @interface Shared {
 
         /**
          * Sharing group.
+         * 
+         * @since 1.0
          */
         String value();
 
     }
 
+    /**
+     * @since 1.0
+     */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.PARAMETER, ElementType.METHOD, ElementType.TYPE})
     public @interface Exclusive {

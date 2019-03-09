@@ -59,24 +59,35 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
+/**
+ *
+ * @since 1.0
+ */
 @GenerateLibrary
 @DefaultExport(ReflectionLibraryDefault.class)
 public abstract class ReflectionLibrary extends Library {
-
+    /**
+     *
+     * @since 1.0
+     */
     protected ReflectionLibrary() {
     }
 
+    /**
+     *
+     * @since 1.0
+     */
     @Abstract
     public abstract Object send(Object receiver, Message message, Object... args) throws Exception;
 
     static final LibraryFactory<ReflectionLibrary> FACTORY = LibraryFactory.resolve(ReflectionLibrary.class);
 
+    /**
+     *
+     * @since 1.0
+     */
     public static LibraryFactory<ReflectionLibrary> getFactory() {
         return FACTORY;
-    }
-
-    public static ReflectionLibrary getUncached() {
-        return FACTORY.getUncached();
     }
 
 }
