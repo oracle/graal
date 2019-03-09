@@ -998,7 +998,14 @@ public abstract class InteropLibrary extends Library {
         public boolean isBoolean(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isBoolean(receiver);
-            assert !result || notThrows(() -> delegate.asBoolean(receiver)) : violationInvariant(receiver);
+            if (ASSERTIONS_ENABLED && result) {
+                try {
+                    delegate.asBoolean(receiver);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            }
             assert !result || notOtherType(receiver, Type.BOOLEAN);
             return result;
         }
@@ -1073,7 +1080,14 @@ public abstract class InteropLibrary extends Library {
         public boolean isString(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isString(receiver);
-            assert !result || notThrows(() -> delegate.asString(receiver)) : violationInvariant(receiver);
+            if (ASSERTIONS_ENABLED && result) {
+                try {
+                    delegate.asString(receiver);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            }
             assert !result || notOtherType(receiver, Type.STRING);
             return result;
         }
@@ -1111,7 +1125,14 @@ public abstract class InteropLibrary extends Library {
             assert !fits || delegate.fitsInLong(receiver) : violationInvariant(receiver);
             assert !fits || delegate.fitsInFloat(receiver) : violationInvariant(receiver);
             assert !fits || delegate.fitsInDouble(receiver) : violationInvariant(receiver);
-            assert !fits || notThrows(() -> delegate.asByte(receiver)) : violationInvariant(receiver);
+            if (ASSERTIONS_ENABLED && fits) {
+                try {
+                    delegate.asByte(receiver);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            }
             assert !fits || notOtherType(receiver, Type.NUMBER);
             return fits;
         }
@@ -1126,7 +1147,14 @@ public abstract class InteropLibrary extends Library {
             assert !fits || delegate.fitsInLong(receiver) : violationInvariant(receiver);
             assert !fits || delegate.fitsInFloat(receiver) : violationInvariant(receiver);
             assert !fits || delegate.fitsInDouble(receiver) : violationInvariant(receiver);
-            assert !fits || notThrows(() -> delegate.asShort(receiver)) : violationInvariant(receiver);
+            if (ASSERTIONS_ENABLED && fits) {
+                try {
+                    delegate.asShort(receiver);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            }
             assert !fits || notOtherType(receiver, Type.NUMBER);
             return fits;
         }
@@ -1139,7 +1167,14 @@ public abstract class InteropLibrary extends Library {
             assert !fits || delegate.isNumber(receiver) : violationInvariant(receiver);
             assert !fits || delegate.fitsInLong(receiver) : violationInvariant(receiver);
             assert !fits || delegate.fitsInDouble(receiver) : violationInvariant(receiver);
-            assert !fits || notThrows(() -> delegate.asInt(receiver)) : violationInvariant(receiver);
+            if (ASSERTIONS_ENABLED && fits) {
+                try {
+                    delegate.asInt(receiver);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            }
             assert !fits || notOtherType(receiver, Type.NUMBER);
             return fits;
         }
@@ -1150,7 +1185,14 @@ public abstract class InteropLibrary extends Library {
 
             boolean fits = delegate.fitsInLong(receiver);
             assert !fits || delegate.isNumber(receiver) : violationInvariant(receiver);
-            assert !fits || notThrows(() -> delegate.asLong(receiver)) : violationInvariant(receiver);
+            if (ASSERTIONS_ENABLED && fits) {
+                try {
+                    delegate.asLong(receiver);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            }
             assert !fits || notOtherType(receiver, Type.NUMBER);
             return fits;
         }
@@ -1160,7 +1202,14 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean fits = delegate.fitsInFloat(receiver);
             assert !fits || delegate.isNumber(receiver) : violationInvariant(receiver);
-            assert !fits || notThrows(() -> delegate.asFloat(receiver)) : violationInvariant(receiver);
+            if (ASSERTIONS_ENABLED && fits) {
+                try {
+                    delegate.asFloat(receiver);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            }
             assert !fits || notOtherType(receiver, Type.NUMBER);
             return fits;
         }
@@ -1170,7 +1219,14 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean fits = delegate.fitsInDouble(receiver);
             assert !fits || delegate.isNumber(receiver) : violationInvariant(receiver);
-            assert !fits || notThrows(() -> delegate.asDouble(receiver)) : violationInvariant(receiver);
+            if (ASSERTIONS_ENABLED && fits) {
+                try {
+                    delegate.asDouble(receiver);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            }
             assert !fits || notOtherType(receiver, Type.NUMBER);
             return fits;
         }

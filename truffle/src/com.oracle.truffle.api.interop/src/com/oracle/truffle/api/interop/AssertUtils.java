@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
-import java.util.Arrays;
 import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 
 final class AssertUtils {
 
@@ -55,7 +53,15 @@ final class AssertUtils {
         if (args == null) {
             return "null";
         }
-        return Arrays.asList(args).stream().map(AssertUtils::formatValue).collect(Collectors.toList()).toString();
+        StringBuilder b = new StringBuilder("[");
+        String sep = "";
+        for (Object arg : args) {
+            b.append(sep);
+            b.append(formatValue(arg));
+            sep = ", ";
+        }
+        b.append("]");
+        return b.toString();
     }
 
     private static String formatValue(Object arg) {
