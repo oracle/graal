@@ -223,7 +223,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             return doInvoke(args);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
-            assert location != null || location == null;
+            assert keepAlive(location);
         }
     }
 
@@ -242,8 +242,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             }
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
-            assert location != null;
+            assert keepAlive(location);
         }
+    }
+
+    private static boolean keepAlive(@SuppressWarnings("unused") Object o) {
+        return true;
     }
 
     public final Object callOSR(Object... args) {
@@ -257,7 +261,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
-            assert location != null;
+            assert keepAlive(location);
         }
     }
 
