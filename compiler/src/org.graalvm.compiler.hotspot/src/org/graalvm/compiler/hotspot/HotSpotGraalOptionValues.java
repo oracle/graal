@@ -146,6 +146,12 @@ public class HotSpotGraalOptionValues {
         }
     }
 
+    /**
+     * Substituted by
+     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues}
+     * to update {@code com.oracle.svm.core.option.RuntimeOptionValues.singleton()} instead of
+     * creating a new {@link OptionValues} object.
+     */
     private static OptionValues initializeOptions() {
         return new OptionValues(parseOptions());
     }
