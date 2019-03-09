@@ -277,7 +277,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
             @SuppressWarnings("unused")
             public Object execute(VirtualFrame frame) {
-                final AllocationReporter allocationReporter = ProxyLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
+                final AllocationReporter allocationReporter = AllocatesDuringReportingAllocation.getCurrentContext(AllocatesDuringReportingAllocation.class).getEnv().lookup(AllocationReporter.class);
                 allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
                 allocationReporter.onReturnValue("", 0, AllocationReporter.SIZE_UNKNOWN);
                 return "";
@@ -320,7 +320,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
         @Override
         protected String toString(LanguageContext context, Object value) {
-            final AllocationReporter allocationReporter = ProxyLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
+            final AllocationReporter allocationReporter = AllocatesDuringReportingAllocation.getCurrentContext(AllocatesDuringReportingAllocation.class).getEnv().lookup(AllocationReporter.class);
             allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
             allocationReporter.onReturnValue("", 0, AllocationReporter.SIZE_UNKNOWN);
             return "";
