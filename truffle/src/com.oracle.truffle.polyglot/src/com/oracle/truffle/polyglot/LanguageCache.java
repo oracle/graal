@@ -449,9 +449,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         } else {
                             policy = loadedClass.getAnnotation(Registration.class).contextPolicy();
                         }
-                        @SuppressWarnings("rawtypes")
-                        Class<? extends TruffleLanguage> loadedLanguageClass = loadedClass.asSubclass(TruffleLanguage.class);
-                        languageClass = (Class<? extends TruffleLanguage<?>>) loadedLanguageClass;
+                        languageClass = (Class<? extends TruffleLanguage<?>>) loadedClass;
                     } catch (ClassNotFoundException e) {
                         throw new IllegalStateException("Cannot load language " + name + ". Language implementation class " + className + " failed to load.", e);
                     }
