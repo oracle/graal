@@ -53,27 +53,6 @@ CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAcce
 meth public abstract boolean canHandle(com.oracle.truffle.api.interop.TruffleObject)
 meth public abstract com.oracle.truffle.api.CallTarget accessMessage(com.oracle.truffle.api.interop.Message)
 
-CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$Factory26
- outer com.oracle.truffle.api.interop.ForeignAccess
- anno 0 java.lang.Deprecated()
-meth public abstract com.oracle.truffle.api.CallTarget accessExecute(int)
-meth public abstract com.oracle.truffle.api.CallTarget accessGetSize()
-meth public abstract com.oracle.truffle.api.CallTarget accessHasSize()
-meth public abstract com.oracle.truffle.api.CallTarget accessInvoke(int)
-meth public abstract com.oracle.truffle.api.CallTarget accessIsBoxed()
-meth public abstract com.oracle.truffle.api.CallTarget accessIsExecutable()
-meth public abstract com.oracle.truffle.api.CallTarget accessIsNull()
-meth public abstract com.oracle.truffle.api.CallTarget accessKeyInfo()
-meth public abstract com.oracle.truffle.api.CallTarget accessKeys()
-meth public abstract com.oracle.truffle.api.CallTarget accessMessage(com.oracle.truffle.api.interop.Message)
-meth public abstract com.oracle.truffle.api.CallTarget accessNew(int)
-meth public abstract com.oracle.truffle.api.CallTarget accessRead()
-meth public abstract com.oracle.truffle.api.CallTarget accessUnbox()
-meth public abstract com.oracle.truffle.api.CallTarget accessWrite()
-meth public com.oracle.truffle.api.CallTarget accessAsPointer()
-meth public com.oracle.truffle.api.CallTarget accessIsPointer()
-meth public com.oracle.truffle.api.CallTarget accessToNative()
-
 CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$StandardFactory
  outer com.oracle.truffle.api.interop.ForeignAccess
 meth public com.oracle.truffle.api.CallTarget accessAsPointer()
