@@ -449,11 +449,5 @@ meth public abstract void putMember(java.lang.String,org.graalvm.polyglot.Value)
 meth public boolean removeMember(java.lang.String)
 meth public static org.graalvm.polyglot.proxy.ProxyObject fromMap(java.util.Map<java.lang.String,java.lang.Object>)
 
-CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyPrimitive
- anno 0 java.lang.Deprecated()
- anno 0 java.lang.FunctionalInterface()
-intf org.graalvm.polyglot.proxy.Proxy
-meth public abstract java.lang.Object asPrimitive()
-
 CLSS abstract interface org.graalvm.polyglot.proxy.package-info
 
