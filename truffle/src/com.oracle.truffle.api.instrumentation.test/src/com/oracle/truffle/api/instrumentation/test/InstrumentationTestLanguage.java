@@ -1240,7 +1240,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                InstrumentContext context = getContextSupplier(InstrumentationTestLanguage.class).get();
                 CallTarget target = context.callFunctions.callTargets.get(identifier);
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }

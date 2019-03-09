@@ -2631,11 +2631,13 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels) {
-            if (logLevels == null) {
-                TruffleLogger.LoggerCache.getInstance().removeLogLevelsForContext(polyglotContext);
-            } else {
-                TruffleLogger.LoggerCache.getInstance().addLogLevelsForContext(polyglotContext, logLevels);
+        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers) {
+            for (Object loggerCache : loggers) {
+                if (logLevels == null) {
+                    ((TruffleLogger.LoggerCache) loggerCache).removeLogLevelsForContext(polyglotContext);
+                } else {
+                    ((TruffleLogger.LoggerCache) loggerCache).addLogLevelsForContext(polyglotContext, logLevels);
+                }
             }
         }
 
