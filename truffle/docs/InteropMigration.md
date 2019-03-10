@@ -1,5 +1,5 @@
 
-# Truffle Interop 2.0 (RC 13)
+# Truffle Interop 2.0
 
 It is recommended to read the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibaries.md) first, before proceeding. This document is targeted at guest language and tool implementers.
 
@@ -212,7 +212,7 @@ The following comparison of Interop 1.0 with Interop 2.0 is designed to help to 
 
 This is the fast-path way of sending interop messages embedded in an operation node. This is the most common way of sending interop messages.
 
-#### Interop 1.0 (< RC13): ####
+#### Interop 1.0: ####
 
 ```java
 @ImportStatic({Message.class, ForeignAccess.class})
@@ -233,7 +233,7 @@ abstract static class ForeignExecuteNode extends Node {
 }
 ```
 
-#### Interop 2.0 (>= RC13):####
+#### Interop 2.0:####
 
 ```java
 abstract static class ForeignExecuteNode extends Node {
@@ -268,13 +268,13 @@ Note the following differences:
 
 It is sometimes necessary to call interop messages from the runtime without the context of a node. 
 
-#### Interop 1.0 (< RC13): ####
+#### Interop 1.0: ####
 
 ```java
 ForeignAccess.sendRead(Message.READ.createNode(), object, "property")
 ```
 
-#### Interop 2.0 (>= RC13):####
+#### Interop 2.0:####
 
 ```java
 InteropLibrary.getUncached().read(object, "property");
@@ -292,7 +292,7 @@ Note the following differences:
 
 Sometimes Truffle DSL cannot be used and the nodes need to be written manually. Both APIs allow you to do so.
 
-#### Interop 1.0 (< RC13): ####
+#### Interop 1.0: ####
 
 ```java
 
@@ -318,7 +318,7 @@ final class ForeignExecuteNode extends Node {
 
 ```
 
-#### Interop 2.0 (>= RC13):####
+#### Interop 2.0:####
 
 ```java
 static final class ForeignExecuteNode extends Node {
@@ -352,7 +352,7 @@ Note the following differences:
 
 To implement / export interop library messages see the following example.
 
-#### Interop 1.0 (< RC13): ####
+#### Interop 1.0: ####
 
 ```java
 
@@ -406,7 +406,7 @@ final class KeysArray implements TruffleObject {
 
 ```
 
-#### Interop 2.0 (>= RC13):####
+#### Interop 2.0:####
 
 ```java
 @ExportLibrary(InteropLibrary.class)
@@ -462,7 +462,7 @@ Note the following differences:
 
 The old interop allowed to specify a foreign access factory through `ObjectType.getForeignAccessFactory()`. This method is now deprecated and a new method `ObjectType.dispatch()` was introduced. Instead of a foreign access factory, the dispatch method needs to return a class that exports the InteropLibrary with an explicit receiver.
 
-#### Interop 1.0 (< RC13): ####
+#### Interop 1.0: ####
 
 ```java
 public final class SLObjectType extends ObjectType {
@@ -494,7 +494,7 @@ public class SLObjectMessageResolution {
 
 ```
 
-#### Interop 2.0 (>= RC13):####
+#### Interop 2.0:####
 
 ```java
 @ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
@@ -536,14 +536,14 @@ Note the following differences:
 
 Truffle languages rarely need to extend interop, but they might need to extend their own language specific protocol.  
 
-#### Interop 1.0 (< RC13): ####
+#### Interop 1.0: ####
 
 * Add new KnownMessage subclass called `FooBar`.
 * Add a new method `sendFooBar` to `ForeignAccess`.
 * Add a new method to `ForeignAccess.Factory`: `createFooBar`.
 * Modify the interop annotation processor to generate the code for `createFooBar`.
 
-#### Interop 2.0 (>= RC13):####
+#### Interop 2.0:####
 
 * Add a new method `fooBar` in `InteropLibrary`. Everything else is done automatically.
 
