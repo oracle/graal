@@ -255,6 +255,10 @@ public @interface Cached {
     String value() default "create($parameters)";
 
     /**
+     * Defines the initializer that is used for {@link GenerateUncached uncached} nodes or uncached
+     * versions of exported library messages.
+     *
+     * @see GenerateUncached
      * @since 1.0
      */
     String uncached() default "getUncached($parameters)";
@@ -290,12 +294,18 @@ public @interface Cached {
 
     /**
      * Specifies the bindings used for the $parameters variable in cached or uncached initializers.
-     * 
+     *
      * @since 1.0
      */
     String[] parameters() default {};
 
     /**
+     * Allows sharing between multiple Cached parameters between multiple specializations or
+     * exported library messages. If no sharing is desired then the {@link Cached cached} parameter
+     * can be annotated with {@link Exclusive exclusive}. The DSL will indicate sharing
+     * opportunities to the user by showing a warning.
+     *
+     * @see Exclusive
      * @since 1.0
      */
     @Retention(RetentionPolicy.CLASS)
@@ -303,8 +313,8 @@ public @interface Cached {
     public @interface Shared {
 
         /**
-         * Sharing group.
-         * 
+         * Specifies the sharing group of the shared cached element.
+         *
          * @since 1.0
          */
         String value();
@@ -312,6 +322,9 @@ public @interface Cached {
     }
 
     /**
+     * Disallows any sharing with other cached parameters. The DSL will indicate sharing
+     * opportunities to the user by showing a warning.
+     *
      * @since 1.0
      */
     @Retention(RetentionPolicy.CLASS)
