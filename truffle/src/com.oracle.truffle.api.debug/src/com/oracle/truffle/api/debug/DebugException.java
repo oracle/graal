@@ -88,7 +88,6 @@ public final class DebugException extends RuntimeException {
         this.catchLocation = catchLocation != null ? catchLocation.cloneFor(session) : null;
         // we need to materialize the stack for the case that this exception is printed
         super.setStackTrace(getStackTrace());
-        TruffleStackTraceElement.fillIn(exception);
     }
 
     DebugException(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
@@ -101,10 +100,6 @@ public final class DebugException extends RuntimeException {
         this.catchLocation = catchLocation != null ? catchLocation.cloneFor(session) : null;
         // we need to materialize the stack for the case that this exception is printed
         super.setStackTrace(getStackTrace());
-        TruffleStackTraceElement.fillIn(exception);
-        if (isInternalError()) {
-            initCause(exception);
-        }
     }
 
     void setSuspendedEvent(SuspendedEvent suspendedEvent) {
@@ -118,7 +113,7 @@ public final class DebugException extends RuntimeException {
     Throwable getRawException() {
         return exception;
     }
-    
+
     /**
      * Unsupported, {@link DebugException} instances are not writable therefore filling the stack
      * trace has no effect for them.

@@ -351,8 +351,6 @@ public abstract class Accessor {
 
         public abstract Object convertPrimitive(Object value, Class<?> requestedType);
 
-        public abstract <S> S lookupService(Object languageContextVMObject, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
-
         public abstract <T extends TruffleLanguage<?>> Supplier<T> lookupLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
 
         public abstract <T extends TruffleLanguage<?>> Supplier<T> getDirectLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);

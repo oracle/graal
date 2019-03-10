@@ -160,6 +160,12 @@ abstract class ToHostNode extends Node {
                 }
             } catch (UnsupportedMessageException e) {
             }
+        } else if (isPrimitiveOrBoxedType(targetType) && interop.isString(value)) {
+            assert targetType != char.class && targetType != Character.class;
+            try {
+                return convertToPrimitiveFromString(targetType, interop.asString(value));
+            } catch (UnsupportedMessageException e) {
+            }
         }
         return null;
     }
@@ -215,7 +221,7 @@ abstract class ToHostNode extends Node {
                 }
             }
         } else if (priority >= COERCE) {
-            if (targetType == String.class && PolyglotImpl.isGuestPrimitive(value)) {
+            if (targetType == String.class && isGuestPrimitive(value, interop)) {
                 return true;
             } else if (isPrimitiveOrBoxedType(targetType) && interop.isString(value)) {
                 assert targetType != char.class && targetType != Character.class;

@@ -56,14 +56,14 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
     static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    private final Debugger debugger;
+    private final DebuggerSession session;
     private final LanguageInfo language;
     private final Object object;
     private final DebugScope scope;
     private final Object keys;
 
-    ValuePropertiesCollection(Debugger debugger, LanguageInfo language, Object object, Object keys, DebugScope scope) {
-        this.debugger = debugger;
+    ValuePropertiesCollection(DebuggerSession session, LanguageInfo language, Object object, Object keys, DebugScope scope) {
+        this.session = session;
         this.language = language;
         this.object = object;
         this.keys = keys;
@@ -86,7 +86,7 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
     DebugValue get(String name) {
         if (INTEROP.isMemberExisting(object, name)) {
-            return new DebugValue.ObjectMemberValue(debugger, language, scope, object, name);
+            return new DebugValue.ObjectMemberValue(session, language, scope, object, name);
         }
         return null;
     }
@@ -109,11 +109,11 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
                 Object key = INTEROP.readArrayElement(keys, currentIndex);
                 String member = INTEROP.asString(key);
                 this.currentIndex++;
-                return new DebugValue.ObjectMemberValue(debugger, language, scope, object, member);
+                return new DebugValue.ObjectMemberValue(session, language, scope, object, member);
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
-                throw new DebugException(debugger, ex, language, null, true, null);
+                throw new DebugException(session, ex, language, null, true, null);
             }
         }
 

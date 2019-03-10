@@ -66,7 +66,7 @@ final class ValueInteropList extends AbstractList<DebugValue> {
 
     @Override
     public DebugValue get(int index) {
-        return new DebugValue.ArrayElementValue(debugger, language, null, list, index);
+        return new DebugValue.ArrayElementValue(session, language, null, list, index);
     }
 
     @Override
@@ -78,7 +78,7 @@ final class ValueInteropList extends AbstractList<DebugValue> {
         }
         currentValue.set(newValue);
         if (oldValue != null) {
-            return new DebugValue.HeapValue(debugger, String.valueOf(index), oldValue);
+            return new DebugValue.HeapValue(session, String.valueOf(index), oldValue);
         } else {
             return null;
         }

@@ -105,7 +105,7 @@ abstract class HostExecuteNode extends Node {
     static ToHostNode[] createToHost(int argsLength) {
         ToHostNode[] toJava = new ToHostNode[argsLength];
         for (int i = 0; i < argsLength; i++) {
-            toJava[i] = ToHostNode.create();
+            toJava[i] = ToHostNodeGen.create();
         }
         return toJava;
     }

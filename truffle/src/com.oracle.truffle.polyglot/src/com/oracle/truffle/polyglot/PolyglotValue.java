@@ -727,7 +727,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private static class AsClassLiteralNode extends InteropNode {
 
-            @Child ToHostNode toHost = ToHostNode.create();
+            @Child ToHostNode toHost = ToHostNodeGen.create();
 
             protected AsClassLiteralNode(InteropCodeCache interop) {
                 super(interop);
@@ -752,7 +752,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private static class AsTypeLiteralNode extends InteropNode {
 
-            @Child ToHostNode toHost = ToHostNode.create();
+            @Child ToHostNode toHost = ToHostNodeGen.create();
 
             protected AsTypeLiteralNode(InteropCodeCache interop) {
                 super(interop);

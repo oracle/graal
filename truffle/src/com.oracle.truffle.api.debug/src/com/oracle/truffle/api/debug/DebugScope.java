@@ -173,12 +173,12 @@ public final class DebugScope {
         try {
             Object argumentsObj = scope.getArguments();
             if (argumentsObj != null) {
-                ValuePropertiesCollection properties = DebugValue.getProperties(argumentsObj, debugger, getLanguage(), this);
+                ValuePropertiesCollection properties = DebugValue.getProperties(argumentsObj, session, getLanguage(), this);
                 if (properties != null) {
                     return properties;
                 }
                 if (ValueInteropList.INTEROP.hasArrayElements(argumentsObj)) {
-                    return new ValueInteropList(debugger, getLanguage(), argumentsObj);
+                    return new ValueInteropList(session, getLanguage(), argumentsObj);
                 }
             }
         } catch (ThreadDeath td) {

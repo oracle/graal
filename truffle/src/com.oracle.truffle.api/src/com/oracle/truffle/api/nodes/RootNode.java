@@ -122,7 +122,6 @@ import com.oracle.truffle.api.source.SourceSection;
 public abstract class RootNode extends ExecutableNode {
 
     private volatile RootCallTarget callTarget;
-    private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     final ReentrantLock lock = new ReentrantLock();
 

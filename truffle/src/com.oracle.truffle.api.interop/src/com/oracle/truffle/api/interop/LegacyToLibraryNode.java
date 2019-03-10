@@ -220,7 +220,7 @@ final class LegacyToLibraryNode extends Node {
         return interop.asPointer(receiver);
     }
 
-    Object sendToNative(TruffleObject receiver) throws UnsupportedMessageException {
+    Object sendToNative(TruffleObject receiver) {
         interop.toNative(receiver);
         return receiver;
     }

@@ -181,7 +181,7 @@ final class ForeignAccessFactoryGenerator {
     }
 
     private void appendSingletonAndGetter(Writer w) throws IOException {
-        String allocation = "ForeignAccess.createAccess(new " + simpleClassName + "(), ";
+        String allocation = "com.oracle.truffle.api.interop.ForeignAccess.createAccess(new " + simpleClassName + "(), ";
         if (hasLanguageCheckNode()) {
             allocation += "new Supplier<RootNode>() { @Override public RootNode get() { return " + languageCheckGenerator.getRootNodeFactoryInvocation() + "; }});";
         } else {

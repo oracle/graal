@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 
 /**
