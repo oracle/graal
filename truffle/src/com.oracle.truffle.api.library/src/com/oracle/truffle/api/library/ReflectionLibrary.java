@@ -151,17 +151,19 @@ final class ReflectionLibraryDefaultGen {
         private static final class Cached extends ReflectionLibrary {
 
             @Child private DynamicDispatchLibrary dynamicDispatch_;
+            private final Class<?> dynamicDispatchTarget_;
             @CompilationFinal private int state_;
             @CompilationFinal private int exclude_;
             @Child private SendCachedData sendCached_cache;
 
             Cached(Object receiver) {
                 this.dynamicDispatch_ = DYNAMIC_DISPATCH_LIBRARY_.create(receiver);
+                this.dynamicDispatchTarget_ = DYNAMIC_DISPATCH_LIBRARY_.getUncached(receiver).dispatch(receiver);
             }
 
             @Override
             public boolean accepts(Object receiver) {
-                return dynamicDispatch_.accepts(receiver) && dynamicDispatch_.dispatch(receiver) == null;
+                return dynamicDispatch_.accepts(receiver) && dynamicDispatch_.dispatch(receiver) == dynamicDispatchTarget_;
             }
 
             @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
@@ -222,10 +224,10 @@ final class ReflectionLibraryDefaultGen {
                             Library cachedLibrary__ = super.insert((arg1Value.getFactory().create(arg0Value)));
                             // assert (arg1Value == s1_.cachedMessage_);
                             if ((cachedLibrary__.accepts(arg0Value)) && count1_ < (ReflectionLibraryDefault.LIMIT)) {
-                                s1_ = new SendCachedData(sendCached_cache);
+                                s1_ = super.insert(new SendCachedData(sendCached_cache));
                                 s1_.cachedMessage_ = (arg1Value);
-                                s1_.cachedLibrary_ = cachedLibrary__;
-                                this.sendCached_cache = super.insert(s1_);
+                                s1_.cachedLibrary_ = s1_.insertAccessor(cachedLibrary__);
+                                this.sendCached_cache = s1_;
                                 this.state_ = state = state | 0b1 /*
                                                                    * add-active doSendCached(Object,
                                                                    * Message, Object[], Message,
@@ -292,6 +294,10 @@ final class ReflectionLibraryDefaultGen {
                     return NodeCost.NONE;
                 }
 
+                <T extends Node> T insertAccessor(T node) {
+                    return super.insert(node);
+                }
+
             }
         }
 
@@ -299,14 +305,16 @@ final class ReflectionLibraryDefaultGen {
         private static final class Uncached extends ReflectionLibrary {
 
             @Child private DynamicDispatchLibrary dynamicDispatch_;
+            private final Class<?> dynamicDispatchTarget_;
 
             Uncached(Object receiver) {
                 this.dynamicDispatch_ = DYNAMIC_DISPATCH_LIBRARY_.getUncached(receiver);
+                this.dynamicDispatchTarget_ = dynamicDispatch_.dispatch(receiver);
             }
 
             @Override
             public boolean accepts(Object receiver) {
-                return dynamicDispatch_.accepts(receiver) && dynamicDispatch_.dispatch(receiver) == null;
+                return dynamicDispatch_.accepts(receiver) && dynamicDispatch_.dispatch(receiver) == dynamicDispatchTarget_;
             }
 
             @Override
@@ -435,6 +443,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
             return NodeCost.MEGAMORPHIC;
         }
 
+        @TruffleBoundary
         @Override
         public Object send(Object receiver_, Message message, Object... args) throws Exception {
             assert getRootNode() != null : "Invalid libray usage. Cached library must be adopted by a RootNode before it is executed.";
@@ -446,6 +455,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
             }
         }
 
+        @TruffleBoundary
         @Override
         public boolean accepts(Object receiver_) {
             return true;
@@ -461,11 +471,13 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
             return NodeCost.MEGAMORPHIC;
         }
 
+        @TruffleBoundary
         @Override
         public Object send(Object receiver_, Message message, Object... args) throws Exception {
             return INSTANCE.getUncached(receiver_).send(receiver_, message, args);
         }
 
+        @TruffleBoundary
         @Override
         public boolean accepts(Object receiver_) {
             return true;
@@ -543,6 +555,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
 
         abstract int getLimit();
 
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
         @Override
         public Object send(Object receiver_, Message message, Object... args) throws Exception {
             do {
@@ -559,6 +572,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
             } while (true);
         }
 
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
         @Override
         public boolean accepts(Object receiver_) {
             return true;

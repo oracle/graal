@@ -48,6 +48,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -203,11 +205,6 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             }
 
             @Override
-            public boolean isAdoptable() {
-                return false;
-            }
-
-            @Override
             public Class<?> dispatch(Object receiver) {
                 assert this.accepts(receiver) : "Invalid library usage. Library does not accept given receiver.";
                 return super.dispatch(receiver);
@@ -308,6 +305,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             return NodeCost.MEGAMORPHIC;
         }
 
+        @TruffleBoundary
         @Override
         public Class<?> dispatch(Object receiver_) {
             assert getRootNode() != null : "Invalid libray usage. Cached library must be adopted by a RootNode before it is executed.";
@@ -319,6 +317,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             }
         }
 
+        @TruffleBoundary
         @Override
         public boolean accepts(Object receiver_) {
             return true;
@@ -339,11 +338,13 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             return NodeCost.MEGAMORPHIC;
         }
 
+        @TruffleBoundary
         @Override
         public Class<?> dispatch(Object receiver_) {
             return INSTANCE.getUncached(receiver_).dispatch(receiver_);
         }
 
+        @TruffleBoundary
         @Override
         public boolean accepts(Object receiver_) {
             return true;
@@ -358,6 +359,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
         public boolean isAdoptable() {
             return false;
         }
+
     }
 
     @GeneratedBy(DynamicDispatchLibrary.class)
@@ -425,6 +427,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
 
         abstract int getLimit();
 
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
         @Override
         public Class<?> dispatch(Object receiver_) {
             do {
@@ -441,6 +444,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             } while (true);
         }
 
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
         @Override
         public boolean accepts(Object receiver_) {
             return true;
