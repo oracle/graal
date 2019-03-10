@@ -728,7 +728,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         if (!message.getName().equals(ACCEPTS)) {
             addAcceptsAssertion(builder);
         }
-        if (targetMethod == null && message.isAbstract()) {
+        if (targetMethod == null && message.getMessageElement().getModifiers().contains(Modifier.ABSTRACT)) {
             builder.startThrow().startNew(context.getType(AbstractMethodError.class)).end().end();
         } else {
             builder.startReturn();

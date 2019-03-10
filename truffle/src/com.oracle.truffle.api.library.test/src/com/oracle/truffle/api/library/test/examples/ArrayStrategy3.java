@@ -67,7 +67,9 @@ public class ArrayStrategy3 {
     @GenerateLibrary
     public abstract static class ArrayLibrary extends Library {
 
-        public abstract boolean isArray(Object receiver);
+        public boolean isArray(Object receiver) {
+            return false;
+        }
 
         public abstract int read(Object receiver, int index);
 
@@ -156,7 +158,7 @@ public class ArrayStrategy3 {
 
         Object sequence = new SequenceArray(1, 2, 3);
         assertTrue(arrays.isArray(sequence));
-        assertEquals(1, arrays.read(sequence, 1));
+        assertEquals(3, arrays.read(sequence, 1));
 
         Object buffer = new BufferArray(2);
         assertTrue(arrays.isArray(buffer));

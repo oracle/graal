@@ -84,7 +84,8 @@ public class ExportSharingTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportSharingLibrary.class)
-    static class TestSingletonCached {
+    @SuppressWarnings("static-method")
+    static final class TestSingletonCached {
 
         @ExportMessage
         String m0() {
@@ -93,7 +94,7 @@ public class ExportSharingTest extends AbstractLibraryTest {
 
         @ExportMessage
         String m1() {
-            return "m0";
+            return "m1";
         }
 
     }
