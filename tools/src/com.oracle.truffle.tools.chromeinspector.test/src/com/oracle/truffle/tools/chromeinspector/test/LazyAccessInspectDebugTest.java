@@ -115,7 +115,7 @@ public class LazyAccessInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[" +
                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"readReady\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":false}," +
-                                "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"5\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":true}]," +
+                                "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"6\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":false}]," +
                                 "\"internalProperties\":[]},\"id\":2}\n"));
         // The lazy value was not read yet:
         assertFalse(readLazyFlag.get());
@@ -144,8 +144,8 @@ public class LazyAccessInspectDebugTest {
         readLazyFlag.set(false);
         tester.sendMessage("{\"id\":20,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"2\"}}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"readReady\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}," +
-                                                 "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"8\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":true}]," +
+                        "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"readReady\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":false}," +
+                                                 "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"8\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":false}]," +
                                 "\"internalProperties\":[]},\"id\":20}\n"));
         assertFalse(readLazyFlag.get());
         // Invoke the lazy read (getter):
