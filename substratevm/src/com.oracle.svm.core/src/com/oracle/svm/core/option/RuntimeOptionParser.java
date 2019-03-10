@@ -75,7 +75,7 @@ public final class RuntimeOptionParser {
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
             args = RuntimeOptionParser.singleton().parse(args, DEFAULT_OPTION_PREFIX, BooleanOptionFormat.PLUS_MINUS, true);
             args = RuntimeOptionParser.singleton().parse(args, GRAAL_OPTION_PREFIX, BooleanOptionFormat.NAME_VALUE, true);
-            args = XOptions.singleton().parse(args);
+            args = XOptions.singleton().parse(args, true);
             args = RuntimePropertyParser.parse(args);
         }
         return args;

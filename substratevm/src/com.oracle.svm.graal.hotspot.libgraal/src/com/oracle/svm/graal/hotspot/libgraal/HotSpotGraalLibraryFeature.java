@@ -81,6 +81,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -493,10 +494,30 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
+
     @Substitute
     private static OptionValues initializeOptions() {
+        // Parse "graal." options.
         RuntimeOptionValues options = RuntimeOptionValues.singleton();
         options.update(HotSpotGraalOptionValues.parseOptions());
+
+        // Parse "libgraal." options.
+        Map<String, String> savedProps = jdk.vm.ci.services.Services.getSavedProperties();
+        if (!XOptions.getXmn().getPrefix().equals("-X")) {
+            throw new InternalError("Expected " + XOptions.getXmn().getPrefixAndName() + " to start with -X");
+        }
+        for (Map.Entry<String, String> e : savedProps.entrySet()) {
+            String name = e.getKey();
+            if (name.startsWith("libgraal.X")) {
+                String[] xarg = {"-" + name.substring("libgraal.".length()) + e.getValue()};
+                String[] unknown = XOptions.singleton().parse(xarg, false);
+                if (unknown.length != 0) {
+                    throw new IllegalArgumentException("Unknown libgraal option: " + name);
+                }
+            } else if (name.startsWith("libgraal.")) {
+                throw new IllegalArgumentException("Unknown libgraal option: " + name);
+            }
+        }
         return options;
     }
 }
