@@ -40,15 +40,11 @@
  */
 package com.oracle.truffle.api.library.test;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
-
-import javax.xml.ws.Dispatch;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -56,15 +52,10 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.test.AcceptsTest.CustomAccepts1;
-import com.oracle.truffle.api.library.test.AcceptsTest.CustomAccepts2;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.ExpectError;
 
 @RunWith(Parameterized.class)
