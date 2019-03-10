@@ -985,6 +985,7 @@ suite = {
          "com.oracle.truffle.api.test",
          "com.oracle.truffle.api.benchmark",
          "com.oracle.truffle.api.dsl.test",
+         "com.oracle.truffle.api.library.test",
          "com.oracle.truffle.api.instrumentation.test",
          "com.oracle.truffle.api.debug.test",
          "com.oracle.truffle.api.object.dsl.test",
