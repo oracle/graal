@@ -368,7 +368,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 builder.end().startFinallyBlock();
                 builder.startStatement().startStaticCall(context.getType(NodeUtil.class), "popEncapsulatingNode").string("prev_").end().end();
                 builder.end();
-                ExportsGenerator.injectCachedAssertions(execute);
+                ExportsGenerator.injectCachedAssertions(model, execute);
             }
         }
         cachedToUncached.addOptional(createGenericCastMethod(model));

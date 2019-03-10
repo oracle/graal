@@ -52,9 +52,12 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage.Ignore;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 
@@ -947,6 +950,33 @@ public abstract class InteropLibrary extends Library {
      */
     public static LibraryFactory<InteropLibrary> getFactory() {
         return FACTORY;
+    }
+
+    /**
+     * Utility for libraries to require adoption before cached versions of nodes can be executed.
+     * Only failes if assertions (-ea) are enabled.
+     *
+     * @since 1.0
+     */
+    protected final boolean assertAdopted() {
+        assert assertAdoptedImpl();
+        return true;
+    }
+
+    private boolean assertAdoptedImpl() {
+        Node node = this;
+        while (node.getParent() != null) {
+            assert !(node instanceof RootNode) : "root node must not have a parent";
+            if (node instanceof LegacyToLibraryNode || node instanceof InteropAccessNode) {
+                // we allow nodes be unadopted that use the legacy bridge
+                return true;
+            }
+            node = node.getParent();
+        }
+        if (!(node instanceof RootNode)) {
+            assert false : "Invalid libray usage. Cached library must be adopted by a RootNode before it is executed.";
+        }
+        return true;
     }
 
     static final LibraryFactory<InteropLibrary> FACTORY = LibraryFactory.resolve(InteropLibrary.class);
