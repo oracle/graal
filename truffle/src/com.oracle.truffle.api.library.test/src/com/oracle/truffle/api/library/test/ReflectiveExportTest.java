@@ -80,8 +80,8 @@ public class ReflectiveExportTest extends AbstractParametrizedLibraryTest {
     @ExportLibrary(ReflectionLibrary.class)
     public static class ReflectiveExport {
 
-        static final Message M0 = Message.resolve(ReflectiveExportLibrary.class.getName(), "m0");
-        static final Message M1 = Message.resolve(ReflectiveExportLibrary.class.getName(), "m1");
+        static final Message M0 = Message.resolve(ReflectiveExportLibrary.class.getName(), "m0", false);
+        static final Message M1 = Message.resolve(ReflectiveExportLibrary.class.getName(), "m1", false);
 
         Object m0() {
             return "m0_reflective";
