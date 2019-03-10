@@ -74,7 +74,7 @@ public class ReflectiveExportExample {
     @ExportLibrary(ReflectionLibrary.class)
     static final class ReflectiveExport {
 
-        private static final Message MESSAGE = Message.resolve("com.oracle.truffle.api.library.test.examples.ReflectiveExportExample$ReflectiveExportTestLibrary", "message0");
+        private static final Message MESSAGE = Message.resolve("com.oracle.truffle.api.library.test.examples.ReflectiveExportExample$ReflectiveExportTestLibrary", "message0", false);
 
         @SuppressWarnings("static-method")
         @ExportMessage
