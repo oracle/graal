@@ -25,6 +25,8 @@
 package com.oracle.svm.graal.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -70,6 +72,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -321,6 +324,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
         FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         DebugContext debug = impl.getBigBang().getDebug();
         try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
+            RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
 
             MapCursor<String, List<InvocationPlugins.Binding>> cursor = hotSpotSubstrateReplacements.getGraphBuilderPlugins().getInvocationPlugins().getBindings(true).getEntries();
             Providers providers = hotSpotSubstrateReplacements.getProviders();
@@ -341,7 +345,6 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
                 for (InvocationPlugins.Binding binding : cursor.getValue()) {
                     if (binding.plugin instanceof MethodSubstitutionPlugin) {
                         MethodSubstitutionPlugin plugin = (MethodSubstitutionPlugin) binding.plugin;
-                        ResolvedJavaMethod method = plugin.getSubstitute(metaAccess);
 
                         ResolvedJavaMethod original = null;
                         for (ResolvedJavaMethod declared : type.getDeclaredMethods()) {
@@ -355,10 +358,18 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
                             }
                         }
                         if (original != null) {
+                            ResolvedJavaMethod method = plugin.getSubstitute(metaAccess);
                             debug.log("Method substitution %s %s", method, original);
-                            hotSpotSubstrateReplacements.registerMethodSubstitution(method, original, debug.getOptions());
+
+                            // Make the substitute method available in the image
+                            reflectionSupport.register(plugin.getJavaSubstitute());
+
+                            hotSpotSubstrateReplacements.registerMethodSubstitution(plugin, original, INLINE_AFTER_PARSING, debug.getOptions());
+                            if (!original.isNative()) {
+                                hotSpotSubstrateReplacements.registerMethodSubstitution(plugin, original, ROOT_COMPILATION, debug.getOptions());
+                            }
                         } else {
-                            throw new GraalError("Can't find original for " + method);
+                            throw new GraalError("Can't find original method for " + plugin);
                         }
                     }
                 }

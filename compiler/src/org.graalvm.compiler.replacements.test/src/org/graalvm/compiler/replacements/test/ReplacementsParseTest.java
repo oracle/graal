@@ -430,7 +430,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
         String compiledReturnValue = IN_COMPILED_HANDLER_MARKER;
         forceCompileOverride = true;
         inlineInvokeDecision = InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-        inlineInvokeMethodName = "stringizeId";
+        inlineInvokeMethodName = "stringize";
         try {
             testWithDifferentReturnValues(options, standardReturnValue, compiledReturnValue, "callStringize", THROW_EXCEPTION_MARKER);
         } finally {

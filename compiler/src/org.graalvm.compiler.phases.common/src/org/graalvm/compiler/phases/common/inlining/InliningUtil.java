@@ -72,7 +72,6 @@ import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -465,11 +464,7 @@ public class InliningUtil extends ValueMergeUtil {
             // A partial intrinsic exit must be replaced with a call to
             // the intrinsified method.
             Invoke dup = (Invoke) duplicates.get(exit.asNode());
-            if (dup instanceof InvokeNode) {
-                ((InvokeNode) dup).replaceWithNewBci(invoke.bci());
-            } else {
-                ((InvokeWithExceptionNode) dup).replaceWithNewBci(invoke.bci());
-            }
+            dup.replaceBci(invoke.bci());
         }
         if (unwindNode != null) {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
@@ -543,15 +538,7 @@ public class InliningUtil extends ValueMergeUtil {
             }
 
             // get rid of memory kill
-            AbstractBeginNode begin = invokeWithException.next();
-            if (begin instanceof KillingBeginNode) {
-                try (DebugCloseable position = begin.withNodeSourcePosition()) {
-                    AbstractBeginNode newBegin = new BeginNode();
-                    graph.addAfterFixed(begin, graph.add(newBegin));
-                    begin.replaceAtUsages(newBegin);
-                    graph.removeFixed(begin);
-                }
-            }
+            invokeWithException.killKillingBegin();
         } else {
             if (unwindNode != null && unwindNode.isAlive()) {
                 try (DebugCloseable position = unwindNode.withNodeSourcePosition()) {

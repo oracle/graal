@@ -39,7 +39,6 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
@@ -56,6 +55,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -114,7 +114,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
             }
 
             // Force inlining when parsing replacements
-            return createIntrinsicInlineInfo(method, null, defaultBytecodeProvider);
+            return createIntrinsicInlineInfo(method, defaultBytecodeProvider);
         }
     }
 
@@ -128,7 +128,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
     private Map<ResolvedJavaMethod, Integer> snippetStartOffsets;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateReplacements(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target, GraphMakerFactory graphMakerFactory) {
+    public SubstrateReplacements(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target,
+                    GraphMakerFactory graphMakerFactory) {
         // Snippets cannot have optimistic assumptions.
         super(new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
         this.builder = new Builder(graphMakerFactory);
@@ -192,7 +193,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
             PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
                             null, null) {
                 @Override
-                protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, ResolvedJavaMethod originalMethod, BytecodeProvider intrinsicBytecodeProvider,
+                protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider,
                                 boolean isSubstitution, boolean track) {
                     if (lookupMethod.equals(method)) {
                         assert !track || encodedGraph.trackNodeSourcePosition();
@@ -290,11 +291,6 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Override
     public boolean hasSubstitution(ResolvedJavaMethod method, int callerBci) {
         return false;
-    }
-
-    @Override
-    public Bytecode getSubstitutionBytecode(ResolvedJavaMethod method) {
-        return null;
     }
 
     @Override

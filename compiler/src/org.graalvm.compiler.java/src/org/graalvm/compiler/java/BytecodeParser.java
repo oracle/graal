@@ -27,6 +27,7 @@ package org.graalvm.compiler.java;
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.STATIC;
 import static java.lang.reflect.Modifier.SYNCHRONIZED;
+import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateRecompile;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationAction.None;
@@ -271,6 +272,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -383,6 +385,7 @@ import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
@@ -529,14 +532,15 @@ public class BytecodeParser implements GraphBuilderContext {
                 return;
             }
 
-            processPlaceholderFrameStates(intrinsic);
+            processPlaceholderFrameStates(parser, mark, returnDataList, stateBefore, intrinsic);
         }
 
         /**
          * Fixes up the {@linkplain BytecodeFrame#isPlaceholderBci(int) placeholder} frame states
          * added to the graph while parsing/inlining the intrinsic for which this object exists.
          */
-        private void processPlaceholderFrameStates(IntrinsicContext intrinsic) {
+        private static void processPlaceholderFrameStates(BytecodeParser parser, Mark mark, List<ReturnToCallerData> returnDataList, FrameState savedstateBefore, IntrinsicContext intrinsic) {
+            FrameState stateBefore = savedstateBefore;
             StructuredGraph graph = parser.getGraph();
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before processPlaceholderFrameStates in %s", parser.method);
             boolean sawInvalidFrameState = false;
@@ -1748,7 +1752,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 // edge. Finally, we know that this intrinsic is parsed for late inlining,
                 // so the bci must be set to unknown, so that the inliner patches it later.
                 assert intrinsicContext.isPostParseInlined();
-                invokeBci = BytecodeFrame.UNKNOWN_BCI;
+                invokeBci = UNKNOWN_BCI;
                 profile = null;
                 edgeAction = graph.method().getAnnotation(Snippet.class) == null ? ExceptionEdgeAction.INCLUDE_AND_HANDLE : ExceptionEdgeAction.OMIT;
             }
@@ -2223,7 +2227,7 @@ public class BytecodeParser implements GraphBuilderContext {
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
             InlineInfo inlineInfo = plugin.shouldInlineInvoke(this, targetMethod, args);
             if (inlineInfo != null) {
-                if (inlineInfo.getMethodToInline() != null) {
+                if (inlineInfo.allowsInlining()) {
                     if (inline(targetMethod, inlineInfo.getMethodToInline(), inlineInfo.getIntrinsicBytecodeProvider(), args)) {
                         return SUCCESSFULLY_INLINED;
                     }
@@ -2275,6 +2279,128 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         return false;
+    }
+
+    @Override
+    @SuppressWarnings("try")
+    public boolean intrinsify(ResolvedJavaMethod targetMethod, StructuredGraph substituteGraph, InvocationPlugin.Receiver receiver, ValueNode[] args) {
+        if (receiver != null) {
+            receiver.get();
+        }
+
+        FixedWithNextNode replacee = lastInstr;
+        try (DebugContext.Scope a = debug.scope("instantiate", substituteGraph)) {
+            // Inline the snippet nodes, replacing parameters with the given args in the process
+            StartNode entryPointNode = substituteGraph.start();
+            FixedNode firstCFGNode = entryPointNode.next();
+            StructuredGraph replaceeGraph = replacee.graph();
+            Mark mark = replaceeGraph.getMark();
+            EconomicMap<Node, Node> replacementsMap = EconomicMap.create(Equivalence.IDENTITY);
+            for (ParameterNode param : substituteGraph.getNodes().filter(ParameterNode.class)) {
+                replacementsMap.put(param, args[param.index()]);
+            }
+            replacementsMap.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
+
+            debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "Before inlining method substitution %s", substituteGraph.method());
+            UnmodifiableEconomicMap<Node, Node> duplicates = inlineMethodSubstitution(replaceeGraph, substituteGraph, replacementsMap);
+
+            FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
+            replacee.setNext(firstCFGNodeDuplicate);
+
+            ArrayList<ReturnToCallerData> calleeReturnDataList = new ArrayList<>();
+            for (ReturnNode n : substituteGraph.getNodes().filter(ReturnNode.class)) {
+                ReturnNode returnNode = (ReturnNode) duplicates.get(n);
+                FixedWithNextNode predecessor = (FixedWithNextNode) returnNode.predecessor();
+                calleeReturnDataList.add(new ReturnToCallerData(returnNode.result(), predecessor));
+                predecessor.setNext(null);
+                returnNode.safeDelete();
+            }
+
+            // Construct a state before the pushing of the return value
+            JavaKind[] argSlotKinds = targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic());
+            FrameState stateBefore = this.frameState.create(this.bci(), this.getNonIntrinsicAncestor(), false, argSlotKinds, args);
+
+            // Merge multiple returns
+            processCalleeReturn(targetMethod, null, calleeReturnDataList);
+
+            // Fix up FrameStates in newly added nodes
+            IntrinsicScope.processPlaceholderFrameStates(this, mark, calleeReturnDataList, stateBefore, intrinsicContext);
+
+            // Handle partial intrinsic exits
+            for (Node node : graph.getNewNodes(mark)) {
+                if (node instanceof Invoke) {
+                    Invoke invoke = (Invoke) node;
+                    if (invoke.bci() == BytecodeFrame.UNKNOWN_BCI) {
+                        invoke.replaceBci(bci());
+                    }
+                    if (node instanceof InvokeWithExceptionNode) {
+                        // The graphs for MethodSubsitutions are produced assuming that exceptions
+                        // must be dispatched. If the calling context doesn't want exception then
+                        // convert back into a normal InvokeNOde.
+                        InvokeWithExceptionNode withException = (InvokeWithExceptionNode) node;
+                        BytecodeParser intrinsicCallSiteParser = getNonIntrinsicAncestor();
+                        if (intrinsicCallSiteParser != null && intrinsicCallSiteParser.getActionForInvokeExceptionEdge(null) == ExceptionEdgeAction.OMIT) {
+                            InvokeNode newInvoke = graph.add(new InvokeNode(withException));
+                            newInvoke.setStateDuring(withException.stateDuring());
+                            newInvoke.setStateAfter(withException.stateAfter());
+                            withException.killExceptionEdge();
+                            AbstractBeginNode next = withException.killKillingBegin();
+                            FixedWithNextNode pred = (FixedWithNextNode) withException.predecessor();
+                            pred.setNext(newInvoke);
+                            withException.setNext(null);
+                            newInvoke.setNext(next);
+                            withException.replaceAndDelete(newInvoke);
+                        } else {
+                            // Connect exception edge into main graph
+                            AbstractBeginNode exceptionEdge = handleException(null, bci(), false);
+                            withException.killExceptionEdge();
+                            withException.setExceptionEdge(exceptionEdge);
+                        }
+                    }
+                } else if (node instanceof ForeignCallNode) {
+                    ForeignCallNode call = (ForeignCallNode) node;
+                    if (call.getBci() == BytecodeFrame.UNKNOWN_BCI) {
+                        call.setBci(bci());
+                        if (call.stateAfter() != null && call.stateAfter().bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                            call.setStateAfter(stateBefore);
+                        }
+                    }
+                }
+            }
+
+            if (stateBefore.hasNoUsages()) {
+                stateBefore.safeDelete();
+            }
+
+            debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
+            return true;
+        } catch (Throwable t) {
+            throw debug.handle(t);
+        }
+    }
+
+    private static UnmodifiableEconomicMap<Node, Node> inlineMethodSubstitution(StructuredGraph replaceeGraph, StructuredGraph snippet,
+                    EconomicMap<Node, Node> replacementsMap) {
+        // Mark mark = replaceeGraph.getMark();
+        try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
+            InliningLog log = replaceeGraph.getInliningLog();
+            if (oldNode == null) {
+                log.trackNewCallsite(newNode);
+            }
+        })) {
+            StartNode entryPointNode = snippet.start();
+            ArrayList<Node> nodes = new ArrayList<>(snippet.getNodeCount());
+            for (Node node : snippet.getNodes()) {
+                if (node != entryPointNode && node != entryPointNode.stateAfter()) {
+                    nodes.add(node);
+                }
+            }
+            UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacementsMap);
+            if (scope != null) {
+                replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
+            }
+            return duplicates;
+        }
     }
 
     @Override
@@ -2450,35 +2576,9 @@ public class BytecodeParser implements GraphBuilderContext {
             startFrameState.initializeFromArgumentsArray(args);
             parser.build(this.lastInstr, startFrameState);
 
-            if (parser.returnDataList == null) {
-                /* Callee does not return. */
-                lastInstr = null;
-            } else {
-                ValueNode calleeReturnValue;
-                MergeNode returnMergeNode = null;
-                if (s != null) {
-                    s.returnDataList = parser.returnDataList;
-                }
-                if (parser.returnDataList.size() == 1) {
-                    /* Callee has a single return, we can continue parsing at that point. */
-                    ReturnToCallerData singleReturnData = parser.returnDataList.get(0);
-                    lastInstr = singleReturnData.beforeReturnNode;
-                    calleeReturnValue = singleReturnData.returnValue;
-                } else {
-                    assert parser.returnDataList.size() > 1;
-                    /* Callee has multiple returns, we need to insert a control flow merge. */
-                    returnMergeNode = graph.add(new MergeNode());
-                    calleeReturnValue = ValueMergeUtil.mergeValueProducers(returnMergeNode, parser.returnDataList, returnData -> returnData.beforeReturnNode, returnData -> returnData.returnValue);
-                }
+            List<ReturnToCallerData> calleeReturnDataList = parser.returnDataList;
 
-                if (calleeReturnValue != null) {
-                    frameState.push(targetMethod.getSignature().getReturnKind().getStackKind(), calleeReturnValue);
-                }
-                if (returnMergeNode != null) {
-                    returnMergeNode.setStateAfter(createFrameState(stream.nextBCI(), returnMergeNode));
-                    lastInstr = finishInstruction(returnMergeNode, frameState);
-                }
-            }
+            processCalleeReturn(targetMethod, s, calleeReturnDataList);
             /*
              * Propagate any side effects into the caller when parsing intrinsics.
              */
@@ -2507,6 +2607,40 @@ public class BytecodeParser implements GraphBuilderContext {
         if (calleeBeforeUnwindNode != null) {
             calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci(), false));
         }
+    }
+
+    private ValueNode processCalleeReturn(ResolvedJavaMethod targetMethod, IntrinsicScope s, List<ReturnToCallerData> calleeReturnDataList) {
+        if (calleeReturnDataList == null) {
+            /* Callee does not return. */
+            lastInstr = null;
+        } else {
+            ValueNode calleeReturnValue;
+            MergeNode returnMergeNode = null;
+            if (s != null) {
+                s.returnDataList = calleeReturnDataList;
+            }
+            if (calleeReturnDataList.size() == 1) {
+                /* Callee has a single return, we can continue parsing at that point. */
+                ReturnToCallerData singleReturnData = calleeReturnDataList.get(0);
+                lastInstr = singleReturnData.beforeReturnNode;
+                calleeReturnValue = singleReturnData.returnValue;
+            } else {
+                assert calleeReturnDataList.size() > 1;
+                /* Callee has multiple returns, we need to insert a control flow merge. */
+                returnMergeNode = graph.add(new MergeNode());
+                calleeReturnValue = ValueMergeUtil.mergeValueProducers(returnMergeNode, calleeReturnDataList, returnData -> returnData.beforeReturnNode, returnData -> returnData.returnValue);
+            }
+
+            if (calleeReturnValue != null) {
+                frameState.push(targetMethod.getSignature().getReturnKind().getStackKind(), calleeReturnValue);
+            }
+            if (returnMergeNode != null) {
+                returnMergeNode.setStateAfter(createFrameState(stream.nextBCI(), returnMergeNode));
+                lastInstr = finishInstruction(returnMergeNode, frameState);
+            }
+            return calleeReturnValue;
+        }
+        return null;
     }
 
     public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
@@ -2566,7 +2700,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         /*
                          * This must be the return value from within a partial intrinsification.
                          */
-                        assert !BytecodeFrame.isPlaceholderBci(stateAfter.bci);
+                        assert !BytecodeFrame.isPlaceholderBci(stateAfter.bci) || intrinsicContext.isDeferredInvoke(stateSplit);
                     }
                 } else {
                     assert stateAfter == null;
