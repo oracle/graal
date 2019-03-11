@@ -55,11 +55,13 @@ final class LegacyToLibraryNode extends Node {
     @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(LIMIT);
     @Child private InteropAccessNode legacyUnbox;
     @Child private InteropAccessNode legacyIsBoxed;
+    @Child private InteropAccessNode legacyToNative;
 
     private LegacyToLibraryNode(Message message) {
         this.message = message;
         legacyUnbox = InteropAccessNode.create(Message.UNBOX);
         legacyIsBoxed = InteropAccessNode.create(Message.IS_BOXED);
+        legacyToNative = InteropAccessNode.create(Message.TO_NATIVE);
     }
 
     static final class AdoptRootNode extends RootNode {
@@ -221,6 +223,12 @@ final class LegacyToLibraryNode extends Node {
     }
 
     Object sendToNative(TruffleObject receiver) {
+        if (receiver.getForeignAccess() != null) {
+            try {
+                return LibraryToLegacy.sendToNative(legacyToNative, receiver);
+            } catch (UnsupportedMessageException e) {
+            }
+        }
         interop.toNative(receiver);
         return receiver;
     }
