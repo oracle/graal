@@ -42,11 +42,10 @@ package org.graalvm.polyglot;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
@@ -64,9 +63,9 @@ import java.util.function.Function;
  * @since 1.0 RC14
  */
 public final class HostAccess {
-    private static final BiFunction<HostAccess, AccessibleObject, Boolean> ACCESS = new BiFunction<HostAccess, AccessibleObject, Boolean>() {
+    private static final BiFunction<HostAccess, AnnotatedElement, Boolean> ACCESS = new BiFunction<HostAccess, AnnotatedElement, Boolean>() {
         @Override
-        public Boolean apply(HostAccess t, AccessibleObject u) {
+        public Boolean apply(HostAccess t, AnnotatedElement u) {
             return t.allowAccess(u);
         }
     };
@@ -107,7 +106,7 @@ public final class HostAccess {
         return EXPLICIT.new Builder();
     }
 
-    boolean allowAccess(AccessibleObject member) {
+    boolean allowAccess(AnnotatedElement member) {
         if (this == HostAccess.EXPLICIT) {
             return member.getAnnotation(HostAccess.Export.class) != null;
         }
@@ -125,7 +124,7 @@ public final class HostAccess {
         return false;
     }
 
-    synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccess, AccessibleObject, Boolean>, T> factory) {
+    synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory) {
         if (impl == null) {
             impl = factory.apply(ACCESS);
         }

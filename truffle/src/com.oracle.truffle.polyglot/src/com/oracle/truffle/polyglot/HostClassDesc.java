@@ -60,6 +60,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
+import java.lang.reflect.Array;
 
 final class HostClassDesc {
     @TruffleBoundary
@@ -87,6 +88,7 @@ final class HostClassDesc {
         final Map<String, HostFieldDesc> fields;
         final Map<String, HostFieldDesc> staticFields;
         final HostMethodDesc functionalMethod;
+        final boolean indexAccess;
 
         private static final BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc> MERGE = new BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc>() {
             @Override
@@ -158,6 +160,7 @@ final class HostClassDesc {
             this.fields = fieldMap;
             this.staticFields = staticFieldMap;
             this.functionalMethod = functionalInterfaceMethod;
+            this.indexAccess = hostAccess.allowsIndexAccess(type);
         }
 
         private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
@@ -380,6 +383,16 @@ final class HostClassDesc {
             }
         }
         return m;
+    }
+
+    /**
+     * Can object of this class be access as an array. That's the question! Works for {@link List}
+     * or {@link Array#isArray} classes.
+     * 
+     * @return true if access is allowed, false if it is denied
+     */
+    public boolean isIndexAccess() {
+        return getMembers().indexAccess;
     }
 
     /**

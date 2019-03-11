@@ -141,7 +141,7 @@ public class SLJavaInteropConversionTest {
                         "  array[1] = new();\n" +
                         "  return validator.validateList(array, array);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = Context.newBuilder(SLLanguage.ID).allowHostAccess(HostAccess.PUBLIC).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             Value res = test.execute(new Validator(), new Object[2]);

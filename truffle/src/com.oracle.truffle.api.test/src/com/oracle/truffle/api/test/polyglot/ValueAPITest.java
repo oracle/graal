@@ -1634,7 +1634,7 @@ public class ValueAPITest {
 
     @Test
     public void testHostObjectsAndPrimitivesSharable() {
-        Context context1 = Context.create();
+        Context context1 = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
         Context context2 = Context.create();
 
         List<Object> sharableObjects = new ArrayList<>();

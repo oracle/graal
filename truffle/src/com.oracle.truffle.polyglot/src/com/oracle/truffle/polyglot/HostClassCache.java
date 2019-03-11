@@ -41,7 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.function.BiFunction;
@@ -51,9 +51,9 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 final class HostClassCache {
     private final HostAccess conf;
-    private final BiFunction<HostAccess, AccessibleObject, Boolean> access;
+    private final BiFunction<HostAccess, AnnotatedElement, Boolean> access;
 
-    private HostClassCache(BiFunction<HostAccess, AccessibleObject, Boolean> access, HostAccess conf) {
+    private HostClassCache(BiFunction<HostAccess, AnnotatedElement, Boolean> access, HostAccess conf) {
         this.access = access;
         this.conf = conf;
     }
@@ -86,7 +86,11 @@ final class HostClassCache {
         return this.conf == hostAccess;
     }
 
-    private static class Factory implements Function<BiFunction<HostAccess, AccessibleObject, Boolean>, HostClassCache> {
+    boolean allowsIndexAccess(Class<?> type) {
+        return access.apply(conf, type);
+    }
+
+    private static class Factory implements Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, HostClassCache> {
         private final HostAccess conf;
 
         Factory(HostAccess conf) {
@@ -94,7 +98,7 @@ final class HostClassCache {
         }
 
         @Override
-        public HostClassCache apply(BiFunction<HostAccess, AccessibleObject, Boolean> access) {
+        public HostClassCache apply(BiFunction<HostAccess, AnnotatedElement, Boolean> access) {
             return new HostClassCache(access, conf);
         }
     }

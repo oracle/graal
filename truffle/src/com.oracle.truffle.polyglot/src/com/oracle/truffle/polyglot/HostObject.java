@@ -457,6 +457,21 @@ final class HostObject implements TruffleObject {
         static boolean doOther(HostObject receiver, long index) {
             return false;
         }
+        @Specialization(guards = {"checkArray(getRootNode(), receiver)"})
+        protected Object doArrayIntIndex(HostObject receiver, int index) {
+            return doArrayAccess(receiver, index);
+        }
+
+        @Specialization(guards = {"checkArray(getRootNode(), receiver)", "index.getClass() == clazz"}, replaces = "doArrayIntIndex")
+        protected Object doArrayCached(HostObject receiver, Number index,
+                        @Cached("index.getClass()") Class<? extends Number> clazz) {
+            return doArrayAccess(receiver, clazz.cast(index).intValue());
+        }
+
+        @Specialization(guards = {"checkArray(getRootNode(), receiver)"}, replaces = "doArrayCached")
+        protected Object doArrayGeneric(HostObject receiver, Number index) {
+            return doArrayAccess(receiver, index.intValue());
+        }
     }
 
     @ExportMessage
@@ -482,6 +497,40 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = "!receiver.isList()")
         static void doOther(HostObject receiver, long index) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
+        }
+
+        @Specialization(guards = {"isList(getRootNode(), receiver)"}, replaces = "doListIntIndex")
+        protected Object doListGeneric(HostObject receiver, Number index) {
+            return doListIntIndex(receiver, index.intValue());
+        }
+
+        @SuppressWarnings("unused")
+        @TruffleBoundary
+        @Specialization(guards = {"!checkArray(getRootNode(), receiver)", "!isList(getRootNode(), receiver)"})
+        protected static Object notArray(HostObject receiver, Number index) {
+            throw UnsupportedMessageException.raise(Message.READ);
+        }
+
+        static boolean isList(RootNode n, HostObject r) {
+            return HostObjectMR.isList(n, r);
+        }
+
+        static boolean checkArray(RootNode n, HostObject r) {
+            return HostObjectMR.checkArray(n, r);
+        }
+
+        private Object doArrayAccess(HostObject object, int index) {
+            Object obj = object.obj;
+            assert object.isArray();
+            Object val = null;
+            try {
+                val = arrayGet.execute(obj, index);
+            } catch (ArrayIndexOutOfBoundsException outOfBounds) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.raise(String.valueOf(index));
+            }
+
+            return toGuest.apply(object.languageContext, val);
         }
     }
 
@@ -1137,6 +1186,24 @@ final class HostObject implements TruffleObject {
             Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext);
             field.set(object.obj, val);
         }
+    }
+
+    static boolean isList(RootNode node, HostObject receiver) {
+        Object obj = VMAccessor.NODES.getSourceVM(node);
+        if (receiver.obj instanceof List) {
+            HostClassDesc desc = HostClassDesc.forClass((PolyglotEngineImpl) obj, receiver.getObjectClass());
+            return desc.isIndexAccess();
+        }
+        return false;
+    }
+
+    static boolean checkArray(RootNode node, HostObject receiver) {
+        Object obj = VMAccessor.NODES.getSourceVM(node);
+        if (receiver.isArray()) {
+            HostClassDesc desc = HostClassDesc.forClass((PolyglotEngineImpl) obj, receiver.getObjectClass());
+            return desc.isIndexAccess();
+        }
+        return false;
     }
 
 }

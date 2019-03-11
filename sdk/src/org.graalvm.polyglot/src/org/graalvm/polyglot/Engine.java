@@ -60,7 +60,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
@@ -603,7 +603,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public <T> T connectHostAccess(Class<T> impl, HostAccess conf, Function<BiFunction<HostAccess, AccessibleObject, Boolean>, T> factory) {
+        public <T> T connectHostAccess(Class<T> impl, HostAccess conf, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory) {
             return conf.connectHostAccess(impl, factory);
         }
     }

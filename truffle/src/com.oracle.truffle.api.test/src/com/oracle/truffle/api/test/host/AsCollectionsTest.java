@@ -84,7 +84,7 @@ public class AsCollectionsTest {
 
     @Before
     public void enterContext() {
-        context = Context.create();
+        context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected LanguageContext createContext(Env contextEnv) {

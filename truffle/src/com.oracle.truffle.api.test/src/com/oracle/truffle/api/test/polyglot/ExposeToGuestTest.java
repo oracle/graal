@@ -44,6 +44,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Arrays;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -180,4 +181,90 @@ public class ExposeToGuestTest {
         FooInterface<Number> foo = (ignore) -> "functional foo";
         Assert.assertEquals("functional foo", readValue.execute(foo).asString());
     }
+
+    @Test
+    public void listAccessAllowedInPublicHostAccess() throws Exception {
+        doAccessAllowedInPublicHostAccess(true);
+    }
+
+    @Test
+    public void arrayAccessAllowedInPublicHostAccess() throws Exception {
+        doAccessAllowedInPublicHostAccess(false);
+    }
+
+    private void doAccessAllowedInPublicHostAccess(boolean asList) throws Exception {
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
+        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        boolean[] gotIn = {false};
+        FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
+        final Value arrayRead = readValue.execute(foo);
+        Assert.assertTrue("Foo lamda called", gotIn[0]);
+        Assert.assertEquals(1, arrayRead.asInt());
+    }
+
+    @Test
+    public void listAccessForbiddenInExplicit() throws Exception {
+        doAccessForbiddenInExplicit(true);
+    }
+
+    @Test
+    public void arrayAccessForbiddenInExplicit() throws Exception {
+        doAccessForbiddenInExplicit(false);
+    }
+
+    private void doAccessForbiddenInExplicit(boolean asList) throws Exception {
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
+        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        boolean[] gotIn = {false};
+        FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
+        final Value arrayRead;
+        try {
+            arrayRead = readValue.execute(foo);
+        } catch (Exception ex) {
+            assertEquals("Expecting an exception", PolyglotException.class, ex.getClass());
+            Assert.assertTrue("Foo lamda called", gotIn[0]);
+            return;
+        }
+        fail("The read shouldn't succeed: " + arrayRead);
+    }
+
+    @Test
+    public void listAccessForbiddenInManual() throws Exception {
+        doAccessForbiddenInManual(true);
+    }
+
+    @Test
+    public void arrayAccessForbiddenInManual() throws Exception {
+        doAccessForbiddenInManual(false);
+    }
+
+    private void doAccessForbiddenInManual(boolean asList) throws Exception {
+        HostAccess config = HostAccess.newBuilder().allowAccess(FooInterface.class.getMethod("foo", Number.class)).build();
+        Context context = Context.newBuilder().allowHostAccess(config).build();
+        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        boolean[] gotIn = {false};
+        FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
+        final Value arrayRead;
+        try {
+            arrayRead = readValue.execute(foo);
+        } catch (Exception ex) {
+            assertEquals("Expecting an exception", PolyglotException.class, ex.getClass());
+            Assert.assertTrue("Foo lamda called", gotIn[0]);
+            return;
+        }
+        fail("The read shouldn't succeed: " + arrayRead);
+    }
+
+    private FooInterface<Number> returnAsArrayOrList(boolean[] gotIn, boolean asList) {
+        FooInterface<Number> foo = (n) -> {
+            gotIn[0] = true;
+            if (asList) {
+                return Arrays.asList(n);
+            } else {
+                return new Number[]{n};
+            }
+        };
+        return foo;
+    }
+
 }

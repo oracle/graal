@@ -47,7 +47,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
-import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.AnnotatedElement;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
@@ -141,7 +141,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
-        public abstract <T> T connectHostAccess(Class<T> impl, HostAccess conf, Function<BiFunction<HostAccess, AccessibleObject, Boolean>, T> factory);
+        public abstract <T> T connectHostAccess(Class<T> impl, HostAccess conf, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory);
     }
 
     // shared SPI
