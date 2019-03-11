@@ -517,6 +517,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             ResolvedJavaField alias = fieldValueRecomputation(annotatedClass, field, field, f);
             if (!alias.equals(field)) {
                 ResolvedJavaField originalField = findOriginalField(f, originalClass, true);
+                guarantee(originalField == null || !(alias.isFinal() && !originalField.isFinal()), "a non-final field cannot be redeclared as final through substitution: %s", field);
                 register(fieldSubstitutions, field, originalField, alias);
             } else {
                 handleAnnotatedFieldInSubstitutionClass(f, originalClass);
@@ -728,7 +729,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         RecomputeFieldValue.Kind kind = RecomputeFieldValue.Kind.None;
         Class<?> targetClass = originalClass;
         String targetName = "";
-        boolean isFinal = annotated.isFinal();
+        boolean isFinal = original.isFinal() && annotated.isFinal();
 
         if (recomputeAnnotation != null) {
             kind = recomputeAnnotation.kind();
