@@ -40,6 +40,13 @@ public interface ModifiersProvider {
     int getModifiers();
 
     /**
+     * Since we do not have direct access to the Varargs flag, we use the transient flag (that has the same value)
+     */
+    default boolean isVarargs() {
+        return Modifier.isTransient(getModifiers());
+    }
+
+    /**
      * @see Modifier#isInterface(int)
      */
     default boolean isInterface() {

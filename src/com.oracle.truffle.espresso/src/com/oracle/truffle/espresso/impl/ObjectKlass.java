@@ -104,7 +104,6 @@ public final class ObjectKlass extends Klass {
         for (int i = 0; i < methods.length; ++i) {
             methods[i] = new Method(this, linkedMethods[i]);
         }
-
         this.declaredFields = fields;
         this.declaredMethods = methods;
     }

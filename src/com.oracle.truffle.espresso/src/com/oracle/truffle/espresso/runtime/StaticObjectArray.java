@@ -26,6 +26,7 @@ import java.lang.reflect.Array;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -80,6 +81,11 @@ public final class StaticObjectArray extends StaticObject {
 
     public <T> T get(int index) {
         return this.<T[]> unwrap()[index];
+    }
+
+    public void put(int index, Object value) {
+        assert((getKlass()).getComponentType().getType() == ((StaticObject) value).getKlass().getType());
+        ((Object[])array)[index] = value;
     }
 
     public int length() {

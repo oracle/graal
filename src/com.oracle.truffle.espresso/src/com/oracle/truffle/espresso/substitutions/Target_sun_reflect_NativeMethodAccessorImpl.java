@@ -318,7 +318,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         // Check number of arguments.
         if (Signatures.parameterCount(signature, false) != argsLen) {
-            throw meta.throwExWithMessage(meta.IllegalArgumentException, meta.toGuestString("wrong number of arguments"));
+            throw meta.throwExWithMessage(meta.IllegalArgumentException, meta.toGuestString("wrong number of arguments !"));
         }
 
         Object[] adjustedArgs = new Object[argsLen];

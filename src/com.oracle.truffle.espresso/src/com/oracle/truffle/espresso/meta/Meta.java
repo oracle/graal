@@ -143,6 +143,7 @@ public final class Meta implements ContextAccess {
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
         ClassCastException = knownKlass(Type.ClassCastException);
         AbstractMethodError = knownKlass(Type.AbstractMethodError);
+        InternalError = knownKlass(Type.InternalError);
 
         NoSuchFieldError = knownKlass(Type.NoSuchFieldError);
         NoSuchMethodError = knownKlass(Type.NoSuchMethodError);
@@ -205,6 +206,12 @@ public final class Meta implements ContextAccess {
         MethodHandle = knownKlass(Type.MethodHandle);
         invokeExact = MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_ObjectArray);
         invoke = MethodHandle.lookupDeclaredMethod(Name.invoke, Signature.Object_ObjectArray);
+        invokeBasic = MethodHandle.lookupDeclaredMethod(Name.invokeBasic, Signature.Object_ObjectArray);
+        invokeWithArguments = MethodHandle.lookupDeclaredMethod(Name.invokeWithArguments, Signature.Object_ObjectArray);
+        linkToInterface = MethodHandle.lookupDeclaredMethod(Name.linkToInterface, Signature.Object_ObjectArray);
+        linkToSpecial = MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_ObjectArray);
+        linkToStatic = MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_ObjectArray);
+        linkToVirtual = MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_ObjectArray);
 
         MethodHandles = knownKlass(Type.MethodHandles);
         lookup = MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
@@ -316,6 +323,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass OutOfMemoryError;
     public final ObjectKlass ClassCastException;
     public final ObjectKlass AbstractMethodError;
+    public final ObjectKlass InternalError;
 
     public final ObjectKlass Throwable;
     public final Field Throwable_backtrace;
@@ -361,6 +369,12 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass MethodHandle;
     public final Method invoke;
     public final Method invokeExact;
+    public final Method invokeBasic;
+    public final Method invokeWithArguments;
+    public final Method linkToInterface;
+    public final Method linkToSpecial;
+    public final Method linkToStatic;
+    public final Method linkToVirtual;
 
     public final ObjectKlass MethodHandles;
     public final Method lookup;

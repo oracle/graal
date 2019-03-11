@@ -177,6 +177,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
         public static final Symbol<Name> invokeExact = StaticSymbols.putName("invokeExact");
         public static final Symbol<Name> invokeBasic = StaticSymbols.putName("invokeBasic");
+        public static final Symbol<Name> invokeWithArguments = StaticSymbols.putName("invokeWithArguments");
         public static final Symbol<Name> linkToVirtual = StaticSymbols.putName("linkToVirtual");
         public static final Symbol<Name> linkToStatic = StaticSymbols.putName("linkToStatic");
         public static final Symbol<Name> linkToInterface = StaticSymbols.putName("linkToInterface");
@@ -296,6 +297,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> IllegalAccessError = StaticSymbols.putType(IllegalAccessError.class);
         public static final Symbol<Type> IncompatibleClassChangeError = StaticSymbols.putType(IncompatibleClassChangeError.class);
         public static final Symbol<Type> AbstractMethodError = StaticSymbols.putType(AbstractMethodError.class);
+        public static final Symbol<Type> InternalError = StaticSymbols.putType(InternalError.class);
 
         public static final Symbol<Type> MethodType = StaticSymbols.putType(java.lang.invoke.MethodType.class);
 
@@ -308,6 +310,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MemberName = StaticSymbols.putType("Ljava/lang/invoke/MemberName;");
         public static final Symbol<Type> MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
         public static final Symbol<Type> LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
+
+
+        // Special type for never finding declared intrinsics
+        public static final Symbol<Type> invalid = StaticSymbols.putType("L~INVALID~;");
     }
 
     public static final class Signature extends Descriptor {
@@ -357,6 +363,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> linkMethodHandleConstant_signature = StaticSymbols.putSignature(Type.MethodHandle, Type.Class, Type._int, Type.Class, Type.String, Type.Object);
         public static final Symbol<Signature> linkCallSite_signature = StaticSymbols.putSignature(Type.MemberName, Type.Object, Type.Object, Type.Object, Type.Object, Type.Object, Type.Object_array);
         public static final Symbol<Signature> lookup_signature = StaticSymbols.putSignature(Type.Lookup);
+
+        public static final Symbol<Signature> invalid = StaticSymbols.putSignature(Type.invalid);
 
     }
 }

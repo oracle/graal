@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -45,16 +46,16 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
-import com.oracle.truffle.espresso.meta.ExceptionHandler;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.meta.*;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.*;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandle;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class Method implements ModifiersProvider, ContextAccess {
@@ -74,6 +75,8 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     private final ExceptionsAttribute exceptionsAttribute;
     private final CodeAttribute codeAttribute;
+
+    private final int refKind;
 
     @CompilationFinal //
     private CallTarget callTarget;
@@ -107,19 +110,44 @@ public final class Method implements ModifiersProvider, ContextAccess {
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod) {
+        this(declaringKlass, linkedMethod, linkedMethod.getRawSignature());
+    }
+
+    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature) {
 
         this.declaringKlass = declaringKlass;
-
         // TODO(peterssen): Custom constant pool for methods is not supported.
         this.pool = declaringKlass.getConstantPool();
 
         this.name = linkedMethod.getName();
-        this.rawSignature = linkedMethod.getRawSignature();
-        this.parsedSignature = getSignatures().parsed(this.rawSignature);
         this.linkedMethod = linkedMethod;
+
+        this.rawSignature = rawSignature;
+        this.parsedSignature = getSignatures().parsed(this.rawSignature);
+
 
         this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
+
+        if(isStatic()) {
+            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeStatic;
+            return;
+        }
+        if (isPrivate() || isConstructor()) {
+            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeSpecial;
+            return;
+        }
+        for (ObjectKlass klassInterface: declaringKlass.getInterfaces()) {
+            if (klassInterface.lookupDeclaredMethod(this.name, this.rawSignature) != null) {
+                this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface;
+                return;
+            }
+        }
+        this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual;
+    }
+
+    public int getRefKind() {
+        return refKind;
     }
 
     public final Attribute getAttribute(Symbol<Name> attrName) {
@@ -245,7 +273,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return callTarget;
     }
 
-    private static FrameDescriptor initFrameDescriptor(int slotCount) {
+    public static FrameDescriptor initFrameDescriptor(int slotCount) {
         FrameDescriptor descriptor = new FrameDescriptor();
         for (int i = 0; i < slotCount; ++i) {
             descriptor.addFrameSlot(i);
@@ -358,6 +386,28 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return getMeta().toHostBoxed(getCallTarget().call(filteredArgs));
     }
 
+    @TruffleBoundary
+    private Object[] fitVarargs(Object[] args) {
+        if (!isVarargs()) {
+            return args;
+        }
+        int pcount = Signatures.parameterCount(getParsedSignature(), false);
+        Object[] trueArgs = new Object[pcount];
+        int varargsPos = pcount - 1;
+        int argsLength = args.length;
+        int i;
+        for (i = 0; i < pcount; i++) {
+            if (i == varargsPos) break;
+            trueArgs[i] = args[i];
+        }
+        Object[] leftoverArgs = new Object[argsLength - i];
+        for (int j = 0; j < leftoverArgs.length; j++) {
+            leftoverArgs[j] = args[i + j];
+        }
+//        trueArgs[varargsPos] = new StaticObjectArray(Type.Object, )
+        throw EspressoError.unimplemented();
+    }
+
     /**
      * Invokes a guest method without parameter/return type conversions. There's no parameter
      * casting, widening nor narrowing based on the method signature.
@@ -448,5 +498,12 @@ public final class Method implements ModifiersProvider, ContextAccess {
             }
         }
         return target;
+    }
+
+    public Method createMethodHandleIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory) {
+        Method method = new Method(declaringKlass, linkedMethod, signature);
+        EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
+        method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        return method;
     }
 }
