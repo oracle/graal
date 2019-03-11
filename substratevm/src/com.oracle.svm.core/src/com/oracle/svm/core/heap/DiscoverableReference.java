@@ -80,6 +80,20 @@ public class DiscoverableReference {
      * Instance access methods.
      */
 
+    /**
+     * Is this instance initialized?
+     *
+     * This seems like a funny method to have, because by the time I could see an instance class
+     * from ordinary Java code it would be initialized. But the collector might see a reference to
+     * an instance between when it is allocated and when it is initialized, and so must be able to
+     * detect if the fields of the instance are safe to access. The constructor is
+     * unininterruptible, so the collector either sees an uninitialized instance or fully
+     * initialized instance.
+     */
+    public boolean isInitialized() {
+        return initialized;
+    }
+
     /** Read access to the referent, as an Object. */
     Object getReferentObject() {
         return rawReferent;
@@ -137,15 +151,12 @@ public class DiscoverableReference {
      *
      * @param referent The Object to be tracked by this DiscoverableReference.
      */
-    protected DiscoverableReference(Object referent) {
-        initialize(referent);
-    }
-
     @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
-    private void initialize(Object referent) {
+    protected DiscoverableReference(Object referent) {
         this.rawReferent = referent;
         this.next = null;
         this.isDiscovered = false;
+        this.initialized = true;
     }
 
     /*
@@ -188,7 +199,11 @@ public class DiscoverableReference {
     private boolean isDiscovered;
 
     /** The next element in whichever list of DiscoverableReferences. */
-    @SuppressWarnings("unused") private DiscoverableReference next;
+    @SuppressWarnings("unused") //
+    private DiscoverableReference next;
+
+    /** Has the constructor of this instance run? */
+    private final boolean initialized;
 
     /** For testing and debugging. */
     public static final class TestingBackDoor {
