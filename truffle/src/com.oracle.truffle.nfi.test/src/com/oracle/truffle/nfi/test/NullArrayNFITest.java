@@ -93,4 +93,13 @@ public class NullArrayNFITest extends NFITest {
         Assert.assertTrue("isBoxed", UNCACHED_INTEROP.isString(ret));
         Assert.assertEquals("return value", "null", UNCACHED_INTEROP.asString(ret));
     }
+
+    @Test
+    public void testHostNullArray(@Inject(NullArrayNode.class) CallTarget target) throws UnsupportedMessageException {
+        Object hostNull = runWithPolyglot.getTruffleTestEnv().asGuestValue(null);
+        Object ret = target.call(hostNull);
+
+        Assert.assertTrue("isBoxed", UNCACHED_INTEROP.isString(ret));
+        Assert.assertEquals("return value", "null", UNCACHED_INTEROP.asString(ret));
+    }
 }

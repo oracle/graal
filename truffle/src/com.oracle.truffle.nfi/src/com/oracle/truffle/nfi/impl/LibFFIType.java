@@ -385,7 +385,7 @@ abstract class LibFFIType {
             abstract void execute(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
 
             static boolean isHostObject(NFIContext ctx, Object value) {
-                return ctx.env.isHostObject(value);
+                return ctx.env.isHostObject(value) && ctx.env.asHostObject(value) != null;
             }
 
             @Specialization(guards = "isHostObject(ctx, value)", rewriteOn = WrongTypeException.class)
