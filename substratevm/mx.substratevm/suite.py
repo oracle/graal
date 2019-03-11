@@ -715,7 +715,6 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
-
         "com.oracle.svm.agent": {
             "subDir": "src",
             "sourceDirs": [
@@ -736,6 +735,21 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
+        },
+        "com.oracle.svm.truffle.checker" : {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+                "com.oracle.graal.pointsto",
+                "com.oracle.svm.hosted",
+            ],
+            "checkstyle" : "com.oracle.svm.truffle",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "javaCompliance": "1.8",
         },
     },
 
@@ -761,6 +775,7 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
                 "com.oracle.svm.reflect",
+                "com.oracle.svm.truffle.checker",
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
