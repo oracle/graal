@@ -132,6 +132,12 @@ public final class HostAccess {
         return type.cast(impl);
     }
 
+    /**
+     * Textual indentification of the instance.
+     *
+     * @return new builder
+     * @since 1.0 RC14
+     */
     @Override
     public String toString() {
         return name == null ? super.toString() : name;
