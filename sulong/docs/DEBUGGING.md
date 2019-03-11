@@ -118,7 +118,7 @@ debugger of choice while debugging the code executed by Sulong in the Chrome ins
 ### How can I generate a trace of how Sulong executes my program?
 
 Sulong can produce an LLVM IR-level trace of its program execution. You can enable
-this feature by passing the `--TraceLLVM=<...>` option to `lli`. This option takes a
+this feature by passing the `--llvm.traceIR<...>` option to `lli`. This option takes a
 single argument denoting the target for the trace output.
 
 * `stdout` or `out`: prints the trace to `stdout`

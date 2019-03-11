@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -188,12 +188,14 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
         protected void onReturnValue(VirtualFrame frame, Object result) {
             trace(exitPrefix);
             getTraceContext().exitFunction();
+            flushTraceBuffer();
         }
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
             trace(exceptionPrefix);
             getTraceContext().exitFunction();
+            flushTraceBuffer();
         }
     }
 }

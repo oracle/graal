@@ -61,6 +61,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.instruments.trace.LLVMTracerInstrument;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -146,6 +147,8 @@ public final class LLVMContext {
 
     private final NodeFactory nodeFactory;
 
+    private final LLVMTracerInstrument tracer;
+
     private final class LLVMFunctionPointerRegistry {
         private int currentFunctionIndex = 1;
         private final HashMap<LLVMNativePointer, LLVMFunctionDescriptor> functionDescriptors = new HashMap<>();
@@ -195,6 +198,17 @@ public final class LLVMContext {
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
         if (languageHome != null) {
             addLibraryPath(languageHome);
+        }
+
+        final String traceOption = env.getOptions().get(SulongEngineOption.TRACE_IR);
+        if (!"".equalsIgnoreCase(traceOption)) {
+            if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
+                throw new IllegalStateException("\'--llvm.traceIR\' requires \'--llvm.llDebug=true\'");
+            }
+            tracer = new LLVMTracerInstrument();
+            tracer.initialize(env, traceOption);
+        } else {
+            tracer = null;
         }
     }
 
@@ -350,6 +364,10 @@ public final class LLVMContext {
                     ((LLVMGlobalContainer) object).dispose();
                 }
             }
+        }
+
+        if (tracer != null) {
+            tracer.dispose();
         }
     }
 
