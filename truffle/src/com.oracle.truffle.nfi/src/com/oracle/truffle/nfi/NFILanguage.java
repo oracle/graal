@@ -43,7 +43,6 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.NFILanguage.Context;
 import com.oracle.truffle.nfi.types.NativeSource;
