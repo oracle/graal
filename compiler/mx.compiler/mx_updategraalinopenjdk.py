@@ -81,7 +81,7 @@ def updategraalinopenjdk(args):
         GraalJDKModule('jdk.internal.vm.compiler',
             # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
             #    whose names include "truffle" or "management"
-            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management']),
+            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm']),
             # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
         # JDK module jdk.internal.vm.compiler.management is composed of sources from:
