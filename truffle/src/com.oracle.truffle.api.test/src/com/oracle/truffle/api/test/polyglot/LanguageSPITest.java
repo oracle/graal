@@ -414,7 +414,7 @@ public class LanguageSPITest {
 
     @Test
     public void testLookupHostDisabled() {
-        Context context = Context.newBuilder().allowHostAccess(null).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).hostClassFilter((String s) -> false).build();
         try {
             eval(context, new Function<Env, Object>() {
                 public Object apply(Env t) {
@@ -430,7 +430,7 @@ public class LanguageSPITest {
 
     @Test
     public void testIsHostAccessAllowed() {
-        Context context = Context.newBuilder().allowHostAccess(null).build();
+        Context context = Context.create();
         assertTrue(!eval(context, env -> env.isHostLookupAllowed()).asBoolean());
         context.close();
 
