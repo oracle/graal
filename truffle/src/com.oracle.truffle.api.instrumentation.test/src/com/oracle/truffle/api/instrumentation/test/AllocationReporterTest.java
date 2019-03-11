@@ -879,10 +879,12 @@ public class AllocationReporterTest {
 
         private BigInteger integer;
 
+        @TruffleBoundary
         BigNumber(String value) {
             this.integer = new BigInteger(value);
         }
 
+        @TruffleBoundary
         long getSize() {
             return integer.bitCount() / 8;
         }

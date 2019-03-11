@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -304,7 +305,19 @@ class DefaultTruffleObjectExports {
     @ExportMessage
     static long getArraySize(TruffleObject receiver,
                     @Cached(parameters = "GET_SIZE") InteropAccessNode getSize) throws UnsupportedMessageException {
-        return ((Number) LibraryToLegacy.sendGetSize(getSize, receiver)).longValue();
+        Number result = ((Number) LibraryToLegacy.sendGetSize(getSize, receiver));
+        if (result instanceof Integer) {
+            return (int) result;
+        } else if (result instanceof Long) {
+            return (long) result;
+        } else {
+            return longValueBoundary(result);
+        }
+    }
+
+    @TruffleBoundary
+    private static long longValueBoundary(Number result) {
+        return result.longValue();
     }
 
     @ExportMessage

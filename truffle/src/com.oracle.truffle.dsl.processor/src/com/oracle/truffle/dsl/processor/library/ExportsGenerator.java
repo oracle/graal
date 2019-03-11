@@ -529,6 +529,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         if ((!cached || libraryExports.isFinalReceiver()) && ElementUtils.needsCastTo(castMethod.getParameters().get(0).asType(), exportReceiverType)) {
             GeneratorUtils.mergeSupressWarnings(castMethod, "cast");
         }
+        if (ElementUtils.findAnnotationMirror(castMethod, TruffleBoundary.class) == null) {
+            castMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
+        }
         builder.startReturn().tree(createReceiverCast(libraryExports, castMethod.getParameters().get(0).asType(), exportReceiverType, CodeTreeBuilder.singleString("receiver"), cached)).end();
         return castMethod;
     }
@@ -634,6 +637,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTree defaultAccepts = createDefaultAccepts(uncachedClass, constructor, libraryExports, exportReceiverType, false);
 
         CodeExecutableElement acceptUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Library.class), ACCEPTS));
+        if (ElementUtils.findAnnotationMirror(acceptUncached, TruffleBoundary.class) == null) {
+            acceptUncached.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
+        }
         acceptUncached.getModifiers().remove(Modifier.ABSTRACT);
         acceptUncached.renameArguments("receiver");
         builder = acceptUncached.createBuilder();

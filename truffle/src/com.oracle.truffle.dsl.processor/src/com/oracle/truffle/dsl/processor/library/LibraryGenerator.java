@@ -661,7 +661,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder = reflectionGenericDispatch.createBuilder();
         builder.declaration(model.getTemplateType().asType(), "lib", builder.create().cast(model.getTemplateType().asType()).string("originalLib"));
         builder.declaration(messageClass.asType(), "messageImpl", builder.create().cast(messageClass.asType()).string("message").build());
-        builder.startIf().string("messageImpl.getParameterTypes().size() - 1 != args.length - offset").end().startBlock();
+        builder.startIf().string("messageImpl.getParameterCount() - 1 != args.length - offset").end().startBlock();
         builder.startStatement().startStaticCall(context.getType(CompilerDirectives.class), "transferToInterpreter").end().end();
         builder.startThrow().startNew(context.getType(IllegalArgumentException.class)).doubleQuote("Invalid number of arguments.").end().end();
         builder.end();

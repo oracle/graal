@@ -41,6 +41,8 @@
 
 package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 /**
  * An exception thrown if an array does not contain a element with an index. Interop exceptions are
  * supposed to be caught and converted into a guest language error by the caller.
@@ -85,6 +87,7 @@ public final class InvalidArrayIndexException extends InteropException {
      * @since 1.0
      */
     public static InvalidArrayIndexException create(long invalidIndex) {
+        CompilerDirectives.transferToInterpreter();
         return new InvalidArrayIndexException(invalidIndex);
     }
 

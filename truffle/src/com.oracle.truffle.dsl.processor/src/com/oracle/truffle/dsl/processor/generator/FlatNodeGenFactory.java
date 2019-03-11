@@ -1321,6 +1321,7 @@ public class FlatNodeGenFactory {
         CodeExecutableElement method = new CodeExecutableElement(modifiers(), forType.getReturnType(), forType.getName());
         FrameState frameState = FrameState.load(this, forType, Integer.MAX_VALUE, NodeExecutionMode.UNCACHED, method);
         frameState.addParametersTo(method, Integer.MAX_VALUE);
+        method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
 
         if (forType.getMethod() != null) {
             method.getModifiers().addAll(forType.getMethod().getModifiers());

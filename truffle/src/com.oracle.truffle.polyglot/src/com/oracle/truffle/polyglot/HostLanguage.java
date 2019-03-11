@@ -405,6 +405,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         @ExportMessage
+        @TruffleBoundary
         long getArraySize() {
             return names.size();
         }

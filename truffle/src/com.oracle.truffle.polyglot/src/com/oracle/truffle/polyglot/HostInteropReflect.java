@@ -578,7 +578,7 @@ abstract class ProxyInvokeNode extends Node {
     /*
      * It is supposed to be safe to compare method names with == only as they are always interned.
      */
-    @Specialization(guards = {"cachedMethod.equals(method)"}, limit = "LIMIT")
+    @Specialization(guards = {"cachedMethod == method"}, limit = "LIMIT")
     @SuppressWarnings("unused")
     protected Object doCachedMethod(PolyglotLanguageContext languageContext, Object receiver, Method method, Object[] arguments,
                     @Cached("method") Method cachedMethod,

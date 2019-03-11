@@ -250,11 +250,13 @@ abstract class InteropAccessNode extends Node {
         }
 
         @Override
+        @TruffleBoundary
         protected int profileLength(int length) {
             return length;
         }
 
         @Override
+        @TruffleBoundary
         protected Object executeImpl(TruffleObject receiver, Object[] arguments) {
             return createGenericMessageTarget(receiver).call(arguments);
         }

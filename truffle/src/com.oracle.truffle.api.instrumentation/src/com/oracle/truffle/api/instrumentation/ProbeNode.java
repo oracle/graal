@@ -327,6 +327,7 @@ public final class ProbeNode extends Node {
     com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode findWrapper() throws AssertionError {
         Node parent = getParent();
         if (!(parent instanceof com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode)) {
+            CompilerDirectives.transferToInterpreter();
             if (parent == null) {
                 throw new AssertionError("Probe node disconnected from AST.");
             } else {

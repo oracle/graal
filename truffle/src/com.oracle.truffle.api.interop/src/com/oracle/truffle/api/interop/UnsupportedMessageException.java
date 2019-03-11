@@ -114,6 +114,7 @@ public final class UnsupportedMessageException extends InteropException {
      * @since 1.0
      */
     public static UnsupportedMessageException create() {
+        CompilerDirectives.transferToInterpreter();
         return new UnsupportedMessageException();
     }
 

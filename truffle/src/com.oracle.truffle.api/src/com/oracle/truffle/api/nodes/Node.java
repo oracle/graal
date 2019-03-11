@@ -744,10 +744,20 @@ public abstract class Node implements NodeInterface, Cloneable {
             }
             node = node.getParent();
         }
+        if (node == null) {
+            checkAdoptable();
+        }
+        return null;
+    }
+
+    /*
+     * Better to call this on a boundary to not pull in more methods.
+     */
+    @TruffleBoundary
+    private void checkAdoptable() {
         if (isAdoptable()) {
             throw new IllegalStateException("Node must be adopted before a reference can be looked up.");
         }
-        return null;
     }
 
     /**

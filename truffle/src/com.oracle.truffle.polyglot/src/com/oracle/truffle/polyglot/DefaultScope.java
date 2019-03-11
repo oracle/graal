@@ -170,6 +170,7 @@ final class DefaultScope {
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object readMember(String member) throws UnknownIdentifierException {
             if (frame == null) {
                 return NullValue.INSTANCE;
@@ -183,21 +184,25 @@ final class DefaultScope {
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
             return new VariableNamesObject(slots.keySet());
         }
 
         @ExportMessage
+        @TruffleBoundary
         boolean isMemberReadable(String member) {
             return slots.containsKey(member);
         }
 
         @ExportMessage
+        @TruffleBoundary
         boolean isMemberModifiable(String member) {
             return slots.containsKey(member) && frame != null;
         }
 
         @ExportMessage
+        @TruffleBoundary
         void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
             if (frame == null) {
                 throw UnsupportedMessageException.create();
@@ -306,7 +311,6 @@ final class DefaultScope {
 
         @ExportMessage(name = "isArrayElementReadable")
         @ExportMessage(name = "isArrayElementModifiable")
-        @TruffleBoundary
         boolean isArrayElementReadable(long index) {
             return index >= 0 && index < args.length;
         }

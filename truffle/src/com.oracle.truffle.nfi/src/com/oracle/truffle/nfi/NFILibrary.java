@@ -63,6 +63,7 @@ final class NFILibrary implements TruffleObject {
     private final Object library;
     private final Map<String, Object> symbols;
 
+    @TruffleBoundary
     NFILibrary(Object library) {
         this.library = library;
         this.symbols = new HashMap<>();

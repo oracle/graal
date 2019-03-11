@@ -62,7 +62,7 @@ public final class ArityException extends InteropException {
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @since 1.0
      */
     @Override
@@ -99,6 +99,7 @@ public final class ArityException extends InteropException {
      * @since 1.0
      */
     public static ArityException create(int expectedArity, int actualArity) {
+        CompilerDirectives.transferToInterpreter();
         return new ArityException(expectedArity, actualArity);
     }
 

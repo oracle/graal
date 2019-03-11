@@ -686,6 +686,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @ExportMessage
+            @TruffleBoundary
             Object readArrayElement(long index) throws InvalidArrayIndexException {
                 if (index >= names.size()) {
                     throw InvalidArrayIndexException.create(index);
