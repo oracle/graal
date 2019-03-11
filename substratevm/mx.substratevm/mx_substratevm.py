@@ -608,7 +608,7 @@ def svm_gate_body(args, tasks):
                         mx.abort('TCK tests not found.')
                     unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
                     vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-                    tests_image = native_image(vm_image_args + ['--tool:truffle', '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature', '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*', '-H:MaxRuntimeCompileMethods=2000'])
+                    tests_image = native_image(vm_image_args + ['--tool:truffle', '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature', '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*', '-H:MaxRuntimeCompileMethods=3000'])
                     with open(unittest_file) as f:
                         test_classes = [l.rstrip() for l in f.readlines()]
                     mx.run([tests_image, '-Dtck.inlineVerifierInstrument=false'] + test_classes)
