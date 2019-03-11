@@ -98,6 +98,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -118,9 +119,10 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     }
 
     private final ResolvedJavaType classLoaderDelegate;
-    private final Map<String, Object> initialOptions;
+    private final OptionValues initialOptions;
+    private volatile Map<String, Object> cachedOptionsMap;
 
-    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, Map<String, Object> options) {
+    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, OptionValues options) {
         super(env, handle);
         this.classLoaderDelegate = classLoaderDelegate;
         this.initialOptions = options;
@@ -307,13 +309,24 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     @Override
     public Map<String, Object> getOptions() {
-        return initialOptions;
+        Map<String, Object> res = cachedOptionsMap;
+        if (res == null) {
+            res = new HashMap<>();
+            UnmodifiableMapCursor<OptionKey<?>, Object> optionValues = initialOptions.getMap().getEntries();
+            while (optionValues.advance()) {
+                final OptionKey<?> key = optionValues.getKey();
+                Object value = optionValues.getValue();
+                res.put(key.getName(), value);
+            }
+            cachedOptionsMap = res;
+        }
+        return res;
     }
 
     @Override
     public <T> T getOptions(Class<T> optionValuesType) {
         if (optionValuesType == OptionValues.class) {
-            return convertOptions(optionValuesType, initialOptions);
+            return optionValuesType.cast(initialOptions);
         }
         return HotSpotTruffleCompilerRuntime.super.getOptions(optionValuesType);
     }

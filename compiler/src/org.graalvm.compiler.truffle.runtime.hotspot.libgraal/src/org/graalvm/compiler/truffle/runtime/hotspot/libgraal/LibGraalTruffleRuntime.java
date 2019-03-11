@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import java.io.ByteArrayInputStream;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
@@ -43,7 +42,6 @@ import jdk.vm.ci.services.Services;
  * A {@link TruffleRuntime} that uses libgraal for compilation.
  */
 final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
-    private static final String GRAAL_OPTION_PROPERTY_PREFIX = "graal.";
 
     /**
      * Gets the id for the SVM isolate thread associated with the current thread. This method
@@ -83,15 +81,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         MetaAccessProvider metaAccess = runtime.getHostJVMCIBackend().getMetaAccess();
         HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(getClass());
         long classLoaderDelegate = runtime.translate(type);
-        Map<String, Object> graalProperties = new HashMap<>();
-        for (Map.Entry<Object, Object> e : System.getProperties().entrySet()) {
-            String key = (String) e.getKey();
-            if (key.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
-                graalProperties.put(key.substring(GRAAL_OPTION_PROPERTY_PREFIX.length()), e.getValue());
-            }
-        }
-        byte[] encodedGraalProperties = OptionsEncoder.encode(graalProperties);
-        handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThreadId(), this, classLoaderDelegate, encodedGraalProperties);
+        handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThreadId(), this, classLoaderDelegate);
     }
 
     @Override
