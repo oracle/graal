@@ -76,7 +76,6 @@ final class PolyglotBindings implements TruffleObject {
     Object readMember(String member) throws UnknownIdentifierException {
         Value value = bindings.get(member);
         if (value == null) {
-            CompilerDirectives.transferToInterpreter();
             // legacy support
             Value legacyValue = languageContext.context.findLegacyExportedSymbol(member);
             if (legacyValue != null) {
@@ -113,7 +112,11 @@ final class PolyglotBindings implements TruffleObject {
     @ExportMessage(name = "isMemberRemovable")
     @TruffleBoundary
     boolean isMemberExisting(String member) {
-        return bindings.containsKey(member);
+        boolean existing = bindings.containsKey(member);
+        if (!existing) {
+            return languageContext.context.findLegacyExportedSymbol(member) != null;
+        }
+        return existing;
     }
 
     @ExportMessage
