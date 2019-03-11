@@ -146,17 +146,6 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     @Test
     public void test() {
-        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                CompilerAsserts.neverPartOfCompilation("my message");
-                return null;
-            }
-        });
-        for (int i = 0; i < 10000; i++) {
-            target.call();
-        }
-
         ExportsTestObject1 o = new ExportsTestObject1();
         assertEquals("foo", getUncached(ExportsTestLibrary1.class, o).foo(o, 42));
     }
