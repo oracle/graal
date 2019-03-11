@@ -115,9 +115,7 @@ def gate_body(args, tasks):
                             unittest_args = ["--blacklist", fp.name]
                     else:
                         unittest_args = []
-                    if "true" == environ.get("TEST_LIBGRAAL_TIMING"):
-                        unittest_args.append("--enable-timing")
-
+                    unittest_args = unittest_args + ["--enable-timing", "--verbose"]
                     mx_unittest.unittest(unittest_args + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false", "truffle"])
 
             with Task('LibGraal GraalVM smoke test', tasks, tags=[VmGateTasks.libgraal]) as t:
