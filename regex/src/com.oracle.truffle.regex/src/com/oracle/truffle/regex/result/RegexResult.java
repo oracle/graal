@@ -57,7 +57,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  */
 public abstract class RegexResult extends AbstractConstantKeysObject {
 
-    public static final class NoMatchResult extends RegexResult {
+    public abstract static class NoMatchResult extends RegexResult {
 
         private NoMatchResult(RegexObject regex, Object input, int groupCount) {
             super(regex, input, groupCount);
@@ -69,7 +69,8 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
         }
     }
 
-    public static final NoMatchResult NO_MATCH = new NoMatchResult(null, "NULL", 0);
+    public static final NoMatchResult NO_MATCH = new NoMatchResult(null, "NULL", 0) {
+    };
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("input", "isMatch", "groupCount", "start", "end", "regex");
 
