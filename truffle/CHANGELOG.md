@@ -2,7 +2,7 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## Version 1.0.0 RC14
+## Version 1.0.0 RC15
 * This version includes a major revision of the Truffle Interoperability APIs. Most existing APIs for Truffle Interoperability were deprecated. The compatiblity layer may cause significant performance reduction for interoperability calls. 
 	* Please see the [Interop Migration Guide]() for an overview and individual `@deprecated` javadoc tags for guidance.
 	* Deprecated classes `ForeignAccess`, `Message`, `MessageResolution`, `Resolve` and `KeyInfo`. 
@@ -38,9 +38,11 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `NodeUtil.getCurrentEncapsulatingNode` to access the current encapsulating node in nodes that are not adoptable.
 * Added the `Assumption.isValidAssumption` method that allows for simpler checking of assumptions in generated code. 
 * Added Truffle DSL option `-Dtruffle.dsl.ignoreCompilerWarnings=true|false`, to ignore Truffle DSL compiler warnings. This is useful and recommended to be used for downstream testing.
-* Added `@CachedContext` and `@CachedLanguage` for convenient language and context lookup in specialiazations or exported methods.
-* Added `Node.getContextSupplier(Class)` and `Node.getLanguageSupplier(Class)` that allows for a more convenient lookup.
-* Deprecated `RootNode.getLanguage(Class)`, the new language suppliers should be used instead.
+* Added `@CachedContext` and `@CachedLanguage` for convenient language and context lookup in specializations or exported methods.
+* Added `Node.lookupContextReference(Class)` and `Node.lookupLanguageReference(Class)` that allows for a more convenient lookup.
+* Deprecated `RootNode.getLanguage(Class)`, the new language references should be used instead.
+
+## Version 1.0.0 RC14
 * Removed some deprecated elements:
     - EventBinding.getFilter
     - TruffleLanguage ParsingRequest.getFrame and ParsingRequest.getLocation

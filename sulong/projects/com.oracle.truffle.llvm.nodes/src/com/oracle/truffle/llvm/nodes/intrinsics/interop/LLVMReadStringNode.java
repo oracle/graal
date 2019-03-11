@@ -120,7 +120,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
         boolean isReadOnlyMemory(LLVMPointer address) {
             CompilerAsserts.neverPartOfCompilation();
-            LLVMGlobal global = getContextSupplier(LLVMLanguage.class).get().findGlobal(address);
+            LLVMGlobal global = lookupContextReference(LLVMLanguage.class).get().findGlobal(address);
             if (global != null) {
                 return global.isReadOnly();
             } else {

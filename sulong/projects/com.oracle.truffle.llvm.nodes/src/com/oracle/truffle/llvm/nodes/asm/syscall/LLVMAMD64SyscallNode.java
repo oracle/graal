@@ -54,7 +54,7 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     protected static final int NUM_SYSCALLS = 332;
 
     protected LLVMSyscallOperationNode createNode(long rax) {
-        return getContextSupplier(LLVMLanguage.class).get().getContextExtension(SystemContextExtension.class).createSyscallNode(rax);
+        return lookupContextReference(LLVMLanguage.class).get().getContextExtension(SystemContextExtension.class).createSyscallNode(rax);
     }
 
     @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")
@@ -84,8 +84,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     private void cacheTrace() {
         if (traceStream == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            traceStream = SulongEngineOption.getStream(getContextSupplier(LLVMLanguage.class).get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
-            traceEnabledFlag = SulongEngineOption.isTrue(getContextSupplier(LLVMLanguage.class).get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
+            traceStream = SulongEngineOption.getStream(lookupContextReference(LLVMLanguage.class).get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
+            traceEnabledFlag = SulongEngineOption.isTrue(lookupContextReference(LLVMLanguage.class).get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
         }
     }
 

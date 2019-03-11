@@ -49,6 +49,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
@@ -98,7 +99,7 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
         @Specialization
         static String s0(int value,
                         @CachedLanguage CachedLanguageTestLanguage language, //
-                        @CachedLanguage Supplier<CachedLanguageTestLanguage> languageSupplier) {
+                        @CachedLanguage LanguageReference<CachedLanguageTestLanguage> languageSupplier) {
             assertSame(CachedLanguageTestLanguage.getCurrentLanguage(), language);
             assertSame(CachedLanguageTestLanguage.getCurrentLanguage(), languageSupplier.get());
             return "s0";
@@ -107,7 +108,7 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
         @Specialization
         static String s1(double value,
                         @CachedLanguage CachedLanguageTestLanguage language, //
-                        @CachedLanguage Supplier<CachedLanguageTestLanguage> languageSupplier) {
+                        @CachedLanguage LanguageReference<CachedLanguageTestLanguage> languageSupplier) {
             assertSame(CachedLanguageTestLanguage.getCurrentLanguage(), language);
             assertSame(CachedLanguageTestLanguage.getCurrentLanguage(), languageSupplier.get());
             return "s1";
@@ -157,7 +158,7 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
 
         @Specialization
         static String s0(Object value,
-                        @ExpectError("Invalid @CachedLanguage specification. The parameter type must be a subtype of TruffleLanguage or of type Supplier<TruffleLanguage>.") @CachedLanguage Object language) {
+                        @ExpectError("Invalid @CachedLanguage specification. The parameter type must be a subtype of TruffleLanguage or of type LanguageReference<TruffleLanguage>.") @CachedLanguage Object language) {
             throw new AssertionError();
         }
     }
@@ -192,8 +193,8 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
 
         @Specialization
         static String s0(Object value,
-                        @ExpectError("Invalid @CachedLanguage specification. The first type argument of the Supplier must be a subtype of 'TruffleLanguage'.")//
-                        @CachedLanguage Supplier<? extends Object> languageSupplier) {
+                        @ExpectError("Invalid @CachedLanguage specification. The first type argument of the LanguageReference must be a subtype of 'TruffleLanguage'.")//
+                        @CachedLanguage LanguageReference<? extends Object> languageSupplier) {
             throw new AssertionError();
         }
     }
@@ -205,7 +206,7 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
         @Specialization
         static String s0(Object value,
                         @ExpectError("Invalid @CachedLanguage specification. The type 'TruffleLanguage' is not a valid language type. Valid language types must be annotated with @Registration.")//
-                        @CachedLanguage Supplier<TruffleLanguage<?>> languageSupplier) {
+                        @CachedLanguage LanguageReference<TruffleLanguage<?>> languageSupplier) {
             throw new AssertionError();
         }
     }
@@ -217,7 +218,7 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
         @Specialization
         static String s0(Object value,
                         @ExpectError("Invalid @CachedLanguage specification. The type 'InvalidLanguage' is not a valid language type. Valid language types must be annotated with @Registration.")//
-                        @CachedLanguage Supplier<InvalidLanguage> languageSupplier) {
+                        @CachedLanguage LanguageReference<InvalidLanguage> languageSupplier) {
             throw new AssertionError();
         }
     }
@@ -240,7 +241,7 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        final Object m1(@CachedLanguage Supplier<CachedLanguageTestLanguage> env) {
+        final Object m1(@CachedLanguage LanguageReference<CachedLanguageTestLanguage> env) {
             return "m1";
         }
     }

@@ -42,10 +42,10 @@ package com.oracle.truffle.nfi.impl;
 
 import java.lang.reflect.Array;
 import java.nio.ByteOrder;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -596,7 +596,7 @@ abstract class LibFFIType {
             static void doExecutableCached(LibFFIType.ClosureType type, NativeArgumentBuffer buffer, Object value,
                             @Cached("value") Object cachedValue,
                             @CachedLibrary("cachedValue") InteropLibrary interop,
-                            @CachedContext(NFILanguageImpl.class) Supplier<NFIContext> ctxRef,
+                            @CachedContext(NFILanguageImpl.class) ContextReference<NFIContext> ctxRef,
                             @Cached("create(type.signature, value, ctxRef)") LibFFIClosure cachedClosure) {
                 doClosure(type, buffer, cachedClosure);
             }
@@ -604,7 +604,7 @@ abstract class LibFFIType {
             @Specialization(limit = "0", replaces = "doExecutableCached", guards = {"isOther(value)", "interop.isExecutable(value)"})
             @TruffleBoundary
             static void doExecutableSlowPath(LibFFIType.ClosureType type, NativeArgumentBuffer buffer, Object value,
-                            @CachedContext(NFILanguageImpl.class) Supplier<NFIContext> ctxRef,
+                            @CachedContext(NFILanguageImpl.class) ContextReference<NFIContext> ctxRef,
                             @CachedLibrary("value") InteropLibrary interop) {
                 // TODO performance warning
                 LibFFIClosure closure = LibFFIClosure.create(type.signature, value, ctxRef);

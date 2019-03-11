@@ -128,7 +128,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         public LLVMBitcodeLibraryFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = getContextSupplier(LLVMLanguage.class).get();
+                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
                 this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(context));
             }
             return canCatch;
@@ -168,7 +168,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         public LLVMBitcodeLibraryFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = getContextSupplier(LLVMLanguage.class).get();
+                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
                 this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(context));
             }
             return canCatch;

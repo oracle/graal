@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop.typed;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -42,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import java.util.function.Supplier;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
@@ -53,7 +53,7 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
 
     @CompilationFinal private LLVMInteropType cachedType;
 
-    protected final LLVMInteropType getType(Supplier<LLVMContext> ctxRef, LLVMPointer pointer) {
+    protected final LLVMInteropType getType(ContextReference<LLVMContext> ctxRef, LLVMPointer pointer) {
         if (cachedType == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             LLVMGlobal global = ctxRef.get().findGlobal(pointer);
@@ -70,7 +70,7 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
 
     @Specialization
     LLVMInteropType doGlobal(LLVMPointer pointer,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef) {
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
         LLVMInteropType type = getType(ctxRef, pointer);
         if (type instanceof LLVMInteropType.Array) {
             return ((LLVMInteropType.Array) type).getElementType();

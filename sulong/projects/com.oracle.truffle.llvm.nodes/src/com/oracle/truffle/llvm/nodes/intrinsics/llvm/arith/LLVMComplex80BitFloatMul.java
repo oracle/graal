@@ -63,7 +63,7 @@ public abstract class LLVMComplex80BitFloatMul extends LLVMExpressionNode {
     }
 
     int getSizeInBytes() {
-        return getContextSupplier(LLVMLanguage.class).get().getDataSpecConverter().getSize(PrimitiveType.X86_FP80);
+        return lookupContextReference(LLVMLanguage.class).get().getDataSpecConverter().getSize(PrimitiveType.X86_FP80);
     }
 
     @Specialization

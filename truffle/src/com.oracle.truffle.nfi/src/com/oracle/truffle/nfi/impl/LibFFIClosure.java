@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.nfi.impl;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -57,15 +60,13 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.impl.LibFFIClosureFactory.UnboxStringNodeGen;
-import java.nio.ByteBuffer;
-import java.util.function.Supplier;
 
 @ExportLibrary(InteropLibrary.class)
 final class LibFFIClosure implements TruffleObject {
 
     final ClosureNativePointer nativePointer;
 
-    static LibFFIClosure create(LibFFISignature signature, Object executable, Supplier<NFIContext> ctxRef) {
+    static LibFFIClosure create(LibFFISignature signature, Object executable, ContextReference<NFIContext> ctxRef) {
         CompilerAsserts.neverPartOfCompilation();
         LibFFIClosure ret = new LibFFIClosure(ctxRef.get(), signature, executable);
         ret.nativePointer.registerManagedRef(ret);

@@ -583,15 +583,15 @@ public class FlatNodeGenFactory {
 
     public List<CodeVariableElement> createUncachedFields() {
         List<CodeVariableElement> fields = new ArrayList<>();
-        List<CacheExpression> cacheExpressions = computeUniqueSupplierCaches();
+        List<CacheExpression> cacheExpressions = computeUniqueReferenceCaches();
         for (CacheExpression cache : cacheExpressions) {
             CodeVariableElement supplierField = new CodeVariableElement(modifiers(PRIVATE, FINAL),
-                            cache.getSupplierType(), createSupplierName(cache));
+                            cache.getReferenceType(), createElementReferenceName(cache));
             CodeTreeBuilder builder = supplierField.createInitBuilder();
             if (cache.isCachedContext()) {
-                builder.startCall("getContextSupplier").typeLiteral(cache.getLanguageType()).end();
+                builder.startCall("lookupContextReference").typeLiteral(cache.getLanguageType()).end();
             } else {
-                builder.startCall("getLanguageSupplier").typeLiteral(cache.getLanguageType()).end();
+                builder.startCall("lookupLanguageReference").typeLiteral(cache.getLanguageType()).end();
             }
             fields.add(supplierField);
         }
@@ -749,10 +749,10 @@ public class FlatNodeGenFactory {
         }
 
         if (primaryNode) {
-            List<CacheExpression> cacheExpressions = computeUniqueSupplierCaches();
+            List<CacheExpression> cacheExpressions = computeUniqueReferenceCaches();
             for (CacheExpression cache : cacheExpressions) {
                 CodeVariableElement supplierField = new CodeVariableElement(modifiers(PRIVATE),
-                                cache.getSupplierType(), createSupplierName(cache));
+                                cache.getReferenceType(), createElementReferenceName(cache));
                 supplierField.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(CompilationFinal.class)));
                 clazz.getEnclosedElements().add(supplierField);
             }
@@ -865,10 +865,10 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private List<CacheExpression> computeUniqueSupplierCaches() {
+    private List<CacheExpression> computeUniqueReferenceCaches() {
         List<CacheExpression> cacheExpressions = new ArrayList<>();
-        Set<String> computedContextSuppliers = new HashSet<>();
-        Set<String> computedLanguageSuppliers = new HashSet<>();
+        Set<String> computedContextReferences = new HashSet<>();
+        Set<String> computedLanguageReferences = new HashSet<>();
         for (NodeData sharedNode : this.sharingNodes) {
             List<SpecializationData> specializations = calculateReachableSpecializations(sharedNode);
             for (SpecializationData specialization : specializations) {
@@ -879,17 +879,17 @@ public class FlatNodeGenFactory {
                     TypeMirror languageType = cache.getLanguageType();
                     String qualifiedLanguageTypeName = ElementUtils.getQualifiedName(languageType);
                     if (cache.isCachedLanguage()) {
-                        if (computedLanguageSuppliers.contains(qualifiedLanguageTypeName)) {
+                        if (computedLanguageReferences.contains(qualifiedLanguageTypeName)) {
                             continue;
                         } else {
-                            computedLanguageSuppliers.add(qualifiedLanguageTypeName);
+                            computedLanguageReferences.add(qualifiedLanguageTypeName);
                         }
                     }
                     if (cache.isCachedContext()) {
-                        if (computedContextSuppliers.contains(qualifiedLanguageTypeName)) {
+                        if (computedContextReferences.contains(qualifiedLanguageTypeName)) {
                             continue;
                         } else {
-                            computedContextSuppliers.add(qualifiedLanguageTypeName);
+                            computedContextReferences.add(qualifiedLanguageTypeName);
                         }
                     }
                     cacheExpressions.add(cache);
@@ -3821,7 +3821,7 @@ public class FlatNodeGenFactory {
 
     private Collection<IfTriple> persistAndInitializeCache(FrameState frameState, SpecializationData specialization, CacheExpression cache, boolean store, boolean persist) {
         List<IfTriple> triples = new ArrayList<>();
-        triples.addAll(initializeSuppliers(frameState, cache));
+        triples.addAll(initializeReferences(frameState, cache));
         CodeTree init = initializeCache(frameState, specialization, cache);
         if (store) {
             // store as local variable
@@ -3928,15 +3928,15 @@ public class FlatNodeGenFactory {
 
     }
 
-    private static List<IfTriple> initializeSuppliers(FrameState frameState, CacheExpression cache) {
+    private static List<IfTriple> initializeReferences(FrameState frameState, CacheExpression cache) {
         if (cache.isCachedContext() || cache.isCachedLanguage()) {
-            String supplierName = createSupplierName(cache);
+            String supplierName = createElementReferenceName(cache);
 
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             String supplierLocalName = supplierName + "_";
-            builder.declaration(cache.getSupplierType(), supplierLocalName, "this." + supplierName);
+            builder.declaration(cache.getReferenceType(), supplierLocalName, "this." + supplierName);
             builder.startIf().string(supplierLocalName).string(" == null").end().startBlock();
-            String method = cache.isCachedContext() ? "super.getContextSupplier" : "super.getLanguageSupplier";
+            String method = cache.isCachedContext() ? "super.lookupContextReference" : "super.lookupLanguageReference";
             builder.startStatement().string("this.", supplierName).string(" = ").string(supplierLocalName).string(" = ").startCall(method).typeLiteral(cache.getLanguageType()).end().end();
             builder.end();
 
@@ -3946,7 +3946,7 @@ public class FlatNodeGenFactory {
             } else {
                 frameState.setBoolean(supplierInitialized, true);
             }
-            frameState.set(supplierName, new LocalVariable(cache.getSupplierType(), supplierLocalName, null));
+            frameState.set(supplierName, new LocalVariable(cache.getReferenceType(), supplierLocalName, null));
             return Arrays.asList(new IfTriple(builder.build(), null, null));
         }
         return Collections.emptyList();
@@ -4000,7 +4000,7 @@ public class FlatNodeGenFactory {
                 tree = CodeTreeBuilder.singleString("this." + cache.getMergedLibraryIdentifier());
             }
         } else if (cache.isCachedContext() || cache.isCachedLanguage()) {
-            String fieldName = createSupplierName(cache);
+            String fieldName = createElementReferenceName(cache);
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
             LocalVariable var = frameState.get(fieldName);
@@ -4009,7 +4009,7 @@ public class FlatNodeGenFactory {
             } else {
                 builder.string("this.").string(fieldName);
             }
-            if (!cache.isSupplier()) {
+            if (!cache.isReference()) {
                 builder.string(".get()");
             }
             tree = builder.build();
@@ -4025,11 +4025,11 @@ public class FlatNodeGenFactory {
         return tree;
     }
 
-    private static String createSupplierName(CacheExpression cache) {
+    private static String createElementReferenceName(CacheExpression cache) {
         if (cache.isCachedContext()) {
-            return ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(cache.getLanguageType())) + "ContextSupplier_";
+            return ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(cache.getLanguageType())) + "ContextReference_";
         } else if (cache.isCachedLanguage()) {
-            return ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(cache.getLanguageType())) + "Supplier_";
+            return ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(cache.getLanguageType())) + "Reference_";
         } else {
             throw new AssertionError();
         }

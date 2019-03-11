@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -62,7 +63,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import java.util.function.Supplier;
 
 public abstract class LLVMDispatchNode extends LLVMNode {
 
@@ -79,7 +79,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         if (signature == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             try {
-                LLVMContext context = getContextSupplier(LLVMLanguage.class).get();
+                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
                 NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
                 this.signature = nfiContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
             } catch (UnsupportedNativeTypeException ex) {
@@ -158,7 +158,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @Cached("bindSymbol(cachedDescriptor)") Object cachedBoundFunction,
                     @CachedLibrary("cachedBoundFunction") InteropLibrary nativeCall,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> context,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
 
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
@@ -181,7 +181,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @CachedLibrary(limit = "3") InteropLibrary nativeCall,
                     @CachedLibrary(limit = "3") InteropLibrary bind,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> context,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
 
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);

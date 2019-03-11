@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,7 +53,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import java.util.function.Supplier;
 
 public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
@@ -69,7 +69,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     @TruffleBoundary
     protected TruffleObject identityFunction() {
-        LLVMContext context = getContextSupplier(LLVMLanguage.class).get();
+        LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
         NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
         String signature;
         try {
@@ -122,7 +122,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     @Specialization(guards = "function.asNative() == cachedFunction.asNative()")
     @SuppressWarnings("unused")
     protected Object doCached(LLVMNativePointer function, Object[] arguments,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> context,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("function") LLVMNativePointer cachedFunction,
                     @Cached("dispatchIdentity(cachedFunction.asNative())") Object nativeFunctionHandle,
                     @CachedLibrary("nativeFunctionHandle") InteropLibrary nativeCall,
@@ -139,7 +139,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     @Specialization
     protected Object doGeneric(LLVMNativePointer function, Object[] arguments,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> context,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @CachedLibrary(limit = "5") InteropLibrary nativeCall,

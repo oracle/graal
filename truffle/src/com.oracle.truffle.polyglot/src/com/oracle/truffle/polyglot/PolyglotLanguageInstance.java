@@ -45,7 +45,6 @@ import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -53,6 +52,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotValue.InteropCodeCache;
 
@@ -70,7 +71,7 @@ final class PolyglotLanguageInstance implements VMObject {
 
     private final DirectLanguageSupplier directLanguageSupplier;
     private final DirectOrMultiLanguageSupplier singleOrMultiLanguageSupplier;
-    private final Supplier<Object> directContextSupplier;
+    private final ContextReference<Object> directContextSupplier;
     final Assumption singleContext;
 
     PolyglotLanguageInstance(PolyglotLanguage language) {
@@ -144,11 +145,11 @@ final class PolyglotLanguageInstance implements VMObject {
         return sourceCache;
     }
 
-    Supplier<Object> getDirectContextSupplier() {
+    ContextReference<Object> getDirectContextSupplier() {
         return directContextSupplier;
     }
 
-    Supplier<Object> lookupContextSupplier(PolyglotLanguageInstance sourceLanguage) {
+    ContextReference<Object> lookupContextSupplier(PolyglotLanguageInstance sourceLanguage) {
         assert this != sourceLanguage;
         switch (getEffectiveContextPolicy(sourceLanguage)) {
             case EXCLUSIVE:
@@ -161,11 +162,11 @@ final class PolyglotLanguageInstance implements VMObject {
         }
     }
 
-    Supplier<TruffleLanguage<? extends Object>> getDirectLanguageSupplier() {
+    LanguageReference<TruffleLanguage<? extends Object>> getDirectLanguageSupplier() {
         return directLanguageSupplier;
     }
 
-    Supplier<TruffleLanguage<?>> lookupLanguageSupplier(PolyglotLanguageInstance sourceLanguage) {
+    LanguageReference<TruffleLanguage<?>> lookupLanguageSupplier(PolyglotLanguageInstance sourceLanguage) {
         assert this != sourceLanguage;
         switch (getEffectiveContextPolicy(sourceLanguage)) {
             case EXCLUSIVE:
@@ -198,7 +199,7 @@ final class PolyglotLanguageInstance implements VMObject {
         return sourcePolicy;
     }
 
-    private static final class DirectLanguageSupplier implements Supplier<TruffleLanguage<?>> {
+    private static final class DirectLanguageSupplier extends LanguageReference<TruffleLanguage<?>> {
 
         private final TruffleLanguage<?> spi;
 
@@ -213,10 +214,10 @@ final class PolyglotLanguageInstance implements VMObject {
 
     }
 
-    private static final class DirectOrMultiLanguageSupplier implements Supplier<TruffleLanguage<?>> {
+    private static final class DirectOrMultiLanguageSupplier extends LanguageReference<TruffleLanguage<?>> {
 
         private final WeakReference<DirectLanguageSupplier> singleLanguageSupplier;
-        private final Supplier<TruffleLanguage<?>> multiLanguageSupplier;
+        private final LanguageReference<TruffleLanguage<?>> multiLanguageSupplier;
         private final Assumption singleLanguage;
 
         DirectOrMultiLanguageSupplier(PolyglotLanguageInstance targetLanguage, DirectLanguageSupplier directSupplier) {
@@ -237,7 +238,7 @@ final class PolyglotLanguageInstance implements VMObject {
         }
     }
 
-    private static final class DirectSingleContextSupplier implements Supplier<Object> {
+    private static final class DirectSingleContextSupplier extends ContextReference<Object> {
 
         private static final Object UNSET = new Object();
 
@@ -260,10 +261,10 @@ final class PolyglotLanguageInstance implements VMObject {
         }
     }
 
-    private static final class DirectSingleOrMultiContextSupplier implements Supplier<Object> {
+    private static final class DirectSingleOrMultiContextSupplier extends ContextReference<Object> {
 
         private final WeakReference<DirectSingleContextSupplier> singleContextSupplier;
-        private final Supplier<Object> multiContextSupplier;
+        private final ContextReference<Object> multiContextSupplier;
         private final Assumption singleContext;
 
         DirectSingleOrMultiContextSupplier(PolyglotLanguageInstance instance) {

@@ -40,56 +40,16 @@
  */
 package com.oracle.truffle.api.library.test;
 
-import static org.junit.Assert.assertEquals;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
 
-import java.util.Arrays;
-import java.util.List;
+@GenerateLibrary
+public abstract class ReflectiveExportLibrary extends Library {
 
-import org.junit.Test;
-import org.junit.runners.Parameterized.Parameters;
+    public abstract String m0(Object receiver);
 
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.library.Message;
-import com.oracle.truffle.api.library.ReflectionLibrary;
-
-/*
- * Test shows how reflective exports are possible. Reflective means that there is no dependency to
- * the library class from the export implementation.
- */
-public class ReflectiveExportTest extends AbstractParametrizedLibraryTest {
-
-    @Parameters(name = "{0}")
-    public static List<TestRun> data() {
-        return Arrays.asList(TestRun.CACHED, TestRun.UNCACHED, TestRun.DISPATCHED_CACHED, TestRun.DISPATCHED_UNCACHED);
-    }
-
-    @ExportLibrary(ReflectionLibrary.class)
-    public static class ReflectiveExport {
-
-        static final Message M0 = Message.resolve(ReflectiveExportLibrary.class, "m0", false);
-        static final Message M1 = Message.resolve(ReflectiveExportLibrary.class, "m1", false);
-
-        Object m0() {
-            return "m0_reflective";
-        }
-
-        @ExportMessage
-        final Object send(Message message, @SuppressWarnings("unused") Object[] args) throws Exception {
-            if (message == M0) {
-                return m0();
-            } else {
-                return "other_reflective";
-            }
-        }
-    }
-
-    @Test
-    public void reflectiveImpl() {
-        ReflectiveExport ref = new ReflectiveExport();
-        ReflectiveExportLibrary lib = createLibrary(ReflectiveExportLibrary.class, ref);
-        assertEquals("m0_reflective", lib.m0(ref));
-        assertEquals("other_reflective", lib.m1(ref));
+    public String m1(@SuppressWarnings("unused") Object receiver) {
+        return "m1_default";
     }
 
 }

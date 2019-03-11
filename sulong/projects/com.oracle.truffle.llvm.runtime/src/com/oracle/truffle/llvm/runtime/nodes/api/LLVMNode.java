@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 import java.io.PrintStream;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -46,7 +47,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import java.util.function.Supplier;
 
 @TypeSystemReference(LLVMTypes.class)
 public abstract class LLVMNode extends Node {
@@ -85,11 +85,11 @@ public abstract class LLVMNode extends Node {
         return LLVMLanguage.getLanguage().getCapability(UnsafeArrayAccess.class);
     }
 
-    protected static PrintStream nativeCallStatisticsStream(Supplier<LLVMContext> context) {
+    protected static PrintStream nativeCallStatisticsStream(ContextReference<LLVMContext> context) {
         return SulongEngineOption.getStream(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 
-    protected static boolean nativeCallStatisticsEnabled(Supplier<LLVMContext> context) {
+    protected static boolean nativeCallStatisticsEnabled(ContextReference<LLVMContext> context) {
         return SulongEngineOption.isTrue(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 

@@ -52,6 +52,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -100,7 +101,7 @@ public class CachedContextTest extends AbstractPolyglotTest {
         @Specialization
         static String s0(int value,
                         @CachedContext(CachedContextTestLanguage.class) Env context,
-                        @CachedContext(CachedContextTestLanguage.class) Supplier<Env> contextSupplier) {
+                        @CachedContext(CachedContextTestLanguage.class) ContextReference<Env> contextSupplier) {
             assertSame(CachedContextTestLanguage.getCurrentContext(), context);
             assertSame(CachedContextTestLanguage.getCurrentContext(), contextSupplier.get());
             return "s0";
@@ -109,7 +110,7 @@ public class CachedContextTest extends AbstractPolyglotTest {
         @Specialization
         static String s1(double value,
                         @CachedContext(CachedContextTestLanguage.class) Env context,
-                        @CachedContext(CachedContextTestLanguage.class) Supplier<Env> contextSupplier) {
+                        @CachedContext(CachedContextTestLanguage.class) ContextReference<Env> contextSupplier) {
             assertSame(CachedContextTestLanguage.getCurrentContext(), context);
             assertSame(CachedContextTestLanguage.getCurrentContext(), contextSupplier.get());
             return "s1";
@@ -253,7 +254,7 @@ public class CachedContextTest extends AbstractPolyglotTest {
 
         @Specialization
         static String s0(Object value,
-                        @ExpectError("Invalid @CachedContext specification. The parameter type must match the context type 'Env' or 'Supplier<Env>'.") //
+                        @ExpectError("Invalid @CachedContext specification. The parameter type must match the context type 'Env' or 'ContextReference<Env>'.") //
                         @CachedContext(CachedContextTestLanguage.class) Object context) {
             throw new AssertionError();
         }
@@ -265,8 +266,8 @@ public class CachedContextTest extends AbstractPolyglotTest {
 
         @Specialization
         static String s0(Object value,
-                        @ExpectError("Invalid @CachedContext specification. The parameter type must match the context type 'Env' or 'Supplier<Env>'.")//
-                        @CachedContext(CachedContextTestLanguage.class) Supplier<Object> context) {
+                        @ExpectError("Invalid @CachedContext specification. The parameter type must match the context type 'Env' or 'ContextReference<Env>'.")//
+                        @CachedContext(CachedContextTestLanguage.class) ContextReference<Object> context) {
             throw new AssertionError();
         }
     }
@@ -277,8 +278,8 @@ public class CachedContextTest extends AbstractPolyglotTest {
 
         @Specialization
         static String s0(Object value,
-                        @ExpectError("Invalid @CachedContext specification. The parameter type must match the context type 'Env' or 'Supplier<Env>'.") //
-                        @CachedContext(CachedContextTestLanguage.class) Supplier<?> context) {
+                        @ExpectError("Invalid @CachedContext specification. The parameter type must match the context type 'Env' or 'ContextReference<Env>'.") //
+                        @CachedContext(CachedContextTestLanguage.class) ContextReference<?> context) {
             throw new AssertionError();
         }
     }
@@ -301,7 +302,7 @@ public class CachedContextTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        final Object m1(@CachedContext(CachedContextTestLanguage.class) Supplier<Env> env) {
+        final Object m1(@CachedContext(CachedContextTestLanguage.class) ContextReference<Env> env) {
             return "m1";
         }
     }

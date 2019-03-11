@@ -82,7 +82,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -102,6 +101,8 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -1994,10 +1995,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 TypeMirror languageType = cache.getParameter().getType();
 
                 boolean isLanguage = ElementUtils.isAssignable(languageType, context.getType(TruffleLanguage.class));
-                boolean isLanguageSupplier = ElementUtils.isAssignable(languageType, context.getType(Supplier.class));
+                boolean isLanguageReference = ElementUtils.isAssignable(languageType, context.getType(LanguageReference.class));
 
-                if (!isLanguage && !isLanguageSupplier) {
-                    cache.addError("Invalid @%s specification. The parameter type must be a subtype of %s or of type Supplier<%s>.",
+                if (!isLanguage && !isLanguageReference) {
+                    cache.addError("Invalid @%s specification. The parameter type must be a subtype of %s or of type LanguageReference<%s>.",
                                     CachedLanguage.class.getSimpleName(),
                                     TruffleLanguage.class.getSimpleName(),
                                     TruffleLanguage.class.getSimpleName());
@@ -2005,10 +2006,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 TypeMirror supplierType;
-                if (isLanguageSupplier) {
+                if (isLanguageReference) {
                     TypeMirror typeArgument = getFirstTypeArgument(languageType);
                     if (typeArgument == null || !ElementUtils.isAssignable(typeArgument, context.getType(TruffleLanguage.class))) {
-                        cache.addError("Invalid @%s specification. The first type argument of the Supplier must be a subtype of '%s'.",
+                        cache.addError("Invalid @%s specification. The first type argument of the LanguageReference must be a subtype of '%s'.",
                                         CachedLanguage.class.getSimpleName(),
                                         TruffleLanguage.class.getSimpleName());
                     } else {
@@ -2018,20 +2019,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     languageType = typeArgument;
                 } else {
                     verifyLanguageType(CachedLanguage.class, cache, languageType);
-                    supplierType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Supplier.class), Arrays.asList(languageType));
+                    supplierType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(LanguageReference.class), Arrays.asList(languageType));
                 }
                 if (cache.hasErrors()) {
                     continue parameters;
                 }
-                String fieldName = ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(languageType)) + "Supplier_";
+                String fieldName = ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(languageType)) + "Reference_";
                 CodeVariableElement variableElement = new CodeVariableElement(supplierType, fieldName);
                 List<? extends Element> elements = Arrays.asList(variableElement);
                 DSLExpressionResolver localResolver = resolver.copy(elements);
-                DSLExpression accessSupplier = new DSLExpression.Variable(null, "null");
-                cache.setSupplierType(supplierType);
+                DSLExpression accessReference = new DSLExpression.Variable(null, "null");
+                cache.setReferenceType(supplierType);
                 cache.setLanguageType(languageType);
-                cache.setDefaultExpression(resolveCachedExpression(localResolver, cache, null, accessSupplier, null));
-                cache.setUncachedExpression(resolveCachedExpression(localResolver, cache, null, accessSupplier, null));
+                cache.setDefaultExpression(resolveCachedExpression(localResolver, cache, null, accessReference, null));
+                cache.setUncachedExpression(resolveCachedExpression(localResolver, cache, null, accessReference, null));
                 cache.setAlwaysInitialized(true);
             } else if (cache.isCachedContext()) {
                 AnnotationMirror cachedContext = cache.getMessageAnnotation();
@@ -2066,24 +2067,24 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 TypeMirror declaredContextType = parameter.getType();
-                if (ElementUtils.typeEquals(ElementUtils.eraseGenericTypes(parameter.getType()), ElementUtils.eraseGenericTypes(context.getType(Supplier.class)))) {
+                if (ElementUtils.typeEquals(ElementUtils.eraseGenericTypes(parameter.getType()), ElementUtils.eraseGenericTypes(context.getType(ContextReference.class)))) {
                     declaredContextType = getFirstTypeArgument(parameter.getType());
                 }
 
                 if (!ElementUtils.typeEquals(contextType, declaredContextType)) {
-                    cache.addError("Invalid @%s specification. The parameter type must match the context type '%s' or 'Supplier<%s>'.",
+                    cache.addError("Invalid @%s specification. The parameter type must match the context type '%s' or 'ContextReference<%s>'.",
                                     CachedContext.class.getSimpleName(),
                                     ElementUtils.getSimpleName(contextType),
                                     ElementUtils.getSimpleName(contextType));
                     continue parameters;
                 }
-                TypeMirror supplierType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Supplier.class), Arrays.asList(contextType));
+                TypeMirror referenceType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(ContextReference.class), Arrays.asList(contextType));
 
-                DSLExpression accessSupplier = new DSLExpression.Variable(null, "null");
-                cache.setSupplierType(supplierType);
+                DSLExpression accessReference = new DSLExpression.Variable(null, "null");
+                cache.setReferenceType(referenceType);
                 cache.setLanguageType(languageType);
-                cache.setDefaultExpression(resolveCachedExpression(resolver, cache, null, accessSupplier, null));
-                cache.setUncachedExpression(resolveCachedExpression(resolver, cache, null, accessSupplier, null));
+                cache.setDefaultExpression(resolveCachedExpression(resolver, cache, null, accessReference, null));
+                cache.setUncachedExpression(resolveCachedExpression(resolver, cache, null, accessReference, null));
                 cache.setAlwaysInitialized(true);
             }
         }

@@ -82,7 +82,7 @@ public class SLRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert getContextSupplier(SLLanguage.class).get() != null;
+        assert lookupContextReference(SLLanguage.class).get() != null;
         return bodyNode.executeGeneric(frame);
     }
 

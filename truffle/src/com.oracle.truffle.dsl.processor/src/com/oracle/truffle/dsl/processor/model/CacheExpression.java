@@ -76,7 +76,7 @@ public final class CacheExpression extends MessageContainer {
     private boolean mergedLibrary;
 
     private TypeMirror languageType;
-    private TypeMirror supplierType;
+    private TypeMirror referenceType;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
@@ -97,20 +97,20 @@ public final class CacheExpression extends MessageContainer {
         this.languageType = languageType;
     }
 
-    public boolean isSupplier() {
+    public boolean isReference() {
         if (isCachedLanguage()) {
             return !ElementUtils.typeEquals(getLanguageType(), getParameter().getType());
         } else {
-            return ElementUtils.typeEquals(getSupplierType(), getParameter().getType());
+            return ElementUtils.typeEquals(getReferenceType(), getParameter().getType());
         }
     }
 
-    public TypeMirror getSupplierType() {
-        return supplierType;
+    public TypeMirror getReferenceType() {
+        return referenceType;
     }
 
-    public void setSupplierType(TypeMirror supplierType) {
-        this.supplierType = supplierType;
+    public void setReferenceType(TypeMirror supplierType) {
+        this.referenceType = supplierType;
     }
 
     public TypeMirror getLanguageType() {

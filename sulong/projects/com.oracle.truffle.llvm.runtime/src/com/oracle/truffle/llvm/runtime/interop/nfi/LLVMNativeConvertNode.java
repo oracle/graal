@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.nfi;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -57,7 +58,6 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import java.util.function.Supplier;
 
 public abstract class LLVMNativeConvertNode extends LLVMNode {
 
@@ -151,7 +151,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         @Specialization(limit = "10", guards = {"pointer.asNative() == cachedAddress", "cachedAddress != 0", "cachedDescriptor != null", "cachedDescriptor.isNativeFunction()"})
         @SuppressWarnings("unused")
         protected static TruffleObject doHandleToNativeFunctionCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
-                        @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef,
+                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                         @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
                         @Cached("doLookup(ctxRef, pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
                         @Cached("cachedDescriptor.getNativeFunction()") TruffleObject cachedNative) {
@@ -161,7 +161,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         @Specialization(limit = "10", guards = {"pointer.asNative() == cachedAddress", "cachedAddress != 0", "cachedDescriptor != null", "!cachedDescriptor.isNativeFunction()"})
         @SuppressWarnings("unused")
         protected static TruffleObject doHandleToDirectFunctionCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
-                        @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef,
+                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                         @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
                         @Cached("doLookup(ctxRef, pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
                         @Cached("createNativeWrapper(cachedDescriptor)") TruffleObject cachedNative) {
@@ -171,7 +171,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         @Specialization(limit = "10", guards = {"pointer.asNative() == cachedAddress", "cachedAddress != 0", "cachedDescriptor == null"})
         @SuppressWarnings("unused")
         protected static TruffleObject doCachedPointer(LLVMNativePointer pointer,
-                        @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef,
+                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                         @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
                         @Cached("doLookup(ctxRef, pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor) {
             // we did not find a function when doing the reverse lookup, so we assume that this is a
@@ -181,7 +181,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
 
         @Specialization(guards = {"pointer.asNative() != 0"}, replaces = {"doHandleToNativeFunctionCached", "doHandleToDirectFunctionCached", "doCachedPointer"})
         protected TruffleObject doUncachedHandle(LLVMNativePointer pointer,
-                        @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef) {
+                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
             LLVMFunctionDescriptor descriptor = doLookup(ctxRef, pointer);
             if (descriptor == null) {
                 return pointer;
@@ -224,13 +224,13 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
             return toNative.executeWithTarget(pointer);
         }
 
-        protected LLVMFunctionDescriptor doLookup(Supplier<LLVMContext> ctxRef, LLVMNativePointer pointer) {
+        protected LLVMFunctionDescriptor doLookup(ContextReference<LLVMContext> ctxRef, LLVMNativePointer pointer) {
             return ctxRef.get().getFunctionDescriptor(pointer);
         }
 
         protected NullPointerNode createNullPointerNode() {
             CompilerAsserts.neverPartOfCompilation();
-            LLVMContext context = getContextSupplier(LLVMLanguage.class).get();
+            LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
             return context.getContextExtension(NFIContextExtension.class).getNativeSulongFunctions().createNullPointerNode(context);
         }
 

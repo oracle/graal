@@ -44,16 +44,16 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.function.Supplier;
 
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Allows to access the current language instance in specializations or exported messages. The
- * parameter type must be the exact type of the language access or a {@link Supplier} that provides
- * it. The latter parameter allows to lookup the language lazily, e.g. in a conditional branch.
- * Using this annotation always allows to generate {@link GenerateUncached uncached} versions of the
- * node.
+ * parameter type must be the exact type of the language access or a {@link LanguageReference} that
+ * provides it. The latter parameter allows to lookup the language lazily, e.g. in a conditional
+ * branch. Using this annotation always allows to generate {@link GenerateUncached uncached}
+ * versions of the node.
  * <p>
  * This annotation can be used in two different ways:
  * <ol>
@@ -85,10 +85,10 @@ import com.oracle.truffle.api.nodes.Node;
  *
  *     &#64;Specialization
  *     static int doInt(int value,
- *                     &#64;CachedLanguage Supplier<MyLanguage> supplier) {
+ *                     &#64;CachedLanguage LanguageReference<MyLanguage> ref) {
  *         if (value == 42) {
  *             // use context conditionally
- *             MyLanguage language = supplier.get();
+ *             MyLanguage language = ref.get();
  *
  *         }
  *         return value;
@@ -97,7 +97,7 @@ import com.oracle.truffle.api.nodes.Node;
  * </pre>
  * </ol>
  * <p>
- * The generated code uses the {@link Node#getLanguageSupplier(Class)} method to implement this
+ * The generated code uses the {@link Node#lookupLanguageReference(Class)} method to implement this
  * feature. This method may also be used manually.
  *
  * @see Cached @Cached for more information on using this annotation.

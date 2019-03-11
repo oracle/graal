@@ -44,9 +44,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -54,9 +54,9 @@ import com.oracle.truffle.api.nodes.Node;
  * Allows to access the current language execution context in specializations or exported messages.
  * The cached context annotation requires to specify a concrete {@link TruffleLanguage} subclass in
  * order to identify the language uniquely. The parameter type must be the language context type of
- * the language or a {@link Supplier} that provides it. The latter parameter allows to lookup the
- * context lazily, e.g. in a conditional branch. Using this annotation always allows to generate
- * {@link GenerateUncached uncached} versions of the node.
+ * the language or a {@link ContextReference} that provides it. The latter parameter allows to
+ * lookup the context lazily, e.g. in a conditional branch. Using this annotation always allows to
+ * generate {@link GenerateUncached uncached} versions of the node.
  * <p>
  * This annotation can be used in two different ways:
  * <ol>
@@ -88,10 +88,10 @@ import com.oracle.truffle.api.nodes.Node;
  *
  *     &#64;Specialization
  *     static int doInt(int value,
- *                     &#64;CachedContext(MyLanguage.class) Supplier<MyContext> supplier) {
+ *                     &#64;CachedContext(MyLanguage.class) ContextReference<MyContext> ref) {
  *         if (value == 42) {
  *             // use context conditionally
- *             MyContext context = supplier.get();
+ *             MyContext context = ref.get();
  *
  *         }
  *         return value;
@@ -100,7 +100,7 @@ import com.oracle.truffle.api.nodes.Node;
  * </pre>
  * </ol>
  * <p>
- * The generated code uses the {@link Node#getContextSupplier(Class)} method to implement this
+ * The generated code uses the {@link Node#lookupContextReference(Class)} method to implement this
  * feature. This method may also be used manually.
  *
  * @see Cached @Cached for more information on using this annotation.

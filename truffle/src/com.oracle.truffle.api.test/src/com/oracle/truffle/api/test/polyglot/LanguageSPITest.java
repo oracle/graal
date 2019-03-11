@@ -1625,7 +1625,7 @@ public class LanguageSPITest {
                 return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        return getContextSupplier(ProxyLanguage.class).get().env.getPolyglotBindings();
+                        return lookupContextReference(ProxyLanguage.class).get().env.getPolyglotBindings();
                     }
                 });
             }
@@ -1663,7 +1663,7 @@ public class LanguageSPITest {
                 return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        return getContextSupplier(ProxyLanguage.class).get().env.getPolyglotBindings();
+                        return lookupContextReference(ProxyLanguage.class).get().env.getPolyglotBindings();
                     }
                 });
             }
@@ -1711,7 +1711,7 @@ public class LanguageSPITest {
                 return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        Object bindings = getContextSupplier(ProxyLanguage.class).get().env.getPolyglotBindings();
+                        Object bindings = lookupContextReference(ProxyLanguage.class).get().env.getPolyglotBindings();
                         try {
                             boundary(bindings);
                         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {

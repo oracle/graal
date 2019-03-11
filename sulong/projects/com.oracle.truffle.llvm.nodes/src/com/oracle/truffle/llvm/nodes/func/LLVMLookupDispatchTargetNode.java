@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -45,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import java.util.function.Supplier;
 
 @NodeChild(value = "function", type = LLVMExpressionNode.class)
 public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
@@ -76,7 +76,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
     @SuppressWarnings("unused")
     protected static LLVMFunctionDescriptor doHandleCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
                     @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                     @Cached("lookupFunction(ctxRef, pointer)") LLVMFunctionDescriptor cachedDescriptor) {
         return cachedDescriptor;
     }
@@ -85,14 +85,14 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
     @SuppressWarnings("unused")
     protected static LLVMNativePointer doNativeFunctionCached(LLVMNativePointer pointer,
                     @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                     @Cached("lookupFunction(ctxRef, pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor) {
         return pointer;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(pointer.asNative())", replaces = {"doHandleCached", "doNativeFunctionCached"})
     protected Object doLookup(LLVMNativePointer pointer,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef) {
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
         LLVMFunctionDescriptor descriptor = lookupFunction(ctxRef, pointer);
         if (descriptor != null) {
             return descriptor;
@@ -107,7 +107,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         return doForeign(foreignFunction);
     }
 
-    protected LLVMFunctionDescriptor lookupFunction(Supplier<LLVMContext> ctxRef, LLVMNativePointer function) {
+    protected LLVMFunctionDescriptor lookupFunction(ContextReference<LLVMContext> ctxRef, LLVMNativePointer function) {
         return ctxRef.get().getFunctionDescriptor(function);
     }
 

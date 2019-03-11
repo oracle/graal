@@ -52,7 +52,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class LLVMPanic extends LLVMIntrinsic {
 
     protected PanicLocType createPanicLocation() {
-        DataLayout dataSpecConverter = getContextSupplier(LLVMLanguage.class).get().getDataSpecConverter();
+        DataLayout dataSpecConverter = lookupContextReference(LLVMLanguage.class).get().getDataSpecConverter();
         return PanicLocType.create(dataSpecConverter);
     }
 

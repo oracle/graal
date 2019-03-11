@@ -41,13 +41,14 @@
 package com.oracle.truffle.api.nodes;
 
 import java.util.concurrent.locks.Lock;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
@@ -68,7 +69,7 @@ public abstract class ExecutableNode extends Node {
      */
     @CompilationFinal Object sourceVM;
     final TruffleLanguage<?> language;
-    @CompilationFinal SupplierCache supplierCache;
+    @CompilationFinal ReferenceCache referenceCache;
 
     /**
      * Creates new executable node with a given language instance. The language instance is
@@ -112,7 +113,7 @@ public abstract class ExecutableNode extends Node {
     /**
      * Returns public information about the language. The language can be assumed equal if the
      * instances of the language info instance are the same. To access internal details of the
-     * language within the language implementation use {@link #getLanguageSupplier(Class)}.
+     * language within the language implementation use {@link #getLanguageReference(Class)}.
      *
      * @since 0.31
      */
@@ -133,7 +134,7 @@ public abstract class ExecutableNode extends Node {
      *
      * @see #getLanguageInfo()
      * @since 0.31
-     * @deprecated use {@link #getLanguageSupplier(Class)} instead.
+     * @deprecated use {@link #getLanguageReference(Class)} instead.
      */
     @Deprecated
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -151,20 +152,20 @@ public abstract class ExecutableNode extends Node {
         return (C) spi;
     }
 
-    static class SupplierCache {
+    static class ReferenceCache {
 
         final Class<?> languageClass;
-        final Supplier<?> languageReference;
-        final Supplier<?> contextReference;
-        final SupplierCache next;
+        final LanguageReference<?> languageReference;
+        final ContextReference<?> contextReference;
+        final ReferenceCache next;
 
         @SuppressWarnings("unchecked")
-        SupplierCache(ExecutableNode executableNode, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass, SupplierCache next) {
+        ReferenceCache(ExecutableNode executableNode, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass, ReferenceCache next) {
             this.languageClass = languageClass;
             if (languageClass != null) {
-                this.languageReference = Node.ACCESSOR.engineSupport().lookupLanguageSupplier(executableNode.sourceVM,
+                this.languageReference = Node.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.sourceVM,
                                 executableNode.language, languageClass);
-                this.contextReference = Node.ACCESSOR.engineSupport().lookupContextSupplier(executableNode.sourceVM,
+                this.contextReference = Node.ACCESSOR.engineSupport().lookupContextReference(executableNode.sourceVM,
                                 executableNode.language, languageClass);
             } else {
                 this.languageReference = null;
@@ -176,9 +177,9 @@ public abstract class ExecutableNode extends Node {
 
     @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     @SuppressWarnings("rawtypes")
-    final SupplierCache lookupSupplierCache(Class<? extends TruffleLanguage> languageClass) {
+    final ReferenceCache lookupReferenceCache(Class<? extends TruffleLanguage> languageClass) {
         do {
-            SupplierCache current = this.supplierCache;
+            ReferenceCache current = this.referenceCache;
             if (current == GENERIC) {
                 return null;
             }
@@ -189,31 +190,31 @@ public abstract class ExecutableNode extends Node {
                 current = current.next;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            specializeSupplierCache(languageClass);
+            specializeReferenceCache(languageClass);
         } while (true);
     }
 
-    private static final SupplierCache GENERIC = new SupplierCache(null, null, null);
+    private static final ReferenceCache GENERIC = new ReferenceCache(null, null, null);
 
     @SuppressWarnings("rawtypes")
-    private void specializeSupplierCache(Class<? extends TruffleLanguage> languageClass) {
+    private void specializeReferenceCache(Class<? extends TruffleLanguage> languageClass) {
         Lock lock = getLock();
         lock.lock();
         try {
-            SupplierCache current = this.supplierCache;
+            ReferenceCache current = this.referenceCache;
             if (current == null) {
-                this.supplierCache = new SupplierCache(this, languageClass, null);
+                this.referenceCache = new ReferenceCache(this, languageClass, null);
             } else {
                 int count = 0;
-                SupplierCache original = current;
+                ReferenceCache original = current;
                 do {
                     count++;
                     current = current.next;
                 } while (current != null);
                 if (count >= 5) {
-                    this.supplierCache = GENERIC;
+                    this.referenceCache = GENERIC;
                 } else {
-                    this.supplierCache = new SupplierCache(this, languageClass, original);
+                    this.referenceCache = new ReferenceCache(this, languageClass, original);
                 }
             }
         } finally {

@@ -71,7 +71,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
@@ -223,7 +225,7 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getObjectLanguage(Object obj, Object vmObject);
 
-        public abstract Supplier<Object> getCurrentContextSupplier(Object languageVMObject);
+        public abstract ContextReference<Object> getCurrentContextSupplier(Object languageVMObject);
 
         public abstract boolean isDisposed(Object vmInstance);
 
@@ -351,13 +353,13 @@ public abstract class Accessor {
 
         public abstract Object convertPrimitive(Object value, Class<?> requestedType);
 
-        public abstract <T extends TruffleLanguage<?>> Supplier<T> lookupLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
+        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> lookupLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
 
-        public abstract <T extends TruffleLanguage<?>> Supplier<T> getDirectLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
+        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> getDirectLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
 
-        public abstract <T extends TruffleLanguage<C>, C> Supplier<C> lookupContextSupplier(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
+        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> lookupContextReference(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
 
-        public abstract <T extends TruffleLanguage<C>, C> Supplier<C> getDirectContextSupplier(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
+        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> getDirectContextReference(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
 
     }
 

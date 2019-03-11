@@ -97,15 +97,12 @@ public class MessageTest {
 
     @Test
     public void testResolve() {
-        assertSame(Message.resolve(MessageLibrary.class, "m0"), Message.resolve(MessageLibrary.class.getName(), "m0"));
+        assertSame(Message.resolve(MessageLibrary.class, "m0"), Message.resolve(MessageLibrary.class, "m0"));
 
-        assertNPE(() -> Message.resolve(MessageLibrary.class.getName(), null));
         assertNPE(() -> Message.resolve(MessageLibrary.class, null));
 
-        assertNPE(() -> Message.resolve((String) null, "m0"));
         assertNPE(() -> Message.resolve((Class<? extends Library>) null, "m0"));
 
-        assertIAE(() -> Message.resolve("invalidLibrary", "m0"), "Unknown library 'invalidLibrary' specified.");
         assertIAE(() -> Message.resolve(DummyLibrary.class, "m0"),
                         String.format("Class '%s' is not a registered library. Truffle libraries must be annotated with @GenerateLibrary to be registered. Did the Truffle annotation processor run?",
                                         DummyLibrary.class.getName()));

@@ -78,7 +78,9 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
@@ -453,7 +455,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Supplier<Object> getCurrentContextSupplier(Object polyglotLanguage) {
+        public ContextReference<Object> getCurrentContextSupplier(Object polyglotLanguage) {
             return ((PolyglotLanguage) polyglotLanguage).getContextImplSupplier();
         }
 
@@ -1087,33 +1089,33 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @SuppressWarnings("unchecked")
         @Override
         @TruffleBoundary
-        public <T extends TruffleLanguage<C>, C> Supplier<C> lookupContextSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+        public <T extends TruffleLanguage<C>, C> ContextReference<C> lookupContextReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() != targetLanguageClass;
             PolyglotLanguageInstance instance = ((PolyglotEngineImpl) polyglotEngineImpl).getCurrentLanguageInstance(targetLanguageClass);
-            return (Supplier<C>) instance.lookupContextSupplier(resolveLanguage(sourceLanguageSPI));
+            return (ContextReference<C>) instance.lookupContextSupplier(resolveLanguage(sourceLanguageSPI));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T extends TruffleLanguage<C>, C> Supplier<C> getDirectContextSupplier(Object sourceVM, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+        public <T extends TruffleLanguage<C>, C> ContextReference<C> getDirectContextReference(Object sourceVM, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() == targetLanguageClass;
-            return (Supplier<C>) resolveLanguage(sourceLanguageSPI).getDirectContextSupplier();
+            return (ContextReference<C>) resolveLanguage(sourceLanguageSPI).getDirectContextSupplier();
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T extends TruffleLanguage<?>> Supplier<T> getDirectLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+        public <T extends TruffleLanguage<?>> LanguageReference<T> getDirectLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() == targetLanguageClass;
-            return (Supplier<T>) resolveLanguage(sourceLanguageSPI).getDirectLanguageSupplier();
+            return (LanguageReference<T>) resolveLanguage(sourceLanguageSPI).getDirectLanguageSupplier();
         }
 
         @SuppressWarnings("unchecked")
         @Override
         @TruffleBoundary
-        public <T extends TruffleLanguage<?>> Supplier<T> lookupLanguageSupplier(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+        public <T extends TruffleLanguage<?>> LanguageReference<T> lookupLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() != targetLanguageClass;
             PolyglotLanguageInstance instance = ((PolyglotEngineImpl) polyglotEngineImpl).getCurrentLanguageInstance(targetLanguageClass);
-            return (Supplier<T>) instance.lookupLanguageSupplier(resolveLanguage(sourceLanguageSPI));
+            return (LanguageReference<T>) instance.lookupLanguageSupplier(resolveLanguage(sourceLanguageSPI));
         }
 
         private static PolyglotLanguageInstance resolveLanguage(TruffleLanguage<?> sourceLanguageSPI) {

@@ -52,7 +52,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -62,11 +61,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
-import com.oracle.truffle.api.nodes.ExecutableNode.SupplierCache;
+import com.oracle.truffle.api.nodes.ExecutableNode.ReferenceCache;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -647,15 +648,15 @@ public abstract class Node implements NodeInterface, Cloneable {
         return "";
     }
 
-    private static final Map<Class<?>, Supplier<?>> UNCACHED_LANGUAGE_REFERENCES = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, LanguageReference<?>> UNCACHED_LANGUAGE_REFERENCES = new ConcurrentHashMap<>();
 
     /**
-     * Returns a supplier that returns the current language instance. The returned language supplier
-     * is intended to be cached in the currently adopted AST. If this node is {@link #isAdoptable()
-     * adoptable} then the method must be invoked after the AST was adopted otherwise an
-     * {@link IllegalStateException} is thrown. The supplier lookup decides which lookup method is
-     * the best given the parent {@link ExecutableNode} or {@link RootNode} and the provided
-     * languageClass. It is recommended to use
+     * Returns a reference that returns the current language instance. The returned language
+     * reference is intended to be cached in the currently adopted AST. If this node is
+     * {@link #isAdoptable() adoptable} then the method must be invoked after the AST was adopted
+     * otherwise an {@link IllegalStateException} is thrown. The reference lookup decides which
+     * lookup method is the best given the parent {@link ExecutableNode} or {@link RootNode} and the
+     * provided languageClass. It is recommended to use
      * {@link com.oracle.truffle.api.dsl.CachedLanguage @CachedLanguage} instead whenever possible.
      * The given language class must not be <code>null</code>. If the given language class is not
      * known to the current engine then an {@link IllegalArgumentException} is thrown.
@@ -665,14 +666,14 @@ public abstract class Node implements NodeInterface, Cloneable {
      * <pre>
      * class ExampleNode extends Node {
      *
-     *     &#64;CompilationFinal private Supplier<MyLanguage> supplier;
+     *     &#64;CompilationFinal private LanguageReference<MyLanguage> reference;
      *
      *     void execute() {
-     *         if (supplier == null) {
+     *         if (reference == null) {
      *             CompilerDirectives.transferToInterpreterAndInvalidate();
-     *             this.supplier = getContextSupplier(MyLanguage.class);
+     *             this.reference = lookupLanguageReference(MyLanguage.class);
      *         }
-     *         MyLanguage language = this.supplier.get();
+     *         MyLanguage language = this.reference.get();
      *         // use language
      *     }
      * }
@@ -686,15 +687,15 @@ public abstract class Node implements NodeInterface, Cloneable {
      * <p>
      * This method is designed for partial evaluation and will reliably return a constant when
      * called with a class literal and the number of accessed languages does not exceed the limit of
-     * 5 per root executable node. If possible the supplier should be cached in the AST in order to
+     * 5 per root executable node. If possible the reference should be cached in the AST in order to
      * avoid the repeated lookup of the parent executable or root node.
      *
-     * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context supplier in
+     * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context reference in
      *      specializations or exported messages.
      * @since 1.0
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected final <T extends TruffleLanguage> Supplier<T> getLanguageSupplier(Class<T> languageClass) {
+    protected final <T extends TruffleLanguage> LanguageReference<T> lookupLanguageReference(Class<T> languageClass) {
         if (languageClass == null) {
             CompilerDirectives.transferToInterpreter();
             throw new NullPointerException();
@@ -702,35 +703,36 @@ public abstract class Node implements NodeInterface, Cloneable {
         ExecutableNode executableNode = getExecutableNode();
         if (executableNode != null) {
             if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
-                return Node.ACCESSOR.engineSupport().getDirectLanguageSupplier(executableNode.sourceVM,
+                return Node.ACCESSOR.engineSupport().getDirectLanguageReference(executableNode.sourceVM,
                                 executableNode.language, languageClass);
             } else {
-                SupplierCache cache = executableNode.lookupSupplierCache(languageClass);
+                ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
                 if (cache != null) {
-                    return (Supplier<T>) cache.languageReference;
+                    return (LanguageReference<T>) cache.languageReference;
                 } else {
-                    return Node.ACCESSOR.engineSupport().lookupLanguageSupplier(executableNode.sourceVM,
+                    return Node.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.sourceVM,
                                     executableNode.language, languageClass);
                 }
             }
         }
-        return lookupUncachedLanguageSupplier(languageClass);
+        return lookupUncachedLanguageReference(languageClass);
     }
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary
-    private static <T extends TruffleLanguage<?>> Supplier<T> lookupUncachedLanguageSupplier(Class<T> languageClass) {
-        Supplier<?> result = UNCACHED_LANGUAGE_REFERENCES.get(languageClass);
+    private static <T extends TruffleLanguage<?>> LanguageReference<T> lookupUncachedLanguageReference(Class<T> languageClass) {
+        LanguageReference<?> result = UNCACHED_LANGUAGE_REFERENCES.get(languageClass);
         if (result == null) {
-            result = new Supplier<Object>() {
+            result = new LanguageReference<TruffleLanguage<?>>() {
+                @Override
                 @TruffleBoundary
-                public Object get() {
+                public TruffleLanguage<?> get() {
                     return Node.ACCESSOR.engineSupport().getCurrentLanguage(languageClass);
                 }
             };
             UNCACHED_LANGUAGE_REFERENCES.put(languageClass, result);
         }
-        return (Supplier<T>) result;
+        return (LanguageReference<T>) result;
     }
 
     @ExplodeLoop
@@ -743,17 +745,17 @@ public abstract class Node implements NodeInterface, Cloneable {
             node = node.getParent();
         }
         if (isAdoptable()) {
-            throw new IllegalStateException("Node must be adopted before a supplier can be looked up.");
+            throw new IllegalStateException("Node must be adopted before a reference can be looked up.");
         }
         return null;
     }
 
     /**
-     * Returns a supplier that returns the current execution context associated with the given
-     * language. The returned context supplier is intended to be cached in the currently adopted
+     * Returns a reference that returns the current execution context associated with the given
+     * language. The returned context reference is intended to be cached in the currently adopted
      * AST. If this node is {@link #isAdoptable() adoptable} then the method must be invoked after
-     * the AST was adopted otherwise an {@link IllegalStateException} is thrown. The supplier lookup
-     * decides which lookup method is the best given the parent {@link ExecutableNode} or
+     * the AST was adopted otherwise an {@link IllegalStateException} is thrown. The reference
+     * lookup decides which lookup method is the best given the parent {@link ExecutableNode} or
      * {@link RootNode} and the provided languageClass. It is recommended to use
      * {@link com.oracle.truffle.api.dsl.CachedContext @CachedContext} instead whenever possible.
      * The given language class must not be null. If the given language class is not known to the
@@ -764,14 +766,14 @@ public abstract class Node implements NodeInterface, Cloneable {
      * <pre>
      * class ExampleNode extends Node {
      *
-     *     &#64;CompilationFinal private Supplier<MyContext> supplier;
+     *     &#64;CompilationFinal private ContextReference<MyContext> reference;
      *
      *     void execute() {
-     *         if (supplier == null) {
+     *         if (reference == null) {
      *             CompilerDirectives.transferToInterpreterAndInvalidate();
-     *             this.supplier = getContextSupplier(MyLanguage.class);
+     *             this.reference = lookupContextReference(MyLanguage.class);
      *         }
-     *         MyContext context = this.supplier.get();
+     *         MyContext context = this.reference.get();
      *         // use context
      *     }
      * }
@@ -784,16 +786,16 @@ public abstract class Node implements NodeInterface, Cloneable {
      * <p>
      * This method is designed for partial evaluation and will reliably return a constant when
      * called with a class literal and the number of accessed languages does not exceed the limit of
-     * 5 per root executable node. If possible the supplier should be cached in the AST in order to
+     * 5 per root executable node. If possible the reference should be cached in the AST in order to
      * avoid the repeated lookup of the parent executable or root node.
      * <p>
      *
-     * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context supplier in
+     * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context reference in
      *      specializations or exported messages.
      * @since 1.0
      */
     @SuppressWarnings("unchecked")
-    protected final <C, T extends TruffleLanguage<C>> Supplier<C> getContextSupplier(Class<T> languageClass) {
+    protected final <C, T extends TruffleLanguage<C>> ContextReference<C> lookupContextReference(Class<T> languageClass) {
         if (languageClass == null) {
             CompilerDirectives.transferToInterpreter();
             throw new NullPointerException();
@@ -801,29 +803,30 @@ public abstract class Node implements NodeInterface, Cloneable {
         ExecutableNode executableNode = getExecutableNode();
         if (executableNode != null) {
             if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
-                return Node.ACCESSOR.engineSupport().getDirectContextSupplier(executableNode.sourceVM,
+                return Node.ACCESSOR.engineSupport().getDirectContextReference(executableNode.sourceVM,
                                 executableNode.language, languageClass);
             } else {
-                SupplierCache cache = executableNode.lookupSupplierCache(languageClass);
+                ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
                 if (cache != null) {
-                    return (Supplier<C>) cache.contextReference;
+                    return (ContextReference<C>) cache.contextReference;
                 } else {
-                    return Node.ACCESSOR.engineSupport().lookupContextSupplier(executableNode.sourceVM,
+                    return Node.ACCESSOR.engineSupport().lookupContextReference(executableNode.sourceVM,
                                     executableNode.language, languageClass);
                 }
             }
         }
-        return lookupUncachedContextSupplier(languageClass);
+        return lookupUncachedContextReference(languageClass);
     }
 
-    private static final Map<Class<?>, Supplier<?>> UNCACHED_CONTEXT_REFERENCES = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, ContextReference<?>> UNCACHED_CONTEXT_REFERENCES = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary
-    private static <T extends TruffleLanguage<C>, C> Supplier<C> lookupUncachedContextSupplier(Class<T> language) {
-        Supplier<?> result = UNCACHED_CONTEXT_REFERENCES.get(language);
+    private static <T extends TruffleLanguage<C>, C> ContextReference<C> lookupUncachedContextReference(Class<T> language) {
+        ContextReference<?> result = UNCACHED_CONTEXT_REFERENCES.get(language);
         if (result == null) {
-            result = new Supplier<Object>() {
+            result = new ContextReference<Object>() {
+                @Override
                 @TruffleBoundary
                 public Object get() {
                     return Node.ACCESSOR.engineSupport().getCurrentContext(language);
@@ -831,7 +834,7 @@ public abstract class Node implements NodeInterface, Cloneable {
             };
             UNCACHED_CONTEXT_REFERENCES.put(language, result);
         }
-        return (Supplier<C>) result;
+        return (ContextReference<C>) result;
     }
 
     private static final ReentrantLock GIL_LOCK = new ReentrantLock(false);

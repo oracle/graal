@@ -649,7 +649,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         }
 
         protected TruffleObject createFunction() {
-            LLVMContext context = getContextSupplier(LLVMLanguage.class).get();
+            LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
             NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
             return nfiContextExtension == null ? null : nfiContextExtension.getNativeFunction(context, "@__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
         }

@@ -1179,17 +1179,18 @@ public class LoggingTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
+            Class<? extends AbstractLoggingLanguage> language = getClass();
             final RootNode root = new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     boolean doDefaultLogging = true;
                     if (action != null) {
-                        doDefaultLogging = action.test(getContextReference().get(), allLoggers);
+                        doDefaultLogging = action.test(lookupContextReference(language).get(), allLoggers);
                     }
                     if (doDefaultLogging) {
                         doLog();
                     }
-                    return getContextReference().get().getEnv().asGuestValue(null);
+                    return lookupContextReference(language).get().getEnv().asGuestValue(null);
                 }
             };
             return Truffle.getRuntime().createCallTarget(root);

@@ -29,9 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import java.io.IOException;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -49,8 +52,6 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import java.io.IOException;
-import java.util.function.Supplier;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
@@ -102,7 +103,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
         CallTarget doCached(String id, String code,
                         @Cached("id") String cachedId,
                         @Cached("code") String cachedCode,
-                        @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef,
+                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                         @Cached("uncached(cachedId, cachedCode, ctxRef)") CallTarget callTarget) {
             return callTarget;
         }
@@ -110,7 +111,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
         @TruffleBoundary
         @Specialization(replaces = "doCached")
         CallTarget uncached(String id, String code,
-                        @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> ctxRef) {
+                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
             LLVMContext ctx = ctxRef.get();
             Env env = ctx.getEnv();
             LanguageInfo lang = env.getLanguages().get(id);

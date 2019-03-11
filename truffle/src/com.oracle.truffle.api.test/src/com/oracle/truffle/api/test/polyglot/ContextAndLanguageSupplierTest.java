@@ -45,12 +45,13 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Supplier;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -91,38 +92,38 @@ public class ContextAndLanguageSupplierTest extends AbstractPolyglotTest {
 
         ContextSupplierTestNode() {
             try {
-                getContextSupplier(ProxyLanguage.class);
+                lookupContextReference(ProxyLanguage.class);
             } catch (IllegalStateException e) {
             }
         }
 
         @SuppressWarnings("unchecked")
         public void execute() {
-            Supplier<?> currentSupplier = getContextSupplier(ProxyLanguage.class);
+            ContextReference<?> currentSupplier = lookupContextReference(ProxyLanguage.class);
             try {
-                getContextSupplier(TruffleLanguage.class);
+                lookupContextReference(TruffleLanguage.class);
                 fail();
             } catch (IllegalArgumentException e) {
             }
             try {
-                getContextSupplier(InvalidLanguage.class);
+                lookupContextReference(InvalidLanguage.class);
                 fail();
             } catch (IllegalArgumentException e) {
             }
             try {
-                getContextSupplier(null);
+                lookupContextReference(null);
             } catch (NullPointerException e) {
             }
 
             for (Class<? extends Language1> language : LANGUAGE_CLASSES) {
-                Supplier<Env> supplier = getContextSupplier(language);
+                ContextReference<Env> supplier = lookupContextReference(language);
                 Env value = supplier.get();
                 assertSame(Language1.getContext(language), value);
                 assertSame(value, supplier.get());
-                assertSame(supplier, getContextSupplier(language));
+                assertSame(supplier, lookupContextReference(language));
             }
 
-            assertSame(currentSupplier, getContextSupplier(ProxyLanguage.class));
+            assertSame(currentSupplier, lookupContextReference(ProxyLanguage.class));
         }
     }
 
@@ -130,7 +131,7 @@ public class ContextAndLanguageSupplierTest extends AbstractPolyglotTest {
 
         LanguageSupplierTestNode() {
             try {
-                getLanguageSupplier(ProxyLanguage.class);
+                lookupLanguageReference(ProxyLanguage.class);
             } catch (IllegalStateException e) {
             }
         }
@@ -138,26 +139,26 @@ public class ContextAndLanguageSupplierTest extends AbstractPolyglotTest {
         @SuppressWarnings("unchecked")
         public void execute() {
             try {
-                getLanguageSupplier(TruffleLanguage.class);
+                lookupLanguageReference(TruffleLanguage.class);
                 fail();
             } catch (IllegalArgumentException e) {
             }
             try {
-                getLanguageSupplier(InvalidLanguage.class);
+                lookupLanguageReference(InvalidLanguage.class);
                 fail();
             } catch (IllegalArgumentException e) {
             }
             try {
-                getLanguageSupplier(null);
+                lookupLanguageReference(null);
             } catch (NullPointerException e) {
             }
 
             for (Class<? extends Language1> language : LANGUAGE_CLASSES) {
-                Supplier<? extends Language1> supplier = getLanguageSupplier(language);
+                LanguageReference<? extends Language1> supplier = lookupLanguageReference(language);
                 Language1 value = supplier.get();
                 assertSame(Language1.getLanguage(language), value);
                 assertSame(value, supplier.get());
-                assertSame(supplier, getLanguageSupplier(language));
+                assertSame(supplier, lookupLanguageReference(language));
             }
         }
     }

@@ -134,6 +134,6 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     public final LLVMContext getContext() {
-        return getContextSupplier(LLVMLanguage.class).get();
+        return lookupContextReference(LLVMLanguage.class).get();
     }
 }

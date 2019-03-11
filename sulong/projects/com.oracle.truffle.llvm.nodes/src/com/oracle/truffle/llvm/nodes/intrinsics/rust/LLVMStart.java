@@ -184,7 +184,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
         @TruffleBoundary
         protected LLVMFunctionDescriptor getFunctionDescriptor(LLVMNativePointer fp) {
-            return getContextSupplier(LLVMLanguage.class).get().getFunctionDescriptor(fp);
+            return lookupContextReference(LLVMLanguage.class).get().getFunctionDescriptor(fp);
         }
 
         @TruffleBoundary

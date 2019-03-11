@@ -128,7 +128,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
             assertSame(context, new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    return getContextSupplier(LanguageSPITestLanguage.class).get();
+                    return lookupContextReference(LanguageSPITestLanguage.class).get();
                 }
             }.execute(null));
         }

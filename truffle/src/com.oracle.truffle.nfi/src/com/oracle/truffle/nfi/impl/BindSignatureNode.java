@@ -82,7 +82,7 @@ abstract class BindSignatureNode extends Node {
         }
 
         protected LibFFISignature parse(String signature) {
-            return parse(signature, getContextSupplier(NFILanguageImpl.class).get());
+            return parse(signature, lookupContextReference(NFILanguageImpl.class).get());
         }
 
         @TruffleBoundary

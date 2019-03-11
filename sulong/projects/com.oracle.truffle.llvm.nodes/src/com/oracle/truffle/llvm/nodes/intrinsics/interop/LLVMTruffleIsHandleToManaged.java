@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -42,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import java.util.function.Supplier;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
@@ -51,13 +51,13 @@ public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
 
     @Specialization
     protected boolean doLongCase(long a,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> context) {
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
         return doPointerCase(LLVMNativePointer.create(a), context);
     }
 
     @Specialization
     protected boolean doPointerCase(LLVMNativePointer a,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> context) {
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
         if (canBeHandle(a)) {
             return context.get().isHandle(a);
         }
@@ -66,7 +66,7 @@ public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
 
     @Specialization
     protected boolean doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
-                    @CachedContext(LLVMLanguage.class) Supplier<LLVMContext> context) {
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
         if (from.getValue() instanceof Long) {
             return doLongCase((long) from.getValue(), context);
         } else {

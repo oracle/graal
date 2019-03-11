@@ -49,7 +49,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.types.Parser;
-import java.util.function.Supplier;
 
 @TruffleLanguage.Registration(id = "native", name = "nfi-native", version = "0.1", characterMimeTypes = NFILanguageImpl.MIME_TYPE, internal = true)
 public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
@@ -90,13 +89,13 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         private final int flags;
 
         @CompilationFinal private LibFFILibrary cached;
-        private final Supplier<NFIContext> ctxRef;
+        private final ContextReference<NFIContext> ctxRef;
 
         LoadLibraryNode(NFILanguageImpl language, String name, int flags) {
             super(language);
             this.name = name;
             this.flags = flags;
-            this.ctxRef = getContextSupplier(NFILanguageImpl.class);
+            this.ctxRef = lookupContextReference(NFILanguageImpl.class);
         }
 
         @Override
@@ -120,11 +119,11 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
     private static class GetDefaultLibraryNode extends RootNode {
 
-        private final Supplier<NFIContext> ctxRef;
+        private final ContextReference<NFIContext> ctxRef;
 
         GetDefaultLibraryNode(NFILanguageImpl language) {
             super(language);
-            this.ctxRef = getContextSupplier(NFILanguageImpl.class);
+            this.ctxRef = lookupContextReference(NFILanguageImpl.class);
         }
 
         @Override

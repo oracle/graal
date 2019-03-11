@@ -89,7 +89,7 @@ public class ReflectiveCallExample {
 
         // reflective lookup of the message.
         // might be a good idea to cache in a singleton.
-        Message targetMessage = Message.resolve("com.oracle.truffle.api.library.test.examples.ReflectiveCallExample$ReflectiveCallTestLibrary", "message");
+        Message targetMessage = Message.resolve(ReflectiveCallTestLibrary.class, "message");
 
         assertEquals("result", reflection.send(value, targetMessage));
     }
