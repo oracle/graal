@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -51,6 +53,8 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.NFIRootNodeFactory.LoadLibraryNodeGen;
 import com.oracle.truffle.nfi.NFIRootNodeFactory.LookupAndBindNodeGen;
 import com.oracle.truffle.nfi.types.NativeSource;
 
@@ -82,12 +86,33 @@ class NFIRootNode extends RootNode {
         }
     }
 
-    @Child DirectCallNode loadLibrary;
+    abstract static class LoadLibraryNode extends Node {
+
+        private final Source backendSource;
+
+        LoadLibraryNode(Source backendSource) {
+            this.backendSource = backendSource;
+        }
+
+        abstract Object execute();
+
+        @Specialization
+        Object doLoadLibrary(@Cached("parseSource()") DirectCallNode loadLibrary) {
+            return loadLibrary.call();
+        }
+
+        DirectCallNode parseSource() {
+            CallTarget backendTarget = lookupContextReference(NFILanguage.class).get().env.parse(backendSource);
+            return DirectCallNode.create(backendTarget);
+        }
+    }
+
+    @Child LoadLibraryNode loadLibrary;
     @Children LookupAndBindNode[] lookupAndBind;
 
-    NFIRootNode(NFILanguage language, DirectCallNode loadLibrary, NativeSource source) {
+    NFIRootNode(NFILanguage language, Source backendSource, NativeSource source) {
         super(language);
-        this.loadLibrary = loadLibrary;
+        this.loadLibrary = LoadLibraryNodeGen.create(backendSource);
         this.lookupAndBind = new LookupAndBindNode[source.preBoundSymbolsLength()];
 
         for (int i = 0; i < lookupAndBind.length; i++) {
@@ -103,7 +128,7 @@ class NFIRootNode extends RootNode {
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
-        Object library = loadLibrary.call(new Object[0]);
+        Object library = loadLibrary.execute();
         if (lookupAndBind.length == 0) {
             return library;
         } else {

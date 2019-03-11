@@ -87,10 +87,7 @@ public class NFILanguage extends TruffleLanguage<Context> {
         }
 
         Source backendSource = Source.newBuilder(backendId, source.getLibraryDescriptor(), "<nfi-impl>").build();
-        CallTarget backendTarget = getContextReference().get().env.parse(backendSource);
-        DirectCallNode loadLibrary = DirectCallNode.create(backendTarget);
-
-        return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, loadLibrary, source));
+        return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, backendSource, source));
     }
 
     @Override
