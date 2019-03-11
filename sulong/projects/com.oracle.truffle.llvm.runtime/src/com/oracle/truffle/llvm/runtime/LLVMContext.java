@@ -423,19 +423,27 @@ public final class LLVMContext {
         return addExternalLibrary(ExternalLibrary.internal(path, isNative));
     }
 
+    /**
+     * @return null if already loaded
+     */
     public ExternalLibrary addExternalLibrary(String lib, boolean isNative) {
         CompilerAsserts.neverPartOfCompilation();
         Path path = locateExternalLibrary(lib);
-        return addExternalLibrary(ExternalLibrary.external(path, isNative));
+        ExternalLibrary newLib = ExternalLibrary.external(path, isNative);
+        ExternalLibrary existingLib = addExternalLibrary(newLib);
+        return existingLib == newLib ? newLib : null;
     }
 
     private ExternalLibrary addExternalLibrary(ExternalLibrary externalLib) {
         int index = externalLibraries.indexOf(externalLib);
-        if (index < 0) {
+        if (index >= 0) {
+            ExternalLibrary ret = externalLibraries.get(index);
+            assert ret.equals(externalLib);
+            return ret;
+        } else {
             externalLibraries.add(externalLib);
             return externalLib;
         }
-        return null;
     }
 
     public List<ExternalLibrary> getExternalLibraries(Predicate<ExternalLibrary> filter) {
