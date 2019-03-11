@@ -46,7 +46,6 @@ import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
-import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.result.SingleResult;
@@ -103,7 +102,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                 switchToEagerSearch(profile);
             }
             profile.incCalls();
-            if (result != NoMatchResult.getInstance()) {
+            if (result != RegexResult.NO_MATCH) {
                 profile.incMatches();
             }
         }
@@ -156,8 +155,8 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             eagerResult = resultOfCurrentSearchNode;
         }
         boolean equal;
-        if (lazyResult == NoMatchResult.getInstance()) {
-            equal = eagerResult == NoMatchResult.getInstance();
+        if (lazyResult == RegexResult.NO_MATCH) {
+            equal = eagerResult == RegexResult.NO_MATCH;
         } else {
             ((LazyCaptureGroupsResult) lazyResult).debugForceEvaluation();
             equal = Arrays.equals(((LazyCaptureGroupsResult) lazyResult).getResult(), ((LazyCaptureGroupsResult) eagerResult).getResult());
@@ -236,7 +235,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             forwardEntryNode.execute(frame, input, fromIndexArg, fromIndexArg, InputAccess.length(input));
             final int end = forwardEntryNode.getExecutor().getResultInt(frame);
             if (end == TRegexDFAExecutorNode.NO_MATCH) {
-                return NoMatchResult.getInstance();
+                return RegexResult.NO_MATCH;
             }
             if (singlePreCalcResult()) {
                 return preCalculatedResults[0].createFromEnd(regex, input, end);
@@ -270,7 +269,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                             Math.max(-1, fromIndexArg - 1 - forwardEntryNode.getExecutor().getPrefixLength()));
             final int backwardResult = backwardEntryNode.getExecutor().getResultInt(frame);
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
-                return NoMatchResult.getInstance();
+                return RegexResult.NO_MATCH;
             }
             if (multiplePreCalcResults()) { // traceFinder
                 return preCalculatedResults[backwardResult].createFromEnd(regex, input, inputLength);
@@ -308,7 +307,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             entryNode.execute(frame, input, fromIndexArg, fromIndexArg, InputAccess.length(input));
             final int[] resultArray = entryNode.getExecutor().getResultCaptureGroups(frame);
             if (resultArray == null) {
-                return NoMatchResult.getInstance();
+                return RegexResult.NO_MATCH;
             }
             return new LazyCaptureGroupsResult(regex, input, resultArray);
         }

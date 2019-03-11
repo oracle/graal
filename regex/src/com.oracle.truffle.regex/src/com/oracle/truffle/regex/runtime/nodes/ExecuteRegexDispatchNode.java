@@ -34,7 +34,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.RegexResult;
 
 @ReportPolymorphism
@@ -51,7 +50,7 @@ public abstract class ExecuteRegexDispatchNode extends Node {
                     @Cached("create(cachedReceiver.getRegexCallTarget())") DirectCallNode directCallNode) throws UnsupportedTypeException {
         long fromIndexLong = toLongNode.execute(fromIndex);
         if (fromIndexLong > Integer.MAX_VALUE) {
-            return NoMatchResult.getInstance();
+            return RegexResult.NO_MATCH;
         }
         return (RegexResult) directCallNode.call(new Object[]{regexObject, toStringNode.execute(input), (int) fromIndexLong});
     }
@@ -63,7 +62,7 @@ public abstract class ExecuteRegexDispatchNode extends Node {
                     @Cached IndirectCallNode indirectCallNode) throws UnsupportedTypeException {
         long fromIndexLong = toLongNode.execute(fromIndex);
         if (fromIndexLong > Integer.MAX_VALUE) {
-            return NoMatchResult.getInstance();
+            return RegexResult.NO_MATCH;
         }
         return (RegexResult) indirectCallNode.call(receiver.getRegexCallTarget(), new Object[]{regexObject, toStringNode.execute(input), (int) fromIndexLong});
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,9 +57,19 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  */
 public abstract class RegexResult extends AbstractConstantKeysObject {
 
-    public static final NoMatchResult getNoMatchResult() {
-        return NoMatchResult.getInstance();
+    public static final class NoMatchResult extends RegexResult {
+
+        private NoMatchResult(RegexObject regex, Object input, int groupCount) {
+            super(regex, input, groupCount);
+        }
+
+        @Override
+        public String toString() {
+            return "NO_MATCH";
+        }
     }
+
+    public static final NoMatchResult NO_MATCH = new NoMatchResult(null, "NULL", 0);
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("input", "isMatch", "groupCount", "start", "end", "regex");
 
@@ -106,7 +116,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
             case "input":
                 return getInput();
             case "isMatch":
-                return this != NoMatchResult.getInstance();
+                return this != NO_MATCH;
             case "groupCount":
                 return getGroupCount();
             case "start":
