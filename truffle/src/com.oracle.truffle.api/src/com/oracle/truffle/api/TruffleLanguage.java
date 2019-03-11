@@ -1228,14 +1228,14 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Returns the current language instance for the current {@link Thread thread}. If a {@link Node
-     * node} is accessible then {@link Node#getContextSupplier(Class)} should be used instead.
+     * node} is accessible then {@link Node#lookupLanguageReference(Class)} should be used instead.
      * Throws an {@link IllegalStateException} if the language is not yet initialized or not
      * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
      * a compilation final value.
      *
      * @param <T> the language type
      * @param languageClass the exact language class needs to be provided for the lookup.
-     * @see Node#getLanguageReference(Class)
+     * @see Node#lookupLanguageReference(Class)
      * @see com.oracle.truffle.api.dsl.CachedLanguage
      * @since 0.27
      */
@@ -1245,7 +1245,7 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Returns the current language context entered on the current thread. If a {@link Node node} is
-     * accessible then {@link Node#getLanguageReference(Class)} should be used instead. An
+     * accessible then {@link Node#lookupContextReference(Class)} should be used instead. An
      * {@link IllegalStateException} is thrown if the language is not yet initialized or not
      * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
      * a compilation final value.
@@ -1253,7 +1253,7 @@ public abstract class TruffleLanguage<C> {
      * @param <C> the context type
      * @param <T> the language type
      * @param languageClass the exact language class needs to be provided for the lookup.
-     * @see Node#getContextSupplier(Class)
+     * @see Node#lookupContextReference(Class)
      * @see com.oracle.truffle.api.dsl.CachedContext
      * @since 0.27
      */
