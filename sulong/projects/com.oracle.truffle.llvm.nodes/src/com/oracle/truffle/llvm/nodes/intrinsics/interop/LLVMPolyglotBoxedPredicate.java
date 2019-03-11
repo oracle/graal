@@ -37,10 +37,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @NodeChild(value = "object", type = LLVMExpressionNode.class)
@@ -61,9 +61,14 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
     @Specialization
     boolean matchManaged(LLVMManagedPointer object,
                     @Cached("createOptional()") LLVMAsForeignNode asForeign,
-                    @Cached("create()") MatchForeign match) {
+                    @Cached("createBinaryProfile()") ConditionProfile isForeign,
+                    @CachedLibrary(limit = "3") InteropLibrary interop) {
         TruffleObject foreign = asForeign.execute(object);
-        return match.execute(foreign, predicate);
+        if (isForeign.profile(foreign != null)) {
+            return predicate.match(interop, foreign);
+        } else {
+            return false;
+        }
     }
 
     @Specialization(limit = "3")
@@ -72,7 +77,7 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
         return predicate.match(interop, prim.getValue());
     }
 
-    @Specialization(limit = "3")
+    @Specialization(limit = "1")
     boolean matchString(String str,
                     @CachedLibrary("str") InteropLibrary interop) {
         return predicate.match(interop, str);
@@ -81,22 +86,5 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
     @Fallback
     public boolean fallback(@SuppressWarnings("unused") Object object) {
         return false;
-    }
-
-    abstract static class MatchForeign extends LLVMNode {
-
-        protected abstract boolean execute(TruffleObject obj, Predicate predicate);
-
-        @Specialization(limit = "3", guards = "obj != null")
-        protected boolean matchForeign(TruffleObject obj, Predicate predicate,
-                        @CachedLibrary("obj") InteropLibrary interop) {
-            return predicate.match(interop, obj);
-        }
-
-        @Specialization(guards = "obj == null")
-        @SuppressWarnings("unused")
-        protected boolean matchOther(TruffleObject obj, Predicate predicate) {
-            return false;
-        }
     }
 }
