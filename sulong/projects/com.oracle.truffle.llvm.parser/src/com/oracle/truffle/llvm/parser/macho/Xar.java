@@ -42,8 +42,12 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
+
+import javax.xml.parsers.ParserConfigurationException;
 
 public final class Xar {
 
@@ -234,7 +238,23 @@ public final class Xar {
         }
 
         // uses fully qualified name to prevent mx to add "require java.xml" when compiling on JDK9
-        private static final javax.xml.parsers.SAXParserFactory PARSER_FACTORY = javax.xml.parsers.SAXParserFactory.newInstance();
+        private static final javax.xml.parsers.SAXParserFactory PARSER_FACTORY;
+
+        static {
+            PARSER_FACTORY = javax.xml.parsers.SAXParserFactory.newInstance();
+            try {
+                PARSER_FACTORY.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
+                PARSER_FACTORY.setFeature("http://xml.org/sax/features/external-general-entities", false);
+                PARSER_FACTORY.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+                PARSER_FACTORY.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+                PARSER_FACTORY.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+                PARSER_FACTORY.setXIncludeAware(false);
+                PARSER_FACTORY.setNamespaceAware(false);
+            } catch (ParserConfigurationException | SAXNotRecognizedException | SAXNotSupportedException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
 
         private static List<XarFile> parse(ObjectFileReader data, XarHeader header) {
             int comprSize = (int) header.getTocComprSize();
@@ -255,10 +275,7 @@ public final class Xar {
             decompresser.end();
 
             try {
-                javax.xml.parsers.SAXParserFactory spf = PARSER_FACTORY;
-                spf.setNamespaceAware(false);
-                javax.xml.parsers.SAXParser saxParser = spf.newSAXParser();
-                XMLReader xmlReader = saxParser.getXMLReader();
+                XMLReader xmlReader = PARSER_FACTORY.newSAXParser().getXMLReader();
                 TocParser parser = new TocParser();
                 xmlReader.setContentHandler(parser);
                 xmlReader.parse(new InputSource(new ByteArrayInputStream(uncompressedData)));
