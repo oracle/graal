@@ -33,6 +33,7 @@ import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.RegexResult;
 
 /**
@@ -50,7 +51,7 @@ public final class DeadRegexExecRootNode extends RegexExecRootNode implements Co
 
     @Override
     protected RegexResult execute(VirtualFrame frame, RegexObject regex, Object input, int fromIndex) {
-        return RegexResult.NO_MATCH;
+        return NoMatchResult.getInstance();
     }
 
     @Override

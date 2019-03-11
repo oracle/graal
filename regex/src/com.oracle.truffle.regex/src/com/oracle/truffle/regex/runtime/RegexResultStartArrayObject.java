@@ -39,6 +39,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.regex.RegexLanguageObject;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
+import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.result.SingleIndexArrayResult;
 import com.oracle.truffle.regex.result.SingleResult;
@@ -90,7 +91,7 @@ public final class RegexResultStartArrayObject implements RegexLanguageObject {
         abstract int execute(RegexResult receiver, int groupNumber) throws InvalidArrayIndexException;
 
         @Specialization
-        static int doNoMatch(@SuppressWarnings("unused") RegexResult.NoMatchResult receiver, int groupNumber) throws InvalidArrayIndexException {
+        static int doNoMatch(@SuppressWarnings("unused") NoMatchResult receiver, int groupNumber) throws InvalidArrayIndexException {
             CompilerDirectives.transferToInterpreter();
             throw invalidIndexException(groupNumber);
         }
