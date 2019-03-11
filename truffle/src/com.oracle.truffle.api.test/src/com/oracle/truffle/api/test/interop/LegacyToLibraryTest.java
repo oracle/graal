@@ -45,11 +45,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.lang.reflect.Field;
 import java.util.concurrent.Callable;
 
-import org.junit.Assume;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropException;
@@ -61,13 +58,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @SuppressWarnings("deprecation")
 public class LegacyToLibraryTest {
-
-    @Before
-    public void checkAssumptions() throws Exception {
-        Field f = com.oracle.truffle.api.interop.ForeignAccess.class.getDeclaredField("LEGACY_TO_LIBRARY_BRIDGE");
-        f.setAccessible(true);
-        Assume.assumeTrue((boolean) f.get(null));
-    }
 
     public static class TestInterop1 {
     }
