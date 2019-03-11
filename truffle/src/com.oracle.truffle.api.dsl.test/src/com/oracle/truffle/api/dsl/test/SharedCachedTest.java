@@ -185,18 +185,12 @@ public class SharedCachedTest {
 
         @Specialization(guards = "arg == 42")
         Object s0(int arg,
-                        @ExpectError("The cached parameter may be shared with: \n" +
-                                        "  - s1(..., @Cached(...) TestNode node)\n" +
-                                        " Annotate the parameter with @Shared(\"group\") or @Exclusive to allow or deny sharing of the parameter.")//
                         @Cached TestNode node) {
             return arg;
         }
 
         @Specialization(guards = "arg == 43")
         Object s1(int arg,
-                        @ExpectError("The cached parameter may be shared with: \n" +
-                                        "  - s0(..., @Cached(...) TestNode node)\n" +
-                                        " Annotate the parameter with @Shared(\"group\") or @Exclusive to allow or deny sharing of the parameter.") //
                         @Cached TestNode node) {
             return arg;
         }
@@ -208,9 +202,6 @@ public class SharedCachedTest {
 
         @Specialization(guards = "arg == 42")
         Object s0(int arg,
-                        @ExpectError("The cached parameter may be shared with: \n" +
-                                        "  - s1(..., @Cached(...) TestNode node)\n" +
-                                        " Annotate the parameter with @Shared(\"foo\") or @Exclusive to allow or deny sharing of the parameter.") //
                         @Cached TestNode node) {
             return arg;
         }
@@ -250,8 +241,8 @@ public class SharedCachedTest {
 
         @Specialization
         Object s0(int arg,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': \n" +
-                                        "  - s1(..., @Cached(...) long node) : The cache parameter type does not match. Expected 'int' but was 'long'.\n" +
+                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
+                                        "  - s1(..., @Cached(...) long node) : The cache parameter type does not match. Expected 'int' but was 'long'.%n" +
                                         "Remove the @Shared annotation or resolve the described issues to allow sharing.") //
                         @Shared("shared") @Cached("arg") int node) {
             return arg;
@@ -259,8 +250,8 @@ public class SharedCachedTest {
 
         @Specialization
         Object s1(long arg,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': \n" +
-                                        "  - s0(..., @Cached(...) int node) : The cache parameter type does not match. Expected 'long' but was 'int'.\n" +
+                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
+                                        "  - s0(..., @Cached(...) int node) : The cache parameter type does not match. Expected 'long' but was 'int'.%n" +
                                         "Remove the @Shared annotation or resolve the described issues to allow sharing.")//
                         @Shared("shared") @Cached("arg") long node) {
             return arg;
@@ -274,8 +265,8 @@ public class SharedCachedTest {
 
         @Specialization
         Object s0(int arg,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': \n" +
-                                        "  - s1(..., @Cached(...) int node) : The cache initializer does not match.\n" +
+                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
+                                        "  - s1(..., @Cached(...) int node) : The cache initializer does not match.%n" +
                                         "Remove the @Shared annotation or resolve the described issues to allow sharing.") //
                         @Shared("shared") @Cached("arg") int node) {
             return arg;
@@ -283,8 +274,8 @@ public class SharedCachedTest {
 
         @Specialization
         Object s1(long arg,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': \n" +
-                                        "  - s0(..., @Cached(...) int node) : The cache initializer does not match.\n" +
+                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
+                                        "  - s0(..., @Cached(...) int node) : The cache initializer does not match.%n" +
                                         "Remove the @Shared annotation or resolve the described issues to allow sharing.") //
                         @Shared("shared") @Cached("42") int node) {
             return arg;
@@ -298,8 +289,8 @@ public class SharedCachedTest {
 
         @Specialization(guards = "node == arg")
         Object s0(int arg,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': \n" +
-                                        "  - s1(..., @Cached(...) int node) : The specialization 's0(int, int)' has multiple instances.\n" +
+                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
+                                        "  - s1(..., @Cached(...) int node) : The specialization 's0(int, int)' has multiple instances.%n" +
                                         "Remove the @Shared annotation or resolve the described issues to allow sharing.") //
                         @Shared("shared") @Cached("arg") int node) {
             return arg;
@@ -307,8 +298,8 @@ public class SharedCachedTest {
 
         @Specialization(guards = "arg == node")
         Object s1(int arg,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': \n" +
-                                        "  - s0(..., @Cached(...) int node) : The specialization 's1(int, int)' has multiple instances.\n" +
+                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
+                                        "  - s0(..., @Cached(...) int node) : The specialization 's1(int, int)' has multiple instances.%n" +
                                         "Remove the @Shared annotation or resolve the described issues to allow sharing.") //
                         @Shared("shared") @Cached("arg") int node) {
             return arg;
@@ -322,12 +313,12 @@ public class SharedCachedTest {
 
         @Specialization
         Object s0(int arg,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': \n" +
-                                        "  - s0(..., @Cached(...) int cached2) : Cannot share caches within the same specialization.\n" +
+                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
+                                        "  - s0(..., @Cached(...) int cached2) : Cannot share caches within the same specialization.%n" +
                                         "Remove the @Shared annotation or resolve the described issues to allow sharing.") //
                         @Shared("shared") @Cached("arg") int cached1,
-                        @ExpectError("Could not share some of the cached parameters in group 'shared': \n" +
-                                        "  - s0(..., @Cached(...) int cached1,...) : Cannot share caches within the same specialization.\n" +
+                        @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
+                                        "  - s0(..., @Cached(...) int cached1,...) : Cannot share caches within the same specialization.%n" +
                                         "Remove the @Shared annotation or resolve the described issues to allow sharing.") //
                         @Shared("shared") @Cached("arg") int cached2) {
             return arg;

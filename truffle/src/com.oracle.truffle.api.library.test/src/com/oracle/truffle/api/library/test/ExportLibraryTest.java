@@ -114,10 +114,10 @@ public class ExportLibraryTest {
         }
     }
 
-    @ExpectError("Using explicit receiver types is only supported for default exports or types that export DynamicDispatchLibrary.\n" +
-                    "To resolve this use one of the following strategies:\n" +
-                    "  - Make the receiver type implicit by applying '@ExportLibrary(TestLibrary.class)' to the receiver type 'PrimitiveInt' instead.\n" +
-                    "  - Declare a default export for the library 'TestReceiver' with '@DefaultExport(TestReceiver.class)'\n" +
+    @ExpectError("Using explicit receiver types is only supported for default exports or types that export DynamicDispatchLibrary.%n" +
+                    "To resolve this use one of the following strategies:%n" +
+                    "  - Make the receiver type implicit by applying '@ExportLibrary(TestLibrary.class)' to the receiver type 'PrimitiveInt' instead.%n" +
+                    "  - Declare a default export for the library 'TestReceiver' with '@DefaultExport(TestReceiver.class)'%n" +
                     "  - Enable dynamic dispatch by annotating the receiver type with '@ExportLibrary(DynamicDispatchLibrary.class)'.")
     @ExportLibrary(value = TestLibrary.class, receiverType = PrimitiveInt.class)
     static class TestReceiver {

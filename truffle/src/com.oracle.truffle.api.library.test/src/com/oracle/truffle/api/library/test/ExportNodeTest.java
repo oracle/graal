@@ -464,8 +464,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage
         static class Foo {
 
-            @ExpectError("Method signature (Object) does not match to the expected signature: \n" +
-                            "    void doFoo(TestObjectError10 arg0)")
+            @ExpectError("Method signature (Object) does not match to the expected signature: %")
             @Specialization
             void doFoo(Object receiver) {
             }

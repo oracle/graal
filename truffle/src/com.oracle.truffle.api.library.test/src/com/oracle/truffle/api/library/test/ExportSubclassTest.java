@@ -128,28 +128,27 @@ public class ExportSubclassTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError("Message redirected from element com.oracle.truffle.api.library.test.ExportSubclassTest.ErrorRedirectionBaseClass.m1():\n" +
-                    "Expected parameter count 1 for exported message, but was 0. Expected signature:%")
+    @ExpectError("Message redirected from element com.oracle.truffle.api.library.test.ExportSubclassTest.ErrorRedirectionBaseClass.m1():%")
     @ExportLibrary(ExportSubclassLibrary.class)
     static class ErrorRedirectionSubClass extends ErrorRedirectionBaseClass {
     }
 
     @ExportLibrary(OtherPackageLibrary.class)
-    @ExpectError("Found invisible exported elements in super type 'ErrorOtherPackageBaseObject1': \n" +
-                    "   - ErrorOtherPackageBaseObject1.m0()\n" +
+    @ExpectError("Found invisible exported elements in super type 'ErrorOtherPackageBaseObject1': %n" +
+                    "   - ErrorOtherPackageBaseObject1.m0()%n" +
                     "Increase their visibility to resolve this problem.")
     static class InvisibleBaseElement1 extends ErrorOtherPackageBaseObject1 {
     }
 
     @ExportLibrary(OtherPackageLibrary.class)
-    @ExpectError("Found invisible exported elements in super type 'ErrorOtherPackageBaseObject2': \n" +
-                    "   - M0.doDefault(ErrorOtherPackageBaseObject2)\n" +
+    @ExpectError("Found invisible exported elements in super type 'ErrorOtherPackageBaseObject2': %n" +
+                    "   - M0.doDefault(ErrorOtherPackageBaseObject2)%n" +
                     "Increase their visibility to resolve this problem.")
     static class InvisibleBaseElement2 extends ErrorOtherPackageBaseObject2 {
     }
 
-    @ExpectError("Found invisible exported elements in super type 'ErrorOtherPackageBaseObject3': \n" +
-                    "   - M0\n" +
+    @ExpectError("Found invisible exported elements in super type 'ErrorOtherPackageBaseObject3': %n" +
+                    "   - M0%n" +
                     "Increase their visibility to resolve this problem.")
     @ExportLibrary(OtherPackageLibrary.class)
     static class InvisibleBaseElement3 extends ErrorOtherPackageBaseObject3 {

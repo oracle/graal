@@ -77,9 +77,10 @@ public class ExpectError {
     public static boolean isExpectedError(ProcessingEnvironment processingEnv, Element element, String actualText) {
         List<String> expectedErrors = getExpectedErrors(processingEnv, element);
         for (String expectedText : expectedErrors) {
-            if (expectedText.endsWith("%") && actualText.startsWith(expectedText.substring(0, expectedText.length() - 1))) {
+            String newExpectedText = expectedText.replaceAll("%n", System.lineSeparator());
+            if (newExpectedText.endsWith("%") && actualText.startsWith(newExpectedText.substring(0, newExpectedText.length() - 1))) {
                 return true;
-            } else if (actualText.equals(expectedText)) {
+            } else if (actualText.equals(newExpectedText)) {
                 return true;
             }
         }
