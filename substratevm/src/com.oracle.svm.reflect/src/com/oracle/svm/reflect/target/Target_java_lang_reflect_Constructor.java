@@ -36,8 +36,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
 
@@ -59,10 +57,6 @@ public final class Target_java_lang_reflect_Constructor {
 
     @Alias
     native Target_java_lang_reflect_Constructor copy();
-
-    @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    native Target_java_lang_reflect_Executable getRoot();
 
     @Substitute
     Target_jdk_internal_reflect_ConstructorAccessor acquireConstructorAccessor() {
