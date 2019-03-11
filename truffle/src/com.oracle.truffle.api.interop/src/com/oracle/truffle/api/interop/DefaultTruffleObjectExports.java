@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 @SuppressWarnings("deprecation")
 @ExportLibrary(value = InteropLibrary.class, receiverType = TruffleObject.class)
@@ -314,13 +315,21 @@ class DefaultTruffleObjectExports {
 
     @ExportMessage
     static long asPointer(TruffleObject receiver,
-                    @Cached(parameters = "AS_POINTER") InteropAccessNode asPointer) throws UnsupportedMessageException {
-        return LibraryToLegacy.sendAsPointer(asPointer, receiver);
+                    @Cached(parameters = "AS_POINTER") InteropAccessNode asPointer,
+                    @Shared("toNative") @Cached(parameters = "TO_NATIVE") InteropAccessNode toNative,
+                    @Cached BranchProfile exception) throws UnsupportedMessageException {
+        try {
+            return LibraryToLegacy.sendAsPointer(asPointer, receiver);
+        } catch (UnsupportedMessageException ex) {
+            exception.enter();
+            TruffleObject transformed = (TruffleObject) LibraryToLegacy.sendToNative(toNative, receiver);
+            return LibraryToLegacy.sendAsPointer(asPointer, transformed);
+        }
     }
 
     @ExportMessage
     static void toNative(TruffleObject receiver,
-                    @Cached(parameters = "TO_NATIVE") InteropAccessNode toNative) {
+                    @Shared("toNative") @Cached(parameters = "TO_NATIVE") InteropAccessNode toNative) {
         try {
             LibraryToLegacy.sendToNative(toNative, receiver);
         } catch (UnsupportedMessageException e) {
