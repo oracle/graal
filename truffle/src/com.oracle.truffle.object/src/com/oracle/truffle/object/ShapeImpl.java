@@ -40,18 +40,17 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.BiConsumer;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -145,7 +144,7 @@ public abstract class ShapeImpl extends Shape {
      * <li>{@link Map}: mutable multiple entry map
      * </ol>
      *
-     * @see #getTransitionMapForRead()
+     * @see #queryTransition(Transition)
      * @see #addTransitionInternal(Transition, ShapeImpl)
      */
     private volatile Object transitionMap;
@@ -319,7 +318,6 @@ public abstract class ShapeImpl extends Shape {
         addTransitionInternal(transition, next);
     }
 
-    @SuppressWarnings("unchecked")
     private void addTransitionInternal(Transition transition, ShapeImpl successor) {
         Object prev;
         Object next;
@@ -327,53 +325,114 @@ public abstract class ShapeImpl extends Shape {
             prev = TRANSITION_MAP_UPDATER.get(this);
             if (prev == null) {
                 invalidateLeafAssumption();
-                next = new AbstractMap.SimpleImmutableEntry<>(transition, successor);
-            } else if (prev instanceof Map.Entry<?, ?>) {
-                Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) prev;
-                ConcurrentHashMap<Transition, ShapeImpl> map = new ConcurrentHashMap<>();
-                map.put(entry.getKey(), entry.getValue());
-                map.put(transition, successor);
-                next = map;
+                next = newSingleEntry(transition, successor);
+            } else if (isSingleEntry(prev)) {
+                StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(prev);
+                Transition exTra = entry.getKey();
+                ShapeImpl exSucc = entry.getValue();
+                if (exSucc != null) {
+                    next = newTransitionMap(exTra, exSucc, transition, successor);
+                } else {
+                    next = newSingleEntry(transition, successor);
+                }
             } else {
-                assert prev instanceof Map<?, ?>;
-                Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) prev;
-                map.put(transition, successor);
+                next = addToTransitionMap(transition, successor, prev);
+            }
+            if (prev == next) {
                 break;
             }
         } while (!TRANSITION_MAP_UPDATER.compareAndSet(this, prev, next));
     }
 
-    /** @since 0.17 or earlier */
-    @SuppressWarnings("unchecked")
-    public final Map<Transition, ShapeImpl> getTransitionMapForRead() {
-        Object trans = transitionMap;
-        if (trans == null) {
-            return Collections.<Transition, ShapeImpl> emptyMap();
-        } else if (trans instanceof Map.Entry<?, ?>) {
-            Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) trans;
-            return Collections.singletonMap(entry.getKey(), entry.getValue());
-        } else {
-            assert trans instanceof Map<?, ?>;
-            Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) trans;
-            return map;
-        }
+    private static Object newTransitionMap(Transition firstTransition, ShapeImpl firstShape, Transition secondTransition, ShapeImpl secondShape) {
+        Map<Transition, ShapeImpl> map = newTransitionMap();
+        map.put(firstTransition, firstShape);
+        map.put(secondTransition, secondShape);
+        return map;
+    }
+
+    private static Object addToTransitionMap(Transition transition, ShapeImpl successor, Object prevMap) {
+        assert isTransitionMap(prevMap);
+        Map<Transition, ShapeImpl> map = asTransitionMap(prevMap);
+        map.put(transition, successor);
+        return map;
+    }
+
+    private static Map<Transition, ShapeImpl> newTransitionMap() {
+        return new TransitionMap<>();
     }
 
     @SuppressWarnings("unchecked")
+    private static Map<Transition, ShapeImpl> asTransitionMap(Object map) {
+        return (Map<Transition, ShapeImpl>) map;
+    }
+
+    private static boolean isTransitionMap(Object trans) {
+        return trans instanceof Map<?, ?>;
+    }
+
+    private static Object newSingleEntry(Transition transition, ShapeImpl successor) {
+        return new StrongKeyWeakValueEntry<>(transition, successor);
+    }
+
+    private static boolean isSingleEntry(Object trans) {
+        return trans instanceof StrongKeyWeakValueEntry;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static StrongKeyWeakValueEntry<Transition, ShapeImpl> asSingleEntry(Object trans) {
+        return (StrongKeyWeakValueEntry<Transition, ShapeImpl>) trans;
+    }
+
+    /**
+     * @since 0.17 or earlier
+     * @deprecated use {@link #forEachTransition(BiConsumer)} instead.
+     */
+    @Deprecated
+    public final Map<Transition, ShapeImpl> getTransitionMapForRead() {
+        Map<Transition, ShapeImpl> snapshot = new HashMap<>();
+        forEachTransition(new BiConsumer<Transition, ShapeImpl>() {
+            @Override
+            public void accept(Transition t, ShapeImpl s) {
+                snapshot.put(t, s);
+            }
+        });
+        return snapshot;
+    }
+
+    public final void forEachTransition(BiConsumer<Transition, ShapeImpl> consumer) {
+        Object trans = transitionMap;
+        if (trans == null) {
+            return;
+        } else if (isSingleEntry(trans)) {
+            StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(trans);
+            ShapeImpl shape = entry.getValue();
+            if (shape != null) {
+                Transition key = entry.getKey();
+                consumer.accept(key, shape);
+            }
+        } else {
+            assert isTransitionMap(trans);
+            Map<Transition, ShapeImpl> map = asTransitionMap(trans);
+            map.forEach(consumer);
+        }
+    }
+
     private ShapeImpl queryTransitionImpl(Transition transition) {
         Object trans = transitionMap;
         if (trans == null) {
             return null;
-        } else if (trans instanceof Map.Entry<?, ?>) {
-            Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) trans;
-            if (entry.getKey().equals(transition)) {
+        } else if (isSingleEntry(trans)) {
+            StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(trans);
+            Transition key = entry.getKey();
+            if (key.equals(transition)) {
                 return entry.getValue();
             } else {
                 return null;
             }
         } else {
-            assert trans instanceof Map<?, ?>;
-            Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) trans;
+            assert isTransitionMap(trans);
+            Map<Transition, ShapeImpl> map = asTransitionMap(trans);
             return map.get(transition);
         }
     }
@@ -1188,6 +1247,7 @@ public abstract class ShapeImpl extends Shape {
     private static final DebugCounter shapeCloneCount = DebugCounter.create("Shapes allocated cloned");
     private static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
     private static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
+    static final DebugCounter shapeCacheExpunged = DebugCounter.create("Shape cache expunged");
 
     /** @since 0.17 or earlier */
     public ForeignAccess getForeignAccessFactory(DynamicObject object) {
