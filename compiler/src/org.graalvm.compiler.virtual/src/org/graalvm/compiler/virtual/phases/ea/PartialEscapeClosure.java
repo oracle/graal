@@ -45,6 +45,7 @@ import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
@@ -105,7 +106,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      * The indexes into this array correspond to {@link VirtualObjectNode#getObjectId()}.
      */
     public final ArrayList<VirtualObjectNode> virtualObjects = new ArrayList<>();
-    public final DebugContext debug;
 
     @Override
     public boolean needsApplyEffects() {
@@ -189,7 +189,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         super(schedule, schedule.getCFG());
         StructuredGraph graph = schedule.getCFG().graph;
         this.hasVirtualInputs = graph.createNodeBitMap();
-        this.debug = graph.getDebug();
         this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, this, graph.getAssumptions(), graph.getOptions(), debug, loweringProvider);
     }
 
@@ -596,11 +595,18 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         private EconomicMap<ValueNode, ValuePhiNode[]> valuePhis;
         private EconomicMap<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals;
         private final boolean needsCaching;
+        private final boolean forceMaterialization;
 
         public MergeProcessor(Block mergeBlock) {
             super(mergeBlock);
             // merge will only be called multiple times for loop headers
             needsCaching = mergeBlock.isLoopHeader();
+            AbstractMergeNode merge = (AbstractMergeNode) mergeBlock.getBeginNode();
+            if (merge.stateAfter() != null && merge.stateAfter().isExceptionHandlingBCI()) {
+                forceMaterialization = true;
+            } else {
+                forceMaterialization = false;
+            }
         }
 
         protected <T> PhiNode getPhi(T virtual, Stamp stamp) {
@@ -691,12 +697,12 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             do {
                 materialized = false;
 
-                if (PartialEscapeBlockState.identicalObjectStates(states)) {
+                if (!forceMaterialization && PartialEscapeBlockState.identicalObjectStates(states)) {
                     newState.adoptAddObjectStates(states[0]);
                 } else {
 
                     for (int object : virtualObjTemp) {
-                        if (PartialEscapeBlockState.identicalObjectStates(states, object)) {
+                        if (!forceMaterialization && PartialEscapeBlockState.identicalObjectStates(states, object)) {
                             newState.addObject(object, states[0].getObjectState(object).share());
                             continue;
                         }
@@ -710,6 +716,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         for (int i = 0; i < states.length; i++) {
                             ObjectState obj = states[i].getObjectState(object);
                             ensureVirtual &= obj.getEnsureVirtualized();
+                            if (forceMaterialization) {
+                                uniqueMaterializedValue = null;
+                                continue;
+                            }
                             if (obj.isVirtual()) {
                                 virtualCount++;
                                 uniqueMaterializedValue = null;
