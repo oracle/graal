@@ -78,6 +78,7 @@ final class FunctionsObject implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new FunctionNamesObject(functions.keySet().toArray());
     }
