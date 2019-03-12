@@ -240,6 +240,10 @@ suite = {
               "classifier": "linux-x86_64"
             },
           },
+          "<others>": {
+            "path": "",
+            "optional": True
+          }
         },
         "darwin": {
           "amd64": {
@@ -251,6 +255,10 @@ suite = {
               "classifier": "macosx-x86_64"
             }
           },
+          "<others>": {
+            "path": "",
+            "optional": True
+          }
         },
         "windows": {
           "amd64": {
@@ -262,6 +270,10 @@ suite = {
               "classifier": "windows-x86_64"
             },
           },
+          "<others>": {
+            "path": "",
+            "optional": True
+          }
         },
         "<others>": {
           "<others>": {
