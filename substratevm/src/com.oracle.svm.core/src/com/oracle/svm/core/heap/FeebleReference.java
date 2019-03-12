@@ -123,9 +123,15 @@ public class FeebleReference<T> extends DiscoverableReference {
     }
 
     /** Constructor for subclasses. */
-    protected FeebleReference(final T referent, final FeebleReferenceList<T> list) {
+    protected FeebleReference(T referent, FeebleReferenceList<T> list) {
+        /* Allocate the AtomicReference for the constructor before I become uninterruptible. */
+        this(referent, new AtomicReference<>(list));
+    }
+
+    @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
+    private FeebleReference(T referent, AtomicReference<FeebleReferenceList<T>> list) {
         super(referent);
-        this.list = new AtomicReference<>(list);
+        this.list = list;
         FeebleReferenceList.clean(this);
     }
 
