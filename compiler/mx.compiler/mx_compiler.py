@@ -57,6 +57,7 @@ import mx_graal_tools #pylint: disable=unused-import
 import argparse
 import shlex
 import glob
+from mx import classpath
 
 _suite = mx.suite('compiler')
 
@@ -193,7 +194,7 @@ def _nodeCostDump(args, extraVMarguments=None):
     parser.add_argument('--markdown', action='store_const', const=True, help="Format to Markdown table", default=False)
     args, vmargs = parser.parse_known_args(args)
     additionalPrimarySuiteClassPath = '-Dprimary.suite.cp=' + mx.primary_suite().dir
-    vmargs.extend([additionalPrimarySuiteClassPath, '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.NodeCostDumpUtil'])
+    vmargs.extend([additionalPrimarySuiteClassPath, '-cp', mx.classpath('org.graalvm.compiler.hotspot.test'), '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.test.NodeCostDumpUtil'])
     out = mx.OutputCapture()
     regex = ""
     if args.regex:
