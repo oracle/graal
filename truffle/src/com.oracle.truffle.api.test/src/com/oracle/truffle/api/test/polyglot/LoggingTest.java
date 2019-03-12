@@ -892,6 +892,27 @@ public class LoggingTest {
         }
     }
 
+    @Test
+    public void testErrorStream() {
+        ByteArrayOutputStream errConsumer = new ByteArrayOutputStream();
+        ProxyInstrument delegate = new ProxyInstrument();
+        delegate.setOnCreate(new Consumer<TruffleInstrument.Env>() {
+            @Override
+            public void accept(TruffleInstrument.Env env) {
+                env.getInstrumenter().attachErrConsumer(errConsumer);
+                new InstrumentLogging(false).accept(env);
+            }
+        });
+        ProxyInstrument.setDelegate(delegate);
+        LoggingLanguageFirst.action = new LookupInstrumentAction(true);
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context ctx = Context.newBuilder().err(err).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+        Assert.assertNotEquals(0, err.toByteArray().length);
+        Assert.assertEquals(0, errConsumer.toByteArray().length);
+    }
+
     @SuppressWarnings("all")
     private static boolean assertionsEnabled() {
         boolean assertionsEnabled = false;
