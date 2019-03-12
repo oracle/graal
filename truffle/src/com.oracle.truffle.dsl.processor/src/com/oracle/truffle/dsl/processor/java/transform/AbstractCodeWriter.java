@@ -86,7 +86,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
     private static final int LINE_WRAP_INDENTS = 3;
     private static final int MAX_JAVADOC_LINE_LENGTH = 100;
     private static final String IDENT_STRING = "    ";
-    private static final String LN = "\n"; /* unix style */
+    private static final String LN = System.lineSeparator(); /* unix style */
 
     protected Writer writer;
     private int indent;

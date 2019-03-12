@@ -884,7 +884,7 @@ public class CodeTreeBuilder {
 
         private int indent;
         private boolean newLine;
-        private final String ln = "\n";
+        private final String ln = System.lineSeparator();
 
         private final StringBuilder b;
 

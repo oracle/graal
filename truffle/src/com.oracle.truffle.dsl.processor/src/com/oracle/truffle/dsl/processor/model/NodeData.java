@@ -507,12 +507,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         dumpProperty(builder, indent, "casts", getCasts());
         dumpProperty(builder, indent, "messages", collectMessages());
         if (getEnclosingNodes().size() > 0) {
-            builder.append(String.format("\n%s  children = [", indent));
+            builder.append(String.format("%n%s  children = [", indent));
             for (NodeData node : getEnclosingNodes()) {
-                builder.append("\n");
+                builder.append("%n");
                 builder.append(node.dump(level + 1));
             }
-            builder.append(String.format("\n%s  ]", indent));
+            builder.append(String.format("%n%s  ]", indent));
         }
         builder.append(String.format("%s}", indent));
         return builder.toString();
@@ -522,11 +522,11 @@ public class NodeData extends Template implements Comparable<NodeData> {
         if (value instanceof List) {
             List<?> list = (List<?>) value;
             if (!list.isEmpty()) {
-                b.append(String.format("\n%s  %s = %s", indent, propertyName, dumpList(indent, (List<?>) value)));
+                b.append(String.format("%n%s  %s = %s", indent, propertyName, dumpList(indent, (List<?>) value)));
             }
         } else {
             if (value != null) {
-                b.append(String.format("\n%s  %s = %s", indent, propertyName, value));
+                b.append(String.format("%n%s  %s = %s", indent, propertyName, value));
             }
         }
     }
@@ -545,12 +545,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         StringBuilder b = new StringBuilder();
         b.append("[");
         for (Object object : array) {
-            b.append("\n        ");
+            b.append("%n        ");
             b.append(indent);
             b.append(object);
             b.append(", ");
         }
-        b.append("\n    ").append(indent).append("]");
+        b.append("%n    ").append(indent).append("]");
         return b.toString();
     }
 

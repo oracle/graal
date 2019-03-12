@@ -109,7 +109,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
                     element = message.getOriginalContainer().getMessageElement();
                 }
                 String reference = ElementUtils.getReadableReference(element);
-                String prefix = "Message redirected from element " + reference + ":\n";
+                String prefix = "Message redirected from element " + reference + ":" + System.lineSeparator();
                 to.getMessages().add(message.redirect(prefix, to.getMessageElement()));
             }
             getMessages().clear();

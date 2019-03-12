@@ -156,7 +156,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 if (!foundInvisibleMembers.isEmpty()) {
                     StringBuilder b = new StringBuilder();
                     for (Element invisibleMember : foundInvisibleMembers) {
-                        b.append("\n   - ");
+                        b.append(System.lineSeparator()).append("   - ");
                         b.append(ElementUtils.getReadableReference(invisibleMember, false));
                     }
                     model.addError("Found invisible exported elements in super type '%s': %s%nIncrease their visibility to resolve this problem.", ElementUtils.getSimpleName(currentType),
@@ -922,7 +922,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         if (exportedParameters.size() != expectedParameters.size()) {
             if (emitErrors) {
                 exportedMessage.addError(exportedMethod,
-                                "Expected parameter count %s for exported message, but was %s. Expected signature:\n    %s",
+                                "Expected parameter count %s for exported message, but was %s. Expected signature:%n    %s",
                                 expectedParameters.size(),
                                 exportedParameters.size(),
                                 generateExpectedSignature(type, message, expectedStaticReceiverType));
@@ -932,7 +932,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         if (!isAssignable(exportedMethod.getReturnType(), libraryMethod.getReturnType())) {
             if (emitErrors) {
-                exportedMessage.addError(exportedMethod, "Invalid exported return type. Expected '%s' but was '%s'. Expected signature:\n    %s",
+                exportedMessage.addError(exportedMethod, "Invalid exported return type. Expected '%s' but was '%s'. Expected signature:%n    %s",
                                 getSimpleName(libraryMethod.getReturnType()),
                                 getSimpleName(exportedMethod.getReturnType()),
                                 generateExpectedSignature(type, message, expectedStaticReceiverType));
@@ -947,7 +947,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             TypeMirror libraryArgType = (explicitReceiver && i == 0) ? receiverType : libraryArg.asType();
             if (!typeEquals(exportedArgType, libraryArgType)) {
                 if (emitErrors) {
-                    exportedMessage.addError(exportedArg, "Invalid parameter type. Expected '%s' but was '%s'. Expected signature:\n    %s",
+                    exportedMessage.addError(exportedArg, "Invalid parameter type. Expected '%s' but was '%s'. Expected signature:%n    %s",
                                     getSimpleName(libraryArgType),
                                     getSimpleName(exportedArgType),
                                     generateExpectedSignature(type, message, expectedStaticReceiverType));

@@ -1107,7 +1107,7 @@ public class ElementUtils {
         e.printStackTrace(writer);
         writer.flush();
         string.flush();
-        return e.getMessage() + "\r\n" + string.toString();
+        return e.getMessage() + System.lineSeparator() + string.toString();
     }
 
     public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, Element element, Class<?> annotationClass) {

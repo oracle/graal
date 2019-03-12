@@ -281,8 +281,8 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
                 List<Message> messages = node.collectMessages();
 
                 String message = messages.toString();
-                message = message.replaceAll("\"", "\\\\\"");
-                message = message.replaceAll(System.lineSeparator(), "\\\\n");
+                message = message.replace("\"", "\\\"");
+                message = message.replace(System.lineSeparator(), "\\\\n");
                 overrideMethod.createBuilder().startThrow().startNew(context.getType(RuntimeException.class)).doubleQuote("Truffle DSL compiler errors: " + message).end().end();
                 type.add(overrideMethod);
             }
