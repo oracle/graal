@@ -108,7 +108,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
     static volatile int volatileIntValue;
 
     /**
-     * Can match test and load of input because of volatile store in between.
+     * Can't match test and load of input because of volatile store in between.
      */
     public static short testLoadTestNoMatchSnippet() {
         int v = intValue;

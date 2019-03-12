@@ -46,6 +46,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -386,15 +387,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return blockScope;
     }
 
-    private final class BlockScopeMatchImpl extends BlockScope {
+    private final class MatchScope implements DebugCloseable {
 
-        private BlockScopeMatchImpl(AbstractBlockBase<?> block) {
+        private MatchScope(AbstractBlockBase<?> block) {
             currentBlock = block;
-        }
-
-        @Override
-        public AbstractBlockBase<?> getCurrentBlock() {
-            return currentBlock;
         }
 
         @Override
@@ -404,9 +400,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     }
 
-    public final BlockScope getBlockScopeMatch(AbstractBlockBase<?> block) {
-        BlockScopeMatchImpl blockScope = new BlockScopeMatchImpl(block);
-        return blockScope;
+    public final DebugCloseable getMatchScope(AbstractBlockBase<?> block) {
+        MatchScope matchScope = new MatchScope(block);
+        return matchScope;
     }
 
     @Override

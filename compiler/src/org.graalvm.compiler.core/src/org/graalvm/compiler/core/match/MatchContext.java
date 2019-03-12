@@ -38,6 +38,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.core.match.MatchPattern.Result;
+import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -52,6 +53,8 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
  * Container for state captured during a match.
  */
 public class MatchContext {
+    private static final CounterKey MatchContextSuccessDifferentBlocks = DebugContext.counter("MatchContextSuccessDifferentBlocks");
+    private static final CounterKey MatchContextSuccessSideEffects = DebugContext.counter("MatchContextSuccessSideEffects");
 
     private final Node root;
 
@@ -182,24 +185,21 @@ public class MatchContext {
     }
 
     public Result validate() {
-        Result oldResult = oldValidate();
+        boolean oldResult = oldValidate();
         Result newResult = newValidate();
-        if (newResult.code != oldResult.code) {
-            root.getDebug().log("Differing results old %s new %s", oldResult.code, newResult.code);
-            if (oldResult.code == MatchPattern.MatchResultCode.OK) {
-                throw new RuntimeException();
-            }
+        if (newResult != Result.OK && oldResult) {
+            throw new RuntimeException("New matching scheme regressed");
         }
         return newResult;
     }
 
-    public Result oldValidate() {
+    public boolean oldValidate() {
         final List<Node> nodes = schedule.getBlockToNodesMap().get(rootBlock);
         int startIndex = nodes.indexOf(root);
         for (ConsumedNode cn : consumed) {
             int index = nodes.indexOf(cn.node);
             if (index == -1) {
-                return Result.notInBlock(cn.node, rule.getPattern());
+                return false;
             }
             startIndex = Math.min(startIndex, index);
         }
@@ -211,18 +211,10 @@ public class MatchContext {
                 // don't interfere with this match.
                 continue;
             } else if (!consumed.contains(node) && node != root) {
-                if (LogVerbose.getValue(root.getOptions())) {
-                    DebugContext debug = root.getDebug();
-                    debug.log("unexpected node %s", node);
-                    for (int j = startIndex; j <= rootIndex; j++) {
-                        Node theNode = nodes.get(j);
-                        debug.log("%s(%s) %1s", (consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.getUsageCount(), theNode);
-                    }
-                }
-                return Result.notSafe(node, rule.getPattern());
+                return false;
             }
         }
-        return Result.OK;
+        return true;
     }
 
     public Result newValidate() {
@@ -309,9 +301,14 @@ public class MatchContext {
     }
 
     private Result verifyInputs() {
+        DebugContext debug = root.getDebug();
         if (emitBlock != rootBlock) {
             assert consumed.find(root).ignoresSideEffects;
-            return verifyInputsDifferentBlock(root);
+            Result result = verifyInputsDifferentBlock(root);
+            if (result == Result.OK) {
+                MatchContextSuccessDifferentBlocks.increment(debug);
+            }
+            return result;
         }
         // We are going to emit the match at emitIndex. We need to make sure nodes of the match
         // between emitIndex and rootIndex don't have inputs after position emitIndex that would
@@ -337,6 +334,11 @@ public class MatchContext {
             }
         }
         assert verifyInputsDifferentBlock(root) == Result.OK;
+        if (MatchContextSuccessSideEffects.isEnabled(debug)) {
+            if (!oldValidate()) {
+                MatchContextSuccessSideEffects.increment(debug);
+            }
+        }
         return Result.OK;
     }
 
