@@ -127,6 +127,7 @@ public final class LLVMGlobal implements LLVMSymbol {
             this.type = newType;
             this.library = newLibrary;
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Found multiple definitions of global " + getName() + ".");
         }
     }

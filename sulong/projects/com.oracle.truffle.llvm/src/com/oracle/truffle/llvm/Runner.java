@@ -50,6 +50,8 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
@@ -219,7 +221,7 @@ public final class Runner {
             try (StackPointer stackPointer = ctxRef.get().getThreadingStack().getStack().newFrame()) {
                 frame.setObject(stackPointerSlot, stackPointer);
 
-                BitSet shouldInit = new BitSet(initSymbols.length);
+                BitSet shouldInit = createBitset();
                 LLVMPointer[] roSections = new LLVMPointer[initSymbols.length];
                 doInitSymbols(ctx, shouldInit, roSections);
 
@@ -228,6 +230,11 @@ public final class Runner {
                 doInitModules(frame, ctx, shouldInit, roSections, initContextBefore, initModules.length);
                 return sulongLibrary;
             }
+        }
+
+        @TruffleBoundary
+        private BitSet createBitset() {
+            return new BitSet(initSymbols.length);
         }
 
         @ExplodeLoop
@@ -420,6 +427,7 @@ public final class Runner {
             }
         }
 
+        @TruffleBoundary
         private void bindUnresolvedSymbols(LLVMContext ctx) {
             NFIContextExtension nfiContextExtension = ctx.getContextExtensionOrNull(NFIContextExtension.class);
             LLVMIntrinsicProvider intrinsicProvider = ctx.getContextExtensionOrNull(LLVMIntrinsicProvider.class);
@@ -434,6 +442,7 @@ public final class Runner {
                     } else if (symbol instanceof LLVMAlias) {
                         // nothing to do
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
                     }
                 }

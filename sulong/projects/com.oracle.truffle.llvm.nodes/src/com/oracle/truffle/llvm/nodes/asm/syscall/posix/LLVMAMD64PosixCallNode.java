@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall.posix;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
@@ -69,6 +70,7 @@ public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
         try {
             return nativeExecute.execute(function, args);
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError(e);
         }
     }

@@ -62,13 +62,18 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                     @Cached("rax") @SuppressWarnings("unused") long cachedRax,
                     @Cached("createNode(rax)") LLVMSyscallOperationNode node) {
         if (traceEnabled()) {
-            trace("[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", node.getName(), rdi, rsi, rdx, r10, r8, r9);
+            trace("[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", getNodeName(node), rdi, rsi, rdx, r10, r8, r9);
         }
         long result = node.execute(rdi, rsi, rdx, r10, r8, r9);
         if (traceEnabled()) {
             trace("         result: %d\n", result);
         }
         return result;
+    }
+
+    @TruffleBoundary
+    private static String getNodeName(LLVMSyscallOperationNode node) {
+        return node.getName();
     }
 
     @Specialization(replaces = "cachedSyscall")

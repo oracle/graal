@@ -83,6 +83,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                 NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
                 this.signature = nfiContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
             } catch (UnsupportedNativeTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(ex);
             }
         }
