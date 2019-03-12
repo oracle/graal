@@ -65,7 +65,7 @@ import com.oracle.truffle.api.dsl.GeneratedBy;
  */
 public abstract class LibraryFactory<T extends Library> {
 
-    private static final ConcurrentHashMap<Class<? extends Library>, LibraryFactory<?>> LIBRARIES;
+    private static final ConcurrentHashMap<Class<?>, LibraryFactory<?>> LIBRARIES;
 
     static {
         LIBRARIES = new ConcurrentHashMap<>();
@@ -79,9 +79,19 @@ public abstract class LibraryFactory<T extends Library> {
     @SuppressWarnings("unused")
     private static void resetNativeImageState() {
         assert TruffleOptions.AOT : "Only supported during image generation";
-        LIBRARIES.clear();
-        ResolvedDispatch.CACHE.clear();
-        ResolvedDispatch.REGISTRY.clear();
+        clearNonTruffleClasses(LIBRARIES);
+        clearNonTruffleClasses(ResolvedDispatch.CACHE);
+        clearNonTruffleClasses(ResolvedDispatch.REGISTRY);
+    }
+
+    private static void clearNonTruffleClasses(Map<Class<?>, ?> map) {
+        Class<?>[] classes = map.keySet().toArray(new Class[0]);
+        for (Class<?> clazz : classes) {
+            // classes on the boot loader should not be cleared
+            if (clazz.getClassLoader() != null) {
+                map.remove(clazz);
+            }
+        }
     }
 
     private final Class<T> libraryClass;
