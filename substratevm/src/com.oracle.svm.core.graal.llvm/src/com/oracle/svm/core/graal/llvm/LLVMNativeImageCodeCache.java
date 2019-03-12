@@ -437,6 +437,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             List<String> cmd = new ArrayList<>();
             cmd.add("llc");
+            cmd.add("-relocation-model=pic");
+
             /* X86 call frame optimization causes variable sized stack frames */
             cmd.add("-no-x86-call-frame-opt");
             cmd.add("-O2");
