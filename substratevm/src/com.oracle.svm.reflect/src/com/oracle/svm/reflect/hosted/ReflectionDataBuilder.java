@@ -40,17 +40,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 
 public class ReflectionDataBuilder implements RuntimeReflectionSupport {
@@ -79,6 +82,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
         // array classes only have methods inherited from Object
         return new DynamicHub.ReflectionData(
+                        new Field[0],
                         new Field[0],
                         new Field[0],
                         new Method[0],
@@ -230,6 +234,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                     reflectionData = new DynamicHub.ReflectionData(
                                     filterFields(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
                                     filterFields(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                    filterFields(publicFieldsField.get(originalReflectionData), f -> reflectionFields.containsKey(f) && !isShadowedIn(f, clazz), access.getMetaAccess()),
                                     filterMethods(declaredMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
                                     filterMethods(publicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
                                     filterConstructors(declaredConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
@@ -300,11 +305,28 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static Field[] filterFields(Object fields, Set<Field> filter, AnalysisMetaAccess metaAccess) {
+    private static Field[] filterFields(Object fields, Set<Field> filterSet, AnalysisMetaAccess metaAccess) {
+        return filterFields(fields, filterSet::contains, metaAccess);
+    }
+
+    private static boolean isShadowedIn(Field field, Class<?> clazz) {
+        try {
+            return !clazz.getField(field.getName()).equals(field);
+        } catch (NoSuchFieldException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private static Field[] filterFields(Object fields, Predicate<Field> filter, AnalysisMetaAccess metaAccess) {
         List<Field> result = new ArrayList<>();
         for (Field field : (Field[]) fields) {
-            if (filter.contains(field) && !SubstitutionReflectivityFilter.shouldExclude(field, metaAccess)) {
-                result.add(field);
+            if (filter.test(field) && !SubstitutionReflectivityFilter.shouldExclude(field, metaAccess)) {
+                try {
+                    if (!metaAccess.lookupJavaField(field).isAnnotationPresent(Delete.class)) {
+                        result.add(field);
+                    }
+                } catch (DeletedElementException ignored) { // filter
+                }
             }
         }
         return result.toArray(new Field[0]);
