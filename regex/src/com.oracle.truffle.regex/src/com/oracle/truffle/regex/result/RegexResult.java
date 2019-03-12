@@ -69,7 +69,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
         }
     }
 
-    public static final NoMatchResult NO_MATCH = new NoMatchResult(null, "NULL", 0) {
+    public static final RegexResult NO_MATCH = new NoMatchResult(null, "NULL", 0) {
     };
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("input", "isMatch", "groupCount", "start", "end", "regex");
