@@ -61,6 +61,7 @@ import com.oracle.svm.hosted.config.ConfigurationDirectories;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess.JNIRuntimeAccessibilitySupport;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
+import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
@@ -232,6 +233,9 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
+        if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess())) {
+            return null;
+        }
         return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
             if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
@@ -244,6 +248,9 @@ public class JNIAccessFeature implements Feature {
     }
 
     private void addMethod(Executable method, DuringAnalysisAccessImpl access) {
+        if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess())) {
+            return;
+        }
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
         jniClass.addMethodIfAbsent(descriptor, d -> {
@@ -276,7 +283,9 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static void addField(Field reflField, boolean writable, DuringAnalysisAccessImpl access) {
-        BigBang bigBang = access.getBigBang();
+        if (SubstitutionReflectivityFilter.shouldExclude(reflField, access.getMetaAccess())) {
+            return;
+        }
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), access);
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
         jniClass.addFieldIfAbsent(field.getName(), name -> new JNIAccessibleField(jniClass, name, field.getJavaKind(), field.getModifiers()));
@@ -288,6 +297,7 @@ public class JNIAccessFeature implements Feature {
         }
         // Same as BigBang.addSystemField() and BigBang.addSystemStaticField():
         // create type flows for any subtype of the field's declared type
+        BigBang bigBang = access.getBigBang();
         TypeFlow<?> declaredTypeFlow = field.getType().getTypeFlow(bigBang, true);
         if (field.isStatic()) {
             declaredTypeFlow.addUse(bigBang, field.getStaticFieldFlow());
