@@ -48,6 +48,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -440,14 +441,7 @@ public class ProxyAPITest {
             return new Object[]{42};
         };
 
-        assertFails(() -> value.getMemberKeys().iterator().next(), PolyglotException.class, (e) -> {
-            if (e.isInternalError()) {
-                // assertion error
-            } else {
-                assertTrue(e.toString(), e.isHostException());
-                assertTrue(e.asHostException() instanceof ClassCastException);
-            }
-        });
+        assertNull(value.getMemberKeys().iterator().next());
         assertEquals(6, proxy.getMemberKeysCounter);
 
         proxy.getMemberKeys = () -> {
