@@ -145,7 +145,6 @@ final class PolyglotProxy implements TruffleObject {
     private static final CallTarget EXECUTE = createGuestToHost(new ExecuteNode());
 
     @ExportMessage
-    @TruffleBoundary
     Object execute(Object[] arguments, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
         if (proxy instanceof ProxyExecutable) {
             Value[] convertedArguments = languageContext.toHostValues(arguments, 0);

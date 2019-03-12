@@ -37,6 +37,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -80,11 +81,13 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
         }
 
         @ExportMessage
+        @TruffleBoundary
         boolean isMemberReadable(String name) {
             return map.containsKey(name);
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object readMember(String name) throws UnknownIdentifierException {
             Object value = map.get(name);
             if (value == null) {
@@ -94,6 +97,7 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
             return new ArrayObject(map.keySet().toArray());
         }

@@ -137,7 +137,7 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
     protected Object genericDispatch(Library originalLib, Object receiver, Message message, Object[] args, int offset) throws Exception {
         DynamicDispatchLibrary lib = (DynamicDispatchLibrary) originalLib;
         MessageImpl messageImpl = (MessageImpl) message;
-        if (messageImpl.getParameterTypes().size() - 1 != args.length - offset) {
+        if (messageImpl.getParameterCount() - 1 != args.length - offset) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException("Invalid number of arguments.");
         }
