@@ -267,6 +267,17 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
+    public final Object callInlinedForced(Node location, Object... arguments) {
+        try {
+            getCompilationProfile().profileInlinedCall();
+            return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert keepAlive(location);
+        }
+    }
+
     protected Object doInvoke(Object[] args) {
         return callBoundary(args);
     }
@@ -864,7 +875,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         @Override
         public Object call(Node callNode, CallTarget target, Object... arguments) {
             try {
-                return ((OptimizedCallTarget) target).callInlined(callNode, arguments);
+                return ((OptimizedCallTarget) target).callInlinedForced(callNode, arguments);
             } catch (Throwable t) {
                 OptimizedCallTarget.runtime().getTvmci().onThrowable(callNode, ((OptimizedCallTarget) target), t, null);
                 throw OptimizedCallTarget.rethrow(t);
