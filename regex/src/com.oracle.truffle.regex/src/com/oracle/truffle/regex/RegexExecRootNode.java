@@ -26,9 +26,13 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.tregex.nodes.input.InputAccess;
+import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 
 public abstract class RegexExecRootNode extends RegexBodyNode {
+
+    @Child private InputLengthNode inputLengthNode = InputLengthNode.create();
+    @Child private InputCharAtNode inputCharAtNode = InputCharAtNode.create();
 
     public RegexExecRootNode(RegexLanguage language, RegexSource source) {
         super(language, source);
@@ -42,8 +46,9 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
         RegexObject regex = (RegexObject) args[0];
         Object input = args[1];
         int fromIndex = (int) args[2];
-        if (regex.isUnicodePattern() && fromIndex > 0 && fromIndex < InputAccess.length(input)) {
-            if (Character.isLowSurrogate(InputAccess.charAt(input, fromIndex)) && Character.isHighSurrogate(InputAccess.charAt(input, fromIndex - 1))) {
+        if (regex.isUnicodePattern() && fromIndex > 0 && fromIndex < inputLengthNode.execute(input)) {
+            if (Character.isLowSurrogate(inputCharAtNode.execute(input, fromIndex)) &&
+                            Character.isHighSurrogate(inputCharAtNode.execute(input, fromIndex - 1))) {
                 fromIndex = fromIndex - 1;
             }
         }

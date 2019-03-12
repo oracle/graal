@@ -27,6 +27,7 @@ package com.oracle.truffle.regex.tregex.nodes;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -34,7 +35,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.nodes.input.InputAccess;
+import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
@@ -46,6 +47,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
         private final short loopTransitionIndex;
         @CompilationFinal(dimensions = 1) private final char[] indexOfChars;
+        @Child private InputIndexOfNode indexOfNode;
 
         public LoopOptimizationNode(short loopTransitionIndex, char[] indexOfChars) {
             this.loopTransitionIndex = loopTransitionIndex;
@@ -54,6 +56,14 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
         private LoopOptimizationNode nodeSplitCopy() {
             return new LoopOptimizationNode(loopTransitionIndex, indexOfChars);
+        }
+
+        private InputIndexOfNode getIndexOfNode() {
+            if (indexOfNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                indexOfNode = insert(InputIndexOfNode.create());
+            }
+            return indexOfNode;
         }
     }
 
@@ -175,7 +185,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * the successor is the state itself, this method continues consuming input characters until a
      * different successor is found. This special handling allows for partial loop unrolling inside
      * the DFA, as well as some optimizations in {@link CGTrackingDFAStateNode}.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param compactString {@code true} if the input string is a compact string, must be partial
@@ -201,7 +211,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
             }
             final int preLoopIndex = executor.getIndex(frame);
             if (executor.isForward() && hasLoopToSelf() && loopOptimizationNode.indexOfChars != null) {
-                int indexOfResult = InputAccess.indexOf(executor.getInput(frame),
+                int indexOfResult = loopOptimizationNode.getIndexOfNode().execute(executor.getInput(frame),
                                 preLoopIndex,
                                 executor.getCurMaxIndex(frame),
                                 loopOptimizationNode.indexOfChars);
@@ -237,7 +247,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * the element of {@link #getMatchers()} that matched the current input character (
      * {@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or {@link #FS_RESULT_NO_SUCCESSOR} is
      * stored via {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param compactString {@code true} if the input string is a compact string, must be partial
@@ -278,7 +288,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * {@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or {@link #FS_RESULT_NO_SUCCESSOR} is
      * stored via {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. If no
      * transition matches, {@link #noSuccessor2(VirtualFrame, TRegexDFAExecutorNode)} is called.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param compactString {@code true} if the input string is a compact string, must be partial
@@ -326,7 +336,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * stored via {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. If no
      * transition matches, {@link #noSuccessor3(VirtualFrame, TRegexDFAExecutorNode, int)} is
      * called.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param compactString {@code true} if the input string is a compact string, must be partial
@@ -368,7 +378,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * Gets called at the very beginning of
      * {@link DFAAbstractStateNode#executeFindSuccessor(VirtualFrame, TRegexDFAExecutorNode, boolean)}
      * .
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      */
@@ -382,7 +392,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     /**
      * Gets called when {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode, boolean)} finds a
      * successor.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param i the index of the matching transition (corresponds to an entry in
@@ -398,7 +408,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode, boolean)} is called. In
      * {@link BackwardDFAStateNode}, execution may still continue here, which is why this method can
      * return a successor index.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @return a successor index.
@@ -414,7 +424,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     /**
      * Gets called when {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode, boolean)} finds a
      * successor <i>other than</i> the looping transition indicated by {@link #isLoopToSelf(int)}.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param i the index of the matching transition (corresponds to an entry in
@@ -430,7 +440,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     /**
      * Gets called if {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode, boolean)} does not
      * find a successor.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      */
@@ -447,7 +457,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode, boolean)} is called. In
      * {@link BackwardDFAStateNode}, execution may still continue here, which is why this method can
      * return a successor index.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @return a successor index.
@@ -464,7 +474,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     /**
      * Gets called when {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode, boolean)} finds a
      * successor <i>other than</i> the looping transition indicated by {@link #isLoopToSelf(int)}.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param i the index of the matching transition (corresponds to an entry in
@@ -484,7 +494,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     /**
      * Gets called if {@link #checkMatch3(VirtualFrame, TRegexDFAExecutorNode, boolean, int)} does
      * not find a successor.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param preLoopIndex the index pointed to by
@@ -505,7 +515,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * {@link #checkMatch3(VirtualFrame, TRegexDFAExecutorNode, boolean, int)}. In
      * {@link BackwardDFAStateNode}, execution may still continue here, which is why this method can
      * return a successor index.
-     *
+     * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param preLoopIndex the index pointed to by

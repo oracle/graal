@@ -24,12 +24,6 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_INTERNAL_ERRORS;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_SWITCH_TO_EAGER;
-
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -52,7 +46,13 @@ import com.oracle.truffle.regex.result.SingleResult;
 import com.oracle.truffle.regex.result.SingleResultLazyStart;
 import com.oracle.truffle.regex.result.TraceFinderResult;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
-import com.oracle.truffle.regex.tregex.nodes.input.InputAccess;
+import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
+
+import java.util.Arrays;
+
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_INTERNAL_ERRORS;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_SWITCH_TO_EAGER;
 
 public class TRegexExecRootNode extends RegexExecRootNode implements CompiledRegex, RegexProfile.TracksRegexProfile {
 
@@ -179,6 +179,8 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
 
     abstract static class RunRegexSearchNode extends Node {
 
+        @Child InputLengthNode inputLengthNode = InputLengthNode.create();
+
         abstract RegexResult run(VirtualFrame frame, RegexObject regex, Object input, int fromIndexArg);
     }
 
@@ -232,7 +234,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         }
 
         private RegexResult executeForward(VirtualFrame frame, RegexObject regex, Object input, int fromIndexArg) {
-            forwardEntryNode.execute(frame, input, fromIndexArg, fromIndexArg, InputAccess.length(input));
+            forwardEntryNode.execute(frame, input, fromIndexArg, fromIndexArg, inputLengthNode.execute(input));
             final int end = forwardEntryNode.getExecutor().getResultInt(frame);
             if (end == TRegexDFAExecutorNode.NO_MATCH) {
                 return RegexResult.NO_MATCH;
@@ -264,7 +266,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         }
 
         private RegexResult executeBackwardAnchored(VirtualFrame frame, RegexObject regex, Object input, int fromIndexArg) {
-            final int inputLength = InputAccess.length(input);
+            final int inputLength = inputLengthNode.execute(input);
             backwardEntryNode.execute(frame, input, 0, inputLength - 1,
                             Math.max(-1, fromIndexArg - 1 - forwardEntryNode.getExecutor().getPrefixLength()));
             final int backwardResult = backwardEntryNode.getExecutor().getResultInt(frame);
@@ -304,7 +306,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
 
         @Override
         RegexResult run(VirtualFrame frame, RegexObject regex, Object input, int fromIndexArg) {
-            entryNode.execute(frame, input, fromIndexArg, fromIndexArg, InputAccess.length(input));
+            entryNode.execute(frame, input, fromIndexArg, fromIndexArg, inputLengthNode.execute(input));
             final int[] resultArray = entryNode.getExecutor().getResultCaptureGroups(frame);
             if (resultArray == null) {
                 return RegexResult.NO_MATCH;
