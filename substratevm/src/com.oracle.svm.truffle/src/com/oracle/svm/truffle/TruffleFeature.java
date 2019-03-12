@@ -409,9 +409,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private static Class<?> findGeneratedLibraryClass(DuringAnalysisAccess config, Class<?> lib) {
-        Class<?> genClass = config.findClassByName(lib.getPackage().getName() + "." + lib.getSimpleName() + "Gen");
+        String className = lib.getPackage().getName() + "." + lib.getSimpleName() + "Gen";
+        Class<?> genClass = config.findClassByName(className);
         if (genClass == null) {
-            throw new IllegalStateException("Could not find generated library class %s. Did the Java compilation succeed and did the Truffle annotation processor run?");
+            throw UserError.abort(String.format("Could not find generated library class '%s'. Did the Java compilation succeed and did the Truffle annotation processor run?", genClass));
         }
         return genClass;
     }
