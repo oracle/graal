@@ -82,7 +82,7 @@ public final class UnsupportedMessageException extends InteropException {
      */
     @Override
     public String getMessage() {
-        return "Message unsupported.";
+        return "Message not supported.";
     }
 
     /**
