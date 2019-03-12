@@ -138,18 +138,26 @@ abstract class LibFFIType {
             buffer.align(alignment);
             switch (cachedType) {
                 case UINT8:
+                    serialize.putUByte(value, buffer);
+                    break;
                 case SINT8:
                     serialize.putByte(value, buffer);
                     break;
                 case UINT16:
+                    serialize.putUShort(value, buffer);
+                    break;
                 case SINT16:
                     serialize.putShort(value, buffer);
                     break;
                 case UINT32:
+                    serialize.putUInt(value, buffer);
+                    break;
                 case SINT32:
                     serialize.putInt(value, buffer);
                     break;
                 case UINT64:
+                    serialize.putULong(value, buffer);
+                    break;
                 case SINT64:
                     serialize.putLong(value, buffer);
                     break;
