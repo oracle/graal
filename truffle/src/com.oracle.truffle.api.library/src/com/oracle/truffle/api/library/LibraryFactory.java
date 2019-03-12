@@ -71,6 +71,19 @@ public abstract class LibraryFactory<T extends Library> {
         LIBRARIES = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Resets the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        LIBRARIES.clear();
+        ResolvedDispatch.CACHE.clear();
+        ResolvedDispatch.REGISTRY.clear();
+    }
+
     private final Class<T> libraryClass;
     private final List<Message> messages;
     private final ConcurrentHashMap<Class<?>, LibraryExport<T>> exportCache = new ConcurrentHashMap<>();
