@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,8 @@ import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.OptionsEncoder;
 import org.graalvm.graphio.GraphOutput;
+
+import jdk.vm.ci.services.Services;
 
 final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
@@ -137,7 +139,7 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
     }
 
     private static Path findReleaseFile() {
-        final String home = System.getProperty("java.home");
+        final String home = Services.getSavedProperties().get("java.home");
         if (home == null) {
             return null;
         }

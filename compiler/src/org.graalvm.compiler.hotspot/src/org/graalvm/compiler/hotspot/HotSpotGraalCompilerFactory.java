@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.runtime.JVMCIRuntime;
+import jdk.vm.ci.services.Services;
 
 public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFactory {
 
@@ -70,7 +71,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
 
     @Override
     public void onSelection() {
-        JVMCIVersionCheck.check(false);
+        JVMCIVersionCheck.check(Services.getSavedProperties(), false);
         assert options == null : "cannot select " + getClass() + " service more than once";
         options = HotSpotGraalOptionValues.defaultOptions();
         initializeGraalCompilePolicyFields(options);
