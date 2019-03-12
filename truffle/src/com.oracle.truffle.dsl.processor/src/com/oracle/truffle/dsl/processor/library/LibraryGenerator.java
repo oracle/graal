@@ -413,13 +413,13 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         cachedDispatch.add(GeneratorUtils.createConstructorUsingFields(modifiers(), cachedDispatch));
         for (MessageObjects message : methods) {
             CodeExecutableElement execute = cachedDispatch.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
-            execute.getAnnotationMirrors().add(createExplodeLoop());
             execute.renameArguments("receiver_");
             removeAbstractModifiers(execute);
             builder = execute.createBuilder();
             if (message.model.getName().equals(ACCEPTS)) {
                 builder.returnTrue();
             } else {
+                execute.getAnnotationMirrors().add(createExplodeLoop());
                 builder.startDoBlock();
                 builder.declaration(cachedDispatch.asType(), "current", "this");
                 builder.startDoBlock();
