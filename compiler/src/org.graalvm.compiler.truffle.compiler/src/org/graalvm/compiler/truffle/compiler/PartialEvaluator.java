@@ -290,7 +290,7 @@ public abstract class PartialEvaluator {
 
     private class PEInlineInvokePlugin implements InlineInvokePlugin {
 
-        private Deque<TruffleInliningPlan> inlining;
+        private final Deque<TruffleInliningPlan> inlining;
 
         PEInlineInvokePlugin(TruffleInliningPlan inlining) {
             this.inlining = new ArrayDeque<>();
@@ -319,6 +319,15 @@ public abstract class PartialEvaluator {
                         builder.getAssumptions().record(new TruffleAssumption(assumption));
                         return createStandardInlineInfo(callInlinedMethod);
                     }
+                } else if (original.equals(callInlinedMethod)) {
+                    // callInlined may be called directly
+                    ValueNode arg0 = arguments[1];
+                    if (!arg0.isConstant()) {
+                        GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                    }
+                    TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), (JavaConstant) arg0.asConstant());
+                    // no matter what the decision was, we inlined here.
+                    inlining.push(decision);
                 }
             }
 
