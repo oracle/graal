@@ -56,12 +56,14 @@ final class LegacyToLibraryNode extends Node {
     @Child private InteropAccessNode legacyUnbox;
     @Child private InteropAccessNode legacyIsBoxed;
     @Child private InteropAccessNode legacyToNative;
+    @Child private InteropAccessNode legacyRemove;
 
     private LegacyToLibraryNode(Message message) {
         this.message = message;
         legacyUnbox = InteropAccessNode.create(Message.UNBOX);
         legacyIsBoxed = InteropAccessNode.create(Message.IS_BOXED);
         legacyToNative = InteropAccessNode.create(Message.TO_NATIVE);
+        legacyRemove = InteropAccessNode.create(Message.REMOVE);
     }
 
     static final class AdoptRootNode extends RootNode {
@@ -155,10 +157,18 @@ final class LegacyToLibraryNode extends Node {
     boolean sendRemove(TruffleObject receiver, Object identifier)
                     throws UnknownIdentifierException, UnsupportedMessageException {
         if (identifier instanceof String) {
+            if (receiver.getForeignAccess() != null) {
+                return LibraryToLegacy.sendRemove(legacyRemove, receiver, identifier);
+            }
+
             interop.removeMember(receiver, (String) identifier);
             return true;
         } else if (identifier instanceof Number) {
             try {
+                if (receiver.getForeignAccess() != null) {
+                    return LibraryToLegacy.sendRemove(legacyRemove, receiver, identifier);
+                }
+
                 interop.removeArrayElement(receiver, ((Number) identifier).longValue());
                 return true;
             } catch (InvalidArrayIndexException e) {
