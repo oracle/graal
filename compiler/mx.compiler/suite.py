@@ -188,6 +188,9 @@ suite = {
           "amd64": {
             "dependencies" : ["LLVM_PLATFORM_SPECIFIC"],
           },
+          "aarch64": {
+            "dependencies" : [],
+          },
         },
         "darwin": {
           "amd64": {
@@ -239,6 +242,10 @@ suite = {
               "version" : "6.0.1-1.4.2",
               "classifier": "linux-x86_64"
             },
+          },
+          "<others>": {
+            "path": "",
+            "optional": True
           },
         },
         "darwin": {
