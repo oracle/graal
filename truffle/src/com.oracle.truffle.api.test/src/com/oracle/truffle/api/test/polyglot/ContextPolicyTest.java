@@ -49,6 +49,7 @@ import java.util.List;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -488,7 +489,7 @@ public class ContextPolicyTest {
 
     @Registration(id = SINGLE_REUSE_LANGUAGE, name = SINGLE_REUSE_LANGUAGE, contextPolicy = ContextPolicy.REUSE)
     public static class SingleReusePolicyLanguage extends SingleContextPolicyLanguage {
-        @Option(help = "", category = OptionCategory.INTERNAL) //
+        @Option(help = "", category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
         @Override
@@ -504,7 +505,7 @@ public class ContextPolicyTest {
 
     @Registration(id = MULTIPLE_LANGUAGE, name = MULTIPLE_LANGUAGE, contextPolicy = ContextPolicy.SHARED)
     public static class MultipleContextPolicyLanguage extends SingleContextPolicyLanguage {
-        @Option(help = "", category = OptionCategory.INTERNAL) //
+        @Option(help = "", category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
         @Override

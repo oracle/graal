@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.c.function;
 
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.function.Function;
 
@@ -33,8 +32,6 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -43,14 +40,10 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 
 @CHeader(value = GraalIsolateHeader.class)
 public final class CEntryPointNativeFunctions {
@@ -150,18 +143,12 @@ public final class CEntryPointNativeFunctions {
         if (thread.isNull()) {
             // proceed to return null
         } else if (SubstrateOptions.MultiThreaded.getValue()) {
-            long offset = ISOLATETHREAD_ISOLATE_OFFSET.get().read();
-            isolate = ((Pointer) thread).readWord(WordFactory.unsigned(offset));
+            isolate = VMThreads.IsolateTL.get(thread);
         } else if (SubstrateOptions.SpawnIsolates.getValue() || thread.equal(CEntryPointSetup.SINGLE_THREAD_SENTINEL)) {
             isolate = (Isolate) ((Pointer) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
         }
         return isolate;
     }
-
-    private static final CGlobalData<CLongPointer> ISOLATETHREAD_ISOLATE_OFFSET = CGlobalDataFactory.createBytes(//
-                    () -> ByteBuffer.allocate(SizeOf.get(CLongPointer.class)) //
-                                    .order(ConfigurationValues.getTarget().arch.getByteOrder())
-                                    .putLong(VMThreadLocalInfos.getOffset(VMThreads.IsolateTL)).array());
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
     @CEntryPoint(name = "detach_thread", documentation = {

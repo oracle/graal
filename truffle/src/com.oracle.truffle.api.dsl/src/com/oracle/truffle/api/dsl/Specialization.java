@@ -40,17 +40,17 @@
  */
 package com.oracle.truffle.api.dsl;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 
 /**
  * <p>
@@ -171,7 +171,7 @@ public @interface Specialization {
      * <pre>
      * &#064;Specialization(rewriteOn = ArithmeticException.class)
      * int doAddNoOverflow(int a, int b) {
-     *     return ExactMath.addExact(a, b);
+     *     return Math.addExact(a, b);
      * }
      * &#064;Specialization
      * long doAddWithOverflow(int a, int b) {

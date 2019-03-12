@@ -33,7 +33,9 @@ import mx_unittest
 import functools
 from mx_gate import Task
 
+from os import environ
 from os.path import join, exists, dirname
+from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
 
 _suite = mx.suite('vm')
@@ -101,7 +103,20 @@ def gate_body(args, tasks):
 
             with Task('Test LibGraal', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
-                    mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false"])
+                    def _unittest_config_participant(config):
+                        vmArgs, mainClass, mainClassArgs = config
+                        newVmArgs = [arg for arg in vmArgs if arg != "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime"]
+                        return (newVmArgs, mainClass, mainClassArgs)
+                    mx_unittest.add_config_participant(_unittest_config_participant)
+                    excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
+                    if excluded_tests:
+                        with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
+                            fp.file.writelines([l + '\n' for l in excluded_tests.split()])
+                            unittest_args = ["--blacklist", fp.name]
+                    else:
+                        unittest_args = []
+                    unittest_args = unittest_args + ["--enable-timing", "--verbose"]
+                    mx_unittest.unittest(unittest_args + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false", "truffle"])
 
             with Task('LibGraal GraalVM smoke test', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:

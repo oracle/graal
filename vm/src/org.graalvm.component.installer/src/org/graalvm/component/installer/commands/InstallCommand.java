@@ -156,7 +156,7 @@ public class InstallCommand implements InstallerCommand {
             if (ldr.getLicenseType() != null) {
                 String path = ldr.getLicensePath();
                 if (path != null) {
-                    inst.setLicenseRelativePath(SystemUtils.fromCommonString(ldr.getLicensePath()));
+                    inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
                 }
                 String licId = ldr.getLicenseID();
                 addLicenseToAccept(licId, ldr);
@@ -246,9 +246,10 @@ public class InstallCommand implements InstallerCommand {
 
     String replaceTokens(ComponentInfo info, String message) {
         Map<String, String> tokens = new HashMap<>();
+        String graalPath = input.getGraalHomePath().normalize().toString();
         tokens.putAll(info.getRequiredGraalValues());
         tokens.putAll(input.getLocalRegistry().getGraalCapabilities());
-        tokens.put(CommonConstants.TOKEN_GRAALVM_PATH, input.getGraalHomePath().normalize().toString());
+        tokens.put(CommonConstants.TOKEN_GRAALVM_PATH, graalPath);
 
         Matcher m = TOKEN_PATTERN.matcher(message);
         StringBuilder result = null;
@@ -259,7 +260,7 @@ public class InstallCommand implements InstallerCommand {
             String val = tokens.get(token);
             if (val != null) {
                 if (result == null) {
-                    result = new StringBuilder();
+                    result = new StringBuilder(graalPath.length() * 2);
                 }
                 result.append(message.substring(last, m.start()));
                 result.append(val);

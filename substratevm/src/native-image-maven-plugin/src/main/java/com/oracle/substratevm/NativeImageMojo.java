@@ -250,6 +250,10 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     private void addClasspath(Artifact artifact) throws MojoExecutionException {
+        if (!"jar".equals(artifact.getType())) {
+            getLog().warn("Ignoring non-jar type ImageClasspath Entry " + artifact);
+            return;
+        }
         File artifactFile = artifact.getFile();
         if (artifactFile == null) {
             throw new MojoExecutionException("Missing jar-file for " + artifact + ". Ensure " + plugin.getArtifactId() + " runs in package phase.");

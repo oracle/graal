@@ -1368,37 +1368,37 @@ class JavaNetNetUtilMD {
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 081 #define NET_Connect     JVM_Connect
     static int NET_Connect(int fd, Socket.sockaddr him, int len) {
-        return VmPrimsJVM.JVM_Connect(fd, him, len);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Connect(fd, him, len);
     }
     /* @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 082 #define NET_Accept      JVM_Accept
     static int NET_Accept(int fd, Socket.sockaddr him, CIntPointer len_Pointer) {
-        return VmPrimsJVM.JVM_Accept(fd, him, len_Pointer);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Accept(fd, him, len_Pointer);
     }
     /* @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 086 #define NET_Poll        poll
     static int NET_Poll(pollfd fds, int nfds, int timeout) {
-        return Poll.poll(fds, nfds, timeout);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Poll(fds, nfds, timeout);
     }
     /* @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 078 #define NET_Send        JVM_Send
     static int NET_Send(int fd, CCharPointer buf, int nBytes, int flags) {
-        return VmPrimsJVM.JVM_Send(fd, buf, nBytes, flags);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Send(fd, buf, nBytes, flags);
     }
     /* @formatter:on */
 
     static int NET_SendTo(int fd, CCharPointer buf, int n, int flags, Socket.sockaddr addr, int addr_len) {
-        return VmPrimsJVM.JVM_SendTo(fd, buf, n, flags, addr, addr_len);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_SendTo(fd, buf, n, flags, addr, addr_len);
     }
 
     static int NET_RecvFrom(int fd, CCharPointer buf, int n, int flags, Socket.sockaddr addr, CIntPointer addr_len) {
-        return VmPrimsJVM.JVM_RecvFrom(fd, buf, n, flags, addr, addr_len);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_RecvFrom(fd, buf, n, flags, addr, addr_len);
     }
 
     /* Do not re-wrap commented-out code.  @formatter:off */
@@ -1425,14 +1425,14 @@ class JavaNetNetUtilMD {
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 084 #define NET_Dup2        dup2
     static int NET_Dup2(int fd, int fd2) {
-        return Unistd.dup2(fd, fd2);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Dup2(fd, fd2);
     }
     /* @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 083 #define NET_SocketClose JVM_SocketClose
     static int NET_SocketClose(int fd) {
-        return VmPrimsJVM.JVM_SocketClose(fd);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_SocketClose(fd);
     }
     /* @formatter:on */
 

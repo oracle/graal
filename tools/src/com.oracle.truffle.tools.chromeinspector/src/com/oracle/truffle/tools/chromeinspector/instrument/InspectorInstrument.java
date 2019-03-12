@@ -218,7 +218,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             @Override
             @SuppressWarnings("all") // The parameters port and host should not be assigned
             public synchronized InspectorServerConnection open(int port, String host, boolean wait) {
-                if (server != null) {
+                if (server != null && server.wss != null) {
                     return null;
                 }
                 HostAndPort hostAndPort = options.get(Inspect);
@@ -247,7 +247,8 @@ public final class InspectorInstrument extends TruffleInstrument {
                 if (server != null) {
                     return server.getConnection().getExecutionContext();
                 } else {
-                    return new InspectorExecutionContext("Main Context", options.get(Internal), options.get(Initialization), env, Collections.emptyList(), new PrintWriter(env.err()));
+                    PrintWriter err = (options.get(HideErrors)) ? null : new PrintWriter(env.err(), true);
+                    return new InspectorExecutionContext("Main Context", options.get(Internal), options.get(Initialization), env, Collections.emptyList(), err);
                 }
             }
         }));
@@ -376,7 +377,7 @@ public final class InspectorInstrument extends TruffleInstrument {
         Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
                         final boolean inspectInternal, final boolean inspectInitialization, final String pathOrNull, final boolean secure, final KeyStoreOptions keyStoreOptions,
                         final List<URI> sourcePath, final ConnectionWatcher connectionWatcher) throws IOException {
-            PrintWriter info = new PrintWriter(env.err());
+            PrintWriter info = new PrintWriter(env.err(), true);
             if (pathOrNull == null || pathOrNull.isEmpty()) {
                 wsspath = "/" + Long.toHexString(System.identityHashCode(env)) + "-" + Long.toHexString(System.nanoTime() ^ System.identityHashCode(env));
             } else {
@@ -407,8 +408,9 @@ public final class InspectorInstrument extends TruffleInstrument {
                 if (serverEndpoint == null) {
                     interceptor.close(wsspath);
                     wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
-                    wsURL = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
-                    String address = DEV_TOOLS_PREFIX + wsURL;
+                    String wsStr = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
+                    String address = DEV_TOOLS_PREFIX + wsStr;
+                    wsURL = wsStr.replace("=", "://");
                     info.println("Debugger listening on port " + wss.getPort() + ".");
                     info.println("To start debugging, open the following URL in Chrome:");
                     info.println("    " + address);
@@ -504,7 +506,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
                 @Override
                 public void close() throws IOException {
-                    wss.close(getWSPath());
+                    Server.this.close();
                 }
 
                 @Override
@@ -514,7 +516,9 @@ public final class InspectorInstrument extends TruffleInstrument {
 
                 @Override
                 public void consoleAPICall(String type, Object text) {
-                    wss.consoleAPICall(getWSPath(), type, text);
+                    if (wss != null) {
+                        wss.consoleAPICall(getWSPath(), type, text);
+                    }
                 }
             };
         }

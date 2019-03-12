@@ -56,8 +56,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Returns a string representation of the current stack. This includes the {@link CallTarget}s and
- * the contents of the {@link Frame}. Note that this is implemented as a slow path by passing
- * {@code true} to {@link FrameInstance#getFrame(FrameAccess, boolean)}.
+ * the contents of the {@link Frame}.
  */
 @NodeInfo(shortName = "stacktrace")
 public abstract class SLStackTraceBuiltin extends SLBuiltinNode {

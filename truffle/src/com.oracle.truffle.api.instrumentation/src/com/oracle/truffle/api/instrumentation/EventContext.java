@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -55,7 +53,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorIns
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -217,33 +214,6 @@ public final class EventContext {
         LanguageInfo languageInfo = root.getLanguageInfo();
         Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
         return AccessorInstrumentHandler.langAccess().isContextInitialized(env);
-    }
-
-    /**
-     * Evaluates source of (potentially different) language using the current context. The names of
-     * arguments are parameters for the resulting {#link CallTarget} that allow the
-     * <code>source</code> to reference the actual parameters passed to
-     * {@link CallTarget#call(java.lang.Object...)}.
-     *
-     * @param source the source to evaluate
-     * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments that
-     *            can be referenced from the source
-     * @return the call target representing the parsed result
-     * @throws IOException if the parsing or evaluation fails for some reason
-     * @since 0.12
-     * @deprecated Use
-     *             {@link TruffleInstrument.Env#parseInline(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.MaterializedFrame)}
-     *             with {@link #getInstrumentedNode()} instead.
-     */
-    @Deprecated
-    public CallTarget parseInContext(Source source, String... argumentNames) throws IOException {
-        Node instrumentedNode = getInstrumentedNode();
-        LanguageInfo languageInfo = instrumentedNode.getRootNode().getLanguageInfo();
-        if (languageInfo == null) {
-            throw new IllegalArgumentException("No language available for given node.");
-        }
-        Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
-        return AccessorInstrumentHandler.langAccess().parse(env, source, instrumentedNode, argumentNames);
     }
 
     /**

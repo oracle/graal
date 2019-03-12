@@ -86,9 +86,9 @@ public class Uninstaller {
                 } catch (IOException ex) {
                     if (ignoreFailedDeletions) {
                         if (Files.isDirectory(p)) {
-                            feedback.error("INSTALL_FailedToDeleteDirectory", ex, p, ex.getMessage());
+                            feedback.error("INSTALL_FailedToDeleteDirectory", ex, p, ex.getLocalizedMessage());
                         } else {
-                            feedback.error("INSTALL_FailedToDeleteFile", ex, p, ex.getMessage());
+                            feedback.error("INSTALL_FailedToDeleteFile", ex, p, ex.getLocalizedMessage());
                         }
                         return;
                     }
@@ -153,10 +153,11 @@ public class Uninstaller {
                 feedback.verboseOutput("INSTALL_SkippingSharedFile", p);
                 continue;
             }
-            Path toDelete = installPath.resolve(SystemUtils.fromCommonString(p));
+            // assert relative path
+            Path toDelete = installPath.resolve(SystemUtils.fromCommonRelative(p));
             if (Files.isDirectory(toDelete)) {
                 for (String s : preservePaths) {
-                    Path x = SystemUtils.fromCommonString(s);
+                    Path x = SystemUtils.fromCommonRelative(s);
                     if (x.startsWith(p)) {
                         // will not delete directory with something shared or system.
                         continue O;
@@ -172,7 +173,7 @@ public class Uninstaller {
                     deleteOneFile(toDelete, installPath);
                 } catch (IOException ex) {
                     if (ignoreFailedDeletions) {
-                        feedback.error("INSTALL_FailedToDeleteFile", ex, toDelete, ex.getMessage());
+                        feedback.error("INSTALL_FailedToDeleteFile", ex, toDelete, ex.getLocalizedMessage());
                     } else {
                         throw ex;
                     }
@@ -181,7 +182,7 @@ public class Uninstaller {
         }
         List<String> dirNames = new ArrayList<>(directoriesToDelete);
         for (String s : componentInfo.getWorkingDirectories()) {
-            Path p = installPath.resolve(SystemUtils.fromCommonString(s));
+            Path p = installPath.resolve(SystemUtils.fromCommonRelative(s));
             feedback.verboseOutput("UNINSTALL_DeletingDirectoryRecursively", p);
             if (componentInfo.getWorkingDirectories().contains(s)) {
                 deleteContentsRecursively(p);
@@ -190,14 +191,14 @@ public class Uninstaller {
         Collections.sort(dirNames);
         Collections.reverse(dirNames);
         for (String s : dirNames) {
-            Path p = installPath.resolve(SystemUtils.fromCommonString(s));
+            Path p = installPath.resolve(SystemUtils.fromCommonRelative(s));
             feedback.verboseOutput("UNINSTALL_DeletingDirectory", p);
             if (!dryRun) {
                 try {
                     Files.deleteIfExists(p);
                 } catch (IOException ex) {
                     if (ignoreFailedDeletions) {
-                        feedback.error("INSTALL_FailedToDeleteDirectory", ex, p, ex.getMessage());
+                        feedback.error("INSTALL_FailedToDeleteDirectory", ex, p, ex.getLocalizedMessage());
                     } else {
                         throw ex;
                     }

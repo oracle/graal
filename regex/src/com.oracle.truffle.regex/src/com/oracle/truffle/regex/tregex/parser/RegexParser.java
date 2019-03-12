@@ -56,14 +56,10 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_INTERNAL_ERRORS;
 
 public final class RegexParser {
 
@@ -133,17 +129,7 @@ public final class RegexParser {
     }
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
-        try {
-            return new RegexParser(new RegexSource(pattern), RegexOptions.DEFAULT).parse(false);
-        } catch (Throwable e) {
-            LOG_INTERNAL_ERRORS.severe(() -> {
-                StringWriter buffer = new StringWriter();
-                PrintWriter writer = new PrintWriter(buffer);
-                e.printStackTrace(writer);
-                return buffer.toString();
-            });
-            throw e;
-        }
+        return new RegexParser(new RegexSource(pattern), RegexOptions.DEFAULT).parse(false);
     }
 
     @TruffleBoundary

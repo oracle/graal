@@ -596,7 +596,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         final UnsignedWord header = ObjectHeaderImpl.readHeaderFromObjectCarefully(obj);
         final DynamicHub hub = ObjectHeader.dynamicHubFromObjectHeader(header);
         log.string("  header: ").hex(header)
-                        .string("  hub:").hex(Word.objectToUntrackedPointer(hub))
+                        .string("  hub: ").hex(Word.objectToUntrackedPointer(hub))
                         .string("  bits: ").string(ObjectHeaderImpl.getObjectHeaderImpl().toStringFromHeader(header));
         if (!HeapImpl.getHeapImpl().assertHub(hub)) {
             log.string("  hub fails to verify");

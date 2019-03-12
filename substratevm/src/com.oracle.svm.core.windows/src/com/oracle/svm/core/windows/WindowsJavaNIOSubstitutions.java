@@ -24,26 +24,27 @@
  */
 package com.oracle.svm.core.windows;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.spi.FileSystemProvider;
+
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
+import org.graalvm.nativeimage.c.function.CLibrary;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-
-import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.spi.FileSystemProvider;
 
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
@@ -120,10 +121,12 @@ class WindowsJavaNIOSubstituteFeature implements Feature {
 @TargetClass(className = "sun.nio.fs.WindowsFileSystemProvider")
 @Platforms(Platform.WINDOWS.class)
 final class Target_sun_nio_fs_WindowsFileSystemProvider {
+    @Alias
+    Target_sun_nio_fs_WindowsFileSystemProvider() {
+    }
 
     @Alias
     native FileSystem getFileSystem(URI uri);
-
 }
 
 @Platforms(Platform.WINDOWS.class)
@@ -134,8 +137,18 @@ public final class WindowsJavaNIOSubstitutions {
     }
 
     static final class Util_Target_java_nio_file_FileSystems {
-        static FileSystemProvider defaultProvider = FileSystems.getDefault().provider();
+        static FileSystemProvider defaultProvider;
         static FileSystem defaultFilesystem;
+    }
+
+    private static URI uri = createURI();
+
+    private static URI createURI() {
+        try {
+            return new URI("file:/");
+        } catch (URISyntaxException e) {
+            throw VMError.shouldNotReachHere();
+        }
     }
 
     @TargetClass(FileSystems.class)
@@ -144,16 +157,9 @@ public final class WindowsJavaNIOSubstitutions {
         @Substitute
         static FileSystem getDefault() {
             if (Util_Target_java_nio_file_FileSystems.defaultFilesystem == null) {
-                Target_sun_nio_fs_WindowsFileSystemProvider provider = KnownIntrinsics.unsafeCast(Util_Target_java_nio_file_FileSystems.defaultProvider,
-                                Target_sun_nio_fs_WindowsFileSystemProvider.class);
-                try {
-                    // TODO: Need to find a way of constructing a URI from user.dir property
-                    FileSystem fs = provider.getFileSystem(new URI("file:/"));
-                    Util_Target_java_nio_file_FileSystems.defaultFilesystem = fs;
-                } catch (Exception e) {
-                    Log.log().string("Exception while getting default FileSystem: " + e);
-                    return null;
-                }
+                Target_sun_nio_fs_WindowsFileSystemProvider provider = new Target_sun_nio_fs_WindowsFileSystemProvider();
+                Util_Target_java_nio_file_FileSystems.defaultProvider = KnownIntrinsics.unsafeCast(provider, FileSystemProvider.class);
+                Util_Target_java_nio_file_FileSystems.defaultFilesystem = provider.getFileSystem(uri);
             }
             return Util_Target_java_nio_file_FileSystems.defaultFilesystem;
         }

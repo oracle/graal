@@ -151,7 +151,9 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
         if (offsetNode instanceof LoadFieldNode) {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
-            if (!(field.wrapped instanceof ComputedValueField) && !(base.isConstant() && base.asConstant().isDefaultForKind())) {
+            if (!field.getDeclaringClass().unsafeFieldsRecomputed() &&
+                            !(field.wrapped instanceof ComputedValueField) &&
+                            !(base.isConstant() && base.asConstant().isDefaultForKind())) {
                 String message = String.format("Field %s is used as an offset in an unsafe operation, but no value recomputation found.%n Wrapped field: %s", field, field.wrapped);
                 if (pos != null) {
                     message += String.format("%n Location: %s", pos);
@@ -160,7 +162,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             }
         } else if (NativeImageOptions.ReportUnsafeOffsetWarnings.getValue()) {
             String message = "Offset used in an unsafe operation. Cannot determine if the offset value is recomputed.";
-            message += String.format("%nNode class: %s" + offsetNode.getClass().getName());
+            message += String.format("%nNode class: %s", offsetNode.getClass().getName());
             if (pos != null) {
                 message += String.format("%n Location: %s", pos);
             }

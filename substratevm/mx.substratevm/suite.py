@@ -1,7 +1,7 @@
 suite = {
     "mxversion": "5.210.5",
     "name": "substratevm",
-    "version" : "1.0.0-rc13",
+    "version" : "1.0.0-rc14",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -20,6 +20,8 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "versionConflictResolution": "latest",
+
+    "javac.lint.overrides": "-path",
 
     "imports": {
         "suites": [
@@ -141,6 +143,23 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.core.graal",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
+        "com.oracle.svm.core.graal.llvm": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+                "compiler:GRAAL_LLVM"
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
@@ -306,6 +325,30 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "ignore": "only windows is supported",
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.agent": {
+            "subDir": "src",
+            "native": "shared_lib",
+            "use_jdk_headers": True,
+            "results" : ["<library:native-image-agent>"],
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                        "cflags": ["-g", "-fPIC", "-O2", "-std=c99", "-Wall", "-Werror"],
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                        "cflags": ["-g", "-fPIC", "-O2", "-std=c99", "-Wall", "-Werror"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "not supported",
                     },
                 },
             },
@@ -487,6 +530,18 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",  # necessary until GR-11751 is resolved
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
         },
 
         "com.oracle.svm.jline": {
@@ -595,6 +650,23 @@ suite = {
                 "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
+        },
+
+        "com.oracle.svm.configure": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources",
+            ],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
         },
     },
 
@@ -754,6 +826,19 @@ suite = {
             ],
         },
 
+        "SVM_CONFIGURE": {
+            "subDir": "src",
+            "description" : "SubstrateVM native-image configuration tool",
+            "mainClass": "com.oracle.svm.configure.ConfigurationTool",
+            "dependencies": [
+                "com.oracle.svm.configure",
+            ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+            ],
+        },
+
+
         "POINTSTO": {
             "subDir": "src",
             "description" : "SubstrateVM static analysis to find ahead-of-time the code",
@@ -847,6 +932,28 @@ suite = {
             },
         },
 
+        "SVM_GRAALVM_AGENT_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "SubstrateVM JVM agent support distribution for the GraalVM",
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                         "layout" : {
+                             "<arch>/<lib:native-image-agent>" : ["dependency:substratevm:com.oracle.svm.native.agent/<lib:agent>"],
+                         },
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                         "layout" : {
+                             "<arch>/<lib:native-image-agent>" : ["dependency:substratevm:com.oracle.svm.native.agent/<lib:agent>"],
+                         },
+                    },
+                },
+            },
+        },
+
         "NATIVE_IMAGE_JUNIT_SUPPORT" : {
             "native" : True,
             "description" : "Native-image based junit testing support",
@@ -854,5 +961,15 @@ suite = {
                 "native-image.properties" : "file:mx.substratevm/tools-junit.properties",
             },
         },
+
+        "SVM_LLVM" : {
+            "subDir" : "src",
+            "dependencies" : ["com.oracle.svm.core.graal.llvm"],
+            "distDependencies" : [
+                "SVM",
+                "compiler:GRAAL_LLVM"
+            ],
+            "maven" : False,
+        }
     },
 }

@@ -69,6 +69,7 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -187,8 +188,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final Class<? extends Tag> TRY_CATCH = StandardTags.TryBlockTag.class;
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT, CONSTANT, TRY_CATCH};
-    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
-                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION",
+    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT", "CONSTANT", "VARIABLE",
+                    "ARGUMENT", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION",
                     "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE"};
 
     // used to test that no getSourceSection calls happen in certain situations
@@ -361,7 +362,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("UNEXPECTED_RESULT") || tag.equals("SLEEP") ||
                             tag.equals("SPAWN") | tag.equals("CATCH")) {
                 numberOfIdents = 1;
-            } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("PRINT") || tag.equals("THROW")) {
+            } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("CALL_WITH") || tag.equals("PRINT") || tag.equals("THROW")) {
                 numberOfIdents = 2;
             }
             List<String> multipleTags = null;
@@ -464,6 +465,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return new CallNode(idents[0], childArray);
                 case "RECURSIVE_CALL":
                     return new RecursiveCallNode(idents[0], (Integer) parseIdent(idents[1]), childArray);
+                case "CALL_WITH":
+                    return new CallWithNode(idents[0], parseIdent(idents[1]), childArray);
                 case "LOOP":
                     return new LoopNode(parseIdent(idents[0]), childArray);
                 case "BLOCK":
@@ -703,7 +706,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             if (tag == StandardTags.RootTag.class) {
                 return this instanceof FunctionRootNode;
             } else if (tag == StandardTags.CallTag.class) {
-                return this instanceof CallNode || this instanceof RecursiveCallNode;
+                return this instanceof CallNode || this instanceof RecursiveCallNode || this instanceof CallWithNode;
             } else if (tag == StandardTags.StatementTag.class) {
                 return this instanceof StatementNode;
             } else if (tag == StandardTags.ExpressionTag.class) {
@@ -1207,6 +1210,40 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
+    private static final class ThisArg {
+
+        final Object thisElement;
+
+        ThisArg(Object thisElement) {
+            this.thisElement = thisElement;
+        }
+    }
+
+    private static class CallWithNode extends InstrumentedNode {
+
+        @Child private DirectCallNode callNode;
+        private final String identifier;
+        @CompilationFinal(dimensions = 1) private final Object[] thisArg;
+
+        CallWithNode(String identifier, Object thisObj, BaseNode[] children) {
+            super(children);
+            this.identifier = identifier;
+            this.thisArg = new Object[]{new ThisArg(thisObj)};
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (callNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                CallTarget target = context.callFunctions.callTargets.get(identifier);
+                callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
+            }
+            Object retval = callNode.call(thisArg);
+            return retval;
+        }
+    }
+
     private static class AllocatedObject implements TruffleObject {
 
         final String metaObject;
@@ -1670,6 +1707,36 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return functionMetaObject;
         }
         return null;
+    }
+
+    @Override
+    protected Iterable<Scope> findLocalScopes(InstrumentContext context, Node node, Frame frame) {
+        Iterable<Scope> scopes = super.findLocalScopes(context, node, frame);
+        Object[] arguments;
+        if (frame == null || (arguments = frame.getArguments()) == null || arguments.length == 0 || !(arguments[0] instanceof ThisArg)) {
+            return scopes;
+        } else {
+            // arguments[0] contains 'this'. Add it to the default scope:
+            Object thisObject = ((ThisArg) arguments[0]).thisElement;
+            return new Iterable<Scope>() {
+                @Override
+                public Iterator<Scope> iterator() {
+                    Iterator<Scope> iterator = scopes.iterator();
+                    return new Iterator<Scope>() {
+                        @Override
+                        public boolean hasNext() {
+                            return iterator.hasNext();
+                        }
+
+                        @Override
+                        public Scope next() {
+                            Scope scope = iterator.next();
+                            return Scope.newBuilder(scope.getName(), scope.getVariables()).node(scope.getNode()).receiver("THIS", thisObject).build();
+                        }
+                    };
+                }
+            };
+        }
     }
 
     @Override

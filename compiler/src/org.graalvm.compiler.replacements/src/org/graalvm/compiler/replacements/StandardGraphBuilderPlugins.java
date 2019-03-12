@@ -92,6 +92,7 @@ import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
@@ -123,12 +124,14 @@ import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
+import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactSplitNode;
-import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticSplitNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulExactNode;
+import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulExactOverflowNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulExactSplitNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
+import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
@@ -563,16 +566,39 @@ public class StandardGraphBuilderPlugins {
         INTEGER_MULTIPLY_EXACT
     }
 
-    private static ValueNode createIntegerExactArithmeticNode(ValueNode x, ValueNode y, SpeculationReason speculation, IntegerExactOp op) {
+    private static GuardingNode createIntegerExactArithmeticGuardNode(GraphBuilderContext b, ValueNode x, ValueNode y, IntegerExactOp op) {
+        LogicNode overflowCheck;
+        switch (op) {
+            case INTEGER_ADD_EXACT:
+            case INTEGER_INCREMENT_EXACT: {
+                overflowCheck = new IntegerAddExactOverflowNode(x, y);
+                break;
+            }
+            case INTEGER_SUBTRACT_EXACT:
+            case INTEGER_DECREMENT_EXACT: {
+                overflowCheck = new IntegerSubExactOverflowNode(x, y);
+                break;
+            }
+            case INTEGER_MULTIPLY_EXACT: {
+                overflowCheck = new IntegerMulExactOverflowNode(x, y);
+                break;
+            }
+            default:
+                throw GraalError.shouldNotReachHere("Unknown integer exact operation.");
+        }
+        return b.add(new FixedGuardNode(overflowCheck, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateRecompile, true));
+    }
+
+    private static ValueNode createIntegerExactArithmeticNode(GraphBuilderContext b, ValueNode x, ValueNode y, IntegerExactOp op) {
         switch (op) {
             case INTEGER_ADD_EXACT:
             case INTEGER_INCREMENT_EXACT:
-                return new IntegerAddExactNode(x, y, speculation);
+                return new IntegerAddExactNode(x, y, createIntegerExactArithmeticGuardNode(b, x, y, op));
             case INTEGER_SUBTRACT_EXACT:
             case INTEGER_DECREMENT_EXACT:
-                return new IntegerSubExactNode(x, y, speculation);
+                return new IntegerSubExactNode(x, y, createIntegerExactArithmeticGuardNode(b, x, y, op));
             case INTEGER_MULTIPLY_EXACT:
-                return new IntegerMulExactNode(x, y, speculation);
+                return new IntegerMulExactNode(x, y, createIntegerExactArithmeticGuardNode(b, x, y, op));
             default:
                 throw GraalError.shouldNotReachHere("Unknown integer exact operation.");
         }
@@ -593,8 +619,6 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static final SpeculationReasonGroup INTEGER_EXACT_OP_SPECULATIONS = new SpeculationReasonGroup("IntegerExactOp", ResolvedJavaMethod.class, IntegerExactOp.class);
-
     private static void createIntegerExactOperation(GraphBuilderContext b, JavaKind kind, ValueNode x, ValueNode y, IntegerExactOp op) {
         if (b.needsExplicitException()) {
             BytecodeExceptionKind exceptionKind = kind == JavaKind.Int ? BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW : BytecodeExceptionKind.LONG_EXACT_OVERFLOW;
@@ -602,19 +626,7 @@ public class StandardGraphBuilderPlugins {
             IntegerExactArithmeticSplitNode split = b.addPush(kind, createIntegerExactSplit(x, y, exceptionEdge, op));
             split.setNext(b.add(new BeginNode()));
         } else {
-            SpeculationLog log = b.getGraph().getSpeculationLog();
-            if (log == null || (x.isConstant() && y.isConstant())) {
-                b.addPush(kind, createIntegerExactArithmeticNode(x, y, null, op));
-            } else {
-                SpeculationReason reason = INTEGER_EXACT_OP_SPECULATIONS.createSpeculationReason(b.getMethod(), op);
-                if (log.maySpeculate(reason)) {
-                    b.addPush(kind, createIntegerExactArithmeticNode(x, y, reason, op));
-                } else {
-                    BeginNode begin = b.add(new BeginNode());
-                    IntegerExactArithmeticNode node = (IntegerExactArithmeticNode) b.addPush(kind, createIntegerExactArithmeticNode(x, y, null, op));
-                    node.setAnchor(begin);
-                }
-            }
+            b.addPush(kind, createIntegerExactArithmeticNode(b, x, y, op));
         }
     }
 
@@ -623,7 +635,6 @@ public class StandardGraphBuilderPlugins {
         if (allowDeoptimization) {
             for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
                 Class<?> type = kind.toJavaClass();
-
                 r.register1("decrementExact", type, new InvocationPlugin() {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
@@ -641,7 +652,6 @@ public class StandardGraphBuilderPlugins {
                         return true;
                     }
                 });
-
                 r.register2("addExact", type, type, new InvocationPlugin() {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
@@ -649,7 +659,6 @@ public class StandardGraphBuilderPlugins {
                         return true;
                     }
                 });
-
                 r.register2("subtractExact", type, type, new InvocationPlugin() {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {

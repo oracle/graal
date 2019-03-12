@@ -210,7 +210,8 @@ public class SubstrateOptions {
      * The default value is derived by taking the common value from HotSpot configs.
      */
     @Option(help = "Sets the size (in bytes) of the prefetch distance for object allocation. " +
-                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. Each Java thread has its own allocation point.")//
+                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. " +
+                    "Each Java thread has its own allocation point.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchDistance = new HostedOptionKey<>(256);
 
     @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
@@ -247,7 +248,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseStackBasePointer = new HostedOptionKey<>(false);
 
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, InTypeCheck).", type = OptionType.Debug)//
-    public static final OptionKey<String[]> ReportAnalysisForbiddenType = new OptionKey<>(new String[0]);
+    public static final HostedOptionKey<String[]> ReportAnalysisForbiddenType = new HostedOptionKey<>(new String[0]);
 
     @Option(help = "Backend used by the compiler", type = OptionType.User)//
     public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<>("lir");

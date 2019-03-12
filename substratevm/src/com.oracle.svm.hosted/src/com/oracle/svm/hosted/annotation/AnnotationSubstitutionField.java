@@ -102,8 +102,20 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
                  * Class.getAnnotation(Platforms.class).
                  */
                 Proxy proxy = snippetReflection.asObject(Proxy.class, receiver);
-                Method reflectionMethod = proxy.getClass().getDeclaredMethod(accessorMethod.getName());
+
+                /*
+                 * Reflect on the proxy interface, i.e., the annotation class, instead of the
+                 * generated proxy class to avoid module access issues with dynamically generated
+                 * modules. The dynamically generated module that the generated proxies belong to,
+                 * i.e., `jdk.proxy1`, cannot be open to all-unnamed-modules like we do with other
+                 * modules.
+                 */
+                Class<?>[] interfaces = proxy.getClass().getInterfaces();
+                assert interfaces.length == 1 : "Unexpected number of interfaces for annotation proxy class.";
+                Class<?> annotationInterface = interfaces[0];
+                Method reflectionMethod = annotationInterface.getDeclaredMethod(accessorMethod.getName());
                 reflectionMethod.setAccessible(true);
+
                 annotationFieldValue = reflectionMethod.invoke(proxy);
             } catch (IllegalAccessException | IllegalArgumentException | NoSuchMethodException ex) {
                 throw VMError.shouldNotReachHere(ex);

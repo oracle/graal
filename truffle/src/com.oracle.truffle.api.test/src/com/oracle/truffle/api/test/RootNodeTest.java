@@ -117,7 +117,7 @@ public class RootNodeTest {
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call(marker);
         } catch (TestException e) {
-            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStacktrace(e);
+            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
             Assert.assertEquals(1, stackTrace.size());
             Assert.assertNull(stackTrace.get(0).getLocation());
             Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
@@ -133,7 +133,7 @@ public class RootNodeTest {
             Truffle.getRuntime().createCallTarget(rootNode).call(marker);
         } catch (TestException e) {
             MaterializedFrame frame = e.frame;
-            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStacktrace(e);
+            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
             Assert.assertEquals(1, stackTrace.size());
             Assert.assertNull(stackTrace.get(0).getLocation());
             Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());

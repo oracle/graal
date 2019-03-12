@@ -149,7 +149,7 @@ if svm_java80():
 else:
     GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['11']
 
-IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
+IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 clibraryDists = ['SVM_HOSTED_NATIVE']
@@ -327,10 +327,11 @@ class ToolDescriptor:
         self.native_deps = native_deps if native_deps else []
 
 tools_map = {
-    'truffle' : ToolDescriptor(),
+    'truffle' : ToolDescriptor(image_deps=['truffle:TRUFFLE_NFI']),
     'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
+    'native-image-configure' : ToolDescriptor(),
 }
 
 def native_image_path(native_image_root):
@@ -358,7 +359,7 @@ def build_native_image_image():
     native_image_on_jvm(['--tool:native-image', '-H:Path=' + image_dir])
 
 svmDistribution = ['substratevm:SVM']
-llvmDistributions = []
+llvmDistributions = ['compiler:GRAAL_LLVM', 'substratevm:SVM_LLVM']
 graalDistribution = ['compiler:GRAAL']
 librarySupportDistribution = ['substratevm:LIBRARY_SUPPORT']
 
@@ -374,7 +375,7 @@ def layout_native_image_root(native_image_root):
     def native_image_extract_dists(subdir, dist_names):
         native_image_extract(names_to_dists(dist_names), subdir, native_image_root)
 
-    native_image_layout_dists(join('lib', 'graalvm'), ['substratevm:SVM_DRIVER', 'sdk:LAUNCHER_COMMON'])
+    native_image_layout_dists(join('lib', 'graalvm'), ['substratevm:SVM_DRIVER', 'substratevm:SVM_CONFIGURE', 'sdk:LAUNCHER_COMMON'])
 
     # Create native-image layout for sdk parts
     graal_sdk_dists = ['sdk:GRAAL_SDK']
@@ -395,7 +396,7 @@ def layout_native_image_root(native_image_root):
 
     # Create native-image layout for truffle parts
     if mx.get_os() != 'windows':  # necessary until Truffle is fully supported (GR-7941)
-        native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])
+        native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API'])
 
     # Create native-image layout for tools parts
     for tool_name in tools_map:
@@ -412,6 +413,7 @@ def layout_native_image_root(native_image_root):
     clibraries_dest = join(native_image_root, join(svm_subdir, 'clibraries'))
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, clibraries_dest)
+    copy_tree(mx._get_dependency_path('TRUFFLE_NFI_NATIVE'), os.path.dirname(native_image_root))
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True):
     """
@@ -907,6 +909,17 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=suite,
+    name='SubstrateVM agent',
+    short_name='svmag',
+    dir_name='.',
+    license_files=[],
+    third_party_license_files=[],
+    support_distributions=['substratevm:SVM_GRAALVM_AGENT_SUPPORT'],
+))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+    suite=suite,
     name='Polyglot.Native',
     short_name='polynative',
     dir_name='polyglot',
@@ -1065,6 +1078,18 @@ def native_image_on_jvm(args, **kwargs):
         '-Dnative-image.root=' + suite_native_image_root(),
         '-cp', os.pathsep.join(driver_cp),
         mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
+
+
+@mx.command(suite.name, 'native-image-configure')
+def native_image_configure_on_jvm(args, **kwargs):
+    configure_cp = [join(suite_native_image_root(), 'lib', 'graalvm', 'svm-configure.jar')]
+    configure_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
+    configure_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in configure_cp))
+    svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
+    run_java([
+        '-Dorg.graalvm.version=' + svm_version,
+        '-cp', os.pathsep.join(configure_cp),
+        mx.dependency('substratevm:SVM_CONFIGURE').mainClass] + args, **kwargs)
 
 
 @mx.command(suite.name, 'native-unittest')

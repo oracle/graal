@@ -52,7 +52,7 @@ public final class InspectorTestInstrument extends TruffleInstrument {
                     private long id;
 
                     InspectSessionInfo init() {
-                        InspectorExecutionContext context = new InspectorExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, new PrintWriter(env.err()));
+                        InspectorExecutionContext context = new InspectorExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, new PrintWriter(env.err(), true));
                         this.connectionWatcher = new ConnectionWatcher();
                         this.iss = InspectServerSession.create(context, suspend, connectionWatcher);
                         this.id = context.getId();

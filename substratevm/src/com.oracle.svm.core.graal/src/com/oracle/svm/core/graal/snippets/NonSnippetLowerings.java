@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -74,7 +76,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -108,44 +109,43 @@ public final class NonSnippetLowerings {
         lowerings.put(FloatConvertNode.class, new FloatConvertLowering(options, factories, providers, snippetReflection, ConfigurationValues.getTarget()));
     }
 
-    private static final EnumMap<BytecodeExceptionKind, RuntimeException> cachedExceptions;
-    private static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> callDescriptors;
+    private static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> getCachedExceptionDescriptors;
+    private static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> createExceptionDescriptors;
 
     static {
-        cachedExceptions = new EnumMap<>(BytecodeExceptionKind.class);
-        cachedExceptions.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.CACHED_NULL_POINTER_EXCEPTION);
-        cachedExceptions.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.CACHED_OUT_OF_BOUNDS_EXCEPTION);
-        cachedExceptions.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.CACHED_CLASS_CAST_EXCEPTION);
-        cachedExceptions.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.CACHED_ARRAY_STORE_EXCEPTION);
-        cachedExceptions.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.CACHED_ARITHMETIC_EXCEPTION);
+        getCachedExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.GET_CACHED_NULL_POINTER_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.GET_CACHED_OUT_OF_BOUNDS_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.GET_CACHED_CLASS_CAST_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.GET_CACHED_ARRAY_STORE_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.GET_CACHED_ARITHMETIC_EXCEPTION);
 
-        callDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
-        callDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.CREATE_NULL_POINTER_EXCEPTION);
-        callDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.CREATE_OUT_OF_BOUNDS_EXCEPTION);
-        callDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.CREATE_CLASS_CAST_EXCEPTION);
-        callDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.CREATE_ARRAY_STORE_EXCEPTION);
-        callDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.CREATE_DIVISION_BY_ZERO_EXCEPTION);
+        createExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
+        createExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.CREATE_NULL_POINTER_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.CREATE_OUT_OF_BOUNDS_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.CREATE_CLASS_CAST_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.CREATE_ARRAY_STORE_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.CREATE_DIVISION_BY_ZERO_EXCEPTION);
     }
 
     private class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
         @Override
         public void lower(BytecodeExceptionNode node, LoweringTool tool) {
+            ForeignCallDescriptor descriptor;
+            List<ValueNode> arguments;
             if (mustNotAllocatePredicate != null && mustNotAllocatePredicate.test(node.graph().method())) {
-                RuntimeException exception = cachedExceptions.get(node.getExceptionKind());
-                assert exception != null;
-
-                ConstantNode exceptionNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(exception), tool.getMetaAccess(), node.graph());
-                node.graph().replaceFixedWithFloating(node, exceptionNode);
-
+                descriptor = getCachedExceptionDescriptors.get(node.getExceptionKind());
+                arguments = Collections.emptyList();
             } else {
-                ForeignCallDescriptor descriptor = callDescriptors.get(node.getExceptionKind());
-                assert descriptor != null && descriptor.getArgumentTypes().length == node.getArguments().size();
-
-                StructuredGraph graph = node.graph();
-                ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), node.getArguments()));
-                foreignCallNode.setStateAfter(node.stateAfter());
-                graph.replaceFixedWithFixed(node, foreignCallNode);
+                descriptor = createExceptionDescriptors.get(node.getExceptionKind());
+                arguments = node.getArguments();
             }
+            assert descriptor != null && descriptor.getArgumentTypes().length == arguments.size();
+
+            StructuredGraph graph = node.graph();
+            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), arguments));
+            foreignCallNode.setStateAfter(node.stateAfter());
+            graph.replaceFixedWithFixed(node, foreignCallNode);
         }
     }
 

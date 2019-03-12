@@ -1,10 +1,6 @@
 #Signature file v4.1
 #Version 
 
-CLSS public abstract interface com.oracle.truffle.api.TypedObject
- anno 0 java.lang.Deprecated()
-meth public abstract java.lang.Object getTypeIdentifier()
-
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
 meth public abstract com.oracle.truffle.api.interop.ForeignAccess getForeignAccess()
 
@@ -37,7 +33,6 @@ meth public abstract void setDouble(com.oracle.truffle.api.object.DynamicObject,
 
 CLSS public abstract com.oracle.truffle.api.object.DynamicObject
 cons protected init()
-intf com.oracle.truffle.api.TypedObject
 intf com.oracle.truffle.api.interop.TruffleObject
 meth public abstract boolean delete(java.lang.Object)
 meth public abstract boolean isEmpty()

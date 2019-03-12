@@ -523,7 +523,7 @@ public final class ZipFile implements ZipConstants, Closeable {
 
     // List of available Inflater objects for decompression
     @Substitute
-    private final Deque<Inflater> inflaterCache = new ArrayDeque<>();
+    private Deque<Inflater> inflaterCache = new ArrayDeque<>();
 
     /**
      * Returns the path name of the ZIP file.

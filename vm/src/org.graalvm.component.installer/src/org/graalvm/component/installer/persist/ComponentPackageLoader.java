@@ -238,6 +238,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         Collections.sort(paths);
 
         for (String k : paths) {
+            SystemUtils.fromCommonRelative(k);
             String v = prop.getProperty(k, "").trim(); // NOI18N
             if (!v.isEmpty()) {
                 try {
@@ -259,7 +260,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected Map<String, String> parseSymlinks(Properties links) {
         for (String key : new HashSet<>(links.stringPropertyNames())) {
-            Path p = SystemUtils.fromCommonString(key).normalize();
+            Path p = SystemUtils.fromCommonRelative(key).normalize();
             String prop = (String) links.remove(key);
             links.setProperty(SystemUtils.toCommonPath(p), prop);
         }
@@ -275,7 +276,8 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                     throw feedback.failure("ERROR_CircularSymlink", null, l);
                 }
                 String target = links.getProperty(l);
-                Path linkPath = SystemUtils.fromCommonString(l);
+                Path linkPath = SystemUtils.fromCommonRelative(l);
+                SystemUtils.checkCommonRelative(linkPath, target);
                 Path targetPath = linkPath.resolveSibling(target).normalize();
                 String targetString = SystemUtils.toCommonPath(targetPath);
                 if (fileList.contains(targetString)) {

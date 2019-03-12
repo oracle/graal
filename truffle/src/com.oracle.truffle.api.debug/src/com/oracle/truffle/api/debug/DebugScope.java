@@ -192,6 +192,35 @@ public final class DebugScope {
     }
 
     /**
+     * Get value that represents the receiver object of this scope. The receiver object is
+     * represented as <code>this</code> in Java or JavaScript and <code>self</code> in Ruby, for
+     * instance.
+     * <p>
+     * The returned value has a name that represents the receiver in the guest language. The scope
+     * that {@link #isFunctionScope() represents the function} provide receiver object, if there is
+     * one, other scopes do not provide it, unless they override it.
+     *
+     * @return value that represents the receiver, or <code>null</code> when there is no receiver
+     *         object
+     * @since 1.0
+     */
+    public DebugValue getReceiver() {
+        verifyValidState();
+        DebugValue receiverValue = null;
+        try {
+            Object receiver = scope.getReceiver();
+            if (receiver != null) {
+                receiverValue = new DebugValue.HeapValue(session, getLanguage(), scope.getReceiverName(), receiver);
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(session, ex, language, null, true, null);
+        }
+        return receiverValue;
+    }
+
+    /**
      * Get local variables declared in this scope, valid at the current suspension point. Call this
      * method on {@link #getParent() parent}, to get values of variables declared in parent scope,
      * if any.

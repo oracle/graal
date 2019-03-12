@@ -53,11 +53,13 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.ExpectError;
@@ -74,11 +76,13 @@ public class OptionProcessorTest {
         OptionDescriptor descriptor1;
         OptionDescriptor descriptor2;
         OptionDescriptor descriptor3;
+        OptionDescriptor descriptor4;
 
         descriptor1 = descriptor = descriptors.get("optiontestlang1.StringOption1");
         assertNotNull(descriptor);
         assertTrue(descriptor.isDeprecated());
         assertSame(OptionCategory.USER, descriptor.getCategory());
+        assertSame(OptionStability.EXPERIMENTAL, descriptor.getStability());
         assertEquals("StringOption1 help", descriptor.getHelp());
         assertSame(OptionTestLang1.StringOption1, descriptor.getKey());
 
@@ -96,7 +100,18 @@ public class OptionProcessorTest {
         assertSame(OptionCategory.INTERNAL, descriptor.getCategory());
         assertSame(OptionTestLang1.LOWER_CASE_OPTION, descriptor.getKey());
 
+        descriptor4 = descriptor = descriptors.get("optiontestlang1.StableOption");
+        assertNotNull(descriptor);
+        assertEquals("Stable Option Help", descriptor.getHelp());
+        assertFalse(descriptor.isDeprecated());
+        assertSame(OptionCategory.USER, descriptor.getCategory());
+        assertSame(OptionStability.STABLE, descriptor.getStability());
+        assertSame(OptionTestLang1.StableOption, descriptor.getKey());
+
+        // The options are sorted alphabetically
         Iterator<OptionDescriptor> iterator = descriptors.iterator();
+        assertTrue(iterator.hasNext());
+        assertEquals(descriptor4, iterator.next());
         assertTrue(iterator.hasNext());
         assertEquals(descriptor1, iterator.next());
         assertTrue(iterator.hasNext());
@@ -172,7 +187,7 @@ public class OptionProcessorTest {
         assertEquals("test", optionValues.get(optionKey1));
         assertEquals("defaultValue", optionValues.get(optionKey2));
 
-        engine = Engine.newBuilder().option("optiontestlang1.StringOption1", "testLang").build();
+        engine = Engine.newBuilder().allowExperimentalOptions(true).option("optiontestlang1.StringOption1", "testLang").build();
         optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
         // A language option was set, not the instrument one. Instrument sees no option set:
         assertFalse(optionValues.hasSetOptions());
@@ -215,17 +230,20 @@ public class OptionProcessorTest {
     }
 
     @Registration(id = "optiontestlang1", version = "1.0", name = "optiontestlang1")
-    public static class OptionTestLang1 extends TruffleLanguage<Object> {
+    public static class OptionTestLang1 extends TruffleLanguage<Env> {
 
         @Option(help = "StringOption1 help", deprecated = true, category = OptionCategory.USER) //
         static final OptionKey<String> StringOption1 = new OptionKey<>("defaultValue");
 
-        @Option(help = "StringOption2 help", deprecated = false, category = OptionCategory.EXPERT) //
-        static final OptionKey<String> StringOption2 = new OptionKey<>("defaultValue");
+        @Option(help = "StringOption2 help", deprecated = false, category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+        public static final OptionKey<String> StringOption2 = new OptionKey<>("defaultValue");
 
         // The variable name differs from the option name on purpose, to test they can be different
         @Option(help = "Help for lowerCaseOption", name = "lowerCaseOption", deprecated = true, category = OptionCategory.INTERNAL) //
         static final OptionKey<String> LOWER_CASE_OPTION = new OptionKey<>("defaultValue");
+
+        @Option(help = "Stable Option Help", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+        public static final OptionKey<String> StableOption = new OptionKey<>("stable");
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {
@@ -233,8 +251,12 @@ public class OptionProcessorTest {
         }
 
         @Override
-        protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-            return env.getOptions().get(StringOption1);
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        public static Env getCurrentContext() {
+            return getCurrentContext(OptionTestLang1.class);
         }
 
         @Override
@@ -247,11 +269,11 @@ public class OptionProcessorTest {
     @TruffleInstrument.Registration(id = "optiontestinstr1", services = OptionValues.class)
     public static class OptionTestInstrument1 extends TruffleInstrument {
 
-        @Option(help = "StringOption1 help", deprecated = true, category = OptionCategory.USER) //
-        static final OptionKey<String> StringOption1 = new OptionKey<>("defaultValue");
+        @Option(help = "StringOption1 help", deprecated = true, category = OptionCategory.USER, stability = OptionStability.STABLE) //
+        public static final OptionKey<String> StringOption1 = new OptionKey<>("defaultValue");
 
         @Option(help = "StringOption2 help", deprecated = false, category = OptionCategory.EXPERT) //
-        static final OptionKey<String> StringOption2 = new OptionKey<>("defaultValue");
+        public static final OptionKey<String> StringOption2 = new OptionKey<>("defaultValue");
 
         @Override
         protected void onCreate(Env env) {

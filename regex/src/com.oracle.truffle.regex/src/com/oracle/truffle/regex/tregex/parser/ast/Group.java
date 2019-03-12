@@ -55,7 +55,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * the priority of the alternatives: if matching with an earlier alternative is possible, that match
  * result is preferred to those from later alternatives.
  */
-public class Group extends Term implements RegexASTVisitorIterable {
+public final class Group extends Term implements RegexASTVisitorIterable {
 
     private final ArrayList<Sequence> alternatives = new ArrayList<>();
     private short visitorIterationIndex = 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -764,7 +764,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     public LLVMArithmeticCompareNode createCmpNode() {
         return new LLVMArithmeticCompareNode() {
             @Override
-            public int execute(Object x, Object y) throws InteropException {
+            public int execute(Object x, Object y) {
                 LLVM80BitFloat a = (LLVM80BitFloat) x;
                 LLVM80BitFloat b = (LLVM80BitFloat) y;
                 return compare(a, b);

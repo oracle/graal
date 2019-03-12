@@ -41,6 +41,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.CompilationWrapper;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -280,6 +281,8 @@ public class SubstrateOptionsParser {
             }
         } else if (optionType == CompilationWrapper.ExceptionAction.class) {
             value = CompilationWrapper.ExceptionAction.valueOf(valueString);
+        } else if (optionType == DebugOptions.PrintGraphTarget.class) {
+            value = DebugOptions.PrintGraphTarget.valueOf(valueString);
         } else {
             throw VMError.shouldNotReachHere("Unsupported option value class: " + optionType.getSimpleName());
         }

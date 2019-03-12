@@ -91,7 +91,7 @@ public class LinuxJavaNetCloseImpl extends PosixJavaNetClose {
             /* Send a wakeup signal to all threads blocked on this file descriptor. */
             fdEntry.getThreadList().forEach((threadEntry) -> {
                 threadEntry.setIntr(true);
-                threadEntry.getThread().interrupt();
+                interruptThread(threadEntry.getPThread());
             });
         }
         return rv;
@@ -163,7 +163,7 @@ public class LinuxJavaNetCloseImpl extends PosixJavaNetClose {
         }
         // 343
         // 344      for(;;) {
-        for (;;) {
+        for (; /* return */;) {
             // 345          struct pollfd pfd;
             Poll.pollfd pfd = StackValue.get(Poll.pollfd.class);
             // 346          int rv;

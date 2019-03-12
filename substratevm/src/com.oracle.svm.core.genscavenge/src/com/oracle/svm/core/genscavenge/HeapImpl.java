@@ -320,11 +320,11 @@ public class HeapImpl extends Heap {
         }
     }
 
-    public Object promoteObject(Object original) {
+    public Object promoteObject(Object original, Pointer objRef, int offset, boolean compressed) {
         final Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
 
         final OldGeneration oldGen = getOldGeneration();
-        final Object result = oldGen.promoteObject(original);
+        final Object result = oldGen.promoteObject(original, objRef, offset, compressed);
 
         trace.string("  result: ").object(result).string("]").newline();
         return result;

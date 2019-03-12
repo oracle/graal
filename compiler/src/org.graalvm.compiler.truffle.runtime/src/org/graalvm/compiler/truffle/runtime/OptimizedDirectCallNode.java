@@ -57,7 +57,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     }
 
     @Override
-    public Object call(Object[] arguments) {
+    public Object call(Object... arguments) {
         if (CompilerDirectives.inInterpreter()) {
             onInterpreterCall();
         }

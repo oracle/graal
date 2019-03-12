@@ -72,10 +72,6 @@ public final class GraalFrameInstance implements FrameInstance {
     @Override
     @TruffleBoundary
     public Frame getFrame(FrameAccess access) {
-        if (access == FrameAccess.NONE) {
-            return null;
-        }
-
         if (access == FrameAccess.READ_WRITE || access == FrameAccess.MATERIALIZE) {
             if (callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
                 callTargetFrame.materializeVirtualObjects(false);

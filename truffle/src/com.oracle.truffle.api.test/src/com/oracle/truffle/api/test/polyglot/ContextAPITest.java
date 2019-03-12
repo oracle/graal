@@ -64,6 +64,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -80,6 +81,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
@@ -152,8 +154,53 @@ public class ContextAPITest {
         // Instrument options can be set to context builders with implicit engine:
         Context.Builder contextBuilder = Context.newBuilder();
         contextBuilder.option("optiontestinstr1.StringOption1", "Hello");
-        contextBuilder.build();
+        contextBuilder.build().close();
+    }
 
+    @Test
+    public void testStableOption() {
+        try (Context context = Context.newBuilder().option("optiontestlang1.StableOption", "Hello").build()) {
+            context.initialize("optiontestlang1");
+            context.enter();
+            try {
+                assertEquals("Hello", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StableOption));
+            } finally {
+                context.leave();
+            }
+        }
+    }
+
+    @Test
+    public void testExperimentalOption() {
+        try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("optiontestlang1.StringOption2", "Allow").build()) {
+            context.initialize("optiontestlang1");
+            context.enter();
+            try {
+                assertEquals("Allow", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StringOption2));
+            } finally {
+                context.leave();
+            }
+        }
+
+        try (Context context = Context.newBuilder().allowAllAccess(true).option("optiontestlang1.StringOption2", "All access").build()) {
+            context.initialize("optiontestlang1");
+            context.enter();
+            try {
+                assertEquals("All access", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StringOption2));
+            } finally {
+                context.leave();
+            }
+        }
+    }
+
+    @Test
+    public void testExperimentalOptionException() {
+        Assume.assumeTrue(Boolean.parseBoolean(System.getenv("GRAALVM_CHECK_EXPERIMENTAL_OPTIONS")));
+
+        ValueAssert.assertFails(() -> Context.newBuilder().option("optiontestlang1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
+            assertEquals("Option 'optiontestlang1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
+                            e.getMessage());
+        });
     }
 
     @Test

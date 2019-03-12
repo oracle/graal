@@ -32,7 +32,6 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -47,7 +46,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
 
     public static final NodeClass<SignedRemNode> TYPE = NodeClass.create(SignedRemNode.class);
 
-    protected SignedRemNode(ValueNode x, ValueNode y, GuardingNode zeroCheck) {
+    public SignedRemNode(ValueNode x, ValueNode y, GuardingNode zeroCheck) {
         this(TYPE, x, y, zeroCheck);
     }
 
@@ -62,17 +61,13 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(foldStampForRem(getX(), getY()));
+        return updateStamp(IntegerStamp.OPS.getRem().foldStamp(getX().stamp(NodeView.DEFAULT), getY().stamp(NodeView.DEFAULT)));
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
         return canonical(this, forX, forY, getZeroCheck(), stamp(view), view, tool);
-    }
-
-    private static Stamp foldStampForRem(ValueNode forX, ValueNode forY) {
-        return IntegerStamp.OPS.getRem().foldStamp(forX.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
     }
 
     private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view, CanonicalizerTool tool) {
@@ -105,19 +100,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                     } else if (xStamp.isNegative()) {
                         // -((-x) & (y - 1))
                         return new NegateNode(new AndNode(new NegateNode(forX), ConstantNode.forIntegerStamp(stamp, constY - 1)));
-                    } else {
-                        // x - ((x / y) << log2(y))
-                        ValueNode canonicalized = SignedDivNode.canonical(forX, constY, view);
-                        assert canonicalized != null;
-                        canonicalized = SubNode.create(forX, LeftShiftNode.create(canonicalized, ConstantNode.forInt(CodeUtil.log2(constY)), view), view);
-                        return PiNode.create(canonicalized, foldStampForRem(forX, forY));
                     }
-                }
-            } else if (!CodeUtil.isPowerOf2(constY)) {
-                ValueNode value = canonicalizeSignedDivConstant(forX, forY.asJavaConstant().asLong(), view);
-                if (value != null) {
-                    ValueNode canonicalized = SubNode.create(forX, new MulNode(value, forY), view);
-                    return PiNode.create(canonicalized, foldStampForRem(forX, forY));
                 }
             }
         }

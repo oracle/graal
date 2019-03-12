@@ -56,14 +56,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
+
 import java.lang.reflect.Method;
 
 public class EngineAPITest {
@@ -172,6 +176,44 @@ public class EngineAPITest {
         assertEquals(EngineAPITestLanguage.Option3_HELP, descriptor3.getHelp());
 
         engine.close();
+    }
+
+    @Test
+    public void testStableOption() {
+        try (Engine engine = Engine.newBuilder().option("optiontestinstr1.StringOption1", "Hello").build()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.enter();
+                try {
+                    assertEquals("Hello", engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class).get(OptionTestInstrument1.StringOption1));
+                } finally {
+                    context.leave();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testExperimentalOption() {
+        try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("optiontestinstr1.StringOption2", "Allow").build()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.enter();
+                try {
+                    assertEquals("Allow", engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class).get(OptionTestInstrument1.StringOption2));
+                } finally {
+                    context.leave();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testExperimentalOptionException() {
+        Assume.assumeTrue(Boolean.parseBoolean(System.getenv("GRAALVM_CHECK_EXPERIMENTAL_OPTIONS")));
+
+        ValueAssert.assertFails(() -> Engine.newBuilder().option("optiontestinstr1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
+            assertEquals("Option 'optiontestinstr1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
+                            e.getMessage());
+        });
     }
 
     @Test

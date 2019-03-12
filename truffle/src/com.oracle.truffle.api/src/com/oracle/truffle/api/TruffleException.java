@@ -142,15 +142,6 @@ public interface TruffleException {
     }
 
     /**
-     * @since 0.27
-     * @deprecated in 0.27
-     */
-    @Deprecated
-    default boolean isTimeout() {
-        return isCancelled();
-    }
-
-    /**
      * Returns <code>true</code> if the exception indicates that the application was exited within
      * the guest language program. If {@link #isExit()} returns <code>true</code> also
      * {@link #getExitStatus()} should be implemented.

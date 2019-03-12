@@ -56,18 +56,20 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@Warmup(iterations = 5)
-@Measurement(iterations = 5)
-@Fork(value = 1, jvmArgsAppend = "-Dgraal.TruffleCompilationThreshold=2147483647")
+@Warmup(iterations = 5, time = 5)
+@Measurement(iterations = 5, time = 5)
+@Fork(value = 1, jvmArgsAppend = "-Dgraal.TruffleCompilation=false")
 public class InterpreterCallBenchmark extends TruffleBenchmark {
 
     @State(org.openjdk.jmh.annotations.Scope.Thread)
     public static class CallTargetCallState {
         final Integer argument = 42;
         final CallTarget callee;
-        final CallTarget caller;
+        final DirectCallNode directCall;
+        final IndirectCallNode indirectCall;
 
         {
             callee = Truffle.getRuntime().createCallTarget(new RootNode(null) {
@@ -82,20 +84,8 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
                     return "callee";
                 }
             });
-            caller = Truffle.getRuntime().createCallTarget(new RootNode(null) {
-                @Child private DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(callee);
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    CompilerAsserts.neverPartOfCompilation("do not compile");
-                    return callNode.call(new Object[]{frame.getArguments()[0]});
-                }
-
-                @Override
-                public String toString() {
-                    return "caller";
-                }
-            });
+            directCall = Truffle.getRuntime().createDirectCallNode(callee);
+            indirectCall = Truffle.getRuntime().createIndirectCallNode();
         }
 
         @Setup
@@ -107,7 +97,17 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
 
     @Benchmark
     public Object directCall(CallTargetCallState state) {
-        return state.caller.call(state.argument);
+        return state.directCall.call(new Object[]{state.argument});
+    }
+
+    @Benchmark
+    public Object indirectCall(CallTargetCallState state) {
+        return state.indirectCall.call(state.callee, new Object[]{state.argument});
+    }
+
+    @Benchmark
+    public Object call(CallTargetCallState state) {
+        return state.callee.call(state.argument);
     }
 
     static void ensureTruffleCompilerInitialized() {

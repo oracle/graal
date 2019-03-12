@@ -36,11 +36,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionValues;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -58,10 +53,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold. That is,
@@ -70,7 +68,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
  */
 @SuppressWarnings("deprecation")
-public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
+public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
     static final String CALL_BOUNDARY_METHOD_NAME = "callProxy";
@@ -131,6 +129,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
         RuntimeOptionsCache.reinitialize();
         knownCallNodes = RuntimeOptionsCache.isLegacySplitting() ? null : new ArrayList<>(1);
+        runtime().getTvmci().setCallTarget(rootNode, this);
     }
 
     public Assumption getNodeRewritingAssumption() {
@@ -181,8 +180,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             return profile;
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            initialize();
-            return compilationProfile;
+            return initialize();
         }
     }
 
@@ -264,7 +262,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             args = profile.injectArgumentProfile(originalArguments);
         }
         Object result = callProxy(createFrame(getRootNode().getFrameDescriptor(), args));
-
         if (profile != null) {
             profile.profileReturnValue(result);
         }
@@ -298,16 +295,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
-    private synchronized void initialize() {
-        if (compilationProfile == null) {
+    private synchronized OptimizedCompilationProfile initialize() {
+        OptimizedCompilationProfile profile = this.compilationProfile;
+        if (profile == null) {
             GraalTVMCI tvmci = runtime().getTvmci();
             if (sourceCallTarget == null && rootNode.isCloningAllowed() && !tvmci.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
             tvmci.onFirstExecution(this);
-            this.compilationProfile = createCompilationProfile();
+            this.compilationProfile = profile = createCompilationProfile();
         }
+        return profile;
     }
 
     public final OptionValues getOptionValues() {
@@ -337,6 +336,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
         if (!isCompiling()) {
             if (!runtime().acceptForCompilation(getRootNode())) {
+                getCompilationProfile().reportCompilationIgnored();
                 return false;
             }
 
@@ -563,14 +563,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     final void onLoopCount(int count) {
-        getCompilationProfile().reportLoopCount(count);
-    }
-
-    /*
-     * For compatibility of Graal runtime with older Truffle runtime. Remove after 0.12.
-     */
-    @Override
-    public void reportLoopCount(int count) {
         getCompilationProfile().reportLoopCount(count);
     }
 

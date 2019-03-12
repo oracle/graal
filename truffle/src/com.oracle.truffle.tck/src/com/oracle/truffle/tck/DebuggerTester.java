@@ -232,18 +232,6 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     /**
-     * @since 0.16
-     * @deprecated Use {@link #startEval(org.graalvm.polyglot.Source)} instead.
-     */
-    @Deprecated
-    public void startEval(com.oracle.truffle.api.source.Source s) {
-        if (this.executingSource != null) {
-            throw new IllegalStateException("Already executing other source " + s);
-        }
-        throw new UnsupportedOperationException("Call startEval(org.graalvm.polyglot.Source) instead.");
-    }
-
-    /**
      * Starts a new {@link Context#eval(Source) evaluation} on the background thread. Only one
      * evaluation can be active at a time. Please ensure that {@link #expectDone()} completed
      * successfully before starting a new evaluation. Throws an {@link IllegalStateException} if

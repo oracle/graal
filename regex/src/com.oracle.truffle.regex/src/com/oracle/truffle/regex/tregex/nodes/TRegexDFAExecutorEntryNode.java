@@ -45,7 +45,8 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
     private static final long coderFieldOffset;
 
     static {
-        if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
+        String javaVersion = System.getProperty("java.specification.version");
+        if (javaVersion != null && javaVersion.compareTo("1.9") < 0) {
             // UNSAFE is needed for detecting compact strings, which are not implemented prior to
             // java9
             UNSAFE = null;
@@ -71,14 +72,14 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
     private static Unsafe getUnsafe() {
         try {
             return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        } catch (SecurityException e1) {
+            try {
+                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafeInstance.setAccessible(true);
+                return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+            } catch (Exception e2) {
+                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
+            }
         }
     }
 

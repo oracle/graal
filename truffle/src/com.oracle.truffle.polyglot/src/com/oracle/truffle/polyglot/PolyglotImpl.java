@@ -79,6 +79,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
@@ -172,29 +173,31 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Internal method do not use.
      */
     @Override
-    public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream) {
+    public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit, boolean sandbox,
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
+                    Object logHandlerOrStream) {
         if (TruffleOptions.AOT) {
             VMAccessor.SPI.initializeNativeImageTruffleLocator();
         }
         OutputStream resolvedOut = out == null ? System.out : out;
         OutputStream resolvedErr = err == null ? System.err : err;
         InputStream resolvedIn = in == null ? System.in : in;
-        Handler logHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
-
         DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
         DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
+        Handler logHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
+        logHandler = logHandler != null ? logHandler : PolyglotLogHandler.createStreamHandler(dispatchErr, false, true);
         ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
 
         PolyglotEngineImpl impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;
         if (impl != null) {
-            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, useSystemProperties, contextClassLoader, boundEngine, logHandler)) {
+            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, options, useSystemProperties, allowExperimentalOptions, contextClassLoader, boundEngine, logHandler)) {
                 impl.ensureClosed(false, true);
                 impl = null;
             }
         }
         if (impl == null) {
-            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, useSystemProperties, contextClassLoader, boundEngine, messageInterceptor, logHandler);
+            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, options, allowExperimentalOptions, useSystemProperties, contextClassLoader, boundEngine, messageInterceptor,
+                            logHandler);
         }
         Engine engine = getAPIAccess().newEngine(impl);
         impl.creatorApi = engine;
@@ -962,12 +965,22 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public boolean isInstrumentExceptionsAreThrown(Object vmObject) {
-            return getEngine(vmObject).engineOptionValues.get(PolyglotEngineOptions.InstrumentExceptionsAreThrown);
+            // We want to enable this option for testing in general, to ensure tests fail if
+            // instruments throw.
+            return areAssertionsEnabled() || getEngine(vmObject).engineOptionValues.get(PolyglotEngineOptions.InstrumentExceptionsAreThrown);
+        }
+
+        @SuppressWarnings("all")
+        private static boolean areAssertionsEnabled() {
+            boolean assertsEnabled = false;
+            // Next assignment will be executed when asserts are enabled.
+            assert assertsEnabled = true;
+            return assertsEnabled;
         }
 
         @Override
-        public Handler getLogHandler() {
-            return PolyglotLogHandler.INSTANCE;
+        public Handler getLogHandler(Object polyglotEngine) {
+            return polyglotEngine == null ? PolyglotLogHandler.INSTANCE : new PolyglotLogHandler((PolyglotEngineImpl) polyglotEngine);
         }
 
         @Override
@@ -981,11 +994,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Map<String, Level> getLogLevels(final Object context) {
-            if (!(context instanceof PolyglotContextImpl)) {
+        public Map<String, Level> getLogLevels(final Object vmObject) {
+            if (vmObject instanceof PolyglotContextImpl) {
+                return ((PolyglotContextImpl) vmObject).config.logLevels;
+            } else if (vmObject instanceof PolyglotEngineImpl) {
+                return ((PolyglotEngineImpl) vmObject).logLevels;
+            } else {
                 throw new AssertionError();
             }
-            return ((PolyglotContextImpl) context).config.logLevels;
         }
 
         @Override
@@ -1049,6 +1065,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             PolyglotLanguageContext context = ((PolyglotLanguageContext) languageContextVMObject).context.getContext(lang);
             context.ensureCreated((PolyglotLanguage) NODES.getEngineObject(accessingLanguage));
             return context.lookupService(type);
+        }
+
+        @Override
+        public TruffleLogger getLogger(Object vmObject, String loggerName) {
+            PolyglotInstrument instrument = (PolyglotInstrument) vmObject;
+            String id = instrument.getId();
+            PolyglotEngineImpl engine = getEngine(vmObject);
+            Object loggerCache = engine.getOrCreateEngineLoggers();
+            return LANGUAGE.getLogger(id, loggerName, loggerCache);
         }
     }
 }

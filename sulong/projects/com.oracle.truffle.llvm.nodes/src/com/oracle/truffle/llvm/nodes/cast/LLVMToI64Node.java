@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -41,8 +41,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -56,13 +55,12 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
     private static final float MAX_LONG_AS_FLOAT = Long.MAX_VALUE;
     private static final double MAX_LONG_AS_DOUBLE = Long.MAX_VALUE;
 
-    @Child private LLVMToNativeNode toNative;
-
     public abstract Object executeWithTarget(Object o);
 
     @Specialization
-    protected Object doManaged(LLVMManagedPointer from) {
-        return getToNative().executeWithTarget(from).asNative();
+    protected Object doPointer(LLVMPointer from,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+        return toNative.executeWithTarget(from).asNative();
     }
 
     @Specialization
@@ -71,30 +69,8 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         return (long) convert.executeWithTarget(from.getValue());
     }
 
-    @Specialization
-    protected long doNativePointer(LLVMNativePointer from) {
-        return from.asNative();
-    }
-
     protected ForeignToLLVM createForeignToLLVM() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
-    }
-
-    private LLVMToNativeNode getToNative() {
-        if (toNative == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
-        }
-        return toNative;
-    }
-
-    // these methods are only on the base class as a workaround for a DSL issue
-    protected static boolean fitsIntoSignedLong(float from) {
-        return from < MAX_LONG_AS_FLOAT;
-    }
-
-    protected static boolean fitsIntoSignedLong(double from) {
-        return from < MAX_LONG_AS_DOUBLE;
     }
 
     public abstract static class LLVMSignedCastToI64Node extends LLVMToI64Node {
@@ -176,24 +152,32 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
             return from.getZeroExtendedLongValue();
         }
 
-        @Specialization(guards = "fitsIntoSignedLong(from)")
-        protected long doFloat(float from) {
-            return (long) from;
+        private static boolean fitsIntoSignedLong(float from) {
+            return from < MAX_LONG_AS_FLOAT;
         }
 
-        @Specialization(guards = "!fitsIntoSignedLong(from)")
-        protected long doFloatConversion(float from) {
-            return (long) (from + Long.MIN_VALUE) - Long.MIN_VALUE;
+        private static boolean fitsIntoSignedLong(double from) {
+            return from < MAX_LONG_AS_DOUBLE;
         }
 
-        @Specialization(guards = "fitsIntoSignedLong(from)")
-        protected long doDouble(double from) {
-            return (long) from;
+        @Specialization
+        protected long doFloat(float from,
+                        @Cached("createBinaryProfile()") ConditionProfile profile) {
+            if (profile.profile(fitsIntoSignedLong(from))) {
+                return (long) from;
+            } else {
+                return (long) (from + Long.MIN_VALUE) - Long.MIN_VALUE;
+            }
         }
 
-        @Specialization(guards = "!fitsIntoSignedLong(from)")
-        protected long doDoubleConversion(double from) {
-            return (long) (from + Long.MIN_VALUE) - Long.MIN_VALUE;
+        @Specialization
+        protected long doDouble(double from,
+                        @Cached("createBinaryProfile()") ConditionProfile profile) {
+            if (profile.profile(fitsIntoSignedLong(from))) {
+                return (long) from;
+            } else {
+                return (long) (from + Long.MIN_VALUE) - Long.MIN_VALUE;
+            }
         }
 
         @Specialization

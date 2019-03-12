@@ -42,7 +42,6 @@ package com.oracle.truffle.nfi.types;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Parsed representation of library descriptors of the Truffle NFI.
@@ -89,15 +88,4 @@ public final class NativeLibraryDescriptor {
         }
     }
 
-    /**
-     * This function is deprecated, and will always return an empty map. Implementors of Truffle NFI
-     * backends don't need to support pre-bound symbols anymore, this is now done automatically.
-     *
-     * @deprecated
-     */
-    @Deprecated
-    @SuppressWarnings("static-method")
-    public Map<String, NativeSignature> getBindings() {
-        return Collections.emptyMap();
-    }
 }

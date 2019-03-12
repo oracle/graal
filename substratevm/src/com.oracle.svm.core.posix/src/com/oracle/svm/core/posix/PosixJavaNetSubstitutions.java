@@ -999,7 +999,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         if (opt == SocketOptions.SO_BINDADDR) {
             //  1755          /* find out local IP address */
             //  1756          SOCKADDR him;
-            Socket.sockaddr him = StackValue.get(Socket.sockaddr.class);
+            Socket.sockaddr him = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
             //  1757          socklen_t len = 0;
             CIntPointer len_Pointer = StackValue.get(CIntPointer.class);
             //  1758          int port;
@@ -1638,7 +1638,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         int fd;
         //   260      /* The packetAddress address, family and port */
         //   261      SOCKADDR rmtaddr;
-        Socket.sockaddr rmtaddr = StackValue.get(Socket.sockaddr.class);
+        Socket.sockaddr rmtaddr = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
 
         //   262      int len = 0;
         CIntPointer len_Pointer = StackValue.get(CIntPointer.class);

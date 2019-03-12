@@ -377,6 +377,19 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.bitcode" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O0"],
+      "buildEnv" : {
+        "OS" : "<os>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.sulongavx" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -395,7 +408,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulongcpp" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0", "O0_MISC_OPTS"],
+      "variants" : ["O0", "O0_MISC_OPTS", "O1"],
       "buildEnv" : {
         "OS" : "<os>",
       },
@@ -737,6 +750,7 @@ suite = {
       "platformDependent" : True,
       "output" : "mxbuild/<os>-<arch>/sulong-test-suites",
       "dependencies" : [
+        "com.oracle.truffle.llvm.tests.bitcode",
         "com.oracle.truffle.llvm.tests.bitcodeformat",
         "com.oracle.truffle.llvm.tests.debug",
         "com.oracle.truffle.llvm.tests.irdebug",

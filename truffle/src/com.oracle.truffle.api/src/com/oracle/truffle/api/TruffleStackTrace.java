@@ -71,7 +71,8 @@ import com.oracle.truffle.api.nodes.Node;
  * {@link #fillIn(Throwable)}, unless it can be guaranteed to be re-thrown in the same
  * {@link CallTarget call target}, or that the stack trace will not be used.
  *
- * @see #getStackTrace() getStackTrace() to retrieve the stacktrace from a {@link Throwable}.
+ * @see #getStackTrace(Throwable) getStackTrace(Throwable) to retrieve the guest language stack
+ *      trace from a {@link Throwable}.
  * @since 1.0
  */
 @SuppressWarnings("serial")
@@ -147,12 +148,22 @@ public final class TruffleStackTrace extends Exception {
      * @since 1.0
      */
     @TruffleBoundary
-    public static List<TruffleStackTraceElement> getStacktrace(Throwable throwable) {
+    public static List<TruffleStackTraceElement> getStackTrace(Throwable throwable) {
         TruffleStackTrace stack = fillIn(throwable);
         if (stack != null) {
             return stack.frames;
         }
         return null;
+    }
+
+    /**
+     * @deprecated Use {@link TruffleStackTrace#getStackTrace(Throwable)} instead (the method name
+     *             was misspelled).
+     * @since 1.0
+     */
+    @Deprecated
+    public static List<TruffleStackTraceElement> getStacktrace(Throwable throwable) {
+        return getStackTrace(throwable);
     }
 
     static void materializeHostFrames(Throwable t) {

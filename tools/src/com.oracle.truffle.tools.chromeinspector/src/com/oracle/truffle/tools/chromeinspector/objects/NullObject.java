@@ -34,7 +34,7 @@ import com.oracle.truffle.api.nodes.Node;
  * Null.
  */
 @MessageResolution(receiverType = NullObject.class)
-final class NullObject implements TruffleObject {
+public final class NullObject implements TruffleObject {
 
     public static final NullObject INSTANCE = new NullObject();
 

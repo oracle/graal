@@ -375,6 +375,14 @@ public class ExecuteEvaluatedTest {
             return intValue;
         }
 
+        /*
+         * Avoid locking optimization to trigger.
+         */
+        @Specialization(replaces = "doInt")
+        public double doInt(Void receiver, int intValue) {
+            return 42;
+        }
+
     }
 
     @Test
@@ -421,6 +429,14 @@ public class ExecuteEvaluatedTest {
         @Specialization
         public double doInt(Number receiver, int intValue) {
             return intValue;
+        }
+
+        /*
+         * Avoid locking optimization to trigger.
+         */
+        @Specialization(replaces = "doInt")
+        public double doInt(Void receiver, int intValue) {
+            return 42;
         }
 
     }
@@ -471,6 +487,14 @@ public class ExecuteEvaluatedTest {
         @Specialization
         public String doShort(Number receiver, short intValue) {
             return "short";
+        }
+
+        /*
+         * Avoid locking optimization to trigger.
+         */
+        @Specialization(replaces = "doInt")
+        public double doInt(Void receiver, int intValue) {
+            return 42;
         }
     }
 

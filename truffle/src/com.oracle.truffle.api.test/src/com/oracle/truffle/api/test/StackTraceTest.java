@@ -175,7 +175,6 @@ public class StackTraceTest {
                 Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
                     @SuppressWarnings("deprecation")
                     public Object visitFrame(FrameInstance frameInstance) {
-                        Assert.assertNull(frameInstance.getFrame(FrameAccess.NONE));
 
                         Frame readOnlyFrame = frameInstance.getFrame(FrameAccess.READ_ONLY);
                         FrameSlot slot = readOnlyFrame.getFrameDescriptor().findFrameSlot("demo");

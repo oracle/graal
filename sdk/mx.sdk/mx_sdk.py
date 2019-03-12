@@ -118,13 +118,16 @@ class AbstractNativeImageConfig(object):
 
 
 class LauncherConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, main_class, build_args, links=None, is_main_launcher=True):
+    def __init__(self, destination, jar_distributions, main_class, build_args, links=None, is_main_launcher=True,
+                 default_symlinks=True):
         """
         :type main_class: str
+        :type default_symlinks: bool
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, links=links)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
+        self.default_symlinks = default_symlinks
 
 
 class LanguageLauncherConfig(LauncherConfig):

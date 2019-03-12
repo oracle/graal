@@ -25,13 +25,10 @@
 package org.graalvm.compiler.truffle.test;
 
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranchesPretty;
 
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
@@ -88,16 +85,12 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
     @Override
     protected void beforeInitialization() {
-        overrides = TruffleCompilerOptions.overrideOptions(TruffleInstrumentBranches, true, TruffleInstrumentBranchesPretty, false, TruffleInstrumentBranchesFilter, "*.*.execute");
+        overrides = TruffleCompilerOptions.overrideOptions(TruffleInstrumentBranches, true);
     }
 
     @After
     public void disableInstrumentAfterTests() {
         overrides.close();
-    }
-
-    private static OptionValues getOptions() {
-        return TruffleCompilerOptions.getOptions();
     }
 
     @Test

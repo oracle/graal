@@ -170,7 +170,7 @@ public final class DebugException extends RuntimeException {
     public List<DebugStackTraceElement> getDebugStackTrace() {
         if (debugStackTrace == null) {
             if (exception != null) {
-                List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStacktrace(exception);
+                List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(exception);
                 int n = stackTrace.size();
                 List<DebugStackTraceElement> debugStack = new ArrayList<>(n);
                 for (int i = 0; i < n; i++) {

@@ -60,6 +60,7 @@ public final class DefaultCallTarget implements RootCallTarget {
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
+        getRuntime().getTvmci().setCallTarget(function, this);
     }
 
     @Override

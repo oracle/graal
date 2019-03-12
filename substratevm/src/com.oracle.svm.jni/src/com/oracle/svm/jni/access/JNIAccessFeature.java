@@ -36,7 +36,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.option.HostedOptionKey;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
@@ -51,15 +50,18 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.config.ConfigurationDirectories;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess.JNIRuntimeAccessibilitySupport;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
+import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
@@ -99,7 +101,8 @@ public class JNIAccessFeature implements Feature {
     private boolean haveJavaRuntimeReflectionSupport;
 
     public static class Options {
-        @Option(help = "Print JNI methods added to generated image") public static final HostedOptionKey<Boolean> PrintJNIMethods = new HostedOptionKey<>(false);
+        @Option(help = "Print JNI methods added to generated image")//
+        public static final HostedOptionKey<Boolean> PrintJNIMethods = new HostedOptionKey<>(false);
     }
 
     private void abortIfSealed() {
@@ -116,7 +119,7 @@ public class JNIAccessFeature implements Feature {
         ImageSingletons.add(JNIRuntimeAccessibilitySupport.class, registry);
 
         ReflectionConfigurationParser parser = new ReflectionConfigurationParser(registry, access.getImageClassLoader());
-        parser.parseAndRegisterConfigurations("JNI", SubstrateOptions.JNIConfigurationFiles, SubstrateOptions.JNIConfigurationResources);
+        parser.parseAndRegisterConfigurations("JNI", SubstrateOptions.JNIConfigurationFiles, SubstrateOptions.JNIConfigurationResources, ConfigurationDirectories.FileNames.JNI_NAME);
     }
 
     private class JNIRuntimeAccessibilitySupportImpl implements JNIRuntimeAccessibilitySupport, ReflectionRegistry {
@@ -230,6 +233,9 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
+        if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess())) {
+            return null;
+        }
         return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
             if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
@@ -242,6 +248,9 @@ public class JNIAccessFeature implements Feature {
     }
 
     private void addMethod(Executable method, DuringAnalysisAccessImpl access) {
+        if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess())) {
+            return;
+        }
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
         jniClass.addMethodIfAbsent(descriptor, d -> {
@@ -274,7 +283,9 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static void addField(Field reflField, boolean writable, DuringAnalysisAccessImpl access) {
-        BigBang bigBang = access.getBigBang();
+        if (SubstitutionReflectivityFilter.shouldExclude(reflField, access.getMetaAccess())) {
+            return;
+        }
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), access);
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
         jniClass.addFieldIfAbsent(field.getName(), name -> new JNIAccessibleField(jniClass, name, field.getJavaKind(), field.getModifiers()));
@@ -286,6 +297,7 @@ public class JNIAccessFeature implements Feature {
         }
         // Same as BigBang.addSystemField() and BigBang.addSystemStaticField():
         // create type flows for any subtype of the field's declared type
+        BigBang bigBang = access.getBigBang();
         TypeFlow<?> declaredTypeFlow = field.getType().getTypeFlow(bigBang, true);
         if (field.isStatic()) {
             declaredTypeFlow.addUse(bigBang, field.getStaticFieldFlow());

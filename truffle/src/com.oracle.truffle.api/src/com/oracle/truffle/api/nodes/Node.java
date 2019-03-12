@@ -57,6 +57,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -578,23 +579,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a lock object that can be used to synchronize modifications to the AST. Only use it
-     * as part of a synchronized block, do not call {@link Object#wait()} or {@link Object#notify()}
-     * manually.
-     *
-     * @since 0.17
-     * @deprecated replaced with {@link #getLock()}
-     */
-    @Deprecated
-    protected final Object getAtomicLock() {
-        // Major Assumption: parent is never null after a node got adopted
-        // it is never reset to null, and thus, rootNode is always reachable.
-        // GIL: used for nodes that are replace in ASTs that are not yet adopted
-        RootNode root = getRootNode();
-        return root == null ? GIL : root;
-    }
-
-    /**
      * Returns a lock object that can be used to synchronize modifications to the AST. Don't lock if
      * you call into foreign code with potential recursions to avoid deadlocks. Use responsibly.
      *
@@ -632,28 +616,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         return "";
     }
 
-    /**
-     * Returns a string representing the language this node has been implemented for. If the
-     * language is unknown, returns "".
-     *
-     * @since 0.8 or earlier
-     * @deprecated in 0.25 use {@link #getRootNode() getRootNode()}.
-     *             {@link RootNode#getLanguageInfo() getLanguageInfo()}.
-     *             {@link LanguageInfo#getName() getName()} instead
-     */
-    @Deprecated
-    public String getLanguage() {
-        NodeInfo info = getClass().getAnnotation(NodeInfo.class);
-        if (info != null && info.language() != null && info.language().length() > 0) {
-            return info.language();
-        }
-        if (parent != null) {
-            return parent.getLanguage();
-        }
-        return "";
-    }
-
-    private static final Object GIL = new Object();
     private static final ReentrantLock GIL_LOCK = new ReentrantLock(false);
 
     private boolean inAtomicBlock() {
@@ -702,6 +664,11 @@ public abstract class Node implements NodeInterface, Cloneable {
             @Override
             public boolean isInstrumentable(RootNode rootNode) {
                 return rootNode.isInstrumentable();
+            }
+
+            @Override
+            public void setCallTarget(RootNode rootNode, RootCallTarget callTarget) {
+                rootNode.setCallTarget(callTarget);
             }
 
             @Override

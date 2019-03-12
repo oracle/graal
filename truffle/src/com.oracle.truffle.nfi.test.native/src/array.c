@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "common.h"
 
 #define GEN_ARRAY_TEST(name, type) \
     \
-    type sum_##name(type *arr, uint32_t length) { \
+    EXPORT type sum_##name(type *arr, uint32_t length) { \
         type ret = 0; \
         for (; length > 0; length--) { \
             ret += *(arr++); \
@@ -52,11 +53,11 @@
         return ret; \
     } \
     \
-    void store_##name(type *arr, uint32_t idx, type value) { \
+    EXPORT void store_##name(type *arr, uint32_t idx, type value) { \
         arr[idx] = value; \
     } \
     \
-    char *null_array_##name(type *arr) { \
+    EXPORT char *null_array_##name(type *arr) { \
         if (arr == NULL) { \
             return "null"; \
         } else { \

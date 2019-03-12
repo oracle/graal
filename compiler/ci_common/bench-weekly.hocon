@@ -88,7 +88,7 @@ bench-renaissance-hwloc-forks-batch0 : ${x52.tmpfs10g} ${bench-renaissance-hwloc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   name: "bench-forks-compiler-renaissance-linux-x52-batch0"
-  timelimit: "04:30:00"
+  timelimit: "06:30:00"
   environment : ${x52.tmpfs10g.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch0.json"
   }
@@ -97,7 +97,7 @@ bench-renaissance-hwloc-forks-batch1 : ${x52.tmpfs10g} ${bench-renaissance-hwloc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   name: "bench-forks-compiler-renaissance-linux-x52-batch1"
-  timelimit: "04:30:00"
+  timelimit: "06:30:00"
   environment : ${x52.tmpfs10g.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch1.json"
   }
@@ -106,7 +106,7 @@ bench-renaissance-hwloc-forks-batch2 : ${x52.tmpfs10g} ${bench-renaissance-hwloc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   name: "bench-forks-compiler-renaissance-linux-x52-batch2"
-  timelimit: "04:30:00"
+  timelimit: "06:30:00"
   environment : ${x52.tmpfs10g.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch2.json"
   }
@@ -115,7 +115,7 @@ bench-renaissance-hwloc-forks-batch3 : ${x52.tmpfs10g} ${bench-renaissance-hwloc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   name: "bench-forks-compiler-renaissance-linux-x52-batch3"
-  timelimit: "04:30:00"
+  timelimit: "06:30:00"
   environment : ${x52.tmpfs10g.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch3.json"
   }

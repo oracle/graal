@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,17 +39,18 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Poll;
+import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Uio;
 
 /**
  * Interrupt blocking operations when a file descriptor is closed.
  *
- * This is a translation of the mechanism in /jdk8u-dev/jdk/src/solaris/native/java/net/bsd_close.c
- * and /jdk8u-dev/jdk/src/solaris/native/java/net/linux_close.c that implements interruption of
- * blocking operations. Not done as a direct translation of the methods, which maintain lists of
- * pthreads, and file descriptors, etc. Rather the mechanism is implemented in Java using Java
- * threads and Thread.interrupt.
+ * This class is a translation of the mechanism in
+ * /jdk8u-dev/jdk/src/solaris/native/java/net/bsd_close.c and
+ * /jdk8u-dev/jdk/src/solaris/native/java/net/linux_close.c that implements interruption of blocking
+ * operations. This translation is not a direct translation of the methods. Rather the mechanism is
+ * implemented using Java data structures.
  */
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public abstract class PosixJavaNetClose {
@@ -59,20 +61,23 @@ public abstract class PosixJavaNetClose {
      */
     protected static class ThreadEntry {
 
-        private Thread thread;
+        private Pthread.pthread_t pThread;
         private boolean intr;
 
-        /** Fields are initialized in {@link PosixJavaNetClose#startOp(FdEntry, ThreadEntry)}. */
+        /**
+         * Fields are initialized in {@link PosixJavaNetClose#startOp(FdEntry, ThreadEntry)} to
+         * match the JDK code.
+         */
         public ThreadEntry() {
             /* Nothing to do. */
         }
 
-        public Thread getThread() {
-            return thread;
+        public Pthread.pthread_t getPThread() {
+            return pThread;
         }
 
-        public void setThread(Thread value) {
-            thread = value;
+        public void setPThread(Pthread.pthread_t pThreadArg) {
+            pThread = pThreadArg;
         }
 
         public boolean getIntr() {
@@ -96,7 +101,7 @@ public abstract class PosixJavaNetClose {
 
         public FdEntry() {
             /* Most file descriptors have one thread blocked on them. */
-            threadList = new ArrayList<>(2);
+            this.threadList = new ArrayList<>(2);
         }
 
         public List<ThreadEntry> getThreadList() {
@@ -115,7 +120,7 @@ public abstract class PosixJavaNetClose {
      * the map, but adding a new entry to the map has to be atomic.
      */
     protected static FdEntry getFdEntry(int fd) {
-        /* `fd` is auto-boxed via Integer.valueOf. */
+        /* `fd` passed as the key is auto-boxed via Integer.valueOf. */
         return fdTable.computeIfAbsent(fd, unused -> new FdEntry());
     }
 
@@ -126,7 +131,7 @@ public abstract class PosixJavaNetClose {
      * } @formatter:on
      */
     protected static void startOp(FdEntry fdEntry, ThreadEntry self) {
-        self.setThread(Thread.currentThread());
+        self.setPThread(Pthread.pthread_self());
         self.setIntr(false);
         /* { Allow synchronization: Checkstyle: stop. */
         synchronized (fdEntry) {
@@ -163,6 +168,15 @@ public abstract class PosixJavaNetClose {
      */
 
     protected abstract int closefd(int fd1, int fd2);
+
+    /** Interrupt the given thread. */
+    protected void interruptThread(Pthread.pthread_t pThread) {
+        try {
+            PosixInterruptSignalUtils.interruptPThread(pThread);
+        } catch (IOException ioe) {
+            /* Ignored to match the JDK code. */
+        }
+    }
 
     /*
      * Implementations that are identical between bsd_close.c and linux_close.c. Where line numbers
@@ -226,15 +240,15 @@ public abstract class PosixJavaNetClose {
     // 250   */
     // 251  int NET_Dup2(int fd, int fd2) {
      public int NET_Dup2(int fd, int fd2) {
-        // 252      if (fd < 0) {
-        if (fd < 0 ) {
-            // 253          errno = EBADF;
-            Errno.set_errno(Errno.EBADF());
-            // 254          return -1;
-            return -1;
-        }
-        // 256      return closefd(fd, fd2);
-        return closefd(fd, fd2);
+         // 252      if (fd < 0) {
+         if (fd < 0) {
+             // 253          errno = EBADF;
+             Errno.set_errno(Errno.EBADF());
+             // 254          return -1;
+             return -1;
+         }
+         // 256      return closefd(fd, fd2);
+         return closefd(fd, fd2);
     }
     /* } Do not re-wrap commented-out code.  @formatter:on */
 

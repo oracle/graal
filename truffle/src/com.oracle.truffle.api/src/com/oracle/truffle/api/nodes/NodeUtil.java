@@ -63,12 +63,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * @since 0.8 or earlier
  */
 public final class NodeUtil {
-    /**
-     * @deprecated accidentally public - don't use
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public NodeUtil() {
+
+    private NodeUtil() {
     }
 
     static Iterator<Node> makeIterator(Node node) {

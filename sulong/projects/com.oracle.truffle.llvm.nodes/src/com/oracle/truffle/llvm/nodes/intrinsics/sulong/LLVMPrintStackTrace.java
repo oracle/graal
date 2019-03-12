@@ -69,7 +69,7 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
 
     private static SulongStackTrace getStackTrace(LLVMNode node, String message, boolean filterCurrentLocation) {
         Throwable t = new CThrowable(node, message);
-        List<TruffleStackTraceElement> ctrace = TruffleStackTrace.getStacktrace(t);
+        List<TruffleStackTraceElement> ctrace = TruffleStackTrace.getStackTrace(t);
 
         SulongStackTrace trace = new SulongStackTrace(message);
         for (int i = 0; i < ctrace.size(); i++) {

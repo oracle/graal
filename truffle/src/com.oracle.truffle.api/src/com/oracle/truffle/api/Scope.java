@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,21 +60,43 @@ public final class Scope {
     private final Node node;
     private final Object arguments;
     private final Object variables;
+    private final Object receiver;
+    private final String receiverName;
 
     private Scope() {
         name = null;
         node = null;
         arguments = null;
         variables = null;
+        receiver = null;
+        receiverName = null;
     }
 
-    Scope(String name, Node node, Object arguments, Object variables) {
+    Scope(String name, Node node, Object arguments, Object variables, Object receiver, String receiverName) {
         this.name = name;
         this.node = node;
-        assert arguments == null || TruffleLanguage.AccessAPI.interopAccess().isTruffleObject(arguments) : Objects.toString(arguments);
+        assertNullOrTruffleObject(arguments);
         this.arguments = arguments;
-        assert TruffleLanguage.AccessAPI.interopAccess().isTruffleObject(variables) : Objects.toString(variables);
+        assertTruffleObject(variables);
         this.variables = variables;
+        assertNullOrInteropType(receiver);
+        this.receiver = receiver;
+        this.receiverName = receiverName;
+    }
+
+    private static boolean assertTruffleObject(Object obj) {
+        assert TruffleLanguage.AccessAPI.interopAccess().isTruffleObject(obj) : Objects.toString(obj);
+        return true;
+    }
+
+    private static void assertNullOrTruffleObject(Object obj) {
+        assert obj == null || assertTruffleObject(obj);
+    }
+
+    private static void assertNullOrInteropType(Object obj) {
+        if (obj != null) {
+            TruffleLanguage.AccessAPI.interopAccess().checkInteropType(obj);
+        }
     }
 
     /**
@@ -150,6 +172,32 @@ public final class Scope {
     }
 
     /**
+     * Get a receiver object of this scope. The receiver object is represented as <code>this</code>
+     * in Java or JavaScript and <code>self</code> in Ruby, for instance.
+     * <p>
+     * The scope that represents the function provide receiver object, if there is one, other scopes
+     * do not provide it, unless they override it.
+     *
+     * @return the receiver object, or <code>null</code> when there is no receiver
+     * @since 1.0
+     * @see #getReceiverName()
+     */
+    public Object getReceiver() {
+        return receiver;
+    }
+
+    /**
+     * Get code name of the receiver object, if there is any.
+     *
+     * @return the code name of {@link #getReceiver() receiver object}, or <code>null</code>.
+     * @since 1.0
+     * @see #getReceiver()
+     */
+    public String getReceiverName() {
+        return receiverName;
+    }
+
+    /**
      * Builder to create a new {@link Scope} object.
      *
      * @since 0.30
@@ -160,10 +208,12 @@ public final class Scope {
         private Node node;
         private Object arguments;
         private final Object variables;
+        private Object receiver;
+        private String receiverName;
 
         Builder(String name, Object variables) {
             assert name != null;
-            assert TruffleLanguage.AccessAPI.interopAccess().isTruffleObject(variables) : Objects.toString(variables);
+            assertTruffleObject(variables);
             this.name = name;
             this.variables = variables;
         }
@@ -192,8 +242,27 @@ public final class Scope {
          */
         @SuppressWarnings("hiding")
         public Builder arguments(Object arguments) {
-            assert arguments == null || TruffleLanguage.AccessAPI.interopAccess().isTruffleObject(arguments) : Objects.toString(arguments);
+            assertNullOrTruffleObject(arguments);
             this.arguments = arguments;
+            return this;
+        }
+
+        /**
+         * Set a receiver object of this scope. The receiver object is represented as
+         * <code>this</code> in Java or JavaScript and <code>self</code> in Ruby, for instance.
+         * <p>
+         * The scope that represents the function provide receiver object, if there is one, other
+         * scopes do not provide it, unless they override it.
+         *
+         * @param name code name of the receiver object
+         * @param receiver the receiver object
+         * @since 1.0
+         */
+        @SuppressWarnings("hiding")
+        public Builder receiver(String name, Object receiver) {
+            assertNullOrInteropType(receiver);
+            this.receiverName = name;
+            this.receiver = receiver;
             return this;
         }
 
@@ -203,7 +272,7 @@ public final class Scope {
          * @since 0.30
          */
         public Scope build() {
-            return new Scope(name, node, arguments, variables);
+            return new Scope(name, node, arguments, variables, receiver, receiverName);
         }
     }
 }

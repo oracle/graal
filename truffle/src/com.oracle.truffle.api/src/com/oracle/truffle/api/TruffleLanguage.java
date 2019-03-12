@@ -719,16 +719,12 @@ public abstract class TruffleLanguage<C> {
      * @since 0.22
      */
     public static final class ParsingRequest {
-        private final Node node;
-        private final MaterializedFrame frame;
         private final Source source;
         private final String[] argumentNames;
         private boolean disposed;
 
-        ParsingRequest(Source source, Node node, MaterializedFrame frame, String... argumentNames) {
+        ParsingRequest(Source source, String... argumentNames) {
             Objects.requireNonNull(source);
-            this.node = node;
-            this.frame = frame;
             this.source = source;
             this.argumentNames = argumentNames;
         }
@@ -744,49 +740,6 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalStateException();
             }
             return source;
-        }
-
-        /**
-         * Specifies the code location for parsing. The location is specified as an instance of a
-         * {@link Node} in the AST. There doesn't have to be any specific location and in such case
-         * this method returns <code>null</code>. If the node is provided, it can be for example
-         * {@link com.oracle.truffle.api.instrumentation.EventContext#getInstrumentedNode()} when
-         * {@link com.oracle.truffle.api.instrumentation.EventContext#parseInContext} is called.
-         *
-         *
-         * @return a {@link Node} defining AST context for the parsing or <code>null</code>
-         * @since 0.22
-         * @deprecated {@link #parse(com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest)}
-         *             and {@link InlineParsingRequest#getLocation()} is the preferred approach to
-         *             parse a source at a {@link Node} location.
-         */
-        @Deprecated
-        public Node getLocation() {
-            if (disposed) {
-                throw new IllegalStateException();
-            }
-            return node;
-        }
-
-        /**
-         * Specifies the execution context for parsing. If the parsing request is used for
-         * evaluation during halted execution, for example as in
-         * {@link com.oracle.truffle.api.debug.DebugStackFrame#eval(String)} method, this method
-         * provides access to current {@link MaterializedFrame frame} with local variables, etc.
-         *
-         * @return a {@link MaterializedFrame} exposing the current execution state or
-         *         <code>null</code> if there is none
-         * @since 0.22
-         * @deprecated {@link #parse(com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest)}
-         *             and {@link InlineParsingRequest#getFrame()} is the preferred approach to
-         *             parse a source with a frame context.
-         */
-        @Deprecated
-        public MaterializedFrame getFrame() {
-            if (disposed) {
-                throw new IllegalStateException();
-            }
-            return frame;
         }
 
         /**
@@ -1245,8 +1198,8 @@ public abstract class TruffleLanguage<C> {
         this.reference = new ContextReference<>(vmObject);
     }
 
-    CallTarget parse(Source source, Node context, MaterializedFrame frame, String... argumentNames) {
-        ParsingRequest request = new ParsingRequest(source, context, frame, argumentNames);
+    CallTarget parse(Source source, String... argumentNames) {
+        ParsingRequest request = new ParsingRequest(source, argumentNames);
         CallTarget target;
         try {
             target = request.parse(this);
@@ -1990,7 +1943,14 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public TruffleFile getTruffleFile(String path) {
-            return new TruffleFile(fileSystem, fileSystem.parsePath(path));
+            checkDisposed();
+            try {
+                return new TruffleFile(fileSystem, fileSystem.parsePath(path));
+            } catch (UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystem);
+            }
         }
 
         /**
@@ -2007,6 +1967,8 @@ public abstract class TruffleLanguage<C> {
                 return new TruffleFile(fileSystem, fileSystem.parsePath(uri));
             } catch (UnsupportedOperationException e) {
                 throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystem);
             }
         }
 
@@ -2038,6 +2000,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public void setCurrentWorkingDirectory(TruffleFile currentWorkingDirectory) {
+            checkDisposed();
             Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
             if (!currentWorkingDirectory.isAbsolute()) {
                 throw new IllegalArgumentException("Current working directory must be absolute.");
@@ -2045,7 +2008,29 @@ public abstract class TruffleLanguage<C> {
             if (!currentWorkingDirectory.isDirectory()) {
                 throw new IllegalArgumentException("Current working directory must be directory.");
             }
-            fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+            try {
+                fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+            } catch (UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystem);
+            }
+        }
+
+        /**
+         * Returns the name separator used to separate names in {@link TruffleFile}'s path string.
+         *
+         * @return the name separator
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public String getFileNameSeparator() {
+            checkDisposed();
+            try {
+                return fileSystem.getSeparator();
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystem);
+            }
         }
 
         /**
@@ -2467,8 +2452,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        @SuppressWarnings("unused")
         public CallTarget parse(Env env, Source code, Node context, String... argumentNames) {
-            return env.getSpi().parse(code, context, null, argumentNames);
+            return env.getSpi().parse(code, argumentNames);
         }
 
         @Override
@@ -2513,7 +2499,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Object evalInContext(Source source, Node node, final MaterializedFrame mFrame) {
-            CallTarget target = API.nodes().getLanguage(node.getRootNode()).parse(source, node, mFrame);
+            CallTarget target = API.nodes().getLanguage(node.getRootNode()).parse(source);
             try {
                 if (target instanceof RootCallTarget) {
                     RootNode exec = ((RootCallTarget) target).getRootNode();
@@ -2646,11 +2632,13 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels) {
-            if (logLevels == null) {
-                TruffleLogger.LoggerCache.getInstance().removeLogLevelsForContext(polyglotContext);
-            } else {
-                TruffleLogger.LoggerCache.getInstance().addLogLevelsForContext(polyglotContext, logLevels);
+        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers) {
+            for (Object loggerCache : loggers) {
+                if (logLevels == null) {
+                    ((TruffleLogger.LoggerCache) loggerCache).removeLogLevelsForContext(polyglotContext);
+                } else {
+                    ((TruffleLogger.LoggerCache) loggerCache).addLogLevelsForContext(polyglotContext, logLevels);
+                }
             }
         }
 
@@ -2662,6 +2650,31 @@ public abstract class TruffleLanguage<C> {
         @Override
         public TruffleLanguage<?> getLanguage(Env env) {
             return env.getSpi();
+        }
+
+        @Override
+        public TruffleFile getTruffleFile(FileSystem fs, String path) {
+            return new TruffleFile(fs, fs.parsePath(path));
+        }
+
+        @Override
+        public Object getDefaultLoggers() {
+            return TruffleLogger.LoggerCache.getInstance();
+        }
+
+        @Override
+        public Object createEngineLoggers(Object polyglotEngine, Map<String, Level> logLevels) {
+            return TruffleLogger.createLoggerCache(polyglotEngine, logLevels);
+        }
+
+        @Override
+        public void closeEngineLoggers(Object loggers) {
+            ((TruffleLogger.LoggerCache) loggers).close();
+        }
+
+        @Override
+        public TruffleLogger getLogger(String id, String loggerName, Object loggers) {
+            return TruffleLogger.getLogger(id, loggerName, (TruffleLogger.LoggerCache) loggers);
         }
     }
 }

@@ -50,7 +50,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.annotate.Alias;
@@ -113,7 +112,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaType lookup(ResolvedJavaType type) {
         Delete deleteAnnotation = deleteAnnotations.get(type);
         if (deleteAnnotation != null) {
-            throw new UnsupportedFeatureException(deleteErrorMessage(type, deleteAnnotation, true));
+            throw new DeletedElementException(deleteErrorMessage(type, deleteAnnotation, true));
         }
         ResolvedJavaType substitution = typeSubstitutions.get(type);
         if (substitution != null) {
@@ -138,7 +137,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaField lookup(ResolvedJavaField field) {
         Delete deleteAnnotation = deleteAnnotations.get(field);
         if (deleteAnnotation != null) {
-            throw new UnsupportedFeatureException(deleteErrorMessage(field, deleteAnnotation, true));
+            throw new DeletedElementException(deleteErrorMessage(field, deleteAnnotation, true));
         }
         ResolvedJavaField substitution = fieldSubstitutions.get(field);
         if (substitution != null) {
@@ -181,7 +180,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         Delete deleteAnnotation = deleteAnnotations.get(method);
         if (deleteAnnotation != null) {
-            throw new UnsupportedFeatureException(deleteErrorMessage(method, deleteAnnotation, true));
+            throw new DeletedElementException(deleteErrorMessage(method, deleteAnnotation, true));
         }
         ResolvedJavaMethod substitution = methodSubstitutions.get(method);
         if (substitution != null) {
@@ -517,7 +516,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             ResolvedJavaField field = metaAccess.lookupJavaField(f);
             ResolvedJavaField alias = fieldValueRecomputation(annotatedClass, field, field, f);
             if (!alias.equals(field)) {
-                register(fieldSubstitutions, field, null, alias);
+                ResolvedJavaField originalField = findOriginalField(f, originalClass, true);
+                guarantee(originalField == null || !(alias.isFinal() && !originalField.isFinal()), "a non-final field cannot be redeclared as final through substitution: %s", field);
+                register(fieldSubstitutions, field, originalField, alias);
             } else {
                 handleAnnotatedFieldInSubstitutionClass(f, originalClass);
             }
@@ -728,7 +729,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         RecomputeFieldValue.Kind kind = RecomputeFieldValue.Kind.None;
         Class<?> targetClass = originalClass;
         String targetName = "";
-        boolean isFinal = false;
+        boolean isFinal = original.isFinal() && annotated.isFinal();
 
         if (recomputeAnnotation != null) {
             kind = recomputeAnnotation.kind();
@@ -899,7 +900,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         } else if (element instanceof ResolvedJavaType) {
             result.append("type ").append(((ResolvedJavaType) element).toJavaName(true));
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHere("Unknown @Delete annotated element " + element);
         }
         result.append(" is reachable");
         if (message != null && !message.isEmpty()) {

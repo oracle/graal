@@ -101,6 +101,11 @@ public final class Environment implements Feedback, CommandInput {
         this.fileIterable = new FileIterable(this, this);
     }
 
+    Environment enableStacktraces() {
+        this.stacktraces = true;
+        return this;
+    }
+
     public boolean isAutoYesEnabled() {
         return autoYesEnabled;
     }
@@ -334,7 +339,7 @@ public final class Environment implements Feedback, CommandInput {
             }
 
             @Override
-            public String acceptPassword() {
+            public char[] acceptPassword() {
                 return Environment.this.acceptPassword();
             }
 
@@ -466,16 +471,16 @@ public final class Environment implements Feedback, CommandInput {
     }
 
     @Override
-    public String acceptPassword() {
+    public char[] acceptPassword() {
         if (isNonInteractive()) {
             throw new NonInteractiveException(withBundle(Environment.class).l10n("ERROR_NoninteractiveInput"));
         }
         Console console = System.console();
         if (console != null) {
             console.flush();
-            return String.copyValueOf(console.readPassword());
+            return console.readPassword();
         } else {
-            return acceptLine(false);
+            return acceptLine(false).toCharArray();
         }
     }
 

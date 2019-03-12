@@ -148,7 +148,7 @@ public interface Feedback {
      * 
      * @return password
      */
-    String acceptPassword();
+    char[] acceptPassword();
 
     /**
      * Provides a cache for remote files. The URL contents should be downloaded and stored to the

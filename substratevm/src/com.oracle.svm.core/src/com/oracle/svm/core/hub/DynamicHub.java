@@ -54,6 +54,7 @@ import java.util.Set;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -91,8 +92,8 @@ import sun.security.util.SecurityConstants;
 public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable {
 
     @Substitute //
-    @TargetElement(name = "EMPTY_CLASS_ARRAY", onlyWith = JDK9OrLater.class) //
-    private static Class<?>[] emptyClassArray = new Class<?>[0];
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
 
     /* Value copied from java.lang.Class. */
     private static final int SYNTHETIC = 0x00001000;
@@ -260,15 +261,25 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
 
-    private static final LazyFinalReference<java.security.ProtectionDomain> allPermDomain = new LazyFinalReference<>(() -> {
+    /**
+     * Final fields in subsituted classes are treated as implicitly RecomputeFieldValue even when
+     * not annotated with @RecomputeFieldValue. Their name must not match a field in the original
+     * class, i.e., allPermDomain.
+     */
+    private static final LazyFinalReference<java.security.ProtectionDomain> allPermDomainReference = new LazyFinalReference<>(() -> {
         java.security.Permissions perms = new java.security.Permissions();
         perms.add(SecurityConstants.ALL_PERMISSION);
         return new java.security.ProtectionDomain(null, perms);
     });
 
-    private static final LazyFinalReference<Target_java_lang_Module> singleModule = new LazyFinalReference<>(Target_java_lang_Module::new);
+    private static final LazyFinalReference<Target_java_lang_Module> singleModulReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 
-    private final LazyFinalReference<String> packageName = new LazyFinalReference<>(this::computePackageName);
+    /**
+     * Final fields in subsituted classes are treated as implicitly RecomputeFieldValue even when
+     * not annotated with @RecomputeFieldValue. Their name must not match a field in the original
+     * class, i.e., packageName.
+     */
+    private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
@@ -588,13 +599,18 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @KeepOriginal
-    private native String getSimpleName();
+    @TargetElement(name = "getSimpleName", onlyWith = JDK8OrEarlier.class)
+    private native String getSimpleNameJDK8OrEarlier();
 
-    @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    private String getSimpleName0() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getSimpleName0()");
+    @Substitute
+    @TargetElement(name = "getSimpleName", onlyWith = JDK9OrLater.class)
+    private String getSimpleNameJDK9OrLater() {
+        return getSimpleName0();
     }
+
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private native String getSimpleName0();
 
     @KeepOriginal
     private native String getCanonicalName();
@@ -631,8 +647,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native boolean isMemberClass();
 
     @Substitute
-    private boolean isLocalOrAnonymousClass() {
-        return isLocalClass() || isAnonymousClass();
+    public boolean isLocalOrAnonymousClass() {
+        if (JavaVersionUtil.Java8OrEarlier) {
+            return isLocalClass() || isAnonymousClass();
+        } else {
+            return rd.enclosingMethodOrConstructor != null;
+        }
     }
 
     @Substitute
@@ -1067,16 +1087,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @TargetElement(name = "getPackage", onlyWith = JDK8OrEarlier.class)
     public native Package getPackageJDK8OrEarlier();
 
-    @Substitute
+    @KeepOriginal
     @TargetElement(name = "getPackage", onlyWith = JDK9OrLater.class)
-    public Package getPackageJDK9OrLater() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getPackage()");
-    }
+    public native Package getPackageJDK9OrLater();
 
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public String getPackageName() {
-        return packageName.get();
+        return packageNameReference.get();
     }
 
     private String computePackageName() {
@@ -1114,7 +1132,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public ProtectionDomain getProtectionDomain() {
-        return allPermDomain.get();
+        return allPermDomainReference.get();
     }
 
     @Substitute
@@ -1125,15 +1143,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public Target_java_lang_Module getModule() {
-        return singleModule.get();
+        return singleModulReference.get();
     }
 
-    @Substitute //
+    @KeepOriginal //
     @TargetElement(onlyWith = JDK9OrLater.class)
-    @SuppressWarnings({"unused"})
-    private String methodToString(String nameArg, Class<?>[] argTypes) {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.methodToString(String nameArg, Class<?>[] argTypes)");
-    }
+    private native String methodToString(String nameArg, Class<?>[] argTypes);
 
     @Substitute //
     private <T> Target_java_lang_Class_ReflectionData<T> reflectionData() {
@@ -1143,14 +1158,25 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     private boolean isTopLevelClass() {
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.isTopLevelClass()");
+        return !isLocalOrAnonymousClass() && getDeclaringClass() == null;
     }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private native Object[] getEnclosingMethod0();
 
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
-    private /* native */ String getSimpleBinaryName0() {
+    private String getSimpleBinaryName0() {
+        if (enclosingClass == null) {
+            return null;
+        }
+        try {
+            return getName().substring(enclosingClass.getName().length() + 1);
+        } catch (IndexOutOfBoundsException ex) {
+            throw new InternalError("Malformed class name", ex);
+        }
         /* See open/src/hotspot/share/prims/jvm.cpp#1522. */
-        throw VMError.unsupportedFeature("JDK9OrLater: DynamicHub.getSimpleBinaryName0()");
     }
 
     @Substitute //

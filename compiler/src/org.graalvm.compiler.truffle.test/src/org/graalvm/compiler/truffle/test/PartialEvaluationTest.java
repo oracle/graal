@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
@@ -144,7 +145,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         } catch (IgnoreError e) {
         }
 
-        OptionValues options = TruffleCompilerOptions.getOptions();
+        OptionValues options = getOptions();
         DebugContext debug = getDebugContext(options);
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
             TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
@@ -152,6 +153,30 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null);
         } catch (Throwable e) {
             throw debug.handle(e);
+        }
+    }
+
+    protected OptionValues getOptions() {
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        if (preventDumping) {
+            options = new OptionValues(options, DumpOnError, false);
+        }
+        return options;
+    }
+
+    private boolean preventDumping = false;
+
+    protected class PreventDumping implements AutoCloseable {
+        private final boolean previous;
+
+        protected PreventDumping() {
+            previous = preventDumping;
+            preventDumping = true;
+        }
+
+        @Override
+        public void close() {
+            preventDumping = previous;
         }
     }
 

@@ -96,6 +96,11 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
+    public void noteMerge(BigBang bb, AnalysisObject a) {
+        // nothing to do
+    }
+
+    @Override
     public boolean isContextSensitiveAllocation(BigBang bb, AnalysisType type, AnalysisContext allocationContext) {
         return false;
     }

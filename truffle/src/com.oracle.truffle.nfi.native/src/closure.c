@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,13 +84,15 @@ void processEnvArg(struct closure_data *closure, void **args, JNIEnv **jniEnv, s
 
 static jobjectArray create_arg_buffers(struct __TruffleContextInternal *ctx, JNIEnv *env, struct closure_data *data, ffi_cif *cif, void **args, jobject retBuffer) {
     int length = cif->nargs - data->skippedArgCount;
+    jobjectArray argBuffers;
+    int argIdx, i;
+
     if (retBuffer) {
         length += 1;
     }
 
-    jobjectArray argBuffers = (*env)->NewObjectArray(env, length, ctx->Object, NULL);
-    int argIdx = 0;
-    int i;
+    argBuffers = (*env)->NewObjectArray(env, length, ctx->Object, NULL);
+    argIdx = 0;
     for (i = 0; i < cif->nargs; i++) {
         switch (data->argTypes[i]) {
             case ARG_BUFFER: {
@@ -140,25 +142,30 @@ static void serialize_ret_string(struct __TruffleContextInternal *ctx, JNIEnv *e
 }
 
 static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
-    errnoMirror = errno;
-
     struct closure_data *data = (struct closure_data *) user_data;
-
     JNIEnv *env;
     struct __TruffleContextInternal *ctx;
+
+    int retSize;
+    jobject retBuffer;
+    jobjectArray argBuffers;
+    jobject retPatches;
+
+    errnoMirror = errno;
+
     processEnvArg(data, args, &env, &ctx);
 
     (*env)->PushLocalFrame(env, 8);
 
-    int retSize = cif->rtype->size;
+    retSize = cif->rtype->size;
     if (retSize < sizeof(ffi_arg)) {
         retSize = sizeof(ffi_arg);
     }
-    jobject retBuffer = (*env)->NewDirectByteBuffer(env, ret, retSize);
+    retBuffer = (*env)->NewDirectByteBuffer(env, ret, retSize);
 
-    jobjectArray argBuffers = create_arg_buffers(ctx, env, data, cif, args, retBuffer);
+    argBuffers = create_arg_buffers(ctx, env, data, cif, args, retBuffer);
 
-    jobject retPatches = (*env)->CallObjectMethod(env, data->callTarget, ctx->CallTarget_call, argBuffers);
+    retPatches = (*env)->CallObjectMethod(env, data->callTarget, ctx->CallTarget_call, argBuffers);
 
     if (retPatches) {
         int patchCount = (*env)->GetIntField(env, retPatches, ctx->RetPatches_count);
@@ -197,18 +204,21 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
 }
 
 static void invoke_closure_object_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
-    errnoMirror = errno;
-
     struct closure_data *data = (struct closure_data *) user_data;
-
     JNIEnv *env;
     struct __TruffleContextInternal *ctx;
+
+    jobjectArray argBuffers;
+    jobject retObj;
+
+    errnoMirror = errno;
+
     processEnvArg(data, args, &env, &ctx);
 
     (*env)->PushLocalFrame(env, 4);
 
-    jobjectArray argBuffers = create_arg_buffers(ctx, env, data, cif, args, NULL);
-    jobject retObj = (*env)->CallObjectMethod(env, data->callTarget, ctx->CallTarget_call, argBuffers);
+    argBuffers = create_arg_buffers(ctx, env, data, cif, args, NULL);
+    retObj = (*env)->CallObjectMethod(env, data->callTarget, ctx->CallTarget_call, argBuffers);
 
     *((jobject *) ret) = (*env)->NewGlobalRef(env, retObj);
 
@@ -218,18 +228,21 @@ static void invoke_closure_object_ret(ffi_cif *cif, void *ret, void **args, void
 }
 
 static void invoke_closure_string_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
-    errnoMirror = errno;
-
     struct closure_data *data = (struct closure_data *) user_data;
-
     JNIEnv *env;
     struct __TruffleContextInternal *ctx;
+
+    jobjectArray argBuffers;
+    jobject retObj;
+
+    errnoMirror = errno;
+
     processEnvArg(data, args, &env, &ctx);
 
     (*env)->PushLocalFrame(env, 4);
 
-    jobjectArray argBuffers = create_arg_buffers(ctx, env, data, cif, args, NULL);
-    jobject retObj = (*env)->CallObjectMethod(env, data->callTarget, ctx->CallTarget_call, argBuffers);
+    argBuffers = create_arg_buffers(ctx, env, data, cif, args, NULL);
+    retObj = (*env)->CallObjectMethod(env, data->callTarget, ctx->CallTarget_call, argBuffers);
 
     serialize_ret_string(ctx, env, retObj, ret);
 
@@ -239,17 +252,19 @@ static void invoke_closure_string_ret(ffi_cif *cif, void *ret, void **args, void
 }
 
 static void invoke_closure_void_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
-    errnoMirror = errno;
-
     struct closure_data *data = (struct closure_data *) user_data;
-
     JNIEnv *env;
     struct __TruffleContextInternal *ctx;
+
+    jobjectArray argBuffers;
+
+    errnoMirror = errno;
+
     processEnvArg(data, args, &env, &ctx);
 
     (*env)->PushLocalFrame(env, 4);
 
-    jobjectArray argBuffers = create_arg_buffers(ctx, env, data, cif, args, NULL);
+    argBuffers = create_arg_buffers(ctx, env, data, cif, args, NULL);
     (*env)->CallObjectMethod(env, data->callTarget, ctx->CallTarget_call, argBuffers);
 
     (*env)->PopLocalFrame(env, NULL);
@@ -261,16 +276,19 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject c
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     ffi_cif *cif = (ffi_cif*) (*env)->GetLongField(env, signature, ctx->LibFFISignature_cif);
 
+    jobjectArray argTypes;
+    int i;
+
     void *code;
     struct closure_data *data = (struct closure_data *) ffi_closure_alloc(sizeof(struct closure_data) + cif->nargs * sizeof(enum closure_arg_type), &code);
+
     data->callTarget = (*env)->NewWeakGlobalRef(env, callTarget);
 
     data->context = ctx;
     data->envArgIdx = -1;
     data->skippedArgCount = 0;
 
-    jobjectArray argTypes = (jobjectArray) (*env)->GetObjectField(env, signature, ctx->LibFFISignature_argTypes);
-    int i;
+    argTypes = (jobjectArray) (*env)->GetObjectField(env, signature, ctx->LibFFISignature_argTypes);
     for (i = 0; i < cif->nargs; i++) {
         jobject argType = (*env)->GetObjectArrayElement(env, argTypes, i);
         if ((*env)->IsInstanceOf(env, argType, ctx->LibFFIType_StringType)) {

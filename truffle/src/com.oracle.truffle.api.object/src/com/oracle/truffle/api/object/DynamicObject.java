@@ -55,7 +55,7 @@ import sun.misc.Unsafe;
  * @since 0.8 or earlier
  */
 @SuppressWarnings("deprecation")
-public abstract class DynamicObject implements com.oracle.truffle.api.TypedObject, TruffleObject {
+public abstract class DynamicObject implements TruffleObject {
 
     private Shape shape;
 

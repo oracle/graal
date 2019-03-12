@@ -1,15 +1,6 @@
 #Signature file v4.1
 #Version 
 
-CLSS public abstract interface !annotation com.oracle.truffle.api.interop.AcceptMessage
- anno 0 java.lang.Deprecated()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-intf java.lang.annotation.Annotation
-meth public abstract java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> language()
-meth public abstract java.lang.Class<?> receiverType()
-meth public abstract java.lang.String value()
-
 CLSS public final com.oracle.truffle.api.interop.ArityException
 meth public int getActualArity()
 meth public int getExpectedArity()

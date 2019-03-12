@@ -70,6 +70,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -102,6 +103,8 @@ public abstract class Accessor {
     public abstract static class Nodes {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
+
+        public abstract void setCallTarget(RootNode rootNode, RootCallTarget callTarget);
 
         public abstract boolean isTaggedWith(Node node, Class<?> tag);
 
@@ -311,9 +314,11 @@ public abstract class Accessor {
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
 
-        public abstract Handler getLogHandler();
+        public abstract Handler getLogHandler(Object polyglotEngine);
 
-        public abstract Map<String, Level> getLogLevels(Object context);
+        public abstract Map<String, Level> getLogLevels(Object vmObject);
+
+        public abstract TruffleLogger getLogger(Object vmObject, String name);
 
         public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
@@ -418,12 +423,21 @@ public abstract class Accessor {
 
         public abstract void materializeHostFrames(Throwable original);
 
-        public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
+        public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers);
+
+        public abstract Object getDefaultLoggers();
+
+        public abstract Object createEngineLoggers(Object polyglotEngine, Map<String, Level> logLevels);
+
+        public abstract void closeEngineLoggers(Object loggers);
+
+        public abstract TruffleLogger getLogger(String id, String loggerName, Object loggers);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
         public abstract Path getPath(TruffleFile file);
 
+        public abstract TruffleFile getTruffleFile(FileSystem fs, String path);
     }
 
     public abstract static class InstrumentSupport {
@@ -729,16 +743,6 @@ public abstract class Accessor {
     protected void onLoopCount(Node source, int iterations) {
         if (SUPPORT != null) {
             SUPPORT.onLoopCount(source, iterations);
-        } else {
-            // needs an additional compatibility check so older graal runtimes
-            // still run with newer truffle versions
-            RootNode root = source.getRootNode();
-            if (root != null) {
-                RootCallTarget target = root.getCallTarget();
-                if (target instanceof com.oracle.truffle.api.LoopCountReceiver) {
-                    ((com.oracle.truffle.api.LoopCountReceiver) target).reportLoopCount(iterations);
-                }
-            }
         }
     }
 

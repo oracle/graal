@@ -26,7 +26,6 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import fcntl
 import os
 import pprint
 import json
@@ -35,7 +34,6 @@ import subprocess
 
 from abc import ABCMeta
 from argparse import ArgumentParser
-from contextlib import contextmanager
 from os.path import relpath, join, dirname, basename, exists, isfile
 from collections import OrderedDict
 from zipfile import ZipFile
@@ -293,6 +291,9 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             for _launcher_config in _get_launcher_configs(_component):
                 _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
                 _launcher_dest = _component_base + _launcher_config.destination
+                if mx.get_os() == 'windows':
+                    suffix = 'cmd' if stage1 else 'exe'
+                    _launcher_dest += '.' + suffix
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
                 if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and GraalVmNativeImage.is_svm_debug_supported():
@@ -300,15 +301,17 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     if _include_sources():
                         _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/sources', _component)
                 # add links from jre/bin to launcher
-                _add_link(_jdk_jre_bin, _launcher_dest)
-                _jre_bin_names.append(basename(_launcher_dest))
+                if _launcher_config.default_symlinks:
+                    _add_link(_jdk_jre_bin, _launcher_dest)
+                    _jre_bin_names.append(basename(_launcher_dest))
                 for _component_link in _launcher_config.links:
                     _link_dest = _component_base + _component_link
                     # add links `LauncherConfig.links` -> `LauncherConfig.destination`
                     _add(layout, _link_dest, 'link:{}'.format(relpath(_launcher_dest, start=dirname(_link_dest))), _component)
                     # add links from jre/bin to component link
-                    _add_link(_jdk_jre_bin, _link_dest)
-                    _jre_bin_names.append(basename(_link_dest))
+                    if _launcher_config.default_symlinks:
+                        _add_link(_jdk_jre_bin, _link_dest)
+                        _jre_bin_names.append(basename(_link_dest))
             for _library_config in _get_library_configs(_component):
                 _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _library_config.jar_distributions], _component, with_sources=True)
                 if not stage1:
@@ -457,6 +460,9 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
         super(GraalVmLayoutDistributionTask, self).__init__(args, dist)
 
     def _add_link(self):
+        if mx.get_os() == 'windows':
+            mx.warn('Skip adding symlink to ' + self._home_link_target() + ' (Platform Windows)')
+            return
         self._rm_link()
         os.symlink(self._root_link_target(), self._root_link_path)
         os.symlink(self._home_link_target(), self._home_link_path)
@@ -468,6 +474,8 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
         return relpath(join(self.subject.output, self.subject.jdk_base), _suite.dir)
 
     def _rm_link(self):
+        if mx.get_os() == 'windows':
+            return
         for l in [self._root_link_path, self._home_link_path]:
             if os.path.lexists(l):
                 os.unlink(l)
@@ -827,7 +835,15 @@ class GraalVmLauncher(GraalVmNativeImage):
         return GraalVmLauncher.is_launcher_native(self.native_image_config, self.stage1)
 
     def output_file(self):
-        return join(self.get_output_base(), self.name, self.native_image_name)
+        if mx.get_os() == 'windows':
+            if self.is_native():
+                suffix = '.exe'
+            else:
+                suffix = '.cmd'
+        else:
+            suffix = ''
+
+        return join(self.get_output_base(), self.name, self.native_image_name + suffix)
 
     def get_containing_graalvm(self):
         if self.stage1:
@@ -961,7 +977,8 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
 
     @staticmethod
     def _template_file():
-        return join(_suite.mxDir, 'launcher_template.sh')
+        ext = 'cmd' if mx.get_os() == 'windows' else 'sh'
+        return join(_suite.mxDir, 'launcher_template.' + ext)
 
     def native_image_needs_build(self, out_file):
         sup = super(GraalVmBashLauncherBuildTask, self).native_image_needs_build(out_file)
@@ -1007,16 +1024,6 @@ def _get_graalvm_archive_path(jdk_path, graal_vm=None):
         else:
             return graal_vm.jdk_base
     return jdk_path
-
-
-@contextmanager
-def lock_directory(path):
-    with open(join(path, '.lock'), 'w') as fd:
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX)
-            yield
-        finally:
-            fcntl.flock(fd, fcntl.LOCK_UN)
 
 
 # Those libraries are optional runtime dependencies of SVM
@@ -1075,7 +1082,7 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
         if not with_boot_jars and (graalvm_location.startswith(boot_jars_directory) or _cp_entry.isJreLibrary()):
             continue
         _cp.add(relpath(graalvm_location, start))
-    return ":".join(_cp)
+    return os.pathsep.join(_cp)
 
 
 class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
@@ -1342,11 +1349,17 @@ _final_graalvm_distribution = 'uninitialized'
 _stage1_graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _polyglot_launcher_project = 'uninitialized'
+
+def _platform_classpath(cp):
+    if mx.get_os() == 'windows':
+        return os.pathsep.join(mx.normpath(entry) for entry in cp.split(':'))
+    return cp
+
 _base_graalvm_layout = {
     "<jdk_base>/": [
         "file:GRAALVM-README.md",
     ],
-    "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
+    "<jdk_base>/include/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*"],
     "<jdk_base>/jre/lib/boot/": [
         "dependency:sdk:GRAAL_SDK",
         "dependency:sdk:GRAAL_SDK/*.src.zip",
@@ -1356,20 +1369,17 @@ _base_graalvm_layout = {
         "dependency:sdk:LAUNCHER_COMMON/*.src.zip",
     ],
     "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
-        "string:../truffle/truffle-api.jar:../truffle/locator.jar:../truffle/truffle-nfi.jar",
+        "string:" + _platform_classpath("../truffle/truffle-api.jar:../truffle/locator.jar"),
     ],
     "<jdk_base>/jre/lib/truffle/": [
         "dependency:truffle:TRUFFLE_API",
         "dependency:truffle:TRUFFLE_API/*.src.zip",
         "dependency:truffle:TRUFFLE_DSL_PROCESSOR",
         "dependency:truffle:TRUFFLE_DSL_PROCESSOR/*.src.zip",
-        "dependency:truffle:TRUFFLE_NFI",
-        "dependency:truffle:TRUFFLE_NFI/*.src.zip",
         "dependency:truffle:TRUFFLE_TCK",
         "dependency:truffle:TRUFFLE_TCK/*.src.zip",
         "dependency:LOCATOR",
         "dependency:LOCATOR/*.src.zip",
-        "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include",
     ],
 }
 
@@ -1861,9 +1871,9 @@ mx.add_argument('--no-sources', action='store_true', help='Do not include the ar
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
-register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly', 'vvm'])
-register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'poly', 'vvm'])
-register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'poly', 'polynative', 'rgx', 'svm', 'tfl', 'bnative-image', 'bpolyglot'])
+register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'tfl', 'libpoly', 'poly', 'vvm'])
+register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'tfl', 'poly', 'vvm'])
+register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svmag', 'tfl', 'bnative-image', 'bpolyglot'])
 
 
 def _debug_images():

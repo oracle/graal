@@ -2,11 +2,56 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC14
+
+* Removed some deprecated elements:
+    - EventBinding.getFilter
+    - TruffleLanguage ParsingRequest.getFrame and ParsingRequest.getLocation
+    - LoopCountReceiver
+    - EventContext.parseInContext
+    - NativeLibraryDescriptor.getBindings
+    - Instrumenter.attachFactory and Instrumenter.attachListener
+    - SuppressFBWarnings
+    - TruffleBoundary.throwsControlFlowException
+    - DebuggerTester.startEval
+    - ExactMath.exact methods
+    - TruffleInstrument.toString
+    - TruffleInstrument.findMetaObject
+    - TruffleInstrument.findSourceLocation
+    - constructor of JSONStringBuilder
+    - constructor of JSONHelper
+    - constructor of CompilerDirectives
+    - constructor of ExactMath
+    - constructor of Truffle
+    - constructor of NodeUtil
+    - TruffleException.isTimeout
+    - TruffleGraphBuilderPlugins.registerUnsafeLoadStorePlugins
+    - TypedObject
+    - Node.getLanguage
+    - TVMCI.findLanguageClass
+    - ExecutionContext and RootNode.getExecutionContext
+    - FrameAccess.NONE
+    - RootNode.setCalltarget
+    - DirectCallNode.call and IndirectCallNode.call
+    - FrameInstance.getFrame
+    - Node.getAtomicLock
+    - ExplodeLoop.merge
+    - AcceptMessage
+    - RootNode.reportLoopCount
+    - GraalTruffleRuntime.getQueuedCallTargets
+    - PrimitiveValueProfile.exactCompare
+    - BranchProfile.isVisited
+    - DebugStackFrame.iterator and DebugStackFrame.getValue
+* The [@Option](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html) annotation can now specify the [stability](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionStability.html) of an option.
+* Fixed the case of the method [`TruffleStackTrace.getStacktrace`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleStackTrace.html#getStacktrace-java.lang.Throwable-) to `TruffleStackTrace.getStackTrace`.
+* Added a getter for [name separator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getFileNameSeparator--) used by `TruffleFile`'s paths.
+* Added support for receiver object in a frame's Scope: [Scope.Builder receiver(String, Object)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.Builder.html#receiver-java.lang.String-java.lang.Object-), [Scope.getReceiver()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.html#getReceiver--), [Scope.getReceiverName()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.html#getReceiverName--) and [DebugScope.getReceiver()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugScope.html#getReceiver--).
+* Added [engine bound TruffleLogger for instruments](file:///Users/tom/Projects/graal/tzezula/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getLogger-java.lang.String-). The engine bound logger can be used by threads executing without any context.
+
 ## Version 1.0.0 RC13
 * Added [Debugger.getSessionCount()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getSessionCount--) to return the number of active debugger sessions.
 * The [TruffleFile.getName()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getName--) returns `null` for root directory.
 * `TruffleLanguage` can [register additional services](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#registerService-java.lang.Object-). This change also deprecates the automatic registration of the language class as a service.
-
 * Enabled the [experimental monomorphization heuristic](https://github.com/oracle/graal/blob/master/truffle/docs/splitting/) as default. Old heuristic still available as legacy, but will be removed soon.
 * Added [TypeDescriptor.instantiable(instanceType, vararg, parameterTypes)](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/TypeDescriptor.html#instantiable-org.graalvm.polyglot.tck.TypeDescriptor-boolean-org.graalvm.polyglot.tck.TypeDescriptor...-) into TCK to support instantiable types.
 * The name of an [@Option](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html) can now start with a lowercase letter.

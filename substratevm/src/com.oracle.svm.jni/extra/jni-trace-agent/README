@@ -1,9 +1,0 @@
-This is a JVMTI agent that traces calls to specific JNI functions during the
-execution of a Java program. It focuses on functions that look up program
-elements, such as FindClass or GetMethodID). A separate Python script parses
-the generated trace and generates a configuration file for use with the JNI
-implementation of SubstrateVM.
-
-Usage:
-  java -agentpath:/path/to/jni-trace-agent.so=/path/to/output-file.txt ...
-  ./svmjniconfig.py /path/to/output-file.txt > /path/to/jni-config.json

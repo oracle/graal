@@ -73,9 +73,9 @@ final class PolyglotContextConfig {
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostAccessAllowed, boolean nativeAccessAllowed, boolean createThreadAllowed,
-                    boolean hostClassLoadingAllowed, Predicate<String> classFilter,
-                    Map<String, String[]> applicationArguments, Set<String> allowedPublicLanguages,
-                    Map<String, String> options, FileSystem fileSystem, Handler logHandler) {
+                    boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
+                    Predicate<String> classFilter, Map<String, String[]> applicationArguments,
+                    Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -94,18 +94,19 @@ final class PolyglotContextConfig {
         this.logHandler = logHandler;
         this.logLevels = new HashMap<>(engine.logLevels);
         for (String optionKey : options.keySet()) {
-            String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
+            final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
             if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
                 logLevels.put(PolyglotEngineImpl.parseLoggerName(optionKey), Level.parse(options.get(optionKey)));
                 continue;
             }
+
             final PolyglotLanguage language = findLanguageForOption(engine, optionKey, group);
             OptionValuesImpl languageOptions = optionsByLanguage.get(language.getId());
             if (languageOptions == null) {
                 languageOptions = language.getOptionValues().copy();
                 optionsByLanguage.put(language.getId(), languageOptions);
             }
-            languageOptions.put(optionKey, options.get(optionKey));
+            languageOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
         }
     }
 
