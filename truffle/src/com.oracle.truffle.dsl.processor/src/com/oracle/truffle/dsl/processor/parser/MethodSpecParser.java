@@ -114,7 +114,7 @@ public final class MethodSpecParser {
                 String expectedReturnType = returnTypeSpec.toSignatureString(true);
                 String actualReturnType = ElementUtils.getSimpleName(returnType);
 
-                String message = String.format("The provided return type \"%s\" does not match expected return type \"%s\".\nExpected signature: %n %s", actualReturnType, expectedReturnType,
+                String message = String.format("The provided return type \"%s\" does not match expected return type \"%s\".%nExpected signature: %n %s", actualReturnType, expectedReturnType,
                                 methodSpecification.toSignatureString(method.getSimpleName().toString()));
                 invalidMethod.addError(message);
                 return invalidMethod;
