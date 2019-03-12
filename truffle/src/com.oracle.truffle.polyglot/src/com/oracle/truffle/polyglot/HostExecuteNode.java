@@ -97,6 +97,8 @@ abstract class HostExecuteNode extends Node {
             throw UnsupportedTypeException.create(args);
         } catch (UnsupportedTypeException | ArityException e) {
             throw e;
+        } catch (Throwable e) {
+            throw HostInteropReflect.rethrow(PolyglotImpl.wrapHostException(languageContext, e));
         }
     }
 
