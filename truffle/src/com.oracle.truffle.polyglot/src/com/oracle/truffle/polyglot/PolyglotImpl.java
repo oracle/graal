@@ -624,6 +624,25 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public boolean isMultiThreaded(Object o) {
+            PolyglotContextImpl context = PolyglotContextImpl.current();
+            if (context == null) {
+                return true;
+            }
+            if (isPrimitive(o)) {
+                return false;
+            } else if (o instanceof HostObject || o instanceof PolyglotBindings) {
+                return true;
+            }
+            PolyglotLanguage language = findObjectLanguage(context, null, o);
+            if (language == null) {
+                // be conservative
+                return true;
+            }
+            return context.singleThreaded.isValid();
+        }
+
+        @Override
         public boolean isEvalRoot(RootNode target) {
             // TODO no eval root nodes anymore on the stack for the polyglot api
             return false;

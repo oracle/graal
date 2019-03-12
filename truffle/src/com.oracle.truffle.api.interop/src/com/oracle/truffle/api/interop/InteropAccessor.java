@@ -46,6 +46,13 @@ import com.oracle.truffle.api.nodes.Node;
 @SuppressWarnings("deprecation")
 class InteropAccessor extends Accessor {
 
+    static final InteropAccessor ACCESSOR = new InteropAccessor();
+
+    @Override
+    protected EngineSupport engineSupport() {
+        return super.engineSupport();
+    }
+
     @Override
     protected InteropSupport interopSupport() {
         return new InteropSupport() {

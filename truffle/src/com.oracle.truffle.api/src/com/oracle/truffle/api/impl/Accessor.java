@@ -203,6 +203,8 @@ public abstract class Accessor {
 
         public abstract boolean isEvalRoot(RootNode target);
 
+        public abstract boolean isMultiThreaded(Object o);
+
         @SuppressWarnings("static-method")
         public final void attachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
             dos.attach(out);

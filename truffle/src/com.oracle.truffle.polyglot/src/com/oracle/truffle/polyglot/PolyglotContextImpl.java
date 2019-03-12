@@ -119,7 +119,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     private static final Object NO_ENTER = new Object();
 
-    private final Assumption singleThreaded = Truffle.getRuntime().createAssumption("Single threaded");
+    final Assumption singleThreaded = Truffle.getRuntime().createAssumption("Single threaded");
     private final Assumption singleThreadedConstant = Truffle.getRuntime().createAssumption("Single threaded constant thread");
     private final Map<Thread, PolyglotThreadInfo> threads = new HashMap<>();
 
