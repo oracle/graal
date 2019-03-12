@@ -79,25 +79,19 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -152,36 +146,10 @@ final class HotSpotToSVMEntryPoints {
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_initializeRuntime")
     public static long initializeRuntime(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId,
-                    JObject truffleRuntime, long classLoaderDelegateId, JByteArray graalProperties) {
+                    JObject truffleRuntime, long classLoaderDelegateId) {
         try (HotSpotToSVMScope s = new HotSpotToSVMScope(InitializeRuntime, env)) {
             ResolvedJavaType classLoaderDelegate = runtime().unhand(ResolvedJavaType.class, classLoaderDelegateId);
-            Map<String, Object> options = decodeOptions(env, graalProperties);
-            EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-            Iterable<OptionDescriptors> loader = OptionsParser.getOptionsLoader();
-            for (Map.Entry<String, Object> e : options.entrySet()) {
-                String optionName = e.getKey();
-                Object optionValue = e.getValue();
-                OptionsParser.parseOption(optionName, optionValue, values, loader);
-            }
-            options = new HashMap<>();
-            UnmodifiableMapCursor<OptionKey<?>, Object> optionsCursor = HotSpotGraalOptionValues.defaultOptions().getMap().getEntries();
-            while (optionsCursor.advance()) {
-                OptionKey<?> key = optionsCursor.getKey();
-                Object value = optionsCursor.getValue();
-                options.put(key.getName(), value);
-            }
-            optionsCursor = values.getEntries();
-            while (optionsCursor.advance()) {
-                OptionKey<?> key = optionsCursor.getKey();
-                Object value = optionsCursor.getValue();
-                Object oldValue = options.put(key.getName(), value);
-                if (oldValue != null && !oldValue.equals(value)) {
-                    throw new IllegalStateException(String.format(
-                                    "Option %s specified both in JVMCILibArgs and as graal option but with different value.",
-                                    key.getName()));
-                }
-            }
-            HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, Collections.unmodifiableMap(options));
+            HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, HotSpotGraalOptionValues.defaultOptions());
             TruffleCompilerRuntimeInstance.initialize(hsTruffleRuntime);
             long truffleRuntimeHandle = SVMObjectHandles.create(hsTruffleRuntime);
             return truffleRuntimeHandle;

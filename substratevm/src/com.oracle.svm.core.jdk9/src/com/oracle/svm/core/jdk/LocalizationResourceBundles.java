@@ -34,7 +34,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.JavaUtilResourceBundleAccess;
 import jdk.internal.misc.SharedSecrets;
-import jdk.internal.module.Modules;
 // Checkstyle: stop
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.resources.LocaleData;

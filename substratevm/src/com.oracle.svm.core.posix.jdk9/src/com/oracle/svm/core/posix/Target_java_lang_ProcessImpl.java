@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix;
 
 import java.io.IOException;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
@@ -61,12 +60,13 @@ final class Target_java_lang_ProcessImpl {
 
     @SuppressWarnings({"static-method"})
     @Substitute
-    private int forkAndExec(
-                    int mode,
+    private int forkAndExec(int mode,
                     byte[] helperpath,
                     byte[] prog,
-                    byte[] argBlock, int argc,
-                    byte[] envBlock, int envc,
+                    byte[] argBlock,
+                    int argc,
+                    byte[] envBlock,
+                    int envc,
                     byte[] dir,
                     int[] fds,
                     boolean redirectErrorStream)

@@ -802,9 +802,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             // don't commit to the close if still running as this might cause races in the executing
             // context.
             if (!stillRunning) {
-                Object engineLoggers = getEngineLoggers();
-                if (engineLoggers != null) {
-                    LANGUAGE.closeEngineLoggers(engineLoggers);
+                Object loggers = getEngineLoggers();
+                if (loggers != null) {
+                    LANGUAGE.closeEngineLoggers(loggers);
                 }
                 if (logHandler != null) {
                     logHandler.close();

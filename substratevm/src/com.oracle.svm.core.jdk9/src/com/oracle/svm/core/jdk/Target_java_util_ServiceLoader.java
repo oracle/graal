@@ -34,10 +34,12 @@ final class Target_java_util_ServiceLoader {
 
 @TargetClass(value = java.util.ServiceLoader.class, innerClass = "ModuleServicesLookupIterator", onlyWith = JDK9OrLater.class)
 final class Target_java_util_ServiceLoader_ModuleServicesLookupIterator {
+    @SuppressWarnings("unused")
     @Substitute
     Target_java_util_ServiceLoader_ModuleServicesLookupIterator(Target_java_util_ServiceLoader outer) {
     }
 
+    @SuppressWarnings("static-method")
     @Substitute
     boolean hasNext() {
         return false;
