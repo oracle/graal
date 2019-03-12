@@ -24,9 +24,17 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.runtime.nodes.ToCharNode;
 
 @GenerateUncached
 public abstract class InputCharAtNode extends Node {
@@ -40,5 +48,18 @@ public abstract class InputCharAtNode extends Node {
     @Specialization
     static char doString(String input, int index) {
         return input.charAt(index);
+    }
+
+    @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
+    static char doBoxedCharArray(Object input, int index,
+                    @CachedLibrary("input") InteropLibrary inputs,
+                    @Cached ToCharNode toCharNode) {
+        try {
+            return toCharNode.execute(inputs.readArrayElement(input, index));
+        } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            // should never be reached
+            throw new RuntimeException(e);
+        }
     }
 }

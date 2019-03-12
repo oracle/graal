@@ -22,45 +22,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes.input;
+package com.oracle.truffle.regex.runtime.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
 @GenerateUncached
-public abstract class InputLengthNode extends Node {
+public abstract class ExpectStringOrTruffleObjectNode extends Node {
 
-    public static InputLengthNode create() {
-        return InputLengthNodeGen.create();
-    }
-
-    public abstract int execute(Object input);
+    public abstract Object execute(Object arg) throws UnsupportedTypeException;
 
     @Specialization
-    static int getLength(String input) {
-        return input.length();
+    static Object doString(String input) {
+        return input;
+    }
+
+    @Specialization(guards = "inputs.isString(input)", limit = "2")
+    static Object doBoxedString(Object input, @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {
+        try {
+            return inputs.asString(input);
+        } catch (UnsupportedMessageException e) {
+            throw UnsupportedTypeException.create(new Object[]{input});
+        }
     }
 
     @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
-    static int doBoxedCharArray(Object input,
-                    @CachedLibrary("input") InteropLibrary inputs) {
+    static Object doBoxedCharArray(Object input,
+                    @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {
         try {
-            long length = inputs.getArraySize(input);
-            if (length > Integer.MAX_VALUE) {
-                CompilerDirectives.transferToInterpreter();
-                // should never be reached
-                throw new RuntimeException("should not reach here");
+            final long inputLength = inputs.getArraySize(input);
+            if (inputLength > Integer.MAX_VALUE) {
+                throw UnsupportedTypeException.create(new Object[]{input});
             }
-            return (int) length;
+            return input;
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            // should never be reached
-            throw new RuntimeException(e);
+            throw UnsupportedTypeException.create(new Object[]{input});
         }
+    }
+
+    public static ExpectStringOrTruffleObjectNode create() {
+        return ExpectStringOrTruffleObjectNodeGen.create();
     }
 }

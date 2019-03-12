@@ -44,7 +44,7 @@ public abstract class ExecuteRegexDispatchNode extends Node {
 
     @Specialization(guards = "receiver == cachedReceiver", limit = "4")
     public static RegexResult doCached(@SuppressWarnings("unused") CompiledRegex receiver, RegexObject regexObject, Object input, Object fromIndex,
-                    @Cached ToStringNode toStringNode,
+                    @Cached("create()") ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                     @Cached ToLongNode toLongNode,
                     @SuppressWarnings("unused") @Cached("receiver") CompiledRegex cachedReceiver,
                     @Cached("create(cachedReceiver.getRegexCallTarget())") DirectCallNode directCallNode) throws UnsupportedTypeException {
@@ -52,18 +52,18 @@ public abstract class ExecuteRegexDispatchNode extends Node {
         if (fromIndexLong > Integer.MAX_VALUE) {
             return RegexResult.NO_MATCH;
         }
-        return (RegexResult) directCallNode.call(new Object[]{regexObject, toStringNode.execute(input), (int) fromIndexLong});
+        return (RegexResult) directCallNode.call(new Object[]{regexObject, expectStringOrTruffleObjectNode.execute(input), (int) fromIndexLong});
     }
 
     @Specialization(replaces = "doCached")
     public static RegexResult doGeneric(CompiledRegex receiver, RegexObject regexObject, Object input, Object fromIndex,
-                    @Cached ToStringNode toStringNode,
+                    @Cached("create()") ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                     @Cached ToLongNode toLongNode,
                     @Cached IndirectCallNode indirectCallNode) throws UnsupportedTypeException {
         long fromIndexLong = toLongNode.execute(fromIndex);
         if (fromIndexLong > Integer.MAX_VALUE) {
             return RegexResult.NO_MATCH;
         }
-        return (RegexResult) indirectCallNode.call(receiver.getRegexCallTarget(), new Object[]{regexObject, toStringNode.execute(input), (int) fromIndexLong});
+        return (RegexResult) indirectCallNode.call(receiver.getRegexCallTarget(), new Object[]{regexObject, expectStringOrTruffleObjectNode.execute(input), (int) fromIndexLong});
     }
 }
