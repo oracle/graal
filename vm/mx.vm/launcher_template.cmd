@@ -39,4 +39,6 @@ for /f "delims=;" %%i in ("%relcp%") do (
 set relcp_next=%relcp:*;=%
 if not "%relcp_next%"=="%relcp%" set relcp=%relcp_next% & goto :nextcp
 
+if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
+
 %location%<jre_bin>\java -cp %realcp% <main_class> %*

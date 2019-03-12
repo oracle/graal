@@ -62,6 +62,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -155,6 +156,13 @@ public abstract class Launcher {
             tempEngine = Engine.create();
         }
         return tempEngine;
+    }
+
+    protected void argumentsProcessingDone() {
+        if (tempEngine != null) {
+            tempEngine.close();
+            tempEngine = null;
+        }
     }
 
     static void handleAbortException(AbortException e) {
@@ -502,10 +510,11 @@ public abstract class Launcher {
             if (isGraalVMAvailable()) {
                 printOption("--jvm", "Run on the Java Virtual Machine with Java access" + (this.getDefaultVMType() == VMType.JVM ? " (default)" : "") + ".");
             }
-            printOption("--vm.[option]",                 "Pass options to the host VM. To see available options, use '--vm.help'.");
+            printOption("--vm.[option]",                 "Pass options to the host VM. To see available options, use '--help:vm'.");
             printOption("--help",                        "Print this help message.");
             printOption("--help:languages",              "Print options for all installed languages.");
             printOption("--help:tools",                  "Print options for all installed tools.");
+            printOption("--help:vm",                     "Print options for the host VM.");
             printOption("--help:expert",                 "Print additional options for experts.");
             if (helpExpert || helpInternal) {
                 printOption("--help:internal",           "Print internal options for debugging language implementations and instruments.");
@@ -1049,9 +1058,9 @@ public abstract class Launcher {
                     }
                     if (arg.equals("--jvm.help")) {
                         if (defaultVmType == VMType.JVM) {
-                            warn("'--jvm.help' is deprecated, use '--vm.help' instead.");
+                            warn("'--jvm.help' is deprecated, use '--help:vm' instead.");
                         } else {
-                            warn("'--jvm.help' is deprecated, use '--jvm --vm.help' instead.");
+                            warn("'--jvm.help' is deprecated, use '--jvm --help:vm' instead.");
                         }
                         printJvmHelp();
                         throw exit();
@@ -1085,9 +1094,9 @@ public abstract class Launcher {
                     vmType = VMType.Native;
                     if (arg.equals("--native.help")) {
                         if (defaultVmType == VMType.Native) {
-                            warn("'--native.help' is deprecated, use '--vm.help' instead.");
+                            warn("'--native.help' is deprecated, use '--help:vm' instead.");
                         } else {
-                            warn("'--native.help' is deprecated, use '--native --vm.help' instead.");
+                            warn("'--native.help' is deprecated, use '--native --help:vm' instead.");
                         }
                         printNativeHelp();
                         throw exit();
@@ -1102,14 +1111,8 @@ public abstract class Launcher {
                     iterator.remove();
                 } else if (arg.startsWith("--vm.") && arg.length() > "--vm.".length()) {
                     if (arg.equals("--vm.help")) {
-                        VMType helpType = vmType != null ? vmType : defaultVmType;
-                        if (helpType == VMType.JVM) {
-                            printJvmHelp();
-                        } else {
-                            assert helpType == VMType.Native;
-                            printNativeHelp();
-                        }
-                        throw exit();
+                        warn("'--vm.help' is deprecated, use '--help:vm' instead.");
+                        printVmHelp(defaultVmType, vmType);
                     }
                     String vmArg = arg.substring("--vm.".length());
                     if (vmArg.equals("classpath")) {
@@ -1128,6 +1131,9 @@ public abstract class Launcher {
                     iterator.remove();
                 } else if (arg.equals("--polyglot")) {
                     polyglot = true;
+                } else if (arg.equals("--help:vm")) {
+                    printVmHelp(defaultVmType, vmType);
+                    return;
                 } else {
                     remainingArgs.add(arg);
                 }
@@ -1164,6 +1170,17 @@ public abstract class Launcher {
                 }
                 execNativePolyglot(remainingArgs, polyglotOptions);
             }
+        }
+
+        private void printVmHelp(VMType defaultVmType, VMType vmType) {
+            VMType helpType = vmType != null ? vmType : defaultVmType;
+            if (helpType == VMType.JVM) {
+                printJvmHelp();
+            } else {
+                assert helpType == VMType.Native;
+                printNativeHelp();
+            }
+            throw exit();
         }
 
         private WeakReference<OptionDescriptors> compilerOptionDescriptors;
@@ -1323,7 +1340,7 @@ public abstract class Launcher {
         }
 
         private AbortException unknownOption(String key) {
-            throw abort("Unknown native option: " + key + ". Use --vm.help to list available options.");
+            throw abort("Unknown native option: " + key + ". Use --help:vm to list available options.");
         }
 
         private void printJvmHelp() {
@@ -1487,7 +1504,8 @@ public abstract class Launcher {
         private void exec(Path executable, List<String> command) {
             assert isAOT();
             if (isVerbose()) {
-                System.out.println(String.format("exec(%s, %s)", executable, command));
+                StringBuilder sb = formatExec(executable, command);
+                System.out.print(sb.toString());
             }
             String[] argv = new String[command.size() + 1];
             int i = 0;
@@ -1501,7 +1519,9 @@ public abstract class Launcher {
             }
             if (execv(executable.toString(), argv) != 0) {
                 int errno = NativeInterface.errno();
-                throw abort(String.format("exec(%s, %s) failed: %s", executable, command, CTypeConversion.toJavaString(NativeInterface.strerror(errno))));
+                StringBuilder sb = formatExec(executable, command);
+                sb.append(" failed! ").append(CTypeConversion.toJavaString(NativeInterface.strerror(errno)));
+                throw abort(sb.toString());
             }
         }
 
@@ -1510,6 +1530,43 @@ public abstract class Launcher {
                             CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(argv)) {
                 return NativeInterface.execv(pathHolder.get(), argvHolder.get());
             }
+        }
+
+        private StringBuilder formatExec(Path executable, List<String> command) {
+            StringBuilder sb = new StringBuilder("exec: ");
+            sb.append(executable);
+            for (String arg : command) {
+                sb.append(' ');
+                sb.append(ShellQuotes.quote(arg));
+            }
+            sb.append(System.lineSeparator());
+            return sb;
+        }
+    }
+
+    private static final class ShellQuotes {
+        private static final BitSet safeChars;
+        static {
+            safeChars = new BitSet();
+            safeChars.set('a', 'z' + 1);
+            safeChars.set('A', 'Z' + 1);
+            safeChars.set('+', ':' + 1); // +,-./0..9:
+            safeChars.set('@');
+            safeChars.set('%');
+            safeChars.set('_');
+            safeChars.set('=');
+        }
+
+        private static String quote(String str) {
+            if (str.isEmpty()) {
+                return "''";
+            }
+            for (int i = 0; i < str.length(); i++) {
+                if (!safeChars.get(str.charAt(i))) {
+                    return "'" + str.replace("'", "'\"'\"'") + "'";
+                }
+            }
+            return str;
         }
     }
 
