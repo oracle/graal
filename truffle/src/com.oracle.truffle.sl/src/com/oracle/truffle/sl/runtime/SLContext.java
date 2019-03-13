@@ -220,7 +220,6 @@ public final class SLContext {
     /*
      * Methods for object creation / object property access.
      */
-
     public AllocationReporter getAllocationReporter() {
         return allocationReporter;
     }
@@ -229,11 +228,11 @@ public final class SLContext {
      * Allocate an empty object. All new objects initially have no properties. Properties are added
      * when they are first stored, i.e., the store triggers a shape change of the object.
      */
-    public DynamicObject createObject() {
+    public DynamicObject createObject(AllocationReporter reporter) {
         DynamicObject object = null;
-        allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         object = emptyShape.newInstance();
-        allocationReporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         return object;
     }
 

@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -61,8 +63,9 @@ public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
 
     @Specialization
     @SuppressWarnings("unused")
-    public Object newObject(SLNull o, @CachedContext(SLLanguage.class) SLContext context) {
-        return context.createObject();
+    public Object newObject(SLNull o, @CachedContext(SLLanguage.class) SLContext context,
+                    @Cached("context.getAllocationReporter()") AllocationReporter reporter) {
+        return context.createObject(reporter);
     }
 
     @Specialization(guards = "!values.isNull(obj)", limit = "3")
