@@ -57,7 +57,6 @@ import mx_graal_tools #pylint: disable=unused-import
 import argparse
 import shlex
 import glob
-from mx import classpath
 
 _suite = mx.suite('compiler')
 
@@ -343,7 +342,7 @@ def verify_jvmci_ci_versions(args):
                         mx.abort(
                             os.linesep.join([
                                 "Multiple JVMCI versions found in {0} files:".format(msg),
-                                "  {0} in {1}:{2}:    {3}".format(version + ('-dev' if dev else ''), *last),
+                                "  {0} in {1}:{2}:    {3}".format(version + ('-dev' if dev else ''), *last), # pylint: disable=not-an-iterable
                                 "  {0} in {1}:{2}:    {3}".format(new_version + ('-dev' if new_dev else ''), filename, linenr, line),
                             ]))
                     last = (filename, linenr, line.rstrip())
@@ -397,7 +396,7 @@ class BootstrapTest:
         self.args = args
         self.suppress = suppress
         self.tags = tags
-        if tags is not None and (type(tags) is not list or all(not isinstance(x, basestring) for x in tags)):
+        if tags is not None and (not isinstance(tags, list) or all(not isinstance(x, basestring) for x in tags)):
             mx.abort("Gate tag argument must be a list of strings, tag argument:" + str(tags))
 
     def run(self, tasks, extraVMarguments=None):
@@ -922,7 +921,7 @@ class GraalArchiveParticipant:
     def __opened__(self, arc, srcArc, services):
         self.services = services
 
-    def __add__(self, arcname, contents):
+    def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
         m = GraalArchiveParticipant.providersRE.match(arcname)
         if m:
             if self.isTest:
