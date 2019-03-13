@@ -156,6 +156,11 @@ class ReflectionProcessor extends AbstractProcessor {
                 addFullyQualifiedDeclaredMethod(result);
                 break;
             }
+
+            case "newInstance": {
+                getMemberSet(clazz, declared).getConstructors().add(new ReflectionMethod(ReflectionMethod.CONSTRUCTOR_NAME, new String[0]));
+                break;
+            }
         }
     }
 

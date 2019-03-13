@@ -254,6 +254,13 @@ static void OnBreakpoint_getEnclosingMethod(jvmtiEnv *jvmti, JNIEnv* jni, jthrea
   sbuf_destroy(&b);
 }
 
+static void OnBreakpoint_newInstance(jvmtiEnv *jvmti, JNIEnv* jni, jthread thread, jclass caller_class, struct reflect_breakpoint_entry *bp) {
+  jclass self = get_object_arg(0);
+  jmethodID methodID = jnifun->GetMethodID(jni, self, "<init>", "()V");
+  const char *success = (methodID != NULL) ? TRACE_VALUE_TRUE : TRACE_VALUE_FALSE;
+  reflect_trace(jni, self, caller_class, bp->name, success, NULL);
+}
+
 #define REFLECTION_BREAKPOINT(class_name, name, signature, handler) \
   { (jclass)0, (jmethodID)0, (jlocation)0, (class_name), (name), (signature), (handler) }
 
@@ -277,6 +284,8 @@ static struct reflect_breakpoint_entry reflect_breakpoints[] = {
 
   REFLECTION_BREAKPOINT("java/lang/Class", "getEnclosingMethod", "()Ljava/lang/reflect/Method;", &OnBreakpoint_getEnclosingMethod),
   REFLECTION_BREAKPOINT("java/lang/Class", "getEnclosingConstructor", "()Ljava/lang/reflect/Constructor;", &OnBreakpoint_getEnclosingMethod),
+
+  REFLECTION_BREAKPOINT("java/lang/Class", "newInstance", "()Ljava/lang/Object;", &OnBreakpoint_newInstance),
 
   REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResource", "(Ljava/lang/String;)Ljava/net/URL;", &OnBreakpoint_getResource),
   REFLECTION_BREAKPOINT("java/lang/ClassLoader", "getResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", &OnBreakpoint_getResource),
