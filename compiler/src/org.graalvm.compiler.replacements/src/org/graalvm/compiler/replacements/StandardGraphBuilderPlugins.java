@@ -106,7 +106,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
@@ -1067,12 +1066,11 @@ public class StandardGraphBuilderPlugins {
                 MembarNode pre2 = null;
                 if (accessKind.emitBarriers) {
                     pre1 =  new MembarNode(isLoad(access1) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
-                    // b.add(pre1);
                     pre2 =  new MembarNode(isLoad(access2) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
-                    // b.add(pre2);
+                    // sigh! IfNode expects leading nodes to have a source position so fake it
+                    pre1.setNodeSourcePosition(access1.getNodeSourcePosition());
+                    pre2.setNodeSourcePosition(access2.getNodeSourcePosition());
                     b.add(new IfNode(condition, pre1, pre2, 0.5));
-                    // pre1.setNext(access1);
-                    // pre2.setNext(access2);
                 } else {
                     b.add(new IfNode(condition, access1, access2, 0.5));
                 }
