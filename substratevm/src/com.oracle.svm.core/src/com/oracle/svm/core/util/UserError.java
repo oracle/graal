@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.util;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.Collections;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -68,29 +66,13 @@ public class UserError {
     }
 
     /**
-     * Stop compilation immediately and report the message to the user. Relevant parts of the stack
-     * trace of the exception that caused the abort are appended to the error message.
+     * Stop compilation immediately and report the message to the user.
      *
      * @param message the error message to be reported to the user.
      * @param ex the exception that caused the abort.
      */
     public static UserException abort(String message, Throwable ex) {
-        /*
-         * Filter out the internal parts of the exception stack trace by creating a new exception
-         * that wraps the original exception, and then only keeping the non-internal parts of the
-         * stack trace that are after the first "Caused by:" part.
-         */
-        StringWriter s = new StringWriter();
-        Exception wrapper = new Exception(ex);
-        wrapper.printStackTrace(new PrintWriter(s));
-        String stackTrace = s.toString();
-
-        int start = stackTrace.indexOf("Caused by:");
-        if (start != -1) {
-            stackTrace = stackTrace.substring(start);
-        }
-
-        throw UserError.abort(message + System.lineSeparator() + stackTrace);
+        throw ((UserException) new UserException(message).initCause(ex));
     }
 
     /**

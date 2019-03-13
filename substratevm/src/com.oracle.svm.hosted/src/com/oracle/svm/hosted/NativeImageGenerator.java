@@ -706,7 +706,7 @@ public class NativeImageGenerator {
                     System.err.println("Original exception: ");
                     ufe.getCause().printStackTrace();
                 }
-                throw UserError.abort(ufe.getMessage());
+                throw UserError.abort(ufe.getMessage(), ufe);
             }
         } catch (InterruptedException ie) {
             throw new InterruptImageBuilding();
