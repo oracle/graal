@@ -1161,7 +1161,7 @@ public class UniverseBuilder {
                     HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol);
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
-                    layoutHelper = LayoutEncoding.forArray(isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind), ol.getAlignment());
+                    layoutHelper = LayoutEncoding.forArray(isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
                 } else {
                     layoutHelper = LayoutEncoding.forInstance(ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
                 }
@@ -1170,7 +1170,7 @@ public class UniverseBuilder {
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
-                layoutHelper = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind), ol.getAlignment());
+                layoutHelper = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
                 hashCodeOffset = ol.getArrayHashCodeOffset();
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();
