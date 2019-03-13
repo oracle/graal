@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.StringJoiner;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
@@ -833,6 +834,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public static final class ReflectionData {
         final Field[] declaredFields;
         final Field[] publicFields;
+        final Field[] publicUnshadowedFields;
         final Method[] declaredMethods;
         final Method[] publicMethods;
         final Constructor<?>[] declaredConstructors;
@@ -849,12 +851,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          */
         final Executable enclosingMethodOrConstructor;
 
-        public ReflectionData(Field[] declaredFields, Field[] publicFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
-                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods,
-                        Class<?>[] declaredClasses, Class<?>[] publicClasses,
-                        Executable enclosingMethodOrConstructor) {
+        public ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnshadowedFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
+                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Class<?>[] declaredClasses,
+                        Class<?>[] publicClasses, Executable enclosingMethodOrConstructor) {
             this.declaredFields = declaredFields;
             this.publicFields = publicFields;
+            this.publicUnshadowedFields = publicUnshadowedFields;
             this.declaredMethods = declaredMethods;
             this.publicMethods = publicMethods;
             this.declaredConstructors = declaredConstructors;
@@ -872,8 +874,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     static final class Target_java_lang_Class_MethodArray {
     }
 
-    private static final ReflectionData NO_REFLECTION_DATA = new ReflectionData(new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0], null,
-                    new Field[0], new Method[0], new Class<?>[0], new Class<?>[0], null);
+    private static final ReflectionData NO_REFLECTION_DATA = new ReflectionData(new Field[0], new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0],
+                    null, new Field[0], new Method[0], new Class<?>[0], new Class<?>[0], null);
 
     private ReflectionData rd = NO_REFLECTION_DATA;
 
@@ -891,11 +893,42 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private native Constructor<?>[] getConstructors();
 
-    @KeepOriginal
-    private native Field getField(@SuppressWarnings("hiding") String name);
+    @Substitute
+    private Field getField(@SuppressWarnings("hiding") String name) throws NoSuchFieldException {
+        /*
+         * The original code of getField() does a recursive search to avoid creating objects for all
+         * public fields. We prepare them during the image build and can just iterate here.
+         *
+         * Note that we only search fields that are not shadowed by other fields because those are
+         * possibly not registered for reflective access. For example:
+         *
+         * class A { public int field; public static int staticField; } // both registered
+         *
+         * class B extends A { public int field; public static int staticField; } // not registered
+         *
+         * Here, we do not want B.class.getField("field") to return A.field; same applies to
+         * staticField. Note that shadowed fields of A are still returned by B.class.getFields().
+         */
+        for (Field field : rd.publicUnshadowedFields) {
+            if (field.getName().equals(name)) {
+                return field;
+            }
+        }
+        throw new NoSuchFieldException(name);
+    }
 
-    @KeepOriginal
-    private native Method getMethod(@SuppressWarnings("hiding") String name, Class<?>... parameterTypes);
+    @Substitute
+    private Method getMethod(@SuppressWarnings("hiding") String name, Class<?>... parameterTypes) throws NoSuchMethodException {
+        /*
+         * The original code of getMethods() does a recursive search to avoid creating objects for
+         * all public methods. We prepare them during the image build and can just iterate here.
+         */
+        Method method = searchMethods(rd.publicMethods, name, parameterTypes);
+        if (method == null) {
+            throw new NoSuchMethodException(describeMethod(getName() + "." + name + "(", parameterTypes, ")"));
+        }
+        return method;
+    }
 
     @KeepOriginal
     private native Constructor<?> getConstructor(Class<?>... parameterTypes);
@@ -983,27 +1016,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private static native Field searchFields(Field[] fields, String name);
 
     @KeepOriginal
-    private native Field getField0(@SuppressWarnings("hiding") String name);
-
-    @KeepOriginal
     private static native Method searchMethods(Method[] methods, String name, Class<?>[] parameterTypes);
-
-    @KeepOriginal
-    @TargetElement(name = "getMethod0", onlyWith = JDK8OrEarlier.class)
-    private native Method getMethod0JDK8OrEarlier(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes, boolean includeStaticMethods);
-
-    @KeepOriginal
-    @TargetElement(name = "getMethod0", onlyWith = JDK9OrLater.class)
-    private native Method getMethod0JDK9OrLater(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes);
-
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    private native Object getMethodsRecursive(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes, boolean includeStatic);
-
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native Method privateGetMethodRecursive(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes, boolean includeStaticMethods,
-                    Target_java_lang_Class_MethodArray allInterfaceCandidates);
 
     @KeepOriginal
     private native Constructor<?> getConstructor0(Class<?>[] parameterTypes, int which);
@@ -1020,9 +1033,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private static native <U> Constructor<U>[] copyConstructors(Constructor<U>[] arg);
 
-    @KeepOriginal
+    @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native String argumentTypesToString(Class<?>[] argTypes);
+    private static String argumentTypesToString(Class<?>[] argTypes) {
+        return describeMethod("", argTypes, "");
+    }
 
     @Substitute
     @Override
@@ -1146,9 +1161,21 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return singleModulReference.get();
     }
 
-    @KeepOriginal //
+    @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
-    private native String methodToString(String nameArg, Class<?>[] argTypes);
+    private String methodToString(String nameArg, Class<?>[] argTypes) {
+        return describeMethod(name + "." + nameArg + "(", argTypes, ")");
+    }
+
+    private static String describeMethod(String prefix, Class<?>[] argTypes, String suffix) {
+        StringJoiner sj = new StringJoiner(", ", prefix, suffix);
+        if (argTypes != null) {
+            for (Class<?> c : argTypes) {
+                sj.add((c == null) ? "null" : c.getName());
+            }
+        }
+        return sj.toString();
+    }
 
     @Substitute //
     private <T> Target_java_lang_Class_ReflectionData<T> reflectionData() {
