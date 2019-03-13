@@ -70,7 +70,6 @@ public class LoggingFeature implements Feature {
 
         if (!reflectionConfigured && access.getMetaAccess().optionalLookupJavaType(java.util.logging.Logger.class).isPresent()) {
             registerForReflection(java.util.logging.ConsoleHandler.class);
-            registerForReflection(java.util.logging.FileHandler.class);
             registerForReflection(java.util.logging.SimpleFormatter.class);
 
             reflectionConfigured = true;
