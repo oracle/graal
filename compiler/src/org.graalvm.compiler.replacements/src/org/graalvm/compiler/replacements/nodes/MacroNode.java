@@ -160,7 +160,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
      */
     @SuppressWarnings("try")
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
-        final PhaseContext c = new PhaseContext(tool);
+        final PhaseContext c = new PhaseContext(tool.getProviders());
         if (!graph().hasValueProxies()) {
             new RemoveValueProxyPhase().apply(replacementGraph);
         }

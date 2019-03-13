@@ -38,24 +38,20 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
-public interface LoweringTool extends CoreProviders {
+public interface LoweringTool {
 
-    @Override
+    CoreProviders getProviders();
+
     MetaAccessProvider getMetaAccess();
 
-    @Override
     LoweringProvider getLowerer();
 
-    @Override
     ConstantReflectionProvider getConstantReflection();
 
-    @Override
     ConstantFieldProvider getConstantFieldProvider();
 
-    @Override
     Replacements getReplacements();
 
-    @Override
     StampProvider getStampProvider();
 
     GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);
