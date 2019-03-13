@@ -87,7 +87,12 @@ final class LegacyToLibraryNode extends Node {
 
     static LegacyToLibraryNode create(Message message) {
         if (message instanceof KnownMessage) {
-            return new LegacyToLibraryNode(message);
+            /*
+             * Cached Truffle libraries need to be adopted. This was not necessary for legacy to
+             * library interop nodes, therefore we create a dummy root node and adopt it. This
+             * overhead will go away as soon as all languages migrated.
+             */
+            return new AdoptRootNode().insertAccess(new LegacyToLibraryNode(message));
         }
         throw new IllegalArgumentException();
     }

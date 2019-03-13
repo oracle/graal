@@ -94,18 +94,6 @@ public abstract class DynamicDispatchLibrary extends Library {
      */
     public abstract Object cast(Object receiver);
 
-    /**
-     * @since 1.0
-     */
-    @SuppressWarnings("static-method")
-    protected final boolean assertAdopted() {
-        /*
-         * Temporary disabled assertions for dynamic dispatches until cached libraries are reliably
-         * adopted.
-         */
-        return true;
-    }
-
     static final LibraryFactory<DynamicDispatchLibrary> FACTORY = LibraryFactory.resolve(DynamicDispatchLibrary.class);
 
     /**
