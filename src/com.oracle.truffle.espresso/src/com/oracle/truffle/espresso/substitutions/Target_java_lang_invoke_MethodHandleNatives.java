@@ -25,7 +25,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         Klass targetKlass = ref.getKlass();
 
         if (targetKlass.getType() == Type.Method) {
-
             Method target = Method.getHostReflectiveMethodRoot(ref);
             self.setHiddenField("vmtarget", target);
             Field flagField = meta.MNflags;
@@ -34,6 +33,11 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             self.setField(meta.MNclazz, target.getDeclaringKlass().mirror());
         } else {
             //TODO(garcia)
+            assert(targetKlass.getType() == Type.Field);
+            StaticObjectImpl guestField = (StaticObjectImpl) ref;
+//            Type fieldType = (StaticObjectClass)guestField.getField(meta.Field_type);
+            String fieldName = Meta.toHostString((StaticObject)guestField.getField(meta.Field_type));
+
             throw EspressoError.unimplemented(ref.getKlass().toString());
         }
     }
@@ -224,7 +228,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 flags = (int)memberName.getField(flagField);
                 refKind = (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
                 memberName.setHiddenField("vmindex", (refKind == REF_invokeInterface || refKind == REF_invokeVirtual) ? 1_000_000L : -1_000_000L);
-                assert(((Method)memberName.getHiddenField("vmtarget")).getRawSignature() == meta.getEspressoLanguage().getSignatures().lookupValidSignature(desc)) : ((Method)memberName.getHiddenField("vmtarget")).getRawSignature() + " vs " + meta.getEspressoLanguage().getSignatures().lookupValidSignature(desc);
                 break;
             case MN_IS_FIELD:
                 Symbol<Type> t = meta.getEspressoLanguage().getTypes().lookup(desc);
@@ -305,7 +308,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         } else {
             if (target.isStatic()) {
                 res |= MN_IS_METHOD | (REF_invokeStatic << MN_REFERENCE_KIND_SHIFT);
-            } else if (target.isClassInitializer()) {
+            } else if (target.isConstructor() || target.isClassInitializer()) {
                 res |= MN_IS_CONSTRUCTOR | (REF_invokeSpecial << MN_REFERENCE_KIND_SHIFT);
             } else {
                 res |= MN_IS_METHOD | (REF_invokeSpecial << MN_REFERENCE_KIND_SHIFT);

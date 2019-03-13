@@ -1102,14 +1102,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (e instanceof EspressoException) {
                         throw e;
                     }
-//                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI: " + curBCI);
-//                    e.printStackTrace();
+                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI: " + curBCI);
+                    e.printStackTrace();
                     CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwEx(getMeta().NullPointerException);
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-//                System.err.println("Finding handler for a " + e.getException().getKlass() + " at: " + curBCI + " in " + getMethod());
+                System.err.println("Finding handler for a " + e.getException().getKlass() + " at: " + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;
@@ -1446,9 +1446,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         assert (bms != null);
         BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
-
-        // TODO(garcia) add support for non-lambda invokedynamic
-        assert (bsEntry.numBootstrapArguments() == 3);
 
         Klass declaringKlass = getMethod().getDeclaringKlass();
         StaticObject bsmMH = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
