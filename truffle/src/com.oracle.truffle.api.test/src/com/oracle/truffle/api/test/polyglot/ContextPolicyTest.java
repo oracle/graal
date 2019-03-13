@@ -62,6 +62,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -621,6 +622,7 @@ public class ContextPolicyTest {
         final Env expectedEnvironment;
         final CallTarget target;
 
+        @TruffleBoundary
         SharedObject(TruffleContext context, TruffleLanguage<?> language, Env env) {
             this.context = context;
             this.expectedLanguage = language;
