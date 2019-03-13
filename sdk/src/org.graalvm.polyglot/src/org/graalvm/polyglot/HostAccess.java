@@ -51,6 +51,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -74,7 +75,9 @@ public final class HostAccess {
 
     private final String name;
     private final Set<Class<? extends Annotation>> annotations;
+    private final Set<Member> excludes;
     private final Set<Member> members;
+    private final HostAccess base;
     private Object impl;
 
     /**
@@ -83,19 +86,21 @@ public final class HostAccess {
      * 
      * @since 1.0 RC14
      */
-    public static final HostAccess EXPLICIT = new HostAccess(null, null, "HostAccess.EXPLICIT");
+    public static final HostAccess EXPLICIT = new HostAccess(null, null, null, "HostAccess.EXPLICIT", null);
 
     /**
      * All public access, but no reflection access.
      * 
      * @since 1.0 RC14
      */
-    public static final HostAccess PUBLIC = new HostAccess(null, null, "HostAccess.PUBLIC");
+    public static final HostAccess PUBLIC = new HostAccess(null, null, null, "HostAccess.PUBLIC", null);
 
-    HostAccess(Set<Class<? extends Annotation>> annotations, Set<Member> members, String name) {
+    HostAccess(Set<Class<? extends Annotation>> annotations, Set<Member> excludes, Set<Member> members, String name, HostAccess base) {
         this.annotations = annotations;
+        this.excludes = excludes;
         this.members = members;
         this.name = name;
+        this.base = base;
     }
 
     /**
@@ -105,7 +110,19 @@ public final class HostAccess {
      * @since 1.0 RC14
      */
     public static Builder newBuilder() {
-        return EXPLICIT.new Builder();
+        return EXPLICIT.new Builder(null);
+    }
+
+    /**
+     * Configure your own access configuration based on another existing. Useful to ban access to
+     * certain well know classes, like {@link Class} or {@link Proxy}, etc.
+     *
+     * @param base base access configuration
+     * @return new builder
+     * @since 1.0 RC15
+     */
+    public static Builder newBuilder(HostAccess base) {
+        return EXPLICIT.new Builder(base);
     }
 
     boolean allowAccess(AnnotatedElement member) {
@@ -115,6 +132,9 @@ public final class HostAccess {
         if (this == HostAccess.PUBLIC) {
             return true;
         }
+        if (excludes.contains(member)) {
+            return false;
+        }
         if (members.contains(member)) {
             return true;
         }
@@ -123,7 +143,7 @@ public final class HostAccess {
                 return true;
             }
         }
-        return false;
+        return base != null && base.allowAccess(member);
     }
 
     synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory) {
@@ -179,9 +199,12 @@ public final class HostAccess {
      */
     public final class Builder {
         private final Set<Class<? extends Annotation>> annotations = new HashSet<>();
+        private final Set<Member> excludes = new HashSet<>();
         private final Set<Member> members = new HashSet<>();
+        private final HostAccess base;
 
-        Builder() {
+        Builder(HostAccess base) {
+            this.base = base;
         }
 
         /**
@@ -221,13 +244,57 @@ public final class HostAccess {
         }
 
         /**
+         * Prevents access to given method or constructor.
+         * 
+         * @param element the element to prevent access to
+         * @return this builder
+         * @since 1.0 RC15
+         */
+        public Builder preventAccess(Executable element) {
+            excludes.add(element);
+            return this;
+        }
+
+        /**
+         * Prevents access to given field.
+         * 
+         * @param element the element to prevent access to
+         * @return this builder
+         * @since 1.0 RC15
+         */
+        public Builder preventAccess(Field element) {
+            excludes.add(element);
+            return this;
+        }
+
+        /**
+         * Prevents access to all members of given class.
+         * 
+         * @param clazz the class to prevent access to
+         * @return this builder
+         * @since 1.0 RC15
+         */
+        public Builder preventAccess(Class<?> clazz) {
+            for (Method method : clazz.getMethods()) {
+                excludes.add(method);
+            }
+            for (Field field : clazz.getFields()) {
+                excludes.add(field);
+            }
+            for (Constructor<?> cons : clazz.getConstructors()) {
+                excludes.add(cons);
+            }
+            return this;
+        }
+
+        /**
          * Creates an instance of host access configuration.
          *
          * @return new instance of host access configuration
          * @since 1.0 RC14
          */
         public HostAccess build() {
-            return new HostAccess(annotations, members, null);
+            return new HostAccess(annotations, excludes, members, null, base);
         }
     }
 }

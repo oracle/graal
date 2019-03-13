@@ -40,11 +40,18 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import org.junit.Test;
 
 public class HostAccessTest {
@@ -64,6 +71,84 @@ public class HostAccessTest {
     @Test
     public void usefulToStringPublic() {
         Assert.assertEquals("HostAccess.PUBLIC", HostAccess.PUBLIC.toString());
+    }
+
+    public static class MyEquals {
+
+        @Override
+        public boolean equals(Object arg0) {
+            return arg0 != null && getClass() == arg0.getClass();
+        }
+
+        @Override
+        public int hashCode() {
+            return getClass().hashCode();
+        }
+    }
+
+    @Test
+    public void banAccessToReflection() throws Exception {
+        HostAccess config = HostAccess.newBuilder(HostAccess.PUBLIC).preventAccess(Class.class).preventAccess(Method.class).preventAccess(Field.class).preventAccess(Proxy.class).preventAccess(
+                        Object.class).build();
+
+        Context c = Context.newBuilder().allowHostAccess(config).build();
+
+        Value readValue = c.eval("sl", "" + "function readValue(x, y) {\n" + "  return x.equals(y);\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+
+        MyEquals myEquals = new MyEquals();
+        assertTrue("MyEquals.equals method is accessible", readValue.execute(myEquals, myEquals).asBoolean());
+
+        Value res;
+        try {
+            res = readValue.execute(new Object());
+        } catch (PolyglotException ex) {
+            return;
+        }
+        fail("expecting no result: " + res);
+    }
+
+    @Test
+    public void banAccessToEquals() throws Exception {
+        HostAccess config = HostAccess.newBuilder(HostAccess.PUBLIC).preventAccess(Object.class.getMethod("equals", Object.class)).build();
+
+        Context c = Context.newBuilder().allowHostAccess(config).build();
+
+        Value readValue = c.eval("sl", "" + "function readValue(x, y) {\n" + "  return x.equals(y);\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+
+        MyEquals myEquals = new MyEquals();
+        assertTrue("MyEquals.equals method is accessible", readValue.execute(myEquals, myEquals).asBoolean());
+
+        Value res;
+        try {
+            res = readValue.execute(new Object());
+        } catch (PolyglotException ex) {
+            return;
+        }
+        fail("expecting no result: " + res);
+    }
+
+    @Test
+    public void publicCanAccessObjectEquals() throws Exception {
+        HostAccess config = HostAccess.PUBLIC;
+
+        Context c = Context.newBuilder().allowHostAccess(config).build();
+
+        Value readValue = c.eval("sl", "" + "function readValue(x, y) {\n" + "  return x.equals(y);\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+        assertFalse("Cannot read equals 1", readValue.execute(new Object(), new Object()).asBoolean());
+        Object same = new Object();
+        assertTrue("Cannot read equals 2", readValue.execute(same, same).asBoolean());
+    }
+
+    @Test
+    public void inheritFromPublic() throws Exception {
+        HostAccess config = HostAccess.newBuilder(HostAccess.PUBLIC).build();
+
+        Context c = Context.newBuilder().allowHostAccess(config).build();
+
+        Value readValue = c.eval("sl", "" + "function readValue(x, y) {\n" + "  return x.equals(y);\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+        assertFalse("Cannot read equals 1", readValue.execute(new Object(), new Object()).asBoolean());
+        Object same = new Object();
+        assertTrue("Cannot read equals 2", readValue.execute(same, same).asBoolean());
     }
 
     @Test
