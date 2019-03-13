@@ -87,6 +87,14 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider {
     }
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        if (original instanceof GraphProvider) {
+            return ((GraphProvider) original).allowRuntimeCompilation();
+        }
+        return true;
+    }
+
+    @Override
     public byte[] getCode() {
         return original.getCode();
     }

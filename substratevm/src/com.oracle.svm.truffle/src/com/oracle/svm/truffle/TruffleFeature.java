@@ -518,6 +518,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private boolean isBlacklisted(ResolvedJavaMethod method) {
+        if (!((AnalysisMethod) method).allowRuntimeCompilation()) {
+            return true;
+        }
+
         if (method.isSynchronized() && method.getName().equals("fillInStackTrace")) {
             /*
              * We do not want anything related to Throwable.fillInStackTrace in the image. For

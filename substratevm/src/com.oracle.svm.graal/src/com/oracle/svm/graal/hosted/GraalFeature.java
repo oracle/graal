@@ -486,7 +486,10 @@ public final class GraalFeature implements Feature {
 
         if (node.graph == null) {
             if (method.getAnnotation(Fold.class) != null || method.getAnnotation(NodeIntrinsic.class) != null) {
-                VMError.shouldNotReachHere("Parsing method annotated with @Fold or @NodeIntrinsic: " + method.format("%H.%n(%p)"));
+                throw VMError.shouldNotReachHere("Parsing method annotated with @Fold or @NodeIntrinsic: " + method.format("%H.%n(%p)"));
+            }
+            if (!method.allowRuntimeCompilation()) {
+                throw VMError.shouldNotReachHere("Parsing method that is not available for runtime compilation: " + method.format("%H.%n(%p)"));
             }
 
             boolean parse = false;

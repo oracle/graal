@@ -184,6 +184,11 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     }
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        return false;
+    }
+
+    @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         if (entryPointData.getBuiltin() != CEntryPointData.DEFAULT_BUILTIN) {
             return buildBuiltinGraph(debug, method, providers);
