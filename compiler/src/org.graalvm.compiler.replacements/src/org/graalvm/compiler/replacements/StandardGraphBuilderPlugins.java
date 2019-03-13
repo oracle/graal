@@ -1038,8 +1038,8 @@ public class StandardGraphBuilderPlugins {
                 access1 = createObjectAccessNode(value, nodeConstructor);
             } else {
                 // requires runtime logic to decide which access to perform
-                access1 = createObjectAccessNode(value, nodeConstructor);
-                access2 = createMemoryAccessNode(graph, nodeConstructor);
+                access1 = graph.add(createObjectAccessNode(value, nodeConstructor));
+                access2 = graph.add(createMemoryAccessNode(graph, nodeConstructor));
             }
             if (access2 == null) {
                 // only one access. bracket it with memory barriers if needed
@@ -1065,11 +1065,10 @@ public class StandardGraphBuilderPlugins {
                 MembarNode pre1 = null;
                 MembarNode pre2 = null;
                 if (accessKind.emitBarriers) {
-                    pre1 = new MembarNode(isLoad(access1) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
-                    pre2 = new MembarNode(isLoad(access2) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
-                    // sigh! IfNode expects leading nodes to have a source position so fake it
-                    pre1.setNodeSourcePosition(access1.getNodeSourcePosition());
-                    pre2.setNodeSourcePosition(access2.getNodeSourcePosition());
+                    pre1 = graph.add(new MembarNode(isLoad(access1) ? accessKind.preReadBarriers : accessKind.preWriteBarriers));
+                    pre2 = graph.add(new MembarNode(isLoad(access2) ? accessKind.preReadBarriers : accessKind.preWriteBarriers));
+                    pre1.setNext(access1);
+                    pre2.setNext(access2);
                     b.add(new IfNode(condition, pre1, pre2, 0.5));
                 } else {
                     b.add(new IfNode(condition, access1, access2, 0.5));
@@ -1080,7 +1079,7 @@ public class StandardGraphBuilderPlugins {
                     EndNode endNode = graph.add(new EndNode());
                     boolean isLoad = isLoad(access);
                     if (accessKind.emitBarriers) {
-                        MembarNode post = new MembarNode(isLoad ? accessKind.postReadBarriers : accessKind.postWriteBarriers);
+                        MembarNode post = graph.add(new MembarNode(isLoad ? accessKind.postReadBarriers : accessKind.postWriteBarriers));
                         access.setNext(post);
                         post.setNext(endNode);
                         // associate the memory barriers with the access
