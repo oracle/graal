@@ -106,6 +106,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
@@ -1015,46 +1016,100 @@ public class StandardGraphBuilderPlugins {
         }
 
         protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor) {
+            createUnsafeAccess(value, b, nodeConstructor, AccessKind.PLAIN);
+        }
+
+        protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor, AccessKind accessKind) {
             StructuredGraph graph = b.getGraph();
             graph.markUnsafeAccess();
-            /* For unsafe access object pointers can only be stored in the heap */
+            // depending on what we know about the access type and/or
+            // potential nullity of the value node we may need to generate
+            // either an access via a heap object, a access via raw memory
+            // or cmp + branch logic selecting one or other such access
+            FixedWithNextNode access1;
+            FixedWithNextNode access2 = null;
             if (unsafeAccessKind == JavaKind.Object) {
-                setResult(createObjectAccessNode(value, nodeConstructor), b);
+                // for an unsafe access object pointers can only be stored in the heap
+                access1 = createObjectAccessNode(value, nodeConstructor);
             } else if (StampTool.isPointerAlwaysNull(value)) {
-                setResult(createMemoryAccessNode(graph, nodeConstructor), b);
+                // access via null means offset is a raw memory address
+                access1 = createMemoryAccessNode(graph, nodeConstructor);
             } else if (!explicitUnsafeNullChecks || StampTool.isPointerNonNull(value)) {
-                setResult(createObjectAccessNode(value, nodeConstructor), b);
+                // access via non null means offset is into an object
+                access1 = createObjectAccessNode(value, nodeConstructor);
             } else {
-                FixedWithNextNode objectAccess = graph.add(createObjectAccessNode(value, nodeConstructor));
-                FixedWithNextNode memoryAccess = graph.add(createMemoryAccessNode(graph, nodeConstructor));
-                FixedWithNextNode[] accessNodes = new FixedWithNextNode[]{objectAccess, memoryAccess};
-
+                // requires runtime logic to decide which access to perform
+                access1 = createObjectAccessNode(value, nodeConstructor);
+                access2 = createMemoryAccessNode(graph, nodeConstructor);
+            }
+            if (access2 == null) {
+                // only one access. bracket it with memory barriers if needed
+                boolean isLoad = isLoad(access1);
+                MembarNode pre = null;
+                if (accessKind.emitBarriers) {
+                    pre = new MembarNode(isLoad ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
+                    b.add(pre);
+                }
+                setResult(access1, b);
+                if (accessKind.emitBarriers) {
+                    MembarNode post = new MembarNode(isLoad ? accessKind.postReadBarriers : accessKind.postWriteBarriers);
+                    b.add(post);
+                    // associate the memory barriers with the access
+                    post.setAccess(access1);
+                    post.setLeading(pre);
+                }
+            } else {
+                // add if logic to select the correct access
+                FixedWithNextNode[] accessNodes = new FixedWithNextNode[] {access1, access2};
                 LogicNode condition = graph.addOrUniqueWithInputs(IsNullNode.create(value));
-                b.add(new IfNode(condition, memoryAccess, objectAccess, 0.5));
+                // bracket the access with memory barriers if needed
+                MembarNode pre1 = null;
+                MembarNode pre2 = null;
+                if (accessKind.emitBarriers) {
+                    pre1 =  new MembarNode(isLoad(access1) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
+                    // b.add(pre1);
+                    pre2 =  new MembarNode(isLoad(access2) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
+                    // b.add(pre2);
+                    b.add(new IfNode(condition, pre1, pre2, 0.5));
+                    // pre1.setNext(access1);
+                    // pre2.setNext(access2);
+                } else {
+                    b.add(new IfNode(condition, access1, access2, 0.5));
+                }
 
                 MergeNode merge = b.append(new MergeNode());
-                for (FixedWithNextNode node : accessNodes) {
+                for (FixedWithNextNode access : accessNodes) {
                     EndNode endNode = graph.add(new EndNode());
-                    node.setNext(endNode);
-                    if (node instanceof StateSplit) {
-                        if (isLoad(node)) {
+                    boolean isLoad = isLoad(access);
+                    if (accessKind.emitBarriers) {
+                        MembarNode post = new MembarNode(isLoad ? accessKind.postReadBarriers : accessKind.postWriteBarriers);
+                        access.setNext(post);
+                        post.setNext(endNode);
+                        // associate the memory barriers with the access
+                        post.setAccess(access);
+                        post.setLeading(access == access1 ? pre1 : pre2);
+                    } else {
+                        access.setNext(endNode);
+                    }
+                    if (access instanceof StateSplit) {
+                        if (isLoad) {
                             /*
                              * Temporarily push the access node so that the frame state has the node
                              * on the expression stack.
                              */
-                            b.push(unsafeAccessKind, node);
+                            b.push(unsafeAccessKind, access);
                         }
-                        b.setStateAfter((StateSplit) node);
-                        if (isLoad(node)) {
+                        b.setStateAfter((StateSplit) access);
+                        if (isLoad) {
                             ValueNode popped = b.pop(unsafeAccessKind);
-                            assert popped == node;
+                            assert popped == access;
                         }
                     }
                     merge.addForwardEnd(endNode);
                 }
 
-                if (isLoad(objectAccess)) {
-                    ValuePhiNode phi = new ValuePhiNode(objectAccess.stamp(NodeView.DEFAULT), merge, accessNodes);
+                if (isLoad(access1)) {
+                    ValuePhiNode phi = new ValuePhiNode(access1.stamp(NodeView.DEFAULT), merge, accessNodes);
                     b.push(unsafeAccessKind, graph.addOrUnique(phi));
                 }
                 b.setStateAfter(merge);
@@ -1087,24 +1142,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (accessKind.emitBarriers) {
-                // link the unsafe node to its leading and trailing membars
-                final MembarNode pre = new MembarNode(accessKind.preReadBarriers);
-                final MembarNode post = new MembarNode(accessKind.postReadBarriers);
-                b.add(pre);
-                createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
-                b.add(post);
-                // associate the membars with the raw load they bracket
-                // if there are no other intervening nodes
-                final Node n = pre.next();
-                if (post.predecessor() == n && n instanceof RawLoadNode) {
-                    final RawLoadNode rawLoadNode = (RawLoadNode) n;
-                    post.setAccess(rawLoadNode);
-                    post.setLeading(pre);
-                }
-            } else {
-                createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
-            }
+            createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc), accessKind);
             return true;
         }
     }
@@ -1136,24 +1174,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
-            if (accessKind.emitBarriers) {
-                // link the unsafe node to its leading and trailing membars
-                final MembarNode pre = new MembarNode(accessKind.preWriteBarriers);
-                final MembarNode post = new MembarNode(accessKind.postWriteBarriers);
-                b.add(pre);
-                createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
-                b.add(post);
-                // associate the membars with the raw store they bracket
-                // if there are no other intervening nodes
-                final Node n = pre.next();
-                if (post.predecessor() == n && n instanceof RawStoreNode) {
-                    final RawStoreNode rawStoreNode = (RawStoreNode) n;
-                    post.setAccess(rawStoreNode);
-                    post.setLeading(pre);
-                }
-            } else {
-                createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
-            }
+            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc), accessKind);
             return true;
         }
     }

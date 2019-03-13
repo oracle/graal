@@ -421,7 +421,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             graph.addBeforeFixed(memoryWrite, preMembar);
             MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_WRITE));
             graph.addAfterFixed(memoryWrite, postMembar);
-            // associate the memory barriers with the volatile read
+            // associate the memory barriers with the volatile write
             postMembar.setAccess(memoryWrite);
             postMembar.setLeading(preMembar);
         }
