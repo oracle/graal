@@ -309,6 +309,14 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
     }
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        if (wrapped instanceof GraphProvider) {
+            return ((GraphProvider) wrapped).allowRuntimeCompilation();
+        }
+        return true;
+    }
+
+    @Override
     public byte[] getCode() {
         return wrapped.getCode();
     }

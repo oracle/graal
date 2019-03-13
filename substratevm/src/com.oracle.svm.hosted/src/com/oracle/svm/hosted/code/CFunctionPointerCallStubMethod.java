@@ -32,7 +32,6 @@ import java.util.List;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
@@ -102,17 +101,19 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
     }
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        /*
+         * C function calls that need a transition cannot be runtime compiled (and cannot be inlined
+         * during runtime compilation). Deoptimization could be required while we are blocked in
+         * native code, which means the deoptimization stub would need to do the native-to-Java
+         * transition.
+         */
+        return !needsTransition;
+    }
+
+    @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        if (purpose == Purpose.PREPARE_RUNTIME_COMPILATION && needsTransition) {
-            /*
-             * C function calls that need a transition cannot be runtime compiled (and cannot be
-             * inlined during runtime compilation). Deoptimization could be required while we are
-             * blocked in native code, which means the deoptimization stub would need to do the
-             * native-to-Java transition.
-             */
-            ImageSingletons.lookup(CFunctionFeature.class).warnRuntimeCompilationReachableCFunctionWithTransition(this);
-            return null;
-        }
+        assert purpose != Purpose.PREPARE_RUNTIME_COMPILATION || allowRuntimeCompilation();
 
         return super.buildGraph(debug, method, providers, purpose);
     }
