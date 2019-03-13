@@ -909,12 +909,25 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=suite,
-    name='SubstrateVM agent',
+    name='SubstrateVM Agent',
     short_name='svmag',
     dir_name='.',
     license_files=[],
     third_party_license_files=[],
     support_distributions=['substratevm:SVM_GRAALVM_AGENT_SUPPORT'],
+))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    suite=suite,
+    name='SubstrateVM Configuration Tool',
+    short_name='svmcf',
+    dir_name='native-image-configure',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=[],
+    support_distributions=['substratevm:NATIVE_IMAGE_CONFIGURE_SUPPORT'],
+    include_in_polyglot=False,
 ))
 
 
