@@ -1059,14 +1059,14 @@ public class StandardGraphBuilderPlugins {
                 }
             } else {
                 // add if logic to select the correct access
-                FixedWithNextNode[] accessNodes = new FixedWithNextNode[] {access1, access2};
+                FixedWithNextNode[] accessNodes = new FixedWithNextNode[]{access1, access2};
                 LogicNode condition = graph.addOrUniqueWithInputs(IsNullNode.create(value));
                 // bracket the access with memory barriers if needed
                 MembarNode pre1 = null;
                 MembarNode pre2 = null;
                 if (accessKind.emitBarriers) {
-                    pre1 =  new MembarNode(isLoad(access1) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
-                    pre2 =  new MembarNode(isLoad(access2) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
+                    pre1 = new MembarNode(isLoad(access1) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
+                    pre2 = new MembarNode(isLoad(access2) ? accessKind.preReadBarriers : accessKind.preWriteBarriers);
                     // sigh! IfNode expects leading nodes to have a source position so fake it
                     pre1.setNodeSourcePosition(access1.getNodeSourcePosition());
                     pre2.setNodeSourcePosition(access2.getNodeSourcePosition());
