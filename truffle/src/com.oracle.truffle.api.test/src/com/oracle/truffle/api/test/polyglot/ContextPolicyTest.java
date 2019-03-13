@@ -56,6 +56,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -86,6 +87,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.ContextPolicyTestFactory.SupplierAccessorNodeGen;
 
 public class ContextPolicyTest {
@@ -477,6 +479,9 @@ public class ContextPolicyTest {
 
     @Test
     public void testReferencesWithCodeMixing() {
+        // compile immediately is too much for this test.
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+
         testReferenceMixing(EXCLUSIVE0, EXCLUSIVE1);
         testReferenceMixing(EXCLUSIVE0, SHARED1);
         testReferenceMixing(EXCLUSIVE0, REUSE1);
@@ -645,6 +650,7 @@ public class ContextPolicyTest {
                         cachedContextReference = lookupContextReference0(accessor);
                     }
                     Object[] args = frame.getArguments();
+
                     assertSame(expectedLanguage, lookupLanguageReference0(accessor).get());
                     assertSame(expectedEnvironment, lookupContextReference0(accessor).get());
                     assertSame(cachedLanguageReference, lookupLanguageReference0(accessor));
@@ -691,15 +697,8 @@ public class ContextPolicyTest {
                         throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
 
             Object prev = enterInner();
-
             try {
-                assertSame(expectedLanguage, lookupLanguageReference0(accessor).get());
-                assertSame(expectedEnvironment, lookupContextReference0(accessor).get());
-                assertSame(expectedLanguage, cachedLanguageSupplier.get());
-                assertSame(expectedEnvironment, cachedContextSupplier.get());
-                assertSame(cachedLanguageSupplier, lookupLanguageReference0(accessor));
-                assertSame(cachedContextSupplier, lookupContextReference0(accessor));
-                assertSame(expectedEnvironment, contextReference.get());
+                doAssertions(accessor, cachedLanguageSupplier, cachedContextSupplier, contextReference);
 
                 target.call(args);
 
@@ -713,12 +712,26 @@ public class ContextPolicyTest {
             }
         }
 
+        @TruffleBoundary
+        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier,
+                        ContextReference<Env> contextReference) {
+            assertSame(expectedLanguage, lookupLanguageReference0(accessor).get());
+            assertSame(expectedEnvironment, lookupContextReference0(accessor).get());
+            assertSame(expectedLanguage, cachedLanguageSupplier.get());
+            assertSame(expectedEnvironment, cachedContextSupplier.get());
+            assertSame(cachedLanguageSupplier, lookupLanguageReference0(accessor));
+            assertSame(cachedContextSupplier, lookupContextReference0(accessor));
+            assertSame(expectedEnvironment, contextReference.get());
+        }
+
+        @TruffleBoundary
         private void leaveInner(Object prev) {
             if (context != null) {
                 context.leave(prev);
             }
         }
 
+        @TruffleBoundary
         @SuppressWarnings("unchecked")
         private Object enterInner() {
             Object prev = null;

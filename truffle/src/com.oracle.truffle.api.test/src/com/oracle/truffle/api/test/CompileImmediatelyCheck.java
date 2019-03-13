@@ -49,13 +49,20 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class CompileImmediatelyCheck {
 
     public static boolean isCompileImmediately() {
-        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return CompilerDirectives.inCompiledCode();
+        // we try twice, as sometimes some classes deopt.
+        for (int i = 0; i < 2; i++) {
+            CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return CompilerDirectives.inCompiledCode();
+                }
+            });
+            boolean result = (boolean) target.call();
+            if (result) {
+                return true;
             }
-        });
-        return (boolean) target.call();
+        }
+        return false;
     }
 
 }
