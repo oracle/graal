@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,32 +25,34 @@
 package com.oracle.svm.core.jdk;
 
 import java.util.Map;
-import java.util.Properties;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "VM")
-public final class Target_jdk_internal_misc_VM {
-    /* Ensure that we do not leak the full set of properties from the image generator. */
-    @TargetElement(onlyWith = JDK8OrEarlier.class)//
-    @Delete //
-    private static Properties savedProps;
+import jdk.vm.ci.services.Services;
 
-    @TargetElement(name = "savedProps", onlyWith = JDK9OrLater.class)//
-    @Delete //
-    private static Map<String, String> savedProps9;
-
-    @Substitute
-    public static String getSavedProperty(String name) {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).getSavedProperties().get(name);
+final class IsNotLibgraal implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return !SubstrateUtil.isBuildingLibgraal();
     }
+}
 
-    @Alias
-    public static native Thread.State toThreadState(int threadStatus);
+/**
+ * In libgraal the saved properties are initialized by copying them from the HotSpot heap.
+ */
+@TargetClass(value = Services.class, onlyWith = IsNotLibgraal.class)
+final class Target_jdk_vm_ci_services_Services {
+    @Substitute
+    public static Map<String, String> getSavedProperties() {
+        return ImageSingletons.lookup(SystemPropertiesSupport.class).getSavedProperties();
+    }
+}
+
+/** Dummy class to have a class with the file's name. */
+public final class JVMCISubstitutions {
 }
