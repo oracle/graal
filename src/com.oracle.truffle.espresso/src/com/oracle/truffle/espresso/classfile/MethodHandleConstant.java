@@ -22,24 +22,13 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.runtime.StaticObjectMessageResolutionForeign;
-
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 
 public interface MethodHandleConstant extends PoolConstant {
     default Tag tag() {
@@ -136,8 +125,6 @@ public interface MethodHandleConstant extends PoolConstant {
                         mklass.mirror(), mname, mtype
                     )
             );
-
-            //throw EspressoError.unimplemented();
         }
     }
 

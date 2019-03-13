@@ -80,12 +80,19 @@ public final class ClassfileParser {
     private Tag badConstantSeen;
 
     private ConstantPool pool;
+    private int thisKlassIndex;
+
+    @SuppressWarnings("unused")
+    public Klass getHostClass() {
+        return hostClass;
+    }
 
     // /**
     // * The host class for an anonymous class.
     // */
     private final Klass hostClass;
 
+    @SuppressWarnings("unused")
     private ClassfileParser(ClasspathFile classpathFile, String requestedClassName, @SuppressWarnings("unused") Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
         this.className = requestedClassName;
@@ -198,9 +205,9 @@ public final class ClassfileParser {
         }
 
         // This class and superclass
-        int thisClassIndex = stream.readU2();
+        thisKlassIndex = stream.readU2();
 
-        // this.typeDescriptor = pool.classAt(thisClassIndex).getName(pool);
+        // this.typeDescriptor = pool.classAt(thisKlassIndex).getName(pool);
 
         // Update className which could be null previously
         // to reflect the name in the constant pool
@@ -214,11 +221,11 @@ public final class ClassfileParser {
         // if this is an anonymous class fix up its name if it's in the unnamed
         // package. Otherwise, throw IAE if it is in a different package than
         // its host class.
-//         if (hostClass != null) {
-//         fixAnonymousClassName();
-//         }
+//        if (hostClass != null) {
+//            pool.setPreresolvedAt(t);
+//        }
 
-        Symbol<Name> thisKlassName = pool.classAt(thisClassIndex).getName(pool);
+        Symbol<Name> thisKlassName = pool.classAt(thisKlassIndex).getName(pool);
         Symbol<Type> thisKlassType = context.getTypes().fromName(thisKlassName);
 
         Symbol<Type> superKlass = parseSuperKlass();
@@ -453,6 +460,10 @@ public final class ClassfileParser {
             interfaces[i] = context.getTypes().fromName(pool.classAt(interfaceIndex).getName(pool));
         }
         return interfaces;
+    }
+
+    public int getThisKlassIndex() {
+        return thisKlassIndex;
     }
 
     // private static String getPackageName(String fqn) {

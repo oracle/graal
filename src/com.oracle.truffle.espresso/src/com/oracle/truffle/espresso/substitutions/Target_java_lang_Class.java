@@ -597,7 +597,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(Class[].class) StaticObject  getDeclaredClasses0(@Host(Class.class) StaticObjectClass self) {
-        Klass klass = ((StaticObjectClass) self).getMirrorKlass();
+        Klass klass = self.getMirrorKlass();
 
         if (klass.isPrimitive() || !klass.isArray()) {
             return new StaticObjectArray(klass.getMeta().Class_Array, new StaticObject[0]);

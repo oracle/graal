@@ -3,9 +3,12 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
 public class MHLinkToNode extends EspressoBaseNode {
@@ -21,7 +24,7 @@ public class MHLinkToNode extends EspressoBaseNode {
     @Override
     public Object invokeNaked(VirtualFrame frame) {
         assert(getMethod().isStatic());
-        StaticObjectArray args = new StaticObjectArray(getMeta().Object_array,frame.getArguments());
+        Object[] args = frame.getArguments();
         switch(id) {
             case Target_java_lang_invoke_MethodHandleNatives._linkToInterface:
                 return getMeta().linkToInterface.invokeDirect(null, args);
@@ -44,5 +47,27 @@ public class MHLinkToNode extends EspressoBaseNode {
             dst[i] = src[i + from];
         }
         return dst;
+    }
+
+    private static Object executeLinkTo(Object[] args) {
+        assert args.length > 0;
+        StaticObjectImpl memberName = (StaticObjectImpl) args[args.length - 1];
+        assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
+
+        Method target = (Method) memberName.getHiddenField("vmtarget");
+        if (target.hasReceiver()) {
+            StaticObject receiver = (StaticObject) args[0];
+            Object[] trueArgs = new Object[args.length - 2];
+            for (int i = 1; i < trueArgs.length; i++) {
+                trueArgs[i] = args[i];
+            }
+            return target.invokeDirect(receiver, trueArgs);
+        } else {
+            Object[] trueArgs = new Object[args.length - 1];
+            for (int i = 0; i < trueArgs.length; i++) {
+                trueArgs[i] = args[i];
+            }
+            return target.invokeDirect(null, trueArgs);
+        }
     }
 }

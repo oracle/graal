@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
@@ -52,14 +53,15 @@ import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.*;
-import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandle;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class Method implements ModifiersProvider, ContextAccess {
     public static final Method[] EMPTY_ARRAY = new Method[0];
+
+    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicInvokes = new ConcurrentHashMap<>();
+    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicLinkTo = new ConcurrentHashMap<>();
 
     private final LinkedMethod linkedMethod;
     private final RuntimeConstantPool pool;
@@ -293,8 +295,6 @@ public final class Method implements ModifiersProvider, ContextAccess {
     }
 
     public boolean isConstructor() {
-        assert Signatures.returnKind(getParsedSignature()) == JavaKind.Void;
-        assert !isStatic();
         return Name.INIT.equals(getName());
     }
 
@@ -500,10 +500,27 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return target;
     }
 
-    public Method createMethodHandleIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory) {
-        Method method = new Method(declaringKlass, linkedMethod, signature);
+    public Method findInvokeIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory) {
+        Method method = intrinsicInvokes.get(signature);
+        if (method != null) {
+            return method;
+        }
+        method = new Method(declaringKlass, linkedMethod, signature);
         EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
         method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        intrinsicInvokes.put(signature, method);
+        return method;
+    }
+
+    public Method findLinkToIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory) {
+        Method method = intrinsicLinkTo.get(signature);
+        if (method != null) {
+            return method;
+        }
+        method = new Method(declaringKlass, linkedMethod, signature);
+        EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
+        method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        intrinsicLinkTo.put(signature, method);
         return method;
     }
 }

@@ -34,6 +34,4 @@ public @interface Substitution {
     String methodName() default "";
 
     boolean hasReceiver() default false;
-
-    int varargs() default -1;
 }

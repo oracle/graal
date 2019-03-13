@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -248,7 +247,6 @@ public final class Substitutions implements ContextAccess {
 
     public EspressoRootNode get(Method method) {
         MethodRef key = getMethodKey(method);
-        EconomicMap<MethodRef, EspressoRootNodeFactory> ST_SUB = STATIC_SUBSTITUTIONS;
         EspressoRootNodeFactory factory = STATIC_SUBSTITUTIONS.get(key);
         if (factory == null) {
             factory = runtimeSubstitutions.get(key);

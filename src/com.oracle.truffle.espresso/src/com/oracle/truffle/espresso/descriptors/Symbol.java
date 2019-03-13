@@ -28,7 +28,6 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.jni.Utf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Modified-UTF8 byte string (symbol) for internal use in Espresso.
@@ -162,6 +161,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
         public static final Symbol<Name> form = StaticSymbols.putName("form");
         public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
+        public static final Symbol<Name> target = StaticSymbols.putName("target");
 
 
         public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
@@ -182,6 +182,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> linkToStatic = StaticSymbols.putName("linkToStatic");
         public static final Symbol<Name> linkToInterface = StaticSymbols.putName("linkToInterface");
         public static final Symbol<Name> linkToSpecial = StaticSymbols.putName("linkToSpecial");
+        public static final Symbol<Name> member = StaticSymbols.putName("member");
 
         // Attribute names
         public static final Symbol<Name> Code = StaticSymbols.putName("Code");
@@ -304,6 +305,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MethodHandles = StaticSymbols.putType(java.lang.invoke.MethodHandles.class);
         public static final Symbol<Type> Lookup = StaticSymbols.putType(java.lang.invoke.MethodHandles.Lookup.class);
         public static final Symbol<Type> CallSite = StaticSymbols.putType(java.lang.invoke.CallSite.class);
+        public static final Symbol<Type> DirectMethodHandle = StaticSymbols.putType("Ljava/lang/invoke/DirectMethodHandle;");
 
         // MethodHandleNatives is not public.
         public static final Symbol<Type> MethodHandleNatives = StaticSymbols.putType("Ljava/lang/invoke/MethodHandleNatives;");

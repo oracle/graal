@@ -122,4 +122,11 @@ public abstract class ClassRegistry implements ContextAccess {
         EspressoError.guarantee(previous == null, "Klass " + previous + " loaded twice");
         return klass;
     }
+
+    public ObjectKlass putKlass(Symbol<Type> type, final ObjectKlass klass) {
+        EspressoError.guarantee(!classes.containsKey(type), "Class " + type + " already defined in the BCL");
+        Klass previous = classes.put(type, klass);
+        EspressoError.guarantee(previous == null, "Klass " + previous + " loaded twice");
+        return klass;
+    }
 }

@@ -202,6 +202,10 @@ public final class Meta implements ContextAccess {
 
         MemberName = knownKlass(Type.MemberName);
         getSignature = MemberName.lookupMethod(Name.getSignature, Signature.String);
+        MNclazz =  MemberName.lookupField(Name.clazz, Type.Class);
+        MNname =  MemberName.lookupField(Name.name, Type.String);
+        MNtype =  MemberName.lookupField(Name.type, Type.MethodType);
+        MNflags =  MemberName.lookupField(Name.flags, Type._int);
 
         MethodHandle = knownKlass(Type.MethodHandle);
         invokeExact = MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_ObjectArray);
@@ -212,11 +216,20 @@ public final class Meta implements ContextAccess {
         linkToSpecial = MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_ObjectArray);
         linkToStatic = MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_ObjectArray);
         linkToVirtual = MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_ObjectArray);
+        type = MethodHandle.lookupField(Name.type, Type.MethodType);
+        form = MethodHandle.lookupField(Name.form, Type.LambdaForm);
 
         MethodHandles = knownKlass(Type.MethodHandles);
         lookup = MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
 
+        DirectMethodHandle = knownKlass(Type.DirectMethodHandle);
+        DMHmember = DirectMethodHandle.lookupField(Name.member, Type.MemberName);
+
         CallSite = knownKlass(Type.CallSite);
+        CStarget = CallSite.lookupField(Name.target, Type.MethodHandle);
+
+        LambdaForm = knownKlass(Type.LambdaForm);
+        vmentry = LambdaForm.lookupField(Name.vmentry, Type.MemberName);
 
         MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
         linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
@@ -365,6 +378,10 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass MemberName;
     public final Method getSignature;
     public final Method fromMethodDescriptorString;
+    public final Field MNclazz;
+    public final Field MNname;
+    public final Field MNtype;
+    public final Field MNflags;
 
     public final ObjectKlass MethodHandle;
     public final Method invoke;
@@ -375,11 +392,20 @@ public final class Meta implements ContextAccess {
     public final Method linkToSpecial;
     public final Method linkToStatic;
     public final Method linkToVirtual;
+    public final Field type;
+    public final Field form;
 
     public final ObjectKlass MethodHandles;
     public final Method lookup;
 
+    public final ObjectKlass DirectMethodHandle;
+    public final Field DMHmember;
+
     public final ObjectKlass CallSite;
+    public final Field CStarget;
+
+    public final ObjectKlass LambdaForm;
+    public final Field vmentry;
 
     public final ObjectKlass MethodHandleNatives;
     public final Method linkMethod;

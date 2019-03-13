@@ -477,12 +477,11 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         int curBCI = 0;
         int top = 0;
 
-        if (getMethod().getName().toString().contains("delegate")) {
-            int dood = 1;
-        }
         initArguments(frame);
 
-
+        if (getMethod().getName().toString().contains("get$")) {
+            int i =1 ;
+        }
 
         loop: while (true) {
             int curOpcode;
@@ -1062,7 +1061,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
                         case ATHROW:
                             CompilerDirectives.transferToInterpreter();
-                            System.err.println("Throwing at " + curBCI + " in " + getMethod());
+//                            System.err.println("Throwing at " + curBCI + " in " + getMethod());
                             throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
 
                         case CHECKCAST:
@@ -1092,7 +1091,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
                         case INVOKEDYNAMIC:
                             //CompilerAsserts.neverPartOfCompilation();
-                            //throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
                             top += quickenInvokeDynamic(frame, top, curBCI, curOpcode);
                             break;
 
@@ -1109,14 +1107,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (e instanceof EspressoException) {
                         throw e;
                     }
-                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI: " + curBCI);
-                    e.printStackTrace();
+//                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI: " + curBCI);
+//                    e.printStackTrace();
                     CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwEx(getMeta().NullPointerException);
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-                System.err.println("Finding handler for a " + e.getException().getKlass() + " at: " + curBCI + " in " + getMethod());
+//                System.err.println("Finding handler for a " + e.getException().getKlass() + " at: " + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;
@@ -1444,6 +1442,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert (Bytecodes.INVOKEDYNAMIC == opCode);
 
+        int BASE_BSM_ARGS = 3;
+
         Meta meta = getMeta();
 
         RuntimeConstantPool pool = getConstantPool();
@@ -1460,8 +1460,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         Klass declaringKlass = getMethod().getDeclaringKlass();
         StaticObject bsmMH = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
 
-        Object[] args = new Object[bsEntry.numBootstrapArguments()];
-        for (int i = 0; i < args.length ; i++) {
+        StaticObject[] args = new StaticObject[bsEntry.numBootstrapArguments()];
+//        Object[] args = new Object[bsEntry.numBootstrapArguments() + BASE_BSM_ARGS];
+        for (int i = 0; i < bsEntry.numBootstrapArguments() ; i++) {
             PoolConstant pc = pool.at(bsEntry.argAt(i));
             switch (pc.tag()) {
                 case METHODHANDLE:
@@ -1476,18 +1477,17 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 case STRING:
                     args[i] = pool.resolvedStringAt(bsEntry.argAt(i));
                     break;
-                    //TODO(Garcia) Perhaps no need to box them ?
                 case INTEGER:
-                    args[i] = pool.intAt(bsEntry.argAt(i));
+                    args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));
                     break;
                 case LONG:
-                    args[i] = pool.longAt(bsEntry.argAt(i));
+                    args[i] = meta.boxLong(pool.longAt(bsEntry.argAt(i)));
                     break;
                 case DOUBLE:
-                    args[i] = pool.doubleAt(bsEntry.argAt(i));
+                    args[i] = meta.boxDouble(pool.doubleAt(bsEntry.argAt(i)));
                     break;
                 case FLOAT:
-                    args[i] = pool.floatAt(bsEntry.argAt(i));
+                    args[i] = meta.boxFloat(pool.floatAt(bsEntry.argAt(i)));
                     break;
                 default:
                     throw EspressoError.shouldNotReachHere();
@@ -1506,16 +1506,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 new StaticObjectArray(meta.Object_array, args),
                 appendix);
 
-        StaticObject unboxedAppendix = appendix.get(0);
+        StaticObjectImpl unboxedAppendix = appendix.get(0);
+        return injectAndCall(frame, top, curBCI, new InvokeDynamicNode(unboxedAppendix, meta), opCode);
 
-        //getMeta().findMethodHandleType();
-
-
-        // call java.lang.invoke.MethodHandleNatives::linkCallSite(caller, bsm, name, mtype, info, &appendix)
-
-        //getMeta().invokeExact.invokeDirect(bsmMH, )
-
-        throw EspressoError.unimplemented("success!");
 //        Method target = resolveMethod(opCode, mh.getRefIndex());
 //
 //        Symbol<Symbol.Type>[] parsed = getMethod().getContext().getSignatures().parsed(inDy.getSignature(pool));
@@ -1549,16 +1542,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 null,
                 rtype, new StaticObjectArray(meta.Class_Array, ptypes)
         );
-    }
-
-
-    private CallSite executeBootstrapMethod(int curBCI) {
-        RuntimeConstantPool pool = getConstantPool();
-        InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
-        BootstrapMethodsAttribute.Entry bsEntry = getBootstrapMethods().at(inDy.getBootstrapMethodAttrIndex());
-
-        MethodHandleConstant bsmMH = (MethodHandleConstant) pool.at(bsEntry.getBootstrapMethodRef());
-        throw EspressoError.unimplemented();
     }
     // endregion Bytecode quickening
 

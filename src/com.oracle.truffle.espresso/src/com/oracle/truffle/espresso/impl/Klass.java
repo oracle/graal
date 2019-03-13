@@ -33,7 +33,6 @@ import java.util.function.IntFunction;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -248,7 +247,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * {@code null} if this object does not represent a VM anonymous class.
      */
     public Klass getHostClass() {
-        throw EspressoError.unimplemented();
+        return null;
     }
 
     /**
@@ -502,16 +501,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    private Method findMethodHandleIntrinsic(Symbol<Name> methodName, Symbol<Signature> signature, int id) {
+    private Method findMethodHandleIntrinsic(@SuppressWarnings("unused") Symbol<Name> methodName, Symbol<Signature> signature, int id) {
         if (id == Target_java_lang_invoke_MethodHandleNatives._invokeGeneric) {
-            return getMeta().invoke.createMethodHandleIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+            return getMeta().invoke.findInvokeIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
                 @Override
                 public EspressoBaseNode apply(Method method) {
                     return new MHInvokeGenericNode(method);
                 }
             });
         } else if (id == Target_java_lang_invoke_MethodHandleNatives._invokeBasic) {
-            return getMeta().invoke.createMethodHandleIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+            return getMeta().invoke.findInvokeIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
                 @Override
                 public EspressoBaseNode apply(Method method) {
                     return new MHInvokeGenericNode(method);
@@ -532,8 +531,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         throw EspressoError.shouldNotReachHere();
     }
 
-    private Method findLinkToIntrinsic(Method m, Symbol<Signature> signature, int id) {
-        return m.createMethodHandleIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+    private static Method findLinkToIntrinsic(Method m, Symbol<Signature> signature, int id) {
+        return m.findLinkToIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
             @Override
             public EspressoBaseNode apply(Method method) {
                 return new MHLinkToNode(method, id);

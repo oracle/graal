@@ -216,10 +216,10 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             resolveMethodCount.inc();
-            Symbol<Name> holderKlassName = getHolderKlassName(pool);
 
             EspressoContext context = pool.getContext();
-            Klass holderKlass = context.getRegistries().loadKlass(context.getTypes().fromName(holderKlassName), accessingKlass.getDefiningClassLoader());
+            Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
+
 
             Meta meta = context.getMeta();
             if (holderKlass.isInterface()) {
