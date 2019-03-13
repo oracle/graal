@@ -363,7 +363,7 @@ public final class ImageClassLoader {
                 }
             }
             return forName(name);
-        } catch (ClassNotFoundException ex) {
+        } catch (ClassNotFoundException | NoClassDefFoundError ex) {
             if (failIfClassMissing) {
                 throw shouldNotReachHere("class " + name + " not found");
             }
