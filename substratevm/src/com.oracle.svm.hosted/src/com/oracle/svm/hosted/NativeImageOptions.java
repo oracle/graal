@@ -130,9 +130,6 @@ public class NativeImageOptions {
         return assertsEnabled;
     }
 
-    @Option(help = "Report the original exception cause for unsupported features.")//
-    public static final HostedOptionKey<Boolean> ReportUnsupportedFeaturesCause = new HostedOptionKey<>(false);
-
     /**
      * Enum with all C standards.
      *
