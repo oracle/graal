@@ -1096,6 +1096,7 @@ def native_image_on_jvm(args, **kwargs):
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
     configure_cp = [join(suite_native_image_root(), 'lib', 'graalvm', 'svm-configure.jar')]
+    configure_cp += [join(suite_native_image_root(), 'lib', 'jvmci', '*.jar')]
     configure_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
     configure_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in configure_cp))
     svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
