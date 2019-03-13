@@ -289,7 +289,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
                 _launcher_dest = _component_base + _launcher_config.destination
                 if mx.get_os() == 'windows':
-                    suffix = 'cmd' if stage1 else 'exe'
+                    suffix = 'exe' if GraalVmLauncher.is_launcher_native(_launcher_config, stage1) else 'cmd'
                     _launcher_dest += '.' + suffix
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)

@@ -222,6 +222,14 @@ builds += [
     timelimit: "15:00"
     name: gate-vm-native-substratevm-truffle
   },
+  ${svm-common-windows} ${common_vm} {
+    run: [
+      [mx, --dynamicimports, ${svm_suite}, --disable-polyglot, --disable-libpolyglot, gate, --tags, "build"]
+    ]
+    timelimit: "35:00"
+    targets: [gate]
+    name: gate-vm-native-windows
+  },
   ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
