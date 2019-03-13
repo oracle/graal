@@ -103,7 +103,9 @@ public class ConfigurationTool {
             switch (current) {
                 case "--output-dir":
                     Path directory = Paths.get(require(current, value));
-                    if (!Files.isDirectory(directory)) {
+                    if (!Files.exists(directory)) {
+                        Files.createDirectory(directory);
+                    } else if (!Files.isDirectory(directory)) {
                         throw new NoSuchFileException(value);
                     }
                     reflectOutputPaths.add(directory.resolve(ConfigurationDirectories.FileNames.REFLECTION_NAME));
