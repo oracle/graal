@@ -934,7 +934,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
     @Override
     public void emitBlackhole(Value operand) {
-        throw unimplemented();
+        builder.buildBlackHole(operand);
     }
 
     @Override
