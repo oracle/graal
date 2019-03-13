@@ -547,7 +547,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                         if (value == null) {
                             String errorMessage = getEvalNonInteractiveMessage();
                             ExceptionDetails exceptionDetails = new ExceptionDetails(errorMessage);
-                            json.put("exceptionDetails", exceptionDetails.createJSON(context));
+                            json.put("exceptionDetails", exceptionDetails.createJSON(context, generatePreview));
                             JSONObject err = new JSONObject();
                             err.putOpt("value", errorMessage);
                             err.putOpt("type", "string");
@@ -557,7 +557,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                         value = cf.getFrame().eval(expression);
                     }
                     if (value != null) {
-                        RemoteObject ro = new RemoteObject(value, context.getErr());
+                        RemoteObject ro = new RemoteObject(value, generatePreview, context.getErr());
                         context.getRemoteObjectsHandler().register(ro);
                         json.put("result", ro.toJSON());
                     }
@@ -567,10 +567,10 @@ public final class InspectorDebugger extends DebuggerDomain {
                 @Override
                 public JSONObject processException(DebugException dex) {
                     JSONObject json = new JSONObject();
-                    InspectorRuntime.fillExceptionDetails(json, dex, context);
+                    InspectorRuntime.fillExceptionDetails(json, dex, context, generatePreview);
                     DebugValue exceptionObject = dex.getExceptionObject();
                     if (exceptionObject != null) {
-                        RemoteObject ro = context.createAndRegister(exceptionObject);
+                        RemoteObject ro = context.createAndRegister(exceptionObject, generatePreview);
                         json.put("result", ro.toJSON());
                     } else {
                         JSONObject err = new JSONObject();
@@ -1005,7 +1005,7 @@ public final class InspectorDebugger extends DebuggerDomain {
             DebugValue exceptionObject = exception.getExceptionObject();
             JSONObject data;
             if (exceptionObject != null) {
-                RemoteObject remoteObject = context.createAndRegister(exceptionObject);
+                RemoteObject remoteObject = context.createAndRegister(exceptionObject, false);
                 data = remoteObject.toJSON();
             } else {
                 data = new JSONObject();

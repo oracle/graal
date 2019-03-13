@@ -47,7 +47,7 @@ final class RemoteObjectsHandler {
         synchronized (remotesByIDs) {
             remote = remotesByValue.get(value);
             if (remote == null) {
-                remote = new RemoteObject(value, err);
+                remote = new RemoteObject(value, false, err);
                 remotesByValue.put(value, remote);
                 remotesByIDs.put(remote.getId(), remote);
             }

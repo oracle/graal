@@ -73,6 +73,7 @@ public final class InspectorExecutionContext {
     private volatile String lastMimeType = "text/javascript";   // Default JS
     private volatile String lastLanguage = "js";
     private boolean synchronous = false;
+    private boolean customObjectFormatterEnabled = false;
 
     public InspectorExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, List<URI> sourceRoots, PrintWriter err) {
         this.name = name;
@@ -191,8 +192,8 @@ public final class InspectorExecutionContext {
         return roh;
     }
 
-    public RemoteObject createAndRegister(DebugValue value) {
-        RemoteObject ro = new RemoteObject(value, getErr());
+    public RemoteObject createAndRegister(DebugValue value, boolean generatePreview) {
+        RemoteObject ro = new RemoteObject(value, generatePreview, getErr());
         if (ro.getId() != null) {
             getRemoteObjectsHandler().register(ro);
         }
@@ -311,6 +312,14 @@ public final class InspectorExecutionContext {
 
     public boolean isSynchronous() {
         return synchronous;
+    }
+
+    void setCustomObjectFormatterEnabled(boolean enabled) {
+        this.customObjectFormatterEnabled = enabled;
+    }
+
+    boolean isCustomObjectFormatterEnabled() {
+        return this.customObjectFormatterEnabled;
     }
 
     public interface Listener {
