@@ -50,11 +50,6 @@ public class CoreProvidersImpl implements CoreProviders {
         this.foreignCalls = foreignCalls;
     }
 
-    public CoreProvidersImpl(CoreProviders providers) {
-        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider(),
-                        providers.getForeignCalls());
-    }
-
     @Override
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
