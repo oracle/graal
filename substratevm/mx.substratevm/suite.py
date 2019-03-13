@@ -330,30 +330,6 @@ suite = {
             },
         },
 
-        "com.oracle.svm.native.agent": {
-            "subDir": "src",
-            "native": "shared_lib",
-            "use_jdk_headers": True,
-            "results" : ["<library:native-image-agent>"],
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-std=c99", "-Wall", "-Werror"],
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-std=c99", "-Wall", "-Werror"],
-                    },
-                },
-                "<others>": {
-                    "<others>": {
-                        "ignore": "not supported",
-                    },
-                },
-            },
-        },
-
         "com.oracle.svm.jni": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -709,6 +685,27 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
+
+        "com.oracle.svm.agent": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "com.oracle.svm.jni",
+                "com.oracle.svm.configure",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
     },
 
     "distributions": {
@@ -869,6 +866,20 @@ suite = {
             ],
         },
 
+        "SVM_AGENT": {
+            "description" : "SubstrateVM native-image-agent library",
+            "dependencies": [
+                "com.oracle.svm.agent",
+            ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+            ],
+            "overlaps" : [
+                "SVM_CONFIGURE",
+            ],
+            # vm: included as binary, tool descriptor intentionally not copied
+        },
+
         "SVM_CONFIGURE": {
             "subDir": "src",
             "description" : "SubstrateVM native-image configuration tool",
@@ -972,28 +983,6 @@ suite = {
                 "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
-            },
-        },
-
-        "SVM_GRAALVM_AGENT_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "SubstrateVM JVM agent support distribution for the GraalVM",
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                         "layout" : {
-                             "<arch>/<lib:native-image-agent>" : ["dependency:substratevm:com.oracle.svm.native.agent/<lib:agent>"],
-                         },
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                         "layout" : {
-                             "<arch>/<lib:native-image-agent>" : ["dependency:substratevm:com.oracle.svm.native.agent/<lib:agent>"],
-                         },
-                    },
-                },
             },
         },
 

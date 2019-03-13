@@ -22,30 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef SBUF_H
-#define SBUF_H
+package com.oracle.svm.agent.jvmti;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumLookup;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 
-#include <stdarg.h>
+@CEnum("jvmtiError")
+@CContext(JvmtiDirectives.class)
+public enum JvmtiError {
+    JVMTI_ERROR_NONE;
 
-struct sbuf {
-    char *buffer;
-    int   capacity;
-    int   length;
-};
+    @CEnumValue
+    public native int getCValue();
 
-void sbuf_new(struct sbuf *b);
-const char *sbuf_as_cstr(struct sbuf *b);
-void sbuf_printf(struct sbuf *b, const char *fmt, ...);
-void sbuf_vprintf(struct sbuf *b, const char *fmt, va_list ap);
-void sbuf_quote(struct sbuf *b, const char *s);
-void sbuf_destroy(struct sbuf *b);
-
-#ifdef __cplusplus
+    @CEnumLookup
+    public static native JvmtiError fromValue(int value);
 }
-#endif
-
-#endif /* SBUF_H */

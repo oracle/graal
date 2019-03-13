@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef JNI_AGENT_H
-#define JNI_AGENT_H
+package com.oracle.svm.agent.jvmti;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 
-void OnVMStart_JNI(jvmtiEnv *jvmti, JNIEnv *jni);
+@CEnum("jvmtiEvent")
+@CContext(JvmtiDirectives.class)
+public enum JvmtiEvent {
+    JVMTI_EVENT_VM_START,
+    JVMTI_EVENT_VM_INIT,
+    JVMTI_EVENT_BREAKPOINT,
+    JVMTI_EVENT_THREAD_END;
 
-#ifdef __cplusplus
+    @CEnumValue
+    public native int getCValue();
 }
-#endif
-
-#endif /* JNI_AGENT_H */

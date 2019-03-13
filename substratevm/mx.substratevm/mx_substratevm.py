@@ -334,6 +334,7 @@ tools_map = {
     'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
+    'native-image-agent': ToolDescriptor(image_deps=['substratevm:SVM_AGENT']),
     'native-image-configure' : ToolDescriptor(image_deps=['substratevm:SVM_CONFIGURE']),
 }
 
@@ -932,7 +933,20 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     dir_name='.',
     license_files=[],
     third_party_license_files=[],
-    support_distributions=['substratevm:SVM_GRAALVM_AGENT_SUPPORT'],
+    jar_distributions=[],
+    builder_jar_distributions=[],
+    support_distributions=[],
+    library_configs=[
+        mx_sdk.LibraryConfig(
+            destination="<lib:native-image-agent>",
+            jvm_library=True,
+            jar_distributions=[
+                'substratevm:SVM_AGENT',
+            ],
+            build_args=[
+            ],
+        ),
+    ],
 ))
 
 
