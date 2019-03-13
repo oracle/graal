@@ -1123,7 +1123,8 @@ public final class Context implements AutoCloseable {
                 hostAccess = HostAccess.PUBLIC;
             }
             if (hostAccess == null) {
-                hostAccess = this.allowAllAccess ? HostAccess.PUBLIC : HostAccess.EXPLICIT;
+                // hostAccess = this.allowAllAccess ? HostAccess.PUBLIC : HostAccess.EXPLICIT;
+                hostAccess = HostAccess.PUBLIC;
             }
 
             if (localHostClassFilter == null) {

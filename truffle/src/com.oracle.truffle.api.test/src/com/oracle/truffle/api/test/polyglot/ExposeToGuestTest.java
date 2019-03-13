@@ -60,7 +60,9 @@ public class ExposeToGuestTest {
         Context context = Context.create();
         Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
-        assertPropertyUndefined("PublicValue isn't enough by default", readValue, new PublicValue());
+        // assertPropertyUndefined("PublicValue isn't enough by default", readValue, new
+        // PublicValue());
+        Assert.assertEquals("Right now we allow access to public, that is likely to change however", 42, readValue.execute(new PublicValue()).asInt());
     }
 
     private static void assertPropertyUndefined(String msg, Value readValue, Object value) {
