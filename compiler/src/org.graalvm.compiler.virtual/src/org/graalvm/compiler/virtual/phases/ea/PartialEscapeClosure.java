@@ -45,7 +45,6 @@ import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.AbstractEndNode;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
@@ -60,6 +59,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
@@ -595,18 +595,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         private EconomicMap<ValueNode, ValuePhiNode[]> valuePhis;
         private EconomicMap<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals;
         private final boolean needsCaching;
-        private final boolean forceMaterialization;
 
         public MergeProcessor(Block mergeBlock) {
             super(mergeBlock);
             // merge will only be called multiple times for loop headers
             needsCaching = mergeBlock.isLoopHeader();
-            AbstractMergeNode merge = (AbstractMergeNode) mergeBlock.getBeginNode();
-            if (merge.stateAfter() != null && merge.stateAfter().isExceptionHandlingBCI()) {
-                forceMaterialization = true;
-            } else {
-                forceMaterialization = false;
-            }
         }
 
         protected <T> PhiNode getPhi(T virtual, Stamp stamp) {
@@ -693,6 +686,34 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             // calculate the set of virtual objects that exist in all predecessors
             int[] virtualObjTemp = intersectVirtualObjects(states);
 
+            boolean forceMaterialization = false;
+            ValueNode forcedMaterializationValue = null;
+            FrameState frameState = merge.stateAfter();
+            if (frameState != null && frameState.isExceptionHandlingBCI()) {
+                // We can not go below merges with an exception handling bci
+                // it could create allocations whose slow-path has an invalid framestate
+                forceMaterialization = true;
+                // check if we can reduce the scope of forced materialization to one phi node
+                if (frameState.stackSize() == 1 && merge.next() instanceof UnwindNode) {
+                    assert frameState.outerFrameState() == null;
+                    UnwindNode unwind = (UnwindNode) merge.next();
+                    if (unwind.exception() == frameState.stackAt(0)) {
+                        boolean nullLocals = true;
+                        for (int i = 0; i < frameState.localsSize(); i++) {
+                            if (frameState.localAt(i) != null) {
+                                nullLocals = false;
+                                break;
+                            }
+                        }
+                        if (nullLocals) {
+                            // We found that the merge is directly followed by an unwind
+                            // the Framestate only has the thrown value on the stack and no locals
+                            forcedMaterializationValue = unwind.exception();
+                        }
+                    }
+                }
+            }
+
             boolean materialized;
             do {
                 materialized = false;
@@ -717,8 +738,20 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             ObjectState obj = states[i].getObjectState(object);
                             ensureVirtual &= obj.getEnsureVirtualized();
                             if (forceMaterialization) {
-                                uniqueMaterializedValue = null;
-                                continue;
+                                if (forcedMaterializationValue == null) {
+                                    uniqueMaterializedValue = null;
+                                    continue;
+                                } else {
+                                    ValueNode value = forcedMaterializationValue;
+                                    if (merge.isPhiAtMerge(value)) {
+                                        value = ((ValuePhiNode) value).valueAt(i);
+                                    }
+                                    ValueNode alias = getAlias(value);
+                                    if (alias instanceof VirtualObjectNode && ((VirtualObjectNode) alias).getObjectId() == object) {
+                                        uniqueMaterializedValue = null;
+                                        continue;
+                                    }
+                                }
                             }
                             if (obj.isVirtual()) {
                                 virtualCount++;
