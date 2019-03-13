@@ -43,30 +43,20 @@ package com.oracle.truffle.sl;
 import com.oracle.truffle.api.TruffleFile;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
 
-public final class SLFileDetector extends FileTypeDetector implements TruffleFile.FileTypeDetector {
-
-    @Override
-    public String probeContentType(Path path) throws IOException {
-        return findMimeType(path.toString());
-    }
+public final class SLFileDetector implements TruffleFile.FileTypeDetector {
 
     @Override
     public String findMimeType(TruffleFile file) throws IOException {
-        return findMimeType(file.getName());
+        String name = file.getName();
+        if (name != null && name.endsWith(".sl")) {
+            return SLLanguage.MIME_TYPE;
+        }
+        return null;
     }
 
     @Override
     public Charset findEncoding(TruffleFile file) throws IOException {
-        return null;
-    }
-
-    private static String findMimeType(String name) {
-        if (name != null && name.endsWith(".sl")) {
-            return SLLanguage.MIME_TYPE;
-        }
         return null;
     }
 }

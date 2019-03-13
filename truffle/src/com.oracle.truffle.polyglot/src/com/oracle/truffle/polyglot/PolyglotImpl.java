@@ -1147,18 +1147,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public FileSystem getDefaultFileSystem() {
-            return FileSystems.newDefaultFileSystem();
-        }
-
-        @Override
-        public List<? extends TruffleFile.FileTypeDetector> getFileTypeDetectors(ClassLoader loader) {
-            return LanguageCache.fileTypeDetectors(loader);
-        }
-
-        @Override
-        public boolean isLanguageCacheUsingContextClassLoader(Object contextVMObject) {
-            return ((VMObject) contextVMObject).getAPIAccess().useContextClassLoader();
+        public Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> getFileTypeDetectorsSupplier(Object contextVMObject) {
+            return ((PolyglotContextImpl) contextVMObject).engine.getFileTypeDetectorsSupplier();
         }
     }
 }

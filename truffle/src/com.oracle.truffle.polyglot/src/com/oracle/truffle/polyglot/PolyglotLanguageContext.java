@@ -301,7 +301,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                         envConfig.getOptionValues(language),
                                         envConfig.getApplicationArguments(language),
                                         envConfig.fileSystem,
-                                        getAPIAccess().useContextClassLoader());
+                                        context.engine.getFileTypeDetectorsSupplier());
                         Lazy localLazy = new Lazy(lang);
                         PolyglotValue.createDefaultValues(getImpl(), PolyglotLanguageContext.this, localLazy.valueCache);
                         checkThreadAccess(localEnv);
@@ -451,7 +451,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             try {
                 final Env newEnv = LANGUAGE.patchEnvContext(env, newConfig.out, newConfig.err, newConfig.in,
                                 Collections.emptyMap(), newConfig.getOptionValues(language), newConfig.getApplicationArguments(language),
-                                newConfig.fileSystem);
+                                newConfig.fileSystem, context.engine.getFileTypeDetectorsSupplier());
                 if (newEnv != null) {
                     env = newEnv;
                     LOG.log(Level.FINE, "Successfully patched context of language: {0}", this.language.getId());

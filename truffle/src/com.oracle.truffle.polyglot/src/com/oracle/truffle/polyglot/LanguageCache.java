@@ -200,14 +200,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.fileTypeDetectorClassNames = Collections.emptyList();
     }
 
-    static List<FileTypeDetector> fileTypeDetectors(ClassLoader loader) {
-        List<FileTypeDetector> res = new ArrayList<>();
-        for (LanguageCache cache : languages(loader).values()) {
-            res.addAll(cache.getFileTypeDetectors());
-        }
-        return res;
-    }
-
     static Map<String, LanguageCache> languageMimes() {
         if (TruffleOptions.AOT) {
             return nativeImageMimes;

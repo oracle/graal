@@ -31,49 +31,26 @@ package com.oracle.truffle.llvm;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import java.io.FileInputStream;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.spi.FileTypeDetector;
 
 /**
- * Used by Truffle (via the ServiceLoader infrastructure) to determine the mime-type of input files.
+ * Used by Truffle to determine the mime-type of input files. Registered by
+ * {@link Registration#fileTypeDetectors()}.
  */
-public class LLVMFileDetector extends FileTypeDetector implements TruffleFile.FileTypeDetector {
+public class LLVMFileDetector implements TruffleFile.FileTypeDetector {
     private static final long BC_MAGIC_WORD = 0xdec04342L; // 'BC' c0de
     private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;
     private static final long ELF_MAGIC_WORD = 0x464C457FL;
 
     @Override
-    public String probeContentType(Path path) throws IOException {
-        try (InputStream is = new FileInputStream(path.toString())) {
-            return findMimeType(is);
-        } catch (IOException e) {
-            return null;
-        }
-    }
-
-    @Override
     public String findMimeType(TruffleFile file) throws IOException {
-        try (InputStream is = file.newInputStream(StandardOpenOption.READ)) {
-            return findMimeType(is);
-        } catch (IOException | SecurityException e) {
-            return null;
-        }
-    }
-
-    @Override
-    public Charset findEncoding(TruffleFile file) throws IOException {
-        return null;
-    }
-
-    private static String findMimeType(InputStream is) throws IOException {
-        long magicWord = readMagicWord(is);
+        long magicWord = readMagicWord(file);
         if (magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD) {
             return LLVMLanguage.LLVM_BITCODE_MIME_TYPE;
         } else if (magicWord == ELF_MAGIC_WORD) {
@@ -82,11 +59,20 @@ public class LLVMFileDetector extends FileTypeDetector implements TruffleFile.Fi
         return null;
     }
 
-    private static long readMagicWord(InputStream is) throws IOException {
-        byte[] buffer = new byte[4];
-        if (is.read(buffer) != buffer.length) {
+    @Override
+    public Charset findEncoding(TruffleFile file) throws IOException {
+        return null;
+    }
+
+    private static long readMagicWord(TruffleFile file) {
+        try (InputStream is = file.newInputStream(StandardOpenOption.READ)) {
+            byte[] buffer = new byte[4];
+            if (is.read(buffer) != buffer.length) {
+                return 0;
+            }
+            return Integer.toUnsignedLong(ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getInt());
+        } catch (IOException | SecurityException e) {
             return 0;
         }
-        return Integer.toUnsignedLong(ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getInt());
     }
 }

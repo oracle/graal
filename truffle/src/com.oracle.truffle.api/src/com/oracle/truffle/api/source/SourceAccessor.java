@@ -48,6 +48,7 @@ import java.util.Collection;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
+import java.net.URI;
 import java.util.Set;
 
 final class SourceAccessor extends Accessor {
@@ -80,8 +81,16 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.languageSupport().getMimeType(file, validMimeTypes);
     }
 
-    static TruffleFile getTruffleFile(Object origin, boolean embedder, boolean languageCacheUsesContextClassLoader) {
-        return ACCESSOR.languageSupport().getTruffleFile(origin, embedder, languageCacheUsesContextClassLoader);
+    static Object getCurrentFileSystemContext() {
+        return ACCESSOR.languageSupport().getCurrentFileSystemContext();
+    }
+
+    static TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
+        return ACCESSOR.languageSupport().getTruffleFile(uri, fileSystemContext);
+    }
+
+    static TruffleFile getTruffleFile(String path, Object fileSystemContext) {
+        return ACCESSOR.languageSupport().getTruffleFile(path, fileSystemContext);
     }
 
     static final class SourceSupportImpl extends Accessor.SourceSupport {
@@ -107,13 +116,8 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public String findMimeType(File file, boolean useContextClassLoader) throws IOException {
-            return Source.findMimeType(SourceAccessor.getTruffleFile(file.toPath(), true, useContextClassLoader));
-        }
-
-        @Override
-        public String findMimeType(URL url, boolean useContextClassLoader) throws IOException {
-            return Source.findMimeType(url, url.openConnection(), null, true, useContextClassLoader);
+        public String findMimeType(URL url, Object fileSystemContext) throws IOException {
+            return Source.findMimeType(url, url.openConnection(), null, fileSystemContext);
         }
 
         @Override
@@ -127,13 +131,8 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public void setEmbedderBuilder(SourceBuilder builder, boolean embedder) {
-            builder.embedder(embedder);
-        }
-
-        @Override
-        public void setLanguageCacheUsesContextClassLoader(SourceBuilder builder, boolean useContextClassLoader) {
-            builder.languageCacheUsesContextClassLoader(useContextClassLoader);
+        public void setFileSystemContext(SourceBuilder builder, Object fileSystemContext) {
+            builder.embedderFileSystemContext(fileSystemContext);
         }
     }
 }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.TruffleFile;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,8 +55,12 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.source.Source.SourceBuilder;
+import java.util.ArrayList;
+import java.util.Collection;
 
 class PolyglotSource extends AbstractSourceImpl {
+
+    private volatile Object defaultFileSystemContext;
 
     protected PolyglotSource(AbstractPolyglotImpl engineImpl) {
         super(engineImpl);
@@ -203,13 +208,14 @@ class PolyglotSource extends AbstractSourceImpl {
     @Override
     public String findMimeType(File file) throws IOException {
         Objects.requireNonNull(file);
-        return VMAccessor.SOURCE.findMimeType(file, engineImpl.getAPIAccess().useContextClassLoader());
+        TruffleFile truffleFile = VMAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        return truffleFile.getMimeType();
     }
 
     @Override
     public String findMimeType(URL url) throws IOException {
         Objects.requireNonNull(url);
-        return VMAccessor.SOURCE.findMimeType(url, engineImpl.getAPIAccess().useContextClassLoader());
+        return VMAccessor.SOURCE.findMimeType(url, getDefaultFileSystemContext());
     }
 
     @Override
@@ -267,8 +273,7 @@ class PolyglotSource extends AbstractSourceImpl {
         } else {
             throw new AssertionError();
         }
-        VMAccessor.SOURCE.setEmbedderBuilder(builder, true);
-        VMAccessor.SOURCE.setLanguageCacheUsesContextClassLoader(builder, engineImpl.getAPIAccess().useContextClassLoader());
+        VMAccessor.SOURCE.setFileSystemContext(builder, getDefaultFileSystemContext());
 
         if (content instanceof CharSequence) {
             builder.content((CharSequence) content);
@@ -295,6 +300,21 @@ class PolyglotSource extends AbstractSourceImpl {
         } catch (Exception e) {
             throw new AssertionError(e);
         }
+    }
+
+    private Object getDefaultFileSystemContext() {
+        Object res = defaultFileSystemContext;
+        if (res == null) {
+            synchronized (this) {
+                res = defaultFileSystemContext;
+                if (res == null) {
+                    ClassLoader loader = engineImpl.getAPIAccess().useContextClassLoader() ? Thread.currentThread().getContextClassLoader() : null;
+                    res = VMAccessor.LANGUAGE.createFileSystemContext(FileSystems.newDefaultFileSystem(), FileSystems.newFileTypeDetectorsSupplier(LanguageCache.languages(loader).values()));
+                    defaultFileSystemContext = res;
+                }
+            }
+        }
+        return res;
     }
 
 }
