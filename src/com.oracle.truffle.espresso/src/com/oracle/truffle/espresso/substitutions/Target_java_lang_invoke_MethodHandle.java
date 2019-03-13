@@ -1,16 +1,6 @@
 package com.oracle.truffle.espresso.substitutions;
 
 
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-
-import java.lang.invoke.MethodHandle;
-
 @EspressoSubstitutions
 public class Target_java_lang_invoke_MethodHandle {
 

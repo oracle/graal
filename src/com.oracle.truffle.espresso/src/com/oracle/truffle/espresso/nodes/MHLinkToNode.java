@@ -1,15 +1,11 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
 public class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
@@ -23,31 +19,32 @@ public class MHLinkToNode extends EspressoBaseNode {
 
     @Override
     public Object invokeNaked(VirtualFrame frame) {
-        assert(getMethod().isStatic());
+        assert (getMethod().isStatic());
         Object[] args = frame.getArguments();
-        switch(id) {
-            case Target_java_lang_invoke_MethodHandleNatives._linkToInterface:
-                return getMeta().linkToInterface.invokeDirect(null, args);
-            case Target_java_lang_invoke_MethodHandleNatives._linkToStatic:
-                return getMeta().linkToStatic.invokeDirect(null, args);
-            case Target_java_lang_invoke_MethodHandleNatives._linkToVirtual:
-                return getMeta().linkToVirtual.invokeDirect(null, args);
-            case Target_java_lang_invoke_MethodHandleNatives._linkToSpecial:
-                return getMeta().linkToSpecial.invokeDirect(null, args);
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
+        return executeLinkTo(args);
     }
-
-    @ExplodeLoop
-    private static Object[] copyOfRange(Object[] src, int from, int toExclusive) {
-        int len = toExclusive - from;
-        Object[] dst = new Object[len];
-        for (int i = 0; i < len; ++i) {
-            dst[i] = src[i + from];
-        }
-        return dst;
-    }
+//        switch(id) {
+//            case Target_java_lang_invoke_MethodHandleNatives._linkToInterface:
+//                return getMeta().linkToInterface.invokeDirect(null, args);
+//            case Target_java_lang_invoke_MethodHandleNatives._linkToStatic:
+//                return getMeta().linkToStatic.invokeDirect(null, args);
+//            case Target_java_lang_invoke_MethodHandleNatives._linkToVirtual:
+//                return getMeta().linkToVirtual.invokeDirect(null, args);
+//            case Target_java_lang_invoke_MethodHandleNatives._linkToSpecial:
+//                return getMeta().linkToSpecial.invokeDirect(null, args);
+//            default:
+//                throw EspressoError.shouldNotReachHere();
+//        }
+//
+//    @ExplodeLoop
+//    private static Object[] copyOfRange(Object[] src, int from, int toExclusive) {
+//        int len = toExclusive - from;
+//        Object[] dst = new Object[len];
+//        for (int i = 0; i < len; ++i) {
+//            dst[i] = src[i + from];
+//        }
+//        return dst;
+//    }
 
     private static Object executeLinkTo(Object[] args) {
         assert args.length > 0;

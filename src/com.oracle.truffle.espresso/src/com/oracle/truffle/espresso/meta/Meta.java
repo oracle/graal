@@ -216,7 +216,7 @@ public final class Meta implements ContextAccess {
         linkToSpecial = MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_ObjectArray);
         linkToStatic = MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_ObjectArray);
         linkToVirtual = MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_ObjectArray);
-        type = MethodHandle.lookupField(Name.type, Type.MethodType);
+        MHtype = MethodHandle.lookupField(Name.type, Type.MethodType);
         form = MethodHandle.lookupField(Name.form, Type.LambdaForm);
 
         MethodHandles = knownKlass(Type.MethodHandles);
@@ -392,7 +392,7 @@ public final class Meta implements ContextAccess {
     public final Method linkToSpecial;
     public final Method linkToStatic;
     public final Method linkToVirtual;
-    public final Field type;
+    public final Field MHtype;
     public final Field form;
 
     public final ObjectKlass MethodHandles;

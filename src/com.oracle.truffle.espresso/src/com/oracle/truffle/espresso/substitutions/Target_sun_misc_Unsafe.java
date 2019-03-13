@@ -75,9 +75,6 @@ public final class Target_sun_misc_Unsafe {
         byte[] bytes = data.unwrap();
         StaticObject[] patches = constantPoolPatches == StaticObject.NULL ? null : ((StaticObjectArray)constantPoolPatches).unwrap();
         Klass hostKlass = hostClass.getMirrorKlass();
-        if (hostKlass.getName().toString().contains("BC")) {
-            int i =1 ;
-        }
         ClassfileStream cfs = new ClassfileStream(bytes, null);
 
         ClassfileParser parser = new ClassfileParser(cfs, null, hostKlass, context, patches);
