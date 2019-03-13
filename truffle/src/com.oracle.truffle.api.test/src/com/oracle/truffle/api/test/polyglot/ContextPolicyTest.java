@@ -843,10 +843,12 @@ public class ContextPolicyTest {
             return false;
         }
 
+        @TruffleBoundary
         public static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
             return TruffleLanguage.getCurrentLanguage(languageClass);
         }
 
+        @TruffleBoundary
         public static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
             return TruffleLanguage.getCurrentContext(languageClass);
         }
