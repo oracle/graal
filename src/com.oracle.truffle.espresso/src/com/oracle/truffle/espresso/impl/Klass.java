@@ -495,7 +495,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         for (Method m : getDeclaredMethods()) {
             if (m.isNative() && m.isVarargs() && m.getName() == methodName) {
                 // check signature?
-                throw EspressoError.unimplemented("Dude, what are you doing ?");
+                throw EspressoError.unimplemented("New method handle invoke method? " + methodName);
             }
         }
         return null;

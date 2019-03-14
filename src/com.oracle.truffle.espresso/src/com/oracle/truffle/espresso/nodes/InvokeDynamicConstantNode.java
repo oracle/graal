@@ -9,6 +9,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
+// CallSite linking gave us a MethodHandle. It is safe to always invoke it.
 public final class InvokeDynamicConstantNode extends QuickNode {
 
     private final StaticObjectImpl methodHandle;
@@ -17,10 +18,6 @@ public final class InvokeDynamicConstantNode extends QuickNode {
 
     InvokeDynamicConstantNode(StaticObjectImpl dynamicInvoker, Meta meta, Symbol<Symbol.Signature> invokeSignature, Symbol<Type>[] parsedInvokeSignature) {
         this.methodHandle = dynamicInvoker;
-        // StaticObjectImpl mtype = (StaticObjectImpl)methodHandle.getField(meta.MHtype);
-        // String descriptor = Meta.toHostString((StaticObject)
-        // meta.toMethodDescriptorString.invokeDirect(mtype));
-        // Symbol<Symbol.Signature> sig = meta.getSignatures().lookupValidSignature(descriptor);
         this.invoke = meta.MethodHandle.lookupPolysigMethod(Symbol.Name.invokeExact, invokeSignature);
         this.parsedInvokeSignature = parsedInvokeSignature;
     }

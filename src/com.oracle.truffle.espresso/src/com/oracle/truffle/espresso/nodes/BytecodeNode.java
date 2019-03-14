@@ -1440,13 +1440,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         assert (Bytecodes.INVOKEDYNAMIC == opCode);
 
         Meta meta = getMeta();
-
+        // InvokeDynamicConstant resolving.
         RuntimeConstantPool pool = getConstantPool();
         InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
         BootstrapMethodsAttribute bms = getBootstrapMethods();
         NameAndTypeConstant specifier = pool.nameAndTypeAt(inDy.getNameAndTypeIndex());
 
         assert (bms != null);
+        // Bootstrap method resolution
         BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
 
         Klass declaringKlass = getMethod().getDeclaringKlass();
@@ -1486,13 +1487,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             }
         }
 
+        // Preparing Bootstrap call.
         StaticObject name = meta.toGuestString(specifier.getName(pool));
         Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
         StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1]);
 
-        /* StaticObject memberName = */ getMeta().linkCallSite.invokeDirect(
+        /* StaticObject memberName = (StaticObject) */getMeta().linkCallSite.invokeDirect(
                         null,
                         declaringKlass.mirror(),
                         bsmMH,
@@ -1502,6 +1504,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         StaticObjectImpl unboxedAppendix = appendix.get(0);
 
+        // Node quickening
         if (meta.MethodHandle.isAssignableFrom(unboxedAppendix.getKlass())) {
             return injectAndCall(frame, top, curBCI, new InvokeDynamicConstantNode(unboxedAppendix, meta, invokeSignature, parsedInvokeSignature), opCode);
         } else {

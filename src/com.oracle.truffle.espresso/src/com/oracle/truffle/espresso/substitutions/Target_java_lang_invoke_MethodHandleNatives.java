@@ -20,6 +20,12 @@ import static java.lang.Math.max;
 @EspressoSubstitutions
 public final class Target_java_lang_invoke_MethodHandleNatives {
 
+    /**
+     * plants an already resolved target into a memberName
+     * 
+     * @param self the memberName
+     * @param ref the target. Can be either a mathod or a field.
+     */
     @Substitution
     public static void init(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObjectImpl self, @Host(Object.class) StaticObject ref) {
         Klass mnKlass = self.getKlass();
@@ -153,6 +159,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         return new StaticObjectArray(meta.Object_array, result);
     }
 
+    /**
+     * Complete resolution of a memberName, full with method lookup, flags overwriting and planting
+     * target.
+     * 
+     * @param self The memberName to resolve
+     * @param caller the class that commands the resolution
+     * @return The resolved memberName. Note that it should be the same reference as @self
+     */
     @Substitution
     public static @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject resolve(
                     @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
@@ -245,15 +259,19 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         return memberName;
     }
 
-    // private Method makeIntrinsic(int id, Symbol<Signature> signature) {
-    // throw EspressoError.unimplemented();
-    // }
+    /**
+     * Converts a regular signature to a basic one.
+     * 
+     * @param sig Signature to convert
+     * @param keepLastArg Whether or not to erase the last parameter.
+     * @param signatures known signatures for the contexr.
+     * @return A basic signature corresponding to @sig
+     */
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static Symbol<Signature> toBasic(Symbol<Type>[] sig, boolean keepLastArg, Signatures signatures) {
         int pcount = Signatures.parameterCount(sig, false);
         int params = max(pcount - (keepLastArg ? 0 : 1), 0);
         List<Symbol<Type>> buf = new ArrayList<>();
-
         // Symbol<Type>[] params = new Symbol[max(pcount - (keepLastArg ? 0 : 1), 0)];
 
         for (int i = 0; i < params; i++) {
@@ -278,6 +296,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             return t;
         }
     }
+
+    // MemberName planting
 
     private static void plantInvokeBasic(StaticObjectImpl memberName, Method target, Symbol<Signature> basicSig, Klass defKlass, Symbol<Name> name, Field flagField, int refKind) {
         assert (name == Name.invokeBasic);
@@ -331,7 +351,11 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (isSetter)
             res += ((REF_putField - REF_getField) << MN_REFERENCE_KIND_SHIFT);
         return res;
+
+        // End MemberName planting
     }
+
+    // Helping methods
 
     public static int MHid(Symbol<Name> name) {
         if (name == Name.invoke)
@@ -381,6 +405,10 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         return (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
     }
 
+    // End helping methods
+
+    // Useful thingies.
+
     public static final int // intrinsics
     _none = 0,
                     _invokeGeneric = 1,
@@ -415,43 +443,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     MN_SEARCH_SUPERCLASSES = 0x00100000,
                     MN_SEARCH_INTERFACES = 0x00200000,
                     ALL_KINDS = MN_IS_CONSTRUCTOR | MN_IS_FIELD | MN_IS_METHOD | MN_IS_TYPE;
-
-    /**
-     * Basic types as encoded in the JVM. These code values are not intended for use outside this
-     * class. They are used as part of a private interface between the JVM and this class.
-     */
-    static final int T_BOOLEAN = 4,
-                    T_CHAR = 5,
-                    T_FLOAT = 6,
-                    T_DOUBLE = 7,
-                    T_BYTE = 8,
-                    T_SHORT = 9,
-                    T_INT = 10,
-                    T_LONG = 11,
-                    T_OBJECT = 12,
-                    // T_ARRAY = 13
-                    T_VOID = 14,
-                    // T_ADDRESS = 15
-                    T_ILLEGAL = 99;
-
-    /**
-     * Constant pool entry types.
-     */
-    static final byte CONSTANT_Utf8 = 1,
-                    CONSTANT_Integer = 3,
-                    CONSTANT_Float = 4,
-                    CONSTANT_Long = 5,
-                    CONSTANT_Double = 6,
-                    CONSTANT_Class = 7,
-                    CONSTANT_String = 8,
-                    CONSTANT_Fieldref = 9,
-                    CONSTANT_Methodref = 10,
-                    CONSTANT_InterfaceMethodref = 11,
-                    CONSTANT_NameAndType = 12,
-                    CONSTANT_MethodHandle = 15,  // JSR 292
-                    CONSTANT_MethodType = 16,  // JSR 292
-                    CONSTANT_InvokeDynamic = 18,
-                    CONSTANT_LIMIT = 19;   // Limit to tags found in classfiles
 
     /**
      * Access modifier flags.
