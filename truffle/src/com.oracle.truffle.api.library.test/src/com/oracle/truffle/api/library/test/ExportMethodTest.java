@@ -45,20 +45,17 @@ import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.test.otherPackage.OtherPackageNode;
+import com.oracle.truffle.api.library.test.otherPackage.OtherPackageNode.InnerDSLNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ExpectError;
 
 @SuppressWarnings({"unused", "static-method"})
@@ -201,10 +198,21 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     // export varargs as non-varargs
     @ExportLibrary(ExportsTestLibrary4.class)
+    static final class ExportsInnerDSLNode {
+
+        @ExportMessage
+        public Object varArgsObject(Object[] args, @Cached InnerDSLNode node) {
+            return args[0];
+        }
+
+    }
+
+    // export varargs as non-varargs
+    @ExportLibrary(ExportsTestLibrary4.class)
     static final class ExportsTestVarArgs {
 
         @ExportMessage
-        public Object varArgsObject(Object[] args, @Cached CachedTestNode node) {
+        public Object varArgsObject(Object[] args, @Cached OtherPackageNode.InnerDSLNode node) {
             return args[0];
         }
 
