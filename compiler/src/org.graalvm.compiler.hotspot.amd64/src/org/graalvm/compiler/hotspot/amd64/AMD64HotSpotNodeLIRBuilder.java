@@ -286,7 +286,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
                     case Byte:
                         return lookupForeignCall(AMD64ArrayEqualsStub.STUB_BYTE_ARRAY_EQUALS_DIRECT);
                     case Char:
-                        return lookupForeignCall(AMD64ArrayEqualsStub.STUB_BYTE_ARRAY_EQUALS_DIRECT);
+                        return lookupForeignCall(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS_DIRECT);
                     default:
                         return null;
                 }
