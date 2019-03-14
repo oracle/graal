@@ -1072,6 +1072,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                              */
                             if (virtual.hasIdentity() && !isSingleUsageAllocation(getPhiValueAt(phi, i), virtualObjs, states[i])) {
                                 compatible = false;
+                                break;
                             }
                         }
                     }
