@@ -205,16 +205,20 @@ public abstract class ExecutableNode extends Node {
             if (current == null) {
                 this.referenceCache = new ReferenceCache(this, languageClass, null);
             } else {
-                int count = 0;
-                ReferenceCache original = current;
-                do {
-                    count++;
-                    current = current.next;
-                } while (current != null);
-                if (count >= 5) {
+                if (sourceVM == null) {
                     this.referenceCache = GENERIC;
                 } else {
-                    this.referenceCache = new ReferenceCache(this, languageClass, original);
+                    int count = 0;
+                    ReferenceCache original = current;
+                    do {
+                        count++;
+                        current = current.next;
+                    } while (current != null);
+                    if (count >= 5) {
+                        this.referenceCache = GENERIC;
+                    } else {
+                        this.referenceCache = new ReferenceCache(this, languageClass, original);
+                    }
                 }
             }
         } finally {
