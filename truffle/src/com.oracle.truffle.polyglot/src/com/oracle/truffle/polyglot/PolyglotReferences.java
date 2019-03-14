@@ -49,7 +49,11 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 
-public class PolyglotReferences {
+final class PolyglotReferences {
+
+    private PolyglotReferences() {
+        // no instances
+    }
 
     static ContextReference<Object> createAlwaysSingleContext(PolyglotLanguage language) {
         return new SingleContext(language);
