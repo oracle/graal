@@ -88,7 +88,7 @@ public class HostAccessTest {
 
     @Test
     public void banAccessToReflection() throws Exception {
-        HostAccess config = HostAccess.newBuilder(HostAccess.PUBLIC).preventAccess(Class.class).preventAccess(Method.class).preventAccess(Field.class).preventAccess(Proxy.class).preventAccess(
+        HostAccess config = HostAccess.newBuilder().allowPublicAccess().preventAccess(Class.class).preventAccess(Method.class).preventAccess(Field.class).preventAccess(Proxy.class).preventAccess(
                         Object.class).build();
 
         Context c = Context.newBuilder().allowHostAccess(config).build();
@@ -109,7 +109,7 @@ public class HostAccessTest {
 
     @Test
     public void banAccessToEquals() throws Exception {
-        HostAccess config = HostAccess.newBuilder(HostAccess.PUBLIC).preventAccess(Object.class.getMethod("equals", Object.class)).build();
+        HostAccess config = HostAccess.newBuilder().allowPublicAccess().preventAccess(Object.class.getMethod("equals", Object.class)).build();
 
         Context c = Context.newBuilder().allowHostAccess(config).build();
 
@@ -141,7 +141,7 @@ public class HostAccessTest {
 
     @Test
     public void inheritFromPublic() throws Exception {
-        HostAccess config = HostAccess.newBuilder(HostAccess.PUBLIC).build();
+        HostAccess config = HostAccess.newBuilder().allowPublicAccess().build();
 
         Context c = Context.newBuilder().allowHostAccess(config).build();
 

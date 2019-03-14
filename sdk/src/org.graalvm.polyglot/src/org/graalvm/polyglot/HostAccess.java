@@ -51,7 +51,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -75,9 +75,9 @@ public final class HostAccess {
 
     private final String name;
     private final Set<Class<? extends Annotation>> annotations;
-    private final Set<Member> excludes;
-    private final Set<Member> members;
-    private final HostAccess base;
+    private final Set<AnnotatedElement> excludes;
+    private final Set<AnnotatedElement> members;
+    private final boolean allowPublic;
     private Object impl;
 
     /**
@@ -86,21 +86,21 @@ public final class HostAccess {
      * 
      * @since 1.0 RC14
      */
-    public static final HostAccess EXPLICIT = new HostAccess(null, null, null, "HostAccess.EXPLICIT", null);
+    public static final HostAccess EXPLICIT = new HostAccess(Collections.singleton(HostAccess.Export.class), null, null, "HostAccess.EXPLICIT", false);
 
     /**
      * All public access, but no reflection access.
      * 
      * @since 1.0 RC14
      */
-    public static final HostAccess PUBLIC = new HostAccess(null, null, null, "HostAccess.PUBLIC", null);
+    public static final HostAccess PUBLIC = new HostAccess(null, null, null, "HostAccess.PUBLIC", true);
 
-    HostAccess(Set<Class<? extends Annotation>> annotations, Set<Member> excludes, Set<Member> members, String name, HostAccess base) {
+    HostAccess(Set<Class<? extends Annotation>> annotations, Set<AnnotatedElement> excludes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
         this.annotations = annotations;
         this.excludes = excludes;
         this.members = members;
         this.name = name;
-        this.base = base;
+        this.allowPublic = allowPublic;
     }
 
     /**
@@ -110,40 +110,27 @@ public final class HostAccess {
      * @since 1.0 RC14
      */
     public static Builder newBuilder() {
-        return EXPLICIT.new Builder(null);
-    }
-
-    /**
-     * Configure your own access configuration based on another existing. Useful to ban access to
-     * certain well know classes, like {@link Class} or {@link Proxy}, etc.
-     *
-     * @param base base access configuration
-     * @return new builder
-     * @since 1.0 RC15
-     */
-    public static Builder newBuilder(HostAccess base) {
-        return EXPLICIT.new Builder(base);
+        return EXPLICIT.new Builder();
     }
 
     boolean allowAccess(AnnotatedElement member) {
-        if (this == HostAccess.EXPLICIT) {
-            return hasAnnotation(member, HostAccess.Export.class);
-        }
-        if (this == HostAccess.PUBLIC) {
-            return true;
-        }
-        if (excludes.contains(member)) {
+        if (excludes != null && excludes.contains(member)) {
             return false;
         }
-        if (members.contains(member)) {
+        if (allowPublic) {
             return true;
         }
-        for (Class<? extends Annotation> ann : annotations) {
-            if (hasAnnotation(member, ann)) {
-                return true;
+        if (members != null && members.contains(member)) {
+            return true;
+        }
+        if (annotations != null) {
+            for (Class<? extends Annotation> ann : annotations) {
+                if (member.getAnnotation(ann) != null) {
+                    return true;
+                }
             }
         }
-        return base != null && base.allowAccess(member);
+        return false;
     }
 
     synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory) {
@@ -199,12 +186,11 @@ public final class HostAccess {
      */
     public final class Builder {
         private final Set<Class<? extends Annotation>> annotations = new HashSet<>();
-        private final Set<Member> excludes = new HashSet<>();
-        private final Set<Member> members = new HashSet<>();
-        private final HostAccess base;
+        private final Set<AnnotatedElement> excludes = new HashSet<>();
+        private final Set<AnnotatedElement> members = new HashSet<>();
+        private boolean allowPublic;
 
-        Builder(HostAccess base) {
-            this.base = base;
+        Builder() {
         }
 
         /**
@@ -216,6 +202,17 @@ public final class HostAccess {
          */
         public Builder allowAccessAnnotatedBy(Class<? extends Annotation> annotation) {
             annotations.add(annotation);
+            return this;
+        }
+
+        /**
+         * Public elements can be accessed.
+         *
+         * @return this builder
+         * @since 1.0 RC14
+         */
+        public Builder allowPublicAccess() {
+            allowPublic = true;
             return this;
         }
 
@@ -294,7 +291,7 @@ public final class HostAccess {
          * @since 1.0 RC14
          */
         public HostAccess build() {
-            return new HostAccess(annotations, excludes, members, null, base);
+            return new HostAccess(annotations, excludes, members, null, allowPublic);
         }
     }
 }
