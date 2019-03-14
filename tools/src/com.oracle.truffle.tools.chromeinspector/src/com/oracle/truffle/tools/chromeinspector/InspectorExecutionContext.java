@@ -63,7 +63,6 @@ public final class InspectorExecutionContext {
     private final boolean inspectInitialization;
     private final List<URI> sourceRoots;
     private final TruffleLogger log;
-    private final ThreadLocal<Boolean> logging = new ThreadLocal<>();
 
     private volatile DebuggerSuspendedInfo suspendedInfo;
     private volatile SuspendedThreadExecutor suspendThreadExecutor;
@@ -107,43 +106,20 @@ public final class InspectorExecutionContext {
 
     public void logMessage(String prefix, Object message) {
         if (log.isLoggable(Level.FINE)) {
-            setLogging(true);
-            try {
-                log.fine("CONTEXT " + id + " " + prefix + message);
-            } finally {
-                setLogging(false);
-            }
+            log.fine("CONTEXT " + id + " " + prefix + message);
         }
     }
 
     public void logException(Throwable ex) {
         if (log.isLoggable(Level.FINE)) {
-            doLogException("CONTEXT " + id, ex);
+            log.log(Level.FINE, "CONTEXT " + id, ex);
         }
     }
 
     public void logException(String prefix, Throwable ex) {
         if (log.isLoggable(Level.FINE)) {
-            doLogException("CONTEXT " + id + " " + prefix, ex);
+            log.log(Level.FINE, "CONTEXT " + id + " " + prefix, ex);
         }
-    }
-
-    private void doLogException(String message, Throwable ex) {
-        setLogging(true);
-        try {
-            log.log(Level.FINE, message, ex);
-        } finally {
-            setLogging(false);
-        }
-    }
-
-    boolean isLogging() {
-        Boolean is = logging.get();
-        return is != null && is;
-    }
-
-    private void setLogging(boolean is) {
-        logging.set(is);
     }
 
     Iterable<URI> getSourcePath() {
