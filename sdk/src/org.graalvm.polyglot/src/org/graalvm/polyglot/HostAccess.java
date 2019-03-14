@@ -154,7 +154,7 @@ public final class HostAccess {
             return m.getAnnotation(annotationType) != null;
         }
         if (member instanceof Constructor) {
-            Constructor<?> c = (Constructor) member;
+            Constructor<?> c = (Constructor<?>) member;
             return c.getAnnotation(annotationType) != null;
         }
         return false;
