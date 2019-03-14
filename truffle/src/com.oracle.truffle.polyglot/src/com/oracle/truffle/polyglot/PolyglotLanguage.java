@@ -65,6 +65,8 @@ import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
+    static final boolean CONSERVATIVE_REFERENCES = true;
+
     final PolyglotEngineImpl engine;
     final LanguageCache cache;
     final LanguageInfo info;
@@ -82,9 +84,9 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     private final LinkedList<PolyglotLanguageInstance> instancePool = new LinkedList<>();
 
     final ContextProfile profile;
-    private final MultiLanguageSupplier multiLanguageSupplier;
-    private final MultiContextSupplier multiContextSupplier;
-    private final SingleOrMultiContextSupplier singleOrMultiContextSupplier;
+    private final LanguageReference<TruffleLanguage<Object>> multiLanguageSupplier;
+    private final ContextReference<Object> multiContextSupplier;
+    private final ContextReference<Object> singleOrMultiContextSupplier;
     final Assumption singleLanguage = Truffle.getRuntime().createAssumption("Single language instance.");
     private int instanceCount;
 
@@ -99,7 +101,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
         this.multiLanguageSupplier = new MultiLanguageSupplier(this);
         this.multiContextSupplier = new MultiContextSupplier(this);
-        this.singleOrMultiContextSupplier = new SingleOrMultiContextSupplier(this);
+        if (CONSERVATIVE_REFERENCES) {
+            this.singleOrMultiContextSupplier = multiContextSupplier;
+        } else {
+            this.singleOrMultiContextSupplier = new SingleOrMultiContextSupplier(this);
+        }
     }
 
     PolyglotLanguageContext getCurrentLanguageContext() {
@@ -253,7 +259,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return singleOrMultiContextSupplier;
     }
 
-    LanguageReference<TruffleLanguage<?>> getLanguageSupplier() {
+    LanguageReference<TruffleLanguage<Object>> getLanguageSupplier() {
         return multiLanguageSupplier;
     }
 
@@ -423,7 +429,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     }
 
-    private static final class MultiLanguageSupplier extends LanguageReference<TruffleLanguage<?>> {
+    private static final class MultiLanguageSupplier extends LanguageReference<TruffleLanguage<Object>> {
 
         final PolyglotLanguage language;
 
@@ -431,12 +437,15 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             this.language = language;
         }
 
+        @SuppressWarnings("unchecked")
         @Override
-        public TruffleLanguage<?> get() {
-            assert !language.engine.singleContext.isValid();
-            assert !language.singleLanguage.isValid();
+        public TruffleLanguage<Object> get() {
+            if (!CONSERVATIVE_REFERENCES) {
+                assert !language.engine.singleContext.isValid();
+                assert !language.singleLanguage.isValid();
+            }
             assert language.assertCorrectEngine();
-            return PolyglotContextImpl.requireContext().getContext(language).getLanguageInstance().spi;
+            return (TruffleLanguage<Object>) PolyglotContextImpl.requireContext().getContext(language).getLanguageInstance().spi;
         }
     }
 
