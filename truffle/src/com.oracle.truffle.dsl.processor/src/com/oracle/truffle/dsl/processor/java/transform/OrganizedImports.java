@@ -202,23 +202,25 @@ public final class OrganizedImports {
 
     private boolean needsImport(Element enclosed, TypeMirror importType) {
         String importPackagName = getPackageName(importType);
-        TypeElement enclosedElement = findNearestEnclosingType(enclosed).orElse(null);
+        TypeElement enclosedType = findNearestEnclosingType(enclosed).orElse(null);
+
         if (importPackagName == null) {
             return false;
         } else if (importPackagName.equals("java.lang")) {
             return false;
-        } else if (importPackagName.equals(getPackageName(topLevelClass)) && ElementUtils.isTopLevelClass(importType)) {
-            return false; // same package name -> no import
+        } else if (importPackagName.equals(getPackageName(topLevelClass)) &&
+                        ElementUtils.elementEquals(enclosed.getEnclosingElement(), ElementUtils.castTypeElement(importType).getEnclosingElement())) {
+            return false; // same enclosing element -> no import
         } else if (importType instanceof GeneratedTypeMirror && ElementUtils.getPackageName(importType).isEmpty()) {
             return false;
         } else if (ElementUtils.isDeprecated(importType)) {
             return false;
         }
 
-        String enclosedElementId = ElementUtils.getUniqueIdentifier(enclosedElement.asType());
+        String enclosedElementId = ElementUtils.getUniqueIdentifier(enclosedType.asType());
         Set<String> autoImportedTypes = autoImportCache.get(enclosedElementId);
         if (autoImportedTypes == null) {
-            List<Element> elements = ElementUtils.getElementHierarchy(enclosedElement);
+            List<Element> elements = ElementUtils.getElementHierarchy(enclosedType);
             autoImportedTypes = new HashSet<>();
             for (Element element : elements) {
                 if (element.getKind().isClass() || element.getKind().isInterface()) {
