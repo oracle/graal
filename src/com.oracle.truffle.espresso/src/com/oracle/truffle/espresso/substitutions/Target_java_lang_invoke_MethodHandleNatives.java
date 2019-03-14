@@ -18,7 +18,7 @@ import static java.lang.Math.max;
 public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
-    public static void init(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObjectImpl self, @Host(Object.class)StaticObjectImpl ref) {
+    public static void init(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObjectImpl self, @Host(Object.class)StaticObject ref) {
         Klass mnKlass = self.getKlass();
         Meta meta = mnKlass.getContext().getMeta();
 
@@ -27,18 +27,19 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (targetKlass.getType() == Type.Method) {
             Method target = Method.getHostReflectiveMethodRoot(ref);
             self.setHiddenField("vmtarget", target);
+            self.setHiddenField("invocationSignature", target.getRawSignature());
             Field flagField = meta.MNflags;
             int refKind = target.getRefKind();
             self.setField(flagField, getMethodFlags(target, refKind));
             self.setField(meta.MNclazz, target.getDeclaringKlass().mirror());
         } else {
-            //TODO(garcia)
             assert(targetKlass.getType() == Type.Field);
+            int refkind = getRefKind((int)self.getField(meta.MNflags));
             StaticObjectImpl guestField = (StaticObjectImpl) ref;
-//            Type fieldType = (StaticObjectClass)guestField.getField(meta.Field_type);
-            String fieldName = Meta.toHostString((StaticObject)guestField.getField(meta.Field_type));
-
-            throw EspressoError.unimplemented(ref.getKlass().toString());
+            Symbol<Type> fieldType = ((StaticObjectClass)guestField.getField(meta.Field_type)).getMirrorKlass().getType();
+            Symbol<Name> fieldName = meta.getNames().getOrCreate(Meta.toHostString((StaticObject)guestField.getField(meta.Field_type)));
+            Klass fieldKlass = ((StaticObjectClass)guestField.getField(meta.Field_class)).getMirrorKlass();
+            plantFieldMemberName(self, fieldType, fieldKlass, fieldName, meta.MNflags, refkind);
         }
     }
 
@@ -48,7 +49,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         return 0;
     }
 
-    // TODO verifyConstants
+    // TODO(garcia) verifyConstants
 
     @Substitution
     public static int getMembers(
@@ -219,8 +220,10 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                                 appendix
                         );
                         StaticObject getAppendix = appendix.get(0);
+
                         //TODO(garcia)
                         throw EspressoError.unimplemented(result.toString() + getAppendix.toString());
+
                     }
                 } else if (refKind == REF_invokeVirtual || refKind == REF_invokeSpecial) {
                     plantMethodMemberName(memberName, sig, defKlass, nSymbol, flagField, refKind);
@@ -362,7 +365,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         return (id != _invokeGeneric);
     }
 
-    private static int getRefKind(int flags) {
+    public static int getRefKind(int flags) {
         return (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
     }
 

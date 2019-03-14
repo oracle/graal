@@ -23,28 +23,6 @@ public class MHLinkToNode extends EspressoBaseNode {
         Object[] args = frame.getArguments();
         return executeLinkTo(args);
     }
-//        switch(id) {
-//            case Target_java_lang_invoke_MethodHandleNatives._linkToInterface:
-//                return getMeta().linkToInterface.invokeDirect(null, args);
-//            case Target_java_lang_invoke_MethodHandleNatives._linkToStatic:
-//                return getMeta().linkToStatic.invokeDirect(null, args);
-//            case Target_java_lang_invoke_MethodHandleNatives._linkToVirtual:
-//                return getMeta().linkToVirtual.invokeDirect(null, args);
-//            case Target_java_lang_invoke_MethodHandleNatives._linkToSpecial:
-//                return getMeta().linkToSpecial.invokeDirect(null, args);
-//            default:
-//                throw EspressoError.shouldNotReachHere();
-//        }
-//
-//    @ExplodeLoop
-//    private static Object[] copyOfRange(Object[] src, int from, int toExclusive) {
-//        int len = toExclusive - from;
-//        Object[] dst = new Object[len];
-//        for (int i = 0; i < len; ++i) {
-//            dst[i] = src[i + from];
-//        }
-//        return dst;
-//    }
 
     private static Object executeLinkTo(Object[] args) {
         assert args.length > 0;

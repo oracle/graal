@@ -32,7 +32,6 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.CallSiteObject;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
@@ -92,11 +91,6 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         // TODO(peterssen): IsNull Node?.
         final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
         assert receiver != null;
-        //return executeBranch(receiver, frame, top, root);
-        if (receiver.isCallSite()) {
-            CallSiteObject cso = (CallSiteObject) receiver;
-            return cso.invoke(frame, top, root);
-        }
         final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = executeVirtual(receiver, args);

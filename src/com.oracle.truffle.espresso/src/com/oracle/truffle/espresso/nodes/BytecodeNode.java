@@ -1102,14 +1102,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (e instanceof EspressoException) {
                         throw e;
                     }
-                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI: " + curBCI);
-                    e.printStackTrace();
+//                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI: " + curBCI);
+//                    e.printStackTrace();
                     CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwEx(getMeta().NullPointerException);
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-                System.err.println("Finding handler for a " + e.getException().getKlass() + " at: " + curBCI + " in " + getMethod());
+//                System.err.println("Finding handler for a " + e.getException().getKlass() + " at: " + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;
@@ -1468,6 +1468,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     break;
                 case INTEGER:
                     args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));
+                    args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));
                     break;
                 case LONG:
                     args[i] = meta.boxLong(pool.longAt(bsEntry.argAt(i)));
@@ -1484,10 +1485,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         }
 
         StaticObject name = meta.toGuestString(specifier.getName(pool));
-        StaticObject methodType = signatureToMethodType(getSignatures().parsed(specifier.getSignature(pool)), declaringKlass, getMeta());
+        Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
+        Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
+        StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
         StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1]);
 
-        StaticObject memberName = (StaticObject)getMeta().linkCallSite.invokeDirect(
+        /*StaticObject memberName = */ getMeta().linkCallSite.invokeDirect(
                 null,
                 declaringKlass.mirror(),
                 bsmMH,
@@ -1497,24 +1500,11 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         StaticObjectImpl unboxedAppendix = appendix.get(0);
 
-        return injectAndCall(frame, top, curBCI, new InvokeDynamicNode(unboxedAppendix, meta), opCode);
-
-//        Method target = resolveMethod(opCode, mh.getRefIndex());
-//
-//        Symbol<Symbol.Type>[] parsed = getMethod().getContext().getSignatures().parsed(inDy.getSignature(pool));
-//        ObjectKlass CSOKlass = (ObjectKlass) getMethod().getContext().getRegistries().loadKlassWithBootClassLoader(Signatures.returnType(parsed));
-//
-//        StaticObject emulatedThis;
-//
-//        if (getMethod().isStatic()) {
-//            emulatedThis = null;
-//        } else {
-//            emulatedThis = getLocalObject(frame, 0);
-//        }
-//        CallSiteObject cso = new CallSiteObject(CSOKlass, target, parsed, mh.getRefKind(), emulatedThis);
-//        return injectAndCall(frame, top, curBCI, new InvokeDynamicNode(cso), opCode);
-
-        // return putKind(frame, top, cso, JavaKind.Object);
+        if (meta.MethodHandle.isAssignableFrom(unboxedAppendix.getKlass())) {
+            return injectAndCall(frame, top, curBCI, new InvokeDynamicConstantNode(unboxedAppendix, meta, invokeSignature, parsedInvokeSignature), opCode);
+        } else {
+            return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(unboxedAppendix, meta, invokeSignature, parsedInvokeSignature), opCode);
+        }
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {
@@ -1842,54 +1832,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         }
         if (hasReceiver) {
             args[0] = peekObject(frame, argAt);
-        }
-        return args;
-    }
-
-    @ExplodeLoop
-    public Object[] peekArgumentsWithCSO(VirtualFrame frame, int top, boolean hasReceiver, final CallSiteObject cso) {
-        Object[] CSOargs = cso.getArgs();
-        final int nCSOargs = cso.getCapturedArgs();
-
-        Symbol<Type>[] signature = cso.getTargetParsedSig();
-
-        int argCount = Signatures.parameterCount(signature, false);
-
-        int extraParam = hasReceiver ? 1 : 0;
-        final Object[] args = new Object[argCount + extraParam];
-
-        CompilerAsserts.partialEvaluationConstant(argCount);
-        CompilerAsserts.partialEvaluationConstant(signature);
-        CompilerAsserts.partialEvaluationConstant(hasReceiver);
-        CompilerAsserts.partialEvaluationConstant(nCSOargs);
-
-        for (int j = 0; j < nCSOargs; j++) {
-            args[j] = CSOargs[j];
-        }
-
-        int argAt = top - 1;
-        for (int i = argCount - 1; i >= nCSOargs; --i) {
-            JavaKind kind = Signatures.parameterKind(signature, i);
-            // @formatter:off
-            // Checkstyle: stop
-            switch (kind) {
-                case Boolean : args[i + extraParam] = (peekInt(frame, argAt) != 0);  break;
-                case Byte    : args[i + extraParam] = (byte) peekInt(frame, argAt);  break;
-                case Short   : args[i + extraParam] = (short) peekInt(frame, argAt); break;
-                case Char    : args[i + extraParam] = (char) peekInt(frame, argAt);  break;
-                case Int     : args[i + extraParam] = peekInt(frame, argAt);         break;
-                case Float   : args[i + extraParam] = peekFloat(frame, argAt);       break;
-                case Long    : args[i + extraParam] = peekLong(frame, argAt);        break;
-                case Double  : args[i + extraParam] = peekDouble(frame, argAt);      break;
-                case Object  : args[i + extraParam] = peekObject(frame, argAt);      break;
-                default      : throw EspressoError.shouldNotReachHere();
-            }
-            // @formatter:on
-            // Checkstyle: resume
-            argAt -= kind.getSlotCount();
-        }
-        if (hasReceiver && nCSOargs == 0) {
-            args[0] = args[0] = peekObject(frame, argAt);
         }
         return args;
     }

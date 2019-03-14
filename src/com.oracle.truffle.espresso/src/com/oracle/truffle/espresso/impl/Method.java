@@ -416,32 +416,20 @@ public final class Method implements ModifiersProvider, ContextAccess {
      */
     @TruffleBoundary
     public Object invokeDirect(Object self, Object... args) {
-        getContext().getJNI().clearPendingException();
-        if (!(self == null) && ((StaticObject) self).isCallSite()) {
-            CallSiteObject cso = (CallSiteObject) self;
-            Object[] fullArgs = new Object[args.length + cso.getArgs().length];
-            int i;
-            for (i = 0; i < cso.getArgs().length; i++) {
-                fullArgs[i] = cso.getArgs()[i];
-            }
-            for (int j = 0; j < args.length; j++) {
-                fullArgs[i + j] = args[j];
-            }
-            return cso.getTarget().getCallTarget().call(fullArgs);
+    getContext().getJNI().clearPendingException();
+        if (isStatic()) {
+            assert args.length == Signatures.parameterCount(getParsedSignature(), false);
+            getDeclaringKlass().safeInitialize();
+            return getCallTarget().call(args);
         } else {
-            if (isStatic()) {
-                assert args.length == Signatures.parameterCount(getParsedSignature(), false);
-                getDeclaringKlass().safeInitialize();
-                return getCallTarget().call(args);
-            } else {
-                assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
-                Object[] fullArgs = new Object[args.length + 1];
-                System.arraycopy(args, 0, fullArgs, 1, args.length);
-                fullArgs[0] = self;
-                return getCallTarget().call(fullArgs);
-            }
+            assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
+            Object[] fullArgs = new Object[args.length + 1];
+            System.arraycopy(args, 0, fullArgs, 1, args.length);
+            fullArgs[0] = self;
+            return getCallTarget().call(fullArgs);
         }
     }
+
 
     public final boolean isClassInitializer() {
 //        assert Signatures.returnKind(getParsedSignature()) == JavaKind.Void;
