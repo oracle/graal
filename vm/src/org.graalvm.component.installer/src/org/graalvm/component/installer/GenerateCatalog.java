@@ -34,20 +34,26 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.stream.Collectors;
 import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY;
 import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSION;
 import org.graalvm.component.installer.jar.JarMetaLoader;
@@ -84,9 +90,10 @@ public final class GenerateCatalog {
         OPTIONS.put("f", "s");
         OPTIONS.put("n", "s");
         OPTIONS.put("a", "s");
-        OPTIONS.put("n", "");  // GraalVM release name
+        OPTIONS.put("n", "");   // GraalVM release name
         OPTIONS.put("b", "s");  // URL Base
         OPTIONS.put("p", "s");  // fileName base
+        OPTIONS.put("l", "s");   // list files
     }
 
     private Map<String, GraalVersion> graalVMReleases = new LinkedHashMap<>();
@@ -214,10 +221,19 @@ public final class GenerateCatalog {
         // catalogContents.append(MessageFormat.format(
         // "{2}.{0}={1}\n", graalVersionPrefix, label, GRAALVM_CAPABILITY
         // ));
-
-        while (env.hasParameter()) {
-            locations.add(env.nextParameter());
+        
+        if (env.hasOption("l")) {
+            Path listFrom = Paths.get(env.optValue("l"));
+            Collection<Path> paths  = Files.walk(listFrom).collect(Collectors.toList());
+            Files.walk(listFrom).filter((p) -> p.toString().endsWith(".jar")).forEach(
+                    (p)-> locations.add(p.toString())
+            );
+        } else {
+            while (env.hasParameter()) {
+                locations.add(env.nextParameter());
+            }
         }
+        
         /*
          * try (BufferedReader rr = new BufferedReader(new InputStreamReader(System.in))) { String
          * l;
@@ -287,10 +303,15 @@ public final class GenerateCatalog {
             version = graalVersionPrefix;
             return graalVersionPrefix;
         }
-        return String.format("%s_%s_%s",
-                        version = forceVersion != null ? forceVersion : m.get(CAP_GRAALVM_VERSION),
+        version = forceVersion != null ? forceVersion : SystemUtils.normalizeOldVersions(info.getVersionString());
+        if (version == null && info.getId().equals(BundleConstants.GRAAL_COMPONENT_ID)) {
+            version = SystemUtils.normalizeOldVersions(info.getVersionString());
+        }
+        return String.format("%s_%s/%s",
                         os = forceOS != null ? forceOS : m.get(CommonConstants.CAP_OS_NAME),
-                        arch = forceArch != null ? forceArch : m.get(CommonConstants.CAP_OS_ARCH));
+                        arch = forceArch != null ? forceArch : m.get(CommonConstants.CAP_OS_ARCH),
+                        version
+        );
     }
 
     private void generateReleases() {
@@ -378,9 +399,9 @@ public final class GenerateCatalog {
                 }
                 String url = (urlPrefix == null || urlPrefix.isEmpty()) ? name : urlPrefix + "/" + name;
                 catalogContents.append(MessageFormat.format(
-                                "Component.{0}.{1}={2}\n", prefix, bid, url));
+                                "Component.{0}/{1}={2}\n", prefix, bid, url));
                 catalogContents.append(MessageFormat.format(
-                                "Component.{0}.{1}-hash={2}\n", prefix, bid, digest2String(hash)));
+                                "Component.{0}/{1}-hash={2}\n", prefix, bid, digest2String(hash)));
                 for (Object a : atts.keySet()) {
                     String key = a.toString();
                     String val = atts.getValue(key);
@@ -388,7 +409,7 @@ public final class GenerateCatalog {
                         continue;
                     }
                     catalogContents.append(MessageFormat.format(
-                                    "Component.{0}.{1}-{2}={3}\n", prefix, bid, key, val));
+                                    "Component.{0}/{1}-{2}={3}\n", prefix, bid, key, val));
                 }
             }
         }

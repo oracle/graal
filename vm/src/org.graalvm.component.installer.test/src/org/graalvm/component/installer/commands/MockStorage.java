@@ -31,6 +31,7 @@ import static org.graalvm.component.installer.CommonConstants.CAP_OS_NAME;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -83,8 +84,9 @@ public class MockStorage implements ComponentStorage {
     }
 
     @Override
-    public ComponentInfo loadComponentMetadata(String tag) throws IOException {
-        return installed.stream().filter((ci) -> ci.getId().equals(tag)).findFirst().orElse(null);
+    public Set<ComponentInfo> loadComponentMetadata(String tag) throws IOException {
+        ComponentInfo ret = installed.stream().filter((ci) -> ci.getId().equals(tag)).findFirst().orElse(null);
+        return ret == null ? null : Collections.singleton(ret);
     }
 
     @Override

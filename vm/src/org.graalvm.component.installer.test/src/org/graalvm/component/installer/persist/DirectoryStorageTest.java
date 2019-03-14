@@ -44,6 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.component.installer.BundleConstants;
@@ -165,13 +166,23 @@ public class DirectoryStorageTest extends TestBase {
         assertEquals(Collections.emptyList(), components);
     }
 
+    private ComponentInfo loadLastComponent(String id) throws IOException {
+        Set<ComponentInfo> infos = storage.loadComponentMetadata(id);
+        if (infos == null || infos.isEmpty()) {
+            return null;
+        }
+        List<ComponentInfo> sorted = new ArrayList<>(infos);
+        Collections.sort(sorted, ComponentInfo.versionComparator());
+        return sorted.get(sorted.size() - 1);
+    }
+
     /**
      * Test of loadComponentMetadata method, of class RegistryStorage.
      */
     @Test
     public void testLoadComponentMetadata() throws Exception {
         copyDir("list1", registryPath);
-        ComponentInfo info = storage.loadComponentMetadata("fastr");
+        ComponentInfo info = loadLastComponent("fastr");
         assertEquals("org.graalvm.fastr", info.getId());
         assertEquals("1.0", info.getVersionString());
         assertEquals("0.32", info.getRequiredGraalValues().get("graalvm_version"));
@@ -183,7 +194,7 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testLoadComponentMetadata2() throws Exception {
         copyDir("list1", registryPath);
-        ComponentInfo info = storage.loadComponentMetadata("fastr-2");
+        ComponentInfo info = loadLastComponent("fastr-2");
         assertEquals("org.graalvm.fastr", info.getId());
 
         assertTrue(info.isPolyglotRebuild());
@@ -199,7 +210,7 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void loadComponentFiles() throws Exception {
         copyDir("list1", registryPath);
-        ComponentInfo info = storage.loadComponentMetadata("fastr");
+        ComponentInfo info = loadLastComponent("fastr");
         storage.loadComponentFiles(info);
         List<String> files = info.getPaths();
         assertEquals(Arrays.asList(
@@ -216,7 +227,7 @@ public class DirectoryStorageTest extends TestBase {
         copyDir("list1", registryPath);
         Files.delete(registryPath.resolve(SystemUtils.fileName("org.graalvm.fastr.filelist")));
 
-        ComponentInfo info = storage.loadComponentMetadata("fastr");
+        ComponentInfo info = loadLastComponent("fastr");
         storage.loadComponentFiles(info);
         List<String> files = info.getPaths();
         assertTrue(files.isEmpty());
@@ -228,7 +239,7 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testLoadMissingComponentMetadata() throws Exception {
         copyDir("list1", registryPath);
-        assertNull(storage.loadComponentMetadata("rrr"));
+        assertNull(loadLastComponent("rrr"));
     }
 
     @Test
@@ -425,7 +436,7 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testAcceptLicense() throws Exception {
         copyDir("list1", registryPath);
-        ComponentInfo info = storage.loadComponentMetadata("fastr");
+        ComponentInfo info = loadLastComponent("fastr");
 
         storage.recordLicenseAccepted(info, "cafebabe", "This is a dummy license");
         Path p = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe.accepted/org.graalvm.fastr"));
@@ -437,8 +448,8 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testLicenseAccepted1() throws Exception {
         copyDir("list1", registryPath);
-        ComponentInfo info = storage.loadComponentMetadata("fastr");
-        ComponentInfo info2 = storage.loadComponentMetadata("ruby");
+        ComponentInfo info = loadLastComponent("fastr");
+        ComponentInfo info2 = loadLastComponent("ruby");
 
         Path p = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe.accepted/org.graalvm.fastr"));
         Files.createDirectories(p.getParent());

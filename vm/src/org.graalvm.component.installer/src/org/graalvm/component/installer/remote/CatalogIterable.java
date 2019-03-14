@@ -137,12 +137,12 @@ public class CatalogIterable implements ComponentIterable {
         @Override
         protected FileDownloader createDownloader() {
             FileDownloader d = super.createDownloader();
-            return channel.configureDownloader(d);
+            return channel.configureDownloader(getCatalogInfo(), d);
         }
 
         @Override
         protected MetadataLoader metadataFromLocal(Path localFile) throws IOException {
-            return channel.createLocalFileLoader(localFile, isVerifyJars());
+            return channel.createLocalFileLoader(getCatalogInfo(), localFile, isVerifyJars());
         }
 
         @Override

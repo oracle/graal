@@ -136,7 +136,7 @@ public class InstallerTest extends TestBase {
     @Test
     public void testSetReplaceComponents() throws IOException {
         setupComponentInstall("truffleruby2.jar");
-        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "1.0");
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.32");
         storage.installed.add(fakeInfo);
 
         installer.setReplaceComponents(true);
@@ -147,7 +147,7 @@ public class InstallerTest extends TestBase {
     @Test
     public void testFailOnExistingComponent() throws IOException {
         setupComponentInstall("truffleruby2.jar");
-        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "1.0");
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.32");
         storage.installed.add(fakeInfo);
 
         exception.expect(DependencyException.Conflict.class);
@@ -159,7 +159,7 @@ public class InstallerTest extends TestBase {
     @Test
     public void testSkipExistingComponent() throws IOException {
         setupComponentInstall("truffleruby2.jar");
-        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "1.0");
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.32");
         storage.installed.add(fakeInfo);
 
         installer.setFailOnExisting(false);

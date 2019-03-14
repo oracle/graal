@@ -28,7 +28,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
+import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
@@ -41,15 +43,6 @@ import org.graalvm.component.installer.persist.MetadataLoader;
  * @author sdedic
  */
 public interface SoftwareChannel {
-    /**
-     * True, if the channel is willing to handle the URL. URL is passed as a String so that custom
-     * protocols may be used without registering an URLStreamHandlerFactory.
-     * 
-     * @param urlString url string, including the scheme
-     * @return true, if the channel is willing to work with the URL
-     */
-    boolean setupLocation(String urlString);
-
     /**
      * Binds the channel implementation to I/O.
      * 
@@ -64,6 +57,8 @@ public interface SoftwareChannel {
      * @return registry instance
      */
     ComponentRegistry getRegistry();
+    
+    ComponentStorage  getStorage();
 
     /**
      * Configures the downloader with specific options. The downloader may be even replaced with a
@@ -72,7 +67,7 @@ public interface SoftwareChannel {
      * @param dn the downloader to configure
      * @return the downloader instance.
      */
-    FileDownloader configureDownloader(FileDownloader dn);
+    FileDownloader configureDownloader(ComponentInfo info, FileDownloader dn);
 
     /**
      * Creates metadata + archive loader from a downloaded file.
@@ -81,7 +76,7 @@ public interface SoftwareChannel {
      * @verify if true, verify archives
      * @return loader instance
      */
-    MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException;
+    MetadataLoader createLocalFileLoader(ComponentInfo info, Path localFile, boolean verify) throws IOException;
 
     /**
      * Adds options to the set of global options. Global options allow to accept specific options
@@ -100,5 +95,16 @@ public interface SoftwareChannel {
      */
     default String globalOptionsHelp() {
         return null;
+    }
+    
+    interface Factory {
+        /**
+         * True, if the channel is willing to handle the URL. URL is passed as a String so that custom
+         * protocols may be used without registering an URLStreamHandlerFactory.
+         * 
+         * @param urlSpec url string, including the scheme
+         * @return true, if the channel is willing to work with the URL
+         */
+        SoftwareChannel createChannel(String urlSpec, CommandInput input, Feedback output);
     }
 }

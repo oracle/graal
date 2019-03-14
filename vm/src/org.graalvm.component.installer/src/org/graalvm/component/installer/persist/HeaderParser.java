@@ -293,7 +293,8 @@ public class HeaderParser {
             }
             advance();
             if (c == '.') {
-                if (++partCount > 3 || !partContents) {
+                ++partCount;
+                if (!partContents) {
                     throw metaErr("ERROR_InvalidVersion");
                 }
                 partContents = false;

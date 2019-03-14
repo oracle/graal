@@ -28,11 +28,14 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import org.graalvm.component.installer.Version;
 
 /**
  * Information about an installable Component.
@@ -47,6 +50,11 @@ public final class ComponentInfo {
      * Version of the component.
      */
     private final String versionString;
+    
+    /**
+     * Parsed version of the Component.
+     */
+    private final Version version;
 
     /**
      * Human-readable name of the component.
@@ -89,6 +97,14 @@ public final class ComponentInfo {
         this.id = id;
         this.versionString = versionString;
         this.name = name;
+        this.version = Version.fromString(versionString);
+    }
+    
+    public ComponentInfo(String id, String name, Version v) {
+        this.id = id;
+        this.versionString = v == null ? null : v.toString();
+        this.name = name;
+        this.version = v == null ? Version.NO_VERSION : v;
     }
 
     public String getId() {
@@ -194,5 +210,63 @@ public final class ComponentInfo {
 
     public void setLicenseType(String licenseType) {
         this.licenseType = licenseType;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 37 * hash + Objects.hashCode(this.id);
+        hash = 37 * hash + Objects.hashCode(this.version);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final ComponentInfo other = (ComponentInfo) obj;
+        if (!Objects.equals(this.id, other.id)) {
+            return false;
+        }
+        if (!Objects.equals(this.version, other.version)) {
+            return false;
+        }
+        return true;
+    }
+    
+    public Version getVersion() {
+        return version;
+    }
+    
+    private static final Comparator<ComponentInfo>  COMPARATOR_VERSIONS = new Comparator<ComponentInfo>() {
+        @Override
+        public int compare(ComponentInfo o1, ComponentInfo o2) {
+            if (o1 == null) {
+                if (o2 == null) {
+                    return 0;
+                } else {
+                    return -1;
+                }
+            } else if (o2 == null) {
+                return 1;
+            }
+            
+            return o1.getVersion().compareTo(o2.getVersion());
+        }
+    };
+    
+    public String toString() {
+        return getId() + "[" + getVersion().toString() + "]"; // NOI18N
+    }
+    
+    public static Comparator<ComponentInfo> versionComparator() {
+        return COMPARATOR_VERSIONS;
     }
 }

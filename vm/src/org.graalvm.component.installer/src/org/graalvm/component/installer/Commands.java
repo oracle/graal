@@ -174,4 +174,10 @@ public interface Commands {
      */
     String OPTION_NON_INTERACTIVE = "N";
     String LONG_OPTION_NON_INTERACTIVE = "non-interactive";
+    
+    /**
+     * Operate on all components, irrespective of version.
+     */
+    String OPTION_ALL = "a";
+    String LONG_OPTION_ALL = "all-versions";
 }

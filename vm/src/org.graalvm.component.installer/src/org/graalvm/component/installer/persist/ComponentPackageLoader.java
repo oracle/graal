@@ -45,6 +45,8 @@ import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.Feedback;
@@ -120,9 +122,16 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         this.infoOnly = only;
         return this;
     }
-
+    
     private HeaderParser parseHeader(String header) throws MetadataException {
+        return parseHeader2(header, null);
+    }
+
+    private HeaderParser parseHeader2(String header, Function<String, String> fn) throws MetadataException {
         String s = valueSupplier.apply(header);
+        if (fn != null) {
+            s = fn.apply(s);
+        }
         return new HeaderParser(header, s, feedback).mustExist();
     }
 
@@ -185,12 +194,12 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         }
         nfo.addWorkingDirectories(workDirs);
     }
-
+    
     protected ComponentInfo createBaseComponentInfo() {
         parse(
                         () -> id = parseHeader(BundleConstants.BUNDLE_ID).parseSymbolicName(),
                         () -> name = parseHeader(BundleConstants.BUNDLE_NAME).getContents(id),
-                        () -> version = parseHeader(BundleConstants.BUNDLE_VERSION).version(),
+                        () -> version = parseHeader2(BundleConstants.BUNDLE_VERSION, SystemUtils::normalizeOldVersions).version(),
                         () -> {
                             info = new ComponentInfo(id, name, version);
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());

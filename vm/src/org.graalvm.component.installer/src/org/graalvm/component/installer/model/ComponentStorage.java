@@ -64,10 +64,10 @@ public interface ComponentStorage {
      * Deserializes Component's metadata.
      * 
      * @param id component ID
-     * @return ComponentInfo instance
+     * @return matching ComponentInfo instances
      * @throws IOException on I/O errors
      */
-    ComponentInfo loadComponentMetadata(String id) throws IOException;
+    Set<ComponentInfo> loadComponentMetadata(String id) throws IOException;
 
     Map<String, String> loadGraalVersionInfo();
 

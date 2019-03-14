@@ -27,6 +27,7 @@ package org.graalvm.component.installer;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -198,4 +199,27 @@ public class SystemUtils {
         }
         return comps;
     }
+
+
+    private static final Pattern OLD_VERSION_PATTERN = Pattern.compile("([0-9]+\\.[0-9]+\\.[0-9]+)(-([a-z]+)([0-9]+))?");
+    
+    public static String normalizeOldVersions(String v) {
+        if (v == null) {
+            return null;
+        }
+        Matcher m = OLD_VERSION_PATTERN.matcher(v);
+        if (!m.matches()) {
+            return v;
+        }
+        String numbers = m.group(1);
+        String rel = m.group(3);
+        String relNo = m.group(4);
+        
+        if (rel == null) {
+            return numbers + ".0";
+        } else {
+            return numbers + "-0." + rel + "." + relNo;
+        }
+    }
+
 }
