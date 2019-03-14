@@ -45,12 +45,14 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
@@ -103,7 +105,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.nio.charset.Charset;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assume;
 
@@ -137,7 +138,7 @@ public class VirtualizedFileSystemTest {
     private final Configuration cfg;
 
     @Parameterized.Parameters(name = "{0}")
-    public static Collection<Configuration> createParameters() throws IOException {
+    public static Collection<Configuration> createParameters() throws IOException, ReflectiveOperationException {
         assert cfgs == null;
         final List<Configuration> result = new ArrayList<>();
         final FileSystem fullIO = FileSystemProviderTest.newFullIOFileSystem();
@@ -201,6 +202,24 @@ public class VirtualizedFileSystemTest {
         createContent(memDir, fileSystem);
         ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, true, true, true));
+
+        // PreInitializeContextFileSystem in image build time
+        fileSystem = createPreInitializeContextFileSystem();
+        Path workDir = mkdirs(fileSystem.parsePath(Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()).toString()), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(workDir);
+        createContent(workDir, fileSystem);
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        result.add(new Configuration("Context pre-initialization filesystem build time", ctx, workDir, fileSystem, false, true, true, true));
+
+        // PreInitializeContextFileSystem in image execution time
+        fileSystem = createPreInitializeContextFileSystem();
+        workDir = mkdirs(fileSystem.parsePath(Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()).toString()), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(workDir);
+        switchToImageExecutionTime(fileSystem, workDir);
+        createContent(workDir, fileSystem);
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        result.add(new Configuration("Context pre-initialization filesystem execution time", ctx, workDir, fileSystem, false, true, true, true));
+
         cfgs = result;
         return result;
     }
@@ -1582,6 +1601,24 @@ public class VirtualizedFileSystemTest {
             resetLanguageHomes();
         }
         ctx.eval(LANGUAGE_ID, "");
+    }
+
+    private static FileSystem createPreInitializeContextFileSystem() throws ReflectiveOperationException {
+        Class<? extends FileSystem> clazz = Class.forName("com.oracle.truffle.polyglot.FileSystems$PreInitializeContextFileSystem").asSubclass(FileSystem.class);
+        Constructor<? extends FileSystem> init = clazz.getDeclaredConstructor();
+        init.setAccessible(true);
+        return init.newInstance();
+    }
+
+    private static void switchToImageExecutionTime(FileSystem fileSystem, Path cwd) throws ReflectiveOperationException {
+        String workDir = cwd.toString();
+        Class<? extends FileSystem> clazz = Class.forName("com.oracle.truffle.polyglot.FileSystems$PreInitializeContextFileSystem").asSubclass(FileSystem.class);
+        Method preInitClose = clazz.getDeclaredMethod("onPreInitializeContextEnd");
+        preInitClose.setAccessible(true);
+        preInitClose.invoke(fileSystem);
+        Method patchStart = clazz.getDeclaredMethod("onLoadPreinitializedContext", FileSystem.class);
+        patchStart.setAccessible(true);
+        patchStart.invoke(fileSystem, FileSystemProviderTest.newFullIOFileSystem(Paths.get(workDir)));
     }
 
     static class ForwardingFileSystem implements FileSystem {

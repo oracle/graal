@@ -1166,7 +1166,7 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
         preInitializedContext = null;
         if (context != null) {
             FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
-            preInitFs.patchDelegate(config.fileSystem);
+            preInitFs.onLoadPreinitializedContext(config.fileSystem);
             FileSystem oldFileSystem = config.fileSystem;
             config.fileSystem = preInitFs;
 
