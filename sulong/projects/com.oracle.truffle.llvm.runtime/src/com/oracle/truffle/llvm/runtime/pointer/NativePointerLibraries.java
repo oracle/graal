@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -66,15 +67,14 @@ abstract class NativePointerLibraries extends CommonPointerLibraries {
     }
 
     @ExportMessage
-    @ImportStatic(LLVMLanguage.class)
     static class Execute {
 
         @SuppressWarnings("unused")
         @Specialization(limit = "5", guards = {"value.asNative() == cachedAddress", "cachedDescriptor != null"})
         static Object doNativeCached(@SuppressWarnings("unused") LLVMPointerImpl value, Object[] args,
                         @Cached("value.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context,
-                        @Cached("context.getFunctionDescriptor(value)") LLVMFunctionDescriptor cachedDescriptor,
+                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
+                        @Cached("getDescriptor(ctxRef, value)") LLVMFunctionDescriptor cachedDescriptor,
                         @CachedLibrary("cachedDescriptor") InteropLibrary interop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             return interop.execute(cachedDescriptor, args);
         }
@@ -91,6 +91,9 @@ abstract class NativePointerLibraries extends CommonPointerLibraries {
             }
         }
 
+        static LLVMFunctionDescriptor getDescriptor(ContextReference<LLVMContext> ctxRef, LLVMNativePointer value) {
+            return ctxRef.get().getFunctionDescriptor(value);
+        }
     }
 
     @ExportMessage(library = LLVMNativeLibrary.class)
