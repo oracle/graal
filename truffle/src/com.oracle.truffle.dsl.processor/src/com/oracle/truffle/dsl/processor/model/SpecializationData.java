@@ -224,7 +224,7 @@ public final class SpecializationData extends TemplateMethod {
             VariableElement cacheVar = cache.getParameter().getVariableElement();
             if (boundVars.contains(cacheVar)) {
                 // TODO cycle detection needed here.
-                if (!visitedExpressions.contains(cache.getDefaultExpression())) {
+                if (cache.getDefaultExpression() != null && !visitedExpressions.contains(cache.getDefaultExpression())) {
                     foundCaches.addAll(getBoundCachesImpl(visitedExpressions, cache.getDefaultExpression()));
                 }
                 foundCaches.add(cache);
@@ -237,16 +237,18 @@ public final class SpecializationData extends TemplateMethod {
         this.kind = kind;
     }
 
-    public boolean isDynamicParameterBound(DSLExpression expression) {
+    public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
         Set<VariableElement> boundVariables = expression.findBoundVariableElements();
         for (Parameter parameter : getDynamicParameters()) {
             if (boundVariables.contains(parameter.getVariableElement())) {
                 return true;
             }
         }
-        for (CacheExpression cache : getBoundCaches(expression)) {
-            if (cache.isCachedContext() || cache.isCachedLanguage()) {
-                return true;
+        if (transitive) {
+            for (CacheExpression cache : getBoundCaches(expression)) {
+                if (cache.isCachedContext() || cache.isCachedLanguage()) {
+                    return true;
+                }
             }
         }
         return false;
@@ -503,7 +505,7 @@ public final class SpecializationData extends TemplateMethod {
                 }
                 DSLExpression guardExpression = guard.getExpression();
                 Set<VariableElement> boundVariables = guardExpression.findBoundVariableElements();
-                if (isDynamicParameterBound(guardExpression)) {
+                if (isDynamicParameterBound(guardExpression, true)) {
                     for (CacheExpression cache : getCaches()) {
                         if (cache.isAlwaysInitialized()) {
                             continue;

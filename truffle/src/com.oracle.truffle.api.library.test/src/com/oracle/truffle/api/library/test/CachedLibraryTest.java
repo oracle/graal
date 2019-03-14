@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.library.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -51,12 +52,15 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.AssumptionNodeGen;
+import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.BoundaryFallthroughNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ConstantLimitNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ConstantNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.DoubleNodeGen;
@@ -487,6 +491,43 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         @Fallback
         public static String fallback(Object a0) {
             return "fallback";
+        }
+
+    }
+
+    @Test
+    public void testBoundaryFallthrough() {
+        BoundaryFallthroughNode node = adopt(BoundaryFallthroughNodeGen.create());
+        node.execute(1);
+        node.execute(2);
+        node.execute(3);
+        node.execute(3);
+        node.execute(5);
+        try {
+            node.execute(6);
+            fail();
+        } catch (UnsupportedSpecializationException e) {
+        }
+        assertEquals(5, node.invocationCount);
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class BoundaryFallthroughNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        private int invocationCount = 0;
+
+        @Specialization(guards = "arg == cachedArg", limit = "2")
+        Object doNative(Object arg,
+                        @Cached("arg") Object cachedArg,
+                        @CachedLibrary("arg") InteropLibrary interop) {
+            invocationCount++;
+            return null;
+        }
+
+        protected static final Object initArg(Object arg, Object ctx) {
+            return arg;
         }
 
     }

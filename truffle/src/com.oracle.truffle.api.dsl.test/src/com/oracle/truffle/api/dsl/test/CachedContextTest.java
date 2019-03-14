@@ -43,8 +43,7 @@ package com.oracle.truffle.api.dsl.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
-
-import java.util.function.Supplier;
+import static org.junit.Assert.fail;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -55,12 +54,17 @@ import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.TransitiveCachedLibraryNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.Valid1NodeGen;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.Valid2NodeGen;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -154,6 +158,43 @@ public class CachedContextTest extends AbstractPolyglotTest {
         @Specialization(guards = "g0(ctx)")
         Object s0(@CachedContext(CachedContextTestLanguage.class) Env ctx) {
             return ctx;
+        }
+    }
+
+    @Test
+    public void testTransitiveCached() {
+        setupEnv();
+        context.initialize(TEST_LANGUAGE);
+        TransitiveCachedLibraryNode node = adoptNode(TransitiveCachedLibraryNodeGen.create()).get();
+        node.execute(1);
+        node.execute(2);
+        node.execute(2);
+        try {
+            node.execute(3);
+            fail();
+        } catch (UnsupportedSpecializationException o) {
+        }
+        assertEquals(3, node.invocationCount);
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class TransitiveCachedLibraryNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        private int invocationCount = 0;
+
+        @Specialization(guards = "arg == cachedArg", limit = "2")
+        Object doNative(Object arg,
+                        @CachedContext(CachedContextTestLanguage.class) Env ctx,
+                        @Cached("initArg(arg, ctx)") Object cachedArg,
+                        @CachedLibrary("cachedArg") InteropLibrary interop) {
+            invocationCount++;
+            return null;
+        }
+
+        protected static final Object initArg(Object arg, Object ctx) {
+            return arg;
         }
     }
 

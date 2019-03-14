@@ -3136,7 +3136,7 @@ public class FlatNodeGenFactory {
         boundaryMethod.getThrownTypes().addAll(parentMethod.getThrownTypes());
         innerBuilder = boundaryMethod.createBuilder();
         ((CodeTypeElement) parentMethod.getEnclosingElement()).add(boundaryMethod);
-        builder.startStatement().startCall("this", boundaryMethod);
+        builder.startReturn().startCall("this", boundaryMethod);
         frameState.addReferencesTo(builder, STATE_VALUE, createSpecializationLocalName(specialization));
         builder.end().end();
 
@@ -4060,7 +4060,7 @@ public class FlatNodeGenFactory {
 
         CodeTree assertion = null; // overrule with assertion
         if (mode.isFastPath() || mode.isGuardFallback()) {
-            if (!specialization.isDynamicParameterBound(expression)) {
+            if (!specialization.isDynamicParameterBound(expression, true)) {
                 assertion = CodeTreeBuilder.createBuilder().startAssert().tree(expressionCode).end().build();
                 expressionCode = null;
             }

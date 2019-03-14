@@ -1866,7 +1866,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     assumptionExpression.addError("Incompatible return type %s. Assumptions must be assignable to %s or %s.", getSimpleName(expression.getResolvedType()),
                                     getSimpleName(assumptionType), getSimpleName(assumptionArrayType));
                 }
-                if (specialization.isDynamicParameterBound(expression)) {
+                if (specialization.isDynamicParameterBound(expression, true)) {
                     specialization.addError("Assumption expressions must not bind dynamic parameter values.");
                 }
             } catch (InvalidExpressionException e) {
@@ -1904,7 +1904,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 specialization.addError(annotationValue, "Incompatible return type %s. Limit expressions must return %s.", getSimpleName(expression.getResolvedType()),
                                 getSimpleName(expectedType));
             }
-            if (specialization.isDynamicParameterBound(expression)) {
+            if (specialization.isDynamicParameterBound(expression, true)) {
                 specialization.addError(annotationValue, "Limit expressions must not bind dynamic parameter values.");
             }
 
@@ -2153,6 +2153,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
         specialization.setExcludeCompanion(uncachedSpecialization);
 
+        boolean seenDynamicParameterBound = false;
+
         for (int i = 0; i < libraries.size(); i++) {
             CacheExpression cachedLibrary = libraries.get(i);
             CacheExpression uncachedLibrary = uncachedLibraries.get(i);
@@ -2184,11 +2186,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (receiverExpression == null) {
                 continue;
             }
-            DSLExpression substituteExpression = null;
+            DSLExpression substituteCachedExpression = null;
+            DSLExpression substituteUncachedExpression = null;
 
             // try substitutions
             if (mode == ParseMode.EXPORTED_MESSAGE) {
-
                 Parameter receiverParameter = specialization.findParameterOrDie(specialization.getNode().getChildExecutions().get(0));
                 if (receiverExpression instanceof DSLExpression.Variable) {
                     DSLExpression.Variable variable = (DSLExpression.Variable) receiverExpression;
@@ -2201,21 +2203,25 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                 DSLExpression.Variable nodeReceiver = new DSLExpression.Variable(null, "this");
                                 nodeReceiver.setResolvedTargetType(exportLibraryType);
                                 nodeReceiver.setResolvedVariable(new CodeVariableElement(exportLibraryType, "this"));
-                                substituteExpression = nodeReceiver;
+                                substituteCachedExpression = nodeReceiver;
                             }
                         }
                     }
                 }
-
-                if (substituteExpression == null && supportsLibraryMerge(receiverExpression, receiverParameter.getVariableElement())) {
-                    substituteExpression = receiverExpression;
+                if (substituteCachedExpression == null && supportsLibraryMerge(receiverExpression, receiverParameter.getVariableElement())) {
+                    substituteCachedExpression = receiverExpression;
                     cachedLibrary.setMergedLibrary(true);
                 }
             }
 
-            if (substituteExpression != null) {
-                cachedLibrary.setDefaultExpression(substituteExpression);
-                cachedLibrary.setUncachedExpression(substituteExpression);
+            seenDynamicParameterBound = specialization.isDynamicParameterBound(receiverExpression, false);
+
+            if (substituteCachedExpression != null) {
+                if (substituteUncachedExpression == null) {
+                    substituteUncachedExpression = substituteCachedExpression;
+                }
+                cachedLibrary.setDefaultExpression(substituteCachedExpression);
+                cachedLibrary.setUncachedExpression(substituteUncachedExpression);
                 cachedLibrary.setAlwaysInitialized(true);
                 return null;
             } else {
@@ -2260,7 +2266,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
             specialization.addError("The limit attribute must be specified if @%s is used with a dynamic parameter. E.g. add limit=\"3\" to resolve this.", CachedLibrary.class.getSimpleName());
         }
 
-        if (!specialization.hasMultipleInstances()) {
+        if (!seenDynamicParameterBound) {
+            // no uncached version needed if multiple instances of caches are impossible as they are
+            // bound by a cache only.
             return null;
         }
 
