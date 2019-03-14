@@ -36,9 +36,10 @@ import tempfile
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, copy_tree, remove_tree # pylint: disable=no-name-in-module
 from os.path import join, exists, basename, dirname, islink
-from shutil import copy2
+from shutil import copy2, move
 import collections
 import itertools
+import pipes
 import glob
 from xml.dom.minidom import parse
 from argparse import ArgumentParser
@@ -620,7 +621,7 @@ def javac_image_command(javac_path):
             join(mx_compiler.jdk.home, "jre", "lib", "rt.jar")]
 
 
-def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None):
+def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False):
     unittest_args = unittest_args
     build_args = build_args or []
     run_args = run_args or ['--verbose']
@@ -639,6 +640,13 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
             mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
         unittest_image = native_image(build_args + extra_image_args + ['--tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
+        if preserve_image:
+            build_dir = join(svmbuild_dir(), 'junit')
+            mkpath(build_dir)
+            unittest_image_dst = join(build_dir, basename(unittest_image))
+            move(unittest_image, unittest_image_dst)
+            unittest_image = unittest_image_dst
+        mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
     finally:
         remove_tree(junit_tmp_dir)
@@ -659,17 +667,19 @@ def unmask(args):
 
 def _native_unittest(native_image, cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
-    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist']
+    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
     parser.add_argument(all_args[0], metavar='ARG', nargs='*', default=[])
     parser.add_argument(all_args[1], metavar='ARG', nargs='*', default=[])
     parser.add_argument('--blacklist', help='run all testcases not specified in <file>', metavar='<file>')
     parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>')
+    parser.add_argument('-p', '--preserve-image', help='do not delete the generated native image', action='store_true')
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
     pargs = parser.parse_args(cmdline_args)
 
     blacklist = unmask([pargs.blacklist])[0] if pargs.blacklist else None
     whitelist = unmask([pargs.whitelist])[0] if pargs.whitelist else None
+
     if whitelist:
         try:
             with open(whitelist) as fp:
@@ -684,7 +694,7 @@ def _native_unittest(native_image, cmdline_args):
             mx.log('warning: could not read blacklist: ' + blacklist)
 
     unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test']
-    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist)
+    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image)
 
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
