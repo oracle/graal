@@ -327,7 +327,8 @@ class ToolDescriptor:
         self.native_deps = native_deps if native_deps else []
 
 tools_map = {
-    'truffle' : ToolDescriptor(image_deps=['truffle:TRUFFLE_NFI']),
+    'truffle' : ToolDescriptor(),
+    'nfi' : ToolDescriptor(image_deps=['truffle:TRUFFLE_NFI']),
     'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
