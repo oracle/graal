@@ -46,9 +46,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
+import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -108,7 +110,7 @@ public final class HostAccess {
 
     boolean allowAccess(AnnotatedElement member) {
         if (this == HostAccess.EXPLICIT) {
-            return member.getAnnotation(HostAccess.Export.class) != null;
+            return hasAnnotation(member, HostAccess.Export.class);
         }
         if (this == HostAccess.PUBLIC) {
             return true;
@@ -117,7 +119,7 @@ public final class HostAccess {
             return true;
         }
         for (Class<? extends Annotation> ann : annotations) {
-            if (member.getAnnotation(ann) != null) {
+            if (hasAnnotation(member, ann)) {
                 return true;
             }
         }
@@ -140,6 +142,22 @@ public final class HostAccess {
     @Override
     public String toString() {
         return name == null ? super.toString() : name;
+    }
+
+    private static boolean hasAnnotation(AnnotatedElement member, Class<? extends Annotation> annotationType) {
+        if (member instanceof Field) {
+            Field f = (Field) member;
+            return f.getAnnotation(annotationType) != null;
+        }
+        if (member instanceof Method) {
+            Method m = (Method) member;
+            return m.getAnnotation(annotationType) != null;
+        }
+        if (member instanceof Constructor) {
+            Constructor<?> c = (Constructor) member;
+            return c.getAnnotation(annotationType) != null;
+        }
+        return false;
     }
 
     /**
