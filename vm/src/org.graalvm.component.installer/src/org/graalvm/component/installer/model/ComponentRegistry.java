@@ -27,11 +27,13 @@ package org.graalvm.component.installer.model;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +42,8 @@ import java.util.Set;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
+import org.graalvm.component.installer.Version;
 
 /**
  * Models catalog of installed components. Works closely with {@link ComponentStorage} which handles
@@ -48,6 +52,11 @@ import org.graalvm.component.installer.Feedback;
 public final class ComponentRegistry {
     private final ComponentStorage storage;
     private final Feedback env;
+    
+    /**
+     * The registry of installed components
+     */
+    private ComponentRegistry installedRegistry;
 
     /**
      * All components have been loaded.
@@ -58,7 +67,12 @@ public final class ComponentRegistry {
      * Indexes files path -> component(s).
      */
     private Map<String, Collection<String>> fileIndex;
-    private Map<String, ComponentInfo> components = new HashMap<>();
+    
+    /**
+     * For each component ID, a list of components, in their ascending
+     * Version order.
+     */
+    private Map<String, List<ComponentInfo>> components = new HashMap<>();
     private Map<String, String> graalAttributes;
     private Map<String, Collection<String>> replacedFiles;
     private Set<String> componentDirectories;
@@ -67,22 +81,122 @@ public final class ComponentRegistry {
      * True, if replaced files have been changed.
      */
     private boolean replaceFilesChanged;
+    
+    /**
+     * Allows update to a newer distribution, not just patches.
+     * This will cause components from newer GraalVM distributions to be accepted, even though it means a reinstall.
+     * Normally just minor patches are accepted so the current component can be replaced.
+     */
+    private boolean allowDistUpdate;
 
     public ComponentRegistry(Feedback env, ComponentStorage storage) {
+        this(env, null, storage);
+    }
+    
+    public ComponentRegistry(Feedback env, ComponentRegistry installedReg, ComponentStorage storage) {
         this.storage = storage;
         this.env = env;
+        this.installedRegistry = installedReg;
+    }
+    
+    public boolean compatibleVersion(Version v) {
+        Version gv = getGraalVersion();
+        if (allowDistUpdate) {
+            return gv.updatable().equals(v.updatable());
+        } else {
+            return gv.onlyVersion().equals(v.installVersion());
+        }
+    }
+    
+    /**
+     * Should return a most recent Component, matching the current
+     * state. With a special option 
+     * @param id
+     * @return 
+     */
+    private ComponentInfo mostRecentComponent(String id, Version.Match versionSelect) {
+        return mostRecentComponent(id, versionSelect, false);
     }
 
-    public ComponentInfo findComponent(String id) {
-        if (!allLoaded) {
-            return loadSingleComponent(id, false, false);
+    /**
+     * @return True, if components from newer distributions are allowed.
+     */
+    public boolean isAllowDistUpdate() {
+        return allowDistUpdate;
+    }
+
+    /**
+     * Enables components from newer distributions. 
+     * @param allowDistUpdate 
+     */
+    public void setAllowDistUpdate(boolean allowDistUpdate) {
+        this.allowDistUpdate = allowDistUpdate;
+    }
+    
+    private ComponentInfo mostRecentComponent(String id, Version.Match versionSelect, boolean fallback) {
+        if (id == null) {
+            return null;
         }
-        ComponentInfo ci = components.get(id);
+        return mostRecentComponent(components.get(id), versionSelect, fallback);
+    }
+    
+    private ComponentInfo mostRecentComponent(Collection<ComponentInfo> infos, Version.Match versionSelect, boolean fallback) {
+        if (infos == null) {
+            return null;
+        }
+        List<ComponentInfo> cis = new ArrayList<>(infos);
+        Collections.sort(cis, ComponentInfo.versionComparator());
+        return compatibleComponent(cis, versionSelect, fallback);
+    }
+    
+    private ComponentInfo compatibleComponent(List<ComponentInfo> cis, Version.Match versionSelect, boolean fallback) {
+        if (cis == null) {
+            return null;
+        }
+        ComponentInfo first = null;
+        
+        for (int i = cis.size() - 1; i >= 0; i--) {
+            ComponentInfo ci = cis.get(i);
+            if (first == null) {
+                first = ci;
+            }
+            Version v = ci.getVersion();
+            if (!versionSelect.test(v)) {
+                continue;
+            }
+            if (compatibleVersion(v)) {
+                return ci;
+            }
+        }
+        return fallback ? first : null;
+    }
+    
+    private Version.Match matchInstalledVersion() {
+        return getGraalVersion().installVersion().match(Version.Match.Type.EXACT);
+    }
+    
+    public ComponentInfo findComponent(String id) {
+        if (id == null) {
+            return null;
+        }
+        Version.Match[] matchV = new Version.Match[1];
+        Version.Match vm = matchV[0];
+        if (vm == null || vm.equals(Version.NO_VERSION)) {
+            vm = matchInstalledVersion();
+        }
+        id = Version.idAndVersion(id, matchV);
+        if (!allLoaded) {
+            Collection<ComponentInfo> infos = loadComponents(id, vm, false, false);
+            if (infos == null || infos.isEmpty()) {
+                return null;
+            }
+            return infos.iterator().next();
+        }
+        ComponentInfo ci = mostRecentComponent(id, vm);
         if (ci != null) {
             return ci;
         }
-        String fullId = findAbbreviatedId(id);
-        return fullId == null ? null : components.get(fullId);
+        return mostRecentComponent(findAbbreviatedId(id), vm);
     }
 
     private String findAbbreviatedId(String id) {
@@ -137,12 +251,18 @@ public final class ComponentRegistry {
             }
         }
         if (allLoaded) {
-            components.remove(id, info);
+            Collection<ComponentInfo> col = components.get(id);
+            if (col != null) {
+                col.remove(info);
+                if (col.isEmpty()) {
+                    components.remove(id);
+                }
+            }
         }
         storage.deleteComponent(id);
         updateReplacedFiles();
     }
-
+    
     /**
      * Adds a Component to the registry. Will not save info, but will merge component information
      * with the rest.
@@ -163,10 +283,19 @@ public final class ComponentRegistry {
             }
         }
         if (allLoaded) {
-            components.put(id, info);
+            addComponentToCache(info);
         }
         storage.saveComponent(info);
         updateReplacedFiles();
+    }
+    
+    private void addComponentToCache(ComponentInfo info) {
+        String id = info.getId();
+        List<ComponentInfo> newInfos = components.computeIfAbsent(id, (x) -> new ArrayList<>());
+        if (!newInfos.contains(info)) {
+            newInfos.add(info);
+            Collections.sort(newInfos, ComponentInfo.versionComparator());
+        }
     }
 
     private void computeReplacedFiles() {
@@ -238,10 +367,17 @@ public final class ComponentRegistry {
     }
 
     public ComponentInfo loadSingleComponent(String id, boolean filelist) {
-        return loadSingleComponent(id, filelist, false);
+        Version.Match[] matchV = new Version.Match[1];
+        id = Version.idAndVersion(id, matchV);
+        Collection<ComponentInfo> infos = loadComponents(id, matchV[0], filelist, false);
+        return infos == null || infos.isEmpty() ? null : infos.iterator().next();
     }
-
-    ComponentInfo loadSingleComponent(String id, boolean filelist, boolean notFoundFailure) {
+    
+    public Collection<ComponentInfo> loadComponents(String id, Version.Match selector, boolean filelist) {
+        return loadComponents(id, selector, filelist, false);
+    }
+    
+    Collection<ComponentInfo> loadComponents(String id, Version.Match vmatch, boolean filelist, boolean notFoundFailure) {
         String fid = findAbbreviatedId(id);
         if (fid == null) {
             if (notFoundFailure) {
@@ -250,30 +386,54 @@ public final class ComponentRegistry {
                 return null;
             }
         }
-        ComponentInfo info = components.get(fid);
-        if (info != null) {
-            return info;
+        if (vmatch.getType() == Version.Match.Type.MOSTRECENT) {
+            ComponentInfo info = mostRecentComponent(id, vmatch);
+            if (info != null) {
+                return Collections.singletonList(info);
+            }
+        } else {
+            List<ComponentInfo> v = components.get(fid);
+            if (v != null) {
+                if (vmatch.getType() == Version.Match.Type.MOSTRECENT) {
+                    ComponentInfo comp = compatibleComponent(v, vmatch, true);
+                    return comp == null ? Collections.emptyList() : Collections.singleton(comp);
+                }
+                List<ComponentInfo> versions = new ArrayList<>(v);
+                for (Iterator<ComponentInfo> it = versions.iterator(); it.hasNext(); ) {
+                    ComponentInfo cv = it.next();
+                    if (!vmatch.test(cv.getVersion())) {
+                        it.remove();
+                    }
+                }
+                return versions;
+            }
         }
-        String cid = id;
         try {
-            info = storage.loadComponentMetadata(fid);
-            if (info == null) {
+            Set<ComponentInfo> infos = storage.loadComponentMetadata(fid);
+            if (infos == null || infos.isEmpty()) {
                 if (notFoundFailure) {
                     throw env.failure("REMOTE_UnknownComponentId", null, id);
                 }
                 return null;
             }
-            cid = info.getId(); // may change if id was an abbreviation
+            List<ComponentInfo> versions = new ArrayList<>(infos);
+            Collections.sort(versions, ComponentInfo.versionComparator());
             if (filelist) {
-                storage.loadComponentFiles(info);
-                components.put(cid, info);
+                for (ComponentInfo ci : versions) {
+                    storage.loadComponentFiles(ci);
+                    addComponentToCache(ci);
+                }
             }
+            if (vmatch.getType() == Version.Match.Type.MOSTRECENT) {
+                ComponentInfo comp = compatibleComponent(versions, vmatch, true);
+                return comp == null ? Collections.emptyList() : Collections.singleton(comp);
+            }
+            return versions;
         } catch (NoSuchFileException ex) {
             return null;
         } catch (IOException ex) {
             throw env.failure("REGISTRY_ReadingComponentMetadata", ex, id, ex.getLocalizedMessage(), fid);
         }
-        return info;
     }
 
     private void buildFileIndex() {
@@ -284,7 +444,8 @@ public final class ComponentRegistry {
         loadAllComponents();
         componentDirectories = new HashSet<>();
         fileIndex = new HashMap<>();
-        for (ComponentInfo nfo : components.values()) {
+        for (String cid : components.keySet()) {
+            ComponentInfo nfo = mostRecentComponent(cid, matchInstalledVersion(), true);
             for (String path : nfo.getPaths()) {
                 if (path.endsWith("/")) {
                     componentDirectories.add(path);
@@ -331,7 +492,14 @@ public final class ComponentRegistry {
     public String shortenComponentId(ComponentInfo info) {
         String id = info.getId();
         if (id.startsWith(CommonConstants.GRAALVM_CORE_PREFIX)) {
-            String shortId = id.substring(CommonConstants.GRAALVM_CORE_PREFIX.length());
+            int l = CommonConstants.GRAALVM_CORE_PREFIX.length();
+            if (id.length() == l) {
+                return CommonConstants.GRAALVM_CORE_SHORT_ID;
+            }
+            if (id.charAt(l) != '.' && id.length() > l + 1) {
+                return id;
+            }
+            String shortId = id.substring(l + 1);
             try {
                 ComponentInfo reg = findComponent(shortId);
                 if (reg == null || reg.getId().equals(id)) {
@@ -354,5 +522,14 @@ public final class ComponentRegistry {
         } catch (IOException ex) {
             env.error("ERROR_RecordLicenseAccepted", ex, ex.getLocalizedMessage());
         }
+    }
+    
+    private Version graalVer;
+    
+    public Version getGraalVersion() {
+        if (graalVer == null) {
+            graalVer = Version.fromString(SystemUtils.normalizeOldVersions(getGraalCapabilities().get(CommonConstants.CAP_GRAALVM_VERSION)));
+        }
+        return graalVer;
     }
 }

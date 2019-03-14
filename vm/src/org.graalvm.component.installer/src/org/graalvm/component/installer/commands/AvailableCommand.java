@@ -24,6 +24,9 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.util.HashMap;
+import java.util.Map;
+import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.model.ComponentRegistry;
 
 /**
@@ -31,6 +34,14 @@ import org.graalvm.component.installer.model.ComponentRegistry;
  * @author sdedic
  */
 public class AvailableCommand extends ListInstalledCommand {
+
+    @Override
+    public Map<String, String> supportedOptions() {
+        Map<String, String> opts = new HashMap<>(super.supportedOptions());
+        opts.put(Commands.OPTION_ALL, "");
+        opts.put(Commands.LONG_OPTION_ALL, Commands.OPTION_ALL);
+        return opts;
+    }
 
     @Override
     protected ComponentRegistry initRegistry() {

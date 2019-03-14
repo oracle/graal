@@ -39,6 +39,7 @@ import org.graalvm.component.installer.commands.MockStorage;
 import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
@@ -194,22 +195,21 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     }
 
     @Override
-    public boolean setupLocation(String urlString) {
-        return false;
-    }
-
-    @Override
     public void init(CommandInput input, Feedback output) {
     }
 
     @Override
-    public FileDownloader configureDownloader(FileDownloader dn) {
+    public FileDownloader configureDownloader(ComponentInfo info, FileDownloader dn) {
         return dn;
     }
 
     @Override
-    public MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException {
+    public MetadataLoader createLocalFileLoader(ComponentInfo info, Path localFile, boolean verify) throws IOException {
         return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
     }
 
+    @Override
+    public ComponentStorage getStorage() {
+        return storage;
+    }
 }

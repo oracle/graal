@@ -82,6 +82,10 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
     public String getDisplayName() {
         return dispName;
     }
+    
+    protected ComponentInfo getCatalogInfo() {
+        return catalogInfo;
+    }
 
     @Override
     public MetadataLoader createMetaLoader() throws IOException {

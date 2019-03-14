@@ -27,28 +27,32 @@ package org.graalvm.component.installer.remote;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.ServiceLoader;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.ComponentStorage;
 
 public class RemoteCatalogDownloader implements SoftwareChannel {
     private final CommandInput input;
     private final Feedback feedback;
-    private final String catalogString;
 
     private ComponentRegistry catalog;
-    private Iterable<SoftwareChannel> channels;
-    private SoftwareChannel delegate;
+    private Iterable<SoftwareChannel.Factory> factories;
+    private final List<String> catLocations;
+    private ComponentRegistry union;
 
-    public RemoteCatalogDownloader(CommandInput in, Feedback out, String catLocation) {
+    public RemoteCatalogDownloader(CommandInput in, Feedback out, String catLocations) {
         this.input = in;
         this.feedback = out.withBundle(RemoteCatalogDownloader.class);
 
-        this.catalogString = catLocation;
-        channels = ServiceLoader.load(SoftwareChannel.class);
+        this.catLocations = Arrays.asList(catLocations.split("\\|"));
+        factories = ServiceLoader.load(SoftwareChannel.Factory.class);
     }
 
     public RemoteCatalogDownloader(CommandInput in, Feedback out, URL catalogURL) {
@@ -56,8 +60,31 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     }
 
     // for testing only
-    void setChannels(Iterable<SoftwareChannel> chan) {
-        this.channels = chan;
+    void setChannels(Iterable<SoftwareChannel.Factory> chan) {
+        this.factories = chan;
+    }
+    
+    private MergeStorage mergedStorage;
+    
+    private MergeStorage mergeChannels() {
+        if (mergedStorage != null) {
+            return mergedStorage;
+        }
+        mergedStorage = new MergeStorage(input.getLocalRegistry(), feedback);
+        
+        for (String spec : catLocations) {
+            SoftwareChannel ch = null;
+            for (SoftwareChannel.Factory f : factories) {
+                ch = f.createChannel(spec, input, feedback);
+                if (ch != null) {
+                    break;
+                }
+            }
+            if (ch != null) {
+                mergedStorage.addChannel(ch);
+            }
+        }
+        return mergedStorage;
     }
 
     public ComponentRegistry get() {
@@ -66,50 +93,43 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
         }
         return catalog;
     }
-
-    SoftwareChannel delegate() {
-        if (delegate != null) {
-            return delegate;
-        }
-        for (SoftwareChannel ch : channels) {
-            if (ch.setupLocation(catalogString)) {
-                this.delegate = ch;
-            }
-        }
-        if (delegate == null) {
-            throw feedback.failure("REMOTE_CannotHandleLocation", null, catalogString);
-        }
-        delegate.init(input, feedback);
-        return delegate;
+    
+    SoftwareChannel delegate(ComponentInfo ci) {
+        return mergeChannels().getOrigin(ci);
     }
-
+    
     @SuppressWarnings("unchecked")
     public ComponentRegistry openCatalog() {
-        return delegate().getRegistry();
-    }
-
-    @Override
-    public boolean setupLocation(String urlString) {
-        // should be never called, this is just a delegating adapter
-        throw new IllegalStateException();
+        return getRegistry();
     }
 
     @Override
     public void init(CommandInput ignoreInput, Feedback ignoreOutput) {
+        throw new IllegalStateException();
     }
 
     @Override
     public ComponentRegistry getRegistry() {
-        return delegate().getRegistry();
+        if (union == null) {
+            union = new ComponentRegistry(feedback, mergeChannels());
+            // get errors early
+            union.getComponentIDs();
+        }
+        return union;
     }
 
     @Override
-    public MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException {
-        return delegate.createLocalFileLoader(localFile, verify);
+    public MetadataLoader createLocalFileLoader(ComponentInfo cInfo, Path localFile, boolean verify) throws IOException {
+        return delegate(cInfo).createLocalFileLoader(cInfo, localFile, verify);
     }
 
     @Override
-    public FileDownloader configureDownloader(FileDownloader dn) {
-        return delegate.configureDownloader(dn);
+    public FileDownloader configureDownloader(ComponentInfo cInfo, FileDownloader dn) {
+        return delegate(cInfo).configureDownloader(cInfo, dn);
+    }
+
+    @Override
+    public ComponentStorage getStorage() {
+        return mergeChannels();
     }
 }

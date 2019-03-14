@@ -71,7 +71,12 @@ public class CommonConstants {
      * Component ID prefix for graalvm core components. The prefix will be stripped from the
      * display, if the component is not ambiguous.
      */
-    public static final String GRAALVM_CORE_PREFIX = "org.graalvm."; // NOI18N
+    public static final String GRAALVM_CORE_PREFIX = "org.graalvm"; // NOI18N
+    
+    /**
+     * Short ID of the GraalVM core component.
+     */
+    public static final String GRAALVM_CORE_SHORT_ID = "graalvm"; // NOI18N
 
     /**
      * Key in <code>release</code> file with catalog URL.

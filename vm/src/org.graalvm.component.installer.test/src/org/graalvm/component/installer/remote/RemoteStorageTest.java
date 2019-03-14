@@ -31,23 +31,27 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.TestBase;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.commands.MockStorage;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 public class RemoteStorageTest extends TestBase {
-    private static final String TEST_GRAAL_VERSION = "0.33-dev_linux_amd64";
+    private static final String TEST_GRAAL_FLAVOUR = "linux_amd64";
     private static final String TEST_BASE_URL_DIR = "https://graalvm.io/";
     private static final String TEST_BASE_URL = TEST_BASE_URL_DIR + "download/catalog";
     private RemotePropertiesStorage remStorage;
@@ -61,8 +65,8 @@ public class RemoteStorageTest extends TestBase {
     public void setUp() throws Exception {
         storage = new MockStorage();
         localRegistry = new ComponentRegistry(this, storage);
-        remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_VERSION,
-                        new URL(TEST_BASE_URL));
+        remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_FLAVOUR,
+                Version.fromString("0.33-dev"), new URL(TEST_BASE_URL));
         try (InputStream is = getClass().getResourceAsStream("catalog")) {
             catalogProps.load(is);
         }
@@ -84,17 +88,27 @@ public class RemoteStorageTest extends TestBase {
 
         assertEquals(Arrays.asList("r", "ruby"), l);
     }
+    
+    private ComponentInfo loadLastComponent(String id) throws IOException {
+        Set<ComponentInfo> infos = remStorage.loadComponentMetadata(id);
+        if (infos == null || infos.isEmpty()) {
+            return null;
+        }
+        List<ComponentInfo> sorted = new ArrayList<>(infos);
+        Collections.sort(sorted, ComponentInfo.versionComparator());
+        return sorted.get(sorted.size() - 1);
+    }
 
     @Test
     public void testLoadMetadata() throws Exception {
-        ComponentInfo rInfo = remStorage.loadComponentMetadata("r");
+        ComponentInfo rInfo = loadLastComponent("r");
         assertEquals("FastR 0.33-dev", rInfo.getName());
         assertEquals("R", rInfo.getId());
     }
 
     @Test
     public void testRelativeRemoteURL() throws Exception {
-        ComponentInfo rInfo = remStorage.loadComponentMetadata("r");
+        ComponentInfo rInfo = loadLastComponent("r");
         assertEquals(new URL(TEST_BASE_URL_DIR + "0.33-dev/graalvm-fastr.zip"), rInfo.getRemoteURL());
     }
 
@@ -102,25 +116,25 @@ public class RemoteStorageTest extends TestBase {
     public void testInvalidRemoteURL() throws Exception {
         loadCatalog("catalog.bad1");
         // load good compoennt:
-        ComponentInfo rInfo = remStorage.loadComponentMetadata("ruby");
+        ComponentInfo rInfo = loadLastComponent("ruby");
         assertEquals("ruby", rInfo.getId());
 
         // and now bad component
         exception.expect(MalformedURLException.class);
-        rInfo = remStorage.loadComponentMetadata("r");
+        rInfo = loadLastComponent("r");
     }
 
     @Test
     public void testLoadMetadataMalformed() throws Exception {
         loadCatalog("catalog.bad2");
         // load good compoennt:
-        ComponentInfo rInfo = remStorage.loadComponentMetadata("r");
+        ComponentInfo rInfo = loadLastComponent("r");
         assertEquals("R", rInfo.getId());
 
         // and now bad component
         exception.expect(MetadataException.class);
         exception.expectMessage("ERROR_InvalidVersion");
-        rInfo = remStorage.loadComponentMetadata("ruby");
+        rInfo = loadLastComponent("ruby");
     }
 
     static byte[] truffleruby2Hash = {
@@ -171,6 +185,51 @@ public class RemoteStorageTest extends TestBase {
     public void testHashStringDivided() throws Exception {
         byte[] bytes = RemotePropertiesStorage.toHashBytes("test", truffleruby2HashString2, this);
         assertArrayEquals(truffleruby2Hash, bytes);
+    }
+
+    /**
+     * Checks that multi-version properties load without error.
+     */
+    @Test
+    public void loadMultipleVersions() throws Exception {
+        loadCatalog("catalogMultiVersions");
+        Set<String> ids = remStorage.listComponentIDs();
+        assertEquals(3, ids.size());
+        assertTrue(ids.contains("python"));
+    }
+    
+    /**
+     * Checks that versions prior the graalvm version are not included.
+     */
+    @Test
+    public void obsoleteVersionsNotIncluded() throws Exception {
+        loadCatalog("catalogMultiVersions");
+        remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_FLAVOUR,
+                        Version.fromString("1.0.0.0"), new URL(TEST_BASE_URL));
+        Set<ComponentInfo> rubies = remStorage.loadComponentMetadata("ruby");
+        // 1.0.0.0 and 1.0.1.0 versions
+        assertEquals(2, rubies.size());
+        
+        Set<ComponentInfo> rs = remStorage.loadComponentMetadata("r");
+        assertEquals(1, rs.size());
+        
+        Set<ComponentInfo> pythons = remStorage.loadComponentMetadata("python");
+        assertEquals(1, pythons.size());
+    }
+    
+    @Test
+    public void checkMultipleGraalVMDependencies() throws Exception {
+        loadCatalog("catalogMultiVersions");
+        
+        Set<ComponentInfo> rubies = remStorage.loadComponentMetadata("ruby");
+        Set<Version> versions = new HashSet<>();
+        for (ComponentInfo ci : rubies) {
+            Version compVersion = ci.getVersion();
+            assertTrue(versions.add(compVersion));
+            
+            String gv = ci.getRequiredGraalValues().get(BundleConstants.GRAAL_VERSION);
+            assertEquals(gv, compVersion.toString());
+        }
     }
 
 }

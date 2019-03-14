@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.MetadataException;
+import org.graalvm.component.installer.Version;
+import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
  * Command to lists installed components.
@@ -100,6 +102,10 @@ public class ListInstalledCommand extends QueryCommandBase {
         }
         return 0;
     }
+    
+    protected Version.Match getVersionFilter() {
+        return input.getLocalRegistry().getGraalVersion().match(Version.Match.Type.GREATER);
+    }
 
     boolean process() {
         makeRegularExpression();
@@ -109,9 +115,13 @@ public class ListInstalledCommand extends QueryCommandBase {
             feedback.message("LIST_NoComponentsFound");
             return false;
         }
+        Version.Match versionFilter = getVersionFilter();
         for (String id : ids) {
             try {
-                addComponent(null, registry.loadSingleComponent(id, listFiles));
+                Collection<ComponentInfo> infos = registry.loadComponents(id, versionFilter, listFiles);
+                for (ComponentInfo ci : infos) {
+                    addComponent(null, ci);
+                }
             } catch (MetadataException ex) {
                 exceptions.add(ex);
             }
