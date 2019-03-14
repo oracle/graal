@@ -54,6 +54,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CachedContextTest.CachedContextTestLanguage;
 import com.oracle.truffle.api.dsl.test.CachedContextTest.CachedContextTestLibrary;
@@ -92,6 +93,7 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
     }
 
     @GenerateUncached
+    @Introspectable
     abstract static class Valid1Node extends Node {
 
         abstract Object execute(Object argument);
