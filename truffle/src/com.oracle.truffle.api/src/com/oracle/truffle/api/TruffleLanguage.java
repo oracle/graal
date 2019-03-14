@@ -2419,7 +2419,7 @@ public abstract class TruffleLanguage<C> {
         @Override
         public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object languageVmObject, Object languageInstanceVMObject) {
             impl.languageInfo = language;
-            impl.reference = AccessAPI.engineAccess().getCurrentContextSupplier(languageVmObject);
+            impl.reference = AccessAPI.engineAccess().getCurrentContextReference(languageVmObject);
             impl.vmObject = languageInstanceVMObject;
         }
 

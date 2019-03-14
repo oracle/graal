@@ -455,7 +455,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public ContextReference<Object> getCurrentContextSupplier(Object polyglotLanguage) {
+        public ContextReference<Object> getCurrentContextReference(Object polyglotLanguage) {
             return ((PolyglotLanguage) polyglotLanguage).getContextReference();
         }
 
@@ -1125,7 +1125,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public <T extends TruffleLanguage<?>> LanguageReference<T> getDirectLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() == targetLanguageClass;
-            return (LanguageReference<T>) resolveLanguage(sourceLanguageSPI).getDirectLanguageSupplier();
+            return (LanguageReference<T>) resolveLanguage(sourceLanguageSPI).getDirectLanguageReference();
         }
 
         @SuppressWarnings("unchecked")

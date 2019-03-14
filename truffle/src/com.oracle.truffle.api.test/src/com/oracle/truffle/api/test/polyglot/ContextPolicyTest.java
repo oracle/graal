@@ -558,6 +558,47 @@ public class ContextPolicyTest {
     private static void testReferenceMixingWithSourcesBound(Source sl0, Source sl1, boolean language0Compatible, boolean language1Compatible,
                     boolean sharedContext1,
                     boolean sharedContext2) {
+
+        // opening contexts consecutively
+        try (Engine engine = Engine.create()) {
+            Context.Builder b0 = Context.newBuilder();
+            if (!sharedContext1) {
+                b0.engine(engine);
+            }
+            if (!language0Compatible) {
+                b0.option(sl0.getLanguage() + ".Dummy", "0");
+            }
+
+            try (Context c0 = b0.build()) {
+                Value v0l0 = c0.eval(sl0);
+                Value v0l1 = c0.eval(sl1);
+
+                v0l1.execute(v0l1, v0l0, v0l0);
+                v0l1.execute(v0l0, v0l1, v0l1);
+                v0l0.execute(v0l1, v0l0);
+                v0l0.execute(v0l0, v0l1);
+            }
+
+            Context.Builder b1 = Context.newBuilder();
+            if (!sharedContext2) {
+                b1.engine(engine);
+            }
+            if (!language1Compatible) {
+                b1.option(sl1.getLanguage() + ".Dummy", "1");
+            }
+            try (Context c1 = b1.build()) {
+                Value v1l0 = c1.eval(sl0);
+                Value v1l1 = c1.eval(sl1);
+
+                v1l1.execute(v1l1, v1l0, v1l0);
+                v1l1.execute(v1l0, v1l1, v1l1);
+
+                v1l0.execute(v1l1, v1l0);
+                v1l0.execute(v1l0, v1l1);
+            }
+        }
+
+        // opening two contexts at the same time
         try (Engine engine = Engine.create()) {
             Context.Builder b0 = Context.newBuilder();
             if (!sharedContext1) {
@@ -573,28 +614,25 @@ public class ContextPolicyTest {
             if (!language1Compatible) {
                 b1.option(sl1.getLanguage() + ".Dummy", "1");
             }
-            Context c0 = b0.build();
-            Context c1 = b1.build();
+            try (Context c0 = b0.build();
+                            Context c1 = b1.build()) {
+                Value v0l0 = c0.eval(sl0);
+                Value v0l1 = c0.eval(sl1);
 
-            Value v0l0 = c0.eval(sl0);
-            Value v0l1 = c0.eval(sl1);
+                Value v1l0 = c1.eval(sl0);
+                Value v1l1 = c1.eval(sl1);
 
-            Value v1l0 = c1.eval(sl0);
-            Value v1l1 = c1.eval(sl1);
+                v0l1.execute(v0l1, v0l0, v0l0);
+                v0l1.execute(v0l0, v0l1, v0l1);
 
-            v0l1.execute(v0l1, v0l0, v0l0);
-            v0l1.execute(v0l0, v0l1, v0l1);
+                v1l1.execute(v1l1, v1l0, v1l0);
+                v1l1.execute(v1l0, v1l1, v1l1);
 
-            v1l1.execute(v1l1, v1l0, v1l0);
-            v1l1.execute(v1l0, v1l1, v1l1);
-
-            v0l0.execute(v0l1, v0l0);
-            v0l0.execute(v0l0, v0l1);
-            v1l0.execute(v1l1, v1l0);
-            v1l0.execute(v1l0, v1l1);
-
-            c0.close();
-            c1.close();
+                v0l0.execute(v0l1, v0l0);
+                v0l0.execute(v0l0, v0l1);
+                v1l0.execute(v1l1, v1l0);
+                v1l0.execute(v1l0, v1l1);
+            }
         }
     }
 

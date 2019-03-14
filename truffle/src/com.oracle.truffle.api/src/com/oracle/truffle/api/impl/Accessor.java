@@ -227,7 +227,7 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getObjectLanguage(Object obj, Object vmObject);
 
-        public abstract ContextReference<Object> getCurrentContextSupplier(Object languageVMObject);
+        public abstract ContextReference<Object> getCurrentContextReference(Object languageVMObject);
 
         public abstract boolean isDisposed(Object vmInstance);
 
