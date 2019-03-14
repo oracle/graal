@@ -10,7 +10,7 @@ GraalVM is an ecosystem for compiling and running applications written in most m
 
 ## Using GraalVM Components
 Some components (languages) of GraalVM are distributed separately: R, Ruby, and Python. If you need these languages, you have to download their distribution packages from
-https://www.graalvm.org/catalog/graal-updater-component-catalog.properties
+http://www.graalvm.org/component-catalog/graal-updater-component-catalog.properties
 
 and install them yourself. Installable component packages are provided separately for individual OS and architectures.
 
