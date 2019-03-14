@@ -222,9 +222,7 @@ public class Unistd {
 
     /** Change the owner and group of FILE relative to the directory FD is open on. */
     @CFunction
-    public static native int fchownat(int fd, CCharPointer file, /* unsigned */int owner, /*
-                                                                                           * unsigned
-                                                                                           */int group, int flag);
+    public static native int fchownat(int fd, CCharPointer file, /* unsigned */int owner, /* unsigned */int group, int flag);
 
     /** Change the process's working directory to PATH. */
     @CFunction
@@ -1641,9 +1639,7 @@ public class Unistd {
      * disable profiling. Returns zero on success, -1 on error.
      */
     @CFunction
-    public static native int profil(PointerBase sample_buffer, UnsignedWord size, UnsignedWord offset, /*
-                                                                                                        * unsigned
-                                                                                                        */int scale);
+    public static native int profil(PointerBase sample_buffer, UnsignedWord size, UnsignedWord offset, /* unsigned */int scale);
 
     /**
      * Turn accounting on if NAME is an existing file. The system will then write a record for each
