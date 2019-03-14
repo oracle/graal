@@ -148,7 +148,7 @@ def hsdis(args, copyToDir=None):
         if exists(dest) and not overwrite:
             import filecmp
             # Only issue warning if existing lib is different
-            if filecmp.cmp(path, dest) == False:
+            if filecmp.cmp(path, dest) is False:
                 mx.warn('Not overwriting existing {} with {}'.format(dest, path))
         else:
             try:

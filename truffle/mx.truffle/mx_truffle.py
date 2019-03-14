@@ -123,7 +123,7 @@ def checkLinks(javadocDir):
         else:
             content = open(referencedfile, 'r').read()
             for path, s in sections:
-                if not s == None:
+                if not s is None:
                     whereName = content.find('name="' + s + '"')
                     whereId = content.find('id="' + s + '"')
                     if whereName == -1 and whereId == -1:
@@ -263,7 +263,7 @@ def _unittest_config_participant_tck(config):
     suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers, javaPropertiesToAdd, set())
     languages = OrderedDict()
     suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages, javaPropertiesToAdd, set())
-    suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_INSTRUMENTATION" == dist.name and exists(dist.path), languages, javaPropertiesToAdd, set())
+    suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and  dist.name == "TRUFFLE_TCK_INSTRUMENTATION" and exists(dist.path), languages, javaPropertiesToAdd, set())
     vmArgs, mainClass, mainClassArgs = config
     cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
     cpBuilder = OrderedDict()
@@ -275,7 +275,7 @@ def _unittest_config_participant_tck(config):
 
     if _is_graalvm(mx.get_jdk()):
         common = OrderedDict()
-        suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_COMMON" == dist.name and exists(dist.path), common, javaPropertiesToAdd, set())
+        suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and dist.name == "TRUFFLE_TCK_COMMON" and exists(dist.path), common, javaPropertiesToAdd, set())
         tpIndex, tpValue = find_path_arg(vmArgs, '-Dtruffle.class.path.append=')
         tpBuilder = OrderedDict()
         if tpValue:
@@ -340,7 +340,7 @@ class TruffleArchiveParticipant:
         self.settings = {}
         self.arc = arc
 
-    def __add__(self, arcname, contents):
+    def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
         metainfFile = self._truffle_metainf_file(arcname)
         if metainfFile:
             propertyRe = TruffleArchiveParticipant.PROPERTY_RE

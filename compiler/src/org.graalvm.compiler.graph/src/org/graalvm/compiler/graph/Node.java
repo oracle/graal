@@ -61,6 +61,7 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
 /**
@@ -88,7 +89,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     public static final NodeClass<?> TYPE = null;
 
-    public static final boolean TRACK_CREATION_POSITION = Boolean.getBoolean("debug.graal.TrackNodeCreationPosition");
+    public static final boolean TRACK_CREATION_POSITION = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.TrackNodeCreationPosition"));
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;

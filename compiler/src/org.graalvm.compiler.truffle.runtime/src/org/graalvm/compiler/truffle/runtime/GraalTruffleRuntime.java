@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,6 +120,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.services.Services;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal.
@@ -870,7 +871,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected static LayoutFactory selectObjectLayoutFactory(Iterable<Iterable<LayoutFactory>> availableLayoutFactories) {
-        String layoutFactoryImplName = System.getProperty("truffle.object.LayoutFactory");
+        String layoutFactoryImplName = Services.getSavedProperties().get("truffle.object.LayoutFactory");
         LayoutFactory bestLayoutFactory = null;
         for (Iterable<LayoutFactory> currentLayoutFactories : availableLayoutFactories) {
             for (LayoutFactory currentLayoutFactory : currentLayoutFactories) {
@@ -898,7 +899,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     private static int getJavaSpecificationVersion() {
-        String value = System.getProperty("java.specification.version");
+        String value = Services.getSavedProperties().get("java.specification.version");
         if (value.startsWith("1.")) {
             value = value.substring(2);
         }
