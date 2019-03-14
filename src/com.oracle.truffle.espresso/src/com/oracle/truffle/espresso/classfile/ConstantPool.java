@@ -356,7 +356,7 @@ public abstract class ConstantPool {
                     if (existsAt(patches, i)) {
                         StaticObject classSpecifier = patches[i];
                         if (classSpecifier instanceof StaticObjectClass) {
-                            entries[i] = new ClassConstant.PreResolved(((StaticObjectClass)classSpecifier).getMirrorKlass());
+                            entries[i] = new ClassConstant.PreResolved(((StaticObjectClass) classSpecifier).getMirrorKlass());
                         } else {
                             entries[i] = new ClassConstant.WithString(context.getNames().lookup(Meta.toHostString(patches[i])));
                         }

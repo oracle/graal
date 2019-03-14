@@ -221,9 +221,9 @@ public final class ClassfileParser {
         // if this is an anonymous class fix up its name if it's in the unnamed
         // package. Otherwise, throw IAE if it is in a different package than
         // its host class.
-//        if (hostClass != null) {
-//            pool.setPreresolvedAt(t);
-//        }
+        // if (hostClass != null) {
+        // pool.setPreresolvedAt(t);
+        // }
 
         Symbol<Name> thisKlassName = pool.classAt(thisKlassIndex).getName(pool);
         Symbol<Type> thisKlassType = context.getTypes().fromName(thisKlassName);

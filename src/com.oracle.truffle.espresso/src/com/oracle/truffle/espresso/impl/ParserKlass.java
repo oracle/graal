@@ -83,14 +83,14 @@ public final class ParserKlass {
     private final ConstantPool pool;
 
     public ParserKlass(ConstantPool pool,
-                       int flags,
-                       Symbol<Name> name,
-                       Symbol<Type> type,
-                       Symbol<Type> superKlass,
-                       final Symbol<Type>[] superInterfaces,
-                       final ParserMethod[] methods,
-                       final ParserField[] fields,
-                       Attribute[] attributes) {
+                    int flags,
+                    Symbol<Name> name,
+                    Symbol<Type> type,
+                    Symbol<Type> superKlass,
+                    final Symbol<Type>[] superInterfaces,
+                    final ParserMethod[] methods,
+                    final ParserField[] fields,
+                    Attribute[] attributes) {
         this.pool = pool;
         this.flags = flags;
         this.name = name;

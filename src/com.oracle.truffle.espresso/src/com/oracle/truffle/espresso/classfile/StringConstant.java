@@ -88,7 +88,7 @@ public interface StringConstant extends PoolConstant {
 
     final class PreResolved implements StringConstant, Resolvable {
         private final StaticObject resolved;
-        //private final Symbol<Constant> symbol;
+        // private final Symbol<Constant> symbol;
 
         @Override
         public Symbol<Constant> getSymbol(ConstantPool pool) {

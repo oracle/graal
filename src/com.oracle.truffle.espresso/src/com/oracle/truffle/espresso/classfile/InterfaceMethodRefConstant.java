@@ -127,7 +127,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
         }
 
         private static Method lookupPolysigMethod(Klass klass, Symbol<Name> name, Symbol<Signature> signature) {
-            assert(klass.getType() == Symbol.Type.MethodHandle);
+            assert (klass.getType() == Symbol.Type.MethodHandle);
             return klass.lookupPolysigMethod(name, signature);
         }
 

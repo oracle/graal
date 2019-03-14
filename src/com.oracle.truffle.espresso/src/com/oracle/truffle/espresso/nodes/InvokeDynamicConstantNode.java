@@ -17,9 +17,10 @@ public final class InvokeDynamicConstantNode extends QuickNode {
 
     InvokeDynamicConstantNode(StaticObjectImpl dynamicInvoker, Meta meta, Symbol<Symbol.Signature> invokeSignature, Symbol<Type>[] parsedInvokeSignature) {
         this.methodHandle = dynamicInvoker;
-//        StaticObjectImpl mtype =  (StaticObjectImpl)methodHandle.getField(meta.MHtype);
-//        String descriptor = Meta.toHostString((StaticObject) meta.toMethodDescriptorString.invokeDirect(mtype));
-//        Symbol<Symbol.Signature> sig = meta.getSignatures().lookupValidSignature(descriptor);
+        // StaticObjectImpl mtype = (StaticObjectImpl)methodHandle.getField(meta.MHtype);
+        // String descriptor = Meta.toHostString((StaticObject)
+        // meta.toMethodDescriptorString.invokeDirect(mtype));
+        // Symbol<Symbol.Signature> sig = meta.getSignatures().lookupValidSignature(descriptor);
         this.invoke = meta.MethodHandle.lookupPolysigMethod(Symbol.Name.invokeExact, invokeSignature);
         this.parsedInvokeSignature = parsedInvokeSignature;
     }

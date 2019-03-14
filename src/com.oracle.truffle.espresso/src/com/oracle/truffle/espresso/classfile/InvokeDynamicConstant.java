@@ -62,7 +62,6 @@ public interface InvokeDynamicConstant extends PoolConstant {
             return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }
 
-
     }
 
     @Override

@@ -33,7 +33,7 @@ public class BootstrapMethodsAttribute extends Attribute {
         return entries;
     }
 
-    public static class Entry{
+    public static class Entry {
         final char bootstrapMethodRef;
         final char[] bootstrapArguments;
 

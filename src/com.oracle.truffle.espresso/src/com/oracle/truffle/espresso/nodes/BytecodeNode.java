@@ -1102,14 +1102,16 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (e instanceof EspressoException) {
                         throw e;
                     }
-//                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI: " + curBCI);
-//                    e.printStackTrace();
+                    // System.err.println("Internal error (caught in invocation): " + this + "\nBCI:
+                    // " + curBCI);
+                    // e.printStackTrace();
                     CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwEx(getMeta().NullPointerException);
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-//                System.err.println("Finding handler for a " + e.getException().getKlass() + " at: " + curBCI + " in " + getMethod());
+                // System.err.println("Finding handler for a " + e.getException().getKlass() + " at:
+                // " + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;
@@ -1451,7 +1453,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         StaticObject bsmMH = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
 
         StaticObject[] args = new StaticObject[bsEntry.numBootstrapArguments()];
-        for (int i = 0; i < bsEntry.numBootstrapArguments() ; i++) {
+        for (int i = 0; i < bsEntry.numBootstrapArguments(); i++) {
             PoolConstant pc = pool.at(bsEntry.argAt(i));
             switch (pc.tag()) {
                 case METHODHANDLE:
@@ -1490,13 +1492,13 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
         StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1]);
 
-        /*StaticObject memberName = */ getMeta().linkCallSite.invokeDirect(
-                null,
-                declaringKlass.mirror(),
-                bsmMH,
-                name, methodType,
-                new StaticObjectArray(meta.Object_array, args),
-                appendix);
+        /* StaticObject memberName = */ getMeta().linkCallSite.invokeDirect(
+                        null,
+                        declaringKlass.mirror(),
+                        bsmMH,
+                        name, methodType,
+                        new StaticObjectArray(meta.Object_array, args),
+                        appendix);
 
         StaticObjectImpl unboxedAppendix = appendix.get(0);
 
@@ -1511,7 +1513,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         Symbol<Type> rt = Signatures.returnType(signature);
         int pcount = Signatures.parameterCount(signature, false);
 
-        StaticObject[] ptypes =  new StaticObject[pcount];
+        StaticObject[] ptypes = new StaticObject[pcount];
         for (int i = 0; i < pcount; i++) {
             Symbol<Type> paramType = Signatures.parameterType(signature, i);
             ptypes[i] = meta.loadKlass(paramType, declaringKlass.getDefiningClassLoader()).mirror();
@@ -1519,9 +1521,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         StaticObject rtype = meta.loadKlass(rt, declaringKlass.getDefiningClassLoader()).mirror();
 
         return (StaticObject) meta.findMethodHandleType.invokeDirect(
-                null,
-                rtype, new StaticObjectArray(meta.Class_Array, ptypes)
-        );
+                        null,
+                        rtype, new StaticObjectArray(meta.Class_Array, ptypes));
     }
     // endregion Bytecode quickening
 

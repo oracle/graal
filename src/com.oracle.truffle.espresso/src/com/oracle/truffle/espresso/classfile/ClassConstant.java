@@ -57,8 +57,6 @@ public interface ClassConstant extends PoolConstant {
         return getName(pool).toString();
     }
 
-
-
     final class Index implements ClassConstant, Resolvable {
         private final char classNameIndex;
 
@@ -180,7 +178,7 @@ public interface ClassConstant extends PoolConstant {
             try {
                 EspressoContext context = pool.getContext();
                 Klass klass = context.getRegistries().loadKlass(
-                        context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
+                                context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
 
                 if (!checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();

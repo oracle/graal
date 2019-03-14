@@ -123,13 +123,13 @@ public final class ClassRegistries {
         assert classLoader != null;
 
         ClassRegistry registry = StaticObject.isNull(classLoader)
-                ? bootClassRegistry
-                : registries.computeIfAbsent(classLoader, new Function<StaticObject, ClassRegistry>() {
-            @Override
-            public ClassRegistry apply(StaticObject cl) {
-                return new GuestClassRegistry(context, cl);
-            }
-        });
+                        ? bootClassRegistry
+                        : registries.computeIfAbsent(classLoader, new Function<StaticObject, ClassRegistry>() {
+                            @Override
+                            public ClassRegistry apply(StaticObject cl) {
+                                return new GuestClassRegistry(context, cl);
+                            }
+                        });
 
         return registry.putKlass(type, klass);
     }

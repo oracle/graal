@@ -56,14 +56,12 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
-
     @Substitution(hasReceiver = true)
-    public static @Host(Class.class) StaticObject
-    defineAnonymousClass(
-            @Host(Unsafe.class) StaticObject self,
-            @Host(Class.class) StaticObjectClass hostClass,
-            @Host(typeName = "[B") StaticObjectArray data,
-            @Host(typeName = "[Ljava/lang/Object;") StaticObject constantPoolPatches) {
+    public static @Host(Class.class) StaticObject defineAnonymousClass(
+                    @Host(Unsafe.class) StaticObject self,
+                    @Host(Class.class) StaticObjectClass hostClass,
+                    @Host(typeName = "[B") StaticObjectArray data,
+                    @Host(typeName = "[Ljava/lang/Object;") StaticObject constantPoolPatches) {
 
         EspressoContext context = self.getKlass().getContext();
         Meta meta = context.getMeta();
@@ -73,7 +71,7 @@ public final class Target_sun_misc_Unsafe {
         }
 
         byte[] bytes = data.unwrap();
-        StaticObject[] patches = constantPoolPatches == StaticObject.NULL ? null : ((StaticObjectArray)constantPoolPatches).unwrap();
+        StaticObject[] patches = constantPoolPatches == StaticObject.NULL ? null : ((StaticObjectArray) constantPoolPatches).unwrap();
         Klass hostKlass = hostClass.getMirrorKlass();
         ClassfileStream cfs = new ClassfileStream(bytes, null);
 
@@ -90,20 +88,20 @@ public final class Target_sun_misc_Unsafe {
 
         // TODO(garcia): Superclass must be a class, and non-final.
         ObjectKlass superKlass = superKlassType != null
-                ? (ObjectKlass) classRegistry.loadKlass(superKlassType, classLoader)
-                : null;
+                        ? (ObjectKlass) classRegistry.loadKlass(superKlassType, classLoader)
+                        : null;
 
         assert superKlass == null || !superKlass.isInterface();
 
         final Symbol<Symbol.Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
         LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
-                ? LinkedKlass.EMPTY_ARRAY
-                : new LinkedKlass[superInterfacesTypes.length];
+                        ? LinkedKlass.EMPTY_ARRAY
+                        : new LinkedKlass[superInterfacesTypes.length];
 
         ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0
-                ? ObjectKlass.EMPTY_ARRAY
-                : new ObjectKlass[superInterfacesTypes.length];
+                        ? ObjectKlass.EMPTY_ARRAY
+                        : new ObjectKlass[superInterfacesTypes.length];
 
         // TODO(garcia): Superinterfaces must be interfaces.
         for (int i = 0; i < superInterfacesTypes.length; ++i) {
@@ -288,8 +286,6 @@ public final class Target_sun_misc_Unsafe {
     public static synchronized void registerNatives() {
         /* nop */
     }
-
-
 
     /**
      * Allocates a new block of native memory, of the given size in bytes. The contents of the

@@ -108,23 +108,20 @@ public interface MethodHandleConstant extends PoolConstant {
 
             StaticObject[] ptypes = new StaticObject[payload.getParameterCount()];
             int i = 0;
-            for (Klass k: payload.resolveParameterKlasses()) {
+            for (Klass k : payload.resolveParameterKlasses()) {
                 ptypes[i] = k.mirror();
                 i++;
             }
             StaticObject rtype = payload.resolveReturnKlass().mirror();
             StaticObjectImpl mtype = (StaticObjectImpl) meta.findMethodHandleType.invokeDirect(
-                    null,
-                    rtype, new StaticObjectArray(meta.Class_Array, ptypes)
-            );
+                            null,
+                            rtype, new StaticObjectArray(meta.Class_Array, ptypes));
 
             Klass mklass = payload.getDeclaringKlass();
             return new Resolved((StaticObject) meta.linkMethodHandleConstant.invokeDirect(
-                        null,
-                        accessingKlass.mirror(), (int)refKind,
-                        mklass.mirror(), mname, mtype
-                    )
-            );
+                            null,
+                            accessingKlass.mirror(), (int) refKind,
+                            mklass.mirror(), mname, mtype));
         }
     }
 

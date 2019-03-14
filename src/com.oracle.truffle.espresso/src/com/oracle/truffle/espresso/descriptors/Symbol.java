@@ -163,7 +163,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
         public static final Symbol<Name> target = StaticSymbols.putName("target");
 
-
         public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
         public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");
         public static final Symbol<Name> linkMethod = StaticSymbols.putName("linkMethod");
@@ -312,7 +311,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MemberName = StaticSymbols.putType("Ljava/lang/invoke/MemberName;");
         public static final Symbol<Type> MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
         public static final Symbol<Type> LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
-
 
         // Special type for never finding declared intrinsics
         public static final Symbol<Type> invalid = StaticSymbols.putType("L~INVALID~;");

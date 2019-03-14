@@ -3,7 +3,6 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -72,20 +71,20 @@ public class MHInvokeGenericNode extends EspressoBaseNode {
             int refkind = Target_java_lang_invoke_MethodHandleNatives.getRefKind(flags);
             switch (refkind) {
                 case Target_java_lang_invoke_MethodHandleNatives.REF_getField:
-                    assert args.length>=1;
-                    return ((StaticObjectImpl)args[0]).getField(field);
+                    assert args.length >= 1;
+                    return ((StaticObjectImpl) args[0]).getField(field);
 
                 case Target_java_lang_invoke_MethodHandleNatives.REF_getStatic:
-                    return ((StaticObjectImpl)klass.getStatics()).getField(field);
+                    return ((StaticObjectImpl) klass.getStatics()).getField(field);
 
                 case Target_java_lang_invoke_MethodHandleNatives.REF_putField:
-                    assert args.length>=2;
-                    ((StaticObjectImpl)args[0]).setField(field, args[1]);
+                    assert args.length >= 2;
+                    ((StaticObjectImpl) args[0]).setField(field, args[1]);
                     return StaticObject.VOID;
 
                 case Target_java_lang_invoke_MethodHandleNatives.REF_putStatic:
-                    assert args.length>=1;
-                    ((StaticObjectImpl)klass.getStatics()).setField(field, args[0]);
+                    assert args.length >= 1;
+                    ((StaticObjectImpl) klass.getStatics()).setField(field, args[0]);
                     return StaticObject.VOID;
 
                 default:

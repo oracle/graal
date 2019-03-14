@@ -70,7 +70,7 @@ public interface MethodTypeConstant extends PoolConstant {
 
             // TODO call java.lang.invoke.MethodHandleNatives::findMethodType(Class rt, Class[] pts)
 
-            return new Resolved((StaticObject)meta.fromMethodDescriptorString.invokeDirect(null, meta.toGuestString(sig), classLoader));
+            return new Resolved((StaticObject) meta.fromMethodDescriptorString.invokeDirect(null, meta.toGuestString(sig), classLoader));
         }
     }
 
