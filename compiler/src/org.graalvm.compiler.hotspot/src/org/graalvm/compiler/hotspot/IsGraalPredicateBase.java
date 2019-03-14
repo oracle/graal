@@ -24,16 +24,22 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import org.graalvm.compiler.debug.GraalError;
+import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
  * Determines if a given class is a JVMCI or Graal class for the purpose of
  * {@link HotSpotGraalCompilerFactory.Options#CompileGraalWithC1Only}.
  */
-class IsGraalPredicate extends IsGraalPredicateBase {
+abstract class IsGraalPredicateBase {
 
-    @Override
-    boolean apply(Class<?> declaringClass) {
-        throw GraalError.shouldNotReachHere("must have versioned implementation");
+    @SuppressWarnings("unused")
+    void onCompilerConfigurationFactorySelection(HotSpotJVMCIRuntime runtime, CompilerConfigurationFactory factory) {
+    }
+
+    abstract boolean apply(Class<?> declaringClass);
+
+    HotSpotJVMCICompilerFactory.CompilationLevelAdjustment getCompilationLevelAdjustment() {
+        return HotSpotJVMCICompilerFactory.CompilationLevelAdjustment.ByHolder;
     }
 }

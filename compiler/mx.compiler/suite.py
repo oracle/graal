@@ -531,19 +531,10 @@ suite = {
     "org.graalvm.compiler.hotspot.jdk8" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "dependencies": ["org.graalvm.compiler.hotspot"],
       "overlayTarget" : "org.graalvm.compiler.hotspot",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8",
-      "workingSets" : "Graal,HotSpot",
-    },
-
-    "org.graalvm.compiler.hotspot.jdk9" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies": ["org.graalvm.compiler.hotspot"],
-      "multiReleaseJarVersion" : "9",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "9+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -564,6 +555,16 @@ suite = {
       "multiReleaseJarVersion" : "12",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "12+",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk13" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies": ["org.graalvm.compiler.hotspot"],
+      "multiReleaseJarVersion" : "13",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "13+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -2274,9 +2275,9 @@ suite = {
         "org.graalvm.compiler.hotspot.sparc",
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.hotspot.jdk8",
-        "org.graalvm.compiler.hotspot.jdk9",
         "org.graalvm.compiler.hotspot.jdk11",
         "org.graalvm.compiler.hotspot.jdk12",
+        "org.graalvm.compiler.hotspot.jdk13",
         "org.graalvm.compiler.lir.aarch64.jdk11",
         "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk8",

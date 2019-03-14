@@ -24,16 +24,35 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import org.graalvm.compiler.debug.GraalError;
+import static jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory.CompilationLevelAdjustment.ByHolder;
+import static jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory.CompilationLevelAdjustment.None;
+
+import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory.CompilationLevelAdjustment;
 
 /**
  * Determines if a given class is a JVMCI or Graal class for the purpose of
  * {@link HotSpotGraalCompilerFactory.Options#CompileGraalWithC1Only}.
  */
 class IsGraalPredicate extends IsGraalPredicateBase {
+    private final ClassLoader jvmciLoader = getClass().getClassLoader();
+
+    @Override
+    CompilationLevelAdjustment getCompilationLevelAdjustment() {
+        return jvmciLoader != null ? ByHolder : None;
+    }
 
     @Override
     boolean apply(Class<?> declaringClass) {
-        throw GraalError.shouldNotReachHere("must have versioned implementation");
+        assert jvmciLoader != null;
+        // When running with +UseJVMCIClassLoader all classes loaded
+        // by the JVMCI loader are considered to be Graal classes.
+        try {
+            if (declaringClass.getClassLoader() == jvmciLoader) {
+                return true;
+            }
+        } catch (SecurityException e) {
+            // This is definitely not a JVMCI or Graal class
+        }
+        return false;
     }
 }
