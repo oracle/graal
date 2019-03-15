@@ -476,27 +476,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         int curBCI = 0;
         int top = 0;
 
-        if (this.getMethod().getName().toString().contains("invokeVirtual_L_L") && this.getMethod().getDeclaringKlass().getName().toString().contains("LambdaForm$DMH")) {
-            int i = 1;
-        }
-
-        try {
-            initArguments(frame);
-        } catch (ClassCastException e) {
-            e.printStackTrace();
-            StringBuilder str = new StringBuilder();
-            for (Object x : frame.getArguments()) {
-                str.append(x);
-                if (x instanceof StaticObject) {
-                    if (getMeta().MethodHandle.isAssignableFrom(((StaticObject) x).getKlass())) {
-                        StaticObject mtype = (StaticObject) ((StaticObjectImpl) x).getField(getMeta().MHtype);
-                        str.append(Meta.toHostString((StaticObject) getMeta().toMethodDescriptorString.invokeDirect(mtype)));
-                    }
-                }
-                str.append("\n");
-            }
-            throw getMeta().throwExWithMessage(e.getClass(), "With arguments: \n" + str.toString() + "\nIn context: " + this + (getMethod().isStatic() ? "\n" : "\nhas receiver"));
-        }
+        initArguments(frame);
 
         loop: while (true) {
             int curOpcode;
@@ -1122,14 +1102,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (e instanceof EspressoException) {
                         throw e;
                     }
-                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI:" + curBCI);
-                    e.printStackTrace();
+//                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI:" + curBCI);
+//                    e.printStackTrace();
                     CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwExWithMessage(NullPointerException.class, e.getStackTrace().toString());
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-                System.err.println("Finding handler for a " + e.getException().getKlass() + " at:" + curBCI + " in " + getMethod());
+//                System.err.println("Finding handler for a " + e.getException().getKlass() + " at:" + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;

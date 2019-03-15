@@ -31,11 +31,12 @@ public class MHLinkToNode extends EspressoBaseNode {
         assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
 
         Method target = (Method) memberName.getHiddenField("vmtarget");
-        int refKind = Target_java_lang_invoke_MethodHandleNatives.getRefKind((int)memberName.getField(memberName.getKlass().getMeta().MNflags));
+        int refKind = Target_java_lang_invoke_MethodHandleNatives.getRefKind((int) memberName.getField(memberName.getKlass().getMeta().MNflags));
 
         if (target.hasReceiver()) {
             StaticObject receiver = (StaticObject) args[0];
             if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual) {
+                // TODO(garcia) better method lookup
                 if (!target.hasBytecodes()) {
                     target = receiver.getKlass().lookupMethod(target.getName(), target.getRawSignature());
                 }
