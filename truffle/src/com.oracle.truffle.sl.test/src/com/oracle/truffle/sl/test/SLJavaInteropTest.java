@@ -65,7 +65,7 @@ public class SLJavaInteropTest {
     @Before
     public void create() {
         os = new ByteArrayOutputStream();
-        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).out(os).build();
+        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).out(os).build();
     }
 
     @After

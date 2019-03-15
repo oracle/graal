@@ -490,7 +490,7 @@ public class ContextAPITest {
     public void testEnteredContext() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
 
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
@@ -509,7 +509,7 @@ public class ContextAPITest {
     @Test
     public void testEnteredContextInJava() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         Value v = context.asValue(new Runnable() {
             public void run() {
@@ -531,10 +531,10 @@ public class ContextAPITest {
 
     @Test
     public void testChangeContextInJava() {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
         Value v = context.asValue(new Runnable() {
             public void run() {
-                Context innerContext = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
+                Context innerContext = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
                 testGetContext(context);
                 innerContext.enter();
                 testGetContext(innerContext);

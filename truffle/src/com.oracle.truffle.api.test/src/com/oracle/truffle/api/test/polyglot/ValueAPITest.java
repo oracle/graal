@@ -118,7 +118,7 @@ public class ValueAPITest {
 
     @Before
     public void setUp() {
-        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
+        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
     }
 
     @After
@@ -1634,7 +1634,7 @@ public class ValueAPITest {
 
     @Test
     public void testHostObjectsAndPrimitivesSharable() {
-        Context context1 = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
+        Context context1 = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
         Context context2 = Context.create();
 
         List<Object> sharableObjects = new ArrayList<>();

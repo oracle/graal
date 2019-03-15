@@ -800,7 +800,7 @@ public final class Context implements AutoCloseable {
 
         /**
          * Configures host access. Use {@link HostAccessPolicy#EXPLICIT} or
-         * {@link HostAccessPolicy#PUBLIC}.
+         * {@link HostAccessPolicy#ALL}.
          *
          * @param config configuration of host access
          * @return {@code this} builder
@@ -1121,11 +1121,11 @@ public final class Context implements AutoCloseable {
                     }
                 }
                 // legacy behavior support
-                hostAccess = HostAccessPolicy.PUBLIC;
+                hostAccess = HostAccessPolicy.ALL;
             }
             if (hostAccess == null) {
                 // hostAccess = this.allowAllAccess ? HostAccess.PUBLIC : HostAccess.EXPLICIT;
-                hostAccess = HostAccessPolicy.PUBLIC;
+                hostAccess = HostAccessPolicy.ALL;
             }
 
             if (localHostClassFilter == null) {

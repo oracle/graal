@@ -88,7 +88,7 @@ public class ExposeToGuestTest {
 
     @Test
     public void exportingAllPublicIsEasy() {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
         Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new PublicValue()).asInt());
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
@@ -200,7 +200,7 @@ public class ExposeToGuestTest {
     }
 
     private static void doAccessAllowedInPublicHostAccess(boolean asList) throws Exception {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         boolean[] gotIn = {false};
         FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);

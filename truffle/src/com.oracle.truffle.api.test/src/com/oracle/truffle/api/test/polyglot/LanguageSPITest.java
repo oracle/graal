@@ -386,7 +386,7 @@ public class LanguageSPITest {
 
     @Test
     public void testLookupHost() {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).hostClassFilter((String s) -> true).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).hostClassFilter((String s) -> true).build();
         Value value = eval(context, new Function<Env, Object>() {
             public Object apply(Env t) {
                 return t.lookupHostSymbol("java.util.HashMap");
@@ -400,7 +400,7 @@ public class LanguageSPITest {
 
     @Test
     public void testLookupHostArray() {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).hostClassFilter((String s) -> true).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).hostClassFilter((String s) -> true).build();
         Value value = eval(context, new Function<Env, Object>() {
             public Object apply(Env t) {
                 return t.lookupHostSymbol("java.lang.String[]");
@@ -414,7 +414,7 @@ public class LanguageSPITest {
 
     @Test
     public void testLookupHostDisabled() {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).hostClassFilter((String s) -> false).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).hostClassFilter((String s) -> false).build();
         try {
             eval(context, new Function<Env, Object>() {
                 public Object apply(Env t) {
@@ -434,7 +434,7 @@ public class LanguageSPITest {
         assertTrue(!eval(context, env -> env.isHostLookupAllowed()).asBoolean());
         context.close();
 
-        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).hostClassFilter((String s) -> true).build();
+        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).hostClassFilter((String s) -> true).build();
         assertTrue(eval(context, env -> env.isHostLookupAllowed()).asBoolean());
         context.close();
     }

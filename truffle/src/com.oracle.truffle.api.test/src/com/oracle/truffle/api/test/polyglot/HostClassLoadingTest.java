@@ -115,7 +115,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
 
         // test with only host access rights
-        setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(HostAccessPolicy.PUBLIC).hostClassFilter((String s) -> true).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(HostAccessPolicy.ALL).hostClassFilter((String s) -> true).build());
         file = languageEnv.getTruffleFile(tempDir.toString());
         try {
             languageEnv.addToHostClassPath(file);
@@ -145,7 +145,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             assertFalse(((TruffleException) e).isInternalError());
         }
 
-        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(HostAccessPolicy.PUBLIC).hostClassFilter((String s) -> true).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(HostAccessPolicy.ALL).hostClassFilter((String s) -> true).build());
         file = languageEnv.getTruffleFile(tempDir.toString());
         // we should fail early
         languageEnv.addToHostClassPath(file);

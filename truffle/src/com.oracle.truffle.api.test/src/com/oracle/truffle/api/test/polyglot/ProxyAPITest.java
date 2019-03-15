@@ -84,7 +84,7 @@ public class ProxyAPITest {
 
     @Before
     public void setUp() {
-        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
+        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
     }
 
     @After
