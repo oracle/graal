@@ -240,7 +240,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         if (defaultExportReachable) {
             model.getDefaultExports().add(new LibraryDefaultExportData(null, context.getType(Object.class)));
             ExportsData exports = new ExportsData(context, type, mirror);
-            ExportsLibrary objectExports = new ExportsLibrary(context, type, mirror, exports, model, context.getType(Object.class), true);
+            ExportsLibrary objectExports = new ExportsLibrary(context, type, mirror, exports, model, model.getSignatureReceiverType(), true);
 
             for (LibraryMessage message : objectExports.getLibrary().getMethods()) {
                 if (message.getName().equals("accepts")) {

@@ -432,9 +432,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
             LibraryMessage message = export.getResolvedMessage();
 
-            TypeMirror libraryReceiverType = export.getResolvedMessage().getLibrary().getExportsReceiverType();
             TypeMirror cachedExportReceiverType = export.getReceiverType();
-            CodeTree cachedReceiverAccess = CodeTreeBuilder.createBuilder().maybeCast(libraryReceiverType, cachedExportReceiverType, "receiver").build();
 
             // cached execute
             NodeData cachedSpecializedNode = export.getSpecializedNode();
@@ -444,7 +442,17 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 if (!export.isMethod()) {
                     throw new AssertionError("Missing method export. Missed validation for " + export.getResolvedMessage().getSimpleName());
                 }
+
+                boolean isAccepts = message.getMessageElement().getSimpleName().toString().equals(ACCEPTS);
+                TypeMirror modelReceiverType;
+                if (isAccepts) {
+                    modelReceiverType = context.getType(Object.class);
+                } else {
+                    modelReceiverType = message.getLibrary().getSignatureReceiverType();
+                }
                 ExecutableElement exportMethod = (ExecutableElement) export.getMessageElement();
+                CodeTree cachedReceiverAccess = createReceiverCast(libraryExports, modelReceiverType, cachedExportReceiverType, CodeTreeBuilder.singleString("receiver"), true);
+                cachedReceiverAccess = CodeTreeBuilder.createBuilder().startParantheses().tree(cachedReceiverAccess).end().build();
                 cachedExecute = cacheClass.add(createDirectCall(cachedReceiverAccess, message, exportMethod));
             } else {
                 CodeTypeElement dummyNodeClass = sharedNodes.get(cachedSpecializedNode);
@@ -482,7 +490,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 }
             }
             if (message.getName().equals(ACCEPTS)) {
-                if (cachedSpecializedNode == null || !cachedSpecializedNode.needsRewrites(context)) {
+                if (export.getExportsLibrary().isFinalReceiver() && (cachedSpecializedNode == null || !cachedSpecializedNode.needsRewrites(context))) {
                     cachedExecute.getModifiers().add(Modifier.STATIC);
                 }
                 cachedExecute.setSimpleName(CodeNames.of(ACCEPTS_METHOD_NAME));
@@ -791,19 +799,16 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     private CodeTree createReceiverCast(ExportsLibrary library, TypeMirror sourceType, TypeMirror targetType, CodeTree receiver, boolean cached) {
         CodeTree cast;
         if (!cached || library.isFinalReceiver()) {
-            if (ElementUtils.needsCastTo(sourceType, targetType)) {
-                cast = CodeTreeBuilder.createBuilder().cast(targetType).tree(receiver).build();
-            } else {
-                cast = receiver;
-            }
+            cast = CodeTreeBuilder.createBuilder().maybeCast(sourceType, targetType).tree(receiver).build();
         } else {
             if (library.needsDynamicDispatch()) {
-                cast = CodeTreeBuilder.createBuilder().cast(targetType).startCall("dynamicDispatch_.cast").tree(receiver).end().build();
+                cast = CodeTreeBuilder.createBuilder().maybeCast(context.getType(Object.class), targetType).startCall("dynamicDispatch_.cast").tree(receiver).end().build();
             } else {
                 cast = CodeTreeBuilder.createBuilder().startStaticCall(context.getType(CompilerDirectives.class), "castExact").tree(receiver).string("receiverClass_").end().build();
             }
         }
         return cast;
+
     }
 
     private static void addAcceptsAssertion(CodeTreeBuilder executeBody) {
