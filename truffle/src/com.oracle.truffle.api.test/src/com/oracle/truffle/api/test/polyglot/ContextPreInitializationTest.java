@@ -117,6 +117,7 @@ public class ContextPreInitializationTest {
         BaseLanguage.parseStdOutOutput.clear();
         BaseLanguage.parseStdErrOutput.clear();
         resetSystemPropertiesOptions();
+        resetLanguageHomes();
         patchableLanguages.clear();
         emittedContexts.clear();
     }
@@ -1012,6 +1013,13 @@ public class ContextPreInitializationTest {
         System.clearProperty("polyglot.engine.PreinitializeContexts");
         System.clearProperty(SYS_OPTION1_KEY);
         System.clearProperty(SYS_OPTION2_KEY);
+    }
+
+    private static void resetLanguageHomes() throws ReflectiveOperationException {
+        Class<?> languageCache = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
+        Method reset = languageCache.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
+        reset.setAccessible(true);
+        reset.invoke(null);
     }
 
     private static void doContextPreinitialize(String... languages) throws ReflectiveOperationException {
