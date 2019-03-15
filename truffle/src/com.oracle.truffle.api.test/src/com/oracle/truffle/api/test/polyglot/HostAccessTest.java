@@ -65,12 +65,17 @@ public class HostAccessTest {
 
     @Test
     public void usefulToStringExplicit() {
-        Assert.assertEquals("HostAccess.EXPLICIT", HostAccessPolicy.EXPLICIT.toString());
+        Assert.assertEquals("HostAccessPolicy.EXPLICIT", HostAccessPolicy.EXPLICIT.toString());
     }
 
     @Test
     public void usefulToStringPublic() {
-        Assert.assertEquals("HostAccess.ALL", HostAccessPolicy.ALL.toString());
+        Assert.assertEquals("HostAccessPolicy.ALL", HostAccessPolicy.ALL.toString());
+    }
+
+    @Test
+    public void usefulToStringNone() {
+        Assert.assertEquals("HostAccessPolicy.NONE", HostAccessPolicy.NONE.toString());
     }
 
     public static class MyEquals {
