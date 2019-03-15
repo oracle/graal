@@ -327,7 +327,7 @@ abstract class LibFFIType {
         }
     }
 
-    static class ObjectType extends BasicType {
+    static final class ObjectType extends BasicType {
 
         ObjectType(NFIContext ctx, int size, int alignment, long ffiType) {
             super(ctx, NativeSimpleType.OBJECT, size, alignment, 1, ffiType);
@@ -347,7 +347,7 @@ abstract class LibFFIType {
     }
 
     @ExportLibrary(NativeArgumentLibrary.class)
-    static class ArrayType extends BasePointerType {
+    static final class ArrayType extends BasePointerType {
 
         final NativeSimpleType elementType;
         final HostObjectHelperNode uncachedHelper;
@@ -559,7 +559,7 @@ abstract class LibFFIType {
     }
 
     @ExportLibrary(NativeArgumentLibrary.class)
-    static class ClosureType extends BasePointerType {
+    static final class ClosureType extends BasePointerType {
 
         final LibFFISignature signature;
         final boolean asRetType;
@@ -649,7 +649,7 @@ abstract class LibFFIType {
 
     @ExportLibrary(NativeArgumentLibrary.class)
     @SuppressWarnings("unused")
-    static class EnvType extends BasePointerType {
+    static final class EnvType extends BasePointerType {
 
         EnvType(LibFFIType pointerType) {
             super(pointerType, Direction.BOTH, true);
