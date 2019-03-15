@@ -76,7 +76,7 @@ import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.JavaNetNetworkInterface.PlatformSupport;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Ifaddrs;
 import com.oracle.svm.core.posix.headers.Ioctl;

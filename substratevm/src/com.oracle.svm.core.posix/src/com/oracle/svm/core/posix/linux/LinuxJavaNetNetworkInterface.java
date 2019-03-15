@@ -52,7 +52,7 @@ import com.oracle.svm.core.posix.JavaNetNetworkInterface;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.VmPrimsJVM;
 import com.oracle.svm.core.posix.headers.ArpaInet;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Ioctl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.NetIf;

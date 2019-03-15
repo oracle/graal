@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.headers;
 
 import com.oracle.svm.core.ErrnoDirectives;
 import org.graalvm.nativeimage.Platform;
