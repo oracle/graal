@@ -209,7 +209,7 @@ public final class OrganizedImports {
         } else if (importPackagName.equals("java.lang")) {
             return false;
         } else if (importPackagName.equals(getPackageName(topLevelClass)) &&
-                        ElementUtils.elementEquals(enclosed.getEnclosingElement(), ElementUtils.castTypeElement(importType).getEnclosingElement())) {
+                        anyEqualEnclosingTypes(enclosed, ElementUtils.castTypeElement(importType))) {
             return false; // same enclosing element -> no import
         } else if (importType instanceof GeneratedTypeMirror && ElementUtils.getPackageName(importType).isEmpty()) {
             return false;
@@ -237,6 +237,23 @@ public final class OrganizedImports {
         }
 
         return true;
+    }
+
+    private static boolean anyEqualEnclosingTypes(Element enclosed, Element importElement) {
+        Element enclosingElement = enclosed.getEnclosingElement();
+        Element importEnclosingElement = importElement.getEnclosingElement();
+        if (enclosingElement == null || importEnclosingElement == null) {
+            return false;
+        }
+        if (!enclosingElement.getKind().isClass() || !importEnclosingElement.getKind().isClass()) {
+            return false;
+        }
+        String qualified1 = ElementUtils.getQualifiedName((TypeElement) enclosingElement);
+        String qualified2 = ElementUtils.getQualifiedName((TypeElement) importEnclosingElement);
+        if (qualified1.equals(qualified2)) {
+            return true;
+        }
+        return anyEqualEnclosingTypes(enclosingElement, importElement) || anyEqualEnclosingTypes(importElement, enclosingElement);
     }
 
     private static Set<CodeImport> generateImports(Map<String, String> symbols) {
