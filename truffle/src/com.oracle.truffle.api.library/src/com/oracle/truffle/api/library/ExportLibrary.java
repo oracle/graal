@@ -46,10 +46,47 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
+
 /**
+ * Allows to export messages of Truffle libraries. The exported library {@link ExportLibrary#value()
+ * value} specifies the library that should be exported. If there are abstract methods specified by
+ * a library then those messages need to be implemented. A receiver may export multiple libraries at
+ * the same time, by specifying multiple export annotations. Subclasses of the receiver type inherit
+ * all exported messages.
+ * <p>
+ * For {@link DefaultExport default exports} or receiver types that export the
+ * {@link DynamicDispatchLibrary dynamic dispatch} the messages can also be declared in a class that
+ * is not the receiver type.
+ * <p>
+ * Example usage with implicit receiver type:
  *
- * Annotation used on active library receiver to specify the active libraries provided by this Java
- * class.
+ * <pre>
+ * &#64;ExportLibrary(ArrayLibrary.class)
+ * static final class BufferArray {
+ *
+ *     private int length;
+ *     private int[] buffer;
+ *
+ *     BufferArray(int length) {
+ *         this.length = length;
+ *         this.buffer = new int[length];
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     boolean isArray() {
+ *         return true;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     int read(int index) {
+ *         return buffer[index];
+ *     }
+ * }
+ * </pre>
+ *
+ * <p>
+ * Example usage with explicit receiver type:
  *
  * @since 1.0
  */
@@ -66,19 +103,26 @@ public @interface ExportLibrary {
     Class<? extends Library> value();
 
     /**
-     * Custom receiver type. -> all methods must be static.
+     * Sets the custom receiver type. Can only be used for {@link DefaultExport default exports} or
+     * receiver types that export {@link DynamicDispatchLibrary dynamic dispatch}.
      *
+     * @see DefaultExport
+     * @see DynamicDispatchLibrary
      * @since 1.0
      */
     Class<?> receiverType() default Void.class;
 
     /***
+     * Repeat annotation for {@link ExportLibrary}.
+     *
      * @since 1.0
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
     public @interface Repeat {
         /***
+         * Repeat value for {@link ExportLibrary}.
+         *
          * @since 1.0
          */
         ExportLibrary[] value();

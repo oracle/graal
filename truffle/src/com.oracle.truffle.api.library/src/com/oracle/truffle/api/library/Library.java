@@ -43,15 +43,21 @@ package com.oracle.truffle.api.library;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Base class for all Truffle library specifications.
+ * Base class for all Truffle library specifications. Required base class for classes annotated with
+ * {@link GenerateLibrary}. Implementations for the abstract methods specified in this classes are
+ * not supposed to be implemented manually.
  *
- * @see GenerateLibrary On how to specify libraries.
- * @see ExportLibrary On how to implement / export library messages
+ * @see GenerateLibrary Generatelibrary, on how to specify libraries.
+ * @see ExportLibrary ExportLibrary, on how to implement / export library messages
+ * @see LibraryFactory LibraryFactory, on how to call library messages.
+ * @see CachedLibrary CachedLibrary, on how to call library with Truffle DSL.
  * @since 1.0
  */
 public abstract class Library extends Node {
 
     /***
+     * Default constructor for sub-classes. Libraries always have a no-arg protected constructor.
+     *
      * @since 1.0
      */
     protected Library() {

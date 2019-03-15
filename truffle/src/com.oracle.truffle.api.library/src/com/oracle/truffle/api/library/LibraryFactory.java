@@ -52,15 +52,47 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GeneratedBy;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
- * Represents a library factory that allows to create library instances to perform the Truffle
- * library dispatch. Dispatch factory for a library class can be resolved using
- * {@link #resolve(Class)}.
+ * Library factories allow to create instances of libraries used to call library messages. A library
+ * factory for a library class can be looked up using the static method {@link #resolve(Class)}.
  * <p>
- * This class also serves as base class for generated library classes. It is only sub classable to
- * allow generated code to implement it. Do not implement this class manually.
+ * Library instances are either <i>automatically dispatched</i> or <i>manually dispatched</i>.
+ * Automatically dispatched libraries always return <code>true</code> for
+ * {@link Library#accepts(Object)} therefore they can be used with changing receiver values.
+ * <p>
+ * Manually dispatched libraries are created once for a receiver and are only valid as long as
+ * {@link Library#accepts(Object) accepts} returns <code>true</code>. Once accepts was checked for
+ * an individual value, it is guaranteed that the accepts continues to return true. It is therefore
+ * not necessary to call accepts again for multiple message invocations. To create automatically
+ * dispatched versions of libraries use either {@link #createDispatched(int)} or
+ * {@link #getUncached()}. For calling manually dispatched libraries it is recommended to use
+ * {@link CachedLibrary} instead using the factory manually.
+ * <p>
+ * Library instances are either <i>cached</i> or <i>uncached</i>. Cached instances are library
+ * instances designed to be used in ASTs. Cached instances are typically {@link Node#isAdoptable()
+ * adoptable} and store additional profiling information for the cached export. This allows to
+ * generate call-site specific profiling information for libray calls. Before a cached instance can
+ * be used it must be {@link Node#insert(Node) adopted} by a parent node. Cached instances of
+ * libraries have a {@link Node#getCost() cost} of {@link NodeCost#MONOMORPHIC} for each manually
+ * cached library.
+ * <p>
+ * Uncached versions are designed to be used from slow-path runtime methods or whenever call-site
+ * specific profiling is not desired. All uncached versions of a library are annotated with
+ * {@linkplain TruffleBoundary @TruffleBoundary}. Uncached instances always return
+ * <code>false</code> for {@link Node#isAdoptable()}. Uncached instances of libraries have a
+ * {@link Node#getCost() cost} of {@link NodeCost#MEGAMORPHIC}.
+ * <p>
+ * This class is intended to be sub-classed by generated code only. Do not sub-class
+ * {@link LibraryFactory} manually.
  *
+ * @see Library
+ * @see LibraryExport
+ * @see CachedLibrary
+ * @see Message
  * @since 1.0
  */
 public abstract class LibraryFactory<T extends Library> {
@@ -106,6 +138,8 @@ public abstract class LibraryFactory<T extends Library> {
     final DynamicDispatchLibrary dispatchLibrary;
 
     /**
+     * Constructor for generated subclasses. Do not sub-class {@link LibraryFactory} manually.
+     *
      * @since 1.0
      */
     @SuppressWarnings("unchecked")
@@ -129,33 +163,23 @@ public abstract class LibraryFactory<T extends Library> {
         }
     }
 
-    final void ensureInitialized() {
-        if (this.uncachedDispatch == null) {
-            this.uncachedDispatch = createUncachedDispatch();
-        }
-    }
-
-    final Class<T> getLibraryClass() {
-        return libraryClass;
-    }
-
-    final List<Message> getMessages() {
-        return messages;
-    }
-
     /**
-     * Returns an uncached and internally dispatched variant of this library. The value of this
-     * method can safely be cached in static constants.
+     * Creates a new cached and automatically dispatched library given a limit. The limit specifies
+     * the number of cached instances that will be automatically dispatched until the dispatched
+     * library rewrites itself to an uncached version of the library. If the limit is zero then the
+     * library will use an uncached version from the start. Negative values will throw an
+     * {@link IllegalArgumentException}. It is discouraged to use {@link Integer#MAX_VALUE} as
+     * parameter to this method. Reasonable values for the limit range from zero to ten.
+     * <p>
+     * If possible it is recommended to not use this method manually but to use
+     * {@link CachedLibrary} instead.
+     * <p>
+     * Whenever the limit is reached for a node and the uncached version is in use, the current
+     * enclosing node will be available to the uncached library export of the library using
+     * {@link NodeUtil#getCurrentEncapsulatingNode()}.
      *
-     * @since 1.0
-     */
-    public final T getUncached() {
-        return uncachedDispatch;
-    }
-
-    /**
-     * Create a new cached dispatch of the library.
-     *
+     * @see NodeUtil#getCurrentEncapsulatingNode()
+     * @see CachedLibrary
      * @since 1.0
      */
     @TruffleBoundary
@@ -168,11 +192,10 @@ public abstract class LibraryFactory<T extends Library> {
     }
 
     /**
-     * Creates a new cached library given a receiver. The returned library implementation only works
-     * with the provided receiver or for other receivers that are {@link Library#accepts(Object)
-     * accepted} by the returned library. This method is rarely used directly. Use the
-     * {@link CachedLibrary} annotation in specializations instead.
-     * <p>
+     * Creates a new manually dispatched cached library for a given receiver. The receiver must not
+     * be <code>null</code>. The returned library must be adopted before used. For calling manually
+     * dispatched libraries it is recommended to use {@link CachedLibrary} instead using the factory
+     * manually.
      *
      * @see CachedLibrary
      * @since 1.0
@@ -198,28 +221,21 @@ public abstract class LibraryFactory<T extends Library> {
         return cached;
     }
 
-    private T createAssertionsImpl(LibraryExport<T> export, T cached) {
-        if (needsAssertions(export)) {
-            return createAssertions(cached);
-        } else {
-            return cached;
-        }
-    }
-
-    private boolean needsAssertions(LibraryExport<T> export) {
-        Class<?> registerClass = export.registerClass;
-        if (export.isDefaultExport() && registerClass != null && registerClass.getName().equals("com.oracle.truffle.api.interop.DefaultTruffleObjectExports")) {
-            return false;
-        } else {
-            return true;
-        }
+    /**
+     * Returns an uncached automatically dispatched version of the library. This is version of a
+     * library is used for slow-path calls.
+     *
+     * @since 1.0
+     */
+    public final T getUncached() {
+        return uncachedDispatch;
     }
 
     /**
-     * Returns an uncached and specialized version of the library.
+     * Returns an uncached manually dispatched library for a given receiver. The receiver must not
+     * be <code>null</code>.
      *
-     * Returns an cached and manually dispatched version of this library.
-     *
+     * @see CachedLibrary
      * @since 1.0
      */
     @TruffleBoundary
@@ -240,6 +256,37 @@ public abstract class LibraryFactory<T extends Library> {
             return otherUncached;
         }
         return uncached;
+    }
+
+    final void ensureInitialized() {
+        if (this.uncachedDispatch == null) {
+            this.uncachedDispatch = createUncachedDispatch();
+        }
+    }
+
+    final Class<T> getLibraryClass() {
+        return libraryClass;
+    }
+
+    final List<Message> getMessages() {
+        return messages;
+    }
+
+    private T createAssertionsImpl(LibraryExport<T> export, T cached) {
+        if (needsAssertions(export)) {
+            return createAssertions(cached);
+        } else {
+            return cached;
+        }
+    }
+
+    private boolean needsAssertions(LibraryExport<T> export) {
+        Class<?> registerClass = export.registerClass;
+        if (export.isDefaultExport() && registerClass != null && registerClass.getName().equals("com.oracle.truffle.api.interop.DefaultTruffleObjectExports")) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     private boolean validateExport(Object receiver, Class<?> dispatchClass, T library) {
@@ -266,20 +313,24 @@ public abstract class LibraryFactory<T extends Library> {
     }
 
     /**
-     * Creates a cached dispatched version of this library. An implementation for this method is
-     * generated, do not implement manually.
+     * Creates a cached automatically dispatched version of this library. An implementation for this
+     * method is generated, do not implement or call manually.
      *
      * @since 1.0
      */
     protected abstract T createDispatchImpl(int limit);
 
     /***
+     * Creates a uncached automatically dispatched version of this library. An implementation for
+     * this method is generated, do not implement or call manually.
+     *
      * @since 1.0
      */
     protected abstract T createUncachedDispatch();
 
     /**
-     * Creates a proxy version of this library. An implementation for this method is generated, do
+     * Creates a proxy version of this library. A proxy version is responsible for dispatching to
+     * reflective implementations of messages. An implementation for this method is generated, do
      * not implement manually.
      *
      * @since 1.0
@@ -287,7 +338,8 @@ public abstract class LibraryFactory<T extends Library> {
     protected abstract T createProxy(ReflectionLibrary lib);
 
     /**
-     * Creates an assertion version of this library. An implementation for this method is generated.
+     * Creates an assertion version of this library. An implementation for this method is generated,
+     * do not implement manually.
      *
      * @since 1.0
      */
@@ -296,8 +348,8 @@ public abstract class LibraryFactory<T extends Library> {
     }
 
     /**
-     * Returns the implementation type that should be used for a given receiver. An implementation
-     * for this method is generated, do not implement manually.
+     * Returns default exported used for a given receiver. An implementation for this method is
+     * generated, do not implement manually.
      *
      * @since 1.0
      */
@@ -347,10 +399,8 @@ public abstract class LibraryFactory<T extends Library> {
 
     /**
      * Looks up the resolved library instance for a library class. If a library class was not yet
-     * loaded it will be intialized automatically. If the passed library class is not a valid
-     * library then a {@link IllegalArgumentException} is thrown. Resolving a library class into
-     * constant is useful if performance is a critical requirement, otherwise it is recommended to
-     * use the static methods in {@link Library} instead.
+     * loaded it will be initialized automatically. If the passed library class is not a valid
+     * library then a {@link IllegalArgumentException} is thrown.
      *
      * @see Library
      * @since 1.0
