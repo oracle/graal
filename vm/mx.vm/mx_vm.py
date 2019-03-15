@@ -741,15 +741,15 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 if any((' ' in arg for arg in launcher_config.build_args)):
                     mx.abort("Unsupported space in launcher build argument: {} in main launcher for {}".format(launcher_config.build_args, dir_name))
                 properties = {
-                    'ImageName': basename(launcher_config.destination),
+                    'ImageName': basename(launcher_config.destination)[:-len(mx.exe_suffix(""))],
                     'LauncherClass': basename(launcher_config.main_class),
-                    'LauncherClassPath': graalvm_home_relative_classpath(launcher_config.jar_distributions, _get_graalvm_archive_path('jre')),
+                    'LauncherClassPath': graalvm_home_relative_classpath(launcher_config.jar_distributions, _get_graalvm_archive_path('jre')).replace(os.pathsep, ':'),
                     'Args': ' '.join(launcher_config.build_args),
                 }
                 for p in ('ImageName', 'LauncherClass'):
                     if provided_properties[p] != properties[p]:
                         mx.abort("Inconsistent property '{}':\n - native-image.properties: {}\n - LauncherConfig: {}".format(p, provided_properties[p], properties[p]))
-                if set(provided_properties['LauncherClassPath'].split(os.pathsep)) != set(properties['LauncherClassPath'].split(os.pathsep)):
+                if set(provided_properties['LauncherClassPath'].split(':')) != set(properties['LauncherClassPath'].split(':')):
                     mx.abort("Inconsistent property 'LauncherClassPath':\n - native-image.properties: {}\n - LauncherConfig: {}".format(provided_properties['LauncherClassPath'], properties['LauncherClassPath']))
 
     def clean(self, forBuild=False):
