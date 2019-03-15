@@ -44,7 +44,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collection;
-
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
