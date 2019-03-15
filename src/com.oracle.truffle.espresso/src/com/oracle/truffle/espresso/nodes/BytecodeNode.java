@@ -475,10 +475,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     public Object invokeNaked(VirtualFrame frame) {
         int curBCI = 0;
         int top = 0;
-//
-//        if (this.getMethod().getName().toString().contains("invokeVirtual_L_L") && this.getMethod().getDeclaringKlass().getName().toString().contains("LambdaForm$DMH")) {
-//            int i = 1;
-//        }
+
+        if (this.getMethod().getName().toString().contains("invokeVirtual_L_L") && this.getMethod().getDeclaringKlass().getName().toString().contains("LambdaForm$DMH")) {
+            int i = 1;
+        }
 
         try {
             initArguments(frame);

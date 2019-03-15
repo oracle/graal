@@ -735,6 +735,42 @@ public final class Target_sun_misc_Unsafe {
         f.set(holder, value);
     }
 
+    @Substitution(hasReceiver = true)
+    public static synchronized void putOrderedInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int value) {
+        if (holder instanceof StaticObjectArray) {
+            U.putOrderedInt(((StaticObjectArray) holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        f.set(holder, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized void putOrderedLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long value) {
+        if (holder instanceof StaticObjectArray) {
+            U.putOrderedLong(((StaticObjectArray) holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        f.set(holder, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized void putOrderedObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, Object value) {
+        if (holder instanceof StaticObjectArray) {
+            U.putOrderedObject(((StaticObjectArray) holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        f.set(holder, value);
+    }
+
     // endregion put*(Object holder, long offset, * value)
 
     @Substitution(hasReceiver = true)

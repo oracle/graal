@@ -6,6 +6,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
 public class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
@@ -30,8 +31,15 @@ public class MHLinkToNode extends EspressoBaseNode {
         assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
 
         Method target = (Method) memberName.getHiddenField("vmtarget");
+        int refKind = Target_java_lang_invoke_MethodHandleNatives.getRefKind((int)memberName.getField(memberName.getKlass().getMeta().MNflags));
+
         if (target.hasReceiver()) {
             StaticObject receiver = (StaticObject) args[0];
+            if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual) {
+                if (!target.hasBytecodes()) {
+                    target = receiver.getKlass().lookupMethod(target.getName(), target.getRawSignature());
+                }
+            }
             Object[] trueArgs = new Object[args.length - 2];
             for (int i = 1; i < args.length - 1; i++) {
                 trueArgs[i - 1] = args[i];
