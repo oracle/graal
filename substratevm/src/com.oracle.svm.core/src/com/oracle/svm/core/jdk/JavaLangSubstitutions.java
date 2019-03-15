@@ -321,6 +321,11 @@ final class Target_java_lang_System {
     }
 
     @Substitute
+    private static void setProperties(Properties props) {
+        ImageSingletons.lookup(SystemPropertiesSupport.class).setProperties(props);
+    }
+
+    @Substitute
     public static String setProperty(String key, String value) {
         checkKey(key);
         return ImageSingletons.lookup(SystemPropertiesSupport.class).setProperty(key, value);
