@@ -764,6 +764,15 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertTrue(source1.equals(source2));
     }
 
+    @Test
+    public void testFindLaguage() throws IOException {
+        setupEnv();
+        TruffleFile knownMimeTypeFile = languageEnv.getTruffleFile("test.tjs");
+        TruffleFile unknownMimeTypeFile = languageEnv.getTruffleFile("test.unknown");
+        assertEquals("application/test-js", Source.findMimeType(knownMimeTypeFile));
+        assertNull(Source.findMimeType(unknownMimeTypeFile));
+    }
+
     private static final TestAPIAccessor API = new TestAPIAccessor();
 
     private static final class TestAPIAccessor extends Accessor {
