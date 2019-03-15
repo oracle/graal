@@ -60,15 +60,15 @@ import java.util.function.Function;
 /**
  * Configuration of host access. There are two predefined instances of host access {@link #EXPLICIT}
  * and {@link #PUBLIC} which one can use when building a context
- * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)}. Should the predefined
- * instances not be enough, one can create own configuration with {@link #newBuilder()}.
+ * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccessPolicy)}. Should the
+ * predefined instances not be enough, one can create own configuration with {@link #newBuilder()}.
  *
  * @since 1.0 RC14
  */
-public final class HostAccess {
-    private static final BiFunction<HostAccess, AnnotatedElement, Boolean> ACCESS = new BiFunction<HostAccess, AnnotatedElement, Boolean>() {
+public final class HostAccessPolicy {
+    private static final BiFunction<HostAccessPolicy, AnnotatedElement, Boolean> ACCESS = new BiFunction<HostAccessPolicy, AnnotatedElement, Boolean>() {
         @Override
-        public Boolean apply(HostAccess t, AnnotatedElement u) {
+        public Boolean apply(HostAccessPolicy t, AnnotatedElement u) {
             return t.allowAccess(u);
         }
     };
@@ -86,16 +86,16 @@ public final class HostAccess {
      * 
      * @since 1.0 RC14
      */
-    public static final HostAccess EXPLICIT = new HostAccess(Collections.singleton(HostAccess.Export.class), null, null, "HostAccess.EXPLICIT", false);
+    public static final HostAccessPolicy EXPLICIT = new HostAccessPolicy(Collections.singleton(HostAccessPolicy.Export.class), null, null, "HostAccess.EXPLICIT", false);
 
     /**
      * All public access, but no reflection access.
      * 
      * @since 1.0 RC14
      */
-    public static final HostAccess PUBLIC = new HostAccess(null, null, null, "HostAccess.PUBLIC", true);
+    public static final HostAccessPolicy PUBLIC = new HostAccessPolicy(null, null, null, "HostAccess.PUBLIC", true);
 
-    HostAccess(Set<Class<? extends Annotation>> annotations, Set<AnnotatedElement> excludes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
+    HostAccessPolicy(Set<Class<? extends Annotation>> annotations, Set<AnnotatedElement> excludes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
         this.annotations = annotations;
         this.excludes = excludes;
         this.members = members;
@@ -133,7 +133,7 @@ public final class HostAccess {
         return false;
     }
 
-    synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory) {
+    synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccessPolicy, AnnotatedElement, Boolean>, T> factory) {
         if (impl == null) {
             impl = factory.apply(ACCESS);
         }
@@ -169,8 +169,8 @@ public final class HostAccess {
 
     /**
      * Annotation to export public methods or fields. When {@link #EXPLICIT} access is activated via
-     * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)} only methods and
-     * fields annotated by this annotation are available from scripts.
+     * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccessPolicy)} only methods
+     * and fields annotated by this annotation are available from scripts.
      * 
      * @since 1.0 RC14
      */
@@ -180,7 +180,7 @@ public final class HostAccess {
     }
 
     /**
-     * Builder to create own {@link HostAccess}.
+     * Builder to create own {@link HostAccessPolicy}.
      * 
      * @since 1.0 RC14
      */
@@ -290,8 +290,8 @@ public final class HostAccess {
          * @return new instance of host access configuration
          * @since 1.0 RC14
          */
-        public HostAccess build() {
-            return new HostAccess(annotations, excludes, members, null, allowPublic);
+        public HostAccessPolicy build() {
+            return new HostAccessPolicy(annotations, excludes, members, null, allowPublic);
         }
     }
 }

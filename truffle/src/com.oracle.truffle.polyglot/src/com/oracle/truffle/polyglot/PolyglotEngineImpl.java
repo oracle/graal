@@ -96,7 +96,7 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
-import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccessPolicy;
 
 class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -938,8 +938,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         ENGINES.clear();
     }
 
-    void assignHostAccess(HostAccess hostAccess) {
-        HostAccess nonNullAccess = hostAccess == null ? HostAccess.EXPLICIT : hostAccess;
+    void assignHostAccess(HostAccessPolicy hostAccess) {
+        HostAccessPolicy nonNullAccess = hostAccess == null ? HostAccessPolicy.EXPLICIT : hostAccess;
         if (conf != null) {
             if (!conf.checkHostAccess(nonNullAccess)) {
                 throw new IllegalStateException("Cannot share engine between contexts with different HostAccess");
@@ -1102,7 +1102,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @Override
     @SuppressWarnings({"all"})
     public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostAccess,
-                    HostAccess access,
+                    HostAccessPolicy access,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
                     boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
                     String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream) {

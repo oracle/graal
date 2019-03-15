@@ -66,7 +66,7 @@ import java.util.function.Predicate;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccessPolicy;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
@@ -141,7 +141,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
-        public abstract <T> T connectHostAccess(Class<T> impl, HostAccess conf, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory);
+        public abstract <T> T connectHostAccess(Class<T> impl, HostAccessPolicy conf, Function<BiFunction<HostAccessPolicy, AnnotatedElement, Boolean>, T> factory);
     }
 
     // shared SPI
@@ -170,8 +170,9 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream,
-                    HostAccess conf);
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
+                    Object logHandlerOrStream,
+                    HostAccessPolicy conf);
 
     public abstract void preInitializeEngine();
 
@@ -375,7 +376,7 @@ public abstract class AbstractPolyglotImpl {
         public abstract OptionDescriptors getOptions();
 
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
-                        HostAccess hostAccess,
+                        HostAccessPolicy hostAccess,
                         boolean allowNativeAccess,
                         boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
                         String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream);

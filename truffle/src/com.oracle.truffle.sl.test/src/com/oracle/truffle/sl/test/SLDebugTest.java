@@ -79,7 +79,7 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tck.DebuggerTester;
-import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccessPolicy;
 
 public class SLDebugTest {
 
@@ -1216,7 +1216,7 @@ public class SLDebugTest {
     }
 
     public static class Multiply {
-        @HostAccess.Export
+        @HostAccessPolicy.Export
         public long multiply(long n, Fac fce, long i) {
             return n * fce.fac(i, this);
         }
@@ -1224,7 +1224,7 @@ public class SLDebugTest {
 
     @FunctionalInterface
     public interface Fac {
-        @HostAccess.Export
+        @HostAccessPolicy.Export
         long fac(long n, Multiply multiply);
     }
 }

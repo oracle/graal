@@ -61,16 +61,16 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.sl.SLLanguage;
-import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccessPolicy;
 
 public class SLJavaInteropExceptionTest {
     public static class Validator {
-        @HostAccess.Export
+        @HostAccessPolicy.Export
         public int validateException() {
             throw new NoSuchElementException();
         }
 
-        @HostAccess.Export
+        @HostAccessPolicy.Export
         public void validateNested() throws Exception {
             String sourceText = "function test(validator) {\n" +
                             "  return validator.validateException();\n" +
@@ -82,12 +82,12 @@ public class SLJavaInteropExceptionTest {
             }
         }
 
-        @HostAccess.Export
+        @HostAccessPolicy.Export
         public long validateFunction(Supplier<Long> function) {
             return function.get();
         }
 
-        @HostAccess.Export
+        @HostAccessPolicy.Export
         public void validateMap(Map<String, Object> map) {
             Assert.assertNull(map.get(null));
         }

@@ -105,7 +105,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
-import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccessPolicy;
 
 public class ValueAPITest {
 
@@ -118,7 +118,7 @@ public class ValueAPITest {
 
     @Before
     public void setUp() {
-        context = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
+        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
     }
 
     @After
@@ -1402,7 +1402,7 @@ public class ValueAPITest {
     }
 
     public static class RecursiveObject {
-        @HostAccess.Export public RecursiveObject rec;
+        @HostAccessPolicy.Export public RecursiveObject rec;
 
     }
 
@@ -1634,7 +1634,7 @@ public class ValueAPITest {
 
     @Test
     public void testHostObjectsAndPrimitivesSharable() {
-        Context context1 = Context.newBuilder().allowHostAccess(HostAccess.PUBLIC).build();
+        Context context1 = Context.newBuilder().allowHostAccess(HostAccessPolicy.PUBLIC).build();
         Context context2 = Context.create();
 
         List<Object> sharableObjects = new ArrayList<>();

@@ -603,7 +603,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public <T> T connectHostAccess(Class<T> impl, HostAccess conf, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory) {
+        public <T> T connectHostAccess(Class<T> impl, HostAccessPolicy conf, Function<BiFunction<HostAccessPolicy, AnnotatedElement, Boolean>, T> factory) {
             return conf.connectHostAccess(impl, factory);
         }
     }
@@ -691,8 +691,9 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream,
-                        HostAccess conf) {
+                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
+                        Object logHandlerOrStream,
+                        HostAccessPolicy conf) {
             throw noPolyglotImplementationFound();
         }
 
