@@ -2321,7 +2321,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         }
                         return false;
                     }
-                    if (canInlinePartialIntrinsicExit() && InlinePartialIntrinsicExitDuringParsing.getValue(options) && !IS_BUILDING_NATIVE_IMAGE) {
+                    if (canInlinePartialIntrinsicExit()) {
                         // Otherwise inline the original method. Any frame state created
                         // during the inlining will exclude frame(s) in the
                         // intrinsic method (see FrameStateBuilder.create(int bci)).
@@ -2384,7 +2384,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * intrinsic) can be inlined.
      */
     protected boolean canInlinePartialIntrinsicExit() {
-        return true;
+        return InlinePartialIntrinsicExitDuringParsing.getValue(options) && !IS_BUILDING_NATIVE_IMAGE && method.getAnnotation(Snippet.class) == null;
     }
 
     private void printInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean success, String msg) {
