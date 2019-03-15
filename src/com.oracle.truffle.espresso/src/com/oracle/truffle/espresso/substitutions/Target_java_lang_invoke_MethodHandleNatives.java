@@ -70,7 +70,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         site.setField(site.getKlass().getMeta().CStarget, target);
     }
 
-
     // TODO(garcia) verifyConstants
 
     @Substitution

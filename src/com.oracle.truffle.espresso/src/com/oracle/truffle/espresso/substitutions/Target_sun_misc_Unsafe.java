@@ -76,9 +76,7 @@ public final class Target_sun_misc_Unsafe {
         ClassfileStream cfs = new ClassfileStream(bytes, null);
 
         ClassfileParser parser = new ClassfileParser(cfs, null, hostKlass, context, patches);
-        if (patches != null) {
-            int dood = 1;
-        }
+
         ParserKlass parserKlass = parser.parseClass();
         StaticObject classLoader = hostKlass.getDefiningClassLoader();
         return defineAnonymousKlass(parserKlass, context, classLoader, parser.getThisKlassIndex(), hostKlass).mirror();

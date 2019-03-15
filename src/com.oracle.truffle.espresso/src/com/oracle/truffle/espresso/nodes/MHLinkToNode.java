@@ -34,7 +34,7 @@ public class MHLinkToNode extends EspressoBaseNode {
             StaticObject receiver = (StaticObject) args[0];
             Object[] trueArgs = new Object[args.length - 2];
             for (int i = 1; i < args.length - 1; i++) {
-                trueArgs[i-1] = args[i];
+                trueArgs[i - 1] = args[i];
             }
             return target.invokeDirect(receiver, trueArgs);
         } else {

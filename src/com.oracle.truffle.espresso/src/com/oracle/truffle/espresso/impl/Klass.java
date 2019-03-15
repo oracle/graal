@@ -508,12 +508,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
                     // TODO(garcia) true access checks
                     ObjectKlass callerKlass = getMeta().Object;
                     StaticObjectArray appendixBox = new StaticObjectArray(getMeta().Object_array, new Object[1]);
-                    StaticObjectImpl memberName = (StaticObjectImpl)getMeta().linkMethod.invokeDirect(
-                            null,
-                            callerKlass.mirror(), (int) REF_invokeVirtual,
-                            getMeta().MethodHandle.mirror(), getMeta().toGuestString(methodName), getMeta().toGuestString(signature),
-                            appendixBox
-                    );
+                    StaticObjectImpl memberName = (StaticObjectImpl) getMeta().linkMethod.invokeDirect(
+                                    null,
+                                    callerKlass.mirror(), (int) REF_invokeVirtual,
+                                    getMeta().MethodHandle.mirror(), getMeta().toGuestString(methodName), getMeta().toGuestString(signature),
+                                    appendixBox);
                     StaticObject appendix = appendixBox.get(0);
                     return new MHInvokeGenericNode(method, memberName, appendix);
                 }

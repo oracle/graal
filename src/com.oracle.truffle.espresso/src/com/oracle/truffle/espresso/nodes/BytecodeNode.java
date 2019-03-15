@@ -256,7 +256,6 @@ import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.*;
-import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -476,27 +475,27 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     public Object invokeNaked(VirtualFrame frame) {
         int curBCI = 0;
         int top = 0;
-
-        if (this.getMethod().getName().toString().contains("invokeVirtual_L_L") && this.getMethod().getDeclaringKlass().getName().toString().contains("LambdaForm$DMH")) {
-            int i = 1;
-        }
+//
+//        if (this.getMethod().getName().toString().contains("invokeVirtual_L_L") && this.getMethod().getDeclaringKlass().getName().toString().contains("LambdaForm$DMH")) {
+//            int i = 1;
+//        }
 
         try {
             initArguments(frame);
         } catch (ClassCastException e) {
             e.printStackTrace();
             StringBuilder str = new StringBuilder();
-            for (Object x: frame.getArguments()) {
+            for (Object x : frame.getArguments()) {
                 str.append(x);
                 if (x instanceof StaticObject) {
-                    if (getMeta().MethodHandle.isAssignableFrom(((StaticObject)x).getKlass())) {
-                        StaticObject mtype = (StaticObject)((StaticObjectImpl)x).getField(getMeta().MHtype);
-                        str.append(Meta.toHostString((StaticObject)getMeta().toMethodDescriptorString.invokeDirect(mtype)));
+                    if (getMeta().MethodHandle.isAssignableFrom(((StaticObject) x).getKlass())) {
+                        StaticObject mtype = (StaticObject) ((StaticObjectImpl) x).getField(getMeta().MHtype);
+                        str.append(Meta.toHostString((StaticObject) getMeta().toMethodDescriptorString.invokeDirect(mtype)));
                     }
                 }
                 str.append("\n");
             }
-            throw getMeta().throwExWithMessage(e.getClass(), "With arguments: \n" + str.toString() + "\nIn context: " + this + (getMethod().isStatic()?"\n":"\nhas receiver"));
+            throw getMeta().throwExWithMessage(e.getClass(), "With arguments: \n" + str.toString() + "\nIn context: " + this + (getMethod().isStatic() ? "\n" : "\nhas receiver"));
         }
 
         loop: while (true) {
@@ -1123,14 +1122,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (e instanceof EspressoException) {
                         throw e;
                     }
-                     System.err.println("Internal error (caught in invocation): " + this + "\nBCI:" + curBCI);
+                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI:" + curBCI);
                     e.printStackTrace();
                     CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwExWithMessage(NullPointerException.class, e.getStackTrace().toString());
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-                 System.err.println("Finding handler for a " + e.getException().getKlass() + " at:" + curBCI + " in " + getMethod());
+                System.err.println("Finding handler for a " + e.getException().getKlass() + " at:" + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;
@@ -1519,7 +1518,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
-        StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1] );
+        StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1]);
 
         StaticObjectImpl memberName = (StaticObjectImpl) getMeta().linkCallSite.invokeDirect(
                         null,
@@ -1531,14 +1530,16 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         StaticObjectImpl unboxedAppendix = appendix.get(0);
 
-        return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, meta, parsedInvokeSignature), opCode);
+        return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature), opCode);
 
         // Node quickening
-//        if (meta.MethodHandle.isAssignableFrom(unboxedAppendix.getKlass())) {
-//            return injectAndCall(frame, top, curBCI, new InvokeDynamicConstantNode(unboxedAppendix, meta, invokeSignature, parsedInvokeSignature), opCode);
-//        } else {
-//            return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(unboxedAppendix, meta, invokeSignature, parsedInvokeSignature), opCode);
-//        }
+        // if (meta.MethodHandle.isAssignableFrom(unboxedAppendix.getKlass())) {
+        // return injectAndCall(frame, top, curBCI, new InvokeDynamicConstantNode(unboxedAppendix,
+        // meta, invokeSignature, parsedInvokeSignature), opCode);
+        // } else {
+        // return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(unboxedAppendix,
+        // meta, invokeSignature, parsedInvokeSignature), opCode);
+        // }
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {
@@ -1869,6 +1870,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         return args;
     }
 
+    // Effort to prevent double copies.
     @ExplodeLoop
     public Object[] peekArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount) {
         CompilerAsserts.partialEvaluationConstant(argCount);

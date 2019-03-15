@@ -7,7 +7,6 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
@@ -19,13 +18,11 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     private final boolean hasAppendix;
     @Child private DirectCallNode callNode;
 
-    private final Meta meta;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Symbol.Type>[] parsedSignature;
 
-    InvokeDynamicCallSiteNode(StaticObjectImpl memberName, StaticObject appendix, Meta meta, Symbol<Type>[] parsedSignature) {
+    InvokeDynamicCallSiteNode(StaticObjectImpl memberName, StaticObject appendix, Symbol<Type>[] parsedSignature) {
         this.target = (Method) memberName.getHiddenField("vmtarget");
         this.appendix = appendix;
-        this.meta = meta;
         this.parsedSignature = parsedSignature;
         this.hasAppendix = appendix != StaticObject.NULL;
     }
