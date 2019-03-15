@@ -208,11 +208,12 @@ public final class HostAccessPolicy {
         /**
          * Public elements can be accessed.
          *
+         * @param allow should access to all public elements be allowed or not?
          * @return this builder
          * @since 1.0 RC14
          */
-        public Builder allowPublicAccess() {
-            allowPublic = true;
+        public Builder allowPublicAccess(boolean allow) {
+            allowPublic = allow;
             return this;
         }
 
