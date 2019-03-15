@@ -339,6 +339,7 @@ public class Errno {
 
     /** Object is remote */
     @CConstant
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     public static native int EREMOTE();
 
     /** Link has been severed */
