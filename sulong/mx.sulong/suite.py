@@ -125,6 +125,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
         "com.oracle.truffle.llvm.spi",
+        "com.oracle.truffle.llvm.instruments",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "checkstyleVersion" : "8.8",
@@ -649,8 +650,7 @@ suite = {
     "SULONG" : {
       "subDir" : "projects",
       "dependencies" : [
-        "com.oracle.truffle.llvm",
-        "com.oracle.truffle.llvm.instruments"
+        "com.oracle.truffle.llvm"
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",

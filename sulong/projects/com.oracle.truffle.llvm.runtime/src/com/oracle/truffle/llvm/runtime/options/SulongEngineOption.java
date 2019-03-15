@@ -90,6 +90,9 @@ public final class SulongEngineOption {
     @Option(name = "llvm.printStackTraceOnAbort", category = OptionCategory.INTERNAL, help = "Prints a C stack trace when abort() is called.") //
     public static final OptionKey<Boolean> STACKTRACE_ON_ABORT = new OptionKey<>(false);
 
+    @Option(name = "llvm.traceIR", category = OptionCategory.EXPERT, help = "Prints a trace of the executed bitcode. Requires \'--llvm.llDebug=true\'. Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.") //
+    public static final OptionKey<String> TRACE_IR = new OptionKey<>("");
+
     public static final String LIBRARIES_NAME = "llvm.libraries";
     public static final String LIBRARIES_INFO = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " +
                     OPTION_ARRAY_SEPARATOR + " .";
