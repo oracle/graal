@@ -25,15 +25,13 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         this.appendix = appendix;
         this.parsedSignature = parsedSignature;
         this.hasAppendix = appendix != StaticObject.NULL;
+        target.getDeclaringKlass().initialize();
+        this.callNode = DirectCallNode.create(target.getCallTarget());
+
     }
 
     @Override
     public int invoke(final VirtualFrame frame, int top) {
-        if (callNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            target.getDeclaringKlass().initialize();
-            callNode = DirectCallNode.create(target.getCallTarget());
-        }
         BytecodeNode root = (BytecodeNode) getParent();
         int argCount = Signatures.parameterCount(parsedSignature, false);
         Object[] args = root.peekArgumentsWithArray(frame, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount);

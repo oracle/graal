@@ -1102,14 +1102,16 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (e instanceof EspressoException) {
                         throw e;
                     }
-//                    System.err.println("Internal error (caught in invocation): " + this + "\nBCI:" + curBCI);
-//                    e.printStackTrace();
-                    CompilerDirectives.transferToInterpreter();
-                    throw getMeta().throwExWithMessage(NullPointerException.class, e.getStackTrace().toString());
+                    // System.err.println("Internal error (caught in invocation): " + this +
+                    // "\nBCI:" + curBCI);
+                    // e.printStackTrace();
+                    // CompilerDirectives.transferToInterpreter();
+                    // throw getMeta().throwEx(NullPointerException.class);
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-//                System.err.println("Finding handler for a " + e.getException().getKlass() + " at:" + curBCI + " in " + getMethod());
+                // System.err.println("Finding handler for a " + e.getException().getKlass() + "
+                // at:" + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;
@@ -1511,15 +1513,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         StaticObjectImpl unboxedAppendix = appendix.get(0);
 
         return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature), opCode);
-
-        // Node quickening
-        // if (meta.MethodHandle.isAssignableFrom(unboxedAppendix.getKlass())) {
-        // return injectAndCall(frame, top, curBCI, new InvokeDynamicConstantNode(unboxedAppendix,
-        // meta, invokeSignature, parsedInvokeSignature), opCode);
-        // } else {
-        // return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(unboxedAppendix,
-        // meta, invokeSignature, parsedInvokeSignature), opCode);
-        // }
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {

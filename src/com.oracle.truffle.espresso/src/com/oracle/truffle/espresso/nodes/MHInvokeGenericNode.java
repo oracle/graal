@@ -76,31 +76,7 @@ public class MHInvokeGenericNode extends EspressoBaseNode {
     // Method method = (Method) target;
     // return method.invokeDirect(self, fullArgs);
     // } else { // Field getter/setter
-    // Klass klass = (Klass) target;
-    // Field field = (Field) memberName.getHiddenField("TRUE_vmtarget");
-    // int flags = (int) memberName.getField(meta.MNflags);
-    // int refkind = Target_java_lang_invoke_MethodHandleNatives.getRefKind(flags);
-    // switch (refkind) {
-    // case Target_java_lang_invoke_MethodHandleNatives.REF_getField:
-    // assert args.length >= 1;
-    // return ((StaticObjectImpl) args[0]).getField(field);
     //
-    // case Target_java_lang_invoke_MethodHandleNatives.REF_getStatic:
-    // return ((StaticObjectImpl) klass.getStatics()).getField(field);
-    //
-    // case Target_java_lang_invoke_MethodHandleNatives.REF_putField:
-    // assert args.length >= 2;
-    // ((StaticObjectImpl) args[0]).setField(field, args[1]);
-    // return StaticObject.VOID;
-    //
-    // case Target_java_lang_invoke_MethodHandleNatives.REF_putStatic:
-    // assert args.length >= 1;
-    // ((StaticObjectImpl) klass.getStatics()).setField(field, args[0]);
-    // return StaticObject.VOID;
-    //
-    // default:
-    // throw EspressoError.shouldNotReachHere("invalid MemberName");
-    // }
     // }
     // }
 }

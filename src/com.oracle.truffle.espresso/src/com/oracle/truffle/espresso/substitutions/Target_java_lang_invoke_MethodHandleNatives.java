@@ -67,7 +67,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static void setCallSiteTargetVolatile(@Host(CallSite.class) StaticObjectImpl site, @Host(MethodHandle.class) StaticObjectImpl target) {
-        site.setField(site.getKlass().getMeta().CStarget, target);
+        site.setFieldVolatile(site.getKlass().getMeta().CStarget, target);
     }
 
     // TODO(garcia) verifyConstants
