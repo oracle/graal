@@ -701,7 +701,7 @@ public class NativeImage {
     private Stream<String> getRelativeLauncherClassPath() {
         return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
                         .map(lang -> lang.getProperty("LauncherClassPath"))
-                        .filter(Objects::nonNull).flatMap(Pattern.compile(File.pathSeparator, Pattern.LITERAL)::splitAsStream);
+                        .filter(Objects::nonNull).flatMap(Pattern.compile(":", Pattern.LITERAL)::splitAsStream);
     }
 
     protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
