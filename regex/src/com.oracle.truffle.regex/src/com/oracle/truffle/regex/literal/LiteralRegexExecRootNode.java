@@ -54,18 +54,21 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
     protected final String literal;
     protected final PreCalculatedResultFactory resultFactory;
-    private final CallTarget regexCallTarget;
+    private volatile CallTarget regexCallTarget;
 
     public LiteralRegexExecRootNode(RegexLanguage language, RegexSource source, PreCalcResultVisitor preCalcResultVisitor) {
         super(language, source);
         this.literal = preCalcResultVisitor.getLiteral();
         this.resultFactory = preCalcResultVisitor.getResultFactory();
-        regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, this));
     }
 
     @Override
     protected final String getEngineLabel() {
         return "literal";
+    }
+
+    public final void createCallTarget(RegexLanguage language) {
+        regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, this));
     }
 
     @Override
@@ -285,4 +288,5 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
             return regionMatchesNode.execute(input, literal, fromIndex) ? resultFactory.createFromStart(regex, input, fromIndex) : RegexResult.NO_MATCH;
         }
     }
+
 }
