@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.CContext.Directives;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -195,6 +196,10 @@ public final class NativeLibraries {
             /* Nothing to do, all elements in context are ignored. */
         } else if (method.getAnnotation(CConstant.class) != null) {
             context.appendConstantAccessor(method);
+        } else if (method.getAnnotation(CFunction.class) != null) {
+            /*
+             * Nothing to do, handled elsewhere but the NativeCodeContext above is important.
+             */
         } else {
             addError("Method is not annotated with supported C interface annotation", method);
         }
@@ -277,12 +282,7 @@ public final class NativeLibraries {
     }
 
     private Class<? extends CContext.Directives> getDirectives(ResolvedJavaMethod method) {
-        CContext useUnit = method.getAnnotation(CContext.class);
-        if (useUnit != null) {
-            return getDirectives(useUnit);
-        } else {
-            return getDirectives(method.getDeclaringClass());
-        }
+        return getDirectives(method.getDeclaringClass());
     }
 
     private Class<? extends CContext.Directives> getDirectives(ResolvedJavaType type) {
