@@ -702,11 +702,7 @@ public class NativeImageGenerator {
                 bigbang.getUnsupportedFeatures().report(bigbang);
                 bigbang.checkUserLimitations();
             } catch (UnsupportedFeatureException ufe) {
-                if (NativeImageOptions.ReportUnsupportedFeaturesCause.getValue() && ufe.getCause() != null) {
-                    System.err.println("Original exception: ");
-                    ufe.getCause().printStackTrace();
-                }
-                throw UserError.abort(ufe.getMessage());
+                throw UserError.abort(ufe.getMessage(), ufe);
             }
         } catch (InterruptedException ie) {
             throw new InterruptImageBuilding();
