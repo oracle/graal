@@ -199,13 +199,13 @@ public final class Meta implements ContextAccess {
         System_exit = System.lookupDeclaredMethod(Name.exit, Signature._void_int);
 
         MethodType = knownKlass(Type.MethodType);
-        toMethodDescriptorString = MethodType.lookupMethod(Name.toMethodDescriptorString, Signature.String);
-        fromMethodDescriptorString = MethodType.lookupMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
+        toMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
+        fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
         // MethodType_cons = MethodType.lookupDeclaredMethod(Name.MethodType,
         // Signature.MethodType_cons);
 
         MemberName = knownKlass(Type.MemberName);
-        getSignature = MemberName.lookupMethod(Name.getSignature, Signature.String);
+        getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
         MNclazz = MemberName.lookupField(Name.clazz, Type.Class);
         MNname = MemberName.lookupField(Name.name, Type.String);
         MNtype = MemberName.lookupField(Name.type, Type.MethodType);
@@ -233,7 +233,9 @@ public final class Meta implements ContextAccess {
         CStarget = CallSite.lookupField(Name.target, Type.MethodHandle);
 
         LambdaForm = knownKlass(Type.LambdaForm);
+        interpretWithArguments = LambdaForm.lookupDeclaredMethod(Name.interpretWithArguments, Signature.Object_ObjectArray);
         vmentry = LambdaForm.lookupField(Name.vmentry, Type.MemberName);
+        arity = LambdaForm.lookupField(Name.arity, Type._int);
 
         MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
         linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
@@ -412,7 +414,9 @@ public final class Meta implements ContextAccess {
     public final Field CStarget;
 
     public final ObjectKlass LambdaForm;
+    public final Method interpretWithArguments;
     public final Field vmentry;
+    public final Field arity;
 
     public final ObjectKlass MethodHandleNatives;
     public final Method linkMethod;

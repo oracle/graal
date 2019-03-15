@@ -44,18 +44,16 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
+import com.oracle.truffle.espresso.nodes.MHInvokeBasicNode;
 import com.oracle.truffle.espresso.nodes.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.nodes.MHLinkToNode;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.runtime.*;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
 public abstract class Klass implements ModifiersProvider, ContextAccess {
@@ -504,16 +502,27 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     private Method findMethodHandleIntrinsic(@SuppressWarnings("unused") Symbol<Name> methodName, Symbol<Signature> signature, int id) {
         if (id == Target_java_lang_invoke_MethodHandleNatives._invokeGeneric) {
             return getMeta().invoke.findInvokeIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+                // TODO(garcia) Create a whole new Node to handle MH invokes.
                 @Override
                 public EspressoBaseNode apply(Method method) {
-                    return new MHInvokeGenericNode(method);
+                    // TODO(garcia) true access checks
+                    ObjectKlass callerKlass = getMeta().Object;
+                    StaticObjectArray appendixBox = new StaticObjectArray(getMeta().Object_array, new Object[1]);
+                    StaticObjectImpl memberName = (StaticObjectImpl)getMeta().linkMethod.invokeDirect(
+                            null,
+                            callerKlass.mirror(), (int) REF_invokeVirtual,
+                            getMeta().MethodHandle.mirror(), getMeta().toGuestString(methodName), getMeta().toGuestString(signature),
+                            appendixBox
+                    );
+                    StaticObject appendix = appendixBox.get(0);
+                    return new MHInvokeGenericNode(method, memberName, appendix);
                 }
             });
         } else if (id == Target_java_lang_invoke_MethodHandleNatives._invokeBasic) {
-            return getMeta().invoke.findInvokeIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+            return getMeta().invokeBasic.findInvokeBasicIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
                 @Override
                 public EspressoBaseNode apply(Method method) {
-                    return new MHInvokeGenericNode(method);
+                    return new MHInvokeBasicNode(method);
                 }
             });
         } else {

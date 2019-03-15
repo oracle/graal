@@ -62,6 +62,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicInvokes = new ConcurrentHashMap<>();
     public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicLinkTo = new ConcurrentHashMap<>();
+    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicBasic = new ConcurrentHashMap<>();
 
     private final LinkedMethod linkedMethod;
     private final RuntimeConstantPool pool;
@@ -469,6 +470,19 @@ public final class Method implements ModifiersProvider, ContextAccess {
         EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
         method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         intrinsicInvokes.put(signature, method);
+        return method;
+    }
+
+    Method findInvokeBasicIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory) {
+        assert (this.getDeclaringKlass().getType() == Type.MethodHandle);
+        Method method = intrinsicBasic.get(signature);
+        if (method != null) {
+            return method;
+        }
+        method = new Method(declaringKlass, linkedMethod, signature);
+        EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
+        method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        intrinsicBasic.put(signature, method);
         return method;
     }
 

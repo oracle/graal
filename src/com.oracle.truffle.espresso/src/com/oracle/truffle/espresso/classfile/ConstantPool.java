@@ -360,6 +360,7 @@ public abstract class ConstantPool {
                         } else {
                             entries[i] = new ClassConstant.WithString(context.getNames().lookup(Meta.toHostString(patches[i])));
                         }
+                        stream.readU2();
                         break;
                     }
                     int classNameIndex = stream.readU2();
@@ -369,8 +370,10 @@ public abstract class ConstantPool {
                 case STRING: {
                     if (existsAt(patches, i)) {
                         entries[i] = new StringConstant.PreResolved(patches[i]);
+                        stream.readU2();
+                    } else {
+                        entries[i] = new StringConstant.Index(stream.readU2());
                     }
-                    entries[i] = new StringConstant.Index(stream.readU2());
                     break;
                 }
                 case FIELD_REF: {
@@ -400,6 +403,7 @@ public abstract class ConstantPool {
                 case INTEGER: {
                     if (existsAt(patches, i)) {
                         entries[i] = new IntegerConstant(context.getMeta().unboxInteger(patches[i]));
+                        stream.readS4();
                         break;
                     }
                     entries[i] = new IntegerConstant(stream.readS4());
@@ -408,6 +412,7 @@ public abstract class ConstantPool {
                 case FLOAT: {
                     if (existsAt(patches, i)) {
                         entries[i] = new FloatConstant(context.getMeta().unboxFloat(patches[i]));
+                        stream.readFloat();
                         break;
                     }
                     entries[i] = new FloatConstant(stream.readFloat());
@@ -416,6 +421,7 @@ public abstract class ConstantPool {
                 case LONG: {
                     if (existsAt(patches, i)) {
                         entries[i] = new LongConstant(context.getMeta().unboxLong(patches[i]));
+                        stream.readS8();
                     } else {
                         entries[i] = new LongConstant(stream.readS8());
                     }
@@ -430,6 +436,7 @@ public abstract class ConstantPool {
                 case DOUBLE: {
                     if (existsAt(patches, i)) {
                         entries[i] = new DoubleConstant(context.getMeta().unboxDouble(patches[i]));
+                        stream.readDouble();
                     } else {
                         entries[i] = new DoubleConstant(stream.readDouble());
                     }

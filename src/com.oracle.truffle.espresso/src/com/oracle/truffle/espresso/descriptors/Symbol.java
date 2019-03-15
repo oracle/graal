@@ -162,6 +162,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> form = StaticSymbols.putName("form");
         public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
         public static final Symbol<Name> target = StaticSymbols.putName("target");
+        public static final Symbol<Name> arity = StaticSymbols.putName("arity");
+        public static final Symbol<Name> interpretWithArguments = StaticSymbols.putName("interpretWithArguments");
 
         public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
         public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");

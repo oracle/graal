@@ -12,6 +12,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.*;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,6 +59,17 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     public static int getNamedCon(int which, @Host(Object[].class) StaticObjectArray name) {
         return 0;
     }
+
+    @Substitution
+    public static void setCallSiteTargetNormal(@Host(CallSite.class) StaticObjectImpl site, @Host(MethodHandle.class) StaticObjectImpl target) {
+        site.setField(site.getKlass().getMeta().CStarget, target);
+    }
+
+    @Substitution
+    public static void setCallSiteTargetVolatile(@Host(CallSite.class) StaticObjectImpl site, @Host(MethodHandle.class) StaticObjectImpl target) {
+        site.setField(site.getKlass().getMeta().CStarget, target);
+    }
+
 
     // TODO(garcia) verifyConstants
 

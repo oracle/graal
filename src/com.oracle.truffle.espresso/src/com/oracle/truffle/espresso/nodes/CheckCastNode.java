@@ -69,6 +69,6 @@ public abstract class CheckCastNode extends QuickNode {
         if (StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass())) {
             return 0;
         }
-        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ClassCastException.class, receiver.getKlass().getType() + " cannot be cast to: " + typeToCheck.getType());
+        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ClassCastException.class, receiver.getKlass().getType() + " cannot be cast to: " + typeToCheck.getType() + " in context " + root.getMethod().toString());
     }
 }

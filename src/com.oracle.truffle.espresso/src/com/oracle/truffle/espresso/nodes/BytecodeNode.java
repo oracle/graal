@@ -256,6 +256,7 @@ import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.*;
+import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -476,7 +477,27 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         int curBCI = 0;
         int top = 0;
 
-        initArguments(frame);
+        if (this.getMethod().getName().toString().contains("invokeVirtual_L_L") && this.getMethod().getDeclaringKlass().getName().toString().contains("LambdaForm$DMH")) {
+            int i = 1;
+        }
+
+        try {
+            initArguments(frame);
+        } catch (ClassCastException e) {
+            e.printStackTrace();
+            StringBuilder str = new StringBuilder();
+            for (Object x: frame.getArguments()) {
+                str.append(x);
+                if (x instanceof StaticObject) {
+                    if (getMeta().MethodHandle.isAssignableFrom(((StaticObject)x).getKlass())) {
+                        StaticObject mtype = (StaticObject)((StaticObjectImpl)x).getField(getMeta().MHtype);
+                        str.append(Meta.toHostString((StaticObject)getMeta().toMethodDescriptorString.invokeDirect(mtype)));
+                    }
+                }
+                str.append("\n");
+            }
+            throw getMeta().throwExWithMessage(e.getClass(), "With arguments: \n" + str.toString() + "\nIn context: " + this + (getMethod().isStatic()?"\n":"\nhas receiver"));
+        }
 
         loop: while (true) {
             int curOpcode;
@@ -1102,16 +1123,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (e instanceof EspressoException) {
                         throw e;
                     }
-                    // System.err.println("Internal error (caught in invocation): " + this + "\nBCI:
-                    // " + curBCI);
-                    // e.printStackTrace();
+                     System.err.println("Internal error (caught in invocation): " + this + "\nBCI:" + curBCI);
+                    e.printStackTrace();
                     CompilerDirectives.transferToInterpreter();
-                    throw getMeta().throwEx(getMeta().NullPointerException);
+                    throw getMeta().throwExWithMessage(NullPointerException.class, e.getStackTrace().toString());
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-                // System.err.println("Finding handler for a " + e.getException().getKlass() + " at:
-                // " + curBCI + " in " + getMethod());
+                 System.err.println("Finding handler for a " + e.getException().getKlass() + " at:" + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;
@@ -1345,6 +1364,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             assert opcode == LDC || opcode == LDC_W;
             Klass klass = getConstantPool().resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
             putObject(frame, top, klass.mirror());
+        } else if (constant instanceof MethodHandleConstant) {
+            assert opcode == LDC || opcode == LDC_W;
+            StaticObject methodHandle = getConstantPool().resolvedMethodHandleAt(getMethod().getDeclaringKlass(), cpi);
+            putObject(frame, top, methodHandle);
+        } else if (constant instanceof MethodTypeConstant) {
+            assert opcode == LDC || opcode == LDC_W;
+            StaticObject methodType = getConstantPool().resolvedMethodTypeAt(getMethod().getDeclaringKlass(), cpi);
+            putObject(frame, top, methodType);
         } else {
             CompilerAsserts.neverPartOfCompilation();
             throw EspressoError.unimplemented(constant.toString());
@@ -1492,9 +1519,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
-        StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1]);
+        StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1] );
 
-        /* StaticObject memberName = (StaticObject) */getMeta().linkCallSite.invokeDirect(
+        StaticObjectImpl memberName = (StaticObjectImpl) getMeta().linkCallSite.invokeDirect(
                         null,
                         declaringKlass.mirror(),
                         bsmMH,
@@ -1504,12 +1531,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         StaticObjectImpl unboxedAppendix = appendix.get(0);
 
+        return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, meta, parsedInvokeSignature), opCode);
+
         // Node quickening
-        if (meta.MethodHandle.isAssignableFrom(unboxedAppendix.getKlass())) {
-            return injectAndCall(frame, top, curBCI, new InvokeDynamicConstantNode(unboxedAppendix, meta, invokeSignature, parsedInvokeSignature), opCode);
-        } else {
-            return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(unboxedAppendix, meta, invokeSignature, parsedInvokeSignature), opCode);
-        }
+//        if (meta.MethodHandle.isAssignableFrom(unboxedAppendix.getKlass())) {
+//            return injectAndCall(frame, top, curBCI, new InvokeDynamicConstantNode(unboxedAppendix, meta, invokeSignature, parsedInvokeSignature), opCode);
+//        } else {
+//            return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(unboxedAppendix, meta, invokeSignature, parsedInvokeSignature), opCode);
+//        }
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {
@@ -1836,6 +1865,35 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         }
         if (hasReceiver) {
             args[0] = peekObject(frame, argAt);
+        }
+        return args;
+    }
+
+    @ExplodeLoop
+    public Object[] peekArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount) {
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(signature);
+
+        int argAt = top - 1;
+        for (int i = argCount - 1; i >= 0; --i) {
+            JavaKind kind = Signatures.parameterKind(signature, i);
+            // @formatter:off
+            // Checkstyle: stop
+            switch (kind) {
+                case Boolean : args[i] = (peekInt(frame, argAt) != 0);  break;
+                case Byte    : args[i] = (byte) peekInt(frame, argAt);  break;
+                case Short   : args[i] = (short) peekInt(frame, argAt); break;
+                case Char    : args[i] = (char) peekInt(frame, argAt);  break;
+                case Int     : args[i] = peekInt(frame, argAt);         break;
+                case Float   : args[i] = peekFloat(frame, argAt);       break;
+                case Long    : args[i] = peekLong(frame, argAt);        break;
+                case Double  : args[i] = peekDouble(frame, argAt);      break;
+                case Object  : args[i] = peekObject(frame, argAt);      break;
+                default      : throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            // Checkstyle: resume
+            argAt -= kind.getSlotCount();
         }
         return args;
     }
