@@ -58,7 +58,9 @@ public final class LiteralRegexEngine {
             return null;
         }
         LiteralRegexExecRootNode execNode = createLiteralNode(language, ast, caret, dollar);
-        execNode.createCallTarget(language);
+        if (execNode != null) {
+            execNode.createCallTarget(language);
+        }
         return execNode;
     }
 
