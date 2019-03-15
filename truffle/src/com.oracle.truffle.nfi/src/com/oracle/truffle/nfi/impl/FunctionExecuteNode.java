@@ -40,18 +40,26 @@
  */
 package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 @GenerateUncached
@@ -62,51 +70,83 @@ abstract class FunctionExecuteNode extends Node {
 
     public abstract Object execute(LibFFIFunction receiver, Object[] args) throws ArityException, UnsupportedTypeException;
 
-    @ExplodeLoop
-    @Specialization(guards = "checkSignature(receiver, signature)")
-    protected Object cachedSignature(LibFFIFunction receiver, Object[] args, @Cached("receiver.getSignature()") LibFFISignature signature,
-                    @Cached("getNativeArgumentLibraries(signature)") NativeArgumentLibrary[] argLibs,
-                    @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws ArityException, UnsupportedTypeException {
-        if (args.length != signature.getRealArgCount()) {
-            throw ArityException.create(argLibs.length, args.length);
-        }
+    @Specialization(guards = "receiver.getSignature() == signature")
+    protected Object cachedSignature(LibFFIFunction receiver, Object[] args,
+                    @Cached("receiver.getSignature()") @SuppressWarnings("unused") LibFFISignature signature,
+                    @Cached("createCachedSignatureCall(signature)") DirectCallNode execute) throws ArityException, UnsupportedTypeException {
+        return execute.call(receiver.asPointer(), args);
+    }
 
-        NativeArgumentBuffer.Array buffer = signature.prepareBuffer();
-        LibFFIType[] types = signature.getArgTypes();
-        assert argLibs.length == types.length;
+    static class SignatureExecuteNode extends RootNode {
 
-        int argIdx = 0;
-        for (int i = 0; i < argLibs.length; i++) {
-            Object arg = argIdx < args.length ? args[argIdx] : null;
-            argLibs[i].serialize(types[i], buffer, arg);
-            if (!types[i].injectedArgument) {
-                argIdx++;
+        final LibFFISignature signature;
+        @Children NativeArgumentLibrary[] argLibs;
+
+        final ContextReference<NFIContext> ctxRef;
+
+        SignatureExecuteNode(ContextReference<NFIContext> ctxRef, LibFFISignature signature) {
+            super(ctxRef.get().language);
+            this.signature = signature;
+            this.ctxRef = ctxRef;
+
+            LibFFIType[] argTypes = signature.getArgTypes();
+            this.argLibs = new NativeArgumentLibrary[argTypes.length];
+            for (int i = 0; i < argTypes.length; i++) {
+                argLibs[i] = NativeArgumentLibrary.getFactory().create(argTypes[i]);
             }
         }
-        assert argIdx == args.length : "SerializeArgumentNodes didn't consume all arguments";
 
-        CompilerDirectives.ensureVirtualized(buffer);
-        return signature.execute(ctx, receiver.getAddress(), buffer);
-    }
+        @Override
+        @ExplodeLoop
+        public Object execute(VirtualFrame frame) {
+            long address = (long) frame.getArguments()[0];
+            Object[] args = (Object[]) frame.getArguments()[1];
 
-    protected static boolean checkSignature(LibFFIFunction receiver, LibFFISignature signature) {
-        return receiver.getSignature() == signature;
-    }
+            if (args.length != signature.getRealArgCount()) {
+                throw silenceException(RuntimeException.class, ArityException.create(argLibs.length, args.length));
+            }
 
-    protected static NativeArgumentLibrary[] getNativeArgumentLibraries(LibFFISignature signature) {
-        LibFFIType[] argTypes = signature.getArgTypes();
-        NativeArgumentLibrary[] ret = new NativeArgumentLibrary[argTypes.length];
-        for (int i = 0; i < argTypes.length; i++) {
-            ret[i] = NativeArgumentLibrary.getFactory().create(argTypes[i]);
+            NativeArgumentBuffer.Array buffer = signature.prepareBuffer();
+            try {
+                LibFFIType[] types = signature.getArgTypes();
+                assert argLibs.length == types.length;
+
+                int argIdx = 0;
+                for (int i = 0; i < argLibs.length; i++) {
+                    Object arg = argIdx < args.length ? args[argIdx] : null;
+                    argLibs[i].serialize(types[i], buffer, arg);
+                    if (!types[i].injectedArgument) {
+                        argIdx++;
+                    }
+                }
+                assert argIdx == args.length : "SerializeArgumentNodes didn't consume all arguments";
+            } catch (UnsupportedTypeException ex) {
+                throw silenceException(RuntimeException.class, ex);
+            }
+
+            CompilerDirectives.ensureVirtualized(buffer);
+            return signature.execute(ctxRef.get(), address, buffer);
         }
-        return ret;
+
+        @SuppressWarnings({"unchecked", "unused"})
+        static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
+            throw (E) ex;
+        }
+    }
+
+    protected DirectCallNode createCachedSignatureCall(LibFFISignature signature) {
+        CallTarget target = Truffle.getRuntime().createCallTarget(new SignatureExecuteNode(lookupContextReference(NFILanguageImpl.class), signature));
+        DirectCallNode callNode = DirectCallNode.create(target);
+        callNode.forceInlining();
+        return callNode;
     }
 
     @ExplodeLoop
     @Specialization(replaces = "cachedSignature", guards = "receiver.getSignature().getArgTypes().length == libs.length")
     protected Object cachedArgCount(LibFFIFunction receiver, Object[] args,
                     @Cached("getGenericNativeArgumentLibraries(receiver.getSignature().getArgTypes().length)") NativeArgumentLibrary[] libs,
-                    @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                    @CachedLanguage NFILanguageImpl language,
+                    @Cached IndirectCallNode callNode,
                     @Cached BranchProfile exception) throws ArityException, UnsupportedTypeException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
@@ -132,7 +172,7 @@ abstract class FunctionExecuteNode extends Node {
             throw ArityException.create(argIdx, args.length);
         }
 
-        return slowPathExecute(ctx, signature, receiver.getAddress(), buffer);
+        return slowPathExecute(language, callNode, receiver, buffer);
     }
 
     private static void raiseArityException(LibFFIType[] argTypes, int actualArgCount) throws ArityException {
@@ -157,6 +197,8 @@ abstract class FunctionExecuteNode extends Node {
     @Specialization(replaces = "cachedArgCount")
     static Object genericExecute(LibFFIFunction receiver, Object[] args,
                     @CachedLibrary(limit = "ARG_DISPATCH_LIMIT") NativeArgumentLibrary nativeArguments,
+                    @CachedLanguage NFILanguageImpl language,
+                    @Cached IndirectCallNode callNode,
                     @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws ArityException, UnsupportedTypeException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
@@ -180,11 +222,33 @@ abstract class FunctionExecuteNode extends Node {
             throw ArityException.create(argIdx, args.length);
         }
 
-        return slowPathExecute(ctx, signature, receiver.getAddress(), buffer);
+        return slowPathExecute(language, callNode, receiver, buffer);
     }
 
-    @TruffleBoundary
-    static Object slowPathExecute(NFIContext ctx, LibFFISignature signature, long functionPointer, NativeArgumentBuffer.Array buffer) {
-        return signature.execute(ctx, functionPointer, buffer);
+    private static Object slowPathExecute(NFILanguageImpl language, IndirectCallNode callNode, LibFFIFunction receiver, NativeArgumentBuffer.Array buffer) {
+        return callNode.call(language.getSlowPathCall(), receiver, buffer);
+    }
+
+    static class SlowPathExecuteNode extends RootNode {
+
+        final ContextReference<NFIContext> ctxRef;
+
+        SlowPathExecuteNode(NFILanguageImpl language) {
+            super(language);
+            ctxRef = language.getContextReference();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            LibFFIFunction receiver = (LibFFIFunction) frame.getArguments()[0];
+            NativeArgumentBuffer.Array buffer = (NativeArgumentBuffer.Array) frame.getArguments()[1];
+
+            return slowPathExecute(ctxRef.get(), receiver.getSignature(), receiver.getAddress(), buffer);
+        }
+
+        @TruffleBoundary
+        static Object slowPathExecute(NFIContext ctx, LibFFISignature signature, long functionPointer, NativeArgumentBuffer.Array buffer) {
+            return signature.execute(ctx, functionPointer, buffer);
+        }
     }
 }
