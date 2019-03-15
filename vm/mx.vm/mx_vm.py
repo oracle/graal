@@ -296,10 +296,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
             for _launcher_config in _get_launcher_configs(_component):
                 _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
-                _launcher_dest = _component_base + _launcher_config.destination
-                if mx.get_os() == 'windows':
-                    suffix = 'exe' if GraalVmLauncher.is_launcher_native(_launcher_config, stage1) else 'cmd'
-                    _launcher_dest += '.' + suffix
+                _launcher_dest = _component_base + GraalVmLauncher.get_launcher_destination(_launcher_config, stage1)
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
                 if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and GraalVmNativeImage.is_svm_debug_supported():
@@ -546,7 +543,7 @@ class SvmSupport(object):
     def native_image(self, build_args, output_file, allow_server=False, nonZeroIsFatal=True, out=None, err=None):
         assert self._svm_supported
         stage1 = get_stage1_graalvm_distribution()
-        native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig('native-image', [], "", []), stage1=True)
+        native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig(mx.exe_suffix('native-image'), [], "", []), stage1=True)
         native_image_bin = join(stage1.output, stage1.find_single_source_location('dependency:' + native_image_project_name))
         native_image_command = [native_image_bin, '-H:+EnforceMaxRuntimeCompileMethods'] + build_args
         # currently, when building with the bash version of native-image, --no-server is implied (and can not be passed)
@@ -755,7 +752,6 @@ class GraalVmNativeImage(mx.Project):
         """
         assert isinstance(native_image_config, mx_sdk.AbstractNativeImageConfig), type(native_image_config).__name__
         self.native_image_config = native_image_config
-        self.native_image_name = basename(native_image_config.destination)
         self.native_image_jar_distributions = list(native_image_config.jar_distributions)
         svm_support = _get_svm_support()
         if svm_support.is_supported():
@@ -788,6 +784,10 @@ class GraalVmNativeImage(mx.Project):
         if GraalVmNativeImage.is_svm_debug_supported():
             return join(self.get_output_base(), self.name, self.native_image_name + '.debug')
         return None
+
+    @property
+    def native_image_name(self):
+        return basename(self.native_image_config.destination)
 
     @staticmethod
     def is_svm_debug_supported():
@@ -834,16 +834,13 @@ class GraalVmLauncher(GraalVmNativeImage):
     def is_native(self):
         return GraalVmLauncher.is_launcher_native(self.native_image_config, self.stage1)
 
-    def output_file(self):
+    @GraalVmNativeImage.native_image_name.getter
+    def native_image_name(self):
+        super_name = GraalVmNativeImage.native_image_name.fget(self)
         if mx.get_os() == 'windows':
-            if self.is_native():
-                suffix = '.exe'
-            else:
-                suffix = '.cmd'
-        else:
-            suffix = ''
-
-        return join(self.get_output_base(), self.name, self.native_image_name + suffix)
+            if not self.is_native():
+                return os.path.splitext(super_name)[0] + '.cmd'
+        return super_name
 
     def get_containing_graalvm(self):
         if self.stage1:
@@ -859,6 +856,17 @@ class GraalVmLauncher(GraalVmNativeImage):
     @staticmethod
     def is_launcher_native(native_image_config, stage1=False):
         return _get_svm_support().is_supported() and not _force_bash_launchers(native_image_config, stage1 or None)
+
+    @staticmethod
+    def get_launcher_destination(config, stage1):
+        """
+        :type config: mx_sdk.LauncherConfig
+        :type stage1: bool
+        """
+        if mx.get_os() == 'windows':
+            if not GraalVmLauncher.is_launcher_native(config, stage1):
+                return os.path.splitext(config.destination)[0] + '.cmd'
+        return config.destination
 
 
 class GraalVmPolyglotLauncher(GraalVmLauncher):
