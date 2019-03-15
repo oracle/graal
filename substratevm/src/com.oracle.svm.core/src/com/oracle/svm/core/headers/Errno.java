@@ -698,6 +698,11 @@ public class Errno {
     public static native CCharPointer strerror(int errnum);
 
     @CFunction
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     public static native CCharPointer strerror_r(int errnum, CCharPointer buf, UnsignedWord buflen);
+
+    @CFunction
+    @Platforms(Platform.WINDOWS.class)
+    public static native CCharPointer strerror_s(CCharPointer buf, UnsignedWord buflen, int errnum);
 
 }
