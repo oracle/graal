@@ -24,15 +24,13 @@
  */
 package com.oracle.truffle.regex.result;
 
-import com.oracle.truffle.regex.RegexObject;
-
 public final class SingleResult extends RegexResult {
 
     private final int start;
     private final int end;
 
-    public SingleResult(RegexObject regex, Object input, int start, int end) {
-        super(regex, input, 1);
+    public SingleResult(int start, int end) {
+        super(1);
         this.start = start;
         this.end = end;
     }

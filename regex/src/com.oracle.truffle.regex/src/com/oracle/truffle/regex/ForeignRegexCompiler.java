@@ -35,7 +35,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
  *
  * @author Jirka Marsik <jiri.marsik@oracle.com>
  */
-public class ForeignRegexCompiler extends RegexCompiler {
+public class ForeignRegexCompiler implements RegexCompiler {
 
     private final TruffleObject foreignCompiler;
 

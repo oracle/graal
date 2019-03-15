@@ -24,42 +24,30 @@
  */
 package com.oracle.truffle.regex.dead;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.RegexResult;
 
 /**
  * This RegexNode is used for regular expressions that can never match, like /a^a/, /a\ba/, /(?=a)b/
  * etc.
  */
-public final class DeadRegexExecRootNode extends RegexExecRootNode implements CompiledRegex {
-
-    private final CallTarget regexCallTarget;
+public final class DeadRegexExecRootNode extends RegexExecRootNode {
 
     public DeadRegexExecRootNode(RegexLanguage language, RegexSource source) {
-        super(language, source);
-        regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, this));
+        super(language, source, false);
     }
 
     @Override
-    protected RegexResult execute(VirtualFrame frame, RegexObject regex, Object input, int fromIndex) {
-        return RegexResult.NO_MATCH;
+    protected RegexResult execute(VirtualFrame frame, Object input, int fromIndex) {
+        return NoMatchResult.getInstance();
     }
 
     @Override
     protected String getEngineLabel() {
         return "dead";
-    }
-
-    @Override
-    public CallTarget getRegexCallTarget() {
-        return regexCallTarget;
     }
 }

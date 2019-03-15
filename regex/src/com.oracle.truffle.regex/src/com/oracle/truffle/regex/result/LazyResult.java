@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,41 @@
  */
 package com.oracle.truffle.regex.result;
 
-import com.oracle.truffle.regex.RegexObject;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 
-public final class StartsEndsIndexArrayResult extends RegexResult {
+public abstract class LazyResult extends RegexResult implements JsonConvertible {
 
-    private final int[] starts;
-    private final int[] ends;
+    private final Object input;
+    private final int fromIndex;
+    private final int end;
 
-    public StartsEndsIndexArrayResult(RegexObject regex, Object input, int[] starts, int[] ends) {
-        super(regex, input, starts.length);
-        this.starts = starts;
-        this.ends = ends;
+    public LazyResult(Object input, int fromIndex, int end, int numberOfCaptureGroups) {
+        super(numberOfCaptureGroups);
+        this.input = input;
+        this.fromIndex = fromIndex;
+        this.end = end;
     }
 
-    public int[] getStarts() {
-        return starts;
+    public Object getInput() {
+        return input;
     }
 
-    public int[] getEnds() {
-        return ends;
+    public int getFromIndex() {
+        return fromIndex;
     }
 
+    public int getEnd() {
+        return end;
+    }
+
+    @TruffleBoundary
+    @Override
+    public JsonObject toJson() {
+        return Json.obj(Json.prop("input", getInput().toString()),
+                        Json.prop("fromIndex", fromIndex),
+                        Json.prop("end", end));
+    }
 }

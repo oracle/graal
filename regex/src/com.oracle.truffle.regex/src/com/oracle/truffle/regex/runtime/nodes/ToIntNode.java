@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.runtime;
+package com.oracle.truffle.regex.runtime.nodes;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.RegexObject;
 
 @GenerateUncached
-public abstract class ExecuteRegexObjectNode extends Node {
+public abstract class ToIntNode extends Node {
 
-    public abstract Object execute(RegexObject receiver, Object input, Object fromIndex) throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
+    public abstract int execute(Object arg) throws UnsupportedTypeException;
 
-    @Specialization(guards = "receiver == cachedReceiver", limit = "3")
-    static Object executeFixed(RegexObject receiver, Object input, Object fromIndex,
-                    @Cached("receiver") @SuppressWarnings("unused") RegexObject cachedReceiver,
-                    @Cached("receiver.getCompiledRegexObject()") TruffleObject cachedCompiledRegex,
-                    @CachedLibrary("cachedCompiledRegex") InteropLibrary functions) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        return functions.execute(cachedCompiledRegex, receiver, input, fromIndex);
+    @Specialization
+    static int doPrimitiveInt(int arg) {
+        return arg;
     }
 
-    @Specialization(replaces = "executeFixed")
-    static Object executeVarying(RegexObject receiver, Object input, Object fromIndex,
-                    @CachedLibrary(limit = "3") InteropLibrary functions) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        return functions.execute(receiver.getCompiledRegexObject(), receiver, input, fromIndex);
+    @Specialization(guards = "args.fitsInInt(arg)", limit = "2")
+    static int doBoxed(Object arg, @CachedLibrary("arg") InteropLibrary args) throws UnsupportedTypeException {
+        try {
+            return args.asInt(arg);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{arg});
+        }
+    }
+
+    public static ToIntNode create() {
+        return ToIntNodeGen.create();
     }
 }

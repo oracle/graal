@@ -39,13 +39,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.regex.RegexLanguageObject;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
+import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.result.SingleIndexArrayResult;
 import com.oracle.truffle.regex.result.SingleResult;
 import com.oracle.truffle.regex.result.SingleResultLazyStart;
-import com.oracle.truffle.regex.result.StartsEndsIndexArrayResult;
 import com.oracle.truffle.regex.result.TraceFinderResult;
-import com.oracle.truffle.regex.runtime.nodes.CalcResultNode;
+import com.oracle.truffle.regex.runtime.nodes.DispatchNode;
 import com.oracle.truffle.regex.runtime.nodes.LazyCaptureGroupGetResultNode;
 import com.oracle.truffle.regex.runtime.nodes.TraceFinderGetResultNode;
 
@@ -93,7 +93,7 @@ public final class RegexResultStartArrayObject implements RegexLanguageObject {
         abstract int execute(RegexResult receiver, int groupNumber) throws InvalidArrayIndexException;
 
         @Specialization
-        static int doNoMatch(@SuppressWarnings("unused") RegexResult.NoMatchResult receiver, int groupNumber) throws InvalidArrayIndexException {
+        static int doNoMatch(@SuppressWarnings("unused") NoMatchResult receiver, int groupNumber) throws InvalidArrayIndexException {
             CompilerDirectives.transferToInterpreter();
             throw invalidIndexException(groupNumber);
         }
@@ -111,7 +111,7 @@ public final class RegexResultStartArrayObject implements RegexLanguageObject {
 
         @Specialization
         static int doSingleResultLazyStart(SingleResultLazyStart receiver, int groupNumber,
-                        @Cached CalcResultNode calcResult,
+                        @Cached DispatchNode calcResult,
                         @Shared("boundsProfile") @Cached("createBinaryProfile()") ConditionProfile boundsProfile,
                         @Exclusive @Cached("createBinaryProfile()") ConditionProfile calcLazyProfile) throws InvalidArrayIndexException {
             if (boundsProfile.profile(groupNumber == 0)) {
@@ -122,15 +122,6 @@ public final class RegexResultStartArrayObject implements RegexLanguageObject {
                 return receiver.getStart();
             } else {
                 CompilerDirectives.transferToInterpreter();
-                throw invalidIndexException(groupNumber);
-            }
-        }
-
-        @Specialization
-        static int doStartsEndsIndexArray(StartsEndsIndexArrayResult receiver, int groupNumber) throws InvalidArrayIndexException {
-            try {
-                return receiver.getStarts()[groupNumber];
-            } catch (ArrayIndexOutOfBoundsException e) {
                 throw invalidIndexException(groupNumber);
             }
         }

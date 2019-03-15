@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex;
+package com.oracle.truffle.regex.result;
 
-import com.oracle.truffle.api.CallTarget;
+public final class NoMatchResult extends RegexResult {
 
-public interface CompiledRegex {
+    private static final NoMatchResult INSTANCE = new NoMatchResult(0);
 
-    CallTarget getRegexCallTarget();
+    public static NoMatchResult getInstance() {
+        return INSTANCE;
+    }
+
+    private NoMatchResult(int groupCount) {
+        super(groupCount);
+    }
+
+    @Override
+    public String toString() {
+        return "NO_MATCH";
+    }
 }

@@ -41,13 +41,6 @@ public final class RegexRootNode extends RootNode {
         this.body = body;
     }
 
-    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
-
-    public RegexRootNode(RegexLanguage language, RegexBodyNode body) {
-        super(language, SHARED_EMPTY_FRAMEDESCRIPTOR);
-        this.body = body;
-    }
-
     public RegexSource getSource() {
         return body.getSource();
     }

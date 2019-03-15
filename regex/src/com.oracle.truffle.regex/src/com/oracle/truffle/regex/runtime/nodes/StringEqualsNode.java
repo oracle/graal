@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,32 @@
  */
 package com.oracle.truffle.regex.runtime.nodes;
 
-import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * Tries to replace invocations of {@link String#equals(Object)} with identity checks by caching
+ * parameter {@code a}. Parameter {@code b} is expected to be final!
+ */
 @GenerateUncached
-public abstract class CalcResultNode extends Node {
-    public abstract Object execute(CallTarget receiver, Object[] args);
+public abstract class StringEqualsNode extends Node {
 
-    @Specialization(guards = {"target == cachedTarget"})
-    static Object executeDirect(@SuppressWarnings("unused") CallTarget target, Object[] args,
-                    @Cached("target") @SuppressWarnings("unused") CallTarget cachedTarget,
-                    @Cached("create(cachedTarget)") DirectCallNode callNode) {
-        return callNode.call(args);
+    public abstract boolean execute(String a, String b);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"a == cachedA", "cachedA.equals(b)"}, limit = "4")
+    static boolean cacheIdentity(String a, String b,
+                    @Cached("a") String cachedA) {
+        CompilerAsserts.compilationConstant(b);
+        return true;
     }
 
-    @Specialization(replaces = "executeDirect")
-    static Object executeIndirect(CallTarget target, Object[] args,
-                    @Cached IndirectCallNode callNode) {
-        return callNode.call(target, args);
+    @Specialization(replaces = "cacheIdentity")
+    static boolean isInvocable(String a, String b) {
+        CompilerAsserts.compilationConstant(b);
+        return b.equals(a);
     }
 }

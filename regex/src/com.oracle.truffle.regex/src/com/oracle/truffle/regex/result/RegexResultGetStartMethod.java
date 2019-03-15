@@ -22,43 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.runtime.nodes;
+package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.regex.RegexLanguageObject;
+import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
 
-@GenerateUncached
-public abstract class ToLongNode extends Node {
+@ExportLibrary(InteropLibrary.class)
+public final class RegexResultGetStartMethod implements RegexLanguageObject {
 
-    public abstract long execute(Object arg) throws UnsupportedTypeException;
+    private final RegexResult result;
 
-    @Specialization
-    static long doPrimitiveInt(int arg) {
-        return arg;
+    public RegexResultGetStartMethod(RegexResult result) {
+        this.result = result;
     }
 
-    @Specialization
-    static long doPrimitiveLong(long arg) {
-        return arg;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
     }
 
-    @Specialization(guards = "args.fitsInLong(arg)", limit = "2")
-    static long doBoxed(Object arg, @CachedLibrary("arg") InteropLibrary args) throws UnsupportedTypeException {
-        try {
-            return args.asLong(arg);
-        } catch (UnsupportedMessageException e) {
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    int execute(Object[] args,
+                    @Cached ToIntNode toIntNode,
+                    @Cached RegexResultGetStartNode getStartNode) throws ArityException, UnsupportedTypeException {
+        if (args.length != 1) {
             CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.create(new Object[]{arg});
+            throw ArityException.create(1, args.length);
         }
-    }
-
-    public static ToLongNode create() {
-        return ToLongNodeGen.create();
+        return getStartNode.execute(result, toIntNode.execute(args[0]));
     }
 }

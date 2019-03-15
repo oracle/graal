@@ -66,7 +66,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
      * Creates a node split copy of this initial state as described in {@link DFAAbstractStateNode},
      * but ignores copyID, since having two initial states in a DFA is not supported. Therefore,
      * this method should be used for replacing the original initial state with the copy.
-     * 
+     *
      * @param copyID new ID for the copy.
      * @return a node split copy of this initial state as described in {@link DFAAbstractStateNode},
      *         ignoring copyID.

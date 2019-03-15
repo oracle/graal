@@ -34,7 +34,7 @@ import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGE
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_COMPILER_FALLBACK;
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TOTAL_COMPILATION_TIME;
 
-public class RegexCompilerWithFallback extends RegexCompiler {
+public class RegexCompilerWithFallback implements RegexCompiler {
 
     private final RegexCompiler mainCompiler;
     private final RegexCompiler fallbackCompiler;

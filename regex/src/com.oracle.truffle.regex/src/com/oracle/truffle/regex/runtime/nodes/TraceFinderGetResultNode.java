@@ -39,7 +39,7 @@ public abstract class TraceFinderGetResultNode extends Node {
     @Specialization
     static int[] doTraceFinderCalc(TraceFinderResult receiver,
                     @Cached("createBinaryProfile()") ConditionProfile conditionProfile,
-                    @Cached CalcResultNode calcResult) {
+                    @Cached DispatchNode calcResult) {
         if (conditionProfile.profile(receiver.isResultCalculated())) {
             return receiver.getIndices();
         } else {

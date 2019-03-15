@@ -25,14 +25,13 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.regex.RegexObject;
 
 public final class SingleIndexArrayResult extends RegexResult {
 
     @CompilationFinal(dimensions = 1) private final int[] indices;
 
-    public SingleIndexArrayResult(RegexObject regex, Object input, int[] indices) {
-        super(regex, input, indices.length / 2);
+    public SingleIndexArrayResult(int[] indices) {
+        super(indices.length / 2);
         this.indices = indices;
     }
 

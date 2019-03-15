@@ -22,42 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.runtime;
+package com.oracle.truffle.regex.runtime.nodes;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.regex.RegexLanguageObject;
-import com.oracle.truffle.regex.RegexObject;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 
-@ExportLibrary(InteropLibrary.class)
-public final class RegexObjectExecMethod implements RegexLanguageObject {
+@GenerateUncached
+public abstract class DispatchNode extends Node {
 
-    private final RegexObject regex;
+    public abstract Object execute(CallTarget receiver, Object[] args);
 
-    public RegexObjectExecMethod(RegexObject regex) {
-        this.regex = regex;
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"target == cachedTarget"})
+    static Object executeDirect(CallTarget target, Object[] args,
+                    @Cached("target") CallTarget cachedTarget,
+                    @Cached("create(cachedTarget)") DirectCallNode callNode) {
+        return callNode.call(args);
     }
 
-    public RegexObject getRegexObject() {
-        return regex;
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object execute(Object[] args, @Cached ExecuteRegexObjectNode executeNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        if (args.length != 2) {
-            throw ArityException.create(2, args.length);
-        }
-        return executeNode.execute(getRegexObject(), args[0], args[1]);
+    @Specialization(replaces = "executeDirect")
+    static Object executeIndirect(CallTarget target, Object[] args,
+                    @Cached IndirectCallNode callNode) {
+        return callNode.call(target, args);
     }
 }

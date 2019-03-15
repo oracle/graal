@@ -89,6 +89,10 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
         RegexParser.validate(new RegexSource(pattern, flags));
     }
 
+    public static void validateRegex(RegexSource source) throws RegexSyntaxException {
+        RegexParser.validate(source);
+    }
+
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
         return getEngineBuilderCT;

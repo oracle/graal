@@ -24,15 +24,7 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.regex.runtime.nodes.ToStringNode;
 
 /**
  * {@link RegexCompiler} is an executable {@link TruffleObject} that compiles regular expressions
@@ -60,8 +52,7 @@ import com.oracle.truffle.regex.runtime.nodes.ToStringNode;
  * they are easier to provide by third-party RegExp engines. {@link RegexEngine}s exist because they
  * provide features that are desired by users of {@link RegexLanguage} (e.g. lazy compilation).
  */
-@ExportLibrary(InteropLibrary.class)
-public abstract class RegexCompiler implements RegexLanguageObject {
+public interface RegexCompiler extends RegexLanguageObject {
 
     /**
      * Uses the compiler to try and compile the regular expression described in {@code source}.
@@ -70,27 +61,5 @@ public abstract class RegexCompiler implements RegexLanguageObject {
      * @throws RegexSyntaxException if the engine discovers a syntax error in the regular expression
      * @throws UnsupportedRegexException if the regular expression is not supported by the engine
      */
-    public abstract TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException;
-
-    @ExportMessage
-    public boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object execute(Object[] args,
-                    @Cached ToStringNode patternToStringNode,
-                    @Cached ToStringNode flagsToStringNode) throws ArityException, UnsupportedTypeException {
-        if (!(args.length == 1 || args.length == 2)) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(2, args.length);
-        }
-        String pattern = patternToStringNode.execute(args[0]);
-        String flags = "";
-        if (args.length == 2) {
-            flags = flagsToStringNode.execute(args[1]);
-        }
-        RegexSource regexSource = new RegexSource(pattern, flags);
-        return compile(regexSource);
-    }
+    TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException;
 }

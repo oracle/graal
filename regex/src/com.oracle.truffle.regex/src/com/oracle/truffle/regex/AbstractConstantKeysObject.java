@@ -34,6 +34,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.regex.AbstractConstantKeysObjectFactory.IsReadableCacheNodeGen;
+import com.oracle.truffle.regex.AbstractConstantKeysObjectFactory.ReadCacheNodeGen;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 @ExportLibrary(InteropLibrary.class)
@@ -49,28 +51,28 @@ public abstract class AbstractConstantKeysObject implements RegexLanguageObject 
     }
 
     @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return getKeys();
     }
 
     @ExportMessage
-    boolean isMemberReadable(String member,
+    public boolean isMemberReadable(String member,
                     @Cached IsReadableCacheNode cache,
                     @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) {
         return cache.execute(receiverProfile.profile(this), member);
     }
 
     @ExportMessage
-    Object readMember(String member,
+    public Object readMember(String member,
                     @Cached ReadCacheNode readCache,
                     @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) throws UnknownIdentifierException {
         return readCache.execute(receiverProfile.profile(this), member);
     }
 
     @GenerateUncached
-    abstract static class IsReadableCacheNode extends Node {
+    public abstract static class IsReadableCacheNode extends Node {
 
-        abstract boolean execute(AbstractConstantKeysObject receiver, String symbol);
+        public abstract boolean execute(AbstractConstantKeysObject receiver, String symbol);
 
         @SuppressWarnings("unused")
         @Specialization(guards = "symbol == cachedSymbol", limit = "8")
@@ -93,12 +95,20 @@ public abstract class AbstractConstantKeysObject implements RegexLanguageObject 
         static boolean isReadable(AbstractConstantKeysObject receiver, String symbol) {
             return receiver.getKeys().contains(symbol);
         }
+
+        public static IsReadableCacheNode create() {
+            return IsReadableCacheNodeGen.create();
+        }
+
+        public static IsReadableCacheNode getUncached() {
+            return IsReadableCacheNodeGen.getUncached();
+        }
     }
 
     @GenerateUncached
-    abstract static class ReadCacheNode extends Node {
+    public abstract static class ReadCacheNode extends Node {
 
-        abstract Object execute(AbstractConstantKeysObject receiver, String symbol) throws UnknownIdentifierException;
+        public abstract Object execute(AbstractConstantKeysObject receiver, String symbol) throws UnknownIdentifierException;
 
         @Specialization(guards = "symbol == cachedSymbol", limit = "8")
         Object readIdentity(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
@@ -115,6 +125,14 @@ public abstract class AbstractConstantKeysObject implements RegexLanguageObject 
         @Specialization(replaces = "readEquals")
         static Object read(AbstractConstantKeysObject receiver, String symbol) throws UnknownIdentifierException {
             return receiver.readMemberImpl(symbol);
+        }
+
+        public static ReadCacheNode create() {
+            return ReadCacheNodeGen.create();
+        }
+
+        public static ReadCacheNode getUncached() {
+            return ReadCacheNodeGen.getUncached();
         }
     }
 }
