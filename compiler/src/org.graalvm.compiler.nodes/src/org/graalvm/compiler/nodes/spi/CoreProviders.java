@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,58 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.tiers;
+package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringProvider;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.nodes.spi.StampProvider;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-public class PhaseContext implements CoreProviders {
+public interface CoreProviders {
 
-    private final CoreProviders providers;
+    MetaAccessProvider getMetaAccess();
 
-    public PhaseContext(CoreProviders providers) {
-        this.providers = providers;
-    }
+    ConstantReflectionProvider getConstantReflection();
 
-    @Override
-    public MetaAccessProvider getMetaAccess() {
-        return providers.getMetaAccess();
-    }
+    ConstantFieldProvider getConstantFieldProvider();
 
-    @Override
-    public ConstantReflectionProvider getConstantReflection() {
-        return providers.getConstantReflection();
-    }
+    LoweringProvider getLowerer();
 
-    @Override
-    public ConstantFieldProvider getConstantFieldProvider() {
-        return providers.getConstantFieldProvider();
-    }
+    Replacements getReplacements();
 
-    @Override
-    public LoweringProvider getLowerer() {
-        return providers.getLowerer();
-    }
+    StampProvider getStampProvider();
 
-    @Override
-    public Replacements getReplacements() {
-        return providers.getReplacements();
-    }
-
-    @Override
-    public StampProvider getStampProvider() {
-        return providers.getStampProvider();
-    }
-
-    @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return providers.getForeignCalls();
-    }
+    ForeignCallsProvider getForeignCalls();
 }

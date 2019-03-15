@@ -189,8 +189,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
         EncodedGraph encodedGraph = new EncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, null, null, null, false, trackNodeSourcePosition);
         try (DebugContext debug = openDebugContext("SVMSnippet_", method)) {
             StructuredGraph result = new StructuredGraph.Builder(options, debug).method(method).trackNodeSourcePosition(trackNodeSourcePosition).setIsSubstitution(true).build();
-            PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers.getMetaAccess(), providers.getConstantReflection(),
-                            providers.getConstantFieldProvider(), providers.getStampProvider(), null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null, null, null) {
+            PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
+                            null, null) {
                 @Override
                 protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, ResolvedJavaMethod originalMethod, BytecodeProvider intrinsicBytecodeProvider,
                                 boolean isSubstitution, boolean track) {

@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.phases;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
@@ -38,8 +37,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
-import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -50,9 +49,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.SubstrateMethodCallTargetNode;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -84,14 +81,14 @@ public class HostedGraphKit extends SubstrateGraphKit {
     }
 
     @Override
-    protected Instance createGraphBuilderInstance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection,
-                    ConstantFieldProvider constantFieldProvider, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+    protected Instance createGraphBuilderInstance(Providers theProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+                    IntrinsicContext initialIntrinsicContext) {
 
         ResolvedJavaMethod method = graph.method();
         if (method instanceof AnalysisMethod) {
-            return new AnalysisGraphBuilderPhase(metaAccess, stampProvider, constantReflection, constantFieldProvider, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+            return new AnalysisGraphBuilderPhase(theProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
         } else if (method instanceof HostedMethod) {
-            return new HostedGraphBuilderPhase(metaAccess, stampProvider, constantReflection, constantFieldProvider, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+            return new HostedGraphBuilderPhase(theProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
         } else {
             throw VMError.shouldNotReachHere();
         }

@@ -44,7 +44,6 @@ import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -66,7 +65,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -126,12 +124,10 @@ import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -241,10 +237,10 @@ public final class GraalFeature implements Feature {
 
         final CallTreeNode node;
 
-        RuntimeGraphBuilderPhase(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+        RuntimeGraphBuilderPhase(Providers providers,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes,
                         Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate, CallTreeNode node) {
-            super(metaAccess, stampProvider, constantReflection, constantFieldProvider, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes, deoptimizeOnExceptionPredicate);
+            super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes, deoptimizeOnExceptionPredicate);
             this.node = node;
         }
 
@@ -506,8 +502,7 @@ public final class GraalFeature implements Feature {
 
             try (DebugContext.Scope scope = debug.scope("RuntimeCompile", graph)) {
                 if (parse) {
-                    RuntimeGraphBuilderPhase builderPhase = new RuntimeGraphBuilderPhase(hostedProviders.getMetaAccess(), hostedProviders.getStampProvider(),
-                                    hostedProviders.getConstantReflection(), hostedProviders.getConstantFieldProvider(), graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes(),
+                    RuntimeGraphBuilderPhase builderPhase = new RuntimeGraphBuilderPhase(hostedProviders, graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes(),
                                     deoptimizeOnExceptionPredicate, node);
                     builderPhase.apply(graph);
                 }
