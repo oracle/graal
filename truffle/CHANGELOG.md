@@ -41,6 +41,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `@CachedContext` and `@CachedLanguage` for convenient language and context lookup in specializations or exported methods.
 * Added `Node.lookupContextReference(Class)` and `Node.lookupLanguageReference(Class)` that allows for a more convenient lookup.
 * Deprecated `RootNode.getLanguage(Class)`, the new language references should be used instead.
+* Added `TruffleFile` aware [TruffleFile.FileTypeDetector SPI](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.FileTypeDetector.html) to detect a file MIME type and a file encoding. Added [TruffleFile.getMimeType method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getMimeType--) to obtain a `TruffleFile` MIME type. Added [TruffleFile.getEncoding method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getEncoding--) to obtain a `TruffleFile` encoding. The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files. Usage of NIO `FileTypeDetector` for MIME type detection is deprecated.
+
+## Version 1.0.0 RC14
 
 ## Version 1.0.0 RC14
 * Removed some deprecated elements:
@@ -86,7 +89,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added a getter for [name separator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getFileNameSeparator--) used by `TruffleFile`'s paths.
 * Added support for receiver object in a frame's Scope: [Scope.Builder receiver(String, Object)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.Builder.html#receiver-java.lang.String-java.lang.Object-), [Scope.getReceiver()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.html#getReceiver--), [Scope.getReceiverName()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.html#getReceiverName--) and [DebugScope.getReceiver()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugScope.html#getReceiver--).
 * Added [engine bound TruffleLogger for instruments](file:///Users/tom/Projects/graal/tzezula/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getLogger-java.lang.String-). The engine bound logger can be used by threads executing without any context.
-* Added `TruffleFile` aware [TruffleFile.FileTypeDetector SPI](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.FileTypeDetector.html) to detect a file MIME type and a file encoding. Added [TruffleFile.getMimeType method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getMimeType--) to obtain a `TruffleFile` MIME type. Added [TruffleFile.getEncoding method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getEncoding--) to obtain a `TruffleFile` encoding. The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files.
 
 ## Version 1.0.0 RC13
 * Added [Debugger.getSessionCount()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#getSessionCount--) to return the number of active debugger sessions.
