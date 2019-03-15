@@ -220,6 +220,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
         this.polyglotHostBindings = getAPIAccess().newValue(polyglotBindings, new PolyglotBindingsValue(getHostContext()));
         // notifyContextCreated() is called after spiContext.impl is set to this.
+        this.engine.noInnerContexts.invalidate();
         initializeStaticContext(this);
     }
 

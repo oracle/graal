@@ -60,9 +60,10 @@ final class PolyglotReferences {
     }
 
     static ContextReference<Object> createAssumeSingleContext(PolyglotLanguage language,
-                    Assumption validIf,
+                    Assumption validIf0,
+                    Assumption validIf1,
                     ContextReference<Object> fallback) {
-        return new AssumeSingleContext(language, validIf, fallback);
+        return new AssumeSingleContext(language, validIf0, validIf1, fallback);
     }
 
     static ContextReference<Object> createAlwaysMultiContext(PolyglotLanguage language) {
@@ -138,17 +139,19 @@ final class PolyglotReferences {
 
         private final WeakReference<ContextReference<Object>> singleContextReference;
         private final ContextReference<Object> fallbackReference;
-        private final Assumption singleContext;
+        private final Assumption validIf0;
+        private final Assumption validIf1;
 
-        AssumeSingleContext(PolyglotLanguage language, Assumption singleContextAssumption, ContextReference<Object> fallback) {
-            this.singleContext = singleContextAssumption;
+        AssumeSingleContext(PolyglotLanguage language, Assumption validIf0, Assumption validIf1, ContextReference<Object> fallback) {
+            this.validIf0 = validIf0;
+            this.validIf1 = validIf1;
             this.singleContextReference = new WeakReference<>(createAlwaysSingleContext(language));
             this.fallbackReference = fallback;
         }
 
         @Override
         public Object get() {
-            if (singleContext.isValid()) {
+            if (validIf0.isValid() && (validIf1 == null || validIf1.isValid())) {
                 ContextReference<Object> supplier = singleContextReference.get();
                 if (supplier != null) {
                     Object result = supplier.get();

@@ -146,7 +146,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private PolyglotContextImpl preInitializedContext;
 
     PolyglotLanguage hostLanguage;
-    final Assumption singleContext = Truffle.getRuntime().createAssumption();
+    final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per engine.");
+    final Assumption noInnerContexts = Truffle.getRuntime().createAssumption("No inner contexts.");
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
@@ -1120,9 +1121,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         Handler useHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
         useHandler = useHandler != null ? useHandler : logHandler;
-        useHandler = useHandler != null ? useHandler : PolyglotLogHandler.createStreamHandler(
-                        configErr == null ? INSTRUMENT.getOut(this.err) : configErr,
-                        false, true);
+        useHandler = useHandler != null ? useHandler
+                        : PolyglotLogHandler.createStreamHandler(
+                                        configErr == null ? INSTRUMENT.getOut(this.err) : configErr,
+                                        false, true);
 
         final InputStream useIn = configIn == null ? this.in : configIn;
 

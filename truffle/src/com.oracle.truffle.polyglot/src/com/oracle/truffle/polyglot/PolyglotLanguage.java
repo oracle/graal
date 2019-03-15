@@ -100,7 +100,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
         this.multiLanguageReference = PolyglotReferences.createAlwaysMultiLanguage(this);
         this.multiContextReference = PolyglotReferences.createAlwaysMultiContext(this);
-        this.singleOrMultiContextReference = PolyglotReferences.createAssumeSingleContext(this, engine.singleContext, multiContextReference);
+        this.singleOrMultiContextReference = PolyglotReferences.createAssumeSingleContext(this, engine.singleContext, null, multiContextReference);
         this.singleOrMultiLanguageReference = PolyglotReferences.createAssumeSingleLanguage(this, null, singleInstance, multiLanguageReference);
     }
 
