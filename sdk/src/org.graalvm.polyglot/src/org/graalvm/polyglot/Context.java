@@ -859,7 +859,8 @@ public final class Context implements AutoCloseable {
          * Sets the default value for all privileges. If not explicitly specified, then all access
          * is <code>false</code>. If all access is enabled then certain privileges may still be
          * disabled by configuring it explicitly using the builder (either before or after the call
-         * to {@link #allowAllAccess(boolean) allowAllAccess()}).
+         * to {@link #allowAllAccess(boolean) allowAllAccess()}). Allowing all access should only be
+         * set if the guest application is fully trusted.
          * <p>
          * If <code>true</code>, grants the context the same access privileges as the host virtual
          * machine. If the host VM runs without a {@link SecurityManager security manager} enabled,
