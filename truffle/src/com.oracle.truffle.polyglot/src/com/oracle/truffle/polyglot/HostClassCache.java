@@ -50,12 +50,14 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 final class HostClassCache {
-    private final HostAccess conf;
+    private final HostAccess hostAccess;
     private final BiFunction<HostAccess, AnnotatedElement, Boolean> access;
+    private final boolean publicAccess;
 
     private HostClassCache(BiFunction<HostAccess, AnnotatedElement, Boolean> access, HostAccess conf) {
         this.access = access;
-        this.conf = conf;
+        this.hostAccess = conf;
+        this.publicAccess = access.apply(conf, HostClassCache.class);
     }
 
     public static HostClassCache find(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
@@ -70,24 +72,33 @@ final class HostClassCache {
     };
 
     @TruffleBoundary
+    public static HostClassCache forInstance(HostObject receiver) {
+        PolyglotContextImpl context = receiver.languageContext != null ? receiver.languageContext.context : null;
+        if (context == null) {
+            context = PolyglotContextImpl.requireContext();
+        }
+        return context.engine.getHostClassCache();
+    }
+
+    @TruffleBoundary
     HostClassDesc forClass(Class<?> clazz) {
         return descs.get(clazz);
     }
 
     boolean allowsAccess(Method m) {
-        return access.apply(conf, m);
+        return access.apply(hostAccess, m);
     }
 
     boolean allowsAccess(Field f) {
-        return access.apply(conf, f);
+        return access.apply(hostAccess, f);
     }
 
-    boolean checkHostAccess(HostAccess hostAccess) {
-        return this.conf == hostAccess;
+    boolean checkHostAccess(HostAccess toVerify) {
+        return this.hostAccess == toVerify;
     }
 
-    boolean allowsIndexAccess(Class<?> type) {
-        return access.apply(conf, type);
+    public boolean isPublicAccess() {
+        return publicAccess;
     }
 
     private static class Factory implements Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, HostClassCache> {
@@ -102,4 +113,5 @@ final class HostClassCache {
             return new HostClassCache(access, conf);
         }
     }
+
 }

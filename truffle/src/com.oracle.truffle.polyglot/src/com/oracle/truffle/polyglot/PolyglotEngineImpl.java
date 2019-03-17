@@ -98,7 +98,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 
-class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     /**
      * Context index for the host language.
@@ -609,7 +609,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                                         duplicateId, className1, className2));
     }
 
-    final void checkState() {
+    void checkState() {
         if (closed) {
             throw new IllegalStateException("Engine is already closed.");
         }
@@ -950,7 +950,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
     }
 
-    final HostClassDesc findHostClassDesc(Class<?> clazz) {
+    HostClassCache getHostClassCache() {
+        return hostClassCache;
+    }
+
+    HostClassDesc findHostClassDesc(Class<?> clazz) {
         return hostClassCache.forClass(clazz);
     }
 

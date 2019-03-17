@@ -44,6 +44,7 @@ import java.lang.reflect.Array;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -139,6 +140,13 @@ final class HostObject implements TruffleObject {
             return true;
         }
         return false;
+    }
+    boolean isList() {
+        return obj instanceof List;
+    }
+
+    boolean isArray() {
+        return obj != null && obj.getClass().isArray();
     }
 
     boolean isDefaultClass() {
@@ -457,18 +465,18 @@ final class HostObject implements TruffleObject {
         static boolean doOther(HostObject receiver, long index) {
             return false;
         }
-        @Specialization(guards = {"checkArray(getRootNode(), receiver)"})
+        @Specialization(guards = {"checkArray(receiver)"})
         protected Object doArrayIntIndex(HostObject receiver, int index) {
             return doArrayAccess(receiver, index);
         }
 
-        @Specialization(guards = {"checkArray(getRootNode(), receiver)", "index.getClass() == clazz"}, replaces = "doArrayIntIndex")
+        @Specialization(guards = {"checkArray(receiver)", "index.getClass() == clazz"}, replaces = "doArrayIntIndex")
         protected Object doArrayCached(HostObject receiver, Number index,
                         @Cached("index.getClass()") Class<? extends Number> clazz) {
             return doArrayAccess(receiver, clazz.cast(index).intValue());
         }
 
-        @Specialization(guards = {"checkArray(getRootNode(), receiver)"}, replaces = "doArrayCached")
+        @Specialization(guards = {"checkArray(receiver)"}, replaces = "doArrayCached")
         protected Object doArrayGeneric(HostObject receiver, Number index) {
             return doArrayAccess(receiver, index.intValue());
         }
@@ -476,7 +484,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     static class RemoveArrayElement {
-        @Specialization(guards = "receiver.isList()")
+        @Specialization(guards = "isList(receiver)")
         static void doList(HostObject receiver, long index) throws InvalidArrayIndexException {
             if (index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
@@ -499,24 +507,36 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"isList(getRootNode(), receiver)"}, replaces = "doListIntIndex")
+        @Specialization(guards = {"isList(receiver)"}, replaces = "doListIntIndex")
         protected Object doListGeneric(HostObject receiver, Number index) {
             return doListIntIndex(receiver, index.intValue());
         }
 
         @SuppressWarnings("unused")
         @TruffleBoundary
-        @Specialization(guards = {"!checkArray(getRootNode(), receiver)", "!isList(getRootNode(), receiver)"})
+        @Specialization(guards = {"!checkArray(receiver)", "!isList(receiver)"})
         protected static Object notArray(HostObject receiver, Number index) {
             throw UnsupportedMessageException.raise(Message.READ);
         }
 
-        static boolean isList(RootNode n, HostObject r) {
-            return HostObjectMR.isList(n, r);
+        @CompilationFinal Boolean publicAccessEnabled;
+
+        final boolean isPublicAccess(HostObject receiver) {
+            Boolean isPublicAccess = this.publicAccessEnabled;
+            if (isPublicAccess == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.publicAccessEnabled = isPublicAccess = HostClassCache.forInstance(receiver).isPublicAccess();
+            }
+            assert isPublicAccess == HostClassCache.forInstance(receiver).isPublicAccess();
+            return isPublicAccess;
         }
 
-        static boolean checkArray(RootNode n, HostObject r) {
-            return HostObjectMR.checkArray(n, r);
+        final boolean isList(HostObject receiver) {
+            return isPublicAccess(receiver) ? receiver.isList() : false;
+        }
+
+        final boolean checkArray(HostObject receiver) {
+            return isPublicAccess(receiver) ? receiver.isArray() : false;
         }
 
         private Object doArrayAccess(HostObject object, int index) {
@@ -742,6 +762,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
+<<<<<<< HEAD
     @ExportMessage
     boolean fitsInDouble(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
         if (isNumber()) {
@@ -750,6 +771,16 @@ final class HostObject implements TruffleObject {
             return false;
         }
     }
+
+     final boolean isPublicAccess(HostObject receiver) {
+            Boolean isPublicAccess = this.publicAccessEnabled;
+            if (isPublicAccess == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.publicAccessEnabled = isPublicAccess = HostClassCache.forInstance(receiver).isPublicAccess();
+            }
+            assert isPublicAccess == HostClassCache.forInstance(receiver).isPublicAccess();
+            return isPublicAccess;
+        }
 
     @ExportMessage
     byte asByte(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
@@ -947,7 +978,7 @@ final class HostObject implements TruffleObject {
 
         protected abstract Object execute(Object array, int index);
 
-        @Specialization
+<       @Specialization
         static boolean doBoolean(boolean[] array, int index) {
             return array[index];
         }
@@ -955,7 +986,7 @@ final class HostObject implements TruffleObject {
         @Specialization
         static byte doByte(byte[] array, int index) {
             return array[index];
-        }
+=        }
 
         @Specialization
         static short doShort(short[] array, int index) {
@@ -1095,7 +1126,6 @@ final class HostObject implements TruffleObject {
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         Class<?> doUncached(Class<?> clazz, String name) {
-            Object obj = VMAccessor.NODES.getSourceVM(getRootNode());
             return HostInteropReflect.findInnerClass(clazz, name);
         }
     }
@@ -1188,22 +1218,26 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    static boolean isList(RootNode node, HostObject receiver) {
-        Object obj = VMAccessor.NODES.getSourceVM(node);
-        if (receiver.obj instanceof List) {
-            HostClassDesc desc = HostClassDesc.forClass((PolyglotEngineImpl) obj, receiver.getObjectClass());
-            return desc.isIndexAccess();
-        }
-        return false;
-    }
+    abstract static class BaseNode extends Node {
 
-    static boolean checkArray(RootNode node, HostObject receiver) {
-        Object obj = VMAccessor.NODES.getSourceVM(node);
-        if (receiver.isArray()) {
-            HostClassDesc desc = HostClassDesc.forClass((PolyglotEngineImpl) obj, receiver.getObjectClass());
-            return desc.isIndexAccess();
+        @CompilationFinal Boolean publicAccessEnabled;
+
+        final boolean isPublicAccess(HostObject receiver) {
+            Boolean isPublicAccess = this.publicAccessEnabled;
+            if (isPublicAccess == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.publicAccessEnabled = isPublicAccess = HostClassCache.forInstance(receiver).isPublicAccess();
+            }
+            return isPublicAccess;
         }
-        return false;
+
+        final boolean isList(HostObject receiver) {
+            return isPublicAccess(receiver) ? receiver.isList() : false;
+        }
+
+        final boolean checkArray(HostObject receiver) {
+            return isPublicAccess(receiver) ? receiver.isArray() : false;
+        }
     }
 
 }
