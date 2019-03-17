@@ -115,7 +115,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
 
         // test with only host access rights
-        setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(HostAccessPolicy.ALL).hostClassFilter((String s) -> true).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(HostAccessPolicy.ALL).allowHostClassLookup((String s) -> true).build());
         file = languageEnv.getTruffleFile(tempDir.toString());
         try {
             languageEnv.addToHostClassPath(file);
@@ -145,7 +145,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             assertFalse(((TruffleException) e).isInternalError());
         }
 
-        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(HostAccessPolicy.ALL).hostClassFilter((String s) -> true).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(HostAccessPolicy.ALL).allowHostClassLookup((String s) -> true).build());
         file = languageEnv.getTruffleFile(tempDir.toString());
         // we should fail early
         languageEnv.addToHostClassPath(file);
@@ -159,7 +159,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
         // no rights by default
         AtomicInteger invocationCount = new AtomicInteger(0);
-        setupEnv(Context.newBuilder().hostClassFilter((s) -> {
+        setupEnv(Context.newBuilder().allowHostClassLookup((s) -> {
             invocationCount.incrementAndGet();
             assertEquals(TEST_REPLACE_QUALIFIED_CLASS_NAME, s);
             return true;
@@ -174,7 +174,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         assertNotNull(languageEnv.lookupHostSymbol(TEST_REPLACE_QUALIFIED_CLASS_NAME));
         assertEquals(2, invocationCount.get());
 
-        setupEnv(Context.newBuilder().hostClassFilter((s) -> {
+        setupEnv(Context.newBuilder().allowHostClassLookup((s) -> {
             invocationCount.incrementAndGet();
             assertEquals(TEST_REPLACE_QUALIFIED_CLASS_NAME, s);
             return false;
