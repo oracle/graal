@@ -59,7 +59,7 @@ final class PolyglotContextConfig {
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
-    final boolean hostAccessAllowed;
+    final boolean hostLookupAllowed;
     final boolean nativeAccessAllowed;
     final boolean createThreadAllowed;
     final boolean hostClassLoadingAllowed;
@@ -72,7 +72,7 @@ final class PolyglotContextConfig {
     final Handler logHandler;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
-                    boolean hostAccessAllowed, boolean nativeAccessAllowed, boolean createThreadAllowed,
+                    boolean hostLookupAllowed, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler) {
@@ -82,7 +82,7 @@ final class PolyglotContextConfig {
         this.out = out;
         this.err = err;
         this.in = in;
-        this.hostAccessAllowed = hostAccessAllowed;
+        this.hostLookupAllowed = hostLookupAllowed;
         this.nativeAccessAllowed = nativeAccessAllowed;
         this.createThreadAllowed = createThreadAllowed;
         this.hostClassLoadingAllowed = hostClassLoadingAllowed;

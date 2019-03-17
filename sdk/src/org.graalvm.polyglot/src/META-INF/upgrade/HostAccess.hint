@@ -5,7 +5,7 @@ $cb.allowHostAccess(true) :: $cb instanceof org.graalvm.polyglot.Context.Builder
 =>
 'Use HostAccessPolicy.ALL and load any class':
 $cb.allowHostAccess(org.graalvm.polyglot.HostAccessPolicy.ALL)
-   .hostClassFilter((s) -> true)
+   .allowHostClassLookup((s) -> true)
 ;;
 
 'Use HostAccess':
@@ -13,6 +13,13 @@ $cb.allowHostAccess(false) :: $cb instanceof org.graalvm.polyglot.Context.Builde
 =>
 'Use HostAccessPolicy.ALL but load no class':
 $cb.allowHostAccess(org.graalvm.polyglot.HostAccessPolicy.ALL)
-   .hostClassFilter((s) -> false)
+   .allowHostClassLookup(null)
+;;
+
+'Use HostAccessPolicy':
+$cb.hostClassFilter($filter) :: $cb instanceof org.graalvm.polyglot.Context.Builder
+=>
+'Use HostAccessPolicy.ALL and load any class':
+$cb.allowHostClassLookup($filter)
 ;;
 

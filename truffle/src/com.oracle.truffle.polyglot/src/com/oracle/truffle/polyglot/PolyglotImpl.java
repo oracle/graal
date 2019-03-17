@@ -712,7 +712,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public boolean isHostAccessAllowed(Object vmObject, Env env) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
-            return context.context.config.hostAccessAllowed;
+            return context.context.config.hostLookupAllowed;
         }
 
         @Override

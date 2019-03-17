@@ -82,7 +82,7 @@ public final class HostAccessPolicy {
     /**
      * Configuration via {@link Export}. Default configuration if
      * {@link Context.Builder#allowAllAccess(boolean)} is false.
-     * 
+     *
      * @since 1.0 RC14
      */
     public static final HostAccessPolicy EXPLICIT = newBuilder().allowAccessAnnotatedBy(HostAccessPolicy.Export.class).name("HostAccessPolicy.EXPLICIT").build();
@@ -92,14 +92,14 @@ public final class HostAccessPolicy {
      * your Java code could. It is useful for polyglot programing and writing parts of the
      * functionality in other language than in Java. This policy isn't suitable for executing
      * untrusted code.
-     * 
+     *
      * @since 1.0 RC14
      */
     public static final HostAccessPolicy ALL = newBuilder().allowPublicAccess(true).name("HostAccessPolicy.ALL").build();
 
     /**
      * Disables access to elements.
-     * 
+     *
      * @since 1.0 RC15
      */
     public static final HostAccessPolicy NONE = newBuilder().name("HostAccessPolicy.NONE").build();
@@ -180,7 +180,7 @@ public final class HostAccessPolicy {
      * Annotation to export public methods or fields. When {@link #EXPLICIT} access is activated via
      * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccessPolicy)} only methods
      * and fields annotated by this annotation are available from scripts.
-     * 
+     *
      * @since 1.0 RC14
      */
     @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD})
@@ -190,7 +190,7 @@ public final class HostAccessPolicy {
 
     /**
      * Builder to create own {@link HostAccessPolicy}.
-     * 
+     *
      * @since 1.0 RC14
      */
     public final class Builder {
@@ -253,7 +253,7 @@ public final class HostAccessPolicy {
 
         /**
          * Prevents access to given method or constructor.
-         * 
+         *
          * @param element the element to prevent access to
          * @return this builder
          * @since 1.0 RC15
@@ -265,7 +265,7 @@ public final class HostAccessPolicy {
 
         /**
          * Prevents access to given field.
-         * 
+         *
          * @param element the element to prevent access to
          * @return this builder
          * @since 1.0 RC15
@@ -277,7 +277,7 @@ public final class HostAccessPolicy {
 
         /**
          * Prevents access to all members of given class.
-         * 
+         *
          * @param clazz the class to prevent access to
          * @return this builder
          * @since 1.0 RC15
