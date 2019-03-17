@@ -725,7 +725,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowHostClassLoading;
         private Boolean allowExperimentalOptions;
         private Boolean allowHostAccess;
-        private HostAccessPolicy hostAccess;
+        private HostAccess hostAccess;
         private FileSystem customFileSystem;
         private MessageTransport messageTransport;
         private Object customLogHandler;
@@ -805,14 +805,14 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Configures host access. Use {@link HostAccessPolicy#EXPLICIT} or
-         * {@link HostAccessPolicy#ALL}.
+         * Configures host access. Use {@link HostAccess#EXPLICIT} or
+         * {@link HostAccess#ALL}.
          *
          * @param config configuration of host access
          * @return {@code this} builder
          * @since 1.0
          */
-        public Builder allowHostAccess(HostAccessPolicy config) {
+        public Builder allowHostAccess(HostAccess config) {
             this.hostAccess = config;
             return this;
         }
@@ -857,7 +857,7 @@ public final class Context implements AutoCloseable {
          * Grants full access to the following privileges by default:
          * <ul>
          * <li>The {@link #allowCreateThread(boolean) creation} and use of new threads.
-         * <li>The access to public {@link #allowHostAccess(org.graalvm.polyglot.HostAccessPolicy)
+         * <li>The access to public {@link #allowHostAccess(org.graalvm.polyglot.HostAccess)
          * host classes}.
          * <li>The loading of new {@link #allowHostClassLoading(boolean) host classes} by adding
          * entries to the class path.
@@ -881,10 +881,10 @@ public final class Context implements AutoCloseable {
          * <code>true</code>, then the host class loading is enabled if it is not disallowed
          * explicitly. For host class loading to be useful, {@link #allowIO(boolean) IO} operations
          * {@link #allowHostClassLookup(Predicate) host class lookup}, and the
-         * {@link #allowHostAccess(org.graalvm.polyglot.HostAccessPolicy) host access policy} needs
+         * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs
          * to be configured as well.
          *
-         * @see #allowHostAccess(HostAccessPolicy)
+         * @see #allowHostAccess(HostAccess)
          * @see #allowHostClassLookup(Predicate)
          * @since 1.0
          */
@@ -907,7 +907,7 @@ public final class Context implements AutoCloseable {
          * looked up by the guest application.
          * <p>
          * In order to access class members looked up by the guest application a
-         * {@link #allowHostAccess(org.graalvm.polyglot.HostAccessPolicy) host access policy} needs
+         * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs
          * to be set or {@link #allowAllAccess(boolean) all access} needs to be set to
          * <code>true</code>.
          * <p>
@@ -947,15 +947,15 @@ public final class Context implements AutoCloseable {
          * <li>We call the method <code>accessibleMethod</code> which returns <code>42</code>. The
          * method is accessible to the guest language because because the enclosing class and the
          * declared method have the public modifier set, as well as are annotated by the
-         * {@linkplain HostAccessPolicy.Export @Export} annotation. Which Java members of classes
-         * are accessible can be configured using the {@link #allowHostAccess(HostAccessPolicy) host
+         * {@linkplain HostAccess.Export @Export} annotation. Which Java members of classes
+         * are accessible can be configured using the {@link #allowHostAccess(HostAccess) host
          * access policy}.
          * </ul>
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
          *            java qualified class name.
          * @see #allowHostClassLoading(boolean) allowHostClassLoading - to allow loading of classes.
-         * @see #allowHostAccess(HostAccessPolicy) allowHostAccess - to configure the access policy
+         * @see #allowHostAccess(HostAccess) allowHostAccess - to configure the access policy
          *      of host values for guest languages.
          * @since 1.0
          */
@@ -981,7 +981,7 @@ public final class Context implements AutoCloseable {
          * Sets a class filter that allows to limit the classes that are allowed to be loaded by
          * guest languages. If the filter returns <code>true</code>, then the class is accessible,
          * otherwise it is not accessible and throws a guest language error when accessed. In order
-         * to have an effect, {@link #allowHostAccess(org.graalvm.polyglot.HostAccessPolicy)} or
+         * to have an effect, {@link #allowHostAccess(org.graalvm.polyglot.HostAccess)} or
          * {@link #allowAllAccess(boolean)} needs to be set to <code>true</code>.
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
@@ -1193,7 +1193,7 @@ public final class Context implements AutoCloseable {
             }
 
             Predicate<String> localHostLookupFilter = this.hostClassFilter;
-            HostAccessPolicy hostAccess = this.hostAccess;
+            HostAccess hostAccess = this.hostAccess;
 
             if (this.allowHostAccess != null && this.allowHostAccess) {
                 if (localHostLookupFilter == UNSET_HOST_LOOKUP) {
@@ -1201,12 +1201,12 @@ public final class Context implements AutoCloseable {
                     localHostLookupFilter = ALL_HOST_CLASSES;
                 }
                 // legacy behavior support
-                hostAccess = HostAccessPolicy.ALL;
+                hostAccess = HostAccess.ALL;
             }
             if (hostAccess == null) {
                 // Default to be changed.
                 // hostAccess = this.allowAllAccess ? HostAccess.ALL : HostAccess.EXPLICIT;
-                hostAccess = HostAccessPolicy.ALL;
+                hostAccess = HostAccess.ALL;
             }
 
             if (localHostLookupFilter == UNSET_HOST_LOOKUP) {

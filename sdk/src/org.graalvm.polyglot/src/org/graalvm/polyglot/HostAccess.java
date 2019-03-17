@@ -59,15 +59,15 @@ import java.util.function.Function;
 /**
  * Configuration of host access. There are two predefined instances of host access {@link #EXPLICIT}
  * and {@link #ALL} which one can use when building a context
- * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccessPolicy)}. Should the
+ * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)}. Should the
  * predefined instances not be enough, one can create own configuration with {@link #newBuilder()}.
  *
  * @since 1.0 RC14
  */
-public final class HostAccessPolicy {
-    private static final BiFunction<HostAccessPolicy, AnnotatedElement, Boolean> ACCESS = new BiFunction<HostAccessPolicy, AnnotatedElement, Boolean>() {
+public final class HostAccess {
+    private static final BiFunction<HostAccess, AnnotatedElement, Boolean> ACCESS = new BiFunction<HostAccess, AnnotatedElement, Boolean>() {
         @Override
-        public Boolean apply(HostAccessPolicy t, AnnotatedElement u) {
+        public Boolean apply(HostAccess t, AnnotatedElement u) {
             return t.allowAccess(u);
         }
     };
@@ -85,7 +85,7 @@ public final class HostAccessPolicy {
      *
      * @since 1.0 RC14
      */
-    public static final HostAccessPolicy EXPLICIT = newBuilder().allowAccessAnnotatedBy(HostAccessPolicy.Export.class).name("HostAccessPolicy.EXPLICIT").build();
+    public static final HostAccess EXPLICIT = newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).name("HostAccessPolicy.EXPLICIT").build();
 
     /**
      * Access all public elements. This policy allows the guest script to access all elements that
@@ -95,16 +95,16 @@ public final class HostAccessPolicy {
      *
      * @since 1.0 RC14
      */
-    public static final HostAccessPolicy ALL = newBuilder().allowPublicAccess(true).name("HostAccessPolicy.ALL").build();
+    public static final HostAccess ALL = newBuilder().allowPublicAccess(true).name("HostAccessPolicy.ALL").build();
 
     /**
      * Disables access to elements.
      *
      * @since 1.0 RC15
      */
-    public static final HostAccessPolicy NONE = newBuilder().name("HostAccessPolicy.NONE").build();
+    public static final HostAccess NONE = newBuilder().name("HostAccessPolicy.NONE").build();
 
-    HostAccessPolicy(Set<Class<? extends Annotation>> annotations, Set<AnnotatedElement> excludes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
+    HostAccess(Set<Class<? extends Annotation>> annotations, Set<AnnotatedElement> excludes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
         this.annotations = annotations;
         this.excludes = excludes;
         this.members = members;
@@ -119,7 +119,7 @@ public final class HostAccessPolicy {
      * @since 1.0 RC14
      */
     public static Builder newBuilder() {
-        return new HostAccessPolicy(null, null, null, null, false).new Builder();
+        return new HostAccess(null, null, null, null, false).new Builder();
     }
 
     boolean allowAccess(AnnotatedElement member) {
@@ -142,7 +142,7 @@ public final class HostAccessPolicy {
         return false;
     }
 
-    synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccessPolicy, AnnotatedElement, Boolean>, T> factory) {
+    synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory) {
         if (impl == null) {
             impl = factory.apply(ACCESS);
         }
@@ -178,7 +178,7 @@ public final class HostAccessPolicy {
 
     /**
      * Annotation to export public methods or fields. When {@link #EXPLICIT} access is activated via
-     * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccessPolicy)} only methods
+     * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)} only methods
      * and fields annotated by this annotation are available from scripts.
      *
      * @since 1.0 RC14
@@ -189,7 +189,7 @@ public final class HostAccessPolicy {
     }
 
     /**
-     * Builder to create own {@link HostAccessPolicy}.
+     * Builder to create own {@link HostAccess}.
      *
      * @since 1.0 RC14
      */
@@ -295,7 +295,7 @@ public final class HostAccessPolicy {
             return this;
         }
 
-        HostAccessPolicy.Builder name(String givenName) {
+        HostAccess.Builder name(String givenName) {
             this.name = givenName;
             return this;
         }
@@ -306,8 +306,8 @@ public final class HostAccessPolicy {
          * @return new instance of host access configuration
          * @since 1.0 RC14
          */
-        public HostAccessPolicy build() {
-            return new HostAccessPolicy(annotations, excludes, members, name, allowPublic);
+        public HostAccess build() {
+            return new HostAccess(annotations, excludes, members, name, allowPublic);
         }
     }
 }

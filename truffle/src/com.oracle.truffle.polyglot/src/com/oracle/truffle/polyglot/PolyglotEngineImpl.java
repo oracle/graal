@@ -71,7 +71,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccessPolicy;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.io.FileSystem;
@@ -938,9 +938,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         ENGINES.clear();
     }
 
-    void assignHostAccess(HostAccessPolicy policy) {
+    void assignHostAccess(HostAccess policy) {
         assert Thread.holdsLock(this);
-        HostAccessPolicy nonNullAccess = policy == null ? HostAccessPolicy.EXPLICIT : policy;
+        HostAccess nonNullAccess = policy == null ? HostAccess.EXPLICIT : policy;
         if (hostClassCache != null) {
             if (!hostClassCache.checkHostAccess(nonNullAccess)) {
                 throw new IllegalStateException("Cannot share engine between contexts with different HostAccess");
@@ -1103,7 +1103,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @Override
     @SuppressWarnings({"all"})
     public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
-                    HostAccessPolicy access,
+                    HostAccess access,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
                     boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
                     String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream) {

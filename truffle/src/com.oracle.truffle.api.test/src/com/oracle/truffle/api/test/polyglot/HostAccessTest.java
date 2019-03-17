@@ -45,7 +45,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccessPolicy;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -65,17 +65,17 @@ public class HostAccessTest {
 
     @Test
     public void usefulToStringExplicit() {
-        Assert.assertEquals("HostAccessPolicy.EXPLICIT", HostAccessPolicy.EXPLICIT.toString());
+        Assert.assertEquals("HostAccessPolicy.EXPLICIT", HostAccess.EXPLICIT.toString());
     }
 
     @Test
     public void usefulToStringPublic() {
-        Assert.assertEquals("HostAccessPolicy.ALL", HostAccessPolicy.ALL.toString());
+        Assert.assertEquals("HostAccessPolicy.ALL", HostAccess.ALL.toString());
     }
 
     @Test
     public void usefulToStringNone() {
-        Assert.assertEquals("HostAccessPolicy.NONE", HostAccessPolicy.NONE.toString());
+        Assert.assertEquals("HostAccessPolicy.NONE", HostAccess.NONE.toString());
     }
 
     public static class MyEquals {
@@ -93,7 +93,7 @@ public class HostAccessTest {
 
     @Test
     public void banAccessToReflection() throws Exception {
-        HostAccessPolicy config = HostAccessPolicy.newBuilder().allowPublicAccess(true).preventAccess(Class.class).preventAccess(Method.class).preventAccess(Field.class).preventAccess(
+        HostAccess config = HostAccess.newBuilder().allowPublicAccess(true).preventAccess(Class.class).preventAccess(Method.class).preventAccess(Field.class).preventAccess(
                         Proxy.class).preventAccess(
                                         Object.class).build();
 
@@ -115,7 +115,7 @@ public class HostAccessTest {
 
     @Test
     public void banAccessToEquals() throws Exception {
-        HostAccessPolicy config = HostAccessPolicy.newBuilder().allowPublicAccess(true).preventAccess(Object.class.getMethod("equals", Object.class)).build();
+        HostAccess config = HostAccess.newBuilder().allowPublicAccess(true).preventAccess(Object.class.getMethod("equals", Object.class)).build();
 
         Context c = Context.newBuilder().allowHostAccess(config).build();
 
@@ -135,7 +135,7 @@ public class HostAccessTest {
 
     @Test
     public void publicCanAccessObjectEquals() throws Exception {
-        HostAccessPolicy config = HostAccessPolicy.ALL;
+        HostAccess config = HostAccess.ALL;
 
         Context c = Context.newBuilder().allowHostAccess(config).build();
 
@@ -147,7 +147,7 @@ public class HostAccessTest {
 
     @Test
     public void inheritFromPublic() throws Exception {
-        HostAccessPolicy config = HostAccessPolicy.newBuilder().allowPublicAccess(true).build();
+        HostAccess config = HostAccess.newBuilder().allowPublicAccess(true).build();
 
         Context c = Context.newBuilder().allowHostAccess(config).build();
 
@@ -159,7 +159,7 @@ public class HostAccessTest {
 
     @Test
     public void useOneHostAccessByTwoContexts() throws Exception {
-        HostAccessPolicy config = HostAccessPolicy.newBuilder().allowAccess(OK.class.getField("value")).build();
+        HostAccess config = HostAccess.newBuilder().allowAccess(OK.class.getField("value")).build();
 
         Context c1 = Context.newBuilder().allowHostAccess(config).build();
         Context c2 = Context.newBuilder().allowHostAccess(config).build();
@@ -178,12 +178,12 @@ public class HostAccessTest {
     public void onlyOneHostAccessPerEngine() throws Exception {
         Engine shared = Engine.create();
 
-        HostAccessPolicy config = HostAccessPolicy.newBuilder().allowAccess(OK.class.getField("value")).build();
+        HostAccess config = HostAccess.newBuilder().allowAccess(OK.class.getField("value")).build();
 
         Context c1 = Context.newBuilder().engine(shared).allowHostAccess(config).build();
         Context c2;
         try {
-            c2 = Context.newBuilder().engine(shared).allowHostAccess(HostAccessPolicy.ALL).build();
+            c2 = Context.newBuilder().engine(shared).allowHostAccess(HostAccess.ALL).build();
         } catch (IllegalStateException ex) {
             Assert.assertNotEquals("Can't have one engine between two HostAccess configs: " + ex.getMessage(), -1, ex.getMessage().indexOf("Cannot share engine"));
             return;

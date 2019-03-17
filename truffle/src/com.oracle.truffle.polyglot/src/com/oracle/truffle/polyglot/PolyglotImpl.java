@@ -99,7 +99,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
-import org.graalvm.polyglot.HostAccessPolicy;
+import org.graalvm.polyglot.HostAccess;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -179,7 +179,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                     long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
                     Object logHandlerOrStream,
-                    HostAccessPolicy conf) {
+                    HostAccess conf) {
         if (TruffleOptions.AOT) {
             VMAccessor.SPI.initializeNativeImageTruffleLocator();
         }

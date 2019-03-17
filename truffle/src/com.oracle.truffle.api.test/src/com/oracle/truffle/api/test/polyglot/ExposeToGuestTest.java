@@ -46,7 +46,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.Arrays;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccessPolicy;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -83,12 +83,12 @@ public class ExposeToGuestTest {
     }
 
     public static class ExportedValue {
-        @HostAccessPolicy.Export public int value = 42;
+        @HostAccess.Export public int value = 42;
     }
 
     @Test
     public void exportingAllPublicIsEasy() {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
         Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new PublicValue()).asInt());
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
@@ -96,7 +96,7 @@ public class ExposeToGuestTest {
 
     @Test
     public void customExportedAnnotation() {
-        HostAccessPolicy accessMeConfig = HostAccessPolicy.newBuilder().allowAccessAnnotatedBy(AccessMe.class).build();
+        HostAccess accessMeConfig = HostAccess.newBuilder().allowAccessAnnotatedBy(AccessMe.class).build();
         Context context = Context.newBuilder().allowHostAccess(accessMeConfig).build();
         Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new AccessibleValue()).asInt());
@@ -115,7 +115,7 @@ public class ExposeToGuestTest {
 
     @Test
     public void explicitlyEnumeratingField() throws Exception {
-        HostAccessPolicy explictConfig = HostAccessPolicy.newBuilder().allowAccess(AccessibleValue.class.getField("value")).build();
+        HostAccess explictConfig = HostAccess.newBuilder().allowAccess(AccessibleValue.class.getField("value")).build();
         Context context = Context.newBuilder().allowHostAccess(explictConfig).build();
         Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new AccessibleValue()).asInt());
@@ -124,7 +124,7 @@ public class ExposeToGuestTest {
     }
 
     public static class Foo<T extends Number> {
-        @HostAccessPolicy.Export
+        @HostAccess.Export
         @SuppressWarnings("unused")
         public Object foo(T x) {
             return "basic foo";
@@ -157,7 +157,7 @@ public class ExposeToGuestTest {
 
     @SuppressWarnings("all")
     public static class PrivateChangedFoo<T extends Integer> extends PrivateFoo<T> {
-        @HostAccessPolicy.Export
+        @HostAccess.Export
         @Override
         public Object foo(T x) {
             return "overriden foo";
@@ -166,7 +166,7 @@ public class ExposeToGuestTest {
 
     @Test
     public void fooBarExposedByInheritance() throws Exception {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.EXPLICIT).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1);\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         Assert.assertEquals("basic foo", readValue.execute(new Foo<>()).asString());
         Assert.assertEquals("enhanced bar", readValue.execute(new Bar()).asString());
@@ -177,13 +177,13 @@ public class ExposeToGuestTest {
 
     @FunctionalInterface
     public interface FooInterface<T extends Number> {
-        @HostAccessPolicy.Export
+        @HostAccess.Export
         Object foo(T value);
     }
 
     @Test
     public void functionalInterfaceCall() throws Exception {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.EXPLICIT).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1);\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         FooInterface<Number> foo = (ignore) -> "functional foo";
         Assert.assertEquals("functional foo", readValue.execute(foo).asString());
@@ -200,7 +200,7 @@ public class ExposeToGuestTest {
     }
 
     private static void doAccessAllowedInPublicHostAccess(boolean asList) throws Exception {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         boolean[] gotIn = {false};
         FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
@@ -220,7 +220,7 @@ public class ExposeToGuestTest {
     }
 
     private static void doAccessForbiddenInExplicit(boolean asList) throws Exception {
-        Context context = Context.newBuilder().allowHostAccess(HostAccessPolicy.EXPLICIT).build();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         boolean[] gotIn = {false};
         FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
@@ -246,7 +246,7 @@ public class ExposeToGuestTest {
     }
 
     private static void doAccessForbiddenInManual(boolean asList) throws Exception {
-        HostAccessPolicy config = HostAccessPolicy.newBuilder().allowAccess(FooInterface.class.getMethod("foo", Number.class)).build();
+        HostAccess config = HostAccess.newBuilder().allowAccess(FooInterface.class.getMethod("foo", Number.class)).build();
         Context context = Context.newBuilder().allowHostAccess(config).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         boolean[] gotIn = {false};

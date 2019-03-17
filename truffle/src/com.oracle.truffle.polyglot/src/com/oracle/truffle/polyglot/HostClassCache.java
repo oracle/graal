@@ -46,19 +46,19 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import org.graalvm.polyglot.HostAccessPolicy;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 final class HostClassCache {
-    private final HostAccessPolicy conf;
-    private final BiFunction<HostAccessPolicy, AnnotatedElement, Boolean> access;
+    private final HostAccess conf;
+    private final BiFunction<HostAccess, AnnotatedElement, Boolean> access;
 
-    private HostClassCache(BiFunction<HostAccessPolicy, AnnotatedElement, Boolean> access, HostAccessPolicy conf) {
+    private HostClassCache(BiFunction<HostAccess, AnnotatedElement, Boolean> access, HostAccess conf) {
         this.access = access;
         this.conf = conf;
     }
 
-    public static HostClassCache find(AbstractPolyglotImpl.APIAccess apiAccess, HostAccessPolicy conf) {
+    public static HostClassCache find(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
         return apiAccess.connectHostAccess(HostClassCache.class, conf, new Factory(conf));
     }
 
@@ -82,7 +82,7 @@ final class HostClassCache {
         return access.apply(conf, f);
     }
 
-    boolean checkHostAccess(HostAccessPolicy hostAccess) {
+    boolean checkHostAccess(HostAccess hostAccess) {
         return this.conf == hostAccess;
     }
 
@@ -90,15 +90,15 @@ final class HostClassCache {
         return access.apply(conf, type);
     }
 
-    private static class Factory implements Function<BiFunction<HostAccessPolicy, AnnotatedElement, Boolean>, HostClassCache> {
-        private final HostAccessPolicy conf;
+    private static class Factory implements Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, HostClassCache> {
+        private final HostAccess conf;
 
-        Factory(HostAccessPolicy conf) {
+        Factory(HostAccess conf) {
             this.conf = conf;
         }
 
         @Override
-        public HostClassCache apply(BiFunction<HostAccessPolicy, AnnotatedElement, Boolean> access) {
+        public HostClassCache apply(BiFunction<HostAccess, AnnotatedElement, Boolean> access) {
             return new HostClassCache(access, conf);
         }
     }

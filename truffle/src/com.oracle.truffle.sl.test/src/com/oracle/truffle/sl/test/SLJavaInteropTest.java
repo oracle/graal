@@ -51,7 +51,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccessPolicy;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Before;
@@ -65,7 +65,7 @@ public class SLJavaInteropTest {
     @Before
     public void create() {
         os = new ByteArrayOutputStream();
-        context = Context.newBuilder().allowHostAccess(HostAccessPolicy.ALL).out(os).build();
+        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).out(os).build();
     }
 
     @After
@@ -418,13 +418,13 @@ public class SLJavaInteropTest {
     public static class Sum {
         int sum;
 
-        @HostAccessPolicy.Export
+        @HostAccess.Export
         public Sum sum(Pair p) {
             sum += p.value();
             return this;
         }
 
-        @HostAccessPolicy.Export
+        @HostAccess.Export
         public void sumArray(List<Pair> pairs) {
             Object[] arr = pairs.toArray();
             assertNotNull("Array created", arr);
@@ -433,7 +433,7 @@ public class SLJavaInteropTest {
             }
         }
 
-        @HostAccessPolicy.Export
+        @HostAccess.Export
         public void sumArrayArray(List<List<Pair>> pairs) {
             Object[] arr = pairs.toArray();
             assertNotNull("Array created", arr);
@@ -443,7 +443,7 @@ public class SLJavaInteropTest {
             }
         }
 
-        @HostAccessPolicy.Export
+        @HostAccess.Export
         public void sumArrayMap(List<List<Map<String, Integer>>> pairs) {
             Object[] arr = pairs.toArray();
             assertNotNull("Array created", arr);
@@ -456,7 +456,7 @@ public class SLJavaInteropTest {
             }
         }
 
-        @HostAccessPolicy.Export
+        @HostAccess.Export
         public void sumMapArray(Map<String, List<Pair>> pairs) {
             assertEquals("Two elements", 2, pairs.size());
             Object one = pairs.get("one");
