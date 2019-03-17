@@ -52,17 +52,30 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * Configuration of host access. There are two predefined instances of host access {@link #EXPLICIT}
- * and {@link #ALL} which one can use when building a context
- * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)}. Should the
- * predefined instances not be enough, one can create own configuration with {@link #newBuilder()}.
+ * Represents the host access policy of a polyglot context. The host access policy specifies which
+ * methods and fields are accessible to the guest application, whenever Java host objects are
+ * accessed.
+ * <p>
+ * There are three predefined instances of host access policies:
+ * <ul>
+ * <li>{@link #EXPLICIT} - Java host methods or fields, must be public and be annotated with
+ * {@link Export @Export} to make them accessible to the guest language.
+ * <li>{@link #NONE} - Does not allow any access to methods or fields of host objects. Java host
+ * objects may still be passed into a context, but they cannot be accessed.
+ * <li>{@link #ALL} - Does allow full unrestricted access to public methods or fields of host
+ * objects. Note that this policy allows unrestricted access to reflection. It is highly discouraged
+ * from using this policy in environments where the guest application is not fully trusted.
+ * </ul>
+ * Custom host access policies can be created using {@link #newBuilder()}. The builder allows to
+ * specify a custom export annotation and allowed and denied methods or fields.
  *
- * @since 1.0 RC14
+ * @since 1.0
  */
 public final class HostAccess {
     private static final BiFunction<HostAccess, AnnotatedElement, Boolean> ACCESS = new BiFunction<HostAccess, AnnotatedElement, Boolean>() {
@@ -80,27 +93,49 @@ public final class HostAccess {
     private Object impl;
 
     /**
-     * Configuration via {@link Export}. Default configuration if
-     * {@link Context.Builder#allowAllAccess(boolean)} is false.
+     * Predefined host access policy that allows access to public host methods or fields that were
+     * annotated with {@linkplain Export @Export} and were declared in public class. This is the
+     * default configuration if {@link Context.Builder#allowAllAccess(boolean)} is
+     * <code>false</code>.
+     * <p>
+     * Equivalent of using the following builder configuration:
      *
-     * @since 1.0 RC14
+     * <pre>
+     * HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
+     * </pre>
+     *
+     * @since 1.0
      */
     public static final HostAccess EXPLICIT = newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).name("HostAccessPolicy.EXPLICIT").build();
 
     /**
-     * Access all public elements. This policy allows the guest script to access all elements that
-     * your Java code could. It is useful for polyglot programing and writing parts of the
-     * functionality in other language than in Java. This policy isn't suitable for executing
-     * untrusted code.
      *
-     * @since 1.0 RC14
+     * Predefined host access policy that allows full unrestricted access to public methods or
+     * fields of public host classes. Note that this policy allows unrestricted access to
+     * reflection. It is highly discouraged from using this policy in environments where the guest
+     * application is not fully trusted. This is the default configuration if
+     * {@link Context.Builder#allowAllAccess(boolean)} is <code>true</code>.
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * HostAccess.newBuilder().allowPublicAccess(true).build();
+     * </pre>
+     *
+     * @since 1.0
      */
     public static final HostAccess ALL = newBuilder().allowPublicAccess(true).name("HostAccessPolicy.ALL").build();
 
     /**
-     * Disables access to elements.
+     * Predefined host access policy that disallows any access to public host methods or fields.
+     * <p>
+     * Equivalent of using the following builder configuration:
      *
-     * @since 1.0 RC15
+     * <pre>
+     * HostAccess.newBuilder().build();
+     * </pre>
+     *
+     * @since 1.0
      */
     public static final HostAccess NONE = newBuilder().name("HostAccessPolicy.NONE").build();
 
@@ -113,10 +148,10 @@ public final class HostAccess {
     }
 
     /**
-     * Configure your own access configuration.
+     * Creates a new builder that allows to create a custom host access policy. The builder
+     * configuration needs to be completed using the {@link Builder#build() method}.
      *
-     * @return new builder
-     * @since 1.0 RC14
+     * @since 1.0
      */
     public static Builder newBuilder() {
         return new HostAccess(null, null, null, null, false).new Builder();
@@ -150,10 +185,9 @@ public final class HostAccess {
     }
 
     /**
-     * Textual indentification of the instance.
+     * {@inheritDoc}
      *
-     * @return new builder
-     * @since 1.0 RC14
+     * @since 1.0
      */
     @Override
     public String toString() {
@@ -177,11 +211,32 @@ public final class HostAccess {
     }
 
     /**
-     * Annotation to export public methods or fields. When {@link #EXPLICIT} access is activated via
-     * {@link Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)} only methods
-     * and fields annotated by this annotation are available from scripts.
+     * Annotation used by the predefined {@link #EXPLICIT} access policy to mark public
+     * constructors, methods and fields in public classes that should be accessible by the guest
+     * application.
+     * <p>
+     * <b>Example</b> using a Java object from JavaScript:
      *
-     * @since 1.0 RC14
+     * <pre>
+     * public class JavaRecord {
+     *     &#64;HostAccess.Export public int x;
+     *
+     *     &#64;HostAccess.Export
+     *     public String name() {
+     *         return "foo";
+     *     }
+     * }
+     * try (Context context = Context.create()) {
+     *     JavaRecord record = new JavaRecord();
+     *     context.getBindings("js").putMember("javaRecord", record);
+     *     context.eval("js", "javaRecord.x = 42");
+     *     context.eval("js", "javaRecord.name()").asString().equals("foo");
+     * }
+     * </pre>
+     *
+     * @see Context.Builder#allowHostAccess(HostAccess)
+     * @see HostAccess#EXPLICIT
+     * @since 1.0
      */
     @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD})
     @Retention(RetentionPolicy.RUNTIME)
@@ -189,9 +244,9 @@ public final class HostAccess {
     }
 
     /**
-     * Builder to create own {@link HostAccess}.
+     * Builder to create a custom {@link HostAccess host access policy}.
      *
-     * @since 1.0 RC14
+     * @since 1.0
      */
     public final class Builder {
         private final Set<Class<? extends Annotation>> annotations = new HashSet<>();
@@ -204,23 +259,24 @@ public final class HostAccess {
         }
 
         /**
-         * Elements annotated by this annotation can be accessed.
+         * Allows access to public constructors, methods or fields of public classes that were
+         * annotated by the given annotation class.
          *
-         * @param annotation the annotation class
-         * @return this builder
-         * @since 1.0 RC14
+         * @since 1.0
          */
         public Builder allowAccessAnnotatedBy(Class<? extends Annotation> annotation) {
+            Objects.requireNonNull(annotation);
             annotations.add(annotation);
             return this;
         }
 
         /**
-         * Public elements can be accessed.
+         * Allows unrestricted access to all public constructors, methods or fields of public
+         * classes. Note that this policy allows unrestricted access to reflection. It is highly
+         * discouraged from using this option in environments where the guest application is not
+         * fully trusted.
          *
-         * @param allow should access to all public elements be allowed or not?
-         * @return this builder
-         * @since 1.0 RC14
+         * @since 1.0
          */
         public Builder allowPublicAccess(boolean allow) {
             allowPublic = allow;
@@ -228,25 +284,25 @@ public final class HostAccess {
         }
 
         /**
-         * Add an element to the access list.
+         * Allows access to a given constructor or method. Note that the method or constructor must
+         * be public in order to have any effect.
          *
-         * @param element method or constructor
-         * @return this builder
-         * @since 1.0 RC14
+         * @since 1.0
          */
         public Builder allowAccess(Executable element) {
+            Objects.requireNonNull(element);
             members.add(element);
             return this;
         }
 
         /**
-         * Add an element to the access list.
+         * Allows access to a given field. Note that the field must be public in order to have any
+         * effect.
          *
-         * @param element field that can be accessed
-         * @return this builder
-         * @since 1.0 RC14
+         * @since 1.0
          */
         public Builder allowAccess(Field element) {
+            Objects.requireNonNull(element);
             members.add(element);
             return this;
         }
@@ -254,11 +310,10 @@ public final class HostAccess {
         /**
          * Prevents access to given method or constructor.
          *
-         * @param element the element to prevent access to
-         * @return this builder
-         * @since 1.0 RC15
+         * @since 1.0
          */
         public Builder preventAccess(Executable element) {
+            Objects.requireNonNull(element);
             excludes.add(element);
             return this;
         }
@@ -266,23 +321,21 @@ public final class HostAccess {
         /**
          * Prevents access to given field.
          *
-         * @param element the element to prevent access to
-         * @return this builder
-         * @since 1.0 RC15
+         * @since 1.0
          */
         public Builder preventAccess(Field element) {
+            Objects.requireNonNull(element);
             excludes.add(element);
             return this;
         }
 
         /**
-         * Prevents access to all members of given class.
+         * Prevents access to all public members of given class.
          *
-         * @param clazz the class to prevent access to
-         * @return this builder
-         * @since 1.0 RC15
+         * @since 1.0
          */
         public Builder preventAccess(Class<?> clazz) {
+            Objects.requireNonNull(clazz);
             for (Method method : clazz.getMethods()) {
                 excludes.add(method);
             }
@@ -301,10 +354,9 @@ public final class HostAccess {
         }
 
         /**
-         * Creates an instance of host access configuration.
+         * Creates an instance of the custom host access configuration.
          *
-         * @return new instance of host access configuration
-         * @since 1.0 RC14
+         * @since 1.0
          */
         public HostAccess build() {
             return new HostAccess(annotations, excludes, members, name, allowPublic);

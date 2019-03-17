@@ -51,6 +51,7 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.polyglot.HostAccess.Export;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -204,14 +205,19 @@ import org.graalvm.polyglot.proxy.Proxy;
  * objects are referred to as <i>host objects</i>. Every Java value that is passed to a Graal
  * language is interpreted according to the specification described in {@link #asValue(Object)}.
  * Also see {@link Value#as(Class)} for further details.
+ * <p>
+ * By default only public classes, methods, fields that are annotated with
+ * {@linkplain Export @Export} are accessible to the guest language. This policy can be customized
+ * using {@link Builder#allowHostAccess(HostAccess)} when constructing the context.
  *
  * <p>
  * <b>Example</b> using a Java object from JavaScript:
  *
  * <pre>
  * public class JavaRecord {
- *     public int x;
+ *     &#64;HostAccess.Export public int x;
  *
+ *     &#64;HostAccess.Export
  *     public String name() {
  *         return "foo";
  *     }
@@ -796,7 +802,8 @@ public final class Context implements AutoCloseable {
          * <code>true</code>, then host access is enabled if not allowed explicitly.
          *
          * @since 1.0
-         * @deprecated use {@link #allowHostAccess(HostAccess)} instead.
+         * @deprecated use {@link #allowHostAccess(HostAccess)} or
+         *             {@link #allowHostClassLookup(Predicate)} instead.
          */
         @Deprecated
         public Builder allowHostAccess(boolean enabled) {
@@ -805,11 +812,18 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Configures host access. Use {@link HostAccess#EXPLICIT} or
-         * {@link HostAccess#ALL}.
+         * Configures which public constructors, methods or fields of public classes are accessible
+         * by guest applications. By default if {@link #allowAllAccess(boolean)} is
+         * <code>false</code> the {@link HostAccess#EXPLICIT EXPLICIT} policy will be used,
+         * otherwise {@link HostAccess#ALL}.
          *
-         * @param config configuration of host access
-         * @return {@code this} builder
+         * @see HostAccess#EXPLICIT EXPLICIT - to allow explicitely annotated constructors, methods
+         *      or fields.
+         * @see HostAccess#ALL ALL - to allow unrestricted access (use only for trusted guest
+         *      applications)
+         * @see HostAccess#NONE NONE - to not allow any access
+         * @see HostAccess#newBuilder() newBuilder() - to create a custom configuration.
+         *
          * @since 1.0
          */
         public Builder allowHostAccess(HostAccess config) {
@@ -857,8 +871,8 @@ public final class Context implements AutoCloseable {
          * Grants full access to the following privileges by default:
          * <ul>
          * <li>The {@link #allowCreateThread(boolean) creation} and use of new threads.
-         * <li>The access to public {@link #allowHostAccess(org.graalvm.polyglot.HostAccess)
-         * host classes}.
+         * <li>The access to public {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host
+         * classes}.
          * <li>The loading of new {@link #allowHostClassLoading(boolean) host classes} by adding
          * entries to the class path.
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
@@ -881,8 +895,8 @@ public final class Context implements AutoCloseable {
          * <code>true</code>, then the host class loading is enabled if it is not disallowed
          * explicitly. For host class loading to be useful, {@link #allowIO(boolean) IO} operations
          * {@link #allowHostClassLookup(Predicate) host class lookup}, and the
-         * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs
-         * to be configured as well.
+         * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs to be
+         * configured as well.
          *
          * @see #allowHostAccess(HostAccess)
          * @see #allowHostClassLookup(Predicate)
@@ -907,9 +921,8 @@ public final class Context implements AutoCloseable {
          * looked up by the guest application.
          * <p>
          * In order to access class members looked up by the guest application a
-         * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs
-         * to be set or {@link #allowAllAccess(boolean) all access} needs to be set to
-         * <code>true</code>.
+         * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs to be
+         * set or {@link #allowAllAccess(boolean) all access} needs to be set to <code>true</code>.
          * <p>
          * <h3>Example usage with JavaScript:</h3>
          *
@@ -947,16 +960,16 @@ public final class Context implements AutoCloseable {
          * <li>We call the method <code>accessibleMethod</code> which returns <code>42</code>. The
          * method is accessible to the guest language because because the enclosing class and the
          * declared method have the public modifier set, as well as are annotated by the
-         * {@linkplain HostAccess.Export @Export} annotation. Which Java members of classes
-         * are accessible can be configured using the {@link #allowHostAccess(HostAccess) host
-         * access policy}.
+         * {@linkplain HostAccess.Export @Export} annotation. Which Java members of classes are
+         * accessible can be configured using the {@link #allowHostAccess(HostAccess) host access
+         * policy}.
          * </ul>
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
          *            java qualified class name.
          * @see #allowHostClassLoading(boolean) allowHostClassLoading - to allow loading of classes.
-         * @see #allowHostAccess(HostAccess) allowHostAccess - to configure the access policy
-         *      of host values for guest languages.
+         * @see #allowHostAccess(HostAccess) allowHostAccess - to configure the access policy of
+         *      host values for guest languages.
          * @since 1.0
          */
         public Builder allowHostClassLookup(Predicate<String> classFilter) {

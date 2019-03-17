@@ -1513,7 +1513,10 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Returns <code>true</code> if host access is generally allowed. If this method returns
-         * <code>false</code> then {@link #lookupHostSymbol(String)} will always fail.
+         * <code>false</code> then {@link #lookupHostSymbol(String)} will always fail. Host lookup
+         * is generally disallowed if the embedder provided a null
+         * {@link org.graalvm.polyglot.Context.Builder#allowHostClassLookup(java.util.function.Predicate)
+         * host class filter}.
          *
          * @since 0.27
          */
@@ -1540,11 +1543,11 @@ public abstract class TruffleLanguage<C> {
         /**
          * Looks up a Java class in the top-most scope the host environment. Throws an error if no
          * symbol was found or the symbol was not accessible. Symbols might not be accessible if a
-         * {@link org.graalvm.polyglot.Context.Builder#hostClassFilter(java.util.function.Predicate)
-         * class filter} prevents access. The returned object is always a <code>TruffleObject</code>
-         * .
+         * {@link org.graalvm.polyglot.Context.Builder#allowHostClassLookup(java.util.function.Predicate)
+         * host class filter} prevents access. The returned object is always a
+         * <code>TruffleObject</code> that represents the class symbol.
          *
-         * @param symbolName the name of the symbol in the the host language.
+         * @param symbolName the qualified class name in the host language.
          * @since 0.27
          */
         @TruffleBoundary
@@ -1589,7 +1592,7 @@ public abstract class TruffleLanguage<C> {
          * guest language representation. To allocate new host objects users should use
          * {@link #lookupHostSymbol(String)} to lookup the class and then send a NEW interop message
          * to that object to instantiate it. This method does not respect configured
-         * {@link org.graalvm.polyglot.Context.Builder#hostClassFilter(java.util.function.Predicate)
+         * {@link org.graalvm.polyglot.Context.Builder#allowHostClassLookup(java.util.function.Predicate)
          * class filters}.
          *
          * @param hostObject the host object to convert
