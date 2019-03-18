@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
@@ -587,6 +589,16 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
             }
 
             llvmOperand = new LLVMVariable(intermediate);
+        } else if (operand instanceof RegisterValue) {
+            Register register = ((RegisterValue) operand).getRegister();
+
+            LLVMValueRef value;
+            if (register.equals(gen.getRegisterConfig().getFrameRegister())) {
+                value = gen.getBuilder().buildReadRegister(gen.getBuilder().register(register.name));
+            } else {
+                value = gen.getBuilder().buildInlineGetRegister(register.name);
+            }
+            llvmOperand = new LLVMVariable(value);
         } else {
             throw shouldNotReachHere("unknown operand: " + operand.toString());
         }

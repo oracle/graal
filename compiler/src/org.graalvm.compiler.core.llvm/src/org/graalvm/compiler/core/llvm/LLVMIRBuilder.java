@@ -33,6 +33,8 @@ import static org.graalvm.compiler.core.llvm.LLVMUtils.getLLVMRealCond;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -293,7 +295,7 @@ public class LLVMIRBuilder {
         return IntStream.range(0, numParams).mapToObj(i -> argTypesPointer.get(LLVMTypeRef.class, i)).toArray(LLVMTypeRef[]::new);
     }
 
-    private LLVMTypeRef voidType() {
+    LLVMTypeRef voidType() {
         return LLVM.LLVMVoidTypeInContext(context);
     }
 
@@ -635,6 +637,10 @@ public class LLVMIRBuilder {
 
     public void buildDebugtrap() {
         buildIntrinsicCall("llvm.debugtrap", functionType(voidType()));
+    }
+
+    private static LLVMValueRef buildInlineAsm(LLVMTypeRef functionType, String asm, String constraints, boolean hasSideEffects, boolean alignStack) {
+        return LLVM.LLVMConstInlineAsm(functionType, asm, constraints, hasSideEffects ? TRUE : FALSE, alignStack ? TRUE : FALSE);
     }
 
     public LLVMValueRef functionEntryCount(LLVMValueRef count) {
@@ -1022,5 +1028,65 @@ public class LLVMIRBuilder {
         }
 
         return atomicRMW;
+    }
+
+    /* Inline assembly snippets */
+
+    private Map<String, LLVMValueRef> getRegisterSnippet = new HashMap<>();
+
+    LLVMValueRef buildInlineGetRegister(String registerName) {
+        if (!getRegisterSnippet.containsKey(registerName)) {
+            getRegisterSnippet.put(registerName, buildInlineAsm(functionType(longType()), LLVMUtils.LLVMInlineAsmSnippets.get().getRegisterSnippet(registerName), "=r", false, false));
+        }
+        LLVMValueRef call = buildCall(getRegisterSnippet.get(registerName));
+        setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+        return call;
+    }
+
+    private Map<String, LLVMValueRef> setRegisterSnippet = new HashMap<>();
+
+    void buildInlineSetRegister(String registerName, LLVMValueRef value) {
+        if (!setRegisterSnippet.containsKey(registerName)) {
+            /*
+             * Setting a register is considered a side effect because this register is not tracked
+             * by LLVM.
+             */
+            setRegisterSnippet.put(registerName, buildInlineAsm(functionType(voidType(), longType()), LLVMUtils.LLVMInlineAsmSnippets.get().setRegisterSnippet(registerName), "r", true, false));
+        }
+        LLVMValueRef call = buildCall(setRegisterSnippet.get(registerName), value);
+        setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+    }
+
+    private Map<String, LLVMValueRef> addRegisterSnippet = new HashMap<>();
+
+    LLVMValueRef buildInlineAddRegister(String registerName, LLVMValueRef value) {
+        if (!addRegisterSnippet.containsKey(registerName)) {
+            addRegisterSnippet.put(registerName, buildInlineAsm(functionType(longType(), longType()), LLVMUtils.LLVMInlineAsmSnippets.get().addRegisterSnippet(registerName), "=r,0", false, false));
+        }
+        LLVMValueRef call = buildCall(addRegisterSnippet.get(registerName), value);
+        setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+        return call;
+    }
+
+    private Map<String, LLVMValueRef> subRegisterSnippet = new HashMap<>();
+
+    LLVMValueRef buildInlineSubRegister(String registerName, LLVMValueRef value) {
+        if (!subRegisterSnippet.containsKey(registerName)) {
+            subRegisterSnippet.put(registerName, buildInlineAsm(functionType(longType(), longType()), LLVMUtils.LLVMInlineAsmSnippets.get().subRegisterSnippet(registerName), "=r,0", false, false));
+        }
+        LLVMValueRef call = buildCall(subRegisterSnippet.get(registerName), value);
+        setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+        return call;
+    }
+
+    private LLVMValueRef pauseSnippet;
+
+    LLVMValueRef buildInlinePause() {
+        if (pauseSnippet == null) {
+            pauseSnippet = buildInlineAsm(functionType(voidType()), LLVMUtils.LLVMInlineAsmSnippets.get().pauseSnippet(), "", true, false);
+        }
+        LLVMValueRef call = buildCall(pauseSnippet);
+        setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+        return call;
     }
 }

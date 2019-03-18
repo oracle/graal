@@ -181,6 +181,11 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         if (gcRegisterOffset != null) {
             sortedMethodOffsets.remove(gcRegisterOffset);
         }
+        textSymbolOffsets.forEach((symbol, offset) -> {
+            if (symbol.startsWith(symbolPrefix + "asm_")) {
+                sortedMethodOffsets.remove(offset);
+            }
+        });
 
         final FileWriter stackMapDump;
         if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {

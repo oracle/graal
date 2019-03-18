@@ -45,6 +45,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
+import org.graalvm.nativeimage.ImageSingletons;
 
 public class LLVMUtils {
     public static final int FALSE = 0;
@@ -343,5 +344,21 @@ public class LLVMUtils {
         public Value getIndex() {
             return index;
         }
+    }
+
+    public interface LLVMInlineAsmSnippets {
+        static LLVMInlineAsmSnippets get() {
+            return ImageSingletons.lookup(LLVMInlineAsmSnippets.class);
+        }
+
+        String getRegisterSnippet(String registerName);
+
+        String setRegisterSnippet(String registerName);
+
+        String addRegisterSnippet(String registerName);
+
+        String subRegisterSnippet(String registerName);
+
+        String pauseSnippet();
     }
 }

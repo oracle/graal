@@ -476,10 +476,14 @@ public class LLVMGenerator implements LIRGeneratorTool {
         } else if (input instanceof LLVMValueWrapper) {
             return new LLVMVariable(getVal(input));
         } else if (input instanceof RegisterValue) {
-            RegisterValue reg = (RegisterValue) input;
-            assert reg.getRegister().equals(getRegisterConfig().getFrameRegister());
-            LLVMValueRef stackPointer = builder.buildReadRegister(builder.register(getRegisterConfig().getFrameRegister().name));
-            return new LLVMVariable(stackPointer);
+            Register register = ((RegisterValue) input).getRegister();
+            LLVMValueRef value;
+            if (register.equals(getRegisterConfig().getFrameRegister())) {
+                value = builder.buildReadRegister(builder.register(register.name));
+            } else {
+                value = builder.buildInlineGetRegister(register.name);
+            }
+            return new LLVMVariable(value);
         }
         throw shouldNotReachHere("Unknown move input");
     }
@@ -497,7 +501,13 @@ public class LLVMGenerator implements LIRGeneratorTool {
         } else if (LLVMIRBuilder.isIntegerType(destType) && LLVMIRBuilder.integerTypeWidth(destType) == JavaKind.Long.getBitCount() && LLVMIRBuilder.isObject(sourceType)) {
             source = builder.buildPtrToInt(source, builder.longType());
         }
-        ((LLVMVariable) dst).set(source);
+
+        if (dst instanceof LLVMVariable) {
+            ((LLVMVariable) dst).set(source);
+        } else if (dst instanceof RegisterValue) {
+            Register destReg = ((RegisterValue) dst).getRegister();
+            builder.buildInlineSetRegister(destReg.name, source);
+        }
     }
 
     @Override
@@ -948,8 +958,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
     @Override
     public void emitPause() {
-        // this will be implemented as part of issue #1126. For now, we just do nothing.
-        // throw unimplemented();
+        builder.buildInlinePause();
     }
 
     @Override

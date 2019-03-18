@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.compiler.core.llvm.LLVMUtils;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -126,5 +127,44 @@ public class LLVMFeature implements Feature, GraalFeature, Snippets {
         if (!supportedVersions.contains(output)) {
             throw UserError.abort("Unsupported LLVM version: " + output + ". Supported versions are: [" + String.join(", ", supportedVersions) + "]");
         }
+    }
+}
+
+@AutomaticFeature
+@Platforms(Platform.AMD64.class)
+class LLVMAMD64Feature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return CompilerBackend.getValue().equals("llvm") && Platform.includedIn(Platform.AMD64.class);
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(LLVMUtils.LLVMInlineAsmSnippets.class, new LLVMUtils.LLVMInlineAsmSnippets() {
+            @Override
+            public String getRegisterSnippet(String registerName) {
+                return "movq %" + registerName + ", $0";
+            }
+
+            @Override
+            public String setRegisterSnippet(String registerName) {
+                return "movq $0, %" + registerName;
+            }
+
+            @Override
+            public String addRegisterSnippet(String registerName) {
+                return "addq %" + registerName + ", $0";
+            }
+
+            @Override
+            public String subRegisterSnippet(String registerName) {
+                return "subq %" + registerName + ", $0";
+            }
+
+            @Override
+            public String pauseSnippet() {
+                return "pause";
+            }
+        });
     }
 }
