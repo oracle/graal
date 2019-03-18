@@ -291,7 +291,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
         return (int) (probability * Integer.MAX_VALUE);
     }
 
-    private LLVMValueRef emitCondition(LogicNode condition) {
+    protected LLVMValueRef emitCondition(LogicNode condition) {
         if (condition instanceof IsNullNode) {
             return builder.buildIsNull(llvmOperand(((IsNullNode) condition).getValue()));
         }

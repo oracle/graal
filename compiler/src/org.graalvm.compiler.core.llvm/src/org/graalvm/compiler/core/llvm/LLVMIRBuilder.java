@@ -661,7 +661,7 @@ public class LLVMIRBuilder {
 
     /* Comparisons */
 
-    LLVMValueRef buildIsNull(LLVMValueRef value) {
+    public LLVMValueRef buildIsNull(LLVMValueRef value) {
         return LLVM.LLVMBuildIsNull(builder, value, DEFAULT_INSTR_NAME);
     }
 
@@ -996,13 +996,35 @@ public class LLVMIRBuilder {
         LLVM.LLVMBuildFence(builder, LLVM.LLVMAtomicOrderingSequentiallyConsistent, FALSE, DEFAULT_INSTR_NAME);
     }
 
-    LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue) {
+    private static final int LLVM_CMPXCHG_VALUE = 0;
+    private static final int LLVM_CMPXCHG_SUCCESS = 1;
+
+    LLVMValueRef buildLogicCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue) {
+        return buildCmpxchg(address, expectedValue, newValue, LLVM_CMPXCHG_SUCCESS);
+    }
+
+    LLVMValueRef buildValueCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue) {
+        return buildCmpxchg(address, expectedValue, newValue, LLVM_CMPXCHG_VALUE);
+    }
+
+    private LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue, int resultIndex) {
         LLVMTypeRef expectedType = LLVM.LLVMTypeOf(expectedValue);
         LLVMTypeRef newType = LLVM.LLVMTypeOf(newValue);
         assert compatibleTypes(expectedType, newType) : dumpValues("invalid cmpxchg arguments", expectedValue, newValue);
 
-        LLVMValueRef castedAddress = buildBitcast(address, pointerType(expectedType, isObject(typeOf(address))));
-        return LLVM.LLVMBuildAtomicCmpXchg(builder, castedAddress, expectedValue, newValue, LLVM.LLVMAtomicOrderingSequentiallyConsistent, LLVM.LLVMAtomicOrderingSequentiallyConsistent, FALSE);
+        boolean isObject = isObject(expectedType);
+        LLVMTypeRef operationType = isObject ? rawPointerType() : expectedType;
+        LLVMValueRef castedAddress = isObject && isTracked(typeOf(address)) ? buildAddrSpaceCast(address, pointerType(operationType, false))
+                        : buildBitcast(address, pointerType(operationType, isTracked(typeOf(address))));
+        LLVMValueRef castedExpectedValue = isObject ? buildAddrSpaceCast(expectedValue, operationType) : expectedValue;
+        LLVMValueRef castedNewValue = isObject ? buildAddrSpaceCast(newValue, operationType) : newValue;
+
+        LLVMValueRef cas = LLVM.LLVMBuildAtomicCmpXchg(builder, castedAddress, castedExpectedValue, castedNewValue, LLVM.LLVMAtomicOrderingMonotonic, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
+        LLVMValueRef result = buildExtractValue(cas, resultIndex);
+        if (isObject && resultIndex == LLVM_CMPXCHG_VALUE) {
+            result = buildRegisterObject(result);
+        }
+        return result;
     }
 
     LLVMValueRef buildAtomicXchg(LLVMValueRef address, LLVMValueRef value) {
@@ -1013,6 +1035,10 @@ public class LLVMIRBuilder {
         return buildAtomicRMW(LLVM.LLVMAtomicRMWBinOpAdd, address, value);
     }
 
+    public LLVMValueRef buildAtomicSub(LLVMValueRef address, LLVMValueRef value) {
+        return buildAtomicRMW(LLVM.LLVMAtomicRMWBinOpSub, address, value);
+    }
+
     private LLVMValueRef buildAtomicRMW(int operation, LLVMValueRef address, LLVMValueRef value) {
         LLVMTypeRef valueType = LLVM.LLVMTypeOf(value);
         boolean pointerOp = isObject(valueType);
@@ -1020,7 +1046,7 @@ public class LLVMIRBuilder {
         LLVMTypeRef operationType = (pointerOp) ? longType() : valueType;
         LLVMValueRef castedValue = (pointerOp) ? buildPtrToInt(value, operationType) : value;
         LLVMValueRef castedAddress = buildBitcast(address, pointerType(operationType, isObject(typeOf(address))));
-        LLVMValueRef atomicRMW = LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, castedValue, LLVM.LLVMAtomicOrderingSequentiallyConsistent, FALSE);
+        LLVMValueRef atomicRMW = LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, castedValue, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
 
         if (pointerOp) {
             atomicRMW = buildIntToPtr(atomicRMW, rawPointerType());
@@ -1034,7 +1060,7 @@ public class LLVMIRBuilder {
 
     private Map<String, LLVMValueRef> getRegisterSnippet = new HashMap<>();
 
-    LLVMValueRef buildInlineGetRegister(String registerName) {
+    public LLVMValueRef buildInlineGetRegister(String registerName) {
         if (!getRegisterSnippet.containsKey(registerName)) {
             getRegisterSnippet.put(registerName, buildInlineAsm(functionType(longType()), LLVMUtils.LLVMInlineAsmSnippets.get().getRegisterSnippet(registerName), "=r", false, false));
         }

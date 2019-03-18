@@ -419,20 +419,15 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
     @Override
     public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-        builder.buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue));
-        /* builder.buildExtractValue(cas, 1); */
-        /*
-         * Hack for singlethreaded programs, as structures containing tracked pointers cause
-         * statepoint generation to fail
-         */
-        LLVMValueRef success = builder.constantBoolean(true);
+        LLVMValueRef success = builder.buildLogicCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue));
         LLVMValueRef result = builder.buildSelect(success, getVal(trueValue), getVal(falseValue));
         return new LLVMVariable(result);
     }
 
     @Override
     public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue) {
-        throw unimplemented();
+        LLVMValueRef result = builder.buildValueCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue));
+        return new LLVMVariable(result);
     }
 
     @Override

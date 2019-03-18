@@ -29,13 +29,19 @@ import org.graalvm.compiler.core.llvm.LLVMGenerator;
 import org.graalvm.compiler.core.llvm.LLVMUtils;
 import org.graalvm.compiler.core.llvm.NodeLLVMBuilder;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
+import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.thread.Safepoint;
+
+import jdk.vm.ci.code.Register;
 
 public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements SubstrateNodeLIRBuilder {
     private long nextCGlobalId = 0L;
@@ -58,5 +64,17 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
     public Variable emitReadReturnAddress() {
         LLVMValueRef returnAddress = getLIRGeneratorTool().getBuilder().buildReturnAddress(getLIRGeneratorTool().getBuilder().constantInt(0));
         return new LLVMUtils.LLVMVariable(returnAddress);
+    }
+
+    protected LLVMValueRef emitCondition(LogicNode condition) {
+        if (condition instanceof SafepointCheckNode) {
+            Register threadRegister = ((SubstrateRegisterConfig) gen.getRegisterConfig()).getThreadRegister();
+            LLVMValueRef threadData = gen.getBuilder().buildInlineGetRegister(threadRegister.name);
+            threadData = gen.getBuilder().buildIntToPtr(threadData, gen.getBuilder().rawPointerType());
+            LLVMValueRef safepointCounterAddr = gen.getBuilder().buildGEP(threadData, gen.getBuilder().constantInt(Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())));
+            LLVMValueRef safepointCount = gen.getBuilder().buildAtomicSub(safepointCounterAddr, gen.getBuilder().constantInt(1));
+            return gen.getBuilder().buildIsNull(safepointCount);
+        }
+        return super.emitCondition(condition);
     }
 }

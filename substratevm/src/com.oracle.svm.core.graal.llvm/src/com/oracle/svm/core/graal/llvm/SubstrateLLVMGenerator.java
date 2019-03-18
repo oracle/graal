@@ -32,14 +32,15 @@ import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.llvm.LLVMGenerationResult;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
+import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMKindTool;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMKindTool;
 import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.vm.ci.meta.AllocatableValue;
@@ -104,5 +105,10 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     @Override
     protected JavaKind getTypeKind(ResolvedJavaType type) {
         return ((HostedType) type).getStorageKind();
+    }
+
+    @Override
+    public SubstrateRegisterConfig getRegisterConfig() {
+        return (SubstrateRegisterConfig) super.getRegisterConfig();
     }
 }
