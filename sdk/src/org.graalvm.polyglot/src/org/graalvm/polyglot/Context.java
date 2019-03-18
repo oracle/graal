@@ -51,7 +51,6 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
-import org.graalvm.polyglot.HostAccess.Export;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -206,9 +205,10 @@ import org.graalvm.polyglot.proxy.Proxy;
  * language is interpreted according to the specification described in {@link #asValue(Object)}.
  * Also see {@link Value#as(Class)} for further details.
  * <p>
- * By default only public classes, methods, fields that are annotated with
- * {@linkplain Export @Export} are accessible to the guest language. This policy can be customized
- * using {@link Builder#allowHostAccess(HostAccess)} when constructing the context.
+ * By default only public classes, methods, and fields that are annotated with
+ * {@link HostAccess.Export @HostAccess.Export} are accessible to the guest language. This policy
+ * can be customized using {@link Builder#allowHostAccess(HostAccess)} when constructing the
+ * context.
  *
  * <p>
  * <b>Example</b> using a Java object from JavaScript:
@@ -799,7 +799,7 @@ public final class Context implements AutoCloseable {
         /**
          * Allows guest languages to access the host language by loading new classes. Default is
          * <code>false</code>. If {@link #allowAllAccess(boolean) all access} is set to
-         * <code>true</code>, then host access is enabled if not allowed explicitly.
+         * <code>true</code>, then host access is enabled if not disallowed explicitly.
          *
          * @since 1.0
          * @deprecated use {@link #allowHostAccess(HostAccess)} or
@@ -814,10 +814,10 @@ public final class Context implements AutoCloseable {
         /**
          * Configures which public constructors, methods or fields of public classes are accessible
          * by guest applications. By default if {@link #allowAllAccess(boolean)} is
-         * <code>false</code> the {@link HostAccess#EXPLICIT EXPLICIT} policy will be used,
-         * otherwise {@link HostAccess#ALL}.
+         * <code>false</code> the {@link HostAccess#EXPLICIT} policy will be used, otherwise
+         * {@link HostAccess#ALL}.
          *
-         * @see HostAccess#EXPLICIT EXPLICIT - to allow explicitely annotated constructors, methods
+         * @see HostAccess#EXPLICIT EXPLICIT - to allow explicitly annotated constructors, methods
          *      or fields.
          * @see HostAccess#ALL ALL - to allow unrestricted access (use only for trusted guest
          *      applications)
@@ -872,8 +872,7 @@ public final class Context implements AutoCloseable {
          * Grants full access to the following privileges by default:
          * <ul>
          * <li>The {@link #allowCreateThread(boolean) creation} and use of new threads.
-         * <li>The access to public {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host
-         * classes}.
+         * <li>The access to public {@link #allowHostAccess(HostAccess) host classes}.
          * <li>The loading of new {@link #allowHostClassLoading(boolean) host classes} by adding
          * entries to the class path.
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
@@ -950,24 +949,24 @@ public final class Context implements AutoCloseable {
          * <h4>In this example:</h4>
          * <ul>
          * <li>We create a new context with the {@link Builder#allowHostClassLookup(Predicate)
-         * permission} to lookup the class <code>myPackage.MyClass</code> in the guest language
+         * permission} to look up the class <code>myPackage.MyClass</code> in the guest language
          * application.
          * <li>We evaluate a JavaScript code snippet that accesses the Java class
          * <code>myPackage.MyClass</code> using the <code>Java.type</code> builtin provided by the
          * JavaScript language implementation. Other classes can only be looked up if the provided
-         * class filter provides <code>true</code> for their name.
-         * <li>We create a new instance the Java class <code>MyClass</code> by using the JavaScript
-         * <code>new</code> keyword.
+         * class filter returns <code>true</code> for their name.
+         * <li>We create a new instance of the Java class <code>MyClass</code> by using the
+         * JavaScript <code>new</code> keyword.
          * <li>We call the method <code>accessibleMethod</code> which returns <code>42</code>. The
          * method is accessible to the guest language because because the enclosing class and the
-         * declared method have the public modifier set, as well as are annotated by the
-         * {@linkplain HostAccess.Export @Export} annotation. Which Java members of classes are
-         * accessible can be configured using the {@link #allowHostAccess(HostAccess) host access
-         * policy}.
+         * declared method are public, as well as annotated with the
+         * {@link HostAccess.Export @HostAccess.Export} annotation. Which Java members of classes
+         * are accessible can be configured using the {@link #allowHostAccess(HostAccess) host
+         * access policy}.
          * </ul>
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
-         *            java qualified class name.
+         *            qualified Java class name or <code>null</code> to disable host class lookup.
          * @see #allowHostClassLoading(boolean) allowHostClassLoading - to allow loading of classes.
          * @see #allowHostAccess(HostAccess) allowHostAccess - to configure the access policy of
          *      host values for guest languages.
