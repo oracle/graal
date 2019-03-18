@@ -117,15 +117,6 @@ public final class DefaultCallTarget implements RootCallTarget {
         }
     }
 
-    static final class DefaultCallInlined extends CallInlined {
-
-        @Override
-        public Object call(Node callNode, CallTarget target, Object... arguments) {
-            return ((DefaultCallTarget) target).callDirectOrIndirect(callNode, arguments);
-        }
-
-    }
-
     static final CallInlined CALL_INLINED = new CallInlined() {
         @Override
         public Object call(Node callNode, CallTarget target, Object... arguments) {

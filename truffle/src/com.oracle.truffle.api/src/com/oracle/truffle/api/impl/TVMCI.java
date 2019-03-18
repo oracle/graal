@@ -326,15 +326,8 @@ public abstract class TVMCI {
         return null;
     }
 
-    static final class DefaultCallProfiled extends CallProfiled {
-        @Override
-        public Object call(CallTarget target, Object... arguments) {
-            return target.call(arguments);
-        }
-    }
-
     protected CallProfiled getCallProfiled() {
-        return new DefaultCallProfiled();
+        return null;
     }
 
 }

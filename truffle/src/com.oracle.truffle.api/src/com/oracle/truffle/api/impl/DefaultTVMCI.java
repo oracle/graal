@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.impl.Accessor.CallInlined;
+import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -66,7 +67,12 @@ final class DefaultTVMCI extends TVMCI {
 
     @Override
     protected CallInlined getCallInlined() {
-        return new DefaultCallTarget.DefaultCallInlined();
+        return DefaultCallTarget.CALL_INLINED;
+    }
+
+    @Override
+    protected CallProfiled getCallProfiled() {
+        return DefaultCallTarget.CALL_PROFILED;
     }
 
     @Override
