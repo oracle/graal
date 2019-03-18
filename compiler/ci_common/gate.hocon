@@ -9,7 +9,7 @@ gateTest : {
     EXTRA_VM_ARGS : ""
   }
   run : [
-    ${gateCmd} ["build,test", "-B-A-Xmaxerrs", "-B-A10000"]
+    ${gateCmd} ["build,test"]
   ]
 }
 
