@@ -5,7 +5,7 @@ It is recommended to read the [Truffle Library Tutorial](https://github.com/orac
 
 ## Motivation 
 
-In Truffle Version 1.0 RC13 we introduced a new API called Truffle Libraries. Truffle Libraries allow using polymorphism with support for profiling/caching. With Interop 2.0 we plan to use Truffle Libraries for the interoperability protocol. The current interop APIs are mature and well tested and already adopted by languages and tools. So why change them and introduce Interop 2.0? 
+In Truffle Version 1.0 RC15 we introduced a new API called Truffle Libraries. Truffle Libraries allow using polymorphism with support for profiling/caching. With Interop 2.0 we plan to use Truffle Libraries for the interoperability protocol. The current interop APIs are mature and well tested and already adopted by languages and tools. So why change them and introduce Interop 2.0? 
 
 Here is a list of arguments to justify the change:
 
