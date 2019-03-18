@@ -53,16 +53,14 @@ abstract class GuestToHostRootNode extends RootNode {
 
     protected static final int ARGUMENT_OFFSET = 2;
 
-    private final Class<?> targetType;
     private final String boundaryName;
 
     static final CallInlined CALL_INLINED = VMAccessor.SPI.getCallInlined();
 
     protected GuestToHostRootNode(Class<?> targetType, String methodName) {
         super(null);
-        // this avoids a memory leak with the root node if it is shared globally
-        this.targetType = targetType;
         this.boundaryName = targetType.getName() + "." + methodName;
+        // this avoids a memory leak with the root node if it is shared globally
         VMAccessor.NODES.makeSharableRoot(this);
     }
 
@@ -78,7 +76,7 @@ abstract class GuestToHostRootNode extends RootNode {
 
     @Override
     public final String getName() {
-        return targetType.getName() + "." + boundaryName;
+        return boundaryName;
     }
 
     @SuppressWarnings("deprecation")
