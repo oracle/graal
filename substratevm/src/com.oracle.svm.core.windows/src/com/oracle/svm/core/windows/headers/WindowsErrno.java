@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers.darwin;
+package com.oracle.svm.core.windows.headers;
 
-import com.oracle.svm.core.headers.Errno;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -33,29 +32,31 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.headers.Errno;
 
 //Checkstyle: stop
 
-@Platforms(Platform.DARWIN_AND_JNI.class)
-class DarwinErrno {
+@Platforms(Platform.WINDOWS.class)
+class WindowsErrno {
 
     @TargetClass(Errno.class)
     static final class Target_com_oracle_svm_core_headers_Errno {
+
         @Substitute
         @Uninterruptible(reason = "Called from uninterruptible code.")
         private static int errno() {
-            return Util_com_oracle_svm_core_headers_Errno.__error().read();
+            return Util_com_oracle_svm_core_headers_Errno._errno().read();
         }
 
         @Substitute
         @Uninterruptible(reason = "Called from uninterruptible code.")
         public static void set_errno(int value) {
-            Util_com_oracle_svm_core_headers_Errno.__error().write(value);
+            Util_com_oracle_svm_core_headers_Errno._errno().write(value);
         }
     }
 
     static final class Util_com_oracle_svm_core_headers_Errno {
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        static native CIntPointer __error();
+        static native CIntPointer _errno();
     }
 }
