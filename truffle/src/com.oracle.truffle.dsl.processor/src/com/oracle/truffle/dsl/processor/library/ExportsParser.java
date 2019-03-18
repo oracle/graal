@@ -485,13 +485,13 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 "Using explicit receiver types is only supported for default exports or types that export %s.%n" +
                                                 "To resolve this use one of the following strategies:%n" +
                                                 "  - Make the receiver type implicit by applying '@%s(%s.class)' to the receiver type '%s' instead.%n" +
-                                                "  - Declare a default export for the library '%s' with '@%s(%s.class)'%n" +
+                                                "  - Declare a default export on the '%s' library with '@%s(%s.class)'%n" +
                                                 "  - Enable dynamic dispatch by annotating the receiver type with '@%s(%s.class)'.",
                                 DynamicDispatchLibrary.class.getSimpleName(),
                                 ExportLibrary.class.getSimpleName(),
                                 exportedLibrary.getLibrary().getTemplateType().getSimpleName().toString(),
                                 ElementUtils.getSimpleName(exportedLibrary.getExplicitReceiver()),
-                                exportedLibrary.getTemplateType().getSimpleName().toString(),
+                                exportedLibrary.getLibrary().getTemplateType().getSimpleName().toString(),
                                 DefaultExport.class.getSimpleName(),
                                 ElementUtils.getSimpleName(exportedLibrary.getTemplateType().asType()),
                                 ExportLibrary.class.getSimpleName(),
