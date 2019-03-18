@@ -745,16 +745,11 @@ abstract class HostExecuteNode extends Node {
             Object[] arguments = (Object[]) callArguments[ARGUMENT_OFFSET + 1];
             Object ret;
             try {
-                ret = invokeBoundary(obj, method, arguments);
+                ret = method.invoke(obj, arguments);
             } catch (Throwable e) {
                 throw HostInteropReflect.rethrow(e);
             }
             return ret;
-        }
-
-        @TruffleBoundary
-        private Object invokeBoundary(Object obj, SingleMethod method, Object[] arguments) throws Throwable {
-            return method.invoke(obj, arguments);
         }
     });
 
