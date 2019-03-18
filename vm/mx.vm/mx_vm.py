@@ -834,9 +834,9 @@ class GraalVmLauncher(GraalVmNativeImage):
     def is_native(self):
         return GraalVmLauncher.is_launcher_native(self.native_image_config, self.stage1)
 
-    @GraalVmNativeImage.native_image_name.getter
+    @property
     def native_image_name(self):
-        super_name = GraalVmNativeImage.native_image_name.fget(self)
+        super_name = super(GraalVmLauncher, self).native_image_name
         if mx.get_os() == 'windows':
             if not self.is_native():
                 return os.path.splitext(super_name)[0] + '.cmd'
