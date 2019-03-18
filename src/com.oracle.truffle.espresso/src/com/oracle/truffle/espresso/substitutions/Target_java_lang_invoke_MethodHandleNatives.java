@@ -48,9 +48,10 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             int refkind = getRefKind((int) self.getField(meta.MNflags));
             StaticObjectImpl guestField = (StaticObjectImpl) ref;
             Symbol<Type> fieldType = ((StaticObjectClass) guestField.getField(meta.Field_type)).getMirrorKlass().getType();
-            Symbol<Name> fieldName = meta.getNames().getOrCreate(Meta.toHostString((StaticObject) guestField.getField(meta.Field_type)));
+            Symbol<Name> fieldName = meta.getNames().getOrCreate(Meta.toHostString((StaticObject) guestField.getField(meta.Field_name)));
             Klass fieldKlass = ((StaticObjectClass) guestField.getField(meta.Field_class)).getMirrorKlass();
             plantFieldMemberName(self, fieldType, fieldKlass, fieldName, meta.MNflags, refkind);
+            self.setField(meta.MNclazz, fieldKlass.mirror());
         }
     }
 
@@ -247,6 +248,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                                         callerKlass, (int) (REF_invokeVirtual),
                                         clazz, name, type,
                                         appendix);
+
                         StaticObject getAppendix = appendix.get(0);
 
                         // TODO(garcia)

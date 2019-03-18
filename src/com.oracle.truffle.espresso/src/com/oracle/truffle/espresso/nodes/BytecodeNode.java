@@ -1106,12 +1106,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     // "\nBCI:" + curBCI);
                     // e.printStackTrace();
                     // CompilerDirectives.transferToInterpreter();
-                    // throw getMeta().throwEx(NullPointerException.class);
+                    throw getMeta().throwEx(NullPointerException.class);
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-                // System.err.println("Finding handler for a " + e.getException().getKlass() + "
-                // at:" + curBCI + " in " + getMethod());
+                // System.err.println("Finding handler for a " + e.getException().getKlass() + "at:"
+                // + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;
