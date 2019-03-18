@@ -394,7 +394,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         @ExportMessage
         @TruffleBoundary
         Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0L || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
