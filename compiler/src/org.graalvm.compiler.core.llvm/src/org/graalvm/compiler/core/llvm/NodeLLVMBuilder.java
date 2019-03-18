@@ -400,15 +400,15 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
             if (targetMethod != null) {
                 callee = builder.buildIntToPtr(computedAddress,
                                 builder.pointerType(gen.getLLVMFunctionType(targetMethod), false));
-                gen.getLLVMResult().recordIndirectCall(targetMethod, patchpointId, debugInfo);
             } else {
                 LLVMTypeRef returnType = gen.getLLVMType(callTarget.returnStamp().getTrustedStamp());
-                LLVMTypeRef[] argTypes = Arrays.stream(callTarget.signature()).map(argType -> builder.getLLVMType(gen.getTypeKind(argType.resolve(null)))).toArray(LLVMTypeRef[]::new);
+                LLVMTypeRef[] argTypes = Arrays.stream(callTarget.signature()).map(argType -> builder.getLLVMStackType(gen.getTypeKind(argType.resolve(null)))).toArray(LLVMTypeRef[]::new);
                 assert args.length == argTypes.length;
 
                 callee = builder.buildIntToPtr(computedAddress,
                                 builder.pointerType(builder.functionType(returnType, argTypes), false));
             }
+            gen.getLLVMResult().recordIndirectCall(targetMethod, patchpointId, debugInfo);
 
             if (gen.getDebugLevel() >= DebugLevel.NODE) {
                 gen.emitPrintf("Indirect call to " + ((targetMethod != null) ? targetMethod.getName() : "[unknown]"), new JavaKind[]{JavaKind.Object}, new LLVMValueRef[]{callee});
