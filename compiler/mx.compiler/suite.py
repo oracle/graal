@@ -668,6 +668,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.asm.aarch64",
         "org.graalvm.compiler.hotspot.test",
+        "org.graalvm.compiler.hotspot.aarch64",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
