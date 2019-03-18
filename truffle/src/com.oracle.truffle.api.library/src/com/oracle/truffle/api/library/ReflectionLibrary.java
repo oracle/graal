@@ -60,13 +60,70 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
+ * The reflection library allows to send to and proxy messages of receivers. The reflection library
+ * may be used for any receiver object. If a sent message is not implemented by the target receiver
+ * then the default library export will be used, otherwise it is forwarded to the resolved exported
+ * message. If the reflection library is exported by a receiver directly then the reflection
+ * behavior can be customized. This allows, for example, to proxy all messages to a delegate
+ * instance.
+ *
+ * <h3>Sending Messages</h3>
+ *
+ * Messages can be sent to receivers by first {@link Message#resolve(Class, String) resolving} a
+ * target message. Then the message can be sent to a receiver that may implement that message. The
+ * message name and class may be resolved dynamically.
+ *
+ * <h4>Usage example</h4>
+ *
+ * <pre>
+ * String messageName = "isArray";
+ * Message message = Message.resolve(ArrayLibrary.class, messageName);
+ * Object receiver = 42;
+ * try {
+ *     ReflectionLibrary.getFactory().getUncached().send(receiver, message);
+ * } catch (Exception e) {
+ *     // handle error
+ * }
+ * </pre>
+ *
+ * <h3>Proxies</h3>
+ *
+ * It is possible to proxy library messages to a delegate object. To achieve that the reflection
+ * library can be exported by a receiver type.
+ *
+ * <h4>Usage example</h4>
+ *
+ * <pre>
+ * &#64;ExportLibrary(ReflectionLibrary.class)
+ * static class AgnosticWrapper {
+ *
+ *     final Object delegate;
+ *
+ *     AgnosticWrapper(Object delegate) {
+ *         this.delegate = delegate;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     final Object send(Message message, Object[] args,
+ *                     &#64;CachedLibrary("this.delegate") ReflectionLibrary reflection) throws Exception {
+ *         // do before
+ *         Object result = reflection.send(delegate, message, args);
+ *         // do after
+ *         return result;
+ *     }
+ * }
+ *
+ * </pre>
  *
  * @since 1.0
  */
 @GenerateLibrary
 @DefaultExport(ReflectionLibraryDefault.class)
 public abstract class ReflectionLibrary extends Library {
+
     /**
+     * Constructor for generated subclasses. Subclasses of this class are generated, do not extend
+     * this class directly.
      *
      * @since 1.0
      */
@@ -74,15 +131,19 @@ public abstract class ReflectionLibrary extends Library {
     }
 
     /**
+     * Sends a given message to the target receiver with the provided arguments. The provided
+     * receiver and message must not be null. If the argument types don't match the expected message
+     * signature then an {@link IllegalArgumentException} will be thrown.
      *
      * @since 1.0
      */
     @Abstract
     public abstract Object send(Object receiver, Message message, Object... args) throws Exception;
 
-    static final LibraryFactory<ReflectionLibrary> FACTORY = LibraryFactory.resolve(ReflectionLibrary.class);
+    private static final LibraryFactory<ReflectionLibrary> FACTORY = LibraryFactory.resolve(ReflectionLibrary.class);
 
     /**
+     * Returns the library factory for {@link ReflectionLibrary}.
      *
      * @since 1.0
      */

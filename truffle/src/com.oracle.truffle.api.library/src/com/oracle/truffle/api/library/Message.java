@@ -50,12 +50,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
- * Represents a single static message of a library. Message are specified as public methods in
- * {@link Library library} subclasses. Messages may be resolved dynamically by calling
- * {@link #resolve(Class, String)} with a known library class. Message instances provide meta-data
- * about the simple and qualified name of the message, return type, receiver type, parameter types
- * and library name. Message instances are used to invoke library messages or implement library
- * messages reflectively using the {@link ReflectionLibrary reflection library}.
+ * Represents a description of library message. A message description refers to one public method in
+ * a {@link Library library} subclass. Messages may be resolved dynamically by calling
+ * {@link #resolve(Class, String)} with a known library class and message name. Message instances
+ * provide meta-data about the simple and qualified name of the message, return type, receiver type,
+ * parameter types and library name. Message instances are used to invoke library messages or
+ * implement library messages reflectively using the {@link ReflectionLibrary reflection library}.
  * <p>
  * Message instances are globally unique and can safely be compared by identity. In other words, if
  * the same message is {@link #resolve(Class, String) resolved} twice the same instance will be

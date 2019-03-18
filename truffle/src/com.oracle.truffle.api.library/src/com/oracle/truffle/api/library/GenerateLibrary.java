@@ -48,15 +48,16 @@ import java.lang.annotation.Target;
 
 /**
  * Libraries are specified with <code>public</code> and <code>abstract</code> Java classes that
- * extend {@linkplain Library} and are annotated by <code>@GenerateLibrary</code>. A library
- * consists of a set of messages, that are specified using public Java methods. The methods may be
- * abstract or use a default implementations. The first parameter of every method is the receiver
- * parameter, which is mandatory and must be a sub type of {@link Object} and the same across all
- * messages of a library. There are no restrictions on the return type or argument types of a
- * message. Every method that specifies a message must have a name that is unique for a library.
- * Final or private methods are ignored. Parameter type overloading is currently not support for
- * messages. Generic type arguments local to messages are generally supported, but generic type
- * arguments on the library type are not yet supported.
+ * extend the {@linkplain Library} class and are annotated by <code>@GenerateLibrary</code>. A
+ * library consists of a set of messages, that are specified using public Java methods. The methods
+ * may be abstract or use default implementations. The first parameter of every library message is
+ * the receiver parameter, which must be a non-primitive type and consistent across all messages of
+ * a library. There are no restrictions on the return type or argument types of a message. Every
+ * method that specifies a message must have a name that is unique per library. Final or private
+ * methods will always be ignored by the generator. Parameter type overloading is currently not
+ * support for messages, therefore every public method must have a unique name per library. Generic
+ * type arguments local to messages are generally supported, but generic type arguments on the
+ * library type are not yet supported.
  * <p>
  *
  * <h3>Basic Usage</h3>
@@ -78,6 +79,12 @@ import java.lang.annotation.Target;
  * Messages that are not implemented and have no default implementation throw an
  * {@link AbstractMethodError}. The {@link Abstract} annotation can be used, to provide a default
  * implementation for receiver types but at the same time make the message abstract.
+ * <p>
+ * A library class may also specify {@link DefaultExport default exports} that can be used to
+ * dispatch to receiver types that don't export the library. Since the receiver type for default
+ * exports can be specified explicitly, it can be used to provide a default implementation for
+ * receiver types of third parties or the JDK. For example the Truffle interop library has default
+ * exports for most {@link Number} types, {@link String} and {@link Boolean} type.
  *
  * @see DefaultExport to specify default exports.
  * @see Abstract to make messages abstract if they have a default implemetnation
@@ -143,16 +150,20 @@ public @interface GenerateLibrary {
     Class<? extends Library> assertions() default Library.class;
 
     /**
-     * Customize the receiver type for exports that implement this library. Default exports are not
-     * affected by this restriction.
+     * Restricts the receiver type for exports that implement this library. This allows to have
+     * different receiver type in message methods, but require export receiver types to implement or
+     * extend a declared class. Default exports are not affected by this restriction and can
+     * therefore export the library for any receiver type the message methods first parameter is
+     * compatible with.
      *
      * @since 1.0
      */
     Class<?> receiverType() default Object.class;
 
     /**
-     * Specifies active {@link GenerateLibrary library} implementations provided by default as a
-     * fallback. May only be used on classes annotated with Library.
+     *
+     * Specifies {@link GenerateLibrary library} implementations provided by default as a fallback.
+     * May only be used on classes annotated with Library.
      *
      * @since 1.0
      */
@@ -182,10 +193,10 @@ public @interface GenerateLibrary {
     }
 
     /**
-     * Makes a library message abstract independent whether it has an implementation. By default,
+     * Makes a library message abstract, but allows to keep a default implementation. By default,
      * abstract messages throw an {@link AbstractMethodError} if they are not exported for a given
      * receiver type. To customize this behavior the library message can specify a method body and
-     * annotate it with {@link Abstract}.
+     * annotate it with {@link Abstract} to keep requring an implementation from exports.
      * <p>
      * <b>For example:</b>
      *
@@ -207,7 +218,7 @@ public @interface GenerateLibrary {
      *
      * In this example a receiver that does not export the <code>ArrayLibrary</code> will return
      * <code>false</code> for <code>isArray</code> and throw an
-     * {@linkplain UnsupportedOperationException} for <code>read</code> calls. A message can be made
+     * {@linkplain UnsupportedOperationException} for <code>read</code> calls. A message may be made
      * conditionally abstract by specifying the {@link Abstract#ifExported()} attribute.
      *
      * @see #ifExported()

@@ -46,19 +46,34 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 
 /**
  * Allows to export messages of Truffle libraries. The exported library {@link ExportLibrary#value()
- * value} specifies the library that should be exported. If there are abstract methods specified by
- * a library then those messages need to be implemented. A receiver may export multiple libraries at
+ * value} specifies the library class that is exported. If there are abstract methods specified by a
+ * library then those messages need to be implemented. A receiver may export multiple libraries at
  * the same time, by specifying multiple export annotations. Subclasses of the receiver type inherit
- * all exported messages.
+ * all exported messages and may also be exported again. In this case the subclass overrides the
+ * base class export.
+ *
+ * <h3>Method Exports</h3>
+ *
+ * Messages are exported by specifying methods annotated by
+ * {@linkplain ExportMessage @ExportMessage} that match the name and signature of a library message.
+ * By default the message name is inferred by the method name and the library is automatically
+ * detected if it can be unambiguously be identified by its simple name. If the receiver type is
+ * implicit then the receiver type parameter can be omitted. Exported messages allow the use of
+ * {@linkplain Cached}, {@linkplain CachedLibrary}, {@linkplain CachedContext} and
+ * {@linkplain CachedLanguage} parameters at the end of the method. This allows the use of of nodes
+ * in implementations.
+ *
  * <p>
- * For {@link DefaultExport default exports} or receiver types that export the
- * {@link DynamicDispatchLibrary dynamic dispatch} the messages can also be declared in a class that
- * is not the receiver type.
- * <p>
+ * <h4>Usage example</h4>
+ *
  * Example usage with implicit receiver type:
  *
  * <pre>
@@ -85,9 +100,64 @@ import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
  * }
  * </pre>
  *
- * <p>
- * Example usage with explicit receiver type:
+ * <h3>Class exports</h3>
  *
+ * If a message export requires more than one {@link Specialization specialization} then the export
+ * must be specified as class. In this case the simple name of the message is resolved by using the
+ * class name and turning the first character lower-case. So for an exported class named
+ * <code>Read</code> the message <code>read</code> would be used. It is not allowed to use a method
+ * export and a class export for the same message at the same time. Multiple {@link ExportMessage}
+ * annotations may be used for the same method or class to export them for multiple messages. In
+ * this case the {@link ExportMessage#name() message name} needs to be specified explicitly and the
+ * target signatures need to match for all exported messages.
+ *
+ * <p>
+ * <h4>Usage example</h4>
+ *
+ * <pre>
+ * &#64;ExportLibrary(value = ArrayLibrary.class)
+ * static final class SequenceArray {
+ *
+ *     final int start;
+ *     final int stride;
+ *     final int length;
+ *
+ *     SequenceArray(int start, int stride, int length) {
+ *         this.start = start;
+ *         this.stride = stride;
+ *         this.length = length;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     boolean isArray() {
+ *         return true;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     static class Read {
+ *         &#64;Specialization(guards = {"seq.stride == cachedStride",
+ *                         "seq.start  == cachedStart"}, limit = "1")
+ *         static int doSequenceCached(SequenceArray seq, int index,
+ *                         &#64;Cached("seq.start") int cachedStart,
+ *                         &#64;Cached("seq.stride") int cachedStride) {
+ *             return cachedStart + cachedStride * index;
+ *         }
+ *
+ *         &#64;Specialization(replaces = "doSequenceCached")
+ *         static int doSequence(SequenceArray seq, int index) {
+ *             return doSequenceCached(seq, index, seq.start, seq.stride);
+ *         }
+ *     }
+ * }
+ * </pre>
+ *
+ * <h3>Explicit Receiver Types</h3>
+ *
+ * For {@link DefaultExport default exports} or types that support {@link DynamicDispatchLibrary
+ * dynamic dispatch} the export may declare an {@link #receiverType() explicit receiver type}.
+ *
+ * @see GenerateLibrary
+ * @see CachedLibrary
  * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
@@ -96,18 +166,40 @@ import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 public @interface ExportLibrary {
 
     /***
-     * The library exported.
+     * The library class that specifies the messages that are exported.
      *
      * @since 1.0
      */
     Class<? extends Library> value();
 
     /**
-     * Sets the custom receiver type. Can only be used for {@link DefaultExport default exports} or
-     * receiver types that export {@link DynamicDispatchLibrary dynamic dispatch}.
+     * The explicit receiver type to use if specified. This is useful to specifying the receiver
+     * type for {@link DefaultExport default exports} or types that are
+     * {@link DynamicDispatchLibrary dynamically dispatched}. If specified, all exported methods
+     * need to be declared statically with the receiver type argument as first parameter.
      *
-     * @see DefaultExport
-     * @see DynamicDispatchLibrary
+     * <h4>Usage example</h4>
+     *
+     * <pre>
+     * &#64;ExportLibrary(value = ArrayLibrary.class, receiverType = Integer.class)
+     * static final class ScalarIntegerArray {
+     *
+     *     &#64;ExportMessage
+     *     static boolean isArray(Integer receiver) {
+     *         return true;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     int read(Integer receiver, int index) {
+     *         if (index == 0) {
+     *             return receiver;
+     *         } else {
+     *             throw new ArrayIndexOutOfBoundsException(index);
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
      * @since 1.0
      */
     Class<?> receiverType() default Void.class;

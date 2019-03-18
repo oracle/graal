@@ -47,10 +47,7 @@ import com.oracle.truffle.api.nodes.Node;
  * {@link GenerateLibrary}. Implementations for the abstract methods specified in this classes are
  * not supposed to be implemented manually.
  *
- * @see GenerateLibrary Generatelibrary, on how to specify libraries.
- * @see ExportLibrary ExportLibrary, on how to implement / export library messages
- * @see LibraryFactory LibraryFactory, on how to call library messages.
- * @see CachedLibrary CachedLibrary, on how to call library with Truffle DSL.
+ * @see GenerateLibrary
  * @since 1.0
  */
 public abstract class Library extends Node {

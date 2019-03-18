@@ -55,7 +55,68 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
- * Base library if the receiver export needs to be dispatched.
+ * A library that allows to dynamically dispatch to export library classes. Sometimes the target
+ * exports for a receiver type cannot be statically determined by the receiver class with the
+ * {@link ExportLibrary} annotation. To allow such types to dynamically dispatch to exports the
+ * dynamic dispatch library can be exported instead. By exporting dynamic dispatch the export target
+ * can be chosen dynamically.
+ * <p>
+ * The dynamic dispatch library requires to implement the dispatch method. The dispatch method
+ * returns the target exports class that this receiver should dispatch to. If it returns
+ * <code>null</code> then the type will dispatch to the library default exports. The implementation
+ * of the dispatch must be stable for a single receiver value. For example it is not allowed to
+ * change the dispatch target for a receiver instance. If the dispatch target was changed while the
+ * receiver was used by a library then an {@link AssertionError} will be thrown.
+ * <p>
+ * <h4>Full usage example</h4>
+ *
+ * <pre>
+ * &#64;ExportLibrary(DynamicDispatchLibrary.class)
+ * static final class DispatchObject {
+ *
+ *     final Object data;
+ *     final Class<?> dispatchTarget;
+ *
+ *     DispatchObject(Object data, Class<?> dispatchTarget) {
+ *         this.data = data;
+ *         this.dispatchTarget = dispatchTarget;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     Class<?> dispatch() {
+ *         return dispatchTarget;
+ *     }
+ * }
+ *
+ * &#64;GenerateLibrary
+ * public abstract static class ArrayLibrary extends Library {
+ *
+ *     public boolean isArray(Object receiver) {
+ *         return false;
+ *     }
+ *
+ *     public abstract int read(Object receiver, int index);
+ * }
+ *
+ * &#64;ExportLibrary(value = ArrayLibrary.class, receiverType = DispatchObject.class)
+ * static final class DispatchedBufferArray {
+ *
+ *     &#64;ExportMessage
+ *     static boolean isArray(DispatchObject o) {
+ *         return true;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     static int read(DispatchObject o, int index) {
+ *         return ((int[]) o.data)[index];
+ *     }
+ * }
+ *
+ * public static void main(String[] args) {
+ *     ArrayLibrary arrays = LibraryFactory.resolve(ArrayLibrary.class).getUncached();
+ *     assert 42 == arrays.read(new DispatchObject(new int[]{42}, DispatchedBufferArray.class), 0);
+ * }
+ * </pre>
  *
  * @since 1.0
  */
@@ -63,6 +124,9 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 public abstract class DynamicDispatchLibrary extends Library {
 
     /**
+     * Constructor for generated subclasses. Subclasses of this class are generated, do not extend
+     * this class directly.
+     *
      * @since 1.0
      */
     protected DynamicDispatchLibrary() {
@@ -97,6 +161,7 @@ public abstract class DynamicDispatchLibrary extends Library {
     static final LibraryFactory<DynamicDispatchLibrary> FACTORY = LibraryFactory.resolve(DynamicDispatchLibrary.class);
 
     /**
+     * Returns the library factory for {@link DynamicDispatchLibrary}.
      *
      * @since 1.0
      */
