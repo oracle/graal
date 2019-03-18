@@ -177,7 +177,7 @@ public class CachedReachableFallbackTest {
         Assert.assertEquals("s1", node.execute(42));
         Assert.assertEquals("fallback", node.execute("42"));
         Assert.assertEquals("s1", node.execute(42)); // s2 does not replace s1
-        Assert.assertEquals(1, node.createGuardCalls);
+        Assert.assertEquals(2, node.createGuardCalls);
         Assert.assertEquals(1, countGuardNodes(node));
 
         // test fallback first
@@ -186,7 +186,7 @@ public class CachedReachableFallbackTest {
         Assert.assertEquals("fallback", node.execute("42"));
         Assert.assertEquals(0, countGuardNodes(node));
         Assert.assertEquals("s1", node.execute(42));
-        Assert.assertEquals(1, node.createGuardCalls);
+        Assert.assertEquals(2, node.createGuardCalls);
         Assert.assertEquals(1, countGuardNodes(node));
     }
 
