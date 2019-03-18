@@ -294,21 +294,25 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception) throws UnsupportedTypeException {
             try {
                 interop.toNative(arg);
-                buffer.putPointer(interop.asPointer(arg), ptrSize);
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                if (interop.isNull(arg)) {
-                    buffer.putPointer(0, ptrSize);
+                if (interop.isPointer(arg)) {
+                    buffer.putPointer(interop.asPointer(arg), ptrSize);
                     return;
-                } else {
-                    try {
-                        buffer.putPointer(interop.asLong(arg), ptrSize);
-                        return;
-                    } catch (UnsupportedMessageException ex2) {
-                    }
                 }
-                throw UnsupportedTypeException.create(new Object[]{arg});
+            } catch (UnsupportedMessageException ex) {
             }
+
+            exception.enter();
+            if (interop.isNull(arg)) {
+                buffer.putPointer(0, ptrSize);
+                return;
+            } else {
+                try {
+                    buffer.putPointer(interop.asLong(arg), ptrSize);
+                    return;
+                } catch (UnsupportedMessageException ex2) {
+                }
+            }
+            throw UnsupportedTypeException.create(new Object[]{arg});
         }
 
         @ExportMessage
@@ -316,14 +320,18 @@ abstract class SerializeArgumentLibrary extends Library {
                         @CachedLibrary("arg") InteropLibrary interop,
                         @Shared("exception") @Cached BranchProfile exception) throws UnsupportedTypeException {
             try {
-                buffer.putObject(TypeTag.STRING, interop.asString(arg), ptrSize);
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                if (interop.isNull(arg)) {
-                    buffer.putPointer(0, ptrSize);
-                } else {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isString(arg)) {
+                    buffer.putObject(TypeTag.STRING, interop.asString(arg), ptrSize);
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+            }
+
+            exception.enter();
+            if (interop.isNull(arg)) {
+                buffer.putPointer(0, ptrSize);
+            } else {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
     }
