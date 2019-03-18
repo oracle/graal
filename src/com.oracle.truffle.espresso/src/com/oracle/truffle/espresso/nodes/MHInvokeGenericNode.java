@@ -38,45 +38,4 @@ public class MHInvokeGenericNode extends EspressoBaseNode {
             dst[i + start] = src[i + from];
         }
     }
-
-    // @ExplodeLoop
-    // private static void copyOfRange(Object[] src, int from, Object[] dst, int start, final int
-    // length) {
-    // assert (src.length >= from + length && dst.length >= start + length);
-    // for (int i = 0; i < length; ++i) {
-    // dst[i+start] = src[i + from];
-    // }
-    // }
-
-    // private static Object executeInvoke(StaticObjectImpl self, Object[] args) {
-    // Object[] fullArgs;
-    // Object target;
-    // Meta meta = self.getKlass().getMeta();
-    // StaticObjectImpl memberName;
-    // if (meta.DirectMethodHandle.isAssignableFrom(self.getKlass())) {
-    // memberName = (StaticObjectImpl) self.getField(meta.DMHmember);
-    // target = memberName.getHiddenField("vmtarget");
-    // fullArgs = args;
-    // } else {
-    // StaticObjectImpl lform = (StaticObjectImpl) self.getField(meta.form);
-    // memberName = (StaticObjectImpl) lform.getField(meta.vmentry);
-    // target = memberName.getHiddenField("vmtarget");
-    // int arity = (int)lform.getField(meta.arity);
-    // Object[] lambdaArgs = new Object[arity];
-    // int i = 0;
-    // lambdaArgs[i++] = self;
-    // for (Object arg : args) {
-    // lambdaArgs[i++] = arg;
-    // }
-    // fullArgs = lambdaArgs;
-    // return meta.interpretWithArguments.invokeDirect(lform, lambdaArgs);
-    // }
-    //
-    // if (target instanceof Method) {
-    // Method method = (Method) target;
-    // return method.invokeDirect(self, fullArgs);
-    // } else { // Field getter/setter
-    //
-    // }
-    // }
 }

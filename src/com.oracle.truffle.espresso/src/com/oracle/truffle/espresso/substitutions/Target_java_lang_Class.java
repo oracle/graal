@@ -170,7 +170,7 @@ public final class Target_java_lang_Class {
                                 /* name */ context.getStrings().intern(f.getName()),
                                 /* type */ f.resolveTypeKlass().mirror(),
                                 /* modifiers */ f.getModifiers(),
-                                /* slot */ f.getSlot(),
+                                /* slot */ f.getSlot(), // + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET, // Still doesn't make lambda accessors work...
                                 /* signature */ meta.toGuestString(f.getType()),
                                 // FIXME(peterssen): Fill annotations bytes.
                                 /* annotations */ runtimeVisibleAnnotations);

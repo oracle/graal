@@ -35,11 +35,8 @@ public class MHLinkToNode extends EspressoBaseNode {
 
         if (target.hasReceiver()) {
             StaticObject receiver = (StaticObject) args[0];
-            if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual) {
-                // TODO(garcia) better method lookup
-                if (!target.hasBytecodes()) {
-                    target = receiver.getKlass().lookupMethod(target.getName(), target.getRawSignature());
-                }
+            if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual || refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface) {
+                target = receiver.getKlass().lookupMethod(target.getName(), target.getRawSignature());
             }
             Object[] trueArgs = new Object[args.length - 2];
             for (int i = 1; i < args.length - 1; i++) {

@@ -24,6 +24,7 @@ public class MHInvokeBasicNode extends EspressoBaseNode {
             StaticObjectImpl mname = (StaticObjectImpl) mh.getField(meta.DMHmember);
             Object fieldTarget = mname.getHiddenField("TRUE_vmtarget");
             if (fieldTarget != null) {
+                // Do weird things with field accessors.
                 return fieldAccessor(mname, (Field) fieldTarget, meta, frame.getArguments());
             }
         }
