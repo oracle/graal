@@ -264,11 +264,10 @@ final class DefaultScope {
         @ExportMessage
         @TruffleBoundary
         Object readArrayElement(long index) throws InvalidArrayIndexException {
-            try {
-                return names.get((int) index);
-            } catch (IndexOutOfBoundsException ioob) {
+            if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
+            return names.get((int) index);
         }
 
         @ExportMessage
@@ -302,11 +301,10 @@ final class DefaultScope {
         @ExportMessage
         @TruffleBoundary
         Object readArrayElement(long index) throws InvalidArrayIndexException {
-            try {
-                return args[(int) index];
-            } catch (IndexOutOfBoundsException ioob) {
+            if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
+            return args[(int) index];
         }
 
         @ExportMessage(name = "isArrayElementReadable")
@@ -323,6 +321,9 @@ final class DefaultScope {
 
         @ExportMessage
         void writeArrayElement(long index, Object value) throws InvalidArrayIndexException {
+            if (index < 0L || index > Integer.MAX_VALUE) {
+                throw InvalidArrayIndexException.create(index);
+            }
             try {
                 args[(int) index] = value;
             } catch (IndexOutOfBoundsException ioob) {
