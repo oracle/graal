@@ -146,9 +146,8 @@ public class CatalogIterable implements ComponentIterable {
         }
 
         @Override
-        public MetadataLoader completeMetadata() throws IOException {
-            MetadataLoader ldr = createMetaLoader();
-            return channel.completeMetadata(ldr, ldr.getComponentInfo());
+        public ComponentInfo completeMetadata() throws IOException {
+            return createFileLoader().completeMetadata();
         }
     }
 }

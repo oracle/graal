@@ -212,9 +212,7 @@ public class DirectoryStorage implements ComponentStorage {
         }
     }
 
-    @SuppressWarnings("unchecked")
     ComponentInfo loadMetadataFrom(InputStream fileStream) throws IOException {
-        ComponentInfo ci;
         // XX clear 'loaded' field once the loading is over
         loaded = new Properties();
         loaded.load(fileStream);
@@ -223,22 +221,25 @@ public class DirectoryStorage implements ComponentStorage {
         String name = getRequiredProperty(BundleConstants.BUNDLE_NAME);
         String version = getRequiredProperty(BundleConstants.BUNDLE_VERSION);
 
-        String license = loaded.getProperty(BundleConstants.BUNDLE_LICENSE_PATH);
+        return propertiesToMeta(loaded, new ComponentInfo(id, name, version));
+    }
 
-        ci = new ComponentInfo(id, name, version);
+    public static ComponentInfo propertiesToMeta(Properties loaded, ComponentInfo ci) {
+        String license = loaded.getProperty(BundleConstants.BUNDLE_LICENSE_PATH);
         if (license != null) {
             SystemUtils.checkCommonRelative(null, license);
             ci.setLicensePath(license);
         }
-        for (String s : Collections.list((Enumeration<String>) loaded.propertyNames())) {
+        for (String s : loaded.stringPropertyNames()) {
             if (s.startsWith(BUNDLE_REQUIRED_PREFIX)) {
                 String k = s.substring(BUNDLE_REQUIRED_PREFIX.length());
-                String v = loaded.getProperty(s, "");
+                String v = loaded.getProperty(s, ""); // NOI18N
                 ci.addRequiredValue(k, v);
             }
         }
-        ci.setPolyglotRebuild(
-                        Boolean.TRUE.toString().equals(loaded.getProperty(BundleConstants.BUNDLE_POLYGLOT_PART, "")));
+        if (Boolean.TRUE.toString().equals(loaded.getProperty(BundleConstants.BUNDLE_POLYGLOT_PART, ""))) { // NOI18N
+            ci.setPolyglotRebuild(true);
+        }
         List<String> ll = new ArrayList<>();
         for (String s : loaded.getProperty(BundleConstants.BUNDLE_WORKDIRS, "").split(":")) {
             String p = s.trim();
@@ -248,7 +249,10 @@ public class DirectoryStorage implements ComponentStorage {
             }
         }
         ci.addWorkingDirectories(ll);
-        ci.setLicenseType(loaded.getProperty(BundleConstants.BUNDLE_LICENSE_TYPE));
+        String licType = loaded.getProperty(BundleConstants.BUNDLE_LICENSE_TYPE);
+        if (licType != null) {
+            ci.setLicenseType(licType);
+        }
         return ci;
     }
 
@@ -382,7 +386,7 @@ public class DirectoryStorage implements ComponentStorage {
         saveComponentFileList(info);
     }
 
-    Properties metaToProperties(ComponentInfo info) {
+    public static Properties metaToProperties(ComponentInfo info) {
         SortedProperties p = new SortedProperties();
         p.setProperty(BundleConstants.BUNDLE_ID, info.getId());
         p.setProperty(BundleConstants.BUNDLE_NAME, info.getName());
@@ -399,6 +403,10 @@ public class DirectoryStorage implements ComponentStorage {
                 v = ""; // NOI18N
             }
             p.setProperty(BUNDLE_REQUIRED_PREFIX + k, v);
+        }
+
+        if (info.getPostinstMessage() != null) {
+            p.setProperty(BundleConstants.BUNDLE_MESSAGE_POSTINST, info.getPostinstMessage());
         }
         if (info.isPolyglotRebuild()) {
             p.setProperty(BundleConstants.BUNDLE_POLYGLOT_PART, Boolean.TRUE.toString());
