@@ -4,7 +4,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 
 ## Version 1.0.0 RC15
 * Restricting access (**incompatible change**) to the host language via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.ALL)` to get previous behavior. Configurations that use `allowAllAccess(true)` are not affected by this incompatible change.
-* Deprecated `Context.Builder.hostClassFilter` and added the new method `Context.Builder.allowHostClassLookup` as a replacement. The name was changed change for clarity and now also allows `null` values to indicate that no host class lookup is allowed.
+* Deprecated `Context.Builder.hostClassFilter` and added the new method `Context.Builder.allowHostClassLookup` as a replacement. The name was changed for clarity and now also accepts `null` to indicate that no host class lookup is allowed.
 
 ## Version 1.0.0 RC14
 * Added [Context.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental options can be passed to a Context.
