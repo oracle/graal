@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,7 +46,7 @@ public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMSyscallOperationNod
     @Specialization
     protected long doOp(LLVMNativePointer buf, long size,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        String cwd = LLVMPath.getcwd();
+        String cwd = getContextReference().get().getEnv().getCurrentWorkingDirectory().getPath();
         if (cwd.length() >= size) {
             return -LLVMAMD64Error.ERANGE;
         } else {
