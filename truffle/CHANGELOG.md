@@ -4,7 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 1.0.0 RC15
 * This version includes a major revision of the Truffle Interoperability APIs. Most existing APIs for Truffle Interoperability were deprecated. The compatiblity layer may cause significant performance reduction for interoperability calls. 
-	* Please see the [Interop Migration Guide]() for an overview and individual `@deprecated` javadoc tags for guidance.
+	* Please see the [Interop Migration Guide](https://github.com/oracle/graal/blob/master/truffle/docs/InteropMigration.md) for an overview and individual `@deprecated` javadoc tags for guidance.
 	* Deprecated classes `ForeignAccess`, `Message`, `MessageResolution`, `Resolve` and `KeyInfo`. 
 	* The following methods got deprecated:
 		* `InteropException.raise`, with libraries there should be no need to convert checked exceptions to runtime exceptions.
