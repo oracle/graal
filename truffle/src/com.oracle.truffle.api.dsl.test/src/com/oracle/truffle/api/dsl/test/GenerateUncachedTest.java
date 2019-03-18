@@ -613,4 +613,23 @@ public class GenerateUncachedTest {
 
     }
 
+    abstract static class ErrorBaseNode extends Node {
+
+        @Child private Node errorField;
+
+        abstract Object execute();
+
+    }
+
+    @GenerateUncached
+    @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any instance variables. Found instance variable ErrorBaseNode.errorField. Remove instance variable to resolve this.")
+    abstract static class ErrorFieldInParent1Node extends ErrorBaseNode {
+
+        @Specialization
+        public Object doDefault() {
+            return null;
+        }
+
+    }
+
 }
