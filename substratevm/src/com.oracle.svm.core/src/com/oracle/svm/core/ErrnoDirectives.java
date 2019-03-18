@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -56,6 +57,9 @@ public class ErrnoDirectives implements CContext.Directives {
 
     @Override
     public List<String> getMacroDefinitions() {
-        return Arrays.asList("_GNU_SOURCE", "_LARGEFILE64_SOURCE");
+        if (!Platform.includedIn(Platform.WINDOWS.class)) {
+            return Arrays.asList("_GNU_SOURCE", "_LARGEFILE64_SOURCE");
+        }
+        return Collections.emptyList();
     }
 }
