@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -165,7 +166,8 @@ public final class CompletionExecutor {
                         }
                         Throwable thrown = null;
                         try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
-                                        Scope s = debug.scope("Operation")) {
+                                        Scope s = debug.scope("Operation");
+                                        Activation a = debug.activate()) {
                             command.run(debug);
                         } catch (Throwable x) {
                             thrown = x;
