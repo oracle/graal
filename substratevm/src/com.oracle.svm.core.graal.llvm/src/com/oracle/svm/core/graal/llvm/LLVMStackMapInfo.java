@@ -37,9 +37,9 @@ import org.graalvm.compiler.core.common.NumUtil;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.core.llvm.LLVMUtils;
 
 public class LLVMStackMapInfo {
-    private static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
     private static final int AMD64_RSP_IDX = 7;
     private static final int AMD64_RBP_IDX = 6;
     private StackMap stackMap;
@@ -217,7 +217,7 @@ public class LLVMStackMapInfo {
             function.records[rec] = record;
 
             if (patchpointToFunction.containsKey(record.patchpointID)) {
-                assert record.patchpointID == DEFAULT_PATCHPOINT_ID || patchpointToFunction.get(record.patchpointID) == function;
+                assert record.patchpointID == LLVMUtils.DEFAULT_PATCHPOINT_ID || patchpointToFunction.get(record.patchpointID) == function;
             }
             patchpointToFunction.put(record.patchpointID, function);
             patchpointsByID.computeIfAbsent(record.patchpointID, v -> new HashSet<>()).add(record);

@@ -934,7 +934,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
     @Override
     public void emitBlackhole(Value operand) {
-        builder.buildBlackHole(operand);
+        builder.buildStackmap(builder.constantLong(LLVMUtils.DEFAULT_PATCHPOINT_ID), getVal(operand));
     }
 
     @Override

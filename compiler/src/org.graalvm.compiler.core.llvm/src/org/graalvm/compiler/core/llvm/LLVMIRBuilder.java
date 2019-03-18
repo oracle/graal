@@ -49,7 +49,6 @@ import org.bytedeco.javacpp.PointerPointer;
 import org.graalvm.compiler.core.common.calc.Condition;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
 
 public class LLVMIRBuilder {
     private static final String DEFAULT_INSTR_NAME = "";
@@ -969,12 +968,5 @@ public class LLVMIRBuilder {
         }
 
         return atomicRMW;
-    }
-
-    @SuppressWarnings("unused")
-    void buildBlackHole(Value operand) {
-        /* GR-14415 should be emitted by keeping the value alive */
-        LLVMTypeRef doNothingType = functionType(voidType());
-        buildIntrinsicCall("llvm.donothing", doNothingType);
     }
 }
