@@ -37,6 +37,7 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -55,7 +56,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -413,7 +413,7 @@ final class JNIFunctions {
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
         Object instance;
         try {
-            instance = UnsafeAccess.UNSAFE.allocateInstance(clazz);
+            instance = GraalUnsafeAccess.UNSAFE.allocateInstance(clazz);
         } catch (InstantiationException e) {
             instance = null;
         }

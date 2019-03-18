@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.lang.reflect.Field;
+import static org.graalvm.compiler.truffle.runtime.UnsafeAccess.UNSAFE;
+
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -470,21 +471,5 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @SuppressWarnings("deprecation")
     private static int getFrameSlotIndex(FrameSlot slot) {
         return slot.getIndex();
-    }
-
-    private static final Unsafe UNSAFE = getUnsafe();
-
-    private static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
     }
 }

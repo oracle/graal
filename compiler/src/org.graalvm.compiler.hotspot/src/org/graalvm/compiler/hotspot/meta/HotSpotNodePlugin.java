@@ -28,8 +28,6 @@ import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 
-import java.lang.reflect.Field;
-
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -56,6 +54,7 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.word.LocationIdentity;
@@ -68,7 +67,6 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 /**
  * This plugin does HotSpot-specific customization of bytecode parsing:
@@ -219,7 +217,7 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
                                 config.jvmciCompileStateCanPostOnExceptionsOffset != Integer.MIN_VALUE &&
                                 config.javaThreadShouldPostOnExceptionsFlagOffset != Integer.MIN_VALUE) {
                     long canPostOnExceptionsOffset = compileState + config.jvmciCompileStateCanPostOnExceptionsOffset;
-                    boolean canPostOnExceptions = UNSAFE.getByte(canPostOnExceptionsOffset) != 0;
+                    boolean canPostOnExceptions = GraalUnsafeAccess.UNSAFE.getByte(canPostOnExceptionsOffset) != 0;
                     if (canPostOnExceptions) {
                         // If the exception capability is set, then generate code
                         // to check the JavaThread.should_post_on_exceptions flag to see
@@ -243,21 +241,4 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
     }
 
     private static final LocationIdentity JAVA_THREAD_SHOULD_POST_ON_EXCEPTIONS_FLAG_LOCATION = NamedLocationIdentity.mutable("JavaThread::_should_post_on_exceptions_flag");
-    static final Unsafe UNSAFE = initUnsafe();
-
-    static Unsafe initUnsafe() {
-        try {
-            // Fast path when we are trusted.
-            return Unsafe.getUnsafe();
-        } catch (SecurityException se) {
-            // Slow path when we are not trusted.
-            try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                return (Unsafe) theUnsafe.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe", e);
-            }
-        }
-    }
 }

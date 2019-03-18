@@ -31,6 +31,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
@@ -319,7 +320,7 @@ public class MonitorSupport {
             }
             /* Atomically put a new lock in place of the null at the monitorOffset. */
             final ReentrantLock newMonitor = new ReentrantLock();
-            if (UnsafeAccess.UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
+            if (GraalUnsafeAccess.UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
                 return newMonitor;
             }
             /* We lost the race, use the lock some other thread installed. */

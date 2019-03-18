@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.core.common;
 
-import static org.graalvm.compiler.core.common.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;

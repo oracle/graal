@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -183,7 +183,7 @@ public class DiscoverableReference {
 
     private static long getFieldOffset(String fieldName) {
         try {
-            return UnsafeAccess.UNSAFE.objectFieldOffset(DiscoverableReference.class.getDeclaredField(fieldName));
+            return GraalUnsafeAccess.UNSAFE.objectFieldOffset(DiscoverableReference.class.getDeclaredField(fieldName));
         } catch (NoSuchFieldException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

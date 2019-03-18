@@ -271,6 +271,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyInstanceOfUsage());
         verifiers.add(new VerifyGraphAddUsage());
         verifiers.add(new VerifyGetOptionsUsage());
+        verifiers.add(new VerifyUnsafeAccess());
 
         VerifyFoldableMethods foldableMethodsVerifier = new VerifyFoldableMethods();
         if (tool.shouldVerifyFoldableMethods()) {

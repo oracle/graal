@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.word;
 
-import static org.graalvm.compiler.word.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

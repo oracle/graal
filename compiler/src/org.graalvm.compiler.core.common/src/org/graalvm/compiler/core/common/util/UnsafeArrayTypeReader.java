@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.core.common.util;
 
-import static org.graalvm.compiler.core.common.util.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
+
 import sun.misc.Unsafe;
 
 /**

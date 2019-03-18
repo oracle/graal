@@ -24,11 +24,13 @@
  */
 package org.graalvm.compiler.graph;
 
+import static org.graalvm.compiler.core.common.Fields.translateInto;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.graph.Edges.translateInto;
 import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
 import static org.graalvm.compiler.graph.InputEdges.translateInto;
 import static org.graalvm.compiler.graph.Node.WithAllEdges;
-import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -128,7 +130,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public static <T> NodeClass<T> get(Class<T> clazz) {
         int numTries = 0;
         while (true) {
-            boolean shouldBeInitializedBefore = UnsafeAccess.UNSAFE.shouldBeInitialized(clazz);
+            boolean shouldBeInitializedBefore = UNSAFE.shouldBeInitialized(clazz);
 
             NodeClass<T> result = getUnchecked(clazz);
             if (result != null || clazz == NODE_CLASS) {
@@ -141,13 +143,13 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
              * information without failing gates.
              */
             numTries++;
-            boolean shouldBeInitializedAfter = UnsafeAccess.UNSAFE.shouldBeInitialized(clazz);
+            boolean shouldBeInitializedAfter = UNSAFE.shouldBeInitialized(clazz);
             String msg = "GR-9537 Reflective field access of TYPE field returned null. This is probably a bug in HotSpot class initialization. " +
                             " clazz: " + clazz.getTypeName() + ", numTries: " + numTries +
                             ", shouldBeInitializedBefore: " + shouldBeInitializedBefore + ", shouldBeInitializedAfter: " + shouldBeInitializedAfter;
             if (numTries <= 100) {
                 TTY.println(msg);
-                UnsafeAccess.UNSAFE.ensureClassInitialized(clazz);
+                UNSAFE.ensureClassInitialized(clazz);
             } else {
                 throw GraalError.shouldNotReachHere(msg);
             }

@@ -36,12 +36,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -149,7 +149,7 @@ public class VarHandleFeature implements Feature {
                 /* Search the declared fields for a field with a matching offset. */
                 for (Field field : cur.getDeclaredFields()) {
                     if (Modifier.isStatic(field.getModifiers()) == info.isStatic) {
-                        long fieldOffset = info.isStatic ? UnsafeAccess.UNSAFE.staticFieldOffset(field) : UnsafeAccess.UNSAFE.objectFieldOffset(field);
+                        long fieldOffset = info.isStatic ? GraalUnsafeAccess.UNSAFE.staticFieldOffset(field) : GraalUnsafeAccess.UNSAFE.objectFieldOffset(field);
                         if (fieldOffset == originalFieldOffset) {
                             return field;
                         }

@@ -26,7 +26,7 @@ package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
 import static org.graalvm.compiler.graph.Node.NOT_ITERABLE;
-import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
 
 import java.util.ArrayList;
 import java.util.Iterator;

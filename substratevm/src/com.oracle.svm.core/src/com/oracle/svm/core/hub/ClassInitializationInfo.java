@@ -27,11 +27,11 @@ package com.oracle.svm.core.hub;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.annotate.NeverInline;
 
@@ -325,7 +325,7 @@ public final class ClassInitializationInfo {
             this.initState = state;
             this.initThread = null;
             /* Make sure previous stores are all done, notably the initState. */
-            UnsafeAccess.UNSAFE.storeFence();
+            GraalUnsafeAccess.UNSAFE.storeFence();
 
             if (initCondition != null) {
                 initCondition.signalAll();

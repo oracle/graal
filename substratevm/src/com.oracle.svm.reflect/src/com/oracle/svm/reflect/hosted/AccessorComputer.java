@@ -29,9 +29,9 @@ package com.oracle.svm.reflect.hosted;
 import java.lang.reflect.Member;
 import java.lang.reflect.Proxy;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.helpers.ReflectionProxyHelper;
@@ -51,7 +51,7 @@ public final class AccessorComputer implements RecomputeFieldValue.CustomFieldVa
             throw VMError.shouldNotReachHere();
         }
         try {
-            Proxy proxyInstance = (Proxy) UnsafeAccess.UNSAFE.allocateInstance(proxyClass);
+            Proxy proxyInstance = (Proxy) GraalUnsafeAccess.UNSAFE.allocateInstance(proxyClass);
             ReflectionProxyHelper.setDefaultInvocationHandler(proxyInstance);
             return proxyInstance;
 

@@ -28,13 +28,13 @@ package com.oracle.svm.jni;
 
 import java.lang.reflect.Array;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.jni.access.JNIAccessibleField;
 import com.oracle.svm.jni.access.JNINativeLinkage;
@@ -124,7 +124,7 @@ public final class JNIGeneratedMethodSupport {
         if (count > 0) {
             long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
             int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-            UnsafeAccess.UNSAFE.copyMemory(array, offset, null, buffer.rawValue(), count * elementSize);
+            GraalUnsafeAccess.UNSAFE.copyMemory(array, offset, null, buffer.rawValue(), count * elementSize);
         }
     }
 
@@ -135,7 +135,7 @@ public final class JNIGeneratedMethodSupport {
         if (count > 0) {
             long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
             int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-            UnsafeAccess.UNSAFE.copyMemory(null, buffer.rawValue(), array, offset, count * elementSize);
+            GraalUnsafeAccess.UNSAFE.copyMemory(null, buffer.rawValue(), array, offset, count * elementSize);
         }
     }
 }

@@ -39,10 +39,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -328,7 +328,7 @@ public class ComputedValueField implements ReadableJavaField, ComputedValue {
         // search the declared fields for a field with a matching offset
         for (Field f : tclass.getDeclaredFields()) {
             if (!Modifier.isStatic(f.getModifiers())) {
-                long fieldOffset = UnsafeAccess.UNSAFE.objectFieldOffset(f);
+                long fieldOffset = GraalUnsafeAccess.UNSAFE.objectFieldOffset(f);
                 if (fieldOffset == searchOffset) {
                     HostedField sf = hMetaAccess.lookupJavaField(f);
                     guarantee(sf.isAccessed() && sf.getLocation() > 0, "Field not marked as accessed: " + sf.format("%H.%n"));

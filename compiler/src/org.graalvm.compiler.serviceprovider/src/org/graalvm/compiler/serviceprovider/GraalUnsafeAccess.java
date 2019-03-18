@@ -22,18 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.word;
+package org.graalvm.compiler.serviceprovider;
 
 import java.lang.reflect.Field;
 
 import sun.misc.Unsafe;
 
 /**
- * Package private access to the {@link Unsafe} capability.
+ * Access to the {@link Unsafe} capability. Care must be taken not to leak the {@link #UNSAFE} value
+ * of out code loaded by the JVMCI class loader or encapsulated in the JVMCI or Graal modules into
+ * other code (e.g. via the Polyglot API).
  */
-class UnsafeAccess {
+public class GraalUnsafeAccess {
 
-    static final Unsafe UNSAFE = initUnsafe();
+    public static final Unsafe UNSAFE = initUnsafe();
 
     private static Unsafe initUnsafe() {
         try {

@@ -35,6 +35,7 @@ import java.nio.ByteOrder;
 
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -51,7 +52,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -914,7 +914,7 @@ public final class Deoptimizer {
             curIdx = 2;
         } else {
             try {
-                obj = UnsafeAccess.UNSAFE.allocateInstance(DynamicHub.toClass(hub));
+                obj = GraalUnsafeAccess.UNSAFE.allocateInstance(DynamicHub.toClass(hub));
             } catch (InstantiationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }

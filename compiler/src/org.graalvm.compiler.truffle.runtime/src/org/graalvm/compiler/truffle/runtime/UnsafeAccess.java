@@ -29,11 +29,13 @@ import sun.misc.Unsafe;
 import java.lang.reflect.Field;
 
 /**
- * Package private access to the {@link Unsafe} capability.
+ * Access to the {@link Unsafe} capability. Care must be taken not to leak the {@link #UNSAFE} value
+ * of out code loaded by the JVMCI class loader or encapsulated in the JVMCI or Graal modules into
+ * other code (e.g. via the Polyglot API).
  */
-class UnsafeAccess {
+public class UnsafeAccess {
 
-    static final Unsafe UNSAFE = initUnsafe();
+    public static final Unsafe UNSAFE = initUnsafe();
 
     private static Unsafe initUnsafe() {
         try {
