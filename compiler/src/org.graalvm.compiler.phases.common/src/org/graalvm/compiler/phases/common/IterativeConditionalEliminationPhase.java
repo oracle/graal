@@ -31,11 +31,11 @@ import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 
-public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext> {
+public class IterativeConditionalEliminationPhase extends BasePhase<CoreProviders> {
 
     private static final int MAX_ITERATIONS = 256;
 
@@ -49,7 +49,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph, PhaseContext context) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener().exclude(NODE_ADDED);
         int count = 0;
         while (true) {
