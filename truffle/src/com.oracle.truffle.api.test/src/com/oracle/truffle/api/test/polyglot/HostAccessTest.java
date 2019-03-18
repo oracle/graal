@@ -93,68 +93,98 @@ public class HostAccessTest {
 
     @Test
     public void banAccessToReflection() throws Exception {
-        HostAccess config = HostAccess.newBuilder().allowPublicAccess(true).preventAccess(Class.class).preventAccess(Method.class).preventAccess(Field.class).preventAccess(
-                        Proxy.class).preventAccess(
-                                        Object.class).build();
+        // @formatter:off
+        HostAccess config = HostAccess.newBuilder().
+                        allowPublicAccess(true).
+                        preventAccess(Class.class).
+                        preventAccess(Method.class).
+                        preventAccess(Field.class).
+                        preventAccess(Proxy.class).
+                        preventAccess(Object.class).build();
+        // @formatter:on
 
-        Context c = Context.newBuilder().allowHostAccess(config).build();
+        try (Context c = Context.newBuilder().allowHostAccess(config).build()) {
+            Value readValue = c.eval("sl", "" +
+                            "function readValue(x, y) {\n" +
+                            "  return x.equals(y);\n" +
+                            "}\n" +
+                            "function main() {\n" +
+                            "  return readValue;\n" +
+                            "}\n");
 
-        Value readValue = c.eval("sl", "" + "function readValue(x, y) {\n" + "  return x.equals(y);\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+            MyEquals myEquals = new MyEquals();
+            assertTrue("MyEquals.equals method is accessible", readValue.execute(myEquals, myEquals).asBoolean());
 
-        MyEquals myEquals = new MyEquals();
-        assertTrue("MyEquals.equals method is accessible", readValue.execute(myEquals, myEquals).asBoolean());
-
-        Value res;
-        try {
-            res = readValue.execute(new Object());
-        } catch (PolyglotException ex) {
-            return;
+            Value res;
+            try {
+                res = readValue.execute(new Object());
+            } catch (PolyglotException ex) {
+                return;
+            }
+            fail("expecting no result: " + res);
         }
-        fail("expecting no result: " + res);
     }
 
     @Test
     public void banAccessToEquals() throws Exception {
         HostAccess config = HostAccess.newBuilder().allowPublicAccess(true).preventAccess(Object.class.getMethod("equals", Object.class)).build();
 
-        Context c = Context.newBuilder().allowHostAccess(config).build();
+        try (Context c = Context.newBuilder().allowHostAccess(config).build()) {
+            Value readValue = c.eval("sl", "" +
+                            "function readValue(x, y) {\n" +
+                            "  return x.equals(y);\n" +
+                            "}\n" +
+                            "function main() {\n" +
+                            "  return readValue;\n" +
+                            "}\n");
 
-        Value readValue = c.eval("sl", "" + "function readValue(x, y) {\n" + "  return x.equals(y);\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+            MyEquals myEquals = new MyEquals();
+            assertTrue("MyEquals.equals method is accessible", readValue.execute(myEquals, myEquals).asBoolean());
 
-        MyEquals myEquals = new MyEquals();
-        assertTrue("MyEquals.equals method is accessible", readValue.execute(myEquals, myEquals).asBoolean());
-
-        Value res;
-        try {
-            res = readValue.execute(new Object());
-        } catch (PolyglotException ex) {
-            return;
+            Value res;
+            try {
+                res = readValue.execute(new Object());
+            } catch (PolyglotException ex) {
+                return;
+            }
+            fail("expecting no result: " + res);
         }
-        fail("expecting no result: " + res);
     }
 
     @Test
     public void publicCanAccessObjectEquals() throws Exception {
         HostAccess config = HostAccess.ALL;
 
-        Context c = Context.newBuilder().allowHostAccess(config).build();
-
-        Value readValue = c.eval("sl", "" + "function readValue(x, y) {\n" + "  return x.equals(y);\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
-        assertFalse("Cannot read equals 1", readValue.execute(new Object(), new Object()).asBoolean());
-        Object same = new Object();
-        assertTrue("Cannot read equals 2", readValue.execute(same, same).asBoolean());
+        try (Context c = Context.newBuilder().allowHostAccess(config).build()) {
+            Value readValue = c.eval("sl", "" +
+                            "function readValue(x, y) {\n" +
+                            "  return x.equals(y);\n" +
+                            "}\n" +
+                            "function main() {\n" +
+                            "  return readValue;\n" +
+                            "}\n");
+            assertFalse("Cannot read equals 1", readValue.execute(new Object(), new Object()).asBoolean());
+            Object same = new Object();
+            assertTrue("Cannot read equals 2", readValue.execute(same, same).asBoolean());
+        }
     }
 
     @Test
     public void inheritFromPublic() throws Exception {
         HostAccess config = HostAccess.newBuilder().allowPublicAccess(true).build();
 
-        Context c = Context.newBuilder().allowHostAccess(config).build();
-
-        Value readValue = c.eval("sl", "" + "function readValue(x, y) {\n" + "  return x.equals(y);\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
-        assertFalse("Cannot read equals 1", readValue.execute(new Object(), new Object()).asBoolean());
-        Object same = new Object();
-        assertTrue("Cannot read equals 2", readValue.execute(same, same).asBoolean());
+        try (Context c = Context.newBuilder().allowHostAccess(config).build()) {
+            Value readValue = c.eval("sl", "" +
+                            "function readValue(x, y) {\n" +
+                            "  return x.equals(y);\n" +
+                            "}\n" +
+                            "function main() {\n" +
+                            "  return readValue;\n" +
+                            "}\n");
+            assertFalse("Cannot read equals 1", readValue.execute(new Object(), new Object()).asBoolean());
+            Object same = new Object();
+            assertTrue("Cannot read equals 2", readValue.execute(same, same).asBoolean());
+        }
     }
 
     @Test
@@ -163,13 +193,23 @@ public class HostAccessTest {
 
         Context c1 = Context.newBuilder().allowHostAccess(config).build();
         Context c2 = Context.newBuilder().allowHostAccess(config).build();
-
-        assertAccess(c1);
-        assertAccess(c2);
+        try {
+            assertAccess(c1);
+            assertAccess(c2);
+        } finally {
+            c2.close();
+            c1.close();
+        }
     }
 
     private static void assertAccess(Context context) {
-        Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function readValue(x) {\n" +
+                        "  return x.value;\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return readValue;\n" +
+                        "}\n");
         Assert.assertEquals(42, readValue.execute(new OK()).asInt());
         ExposeToGuestTest.assertPropertyUndefined("public isn't enough by default", "value", readValue, new Ban());
     }
