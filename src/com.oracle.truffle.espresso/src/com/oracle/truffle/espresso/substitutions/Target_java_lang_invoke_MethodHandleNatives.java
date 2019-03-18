@@ -38,22 +38,19 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (targetKlass.getType() == Type.Method) {
             // Actual planting
             Method target = Method.getHostReflectiveMethodRoot(ref);
-            plantResolvedMethod(self, target, target.getRawSignature());
-            // Finish the job
-            Field flagField = meta.MNflags;
             int refKind = target.getRefKind();
-            self.setField(flagField, getMethodFlags(target, refKind));
+            plantResolvedMethod(self, target, target.getRawSignature(), refKind, meta.MNflags);
+            // Finish the job
             self.setField(meta.MNclazz, target.getDeclaringKlass().mirror());
         } else {
             assert (targetKlass.getType() == Type.Field);
             // Actual planting
-            Field field = Target_sun_misc_Unsafe.getReflectiveFieldRoot(ref);
+            Field field = Field.getReflectiveFieldRoot(ref);
             int refkind = getRefKind((int) self.getField(meta.MNflags));
-            plantResolvedField(self, field);
+            plantResolvedField(self, field, refkind, meta.MNflags);
             // Finish the job
             StaticObjectImpl guestField = (StaticObjectImpl) ref;
             Klass fieldKlass = ((StaticObjectClass) guestField.getField(meta.Field_class)).getMirrorKlass();
-            self.setField(meta.MNflags, getFieldFlags(refkind, field));
             self.setField(meta.MNclazz, fieldKlass.mirror());
         }
     }
@@ -148,7 +145,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static @Host(Object.class) StaticObject staticFieldBase(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObjectImpl self) {
-        return (StaticObject) self.getField(self.getKlass().lookupField(Name.clazz, Type.Class));
+        return ((StaticObjectClass) self.getField(self.getKlass().getMeta().MNclazz)).getMirrorKlass().tryInitializeAndGetStatics();
     }
 
     @Substitution
@@ -330,13 +327,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (target == null) {
             throw defKlass.getContext().getMeta().throwEx(NoSuchMethodException.class);
         }
-        plantResolvedMethod(memberName, target, sig);
-        memberName.setField(flagField, getMethodFlags(target, refKind));
+        plantResolvedMethod(memberName, target, sig, refKind, flagField);
     }
 
-    private static void plantResolvedMethod(StaticObjectImpl memberName, Method target, Symbol<Signature> sig) {
+    private static void plantResolvedMethod(StaticObjectImpl memberName, Method target, Symbol<Signature> sig, int refKind, Field flagField) {
         memberName.setHiddenField("vmtarget", target);
         memberName.setHiddenField("invocationSignature", sig);
+        memberName.setField(flagField, getMethodFlags(target, refKind));
+
     }
 
     private static void plantFieldMemberName(StaticObjectImpl memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, Field flagField, int refKind) {
@@ -344,16 +342,15 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (field == null) {
             throw defKlass.getContext().getMeta().throwEx(NoSuchFieldException.class);
         }
-        plantResolvedField(memberName, field);
-        memberName.setField(flagField, getFieldFlags(refKind, field));
+        plantResolvedField(memberName, field, refKind, flagField);
     }
 
-    private static void plantResolvedField(StaticObjectImpl memberName, Field field) {
+    private static void plantResolvedField(StaticObjectImpl memberName, Field field, int refKind, Field flagField) {
         memberName.setHiddenField("vmtarget", field.getDeclaringKlass());
         // Remember we are accessing a static field.
-        long offset = Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET + (field.isStatic() ? Target_sun_misc_Unsafe.STATIC_FIELD_OFFSET : 0);
-        memberName.setHiddenField("vmindex", (field.getSlot() + offset));
+        memberName.setHiddenField("vmindex", (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
         memberName.setHiddenField("vmfield", field);
+        memberName.setField(flagField, getFieldFlags(refKind, field));
     }
 
     private static int getMethodFlags(Method target, int refKind) {
@@ -381,10 +378,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (isSetter)
             res += ((REF_putField - REF_getField) << MN_REFERENCE_KIND_SHIFT);
         return res;
-
-        // End MemberName planting
     }
 
+    // End MemberName planting
     // Helping methods
 
     public static int MHid(Symbol<Name> name) {

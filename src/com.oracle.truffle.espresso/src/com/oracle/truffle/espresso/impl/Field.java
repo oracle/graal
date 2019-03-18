@@ -29,9 +29,12 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -140,5 +143,18 @@ public final class Field implements ModifiersProvider {
 
     public Attribute getAttribute(Symbol<Name> attrName) {
         return linkedField.getAttribute(attrName);
+    }
+
+    public static Field getReflectiveFieldRoot(StaticObject seed) {
+        Meta meta = seed.getKlass().getMeta();
+        StaticObject curField = seed;
+        Field target = null;
+        while (target == null) {
+            target = (Field) ((StaticObjectImpl) curField).getHiddenField(Target_java_lang_Class.HIDDEN_FIELD_KEY);
+            if (target == null) {
+                curField = (StaticObject) meta.Field_root.get(curField);
+            }
+        }
+        return target;
     }
 }

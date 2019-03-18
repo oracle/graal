@@ -335,7 +335,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             // @formatter:off
             // Checkstyle: stop
             switch (expectedkind) {
-                case Boolean : setLocalInt(frame, n, ((boolean) arguments[i]) ? 1 : 0); break;
+                case Boolean :
+                   setLocalInt(frame, n,  (arguments[i] instanceof Integer) ? (int)arguments[i] : ((boolean) arguments[i]) ? 1 : 0); break;
                 case Byte    : setLocalInt(frame, n, ((byte) arguments[i]));            break;
                 case Short   : setLocalInt(frame, n, ((short) arguments[i]));           break;
                 case Char    : setLocalInt(frame, n, ((char) arguments[i]));            break;
@@ -1105,7 +1106,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     // System.err.println("Internal error (caught in invocation): " + this +
                     // "\nBCI:" + curBCI);
                     // e.printStackTrace();
-                    // CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwEx(NullPointerException.class);
                 }
             } catch (EspressoException e) {
@@ -1478,7 +1479,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     args[i] = pool.resolvedStringAt(bsEntry.argAt(i));
                     break;
                 case INTEGER:
-                    args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));
                     args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));
                     break;
                 case LONG:
@@ -1890,7 +1890,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             case Byte    : putInt(frame, top, (byte) value);              break;
             case Short   : putInt(frame, top, (short) value);             break;
             case Char    : putInt(frame, top, (char) value);              break;
-            case Int     : putInt(frame, top, (int) value);               break;
+            case Int     :
+                putInt(frame, top,
+                        (value instanceof Boolean ?
+                                ((Boolean)value ? 1 : 0) :
+                                (int) value));
+                break;
             case Float   : putFloat(frame, top, (float) value);           break;
             case Long    : putLong(frame, top, (long) value);             break;
             case Double  : putDouble(frame, top, (double) value);         break;

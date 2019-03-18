@@ -43,7 +43,6 @@ import sun.misc.Unsafe;
 public final class Target_sun_misc_Unsafe {
 
     public static final int SAFETY_FIELD_OFFSET = 123456789;
-    public static final int STATIC_FIELD_OFFSET = (1 << 30);
 
     private static Unsafe U;
 
@@ -195,24 +194,15 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true)
     public static long objectFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObjectImpl field) {
-        Field target = getReflectiveFieldRoot(field);
+        Field target = Field.getReflectiveFieldRoot(field);
         return SAFETY_FIELD_OFFSET + target.getSlot();
     }
 
     // FIXME(peterssen): This abomination must go, once the object model land.
 
-    private static Field getInstanceFieldFromIndex(StaticObject _holder, int _slot) {
-        int slot;
-        StaticObject holder;
-        if (!(0 <= _slot && _slot < (1 << 16))) {
-            slot = _slot - STATIC_FIELD_OFFSET;
-            holder = _holder.getKlass().getStatics();
-            if (!(0 <= slot && slot < (1 << 16))) {
-                throw EspressoError.shouldNotReachHere("the field offset is not normalized");
-            }
-        } else {
-            slot = _slot;
-            holder = _holder;
+    private static Field getInstanceFieldFromIndex(StaticObject holder, int slot) {
+        if (!(0 <= slot && slot < (1 << 16))) {
+            throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
         if (holder.isStaticStorage()) {
             // Lookup static field in current class.
@@ -814,19 +804,6 @@ public final class Target_sun_misc_Unsafe {
         return U.pageSize();
     }
 
-    public static Field getReflectiveFieldRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
-        Meta meta = seed.getKlass().getMeta();
-        StaticObject curField = seed;
-        Field target = null;
-        while (target == null) {
-            target = (Field) ((StaticObjectImpl) curField).getHiddenField(Target_java_lang_Class.HIDDEN_FIELD_KEY);
-            if (target == null) {
-                curField = (StaticObject) meta.Field_root.get(curField);
-            }
-        }
-        return target;
-    }
-
     /**
      * Report the location of a given field in the storage allocation of its class. Do not expect to
      * perform any sort of arithmetic on this offset; it is just a cookie which is passed to the
@@ -847,7 +824,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true)
     public static long staticFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
-        return getReflectiveFieldRoot(field).getSlot() + SAFETY_FIELD_OFFSET;
+        return Field.getReflectiveFieldRoot(field).getSlot() + SAFETY_FIELD_OFFSET;
     }
 
     /**
@@ -860,7 +837,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true)
     public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
-        Field target = getReflectiveFieldRoot(field);
+        Field target = Field.getReflectiveFieldRoot(field);
         return target.getDeclaringKlass().tryInitializeAndGetStatics();
     }
 
