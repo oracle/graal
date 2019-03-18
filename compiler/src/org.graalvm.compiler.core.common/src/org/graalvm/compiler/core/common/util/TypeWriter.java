@@ -51,6 +51,9 @@ public interface TypeWriter {
     /** Writes a signed 4 byte value. */
     void putS4(long value);
 
+    /** Patches a previously written signed 4 byte value at a given offset. */
+    void patchS4(long value, long offset);
+
     /** Writes an unsigned 4 byte value. */
     void putU4(long value);
 

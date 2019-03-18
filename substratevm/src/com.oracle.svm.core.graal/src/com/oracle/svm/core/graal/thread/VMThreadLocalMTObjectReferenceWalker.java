@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
-import com.oracle.svm.core.heap.ReferenceMapDecoder;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.thread.VMThreads;
 
 /**
@@ -51,7 +51,7 @@ public class VMThreadLocalMTObjectReferenceWalker extends ObjectReferenceWalker 
     @Override
     public boolean walk(ObjectReferenceVisitor referenceVisitor) {
         for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-            if (!ReferenceMapDecoder.walkOffsetsFromPointer(vmThread, vmThreadReferenceMapEncoding, vmThreadReferenceMapIndex, referenceVisitor)) {
+            if (!CodeReferenceMapDecoder.walkOffsetsFromPointer(vmThread, vmThreadReferenceMapEncoding, vmThreadReferenceMapIndex, referenceVisitor)) {
                 return false;
             }
         }
