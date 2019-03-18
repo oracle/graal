@@ -287,7 +287,7 @@ public class LLVMUtils {
 
         @Override
         public String name() {
-            throw unimplemented();
+            return LLVM.LLVMPrintTypeToString(type).getString();
         }
 
         @Override

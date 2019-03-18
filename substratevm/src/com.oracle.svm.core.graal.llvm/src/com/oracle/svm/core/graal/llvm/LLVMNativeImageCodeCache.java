@@ -241,7 +241,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                             patchpointsDump.append("  [");
                             patchpointsDump.append(actualPcOffset);
                             patchpointsDump.append("] -> ");
-                            patchpointsDump.append(((HostedMethod) call.target).format("%H.%n"));
+                            patchpointsDump.append(call.target != null ? ((HostedMethod) call.target).format("%H.%n") : "???");
                             patchpointsDump.append(" (");
                             patchpointsDump.append(call.pcOffset);
                             patchpointsDump.append(") ");
