@@ -2193,7 +2193,7 @@ public abstract class TruffleLanguage<C> {
      * The current language might vary between {@link RootNode#execute(VirtualFrame) executions} if
      * the reference is used with interoperability APIs in the AST of a foreign language.
      *
-     * @since 0.25
+     * @since 1.0
      */
     @SuppressWarnings("rawtypes")
     public abstract static class LanguageReference<L extends TruffleLanguage> {
@@ -2215,7 +2215,7 @@ public abstract class TruffleLanguage<C> {
          * The current language might vary between {@link RootNode#execute(VirtualFrame) executions}
          * if the reference is used with interoperability APIs in the AST of a foreign language.
          *
-         * @since 0.25
+         * @since 1.0
          */
         public abstract L get();
 
