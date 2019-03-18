@@ -57,6 +57,7 @@ import com.oracle.truffle.tools.chromeinspector.instrument.OutputConsumerInstrum
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession.CommandPostProcessor;
 import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
+import com.oracle.truffle.tools.chromeinspector.types.CustomPreview;
 import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
 import com.oracle.truffle.tools.chromeinspector.types.InternalPropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.Location;
@@ -227,7 +228,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                         if (returnByValue) {
                             result = RemoteObject.createJSONResultValue(value, context.getErr());
                         } else {
-                            RemoteObject ro = new RemoteObject(value, generatePreview, context.getErr());
+                            RemoteObject ro = new RemoteObject(value, generatePreview, context);
                             context.getRemoteObjectsHandler().register(ro);
                             result = ro.toJSON();
                             if (!ro.isReplicable()) {
@@ -465,6 +466,29 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 }
                                 result = asResult(p);
                             } else {
+                                // Process CustomPreview body:
+                                if (arguments.length() > 0) {
+                                    Object arg0 = arguments.get(0);
+                                    if (arg0 instanceof JSONObject) {
+                                        JSONObject argObj = (JSONObject) arg0;
+                                        Object id = argObj.opt("objectId");
+                                        if (id instanceof String) {
+                                            DebugValue body = context.getRemoteObjectsHandler().getCustomPreviewBody((String) id);
+                                            if (body != null) {
+                                                // The config is not provided as an argument.
+                                                // Get the cached config:
+                                                DebugValue config = context.getRemoteObjectsHandler().getCustomPreviewConfig(objectId);
+                                                DebugValue bodyML = (config != null) ? body.execute(object.getDebugValue(), config) : body.execute(object.getDebugValue());
+                                                Object bodyjson = CustomPreview.value2JSON(bodyML, context);
+                                                result = new JSONObject();
+                                                result.put("type", "object");
+                                                result.put("value", bodyjson);
+                                                json.put("result", result);
+                                                return null;
+                                            }
+                                        }
+                                    }
+                                }
                                 String code = "(" + functionDeclaration + ")(" + ((value != null) ? value.getName() : "") + ")";
                                 DebugValue eval = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(code);
                                 result = asResult(eval);
@@ -486,7 +510,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 result = RemoteObject.createNullObject(context.getEnv(), language).toJSON();
                             } else {
                                 if (!returnByValue) {
-                                    RemoteObject ro = new RemoteObject(v, true, generatePreview, context.getErr());
+                                    RemoteObject ro = new RemoteObject(v, true, generatePreview, context);
                                     context.getRemoteObjectsHandler().register(ro);
                                     result = ro.toJSON();
                                 } else {
@@ -611,7 +635,7 @@ public final class InspectorRuntime extends RuntimeDomain {
 
     private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview) {
         PropertyDescriptor pd;
-        RemoteObject rv = new RemoteObject(v, generatePreview, context.getErr());
+        RemoteObject rv = new RemoteObject(v, generatePreview, context);
         context.getRemoteObjectsHandler().register(rv);
         String name = v.getName();
         if (name == null && defaultName != null) {

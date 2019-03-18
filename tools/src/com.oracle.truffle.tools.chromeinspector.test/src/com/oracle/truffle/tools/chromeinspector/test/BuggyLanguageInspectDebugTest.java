@@ -90,17 +90,12 @@ public class BuggyLanguageInspectDebugTest {
 
     @Test
     public void testBuggyMetaToString() throws Exception {
-        class MetaObj implements TruffleObject {
+        class MetaObj extends ProxyInteropObject {
 
             final int id;
 
             MetaObj(int id) {
                 this.id = id;
-            }
-
-            @Override
-            public ForeignAccess getForeignAccess() {
-                return null;
             }
         }
         testBuggyCalls(new TestDebugBuggyLanguage() {

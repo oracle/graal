@@ -117,6 +117,15 @@ public abstract class DebugValue {
     public abstract <T> T as(Class<T> clazz) throws DebugException;
 
     /**
+     * Returns the {@link String} value if this value represents a string. This method returns
+     * <code>null</code> otherwise.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @since 1.0
+     */
+    public abstract String asString() throws DebugException;
+
+    /**
      * Returns the name of this value as it is referred to from its origin. If this value is
      * originated from the stack it returns the name of the local variable. If the value was
      * returned from another objects then it returns the name of the property or field it is
@@ -184,6 +193,19 @@ public abstract class DebugValue {
      */
     public DebugScope getScope() {
         return null;
+    }
+
+    /**
+     * Test if the value represents 'null'.
+     *
+     * @since 1.0
+     */
+    public final boolean isNull() {
+        if (!isReadable()) {
+            return false;
+        }
+        Object value = get();
+        return INTEROP.isNull(value);
     }
 
     /**
@@ -382,6 +404,31 @@ public abstract class DebugValue {
     }
 
     /**
+     * Executes the executable represented by this value.
+     *
+     * @param arguments Arguments passed to the executable
+     * @return the result of the execution
+     * @throws DebugException when guest language code throws an exception
+     * @see #canExecute()
+     * @since 1.0
+     */
+    public final DebugValue execute(DebugValue... arguments) throws DebugException {
+        Object value = get();
+        Object[] args = new Object[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            args[i] = arguments[i].get();
+        }
+        try {
+            Object retValue = INTEROP.execute(value, args);
+            return new HeapValue(getSession(), null, retValue);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
      * Get the original language that created the value, if any. This method will return
      * <code>null</code> for values representing a primitive value, or objects that are not
      * associated with any language.
@@ -478,6 +525,25 @@ public abstract class DebugValue {
             throw new UnsupportedOperationException();
         }
 
+        @Override
+        public String asString() throws DebugException {
+            if (!isReadable()) {
+                throw new IllegalStateException("Value is not readable");
+            }
+            try {
+                Object val = get();
+                if (INTEROP.isString(val)) {
+                    return INTEROP.asString(val);
+                } else {
+                    return null;
+                }
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            }
+        }
+
         protected boolean isMeta() {
             return false;
         }
@@ -507,7 +573,7 @@ public abstract class DebugValue {
         }
 
         HeapValue(DebuggerSession session, LanguageInfo preferredLanguage, String name, Object value) {
-            this(session, null, name, value, false);
+            this(session, preferredLanguage, name, value, false);
         }
 
         HeapValue(DebuggerSession session, LanguageInfo preferredLanguage, String name, Object value, boolean isMeta) {
