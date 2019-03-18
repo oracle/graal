@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.213.6",
+  "mxversion" : "5.214.7",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -182,27 +182,7 @@ suite = {
 
     "LLVM_PLATFORM": {
       "sha1" : "503402aa0cf80fd95ede043c0011152c2b4556fd",
-      "dependencies" : ["LLVM_WRAPPER"],
-      "os_arch": {
-        "linux": {
-          "amd64": {
-            "dependencies" : ["LLVM_PLATFORM_SPECIFIC"],
-          },
-          "aarch64": {
-            "dependencies" : [],
-          },
-        },
-        "darwin": {
-          "amd64": {
-            "dependencies" : ["LLVM_PLATFORM_SPECIFIC"],
-          },
-        },
-        "windows": {
-          "amd64": {
-            "dependencies" : ["LLVM_PLATFORM_SPECIFIC"],
-          },
-        },
-      },
+      "dependencies" : ["LLVM_WRAPPER", "LLVM_PLATFORM_SPECIFIC"],
       "maven" : {
         "groupId" : "org.bytedeco.javacpp-presets",
         "artifactId" : "llvm-platform",
@@ -244,8 +224,7 @@ suite = {
             },
           },
           "<others>": {
-            "path": "",
-            "optional": True
+            "optional": True,
           },
         },
         "darwin": {
@@ -272,8 +251,7 @@ suite = {
         },
         "<others>": {
           "<others>": {
-            "path": "",
-            "optional": True
+            "optional": True,
           }
         }
       },
