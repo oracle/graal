@@ -56,10 +56,12 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.CachedWithFallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.TransitiveCachedLibraryNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.Valid1NodeGen;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.Valid2NodeGen;
@@ -195,6 +197,50 @@ public class CachedContextTest extends AbstractPolyglotTest {
 
         protected static final Object initArg(Object arg, Object ctx) {
             return arg;
+        }
+    }
+
+    @Test
+    public void testCacheWithFallback() {
+        CachedWithFallback node;
+        setupEnv();
+        context.initialize(TEST_LANGUAGE);
+
+        node = adoptNode(CachedWithFallbackNodeGen.create()).get();
+        assertEquals("s0", node.execute(""));
+        assertEquals("s0", node.execute(""));
+        node.guard = false;
+        assertEquals("fallback", node.execute(""));
+
+        node = adoptNode(CachedWithFallbackNodeGen.create()).get();
+        node.guard = false;
+        assertEquals("fallback", node.execute(""));
+        node.guard = true;
+        assertEquals("s0", node.execute(""));
+        assertEquals("s0", node.execute(""));
+    }
+
+    @SuppressWarnings("static-method")
+    abstract static class CachedWithFallback extends Node {
+
+        boolean guard = true;
+
+        public abstract String execute(Object o);
+
+        boolean isGuard(Object o) {
+            return guard;
+        }
+
+        @Specialization(guards = {"context == cachedContext", "isGuard(o)"}, limit = "1")
+        String s0(String o,
+                        @CachedContext(CachedContextTestLanguage.class) Env context,
+                        @Cached("context") Env cachedContext) {
+            return "s0";
+        }
+
+        @Fallback
+        String fallback(Object o) {
+            return "fallback";
         }
     }
 

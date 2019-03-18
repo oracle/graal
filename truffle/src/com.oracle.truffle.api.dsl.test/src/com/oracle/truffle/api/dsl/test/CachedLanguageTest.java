@@ -43,21 +43,19 @@ package com.oracle.truffle.api.dsl.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-import java.util.function.Supplier;
-
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.test.CachedContextTest.CachedContextTestLanguage;
-import com.oracle.truffle.api.dsl.test.CachedContextTest.CachedContextTestLibrary;
+import com.oracle.truffle.api.dsl.test.CachedLanguageTestFactory.CachedWithFallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedLanguageTestFactory.Valid1NodeGen;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -136,6 +134,50 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
             return CachedLanguageTestLanguage.getCurrentLanguage(CachedLanguageTestLanguage.class);
         }
 
+    }
+
+    @Test
+    public void testCacheWithFallback() {
+        CachedWithFallback node;
+        setupEnv();
+        context.initialize(TEST_LANGUAGE);
+
+        node = adoptNode(CachedWithFallbackNodeGen.create()).get();
+        assertEquals("s0", node.execute(""));
+        assertEquals("s0", node.execute(""));
+        node.guard = false;
+        assertEquals("fallback", node.execute(""));
+
+        node = adoptNode(CachedWithFallbackNodeGen.create()).get();
+        node.guard = false;
+        assertEquals("fallback", node.execute(""));
+        node.guard = true;
+        assertEquals("s0", node.execute(""));
+        assertEquals("s0", node.execute(""));
+    }
+
+    @SuppressWarnings("static-method")
+    abstract static class CachedWithFallback extends Node {
+
+        boolean guard = true;
+
+        public abstract String execute(Object o);
+
+        boolean isGuard(Object o) {
+            return guard;
+        }
+
+        @Specialization(guards = {"language == cachedLanguage", "isGuard(o)"}, limit = "1")
+        String s0(String o,
+                        @CachedLanguage CachedLanguageTestLanguage language,
+                        @Cached("language") CachedLanguageTestLanguage cachedLanguage) {
+            return "s0";
+        }
+
+        @Fallback
+        String fallback(Object o) {
+            return "fallback";
+        }
     }
 
     /*
