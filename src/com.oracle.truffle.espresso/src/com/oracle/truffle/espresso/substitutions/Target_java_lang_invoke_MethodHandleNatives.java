@@ -36,21 +36,24 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         Klass targetKlass = ref.getKlass();
 
         if (targetKlass.getType() == Type.Method) {
+            // Actual planting
             Method target = Method.getHostReflectiveMethodRoot(ref);
-            self.setHiddenField("vmtarget", target);
-            self.setHiddenField("invocationSignature", target.getRawSignature());
+            plantResolvedMethod(self, target, target.getRawSignature());
+            // Finish the job
             Field flagField = meta.MNflags;
             int refKind = target.getRefKind();
             self.setField(flagField, getMethodFlags(target, refKind));
             self.setField(meta.MNclazz, target.getDeclaringKlass().mirror());
         } else {
             assert (targetKlass.getType() == Type.Field);
+            // Actual planting
+            Field field = Target_sun_misc_Unsafe.getReflectiveFieldRoot(ref);
             int refkind = getRefKind((int) self.getField(meta.MNflags));
+            plantResolvedField(self, field);
+            // Finish the job
             StaticObjectImpl guestField = (StaticObjectImpl) ref;
-            Symbol<Type> fieldType = ((StaticObjectClass) guestField.getField(meta.Field_type)).getMirrorKlass().getType();
-            Symbol<Name> fieldName = meta.getNames().getOrCreate(Meta.toHostString((StaticObject) guestField.getField(meta.Field_name)));
             Klass fieldKlass = ((StaticObjectClass) guestField.getField(meta.Field_class)).getMirrorKlass();
-            plantFieldMemberName(self, fieldType, fieldKlass, fieldName, meta.MNflags, refkind);
+            self.setField(meta.MNflags, getFieldFlags(refkind, field));
             self.setField(meta.MNclazz, fieldKlass.mirror());
         }
     }
@@ -327,17 +330,30 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (target == null) {
             throw defKlass.getContext().getMeta().throwEx(NoSuchMethodException.class);
         }
+        plantResolvedMethod(memberName, target, sig);
+        memberName.setField(flagField, getMethodFlags(target, refKind));
+    }
+
+    private static void plantResolvedMethod(StaticObjectImpl memberName, Method target, Symbol<Signature> sig) {
         memberName.setHiddenField("vmtarget", target);
         memberName.setHiddenField("invocationSignature", sig);
-        memberName.setField(flagField, getMethodFlags(target, refKind));
     }
 
     private static void plantFieldMemberName(StaticObjectImpl memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, Field flagField, int refKind) {
         Field field = defKlass.lookupField(name, type);
-        memberName.setHiddenField("vmtarget", field.getDeclaringKlass());
-        memberName.setHiddenField("vmindex", (long) field.getSlot());
-        memberName.setHiddenField("TRUE_vmtarget", field);
+        if (field == null) {
+            throw defKlass.getContext().getMeta().throwEx(NoSuchFieldException.class);
+        }
+        plantResolvedField(memberName, field);
         memberName.setField(flagField, getFieldFlags(refKind, field));
+    }
+
+    private static void plantResolvedField(StaticObjectImpl memberName, Field field) {
+        memberName.setHiddenField("vmtarget", field.getDeclaringKlass());
+        // Remember we are accessing a static field.
+        long offset = Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET + (field.isStatic() ? Target_sun_misc_Unsafe.STATIC_FIELD_OFFSET : 0);
+        memberName.setHiddenField("vmindex", (field.getSlot() + offset));
+        memberName.setHiddenField("vmfield", field);
     }
 
     private static int getMethodFlags(Method target, int refKind) {

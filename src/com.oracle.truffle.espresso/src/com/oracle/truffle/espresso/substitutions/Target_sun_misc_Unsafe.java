@@ -43,6 +43,7 @@ import sun.misc.Unsafe;
 public final class Target_sun_misc_Unsafe {
 
     public static final int SAFETY_FIELD_OFFSET = 123456789;
+    public static final int STATIC_FIELD_OFFSET = (1 << 30);
 
     private static Unsafe U;
 
@@ -200,9 +201,18 @@ public final class Target_sun_misc_Unsafe {
 
     // FIXME(peterssen): This abomination must go, once the object model land.
 
-    private static Field getInstanceFieldFromIndex(StaticObject holder, int slot) {
-        if (!(0 <= slot && slot < (1 << 16))) {
-            throw EspressoError.shouldNotReachHere("the field offset is not normalized");
+    private static Field getInstanceFieldFromIndex(StaticObject _holder, int _slot) {
+        int slot;
+        StaticObject holder;
+        if (!(0 <= _slot && _slot < (1 << 16))) {
+            slot = _slot - STATIC_FIELD_OFFSET;
+            holder = _holder.getKlass().getStatics();
+            if (!(0 <= slot && slot < (1 << 16))) {
+                throw EspressoError.shouldNotReachHere("the field offset is not normalized");
+            }
+        } else {
+            slot = _slot;
+            holder = _holder;
         }
         if (holder.isStaticStorage()) {
             // Lookup static field in current class.
@@ -804,7 +814,7 @@ public final class Target_sun_misc_Unsafe {
         return U.pageSize();
     }
 
-    private static Field getReflectiveFieldRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
+    public static Field getReflectiveFieldRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
         Meta meta = seed.getKlass().getMeta();
         StaticObject curField = seed;
         Field target = null;
