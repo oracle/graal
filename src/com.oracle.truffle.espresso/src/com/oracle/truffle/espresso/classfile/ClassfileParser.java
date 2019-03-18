@@ -38,7 +38,11 @@ import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
-import com.oracle.truffle.espresso.runtime.*;
+import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.runtime.ClasspathFile;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class ClassfileParser {
 
@@ -217,13 +221,6 @@ public final class ClassfileParser {
         if (requestedClassName != null && !requestedClassName.equals(className)) {
             throw new NoClassDefFoundError(className + " (wrong name: " + requestedClassName + ")");
         }
-
-        // if this is an anonymous class fix up its name if it's in the unnamed
-        // package. Otherwise, throw IAE if it is in a different package than
-        // its host class.
-        // if (hostClass != null) {
-        // pool.setPreresolvedAt(t);
-        // }
 
         Symbol<Name> thisKlassName = pool.classAt(thisKlassIndex).getName(pool);
         Symbol<Type> thisKlassType = context.getTypes().fromName(thisKlassName);
