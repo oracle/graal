@@ -294,20 +294,20 @@ abstract class SerializeArgumentLibrary extends Library {
 
             @Specialization(guards = "interop.isPointer(arg)", rewriteOn = UnsupportedMessageException.class)
             static void putPointer(Object arg, NativeArgumentBuffer buffer, int ptrSize,
-                    @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedMessageException {
+                            @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedMessageException {
                 buffer.putPointer(interop.asPointer(arg), ptrSize);
             }
 
             @Specialization(guards = {"!interop.isPointer(arg)", "interop.isNull(arg)"})
             static void putNull(@SuppressWarnings("unused") Object arg, NativeArgumentBuffer buffer, int ptrSize,
-                    @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary interop) {
+                            @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary interop) {
                 buffer.putPointer(0, ptrSize);
             }
 
             @Specialization(replaces = {"putPointer", "putNull"})
             static void putGeneric(Object arg, NativeArgumentBuffer buffer, int ptrSize,
-                    @CachedLibrary("arg") InteropLibrary interop,
-                    @Shared("exception") @Cached BranchProfile exception) throws UnsupportedTypeException {
+                            @CachedLibrary("arg") InteropLibrary interop,
+                            @Shared("exception") @Cached BranchProfile exception) throws UnsupportedTypeException {
                 try {
                     interop.toNative(arg);
                     buffer.putPointer(interop.asPointer(arg), ptrSize);
@@ -333,13 +333,13 @@ abstract class SerializeArgumentLibrary extends Library {
 
             @Specialization(guards = "interop.isString(arg)", rewriteOn = UnsupportedMessageException.class)
             static void putString(Object arg, NativeArgumentBuffer buffer, int ptrSize,
-                    @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedMessageException {
+                            @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedMessageException {
                 buffer.putObject(TypeTag.STRING, interop.asString(arg), ptrSize);
             }
 
             @Specialization(guards = {"!interop.isString(arg)", "interop.isNull(arg)"})
             static void putNull(@SuppressWarnings("unused") Object arg, NativeArgumentBuffer buffer, int ptrSize,
-                    @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary interop) {
+                            @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary interop) {
                 buffer.putPointer(0, ptrSize);
             }
 
