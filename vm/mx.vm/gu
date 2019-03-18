@@ -12,7 +12,6 @@ while [ -h "$source" ] ; do
 done
 bin_dir="$( cd -P "$( dirname "$source" )" && pwd )"
 lib_dir="${bin_dir}"/..
-installer_jar="${lib_dir}/installer.jar"
 root_dir="${bin_dir}/../../../.."
 java_exe="${root_dir}/bin/java"
 
