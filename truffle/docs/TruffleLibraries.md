@@ -4,7 +4,7 @@
 
 ## Getting Started
 
-This tutorial provides a trace through a use-case on how to use Truffle Libraries. The full API documentation can be found in the [javadoc](TODO). This document assumes prior knowledge of Truffle APIs and the use of `@Specialization` with the `@Cached` annotation.
+This tutorial provides a trace through a use-case on how to use Truffle Libraries. The full API documentation can be found in the [javadoc](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/package-summary.html). This document assumes prior knowledge of Truffle APIs and the use of `@Specialization` with the `@Cached` annotation.
 
 ## Motivating Example
 
