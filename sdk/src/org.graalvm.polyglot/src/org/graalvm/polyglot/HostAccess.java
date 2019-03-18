@@ -49,7 +49,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Objects;
@@ -192,22 +191,6 @@ public final class HostAccess {
     @Override
     public String toString() {
         return name == null ? super.toString() : name;
-    }
-
-    private static boolean hasAnnotation(AnnotatedElement member, Class<? extends Annotation> annotationType) {
-        if (member instanceof Field) {
-            Field f = (Field) member;
-            return f.getAnnotation(annotationType) != null;
-        }
-        if (member instanceof Method) {
-            Method m = (Method) member;
-            return m.getAnnotation(annotationType) != null;
-        }
-        if (member instanceof Constructor) {
-            Constructor<?> c = (Constructor<?>) member;
-            return c.getAnnotation(annotationType) != null;
-        }
-        return false;
     }
 
     /**
