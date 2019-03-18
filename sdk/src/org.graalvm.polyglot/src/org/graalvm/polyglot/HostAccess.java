@@ -106,7 +106,7 @@ public final class HostAccess {
      *
      * @since 1.0
      */
-    public static final HostAccess EXPLICIT = newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).name("HostAccessPolicy.EXPLICIT").build();
+    public static final HostAccess EXPLICIT = newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).name("HostAccess.EXPLICIT").build();
 
     /**
      *
@@ -124,7 +124,7 @@ public final class HostAccess {
      *
      * @since 1.0
      */
-    public static final HostAccess ALL = newBuilder().allowPublicAccess(true).name("HostAccessPolicy.ALL").build();
+    public static final HostAccess ALL = newBuilder().allowPublicAccess(true).name("HostAccess.ALL").build();
 
     /**
      * Predefined host access policy that disallows any access to public host methods or fields.
@@ -137,7 +137,7 @@ public final class HostAccess {
      *
      * @since 1.0
      */
-    public static final HostAccess NONE = newBuilder().name("HostAccessPolicy.NONE").build();
+    public static final HostAccess NONE = newBuilder().name("HostAccess.NONE").build();
 
     HostAccess(Set<Class<? extends Annotation>> annotations, Set<AnnotatedElement> excludes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
         this.annotations = annotations;

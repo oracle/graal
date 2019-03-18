@@ -929,7 +929,7 @@ public final class Context implements AutoCloseable {
          *
          * <pre>
          * public class MyClass {
-         *     &#64;HostAccessPolicy.Export
+         *     &#64;HostAccess.Export
          *     public int accessibleMethod() {
          *         return 42;
          *     }
