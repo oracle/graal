@@ -15,7 +15,7 @@ When implementing arrays in Truffle Languages it is often necessary to use multi
 
 To keep the example simple we will only support `int` values and we will ignore index bounds error handling. We will also just implement the read operation and not the typically more complicated write operation.
 
-To make the example more interesting, we will implement an optimization that will let the compiler to constant fold sequenced array accesses even if the array receiver value is not constant. Let's assume we have the following code snippet `range(start, stride, length)[2]`. In this snippet, the variables `start` and `stride` are not known to be constant values, therefore, equivalent code to `start + stride * 2` gets compiled. However, if the `start` and `stride` values are known to always be the same then the compiler could constant-fold the entire operation. This optimization requires the use of caching, we will see later how this works.
+To make the example more interesting, we will implement an optimization that will let the compiler allow to constant fold sequenced array accesses even if the array receiver value is not constant. Let's assume we have the following code snippet `range(start, stride, length)[2]`. In this snippet, the variables `start` and `stride` are not known to be constant values, therefore, equivalent code to `start + stride * 2` gets compiled. However, if the `start` and `stride` values are known to always be the same then the compiler could constant-fold the entire operation. This optimization requires the use of caching, we will see later how this works.
 
 In the dynamic array implementation of Graal.js, we use 20 different representations. There are representations for constant, zero-based, contiguous, holes and sparse arrays. Some representations are further specialized for the types `byte`, `int`, `double`, `JSObject` and `Object`. The source code can be found [here](https://github.com/graalvm/graaljs/tree/master/graal-js/src/com.oracle.truffle.js.runtime/src/com/oracle/truffle/js/runtime/array/dyn). Note that currently, JS arrays don't use Truffle Libraries yet.
 
@@ -199,7 +199,9 @@ Let's do this for our example:
 @GenerateLibrary
 public abstract class ArrayLibrary extends Library {
 
-    public abstract boolean isArray(Object receiver);
+    public boolean isArray(Object receiver) {
+        return false;
+    }
 
     public abstract int read(Object receiver, int index);
 }
@@ -336,9 +338,9 @@ In this tutorial, we have learned that with Truffle Libraries we no longer need 
 
 * Run and debug all the examples [here](https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.api.library.test/src/com/oracle/truffle/api/library/test/examples/).
 
-* Read the interop migration guide, as an example of Truffle libraries usage [here]().
+* Read the interop migration guide, as an example of Truffle libraries usage [here](https://github.com/oracle/graal/blob/master/truffle/docs/InteropMigration.md).
 
-* Read the Truffle Library reference documentation [here]().
+* Read the Truffle Library reference documentation [here](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/package-summary.html).
 
 
 ## FAQ
@@ -361,22 +363,6 @@ _When not to use?_
 
 * For basic types that only have one representation.
 * For primitive representations that require boxing elimination to speed up the interpreter. Boxing elimination is not supported with Truffle Libraries at the moment.
-
-### How should I test libraries?
-
-TODO
-
-### How do I verify additional contracts of my library with pre and post conditions?
-
-TODO
-
-### What is the difference between cached and uncached versions of Libraries?
-
-TODO
-
-### What is the difference between specialized and dispatched versions of Libraries?
-
-TODO
 
 ### I decided to use a Truffle Library to abstract the language specific types of my language. Should those be exposed to other languages and tools?
 

@@ -24,7 +24,7 @@ The change from interop 1.0 to 2.0 was done in a compatible way. Therefore, the 
 
 ## Interop protocol changes
 
-Interop 2.0 comes with many protocol changes. This section is intended to provide rationales for these changes. For fully detailed reference documentation see the [InteropLibrary]() Javadoc. Note that also every deprecated API describes its migration path in the Javadoc tagged by @deprecated.
+Interop 2.0 comes with many protocol changes. This section is intended to provide rationales for these changes. For fully detailed reference documentation see the [InteropLibrary](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html) Javadoc. Note that also every deprecated API describes its migration path in the Javadoc tagged by @deprecated.
 
 ### Replace IS_BOXED and UNBOX with explicit types.
 
@@ -277,7 +277,7 @@ ForeignAccess.sendRead(Message.READ.createNode(), object, "property")
 #### Interop 2.0:####
 
 ```java
-InteropLibrary.getUncached().read(object, "property");
+InteropLibrary.getFactory().getUncached().read(object, "property");
 ```
 
 Note the following differences:
@@ -435,12 +435,10 @@ final class KeysArray implements TruffleObject {
 
     @ExportMessage
     Object readArrayElement(long index) throws InvalidArrayIndexException {
-        try {
-            return keys[(int) index];
-        } catch (IndexOutOfBoundsException e) {
-            CompilerDirectives.transferToInterpreter();
+        if (!isArrayElementReadable(index) {
             throw InvalidArrayIndexException.create(index);
         }
+        return keys[(int) index];
     }
 }
 ```
