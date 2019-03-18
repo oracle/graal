@@ -159,6 +159,12 @@ suite = {
                         "sha1" : "48da5fcf73bd85b257dbeb3ca033fd96e5ec2278",
                     }
                 },
+                "windows" : {
+                    "amd64" : {
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655-windows-amd64.tar.gz"],
+                        "sha1" : "ddaec648e701a88bb673ac3a1a96d2453d91eaee",
+                    }
+                },
             }
         },
     },
