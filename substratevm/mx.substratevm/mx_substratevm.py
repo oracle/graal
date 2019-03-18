@@ -51,6 +51,7 @@ import mx_gate
 import mx_unittest
 import mx_urlrewrites
 import mx_sdk
+import mx_subst
 from mx_compiler import GraalArchiveParticipant
 from mx_compiler import run_java
 from mx_gate import Task
@@ -581,6 +582,12 @@ def svm_gate_body(args, tasks):
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
                 native_unittest([])
+
+        with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
+            if t:
+                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
+                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--tool:nfi', '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
+                native_unittest(native_unittest_args)
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
