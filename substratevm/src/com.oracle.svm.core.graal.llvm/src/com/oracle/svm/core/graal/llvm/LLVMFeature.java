@@ -26,28 +26,37 @@ package com.oracle.svm.core.graal.llvm;
 
 import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
 
-import com.oracle.svm.core.snippets.SnippetRuntime;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.hosted.code.CompileQueue;
-import com.oracle.svm.hosted.image.NativeImageCodeCache;
-import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
-import com.oracle.svm.hosted.image.NativeImageHeap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
+import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
+import com.oracle.svm.hosted.image.NativeImageHeap;
 
 @AutomaticFeature
 @CLibrary("m")
@@ -69,6 +78,8 @@ public class LLVMFeature implements Feature, GraalFeature, Snippets {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        checkLLVMVersion();
+
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
             @Override
             public SubstrateBackend newBackend(Providers newProviders) {
@@ -96,5 +107,34 @@ public class LLVMFeature implements Feature, GraalFeature, Snippets {
                 return (CodePointer) sp.add(WordFactory.unsigned(handlerOffset - 1));
             }
         });
+    }
+
+    private static void checkLLVMVersion() {
+        List<String> supportedVersions = Arrays.asList("6.0.0", "6.0.1");
+
+        int status;
+        String output = null;
+        try (OutputStream os = new ByteArrayOutputStream()) {
+            List<String> cmd = new ArrayList<>();
+            cmd.add("llvm-config");
+            cmd.add("--version");
+            ProcessBuilder pb = new ProcessBuilder(cmd);
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+
+            FileUtils.drainInputStream(p.getInputStream(), os);
+
+            status = p.waitFor();
+            output = os.toString().trim();
+        } catch (IOException | InterruptedException e) {
+            status = -1;
+        }
+
+        if (status != 0) {
+            throw UserError.abort("Using the LLVM backend requires LLVM to be installed on your machine.");
+        }
+        if (!supportedVersions.contains(output)) {
+            throw UserError.abort("Unsupported LLVM version: " + output + ". Supported versions are: [" + String.join(", ", supportedVersions) + "]");
+        }
     }
 }
