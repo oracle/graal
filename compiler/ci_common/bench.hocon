@@ -141,7 +141,7 @@ bench-specjbb2015: ${bench-common} ${large-heap} ${specjbb-bench-notifications} 
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
   ]
   downloads: {
-    SPECJBB2015: { name: specjbb2015, version: "1.00" }
+    SPECJBB2015: { name: specjbb2015, version: "1.02" }
   }
   timelimit: "3:00:00"
 }
