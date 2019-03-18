@@ -3776,6 +3776,11 @@ final class Target_java_net_NetworkInterface {
         return null;
     }
 
+    @Substitute
+    static boolean isUp0(String name, int ind) throws SocketException {
+        return JavaNetNetworkInterface.isUp0(name, ind);
+    }
+
     // { Do not format quoted code: @formatter:off
     // Translation of jdk/src/solaris/native/java/net/NetworkInterface.c?v=Java_1.8.0_40_b10.
     // 410 /*

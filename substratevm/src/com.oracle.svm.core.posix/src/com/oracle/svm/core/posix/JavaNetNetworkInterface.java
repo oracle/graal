@@ -31,7 +31,9 @@ import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 
+import com.oracle.svm.core.util.Utf8;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -181,6 +183,39 @@ public class JavaNetNetworkInterface {
             .newline().string("  .childs: ").object(childs)
             .newline().string("  .next: ").object(next)
             .string("]");
+        }
+    }
+
+    static boolean isUp0(String name, int ind) throws SocketException {
+        int flags = getFlags0(name);
+        return CTypeConversion.toBoolean(flags & NetIf.IFF_UP())
+                && CTypeConversion.toBoolean(flags & NetIf.IFF_RUNNING());
+    }
+
+    static int getFlags0(String ifname) throws SocketException {
+        if (ifname == null) {
+            throw new NullPointerException("network interface name is NULL");
+        }
+        byte[] ifname_utf = Utf8.stringToUtf8(ifname, true);
+        CIntPointer flags_Pointer = StackValue.get(CIntPointer.class);
+        flags_Pointer.write(0);
+
+        try (PinnedObject ifname_utf_Pin = PinnedObject.create(ifname_utf)) {
+            CCharPointer ifname_utf_Pointer = ifname_utf_Pin.addressOfArrayElement(0);
+            int sock = openSocketWithFallback(ifname_utf_Pointer);
+            if (sock < 0) {
+                return -1;
+            }
+            try {
+                final PlatformSupport platformSupport = ImageSingletons.lookup(JavaNetNetworkInterface.PlatformSupport.class);
+                int ret = platformSupport.getFlags(sock, ifname_utf_Pointer, flags_Pointer);
+                if (ret < 0) {
+                    throw new SocketException("getFlags() failed");
+                }
+                return flags_Pointer.read();
+            } finally {
+                Unistd.close(sock);
+            }
         }
     }
 
@@ -447,6 +482,53 @@ public class JavaNetNetworkInterface {
         // 784     /* return the NetworkInterface */
         // 785     return netifObj;
         return netifObj;
+    }
+
+    // 1089 #if defined(AF_INET6)
+    /* Pushing this #if inside the method body. */
+    // 1090 /*
+    // 1091  * Opens a socket for further ioctl calls. Tries AF_INET socket first and
+    // 1092  * if it fails return AF_INET6 socket.
+    // 1093  */
+    // 1094 static int openSocketWithFallback(JNIEnv *env, const char *ifname) {
+    @SuppressWarnings({"unused"})
+    public static int openSocketWithFallback(CCharPointer ifname) throws SocketException {
+        if (IsDefined.socket_AF_INET6()) {
+            // 1095     int sock;
+            int sock;
+            // 1096
+            // 1097     if ((sock = JVM_Socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+            if ((sock = VmPrimsJVM.JVM_Socket(Socket.AF_INET(), Socket.SOCK_DGRAM(), 0)) < 0) {
+                // 1098         if (errno == EPROTONOSUPPORT) {
+                if (Errno.errno() == Errno.EPROTONOSUPPORT()) {
+                    // 1099             if ((sock = JVM_Socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+                    if ((sock = VmPrimsJVM.JVM_Socket(Socket.AF_INET6(), Socket.SOCK_DGRAM(), 0)) < 0) {
+                        // 1100                 NET_ThrowByNameWithLastError
+                        // 1101                     (env, JNU_JAVANETPKG "SocketException", "IPV6 Socket creation failed");
+                        throw new SocketException(PosixUtils.lastErrorString("IPV6 Socket creation failed"));
+                        // 1102                 return -1;
+                        /* Unreachable. */
+                    }
+                } else { // errno is not NOSUPPORT
+                    // 1105             NET_ThrowByNameWithLastError
+                    // 1106                 (env, JNU_JAVANETPKG "SocketException", "IPV4 Socket creation failed");
+                    throw new SocketException(PosixUtils.lastErrorString("IPV4 Socket creation failed"));
+                    // 1107             return -1;
+                    /* Unreachable. */
+                }
+            }
+            // 1110
+            // 1111     // Linux starting from 2.6.? kernel allows ioctl call with either IPv4 or
+            // 1112     // IPv6 socket regardless of type of address of an interface.
+            // 1113     return sock;
+            return sock;
+        } else {
+            // 1115 #else
+            // 1116 static int openSocketWithFallback(JNIEnv *env, const char *ifname) {
+            // 1117     return openSocket(env, AF_INET);
+            return JavaNetNetworkInterface.openSocket(Socket.AF_INET());
+        }
+        // 1119 #endif
     }
 
     /*

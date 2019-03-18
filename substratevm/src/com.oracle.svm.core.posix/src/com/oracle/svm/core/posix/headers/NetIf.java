@@ -64,6 +64,12 @@ public class NetIf {
     @CConstant
     public static native int IFF_BROADCAST();
 
+    @CConstant
+    public static native int IFF_UP();
+
+    @CConstant
+    public static native int IFF_RUNNING();
+
     /* { Do not reformat commented out C code: @formatter:off */
     @CContext(PosixDirectives.class)
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
