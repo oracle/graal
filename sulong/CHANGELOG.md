@@ -6,7 +6,9 @@ New features:
 
 # Version 1.0.0 RC14
 
-No changes.
+Changes:
+
+* Various bug fixes.
 
 # Version 1.0.0 RC13
 
