@@ -90,6 +90,19 @@ public class ContextAPITest {
     static LanguageContext langContext;
 
     @Test
+    public void testEqualsAndHashcode() {
+        Context context = Context.create();
+        context.enter();
+
+        Context currentContext = Context.getCurrent();
+        assertEquals(context, currentContext);
+        assertEquals(context.hashCode(), currentContext.hashCode());
+
+        context.leave();
+        context.close();
+    }
+
+    @Test
     public void testContextCreateSingleLanguage() {
         Context context = Context.create(ContextAPITestLanguage.ID);
         try {
