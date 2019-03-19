@@ -29,13 +29,15 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.word.PointerBase;
+
 /**
- * Qualifies a C method parameter as const.
+ * Qualifies a C type as const in an entry-point method signature.
  *
- * Can be placed only on pointer types in function arguments as it applies only to the function
- * declaration where const primitive types have no effect.
+ * Can be placed only on {@link PointerBase} types in function arguments as it applies only to the
+ * function declaration where const primitive types have no effect.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER})
+@Target({ElementType.TYPE_USE})
 public @interface CConst {
 }

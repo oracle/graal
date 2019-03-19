@@ -41,6 +41,7 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsola
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CHeader;
+import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolatePointer;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
@@ -62,7 +63,7 @@ public final class PolyglotNativeAPIEntryPoints {
                     "Every thread starts with a default handle scope. This scope is released when",
                     "the thread is detached."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
-    public static int polyCreateIsolate(@CConst PolyglotIsolateParameters params, PolyglotIsolatePointer isolate, PolyglotIsolateThreadPointer thread) {
+    public static @CTypedef(name = "poly_status") int polyCreateIsolate(@CConst PolyglotIsolateParameters params, PolyglotIsolatePointer isolate, PolyglotIsolateThreadPointer thread) {
         return createIsolate(params, isolate, thread) == 0 ? Poly.ok() : Poly.generic_failure();
     }
 
@@ -74,7 +75,7 @@ public final class PolyglotNativeAPIEntryPoints {
                     "If the thread has already been attached, the call succeeds and also provides",
                     "the thread's isolate thread structure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
-    public static int polyAttachThread(PolyglotIsolate isolate, PolyglotIsolateThreadPointer thread) {
+    public static @CTypedef(name = "poly_status") int polyAttachThread(PolyglotIsolate isolate, PolyglotIsolateThreadPointer thread) {
         return attachThread(isolate, thread) == 0 ? Poly.ok() : Poly.generic_failure();
     }
 
@@ -105,7 +106,7 @@ public final class PolyglotNativeAPIEntryPoints {
                     "be executing in the isolate thread's context.",
                     "Returns poly_ok on success, or poly_generic_failure on failure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
-    public static int polyDetachThread(PolyglotIsolateThread thread) {
+    public static @CTypedef(name = "poly_status") int polyDetachThread(PolyglotIsolateThread thread) {
         return detachThread(thread) == 0 ? Poly.ok() : Poly.generic_failure();
     }
 
@@ -121,7 +122,7 @@ public final class PolyglotNativeAPIEntryPoints {
                     "only the current thread.",
                     "Returns poly_ok on success, or poly_generic_failure on failure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
-    public static int polyDetachThreads(PolyglotIsolateThread thread, PolyglotIsolateThreadPointer threads, int length) {
+    public static @CTypedef(name = "poly_status") int polyDetachThreads(PolyglotIsolateThread thread, PolyglotIsolateThreadPointer threads, int length) {
         return detachThreads(thread, threads, length) == 0 ? Poly.ok() : Poly.generic_failure();
     }
 
@@ -132,7 +133,7 @@ public final class PolyglotNativeAPIEntryPoints {
                     "that is associated with it.",
                     "Returns poly_ok on success, or poly_generic_failure on failure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
-    public static int polyTearDownIsolate(PolyglotIsolateThread thread) {
+    public static @CTypedef(name = "poly_status") int polyTearDownIsolate(PolyglotIsolateThread thread) {
         return tearDownIsolate(thread) == 0 ? Poly.ok() : Poly.generic_failure();
     }
 
