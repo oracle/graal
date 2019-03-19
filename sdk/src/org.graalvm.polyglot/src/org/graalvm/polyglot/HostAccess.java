@@ -311,7 +311,7 @@ public final class HostAccess {
          *
          * @since 1.0
          */
-        public Builder preventAccess(Executable element) {
+        public Builder denyAccess(Executable element) {
             Objects.requireNonNull(element);
             excludes.add(element);
             return this;
@@ -322,7 +322,7 @@ public final class HostAccess {
          *
          * @since 1.0
          */
-        public Builder preventAccess(Field element) {
+        public Builder denyAccess(Field element) {
             Objects.requireNonNull(element);
             excludes.add(element);
             return this;
@@ -333,7 +333,7 @@ public final class HostAccess {
          *
          * @since 1.0
          */
-        public Builder preventAccess(Class<?> clazz) {
+        public Builder denyAccess(Class<?> clazz) {
             Objects.requireNonNull(clazz);
             for (Method method : clazz.getMethods()) {
                 excludes.add(method);

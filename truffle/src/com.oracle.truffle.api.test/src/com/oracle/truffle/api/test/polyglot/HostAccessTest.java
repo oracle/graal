@@ -95,12 +95,13 @@ public class HostAccessTest {
     public void banAccessToReflection() throws Exception {
         // @formatter:off
         HostAccess config = HostAccess.newBuilder().
-                        allowPublicAccess(true).
-                        preventAccess(Class.class).
-                        preventAccess(Method.class).
-                        preventAccess(Field.class).
-                        preventAccess(Proxy.class).
-                        preventAccess(Object.class).build();
+            allowPublicAccess(true).
+            denyAccess(Class.class).
+            denyAccess(Method.class).
+            denyAccess(Field.class).
+            denyAccess(Proxy.class).
+            denyAccess(Object.class).
+            build();
         // @formatter:on
 
         try (Context c = Context.newBuilder().allowHostAccess(config).build()) {
@@ -127,7 +128,12 @@ public class HostAccessTest {
 
     @Test
     public void banAccessToEquals() throws Exception {
-        HostAccess config = HostAccess.newBuilder().allowPublicAccess(true).preventAccess(Object.class.getMethod("equals", Object.class)).build();
+        // @formatter:off
+        HostAccess config = HostAccess.newBuilder().
+            allowPublicAccess(true).
+            denyAccess(Object.class.getMethod("equals", Object.class)).
+            build();
+        // @formatter:on
 
         try (Context c = Context.newBuilder().allowHostAccess(config).build()) {
             Value readValue = c.eval("sl", "" +
