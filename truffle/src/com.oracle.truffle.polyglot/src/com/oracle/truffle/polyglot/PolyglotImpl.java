@@ -44,6 +44,7 @@ import static com.oracle.truffle.polyglot.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.VMAccessor.NODES;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
@@ -51,6 +52,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +74,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
@@ -1204,6 +1207,26 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object contextVMObject) {
             return ((PolyglotContextImpl) contextVMObject).engine.getFileTypeDetectorsSupplier();
+        }
+
+        public boolean isCreateProcessAllowed(Object polylgotLanguageContext) {
+            return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.createProcessAllowed;
+        }
+
+        @Override
+        public Map<String, String> getProcessEnvironment(Object polylgotLanguageContext) {
+            return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.processHandler.getEnvironment();
+        }
+
+        @Override
+        public ProcessHandler.ProcessCommand newProcessCommand(Object vmObject, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        ProcessHandler.Redirect[] redirects) {
+            return ((VMObject) vmObject).getImpl().getIO().newProcessCommand(cmd, cwd, environment, redirectErrorStream, redirects);
+        }
+
+        @Override
+        public Process startProcess(Object polylgotLanguageContext, ProcessHandler.ProcessCommand processCommand) throws IOException {
+            return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.processHandler.start(processCommand);
         }
     }
 }

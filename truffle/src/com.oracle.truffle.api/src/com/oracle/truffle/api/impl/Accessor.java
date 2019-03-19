@@ -48,7 +48,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -88,6 +87,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.List;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -372,6 +373,15 @@ public abstract class Accessor {
         public abstract TruffleFile getTruffleFile(String path);
 
         public abstract TruffleFile getTruffleFile(URI uri);
+
+        public abstract boolean isCreateProcessAllowed(Object polylgotLanguageContext);
+
+        public abstract Map<String, String> getProcessEnvironment(Object polylgotLanguageContext);
+
+        public abstract ProcessHandler.ProcessCommand newProcessCommand(Object vmObject, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        ProcessHandler.Redirect[] redirects);
+
+        public abstract Process startProcess(Object polylgotLanguageContext, ProcessHandler.ProcessCommand processCommand) throws IOException;
     }
 
     public abstract static class LanguageSupport {

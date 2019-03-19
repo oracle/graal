@@ -2127,6 +2127,15 @@ public abstract class TruffleLanguage<C> {
             languageServicesCollector.add(service);
         }
 
+        public TruffleProcessBuilder newProcessBuilder(String... command) {
+            if (!AccessAPI.engineAccess().isCreateProcessAllowed(vmObject)) {
+                throw new SecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
+            }
+            List<String> cmd = new ArrayList<>(command.length);
+            Collections.addAll(cmd, command);
+            return new TruffleProcessBuilder(this.vmObject, cmd);
+        }
+
         @SuppressWarnings("rawtypes")
         @TruffleBoundary
         <E extends TruffleLanguage> E getLanguage(Class<E> languageClass) {

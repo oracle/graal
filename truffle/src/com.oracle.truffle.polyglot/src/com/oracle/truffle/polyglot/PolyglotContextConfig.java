@@ -53,6 +53,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
@@ -64,6 +65,7 @@ final class PolyglotContextConfig {
     final boolean nativeAccessAllowed;
     final boolean createThreadAllowed;
     final boolean hostClassLoadingAllowed;
+    final boolean createProcessAllowed;
     final Predicate<String> classFilter;
     private final Map<String, String[]> applicationArguments;
     final Set<String> allowedPublicLanguages;
@@ -72,12 +74,14 @@ final class PolyglotContextConfig {
     final Map<String, Level> logLevels;    // effectively final
     final Handler logHandler;
     final PolyglotAccess polyglotAccess;
+    final ProcessHandler processHandler;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
-                    Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler) {
+                    Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler,
+                    boolean createProcessAllowed, ProcessHandler processHandler) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -89,6 +93,7 @@ final class PolyglotContextConfig {
         this.nativeAccessAllowed = nativeAccessAllowed;
         this.createThreadAllowed = createThreadAllowed;
         this.hostClassLoadingAllowed = hostClassLoadingAllowed;
+        this.createProcessAllowed = createProcessAllowed;
         this.classFilter = classFilter;
         this.applicationArguments = applicationArguments;
         this.allowedPublicLanguages = allowedPublicLanguages;
@@ -111,6 +116,7 @@ final class PolyglotContextConfig {
             }
             languageOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
         }
+        this.processHandler = processHandler;
     }
 
     boolean isAccessPermitted(PolyglotLanguage from, PolyglotLanguage to) {

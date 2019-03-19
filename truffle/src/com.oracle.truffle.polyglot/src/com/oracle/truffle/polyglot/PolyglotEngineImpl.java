@@ -78,6 +78,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -1107,7 +1108,7 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
                     HostAccess access,
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
-                    Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream) {
+                    Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler) {
         checkState();
         if (boundEngine && preInitializedContext == null && !contexts.isEmpty()) {
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
@@ -1150,9 +1151,16 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
 
         final InputStream useIn = configIn == null ? this.in : configIn;
 
+        ProcessHandler useProcessHandler;
+        if (allowCreateProcess) {
+            useProcessHandler = processHandler != null ? processHandler : ProcessHandlers.newDefaultProcessHandler();
+        } else {
+            useProcessHandler = ProcessHandlers.newDeniedProcessHandler();
+        }
+
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                         allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
-                        allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, useHandler);
+                        allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, useHandler, allowCreateProcess, useProcessHandler);
 
         PolyglotContextImpl context = loadPreinitializedContext(config);
         if (context == null) {
