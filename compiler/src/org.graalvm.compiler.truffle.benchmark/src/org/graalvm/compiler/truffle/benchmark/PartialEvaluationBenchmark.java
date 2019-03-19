@@ -54,7 +54,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 @State(Scope.Benchmark)
 public abstract class PartialEvaluationBenchmark {
 
-    private static final int AST_WARMUPS = 5;
+    private static final int INTERPRETER_WARMUPS = 5;
 
     private final TruffleCompilerImpl compiler;
     private final PartialEvaluator partialEvaluator;
@@ -74,28 +74,47 @@ public abstract class PartialEvaluationBenchmark {
         debugContext = DebugContext.create(optionValues, DebugHandlersFactory.LOADER);
     }
 
-    @Setup
-    public void warmupAST() {
-        // run call target so that all classes are loaded and AST is specialized
-        for (int i = 0; i < AST_WARMUPS; i++) {
-            callTarget.call(callArguments);
-        }
+    public TruffleCompilerImpl getCompiler() {
+        return compiler;
+    }
+
+    public PartialEvaluator getPartialEvaluator() {
+        return partialEvaluator;
     }
 
     protected abstract RootNode rootNode();
 
+    @Setup
+    public final void setup() {
+        customSetup();
+        warmupInterpreter();
+    }
+
+    public void customSetup() {
+        // can be overwritten by sub-classes
+    }
+
+    private void warmupInterpreter() {
+        // run call target so that all classes are loaded and AST is specialized
+        for (int i = 0; i < INTERPRETER_WARMUPS; i++) {
+            callTarget.call(callArguments);
+        }
+    }
+
     protected Object[] callArguments() {
+        // default implementation returns an empty object array
+        // can be overwritten by sub-classes
         return new Object[0];
     }
 
     @Benchmark
-    public Object call() {
+    public final Object call() {
         return callTarget.call(callArguments);
     }
 
     @Benchmark
     @SuppressWarnings("try")
-    public StructuredGraph createGraph() {
+    public final StructuredGraph createGraph() {
         try (DebugContext.Scope s = debugContext.scope("TruffleCompilation", new TruffleDebugJavaMethod(callTarget))) {
             TruffleInlining truffleInlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
             CompilationIdentifier identifier = compiler.createCompilationIdentifier(callTarget);
@@ -110,7 +129,7 @@ public abstract class PartialEvaluationBenchmark {
     }
 
     @Benchmark
-    public void fastPartialEvaluate() {
+    public final void fastPartialEvaluate() {
         TruffleInlining truffleInlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
         CompilationIdentifier identifier = compiler.createCompilationIdentifier(callTarget);
         SpeculationLog speculationLog = callTarget.getSpeculationLog();

@@ -47,7 +47,7 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         return expectDynamic(executeGeneric(frame));
     }
 
-    public long evaluateCondition(VirtualFrame frame) {
+    public long evaluateLong(VirtualFrame frame) {
         try {
             return executeLong(frame);
         } catch (UnexpectedResultException ex) {
