@@ -30,6 +30,7 @@ import static com.oracle.truffle.regex.util.Boundaries.setToArray;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -57,6 +58,7 @@ public class TruffleReadOnlyMap implements RegexLanguageObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new TruffleReadOnlyKeysArray(setToArray(mapKeySet(map), new String[map.size()]));
     }
