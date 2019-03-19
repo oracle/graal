@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.nfi.posix;
 
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.LibC;
@@ -96,10 +97,11 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     protected long lookupImpl(long nativeContext, long library, String name) {
         // clear previous error
         Dlfcn.dlerror();
+        PlatformNativeLibrarySupport nativeLibrarySupport = PlatformNativeLibrarySupport.singleton();
 
         PointerBase ret;
         if (library == 0) {
-            ret = PosixUtils.dlsym(Dlfcn.RTLD_DEFAULT(), name);
+            ret = nativeLibrarySupport.findBuiltinSymbol(name);
         } else {
             ret = PosixUtils.dlsym(WordFactory.pointer(library), name);
         }

@@ -94,11 +94,11 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
     protected long lookupImpl(long nativeContext, long library, String name) {
         // clear previous error
         //        Dlfcn.dlerror();
-        PlatformNativeLibrarySupport nativeLibraraySupport = PlatformNativeLibrarySupport.singleton();
+        PlatformNativeLibrarySupport nativeLibrarySupport = PlatformNativeLibrarySupport.singleton();
 
         PointerBase ret;
         if (library == 0) {
-            ret = nativeLibraraySupport.findBuiltinSymbol(name);
+            ret = nativeLibrarySupport.findBuiltinSymbol(name);
         } else {
             try (CTypeConversion.CCharPointerHolder symbol = CTypeConversion.toCString(name)) {
                 ret = WinBase.GetProcAddress(WordFactory.pointer(library), symbol.get());
