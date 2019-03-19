@@ -5636,8 +5636,6 @@ final class Target_java_net_PlainSocketImpl {
             case SocketOptions.SO_LINGER:
             case SocketOptions.IP_TOS:
             {
-                /* Accessing values of java.lang.Integer the easy way. */
-                Integer valueInteger = (Integer) value;
                 // 934                 jclass cls;
                 // 935                 jfieldID fid;
                 // 936
@@ -5653,7 +5651,8 @@ final class Target_java_net_PlainSocketImpl {
                         // 944                         optval.ling.l_onoff = 1;
                         ((Socket.linger) optval_Pointer).set_l_onoff(1);
                         // 945                         optval.ling.l_linger = (*env)->GetIntField(env, value, fid);
-                        ((Socket.linger) optval_Pointer).set_l_linger(valueInteger.intValue());
+                        int valueAsInt = ((Integer)value).intValue();
+                        ((Socket.linger) optval_Pointer).set_l_linger(valueAsInt);
                     } else {
                         // 947                         optval.ling.l_onoff = 0;
                         ((Socket.linger) optval_Pointer).set_l_onoff(0);
@@ -5666,7 +5665,8 @@ final class Target_java_net_PlainSocketImpl {
                     LibC.memcpy(optval_Pointer, optval_Pointer, WordFactory.unsigned(optlen));
                 } else {
                     // 952                     optval.i = (*env)->GetIntField(env, value, fid);
-                    ((CIntPointer) optval_Pointer).write(valueInteger.intValue());
+                    int valueAsInt = ((Integer)value).intValue();
+                    ((CIntPointer) optval_Pointer).write(valueAsInt);
                     // 953                     optlen = sizeof(optval.i);
                     optlen = SizeOf.get(CIntPointer.class);
                     /* Copy to optval. */
