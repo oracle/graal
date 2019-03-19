@@ -94,6 +94,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -522,6 +523,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             return false;
         } else if (implementationMethod.getAnnotation(NeverInline.class) != null) {
             /* Ensure that NeverInline methods are also never inlined during Truffle compilation. */
+            return false;
+        } else if (implementationMethod.getAnnotation(Uninterruptible.class) != null) {
+            /* The semantics of Uninterruptible would get lost during partial evaluation. */
             return false;
         } else if (implementationMethod.getAnnotation(TruffleCallBoundary.class) != null) {
             return false;
