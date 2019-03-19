@@ -36,8 +36,17 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
 public abstract class LLVMIsConstant extends LLVMBuiltin {
 
+    // The @llvm.is.constant intrinsic evaluates to whether the given argument is constant. LLVM
+    // uses it when an optimization pass sees an opportunity to optimize code based on the
+    // assumption that an SSA-value is a compile-time constant. If a later optimization pass in fact
+    // reduces the argument to a constant, then the code that is optimized for this assumption can
+    // be used.
+
     @Specialization
     protected boolean doGeneric(@SuppressWarnings("unused") Object value) {
+        // we cannot assume a value to be constant in the interpreter, but we do not want to rely on
+        // the CompilerAsserts either since those would lead us to execute different bitcode
+        // instructions in compiled and interpreted code
         return false;
     }
 }
