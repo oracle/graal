@@ -1,3 +1,13 @@
+# Version 1.0.0 RC15
+
+New features:
+
+* Preliminary support for bitcode produced by LLVM 8.
+
+# Version 1.0.0 RC14
+
+No changes.
+
 # Version 1.0.0 RC13
 
 New features:
