@@ -88,7 +88,6 @@ public final class HostAccess {
 
     private final String name;
     private final Set<Class<? extends Annotation>> annotations;
-    private final Set<AnnotatedElement> excludes;
     private final Map<Class<?>, Boolean> excludeTypes;
     private final Set<AnnotatedElement> members;
     private final boolean allowPublic;
@@ -141,9 +140,8 @@ public final class HostAccess {
      */
     public static final HostAccess NONE = newBuilder().name("HostAccess.NONE").build();
 
-    HostAccess(Set<Class<? extends Annotation>> annotations, Set<AnnotatedElement> excludes, Map<Class<?>, Boolean> excludeTypes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
+    HostAccess(Set<Class<? extends Annotation>> annotations, Map<Class<?>, Boolean> excludeTypes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
         this.annotations = annotations;
-        this.excludes = excludes;
         this.excludeTypes = excludeTypes;
         this.members = members;
         this.name = name;
@@ -157,13 +155,10 @@ public final class HostAccess {
      * @since 1.0
      */
     public static Builder newBuilder() {
-        return new HostAccess(null, null, null, null, null, false).new Builder();
+        return new HostAccess(null, null, null, null, false).new Builder();
     }
 
     boolean allowAccess(AnnotatedElement member) {
-        if (excludes != null && excludes.contains(member)) {
-            return false;
-        }
         if (excludeTypes != null) {
             Class<?> owner = getDeclaringClass(member);
             for (Map.Entry<Class<?>, Boolean> entry : excludeTypes.entrySet()) {
@@ -285,7 +280,6 @@ public final class HostAccess {
      */
     public final class Builder {
         private final Set<Class<? extends Annotation>> annotations = new HashSet<>();
-        private final Set<AnnotatedElement> excludes = new HashSet<>();
         private final Map<Class<?>, Boolean> excludeTypes = new HashMap<>();
         private final Set<AnnotatedElement> members = new HashSet<>();
         private boolean allowPublic;
@@ -344,28 +338,6 @@ public final class HostAccess {
         }
 
         /**
-         * Prevents access to given method or constructor.
-         *
-         * @since 1.0
-         */
-        public Builder denyAccess(Executable element) {
-            Objects.requireNonNull(element);
-            excludes.add(element);
-            return this;
-        }
-
-        /**
-         * Prevents access to given field.
-         *
-         * @since 1.0
-         */
-        public Builder denyAccess(Field element) {
-            Objects.requireNonNull(element);
-            excludes.add(element);
-            return this;
-        }
-
-        /**
          * Prevents access to members of given class and its subclasses.
          *
          * @param clazz the class to deny access to
@@ -401,7 +373,7 @@ public final class HostAccess {
          * @since 1.0
          */
         public HostAccess build() {
-            return new HostAccess(annotations, excludes, excludeTypes, members, name, allowPublic);
+            return new HostAccess(annotations, excludeTypes, members, name, allowPublic);
         }
     }
 }

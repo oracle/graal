@@ -133,7 +133,7 @@ public class HostAccessTest {
         // @formatter:off
         HostAccess config = HostAccess.newBuilder().
             allowPublicAccess(true).
-            denyAccess(Object.class.getMethod("equals", Object.class)).
+            denyAccess(Object.class, false).
             build();
         // @formatter:on
 
