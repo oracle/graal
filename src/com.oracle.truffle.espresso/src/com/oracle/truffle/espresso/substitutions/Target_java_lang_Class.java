@@ -42,6 +42,7 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -169,7 +170,10 @@ public final class Target_java_lang_Class {
                                 /* name */ context.getStrings().intern(f.getName()),
                                 /* type */ f.resolveTypeKlass().mirror(),
                                 /* modifiers */ f.getModifiers(),
-                                /* slot */ f.getSlot(),
+                                /* slot */ f.getSlot(), // +
+                                                        // Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET,
+                                                        // // Still doesn't make lambda accessors
+                                                        // work...
                                 /* signature */ meta.toGuestString(f.getType()),
                                 // FIXME(peterssen): Fill annotations bytes.
                                 /* annotations */ runtimeVisibleAnnotations);
@@ -592,5 +596,16 @@ public final class Target_java_lang_Class {
             }
         }
         return StaticObject.NULL;
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @Host(Class[].class) StaticObject getDeclaredClasses0(@Host(Class.class) StaticObjectClass self) {
+        Klass klass = self.getMirrorKlass();
+
+        if (klass.isPrimitive() || !klass.isArray()) {
+            return new StaticObjectArray(klass.getMeta().Class_Array, new StaticObject[0]);
+        }
+
+        throw EspressoError.unimplemented();
     }
 }

@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -42,14 +43,23 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
+import com.oracle.truffle.espresso.nodes.MHInvokeBasicNode;
+import com.oracle.truffle.espresso.nodes.MHInvokeGenericNode;
+import com.oracle.truffle.espresso.nodes.MHLinkToNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
+
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
 public abstract class Klass implements ModifiersProvider, ContextAccess {
 
@@ -240,7 +250,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * {@code null} if this object does not represent a VM anonymous class.
      */
     public Klass getHostClass() {
-        throw EspressoError.unimplemented();
+        return null;
     }
 
     /**
@@ -462,10 +472,85 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         methodLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
         Method method = lookupDeclaredMethod(methodName, signature);
+        if (method == null && type == Type.MethodHandle) {
+            method = lookupPolysigMethod(methodName, signature);
+        }
         if (method == null && getSuperKlass() != null) {
-            return getSuperKlass().lookupMethod(methodName, signature);
+            method = getSuperKlass().lookupMethod(methodName, signature);
         }
         return method;
+    }
+
+    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        if (methodName == Name.invoke || methodName == Name.invokeExact) {
+            return findMethodHandleIntrinsic(methodName, signature, Target_java_lang_invoke_MethodHandleNatives._invokeGeneric);
+        } else if (methodName == Name.invokeBasic) {
+            return findMethodHandleIntrinsic(methodName, signature, Target_java_lang_invoke_MethodHandleNatives._invokeBasic);
+        } else if (methodName == Name.linkToInterface) {
+            return findMethodHandleIntrinsic(methodName, signature, Target_java_lang_invoke_MethodHandleNatives._linkToInterface);
+        } else if (methodName == Name.linkToSpecial) {
+            return findMethodHandleIntrinsic(methodName, signature, Target_java_lang_invoke_MethodHandleNatives._linkToSpecial);
+        } else if (methodName == Name.linkToStatic) {
+            return findMethodHandleIntrinsic(methodName, signature, Target_java_lang_invoke_MethodHandleNatives._linkToStatic);
+        } else if (methodName == Name.linkToVirtual) {
+            return findMethodHandleIntrinsic(methodName, signature, Target_java_lang_invoke_MethodHandleNatives._linkToVirtual);
+        }
+        for (Method m : getDeclaredMethods()) {
+            if (m.isNative() && m.isVarargs() && m.getName() == methodName) {
+                // check signature?
+                throw EspressoError.unimplemented("New method handle invoke method? " + methodName);
+            }
+        }
+        return null;
+    }
+
+    private Method findMethodHandleIntrinsic(@SuppressWarnings("unused") Symbol<Name> methodName, Symbol<Signature> signature, int id) {
+        if (id == Target_java_lang_invoke_MethodHandleNatives._invokeGeneric) {
+            return getMeta().invoke.findInvokeIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+                // TODO(garcia) Create a whole new Node to handle MH invokes.
+                @Override
+                public EspressoBaseNode apply(Method method) {
+                    // TODO(garcia) true access checks
+                    ObjectKlass callerKlass = getMeta().Object;
+                    StaticObjectArray appendixBox = new StaticObjectArray(getMeta().Object_array, new Object[1]);
+                    StaticObjectImpl memberName = (StaticObjectImpl) getMeta().linkMethod.invokeDirect(
+                                    null,
+                                    callerKlass.mirror(), (int) REF_invokeVirtual,
+                                    getMeta().MethodHandle.mirror(), getMeta().toGuestString(methodName), getMeta().toGuestString(signature),
+                                    appendixBox);
+                    StaticObject appendix = appendixBox.get(0);
+                    return new MHInvokeGenericNode(method, memberName, appendix);
+                }
+            });
+        } else if (id == Target_java_lang_invoke_MethodHandleNatives._invokeBasic) {
+            return getMeta().invokeBasic.findInvokeBasicIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+                @Override
+                public EspressoBaseNode apply(Method method) {
+                    return new MHInvokeBasicNode(method);
+                }
+            });
+        } else {
+            Symbol<Signature> basicSignature = toBasic(getSignatures().parsed(signature), true, getSignatures());
+            if (id == Target_java_lang_invoke_MethodHandleNatives._linkToInterface) {
+                return findLinkToIntrinsic(getMeta().linkToInterface, basicSignature, Target_java_lang_invoke_MethodHandleNatives._linkToInterface);
+            } else if (id == Target_java_lang_invoke_MethodHandleNatives._linkToSpecial) {
+                return findLinkToIntrinsic(getMeta().linkToSpecial, basicSignature, Target_java_lang_invoke_MethodHandleNatives._linkToSpecial);
+            } else if (id == Target_java_lang_invoke_MethodHandleNatives._linkToStatic) {
+                return findLinkToIntrinsic(getMeta().linkToStatic, basicSignature, Target_java_lang_invoke_MethodHandleNatives._linkToStatic);
+            } else if (id == Target_java_lang_invoke_MethodHandleNatives._linkToVirtual) {
+                return findLinkToIntrinsic(getMeta().linkToVirtual, basicSignature, Target_java_lang_invoke_MethodHandleNatives._linkToVirtual);
+            }
+        }
+        throw EspressoError.shouldNotReachHere();
+    }
+
+    private static Method findLinkToIntrinsic(Method m, Symbol<Signature> signature, int id) {
+        return m.findLinkToIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+            @Override
+            public EspressoBaseNode apply(Method method) {
+                return new MHLinkToNode(method, id);
+            }
+        });
     }
 
     @Override

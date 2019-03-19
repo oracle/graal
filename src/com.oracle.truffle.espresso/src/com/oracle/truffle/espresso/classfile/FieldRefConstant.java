@@ -109,7 +109,7 @@ public interface FieldRefConstant extends MemberRefConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             resolveFieldCount.inc();
-            Klass holderKlass = pool.resolvedKlassAt(accessingKlass, classIndex);
+            Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
             Symbol<Name> name = getName(pool);
             Symbol<Type> type = getType(pool);
 

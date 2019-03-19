@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -86,6 +87,7 @@ public class StaticObjectImpl extends StaticObject {
 
     @ExplodeLoop
     private void initFields(ObjectKlass klass, boolean isStatic) {
+        CompilerAsserts.partialEvaluationConstant(klass);
         if (isStatic) {
             for (Field f : klass.getDeclaredFields()) {
                 if (f.isStatic()) {

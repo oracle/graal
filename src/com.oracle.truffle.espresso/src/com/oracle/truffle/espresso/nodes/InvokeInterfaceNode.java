@@ -90,8 +90,8 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         BytecodeNode root = (BytecodeNode) getParent();
         // TODO(peterssen): IsNull Node?.
         final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
-        final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver != null;
+        final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = executeVirtual(receiver, args);
         int resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver

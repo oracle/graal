@@ -251,7 +251,11 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.DoubleConstant;
 import com.oracle.truffle.espresso.classfile.FloatConstant;
 import com.oracle.truffle.espresso.classfile.IntegerConstant;
+import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.LongConstant;
+import com.oracle.truffle.espresso.classfile.MethodHandleConstant;
+import com.oracle.truffle.espresso.classfile.MethodTypeConstant;
+import com.oracle.truffle.espresso.classfile.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.PoolConstant;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.StringConstant;
@@ -261,14 +265,17 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -348,7 +355,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             // @formatter:off
             // Checkstyle: stop
             switch (expectedkind) {
-                case Boolean : setLocalInt(frame, n, ((boolean) arguments[i]) ? 1 : 0); break;
+                case Boolean :
+                   setLocalInt(frame, n,  (arguments[i] instanceof Integer) ? (int)arguments[i] : ((boolean) arguments[i]) ? 1 : 0); break;
                 case Byte    : setLocalInt(frame, n, ((byte) arguments[i]));            break;
                 case Short   : setLocalInt(frame, n, ((short) arguments[i]));           break;
                 case Char    : setLocalInt(frame, n, ((char) arguments[i]));            break;
@@ -502,361 +510,629 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
                 // @formatter:off
                 // Checkstyle: stop
-                switch (curOpcode) {
-                    case NOP         : break;
-                    case ACONST_NULL : putObject(frame, top, StaticObject.NULL); break;
+                try {
+                    switch (curOpcode) {
+                        case NOP:
+                            break;
+                        case ACONST_NULL:
+                            putObject(frame, top, StaticObject.NULL);
+                            break;
 
-                    case ICONST_M1   : // fall through
-                    case ICONST_0    : // fall through
-                    case ICONST_1    : // fall through
-                    case ICONST_2    : // fall through
-                    case ICONST_3    : // fall through
-                    case ICONST_4    : // fall through
-                    case ICONST_5    : putInt(frame, top, curOpcode - ICONST_0); break;
+                        case ICONST_M1: // fall through
+                        case ICONST_0: // fall through
+                        case ICONST_1: // fall through
+                        case ICONST_2: // fall through
+                        case ICONST_3: // fall through
+                        case ICONST_4: // fall through
+                        case ICONST_5:
+                            putInt(frame, top, curOpcode - ICONST_0);
+                            break;
 
-                    case LCONST_0    : // fall through
-                    case LCONST_1    : putLong(frame, top, curOpcode - LCONST_0); break;
+                        case LCONST_0: // fall through
+                        case LCONST_1:
+                            putLong(frame, top, curOpcode - LCONST_0);
+                            break;
 
-                    case FCONST_0    : // fall through
-                    case FCONST_1    : // fall through
-                    case FCONST_2    : putFloat(frame, top,curOpcode - FCONST_0); break;
+                        case FCONST_0: // fall through
+                        case FCONST_1: // fall through
+                        case FCONST_2:
+                            putFloat(frame, top, curOpcode - FCONST_0);
+                            break;
 
-                    case DCONST_0    : // fall through
-                    case DCONST_1    : putDouble(frame, top,curOpcode - DCONST_0); break;
+                        case DCONST_0: // fall through
+                        case DCONST_1:
+                            putDouble(frame, top, curOpcode - DCONST_0);
+                            break;
 
-                    case BIPUSH      : putInt(frame, top, bs.readByte(curBCI)); break;
-                    case SIPUSH      : putInt(frame, top, bs.readShort(curBCI)); break;
-                    case LDC         : // fall through
-                    case LDC_W       : // fall through
-                    case LDC2_W      : putPoolConstant(frame, top, bs.readCPI(curBCI), curOpcode); break;
+                        case BIPUSH:
+                            putInt(frame, top, bs.readByte(curBCI));
+                            break;
+                        case SIPUSH:
+                            putInt(frame, top, bs.readShort(curBCI));
+                            break;
+                        case LDC: // fall through
+                        case LDC_W: // fall through
+                        case LDC2_W:
+                            putPoolConstant(frame, top, bs.readCPI(curBCI), curOpcode);
+                            break;
 
-                    case ILOAD       : putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI))); break;
-                    case LLOAD       : putLong(frame, top, getLocalLong(frame, bs.readLocalIndex(curBCI))); break;
-                    case FLOAD       : putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex(curBCI))); break;
-                    case DLOAD       : putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex(curBCI))); break;
-                    case ALOAD       : putObject(frame, top, getLocalObject(frame, bs.readLocalIndex(curBCI))); break;
+                        case ILOAD:
+                            putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI)));
+                            break;
+                        case LLOAD:
+                            putLong(frame, top, getLocalLong(frame, bs.readLocalIndex(curBCI)));
+                            break;
+                        case FLOAD:
+                            putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex(curBCI)));
+                            break;
+                        case DLOAD:
+                            putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex(curBCI)));
+                            break;
+                        case ALOAD:
+                            putObject(frame, top, getLocalObject(frame, bs.readLocalIndex(curBCI)));
+                            break;
 
-                    case ILOAD_0     : // fall through
-                    case ILOAD_1     : // fall through
-                    case ILOAD_2     : // fall through
-                    case ILOAD_3     : putInt(frame, top, getLocalInt(frame, curOpcode - ILOAD_0)); break;
-                    case LLOAD_0     : // fall through
-                    case LLOAD_1     : // fall through
-                    case LLOAD_2     : // fall through
-                    case LLOAD_3     : putLong(frame, top, getLocalLong(frame, curOpcode - LLOAD_0)); break;
-                    case FLOAD_0     : // fall through
-                    case FLOAD_1     : // fall through
-                    case FLOAD_2     : // fall through
-                    case FLOAD_3     : putFloat(frame, top, getLocalFloat(frame, curOpcode - FLOAD_0)); break;
-                    case DLOAD_0     : // fall through
-                    case DLOAD_1     : // fall through
-                    case DLOAD_2     : // fall through
-                    case DLOAD_3     : putDouble(frame, top, getLocalDouble(frame, curOpcode - DLOAD_0)); break;
-                    case ALOAD_0     : // fall through
-                    case ALOAD_1     : // fall through
-                    case ALOAD_2     : // fall through
-                    case ALOAD_3     : putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
+                        case ILOAD_0: // fall through
+                        case ILOAD_1: // fall through
+                        case ILOAD_2: // fall through
+                        case ILOAD_3:
+                            putInt(frame, top, getLocalInt(frame, curOpcode - ILOAD_0));
+                            break;
+                        case LLOAD_0: // fall through
+                        case LLOAD_1: // fall through
+                        case LLOAD_2: // fall through
+                        case LLOAD_3:
+                            putLong(frame, top, getLocalLong(frame, curOpcode - LLOAD_0));
+                            break;
+                        case FLOAD_0: // fall through
+                        case FLOAD_1: // fall through
+                        case FLOAD_2: // fall through
+                        case FLOAD_3:
+                            putFloat(frame, top, getLocalFloat(frame, curOpcode - FLOAD_0));
+                            break;
+                        case DLOAD_0: // fall through
+                        case DLOAD_1: // fall through
+                        case DLOAD_2: // fall through
+                        case DLOAD_3:
+                            putDouble(frame, top, getLocalDouble(frame, curOpcode - DLOAD_0));
+                            break;
+                        case ALOAD_0: // fall through
+                        case ALOAD_1: // fall through
+                        case ALOAD_2: // fall through
+                        case ALOAD_3:
+                            putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0));
+                            break;
 
-                    case IALOAD      : putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                    case LALOAD      : putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                    case FALOAD      : putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                    case DALOAD      : putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                    case AALOAD      : putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                    case BALOAD      : putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                    case CALOAD      : putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                    case SALOAD      : putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
+                        case IALOAD:
+                            putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2))));
+                            break;
+                        case LALOAD:
+                            putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2))));
+                            break;
+                        case FALOAD:
+                            putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2))));
+                            break;
+                        case DALOAD:
+                            putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2))));
+                            break;
+                        case AALOAD:
+                            putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2))));
+                            break;
+                        case BALOAD:
+                            putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2))));
+                            break;
+                        case CALOAD:
+                            putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2))));
+                            break;
+                        case SALOAD:
+                            putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2))));
+                            break;
 
-                    case ISTORE      : setLocalInt(frame, bs.readLocalIndex(curBCI), peekInt(frame, top - 1)); break;
-                    case LSTORE      : setLocalLong(frame, bs.readLocalIndex(curBCI), peekLong(frame, top - 1)); break;
-                    case FSTORE      : setLocalFloat(frame, bs.readLocalIndex(curBCI), peekFloat(frame, top - 1)); break;
-                    case DSTORE      : setLocalDouble(frame, bs.readLocalIndex(curBCI), peekDouble(frame, top - 1)); break;
-                    case ASTORE      : setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), peekReturnAddressOrObject(frame, top - 1)); break;
+                        case ISTORE:
+                            setLocalInt(frame, bs.readLocalIndex(curBCI), peekInt(frame, top - 1));
+                            break;
+                        case LSTORE:
+                            setLocalLong(frame, bs.readLocalIndex(curBCI), peekLong(frame, top - 1));
+                            break;
+                        case FSTORE:
+                            setLocalFloat(frame, bs.readLocalIndex(curBCI), peekFloat(frame, top - 1));
+                            break;
+                        case DSTORE:
+                            setLocalDouble(frame, bs.readLocalIndex(curBCI), peekDouble(frame, top - 1));
+                            break;
+                        case ASTORE:
+                            setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), peekReturnAddressOrObject(frame, top - 1));
+                            break;
 
-                    case ISTORE_0    : // fall through
-                    case ISTORE_1    : // fall through
-                    case ISTORE_2    : // fall through
-                    case ISTORE_3    : setLocalInt(frame, curOpcode - ISTORE_0, peekInt(frame, top - 1)); break;
-                    case LSTORE_0    : // fall through
-                    case LSTORE_1    : // fall through
-                    case LSTORE_2    : // fall through
-                    case LSTORE_3    : setLocalLong(frame, curOpcode - LSTORE_0, peekLong(frame, top - 1)); break;
-                    case FSTORE_0    : // fall through
-                    case FSTORE_1    : // fall through
-                    case FSTORE_2    : // fall through
-                    case FSTORE_3    : setLocalFloat(frame, curOpcode - FSTORE_0, peekFloat(frame, top - 1)); break;
-                    case DSTORE_0    : // fall through
-                    case DSTORE_1    : // fall through
-                    case DSTORE_2    : // fall through
-                    case DSTORE_3    : setLocalDouble(frame, curOpcode - DSTORE_0, peekDouble(frame, top - 1)); break;
-                    case ASTORE_0    : // fall through
-                    case ASTORE_1    : // fall through
-                    case ASTORE_2    : // fall through
-                    case ASTORE_3    : setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, peekReturnAddressOrObject(frame, top - 1)); break;
+                        case ISTORE_0: // fall through
+                        case ISTORE_1: // fall through
+                        case ISTORE_2: // fall through
+                        case ISTORE_3:
+                            setLocalInt(frame, curOpcode - ISTORE_0, peekInt(frame, top - 1));
+                            break;
+                        case LSTORE_0: // fall through
+                        case LSTORE_1: // fall through
+                        case LSTORE_2: // fall through
+                        case LSTORE_3:
+                            setLocalLong(frame, curOpcode - LSTORE_0, peekLong(frame, top - 1));
+                            break;
+                        case FSTORE_0: // fall through
+                        case FSTORE_1: // fall through
+                        case FSTORE_2: // fall through
+                        case FSTORE_3:
+                            setLocalFloat(frame, curOpcode - FSTORE_0, peekFloat(frame, top - 1));
+                            break;
+                        case DSTORE_0: // fall through
+                        case DSTORE_1: // fall through
+                        case DSTORE_2: // fall through
+                        case DSTORE_3:
+                            setLocalDouble(frame, curOpcode - DSTORE_0, peekDouble(frame, top - 1));
+                            break;
+                        case ASTORE_0: // fall through
+                        case ASTORE_1: // fall through
+                        case ASTORE_2: // fall through
+                        case ASTORE_3:
+                            setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, peekReturnAddressOrObject(frame, top - 1));
+                            break;
 
-                    case IASTORE     : getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-                    case LASTORE     : getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekObject(frame, top - 4))); break;
-                    case FASTORE     : getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-                    case DASTORE     : getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekObject(frame, top - 4))); break;
-                    case AASTORE     : getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), peekInt(frame, top - 2), (StaticObjectArray) nullCheck(peekObject(frame, top - 3))); break;
-                    case BASTORE     : getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-                    case CASTORE     : getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-                    case SASTORE     : getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
+                        case IASTORE:
+                            getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3)));
+                            break;
+                        case LASTORE:
+                            getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekObject(frame, top - 4)));
+                            break;
+                        case FASTORE:
+                            getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3)));
+                            break;
+                        case DASTORE:
+                            getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekObject(frame, top - 4)));
+                            break;
+                        case AASTORE:
+                            getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), peekInt(frame, top - 2), (StaticObjectArray) nullCheck(peekObject(frame, top - 3)));
+                            break;
+                        case BASTORE:
+                            getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3)));
+                            break;
+                        case CASTORE:
+                            getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3)));
+                            break;
+                        case SASTORE:
+                            getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3)));
+                            break;
 
-                    case POP         : // fall through
-                    case POP2        : break;
+                        case POP: // fall through
+                        case POP2:
+                            break;
 
-                    // TODO(peterssen): Stack shuffling is expensive.
-                    case DUP         : dup1(frame, top); break;
-                    case DUP_X1      : dupx1(frame, top); break;
-                    case DUP_X2      : dupx2(frame, top); break;
-                    case DUP2        : dup2(frame, top); break;
-                    case DUP2_X1     : dup2x1(frame, top); break;
-                    case DUP2_X2     : dup2x2(frame, top); break;
-                    case SWAP        : swapSingle(frame, top); break;
+                        // TODO(peterssen): Stack shuffling is expensive.
+                        case DUP:
+                            dup1(frame, top);
+                            break;
+                        case DUP_X1:
+                            dupx1(frame, top);
+                            break;
+                        case DUP_X2:
+                            dupx2(frame, top);
+                            break;
+                        case DUP2:
+                            dup2(frame, top);
+                            break;
+                        case DUP2_X1:
+                            dup2x1(frame, top);
+                            break;
+                        case DUP2_X2:
+                            dup2x2(frame, top);
+                            break;
+                        case SWAP:
+                            swapSingle(frame, top);
+                            break;
 
-                    case IADD        : putInt(frame, top - 2, peekInt(frame, top - 1) + peekInt(frame, top - 2)); break;
-                    case LADD        : putLong(frame, top - 4, peekLong(frame, top - 1) + peekLong(frame, top - 3)); break;
-                    case FADD        : putFloat(frame, top - 2, peekFloat(frame, top - 1) + peekFloat(frame, top - 2)); break;
-                    case DADD        : putDouble(frame, top - 4, peekDouble(frame, top - 1) + peekDouble(frame, top - 3)); break;
+                        case IADD:
+                            putInt(frame, top - 2, peekInt(frame, top - 1) + peekInt(frame, top - 2));
+                            break;
+                        case LADD:
+                            putLong(frame, top - 4, peekLong(frame, top - 1) + peekLong(frame, top - 3));
+                            break;
+                        case FADD:
+                            putFloat(frame, top - 2, peekFloat(frame, top - 1) + peekFloat(frame, top - 2));
+                            break;
+                        case DADD:
+                            putDouble(frame, top - 4, peekDouble(frame, top - 1) + peekDouble(frame, top - 3));
+                            break;
 
-                    case ISUB        : putInt(frame, top - 2, -peekInt(frame, top - 1) + peekInt(frame, top - 2)); break;
-                    case LSUB        : putLong(frame, top - 4,-peekLong(frame, top - 1) + peekLong(frame, top - 3)); break;
-                    case FSUB        : putFloat(frame, top - 2,-peekFloat(frame, top - 1) + peekFloat(frame, top - 2)); break;
-                    case DSUB        : putDouble(frame, top - 4, -peekDouble(frame, top - 1) + peekDouble(frame, top - 3)); break;
+                        case ISUB:
+                            putInt(frame, top - 2, -peekInt(frame, top - 1) + peekInt(frame, top - 2));
+                            break;
+                        case LSUB:
+                            putLong(frame, top - 4, -peekLong(frame, top - 1) + peekLong(frame, top - 3));
+                            break;
+                        case FSUB:
+                            putFloat(frame, top - 2, -peekFloat(frame, top - 1) + peekFloat(frame, top - 2));
+                            break;
+                        case DSUB:
+                            putDouble(frame, top - 4, -peekDouble(frame, top - 1) + peekDouble(frame, top - 3));
+                            break;
 
-                    case IMUL        : putInt(frame,top - 2,peekInt(frame, top - 1) * peekInt(frame, top - 2)); break;
-                    case LMUL        : putLong(frame, top - 4, peekLong(frame, top - 1) * peekLong(frame, top - 3)); break;
-                    case FMUL        : putFloat(frame, top - 2,peekFloat(frame, top - 1) * peekFloat(frame, top - 2)); break;
-                    case DMUL        : putDouble(frame,top - 4, peekDouble(frame, top - 1) * peekDouble(frame, top - 3)); break;
+                        case IMUL:
+                            putInt(frame, top - 2, peekInt(frame, top - 1) * peekInt(frame, top - 2));
+                            break;
+                        case LMUL:
+                            putLong(frame, top - 4, peekLong(frame, top - 1) * peekLong(frame, top - 3));
+                            break;
+                        case FMUL:
+                            putFloat(frame, top - 2, peekFloat(frame, top - 1) * peekFloat(frame, top - 2));
+                            break;
+                        case DMUL:
+                            putDouble(frame, top - 4, peekDouble(frame, top - 1) * peekDouble(frame, top - 3));
+                            break;
 
-                    case IDIV        : putInt(frame, top - 2, divInt(checkNonZero(peekInt(frame, top - 1)), peekInt(frame, top - 2))); break;
-                    case LDIV        : putLong(frame,top - 4, divLong(checkNonZero(peekLong(frame, top - 1)), peekLong(frame, top - 3))); break;
-                    case FDIV        : putFloat(frame, top - 2, divFloat(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
-                    case DDIV        : putDouble(frame,top - 4, divDouble(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
+                        case IDIV:
+                            putInt(frame, top - 2, divInt(checkNonZero(peekInt(frame, top - 1)), peekInt(frame, top - 2)));
+                            break;
+                        case LDIV:
+                            putLong(frame, top - 4, divLong(checkNonZero(peekLong(frame, top - 1)), peekLong(frame, top - 3)));
+                            break;
+                        case FDIV:
+                            putFloat(frame, top - 2, divFloat(peekFloat(frame, top - 1), peekFloat(frame, top - 2)));
+                            break;
+                        case DDIV:
+                            putDouble(frame, top - 4, divDouble(peekDouble(frame, top - 1), peekDouble(frame, top - 3)));
+                            break;
 
-                    case IREM        : putInt(frame, top - 2, remInt(checkNonZero(peekInt(frame, top - 1)), peekInt(frame, top - 2))); break;
-                    case LREM        : putLong(frame, top - 4,remLong(checkNonZero(peekLong(frame, top - 1)), peekLong(frame, top - 3))); break;
-                    case FREM        : putFloat(frame, top - 2, remFloat(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
-                    case DREM        : putDouble(frame, top - 4, remDouble(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
+                        case IREM:
+                            putInt(frame, top - 2, remInt(checkNonZero(peekInt(frame, top - 1)), peekInt(frame, top - 2)));
+                            break;
+                        case LREM:
+                            putLong(frame, top - 4, remLong(checkNonZero(peekLong(frame, top - 1)), peekLong(frame, top - 3)));
+                            break;
+                        case FREM:
+                            putFloat(frame, top - 2, remFloat(peekFloat(frame, top - 1), peekFloat(frame, top - 2)));
+                            break;
+                        case DREM:
+                            putDouble(frame, top - 4, remDouble(peekDouble(frame, top - 1), peekDouble(frame, top - 3)));
+                            break;
 
-                    case INEG        : putInt(frame, top - 1, -peekInt(frame, top - 1)); break;
-                    case LNEG        : putLong(frame, top - 2, -peekLong(frame, top - 1)); break;
-                    case FNEG        : putFloat(frame, top - 1, -peekFloat(frame, top - 1)); break;
-                    case DNEG        : putDouble(frame, top - 2, -peekDouble(frame, top - 1)); break;
+                        case INEG:
+                            putInt(frame, top - 1, -peekInt(frame, top - 1));
+                            break;
+                        case LNEG:
+                            putLong(frame, top - 2, -peekLong(frame, top - 1));
+                            break;
+                        case FNEG:
+                            putFloat(frame, top - 1, -peekFloat(frame, top - 1));
+                            break;
+                        case DNEG:
+                            putDouble(frame, top - 2, -peekDouble(frame, top - 1));
+                            break;
 
-                    case ISHL        : putInt(frame, top - 2, shiftLeftInt(peekInt(frame, top - 1), peekInt(frame, top - 2))); break;
-                    case LSHL        : putLong(frame, top - 3, shiftLeftLong(peekInt(frame, top - 1), peekLong(frame, top - 2))); break;
-                    case ISHR        : putInt(frame, top - 2, shiftRightSignedInt(peekInt(frame, top - 1), peekInt(frame, top - 2))); break;
-                    case LSHR        : putLong(frame, top - 3, shiftRightSignedLong(peekInt(frame, top - 1), peekLong(frame, top - 2))); break;
-                    case IUSHR       : putInt(frame, top - 2, shiftRightUnsignedInt(peekInt(frame, top - 1), peekInt(frame, top - 2))); break;
-                    case LUSHR       : putLong(frame, top - 3, shiftRightUnsignedLong(peekInt(frame, top - 1), peekLong(frame, top - 2))); break;
+                        case ISHL:
+                            putInt(frame, top - 2, shiftLeftInt(peekInt(frame, top - 1), peekInt(frame, top - 2)));
+                            break;
+                        case LSHL:
+                            putLong(frame, top - 3, shiftLeftLong(peekInt(frame, top - 1), peekLong(frame, top - 2)));
+                            break;
+                        case ISHR:
+                            putInt(frame, top - 2, shiftRightSignedInt(peekInt(frame, top - 1), peekInt(frame, top - 2)));
+                            break;
+                        case LSHR:
+                            putLong(frame, top - 3, shiftRightSignedLong(peekInt(frame, top - 1), peekLong(frame, top - 2)));
+                            break;
+                        case IUSHR:
+                            putInt(frame, top - 2, shiftRightUnsignedInt(peekInt(frame, top - 1), peekInt(frame, top - 2)));
+                            break;
+                        case LUSHR:
+                            putLong(frame, top - 3, shiftRightUnsignedLong(peekInt(frame, top - 1), peekLong(frame, top - 2)));
+                            break;
 
-                    case IAND        : putInt(frame, top - 2, peekInt(frame, top - 1) & peekInt(frame, top - 2)); break;
-                    case LAND        : putLong(frame, top - 4, peekLong(frame, top - 1) & peekLong(frame, top - 3)); break;
+                        case IAND:
+                            putInt(frame, top - 2, peekInt(frame, top - 1) & peekInt(frame, top - 2));
+                            break;
+                        case LAND:
+                            putLong(frame, top - 4, peekLong(frame, top - 1) & peekLong(frame, top - 3));
+                            break;
 
-                    case IOR         : putInt(frame, top - 2,peekInt(frame, top - 1) | peekInt(frame, top - 2)); break;
-                    case LOR         : putLong(frame, top - 4, peekLong(frame, top - 1) | peekLong(frame, top - 3)); break;
+                        case IOR:
+                            putInt(frame, top - 2, peekInt(frame, top - 1) | peekInt(frame, top - 2));
+                            break;
+                        case LOR:
+                            putLong(frame, top - 4, peekLong(frame, top - 1) | peekLong(frame, top - 3));
+                            break;
 
-                    case IXOR        : putInt(frame, top - 2, peekInt(frame, top - 1) ^ peekInt(frame, top - 2)); break;
-                    case LXOR        : putLong(frame, top - 4, peekLong(frame, top - 1) ^ peekLong(frame, top - 3)); break;
+                        case IXOR:
+                            putInt(frame, top - 2, peekInt(frame, top - 1) ^ peekInt(frame, top - 2));
+                            break;
+                        case LXOR:
+                            putLong(frame, top - 4, peekLong(frame, top - 1) ^ peekLong(frame, top - 3));
+                            break;
 
-                    case IINC        : setLocalInt(frame, bs.readLocalIndex(curBCI), getLocalInt(frame, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI)); break;
+                        case IINC:
+                            setLocalInt(frame, bs.readLocalIndex(curBCI), getLocalInt(frame, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI));
+                            break;
 
-                    case I2L         : putLong(frame, top - 1, peekInt(frame, top - 1)); break;
-                    case I2F         : putFloat(frame, top - 1, peekInt(frame, top - 1)); break;
-                    case I2D         : putDouble(frame, top - 1, peekInt(frame, top - 1)); break;
+                        case I2L:
+                            putLong(frame, top - 1, peekInt(frame, top - 1));
+                            break;
+                        case I2F:
+                            putFloat(frame, top - 1, peekInt(frame, top - 1));
+                            break;
+                        case I2D:
+                            putDouble(frame, top - 1, peekInt(frame, top - 1));
+                            break;
 
-                    case L2I         : putInt(frame, top - 2, (int) peekLong(frame, top - 1)); break;
-                    case L2F         : putFloat(frame, top - 2, peekLong(frame, top - 1)); break;
-                    case L2D         : putDouble(frame, top - 2, peekLong(frame, top - 1)); break;
+                        case L2I:
+                            putInt(frame, top - 2, (int) peekLong(frame, top - 1));
+                            break;
+                        case L2F:
+                            putFloat(frame, top - 2, peekLong(frame, top - 1));
+                            break;
+                        case L2D:
+                            putDouble(frame, top - 2, peekLong(frame, top - 1));
+                            break;
 
-                    case F2I         : putInt(frame, top - 1, (int) peekFloat(frame, top - 1)); break;
-                    case F2L         : putLong(frame, top - 1, (long) peekFloat(frame, top - 1)); break;
-                    case F2D         : putDouble(frame, top - 1, peekFloat(frame, top - 1)); break;
+                        case F2I:
+                            putInt(frame, top - 1, (int) peekFloat(frame, top - 1));
+                            break;
+                        case F2L:
+                            putLong(frame, top - 1, (long) peekFloat(frame, top - 1));
+                            break;
+                        case F2D:
+                            putDouble(frame, top - 1, peekFloat(frame, top - 1));
+                            break;
 
-                    case D2I         : putInt(frame, top - 2, (int) peekDouble(frame, top - 1)); break;
-                    case D2L         : putLong(frame, top - 2, (long) peekDouble(frame, top - 1)); break;
-                    case D2F         : putFloat(frame, top - 2, (float) peekDouble(frame, top - 1)); break;
+                        case D2I:
+                            putInt(frame, top - 2, (int) peekDouble(frame, top - 1));
+                            break;
+                        case D2L:
+                            putLong(frame, top - 2, (long) peekDouble(frame, top - 1));
+                            break;
+                        case D2F:
+                            putFloat(frame, top - 2, (float) peekDouble(frame, top - 1));
+                            break;
 
-                    case I2B         : putInt(frame, top - 1, (byte) peekInt(frame, top - 1)); break;
-                    case I2C         : putInt(frame, top - 1, (char) peekInt(frame, top - 1)); break;
-                    case I2S         : putInt(frame, top - 1, (short) peekInt(frame, top - 1)); break;
+                        case I2B:
+                            putInt(frame, top - 1, (byte) peekInt(frame, top - 1));
+                            break;
+                        case I2C:
+                            putInt(frame, top - 1, (char) peekInt(frame, top - 1));
+                            break;
+                        case I2S:
+                            putInt(frame, top - 1, (short) peekInt(frame, top - 1));
+                            break;
 
-                    case LCMP        : putInt(frame, top - 4, compareLong(peekLong(frame, top - 1), peekLong(frame, top - 3))); break;
-                    case FCMPL       : putInt(frame, top - 2, compareFloatLess(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
-                    case FCMPG       : putInt(frame, top - 2, compareFloatGreater(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
-                    case DCMPL       : putInt(frame, top - 4, compareDoubleLess(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
-                    case DCMPG       : putInt(frame, top - 4, compareDoubleGreater(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
+                        case LCMP:
+                            putInt(frame, top - 4, compareLong(peekLong(frame, top - 1), peekLong(frame, top - 3)));
+                            break;
+                        case FCMPL:
+                            putInt(frame, top - 2, compareFloatLess(peekFloat(frame, top - 1), peekFloat(frame, top - 2)));
+                            break;
+                        case FCMPG:
+                            putInt(frame, top - 2, compareFloatGreater(peekFloat(frame, top - 1), peekFloat(frame, top - 2)));
+                            break;
+                        case DCMPL:
+                            putInt(frame, top - 4, compareDoubleLess(peekDouble(frame, top - 1), peekDouble(frame, top - 3)));
+                            break;
+                        case DCMPG:
+                            putInt(frame, top - 4, compareDoubleGreater(peekDouble(frame, top - 1), peekDouble(frame, top - 3)));
+                            break;
 
-                    case IFEQ        : // fall through
-                    case IFNE        : // fall through
-                    case IFLT        : // fall through
-                    case IFGE        : // fall through
-                    case IFGT        : // fall through
-                    case IFLE        : // fall through
-                    case IF_ICMPEQ   : // fall through
-                    case IF_ICMPNE   : // fall through
-                    case IF_ICMPLT   : // fall through
-                    case IF_ICMPGE   : // fall through
-                    case IF_ICMPGT   : // fall through
-                    case IF_ICMPLE   : // fall through
-                    case IF_ACMPEQ   : // fall through
-                    case IF_ACMPNE   : // fall through
+                        case IFEQ: // fall through
+                        case IFNE: // fall through
+                        case IFLT: // fall through
+                        case IFGE: // fall through
+                        case IFGT: // fall through
+                        case IFLE: // fall through
+                        case IF_ICMPEQ: // fall through
+                        case IF_ICMPNE: // fall through
+                        case IF_ICMPLT: // fall through
+                        case IF_ICMPGE: // fall through
+                        case IF_ICMPGT: // fall through
+                        case IF_ICMPLE: // fall through
+                        case IF_ACMPEQ: // fall through
+                        case IF_ACMPNE: // fall through
 
-                    // TODO(peterssen): Order shuffled.
-                    case GOTO        : // fall through
-                    case GOTO_W      : // fall through
-                    case IFNULL      : // fall through
-                    case IFNONNULL   :
-                        if (takeBranch(frame, top, curOpcode)) {
+                            // TODO(peterssen): Order shuffled.
+                        case GOTO: // fall through
+                        case GOTO_W: // fall through
+                        case IFNULL: // fall through
+                        case IFNONNULL:
+                            if (takeBranch(frame, top, curOpcode)) {
+                                int targetBCI = bs.readBranchDest(curBCI);
+                                top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                curBCI = targetBCI;
+                                continue loop;
+                            }
+                            break;
+
+                        case JSR: // fall through
+                        case JSR_W: {
+                            CompilerDirectives.bailout("JSR/RET bytecodes not supported");
+                            putReturnAddress(frame, top, bs.nextBCI(curBCI));
                             int targetBCI = bs.readBranchDest(curBCI);
                             top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                             curBCI = targetBCI;
                             continue loop;
                         }
-                        break;
-
-                    case JSR         : // fall through
-                    case JSR_W       : {
-                        CompilerDirectives.bailout("JSR/RET bytecodes not supported");
-                        putReturnAddress(frame, top, bs.nextBCI(curBCI));
-                        int targetBCI = bs.readBranchDest(curBCI);
-                        top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                        curBCI = targetBCI;
-                        continue loop;
-                    }
-                    case RET         : {
-                        CompilerDirectives.bailout("JSR/RET bytecodes not supported");
-                        int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex(curBCI));
-                        top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                        curBCI = targetBCI;
-                        continue loop;
-                    }
-
-                    // @formatter:on
-                    // Checkstyle: resume
-                    case TABLESWITCH: {
-                        int index = peekInt(frame, top - 1);
-                        BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
-                        int low = switchHelper.lowKey(curBCI);
-                        int high = switchHelper.highKey(curBCI);
-                        assert low <= high;
-
-                        // Interpreter uses direct lookup.
-                        if (CompilerDirectives.inInterpreter()) {
-                            int targetBCI;
-                            if (low <= index && index <= high) {
-                                targetBCI = switchHelper.targetAt(curBCI, index - low);
-                            } else {
-                                targetBCI = switchHelper.defaultTarget(curBCI);
-                            }
-                            CompilerAsserts.partialEvaluationConstant(targetBCI);
+                        case RET: {
+                            CompilerDirectives.bailout("JSR/RET bytecodes not supported");
+                            int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex(curBCI));
                             top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                             curBCI = targetBCI;
                             continue loop;
                         }
 
-                        for (int i = low; i <= high; ++i) {
-                            if (i == index) {
-                                // Key found.
-                                int targetBCI = switchHelper.targetAt(curBCI, i - low);
+                        // @formatter:on
+                        // Checkstyle: resume
+                        case TABLESWITCH: {
+                            int index = peekInt(frame, top - 1);
+                            BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
+                            int low = switchHelper.lowKey(curBCI);
+                            int high = switchHelper.highKey(curBCI);
+                            assert low <= high;
+
+                            // Interpreter uses direct lookup.
+                            if (CompilerDirectives.inInterpreter()) {
+                                int targetBCI;
+                                if (low <= index && index <= high) {
+                                    targetBCI = switchHelper.targetAt(curBCI, index - low);
+                                } else {
+                                    targetBCI = switchHelper.defaultTarget(curBCI);
+                                }
                                 CompilerAsserts.partialEvaluationConstant(targetBCI);
                                 top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
-                        }
 
-                        // Key not found.
-                        int targetBCI = switchHelper.defaultTarget(curBCI);
-                        CompilerAsserts.partialEvaluationConstant(targetBCI);
-                        top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                        curBCI = targetBCI;
-                        continue loop;
-                    }
-                    case LOOKUPSWITCH: {
-                        int key = peekInt(frame, top - 1);
-                        BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
-                        int low = 0;
-                        int high = switchHelper.numberOfCases(curBCI) - 1;
-                        while (low <= high) {
-                            int mid = (low + high) >>> 1;
-                            int midVal = switchHelper.keyAt(curBCI, mid);
-                            if (midVal < key) {
-                                low = mid + 1;
-                            } else if (midVal > key) {
-                                high = mid - 1;
-                            } else {
-                                // Key found.
-                                int targetBCI = curBCI + switchHelper.offsetAt(curBCI, mid);
-                                CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                                curBCI = targetBCI;
-                                continue loop;
+                            for (int i = low; i <= high; ++i) {
+                                if (i == index) {
+                                    // Key found.
+                                    int targetBCI = switchHelper.targetAt(curBCI, i - low);
+                                    CompilerAsserts.partialEvaluationConstant(targetBCI);
+                                    top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                    curBCI = targetBCI;
+                                    continue loop;
+                                }
                             }
+
+                            // Key not found.
+                            int targetBCI = switchHelper.defaultTarget(curBCI);
+                            CompilerAsserts.partialEvaluationConstant(targetBCI);
+                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            curBCI = targetBCI;
+                            continue loop;
                         }
+                        case LOOKUPSWITCH: {
+                            int key = peekInt(frame, top - 1);
+                            BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
+                            int low = 0;
+                            int high = switchHelper.numberOfCases(curBCI) - 1;
+                            while (low <= high) {
+                                int mid = (low + high) >>> 1;
+                                int midVal = switchHelper.keyAt(curBCI, mid);
+                                if (midVal < key) {
+                                    low = mid + 1;
+                                } else if (midVal > key) {
+                                    high = mid - 1;
+                                } else {
+                                    // Key found.
+                                    int targetBCI = curBCI + switchHelper.offsetAt(curBCI, mid);
+                                    CompilerAsserts.partialEvaluationConstant(targetBCI);
+                                    top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                    curBCI = targetBCI;
+                                    continue loop;
+                                }
+                            }
 
-                        // Key not found.
-                        int targetBCI = switchHelper.defaultTarget(curBCI);
-                        CompilerAsserts.partialEvaluationConstant(targetBCI);
-                        top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                        curBCI = targetBCI;
-                        continue loop;
+                            // Key not found.
+                            int targetBCI = switchHelper.defaultTarget(curBCI);
+                            CompilerAsserts.partialEvaluationConstant(targetBCI);
+                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            curBCI = targetBCI;
+                            continue loop;
+                        }
+                        // @formatter:off
+                        // Checkstyle: stop
+                        case IRETURN:
+                            return exitMethodAndReturn(peekInt(frame, top - 1));
+                        case LRETURN:
+                            return exitMethodAndReturnObject(peekLong(frame, top - 1));
+                        case FRETURN:
+                            return exitMethodAndReturnObject(peekFloat(frame, top - 1));
+                        case DRETURN:
+                            return exitMethodAndReturnObject(peekDouble(frame, top - 1));
+                        case ARETURN:
+                            return exitMethodAndReturnObject(peekObject(frame, top - 1));
+                        case RETURN:
+                            return exitMethodAndReturn();
+
+                        // TODO(peterssen): Order shuffled.
+                        case GETSTATIC: // fall through
+                        case GETFIELD:
+                            top += getField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode);
+                            break;
+                        case PUTSTATIC: // fall through
+                        case PUTFIELD:
+                            top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode);
+                            break;
+
+                        case INVOKEVIRTUAL: // fall through
+                        case INVOKESPECIAL: // fall through
+                        case INVOKESTATIC: // fall through
+                        case INVOKEINTERFACE:
+                            top += quickenInvoke(frame, top, curBCI, resolveMethod(curOpcode, bs.readCPI(curBCI)), curOpcode);
+                            break;
+
+                        case NEW:
+                            putObject(frame, top, allocateInstance(resolveType(curOpcode, bs.readCPI(curBCI))));
+                            break;
+                        case NEWARRAY:
+                            putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1)));
+                            break;
+                        case ANEWARRAY:
+                            putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1)));
+                            break;
+                        case ARRAYLENGTH:
+                            putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekObject(frame, top - 1))));
+                            break;
+
+                        case ATHROW:
+                            CompilerDirectives.transferToInterpreter();
+//                            System.err.println("Throwing at " + curBCI + " in " + getMethod());
+                            throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
+
+                        case CHECKCAST:
+                            top += quickenCheckCast(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode);
+                            break;
+                        case INSTANCEOF:
+                            top += quickenInstanceOf(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode);
+                            break;
+
+                        case MONITORENTER:
+                            InterpreterToVM.monitorEnter(nullCheck(peekObject(frame, top - 1)));
+                            break;
+                        case MONITOREXIT:
+                            InterpreterToVM.monitorExit(nullCheck(peekObject(frame, top - 1)));
+                            break;
+
+                        case WIDE:
+                            CompilerAsserts.neverPartOfCompilation();
+                            throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
+                        case MULTIANEWARRAY:
+                            top += allocateMultiArray(frame, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3));
+                            break;
+
+                        case BREAKPOINT:
+                            CompilerAsserts.neverPartOfCompilation();
+                            throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
+
+                        case INVOKEDYNAMIC:
+                            //CompilerAsserts.neverPartOfCompilation();
+                            top += quickenInvokeDynamic(frame, top, curBCI, curOpcode);
+                            break;
+
+                        case QUICK:
+                            top += nodes[bs.readCPI(curBCI)].invoke(frame, top);
+                            break;
+                        default:
+                            CompilerAsserts.neverPartOfCompilation();
+                            throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                     }
-                    // @formatter:off
-                    // Checkstyle: stop
-                    case IRETURN               : return exitMethodAndReturn(peekInt(frame, top - 1));
-                    case LRETURN               : return exitMethodAndReturnObject(peekLong(frame, top - 1));
-                    case FRETURN               : return exitMethodAndReturnObject(peekFloat(frame, top - 1));
-                    case DRETURN               : return exitMethodAndReturnObject(peekDouble(frame, top - 1));
-                    case ARETURN               : return exitMethodAndReturnObject(peekObject(frame, top - 1));
-                    case RETURN                : return exitMethodAndReturn();
-
-                    // TODO(peterssen): Order shuffled.
-                    case GETSTATIC             : // fall through
-                    case GETFIELD              : top += getField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
-                    case PUTSTATIC             : // fall through
-                    case PUTFIELD              : top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
-
-                    case INVOKEVIRTUAL         : // fall through
-                    case INVOKESPECIAL         : // fall through
-                    case INVOKESTATIC          : // fall through
-                    case INVOKEINTERFACE       : top += quickenInvoke(frame, top, curBCI, resolveMethod(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
-
-                    case NEW                   : putObject(frame, top, allocateInstance(resolveType(curOpcode, bs.readCPI(curBCI)))); break;
-                    case NEWARRAY              : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1))); break;
-                    case ANEWARRAY             : putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
-                    case ARRAYLENGTH           : putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekObject(frame, top - 1)))); break;
-
-                    case ATHROW                : CompilerDirectives.transferToInterpreter(); throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
-
-                    case CHECKCAST             : top += quickenCheckCast(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
-                    case INSTANCEOF            : top += quickenInstanceOf(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
-
-                    case MONITORENTER          : InterpreterToVM.monitorEnter(nullCheck(peekObject(frame, top - 1))); break;
-                    case MONITOREXIT           : InterpreterToVM.monitorExit(nullCheck(peekObject(frame, top - 1))); break;
-
-                    case WIDE                  :
-                        CompilerAsserts.neverPartOfCompilation();
-                        throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
-                    case MULTIANEWARRAY        : top += allocateMultiArray(frame, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
-
-                    case BREAKPOINT            :
-                        CompilerAsserts.neverPartOfCompilation();
-                        throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
-                    case INVOKEDYNAMIC         :
-                        CompilerAsserts.neverPartOfCompilation();
-                        throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
-
-                    case QUICK                 : top += nodes[bs.readCPI(curBCI)].invoke(frame, top); break;
-                    default                    :
-                        CompilerAsserts.neverPartOfCompilation();
-                        throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
+                    // @formatter:on
+                    // Checkstyle: resume
+                } catch (RuntimeException e) {
+                    if (e instanceof EspressoException) {
+                        throw e;
+                    }
+                    // System.err.println("Internal error (caught in invocation): " + this +
+                    // "\nBCI:" + curBCI);
+                    // e.printStackTrace();
+                    CompilerDirectives.transferToInterpreter();
+                    throw getMeta().throwEx(NullPointerException.class);
                 }
-                // @formatter:on
-                // Checkstyle: resume
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
+                // System.err.println("Finding handler for a " + e.getException().getKlass() + "at:"
+                // + curBCI + " in " + getMethod());
                 ExceptionHandler handler = resolveExceptionHandlers(curBCI, e.getException());
                 if (handler != null) {
                     top = 0;
@@ -1090,14 +1366,27 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             assert opcode == LDC || opcode == LDC_W;
             Klass klass = getConstantPool().resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
             putObject(frame, top, klass.mirror());
+        } else if (constant instanceof MethodHandleConstant) {
+            assert opcode == LDC || opcode == LDC_W;
+            StaticObject methodHandle = getConstantPool().resolvedMethodHandleAt(getMethod().getDeclaringKlass(), cpi);
+            putObject(frame, top, methodHandle);
+        } else if (constant instanceof MethodTypeConstant) {
+            assert opcode == LDC || opcode == LDC_W;
+            StaticObject methodType = getConstantPool().resolvedMethodTypeAt(getMethod().getDeclaringKlass(), cpi);
+            putObject(frame, top, methodType);
         } else {
             CompilerAsserts.neverPartOfCompilation();
             throw EspressoError.unimplemented(constant.toString());
         }
     }
 
-    private RuntimeConstantPool getConstantPool() {
+    protected RuntimeConstantPool getConstantPool() {
         return getMethod().getRuntimeConstantPool();
+    }
+
+    @TruffleBoundary
+    private BootstrapMethodsAttribute getBootstrapMethods() {
+        return (BootstrapMethodsAttribute) ((ObjectKlass) getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
     // region Bytecode quickening
@@ -1154,7 +1443,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, Method resolutionSeed, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opCode);
-        assert opCode != INVOKEDYNAMIC : "not supported";
+        // assert opCode != INVOKEDYNAMIC : "not supported";
+
         if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet())) {
             return quickenInvoke(frame, top, curBCI, resolutionSeed, INVOKESPECIAL);
         }
@@ -1174,6 +1464,92 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         return injectAndCall(frame, top, curBCI, invoke, opCode);
     }
 
+    private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opCode) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert (Bytecodes.INVOKEDYNAMIC == opCode);
+
+        Meta meta = getMeta();
+        // InvokeDynamicConstant resolving.
+        RuntimeConstantPool pool = getConstantPool();
+        InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
+        BootstrapMethodsAttribute bms = getBootstrapMethods();
+        NameAndTypeConstant specifier = pool.nameAndTypeAt(inDy.getNameAndTypeIndex());
+
+        assert (bms != null);
+        // Bootstrap method resolution
+        BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
+
+        Klass declaringKlass = getMethod().getDeclaringKlass();
+        StaticObject bsmMH = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
+
+        StaticObject[] args = new StaticObject[bsEntry.numBootstrapArguments()];
+        for (int i = 0; i < bsEntry.numBootstrapArguments(); i++) {
+            PoolConstant pc = pool.at(bsEntry.argAt(i));
+            switch (pc.tag()) {
+                case METHODHANDLE:
+                    args[i] = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.argAt(i));
+                    break;
+                case METHODTYPE:
+                    args[i] = pool.resolvedMethodTypeAt(declaringKlass, bsEntry.argAt(i));
+                    break;
+                case CLASS:
+                    args[i] = pool.resolvedKlassAt(declaringKlass, bsEntry.argAt(i)).mirror();
+                    break;
+                case STRING:
+                    args[i] = pool.resolvedStringAt(bsEntry.argAt(i));
+                    break;
+                case INTEGER:
+                    args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));
+                    break;
+                case LONG:
+                    args[i] = meta.boxLong(pool.longAt(bsEntry.argAt(i)));
+                    break;
+                case DOUBLE:
+                    args[i] = meta.boxDouble(pool.doubleAt(bsEntry.argAt(i)));
+                    break;
+                case FLOAT:
+                    args[i] = meta.boxFloat(pool.floatAt(bsEntry.argAt(i)));
+                    break;
+                default:
+                    throw EspressoError.shouldNotReachHere();
+            }
+        }
+
+        // Preparing Bootstrap call.
+        StaticObject name = meta.toGuestString(specifier.getName(pool));
+        Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
+        Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
+        StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
+        StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1]);
+
+        StaticObjectImpl memberName = (StaticObjectImpl) getMeta().linkCallSite.invokeDirect(
+                        null,
+                        declaringKlass.mirror(),
+                        bsmMH,
+                        name, methodType,
+                        new StaticObjectArray(meta.Object_array, args),
+                        appendix);
+
+        StaticObjectImpl unboxedAppendix = appendix.get(0);
+
+        return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature), opCode);
+    }
+
+    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {
+        Symbol<Type> rt = Signatures.returnType(signature);
+        int pcount = Signatures.parameterCount(signature, false);
+
+        StaticObject[] ptypes = new StaticObject[pcount];
+        for (int i = 0; i < pcount; i++) {
+            Symbol<Type> paramType = Signatures.parameterType(signature, i);
+            ptypes[i] = meta.loadKlass(paramType, declaringKlass.getDefiningClassLoader()).mirror();
+        }
+        StaticObject rtype = meta.loadKlass(rt, declaringKlass.getDefiningClassLoader()).mirror();
+
+        return (StaticObject) meta.findMethodHandleType.invokeDirect(
+                        null,
+                        rtype, new StaticObjectArray(meta.Class_Array, ptypes));
+    }
     // endregion Bytecode quickening
 
     // region Class/Method/Field resolution
@@ -1487,6 +1863,36 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         return args;
     }
 
+    // Effort to prevent double copies.
+    @ExplodeLoop
+    public Object[] peekArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount) {
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(signature);
+
+        int argAt = top - 1;
+        for (int i = argCount - 1; i >= 0; --i) {
+            JavaKind kind = Signatures.parameterKind(signature, i);
+            // @formatter:off
+            // Checkstyle: stop
+            switch (kind) {
+                case Boolean : args[i] = (peekInt(frame, argAt) != 0);  break;
+                case Byte    : args[i] = (byte) peekInt(frame, argAt);  break;
+                case Short   : args[i] = (short) peekInt(frame, argAt); break;
+                case Char    : args[i] = (char) peekInt(frame, argAt);  break;
+                case Int     : args[i] = peekInt(frame, argAt);         break;
+                case Float   : args[i] = peekFloat(frame, argAt);       break;
+                case Long    : args[i] = peekLong(frame, argAt);        break;
+                case Double  : args[i] = peekDouble(frame, argAt);      break;
+                case Object  : args[i] = peekObject(frame, argAt);      break;
+                default      : throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            // Checkstyle: resume
+            argAt -= kind.getSlotCount();
+        }
+        return args;
+    }
+
     /**
      * Puts a value in the operand stack. This method follows the JVM spec, where sub-word types (<
      * int) are always treated as int.
@@ -1504,7 +1910,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             case Byte    : putInt(frame, top, (byte) value);              break;
             case Short   : putInt(frame, top, (short) value);             break;
             case Char    : putInt(frame, top, (char) value);              break;
-            case Int     : putInt(frame, top, (int) value);               break;
+            case Int     :
+                putInt(frame, top,
+                        (value instanceof Boolean ?
+                                ((Boolean)value ? 1 : 0) :
+                                (int) value));
+                break;
             case Float   : putFloat(frame, top, (float) value);           break;
             case Long    : putLong(frame, top, (long) value);             break;
             case Double  : putDouble(frame, top, (double) value);         break;

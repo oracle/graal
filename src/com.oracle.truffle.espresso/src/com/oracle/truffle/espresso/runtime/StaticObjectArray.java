@@ -82,6 +82,11 @@ public final class StaticObjectArray extends StaticObject {
         return this.<T[]> unwrap()[index];
     }
 
+    public void put(int index, Object value) {
+        assert ((getKlass()).getComponentType().getType() == ((StaticObject) value).getKlass().getType());
+        ((Object[]) array)[index] = value;
+    }
+
     public int length() {
         return Array.getLength(array);
     }

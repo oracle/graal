@@ -67,6 +67,8 @@ public final class ObjectKlass extends Klass {
 
     private final Attribute runtimeVisibleAnnotations;
 
+    private final Klass hostKlass;
+
     private int initState = LINKED;
 
     public static final int LOADED = 0;
@@ -78,11 +80,15 @@ public final class ObjectKlass extends Klass {
         return linkedKlass.getAttribute(name);
     }
 
-    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces,
-                    StaticObject classLoader) {
+    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
+        this(context, linkedKlass, superKlass, superInterfaces, classLoader, null);
+    }
+
+    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, Klass hostKlass) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces);
 
         this.linkedKlass = linkedKlass;
+        this.hostKlass = hostKlass;
 
         this.enclosingMethod = (EnclosingMethodAttribute) getAttribute(EnclosingMethodAttribute.NAME);
         this.innerClasses = (InnerClassesAttribute) getAttribute(InnerClassesAttribute.NAME);
@@ -104,7 +110,6 @@ public final class ObjectKlass extends Klass {
         for (int i = 0; i < methods.length; ++i) {
             methods[i] = new Method(this, linkedMethods[i]);
         }
-
         this.declaredFields = fields;
         this.declaredMethods = methods;
     }
@@ -297,5 +302,10 @@ public final class ObjectKlass extends Klass {
 
     public int getInstanceFieldSlots() {
         return linkedKlass.instanceFieldCount;
+    }
+
+    @Override
+    public Klass getHostClass() {
+        return hostKlass;
     }
 }

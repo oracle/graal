@@ -28,24 +28,31 @@ import java.security.ProtectionDomain;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.LinkedKlass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
 import sun.misc.Unsafe;
 
 @EspressoSubstitutions
 public final class Target_sun_misc_Unsafe {
 
-    private static final int SAFETY_FIELD_OFFSET = 123456789;
+    public static final int SAFETY_FIELD_OFFSET = 123456789;
 
     private static Unsafe U;
 
@@ -57,6 +64,69 @@ public final class Target_sun_misc_Unsafe {
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @Host(Class.class) StaticObject defineAnonymousClass(
+                    @Host(Unsafe.class) StaticObject self,
+                    @Host(Class.class) StaticObjectClass hostClass,
+                    @Host(typeName = "[B") StaticObjectArray data,
+                    @Host(typeName = "[Ljava/lang/Object;") StaticObject constantPoolPatches) {
+
+        EspressoContext context = self.getKlass().getContext();
+        Meta meta = context.getMeta();
+
+        if (hostClass == StaticObject.NULL || data == StaticObject.NULL) {
+            throw meta.throwEx(meta.IllegalArgumentException);
+        }
+
+        byte[] bytes = data.unwrap();
+        StaticObject[] patches = constantPoolPatches == StaticObject.NULL ? null : ((StaticObjectArray) constantPoolPatches).unwrap();
+        Klass hostKlass = hostClass.getMirrorKlass();
+        ClassfileStream cfs = new ClassfileStream(bytes, null);
+
+        ClassfileParser parser = new ClassfileParser(cfs, null, hostKlass, context, patches);
+
+        ParserKlass parserKlass = parser.parseClass();
+        StaticObject classLoader = hostKlass.getDefiningClassLoader();
+        return defineAnonymousKlass(parserKlass, context, classLoader, parser.getThisKlassIndex(), hostKlass).mirror();
+    }
+
+    private static ObjectKlass defineAnonymousKlass(ParserKlass parserKlass, EspressoContext context, StaticObject classLoader, int thisKlassIndex, Klass hostKlass) {
+
+        Symbol<Symbol.Type> superKlassType = parserKlass.getSuperKlass();
+        ClassRegistries classRegistry = context.getRegistries();
+
+        // TODO(garcia): Superclass must be a class, and non-final.
+        ObjectKlass superKlass = superKlassType != null
+                        ? (ObjectKlass) classRegistry.loadKlass(superKlassType, classLoader)
+                        : null;
+
+        assert superKlass == null || !superKlass.isInterface();
+
+        final Symbol<Symbol.Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
+
+        LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
+                        ? LinkedKlass.EMPTY_ARRAY
+                        : new LinkedKlass[superInterfacesTypes.length];
+
+        ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0
+                        ? ObjectKlass.EMPTY_ARRAY
+                        : new ObjectKlass[superInterfacesTypes.length];
+
+        // TODO(garcia): Superinterfaces must be interfaces.
+        for (int i = 0; i < superInterfacesTypes.length; ++i) {
+            ObjectKlass interf = (ObjectKlass) classRegistry.loadKlass(superInterfacesTypes[i], classLoader);
+            superInterfaces[i] = interf;
+            linkedInterfaces[i] = interf.getLinkedKlass();
+        }
+
+        LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+
+        ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, classLoader, hostKlass);
+        klass.getConstantPool().setKlassAt(thisKlassIndex, klass);
+
+        return klass;
     }
 
     /**
@@ -134,7 +204,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true)
     public static long objectFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObjectImpl field) {
-        Field target = getReflectiveFieldRoot(field);
+        Field target = Field.getReflectiveFieldRoot(field);
         return SAFETY_FIELD_OFFSET + target.getSlot();
     }
 
@@ -488,6 +558,12 @@ public final class Target_sun_misc_Unsafe {
         ((StaticObjectImpl) holder).setFieldVolatile(f, value);
     }
 
+    @Substitution(methodName = "shouldBeInitialized", hasReceiver = true)
+    public static boolean shouldBeInit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObjectClass clazz) {
+        Klass k = clazz.getMirrorKlass();
+        return (k != null);
+    }
+
     /**
      * Ensure the given class has been initialized. This is often needed in conjunction with
      * obtaining the static field base of a class.
@@ -663,6 +739,42 @@ public final class Target_sun_misc_Unsafe {
         f.set(holder, value);
     }
 
+    @Substitution(hasReceiver = true)
+    public static synchronized void putOrderedInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int value) {
+        if (holder instanceof StaticObjectArray) {
+            U.putOrderedInt(((StaticObjectArray) holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        f.set(holder, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized void putOrderedLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long value) {
+        if (holder instanceof StaticObjectArray) {
+            U.putOrderedLong(((StaticObjectArray) holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        f.set(holder, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized void putOrderedObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, Object value) {
+        if (holder instanceof StaticObjectArray) {
+            U.putOrderedObject(((StaticObjectArray) holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        f.set(holder, value);
+    }
+
     // endregion put*(Object holder, long offset, * value)
 
     @Substitution(hasReceiver = true)
@@ -702,19 +814,6 @@ public final class Target_sun_misc_Unsafe {
         return U.pageSize();
     }
 
-    private static Field getReflectiveFieldRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
-        Meta meta = seed.getKlass().getMeta();
-        StaticObject curField = seed;
-        Field target = null;
-        while (target == null) {
-            target = (Field) ((StaticObjectImpl) curField).getHiddenField(Target_java_lang_Class.HIDDEN_FIELD_KEY);
-            if (target == null) {
-                curField = (StaticObject) meta.Field_root.get(curField);
-            }
-        }
-        return target;
-    }
-
     /**
      * Report the location of a given field in the storage allocation of its class. Do not expect to
      * perform any sort of arithmetic on this offset; it is just a cookie which is passed to the
@@ -735,7 +834,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true)
     public static long staticFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
-        return getReflectiveFieldRoot(field).getSlot() + SAFETY_FIELD_OFFSET;
+        return Field.getReflectiveFieldRoot(field).getSlot() + SAFETY_FIELD_OFFSET;
     }
 
     /**
@@ -748,7 +847,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true)
     public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
-        Field target = getReflectiveFieldRoot(field);
+        Field target = Field.getReflectiveFieldRoot(field);
         return target.getDeclaringKlass().tryInitializeAndGetStatics();
     }
 

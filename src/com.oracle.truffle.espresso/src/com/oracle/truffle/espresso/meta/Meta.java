@@ -71,6 +71,7 @@ public final class Meta implements ContextAccess {
 
         String = knownKlass(Type.String);
         Class = knownKlass(Type.Class);
+        Class_Array = Class.array();
         Class_forName_String = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
 
         // Primitives.
@@ -142,6 +143,7 @@ public final class Meta implements ContextAccess {
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
         ClassCastException = knownKlass(Type.ClassCastException);
         AbstractMethodError = knownKlass(Type.AbstractMethodError);
+        InternalError = knownKlass(Type.InternalError);
 
         NoSuchFieldError = knownKlass(Type.NoSuchFieldError);
         NoSuchMethodError = knownKlass(Type.NoSuchMethodError);
@@ -172,6 +174,9 @@ public final class Meta implements ContextAccess {
 
         Field = knownKlass(Type.Field);
         Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
+        Field_class = Field.lookupDeclaredField(Name.clazz, Type.Class);
+        Field_name = Field.lookupDeclaredField(Name.name, Type.String);
+        Field_type = Field.lookupDeclaredField(Name.type, Type.Class);
 
         Shutdown = knownKlass(Type.Shutdown);
         Shutdown_shutdown = Shutdown.lookupDeclaredMethod(Name.shutdown, Signature._void);
@@ -192,6 +197,51 @@ public final class Meta implements ContextAccess {
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
         System_exit = System.lookupDeclaredMethod(Name.exit, Signature._void_int);
+
+        MethodType = knownKlass(Type.MethodType);
+        toMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
+        fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
+        // MethodType_cons = MethodType.lookupDeclaredMethod(Name.MethodType,
+        // Signature.MethodType_cons);
+
+        MemberName = knownKlass(Type.MemberName);
+        getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
+        MNclazz = MemberName.lookupField(Name.clazz, Type.Class);
+        MNname = MemberName.lookupField(Name.name, Type.String);
+        MNtype = MemberName.lookupField(Name.type, Type.MethodType);
+        MNflags = MemberName.lookupField(Name.flags, Type._int);
+
+        MethodHandle = knownKlass(Type.MethodHandle);
+        invokeExact = MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_ObjectArray);
+        invoke = MethodHandle.lookupDeclaredMethod(Name.invoke, Signature.Object_ObjectArray);
+        invokeBasic = MethodHandle.lookupDeclaredMethod(Name.invokeBasic, Signature.Object_ObjectArray);
+        invokeWithArguments = MethodHandle.lookupDeclaredMethod(Name.invokeWithArguments, Signature.Object_ObjectArray);
+        linkToInterface = MethodHandle.lookupDeclaredMethod(Name.linkToInterface, Signature.Object_ObjectArray);
+        linkToSpecial = MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_ObjectArray);
+        linkToStatic = MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_ObjectArray);
+        linkToVirtual = MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_ObjectArray);
+        MHtype = MethodHandle.lookupField(Name.type, Type.MethodType);
+        form = MethodHandle.lookupField(Name.form, Type.LambdaForm);
+
+        MethodHandles = knownKlass(Type.MethodHandles);
+        lookup = MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
+
+        DirectMethodHandle = knownKlass(Type.DirectMethodHandle);
+        DMHmember = DirectMethodHandle.lookupField(Name.member, Type.MemberName);
+
+        CallSite = knownKlass(Type.CallSite);
+        CStarget = CallSite.lookupField(Name.target, Type.MethodHandle);
+
+        LambdaForm = knownKlass(Type.LambdaForm);
+        interpretWithArguments = LambdaForm.lookupDeclaredMethod(Name.interpretWithArguments, Signature.Object_ObjectArray);
+        vmentry = LambdaForm.lookupField(Name.vmentry, Type.MemberName);
+        arity = LambdaForm.lookupField(Name.arity, Type._int);
+
+        MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
+        linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
+        linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
+        linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
+        findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
     }
 
     public final ObjectKlass Object;
@@ -199,6 +249,7 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass String;
     public final ObjectKlass Class;
+    public final ArrayKlass Class_Array;
     public final Method Class_forName_String;
 
     // Primitives.
@@ -278,6 +329,9 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass Field;
     public final Field Field_root;
+    public final Field Field_class;
+    public final Field Field_name;
+    public final Field Field_type;
 
     public final Method Shutdown_shutdown;
     public final ObjectKlass Shutdown;
@@ -291,6 +345,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass OutOfMemoryError;
     public final ObjectKlass ClassCastException;
     public final ObjectKlass AbstractMethodError;
+    public final ObjectKlass InternalError;
 
     public final ObjectKlass Throwable;
     public final Field Throwable_backtrace;
@@ -326,12 +381,83 @@ public final class Meta implements ContextAccess {
     public final Method System_initializeSystemClass;
     public final Method System_exit;
 
+    public final ObjectKlass MethodType;
+    public final Method toMethodDescriptorString;
+
+    public final ObjectKlass MemberName;
+    public final Method getSignature;
+    public final Method fromMethodDescriptorString;
+    public final Field MNclazz;
+    public final Field MNname;
+    public final Field MNtype;
+    public final Field MNflags;
+
+    public final ObjectKlass MethodHandle;
+    public final Method invoke;
+    public final Method invokeExact;
+    public final Method invokeBasic;
+    public final Method invokeWithArguments;
+    public final Method linkToInterface;
+    public final Method linkToSpecial;
+    public final Method linkToStatic;
+    public final Method linkToVirtual;
+    public final Field MHtype;
+    public final Field form;
+
+    public final ObjectKlass MethodHandles;
+    public final Method lookup;
+
+    public final ObjectKlass DirectMethodHandle;
+    public final Field DMHmember;
+
+    public final ObjectKlass CallSite;
+    public final Field CStarget;
+
+    public final ObjectKlass LambdaForm;
+    public final Method interpretWithArguments;
+    public final Field vmentry;
+    public final Field arity;
+
+    public final ObjectKlass MethodHandleNatives;
+    public final Method linkMethod;
+    public final Method linkMethodHandleConstant;
+    public final Method findMethodHandleType;
+    public final Method linkCallSite;
+
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
 
     private static boolean isKnownClass(java.lang.Class<?> clazz) {
         // Cheap check: (host) known classes are loaded by the BCL.
         return clazz.getClassLoader() == null;
+    }
+
+    public static StaticObject box(Meta meta, Object arg) {
+        if (arg instanceof Boolean) {
+            return meta.boxBoolean((boolean) arg);
+        }
+        if (arg instanceof Character) {
+            return meta.boxCharacter((char) arg);
+        }
+        if (arg instanceof Short) {
+            return meta.boxShort((short) arg);
+        }
+        if (arg instanceof Byte) {
+            return meta.boxByte((byte) arg);
+        }
+        if (arg instanceof Integer) {
+            return meta.boxInteger((int) arg);
+        }
+        if (arg instanceof Long) {
+            return meta.boxLong((long) arg);
+        }
+        if (arg instanceof Float) {
+            return meta.boxFloat((float) arg);
+        }
+        if (arg instanceof Double) {
+            return meta.boxDouble((double) arg);
+        }
+        throw EspressoError.shouldNotReachHere();
     }
 
     public StaticObject initEx(java.lang.Class<?> clazz) {

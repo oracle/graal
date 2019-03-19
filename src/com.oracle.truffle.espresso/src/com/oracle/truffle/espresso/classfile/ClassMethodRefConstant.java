@@ -165,6 +165,9 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             if (method != null) {
                 return method;
             }
+            if (klass.getType() == Symbol.Type.MethodHandle) {
+                return lookupPolysigMethod(klass, name, signature);
+            }
             // FIXME(peterssen): Not implemented: If the maximally-specific superinterface methods
             // of C for the name and descriptor specified by the method reference include exactly
             // one method that does not have its ACC_ABSTRACT flag set, then this method is chosen
@@ -177,8 +180,11 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
                     }
                 }
             }
-
             return null;
+        }
+
+        private static Method lookupPolysigMethod(Klass klass, Symbol<Name> name, Symbol<Signature> signature) {
+            return klass.lookupPolysigMethod(name, signature);
         }
 
         private static Method lookupInterfaceMethod(ObjectKlass interf, Symbol<Name> name, Symbol<Signature> signature) {
@@ -210,10 +216,9 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             resolveMethodCount.inc();
-            Symbol<Name> holderKlassName = getHolderKlassName(pool);
 
             EspressoContext context = pool.getContext();
-            Klass holderKlass = context.getRegistries().loadKlass(context.getTypes().fromName(holderKlassName), accessingKlass.getDefiningClassLoader());
+            Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
 
             Meta meta = context.getMeta();
             if (holderKlass.isInterface()) {

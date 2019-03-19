@@ -42,6 +42,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class ClassfileParser {
 
@@ -73,6 +74,8 @@ public final class ClassfileParser {
 
     private final ClassfileStream stream;
 
+    private final StaticObject[] constantPoolPatches;
+
     private String className;
     private int minorVersion;
     private int majorVersion;
@@ -81,28 +84,47 @@ public final class ClassfileParser {
     private Tag badConstantSeen;
 
     private ConstantPool pool;
+    private int thisKlassIndex;
+
+    @SuppressWarnings("unused")
+    public Klass getHostClass() {
+        return hostClass;
+    }
 
     // /**
     // * The host class for an anonymous class.
     // */
-    // private final Klass hostClass;
+    private final Klass hostClass;
 
+    @SuppressWarnings("unused")
     private ClassfileParser(ClasspathFile classpathFile, String requestedClassName, @SuppressWarnings("unused") Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
         this.className = requestedClassName;
-        // this.hostClass = hostClass;
+        this.hostClass = hostClass;
         this.context = context;
         this.classfile = classpathFile;
         this.stream = new ClassfileStream(classfile);
+        this.constantPoolPatches = null;
     }
 
     private ClassfileParser(ClassfileStream stream, String requestedClassName, @SuppressWarnings("unused") Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
         this.className = requestedClassName;
-        // this.hostClass = hostClass;
+        this.hostClass = hostClass;
         this.context = context;
         this.classfile = null;
         this.stream = Objects.requireNonNull(stream);
+        this.constantPoolPatches = null;
+    }
+
+    public ClassfileParser(ClassfileStream stream, String requestedClassName, @SuppressWarnings("unused") Klass hostClass, EspressoContext context, StaticObject[] constantPoolPatches) {
+        this.requestedClassName = requestedClassName;
+        this.className = requestedClassName;
+        this.hostClass = hostClass;
+        this.context = context;
+        this.classfile = null;
+        this.stream = Objects.requireNonNull(stream);
+        this.constantPoolPatches = constantPoolPatches;
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -155,7 +177,11 @@ public final class ClassfileParser {
             throw new UnsupportedClassVersionError("Unsupported class file version: " + majorVersion + "." + minorVersion);
         }
 
-        this.pool = ConstantPool.parse(context.getLanguage(), stream, this);
+        if (constantPoolPatches == null) {
+            this.pool = ConstantPool.parse(context.getLanguage(), stream, this);
+        } else {
+            this.pool = ConstantPool.parse(context.getLanguage(), stream, this, constantPoolPatches, context);
+        }
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
         int accessFlags;
@@ -183,9 +209,9 @@ public final class ClassfileParser {
         }
 
         // This class and superclass
-        int thisClassIndex = stream.readU2();
+        thisKlassIndex = stream.readU2();
 
-        // this.typeDescriptor = pool.classAt(thisClassIndex).getName(pool);
+        // this.typeDescriptor = pool.classAt(thisKlassIndex).getName(pool);
 
         // Update className which could be null previously
         // to reflect the name in the constant pool
@@ -196,14 +222,7 @@ public final class ClassfileParser {
             throw new NoClassDefFoundError(className + " (wrong name: " + requestedClassName + ")");
         }
 
-        // if this is an anonymous class fix up its name if it's in the unnamed
-        // package. Otherwise, throw IAE if it is in a different package than
-        // its host class.
-        // if (hostClass != null) {
-        // fixAnonymousClassName();
-        // }
-
-        Symbol<Name> thisKlassName = pool.classAt(thisClassIndex).getName(pool);
+        Symbol<Name> thisKlassName = pool.classAt(thisKlassIndex).getName(pool);
         Symbol<Type> thisKlassType = context.getTypes().fromName(thisKlassName);
 
         Symbol<Type> superKlass = parseSuperKlass();
@@ -438,6 +457,10 @@ public final class ClassfileParser {
             interfaces[i] = context.getTypes().fromName(pool.classAt(interfaceIndex).getName(pool));
         }
         return interfaces;
+    }
+
+    public int getThisKlassIndex() {
+        return thisKlassIndex;
     }
 
     // private static String getPackageName(String fqn) {

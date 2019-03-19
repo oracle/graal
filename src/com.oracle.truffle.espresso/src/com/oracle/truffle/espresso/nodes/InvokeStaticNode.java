@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 
 public final class InvokeStaticNode extends QuickNode {
+
     protected final Method method;
     @Child private DirectCallNode directCallNode;
 
@@ -47,6 +48,7 @@ public final class InvokeStaticNode extends QuickNode {
         }
         BytecodeNode root = (BytecodeNode) getParent();
         Object[] args = root.peekArguments(frame, top, false, method.getParsedSignature());
+
         Object result = directCallNode.call(args);
         int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
                                                                                          // receiver
