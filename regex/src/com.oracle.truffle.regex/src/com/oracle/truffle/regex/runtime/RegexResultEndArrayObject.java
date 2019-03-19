@@ -78,6 +78,9 @@ public final class RegexResultEndArrayObject implements RegexLanguageObject {
 
     @ExportMessage
     int readArrayElement(long index, @Cached RegexResultGetEndNode getEndNode) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
+        }
         return getEndNode.execute(getResult(), (int) index);
     }
 

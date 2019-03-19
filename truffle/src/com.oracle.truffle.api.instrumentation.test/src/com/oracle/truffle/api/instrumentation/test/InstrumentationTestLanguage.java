@@ -1295,6 +1295,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             try {
                 Thread.sleep(timeToSleep);
             } catch (InterruptedException e) {
+                throw new AssertionError();
             }
         }
     }
