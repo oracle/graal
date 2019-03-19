@@ -1005,7 +1005,7 @@ public abstract class Source {
                     0x31, 0x44, 0x50, 0xB4, 0x8F, 0xED, 0x1F, 0x1A, 0xDB, 0x99, 0x8D, 0x33, 0x9F, 0x11, 0x83, 0x14
     };
 
-    static Source buildSource(String language, Object origin, String name, String mimeType, Object content, URI uri,
+    static Source buildSource(String language, Object origin, String name, String mimeType, Object content, URI uri, Charset encoding,
                     boolean internal, boolean interactive, boolean cached, boolean legacy, Supplier<Object> fileSystemContext) throws IOException {
         String useName = name;
         URI useUri = uri;
@@ -1014,6 +1014,7 @@ public abstract class Source {
         String usePath = null;
         URL useUrl = null;
         Object useOrigin = origin;
+        Charset useEncoding = encoding;
 
         if (useOrigin instanceof File) {
             final File file = (File) useOrigin;
@@ -1036,13 +1037,15 @@ public abstract class Source {
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? file.getPath() : usePath;
             useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
+            useEncoding = useEncoding == null ? file.getEncoding() : useEncoding;
+            useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                useContent = useContent == CONTENT_UNSET ? read(file) : useContent;
+                useContent = useContent == CONTENT_UNSET ? read(file, useEncoding) : useContent;
             } else {
                 if (useContent == CONTENT_UNSET) {
                     if (isCharacterBased(language, useMimeType)) {
-                        useContent = read(file);
+                        useContent = read(file, useEncoding);
                     } else {
                         useContent = ByteSequence.create(file.readAllBytes());
                     }
@@ -1063,14 +1066,16 @@ public abstract class Source {
             usePath = usePath == null ? url.toExternalForm() : usePath;
             try {
                 TruffleFile truffleFile = SourceAccessor.getTruffleFile(tmpUri, fileSystemContext.get());
+                useEncoding = useEncoding == null ? truffleFile.getEncoding() : useEncoding;
+                useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
                 if (legacy) {
                     useMimeType = useMimeType == null ? SourceAccessor.getMimeType(truffleFile, getValidMimeTypes(language)) : useMimeType;
                     useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                    useContent = useContent == CONTENT_UNSET ? read(truffleFile) : useContent;
+                    useContent = useContent == CONTENT_UNSET ? read(truffleFile, useEncoding) : useContent;
                 } else {
                     if (useContent == CONTENT_UNSET) {
                         if (isCharacterBased(language, useMimeType)) {
-                            useContent = read(truffleFile);
+                            useContent = read(truffleFile, useEncoding);
                         } else {
                             useContent = ByteSequence.create(truffleFile.readAllBytes());
                         }
@@ -1079,14 +1084,15 @@ public abstract class Source {
             } catch (FileSystemNotFoundException fsnf) {
                 // Not a recognized by FileSystem, fall back to URLConnection
                 URLConnection connection = url.openConnection();
+                useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
                 if (legacy) {
                     useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language), fileSystemContext.get()) : useMimeType;
                     useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                    useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream())) : useContent;
+                    useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream(), useEncoding)) : useContent;
                 } else {
                     if (useContent == CONTENT_UNSET) {
                         if (isCharacterBased(language, useMimeType)) {
-                            useContent = read(new InputStreamReader(connection.getInputStream()));
+                            useContent = read(new InputStreamReader(connection.getInputStream(), useEncoding));
                         } else {
                             useContent = ByteSequence.create(readBytes(connection));
                         }
@@ -1159,11 +1165,7 @@ public abstract class Source {
         return (capacity == nread) ? buf : Arrays.copyOf(buf, nread);
     }
 
-    static String read(TruffleFile file) throws IOException {
-        Charset encoding = file.getEncoding();
-        if (encoding == null) {
-            encoding = StandardCharsets.UTF_8;
-        }
+    static String read(TruffleFile file, Charset encoding) throws IOException {
         return new String(file.readAllBytes(), encoding);
     }
 
@@ -1432,6 +1434,7 @@ public abstract class Source {
         private boolean internal;
         private boolean interactive;
         private boolean cached = true;
+        private Charset fileEncoding;
         private Object embedderFileSystemContext;
 
         SourceBuilder(String language, Object origin) {
@@ -1586,6 +1589,21 @@ public abstract class Source {
             return this;
         }
 
+        /**
+         * Explicitly assigns an encoding used to read the file content. If the encoding is
+         * {@code null} then the {@link TruffleFile#getEncoding() file contained encoding
+         * information} is used. If the file doesn't provide an encoding information the default
+         * {@code UTF-8} encoding is used.
+         *
+         * @param encoding the new file encoding to be used for reading the content
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
+         * @since 1.0
+         */
+        public SourceBuilder encoding(Charset encoding) {
+            this.fileEncoding = encoding;
+            return this;
+        }
+
         SourceBuilder embedderFileSystemContext(Object fileSystemContext) {
             this.embedderFileSystemContext = fileSystemContext;
             return this;
@@ -1602,7 +1620,7 @@ public abstract class Source {
          */
         public Source build() throws IOException {
             assert this.language != null;
-            Source source = buildSource(this.language, this.origin, this.name, this.mimeType, this.content, this.uri, this.internal, this.interactive, this.cached, false,
+            Source source = buildSource(this.language, this.origin, this.name, this.mimeType, this.content, this.uri, this.fileEncoding, this.internal, this.interactive, this.cached, false,
                             new FileSystemContextSupplier(embedderFileSystemContext));
 
             // make sure origin is not consumed again if builder is used twice
@@ -1693,6 +1711,16 @@ public abstract class Source {
         @Override
         public LiteralBuilder uri(URI ownUri) {
             return (LiteralBuilder) super.uri(ownUri);
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @since 1.0
+         */
+        @Override
+        public LiteralBuilder encoding(Charset encoding) {
+            return (LiteralBuilder) super.encoding(encoding);
         }
 
         /**
@@ -1844,7 +1872,7 @@ public abstract class Source {
         @Deprecated
         public Source build() throws E1, E2, E3 {
             try {
-                Source source = buildSource(this.language, this.origin, this.name, this.mime, this.characters, this.uri, this.internal, this.interactive, this.cached, true,
+                Source source = buildSource(this.language, this.origin, this.name, this.mime, this.characters, this.uri, null, this.internal, this.interactive, this.cached, true,
                                 new FileSystemContextSupplier(null));
 
                 // legacy sources must have character sources

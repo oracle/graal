@@ -55,6 +55,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.source.Source.SourceBuilder;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -257,7 +258,8 @@ class PolyglotSource extends AbstractSourceImpl {
     }
 
     @Override
-    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException {
+    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                    throws IOException {
         assert language != null;
         SourceBuilder builder;
         if (origin instanceof File) {
@@ -287,6 +289,7 @@ class PolyglotSource extends AbstractSourceImpl {
         builder.interactive(interactive);
         builder.mimeType(mimeType);
         builder.cached(cached);
+        builder.encoding(encoding);
 
         try {
             com.oracle.truffle.api.source.Source truffleSource = builder.build();

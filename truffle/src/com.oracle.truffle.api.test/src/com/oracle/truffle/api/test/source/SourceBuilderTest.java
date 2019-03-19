@@ -81,6 +81,8 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 
 public class SourceBuilderTest extends AbstractPolyglotTest {
@@ -593,6 +595,67 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         Source source = Source.newBuilder("lang", "anything", "name").interactive(true).build();
 
         assertTrue("This source is interactive", source.isInteractive());
+    }
+
+    @Test
+    public void testEncodingTruffleFile() throws IOException {
+        // Checkstyle: stop
+        String content = "žščřďťňáéíóúůý";
+        String xmlContent = "<?xml version=\"1.0\" encoding=\"windows-1250\"?>\n<!DOCTYPE foo PUBLIC \"foo\">\n<content>žščřďťňáéíóúůý</content>";
+        // Checkstyle: resume
+        setupEnv();
+        File testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(content.getBytes(StandardCharsets.UTF_16LE));
+        }
+        TruffleFile file = languageEnv.getTruffleFile(testFile.getPath());
+        Source src = Source.newBuilder("lang", file).encoding(StandardCharsets.UTF_16LE).build();
+        assertEquals(content, src.getCharacters().toString());
+
+        testFile = File.createTempFile("test", ".xml").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(xmlContent.getBytes(Charset.forName("windows-1250")));
+        }
+        file = languageEnv.getTruffleFile(testFile.getPath());
+        src = Source.newBuilder("lang", file).build();
+        assertEquals(xmlContent, src.getCharacters().toString());
+
+        testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(content.getBytes(StandardCharsets.UTF_8));
+        }
+        file = languageEnv.getTruffleFile(testFile.getPath());
+        src = Source.newBuilder("lang", file).build();
+        assertEquals(content, src.getCharacters().toString());
+    }
+
+    @Test
+    public void testEncodingURL() throws IOException {
+        // Checkstyle: stop
+        String content = "žščřďťňáéíóúůý";
+        String xmlContent = "<?xml version=\"1.0\" encoding=\"windows-1250\"?>\n<!DOCTYPE foo PUBLIC \"foo\">\n<content>žščřďťňáéíóúůý</content>";
+        // Checkstyle: resume
+        setupEnv();
+        File testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(content.getBytes(StandardCharsets.UTF_16LE));
+        }
+        Source src = Source.newBuilder("lang", testFile.toURI().toURL()).encoding(StandardCharsets.UTF_16LE).build();
+        assertEquals(content, src.getCharacters().toString());
+
+        testFile = File.createTempFile("test", ".xml").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(xmlContent.getBytes(Charset.forName("windows-1250")));
+        }
+        src = Source.newBuilder("lang", testFile.toURI().toURL()).build();
+        assertEquals(xmlContent, src.getCharacters().toString());
+
+        testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(content.getBytes(StandardCharsets.UTF_8));
+        }
+        src = Source.newBuilder("lang", testFile.toURI().toURL()).build();
+        assertEquals(content, src.getCharacters().toString());
     }
 
     public void subSourceHashAndEquals() {

@@ -42,6 +42,13 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `Node.lookupContextReference(Class)` and `Node.lookupLanguageReference(Class)` that allows for a more convenient lookup.
 * Deprecated `RootNode.getLanguage(Class)`, the new language references should be used instead.
 * Added `TruffleFile` aware [TruffleFile.FileTypeDetector SPI](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.FileTypeDetector.html) to detect a file MIME type and a file encoding. Added [TruffleFile.getMimeType method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getMimeType--) to obtain a `TruffleFile` MIME type. Added [TruffleFile.getEncoding method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getEncoding--) to obtain a `TruffleFile` encoding. The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files. Usage of NIO `FileTypeDetector` for MIME type detection is deprecated.
+* Added `TruffleFile` aware file type detector
+    - Added [TruffleFile.FileTypeDetector SPI](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.FileTypeDetector.html) to detect a file MIME type and a file encoding.
+    - Added [TruffleFile.getMimeType method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getMimeType--) to obtain a `TruffleFile` MIME type.
+    - Added [TruffleFile.getEncoding method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getEncoding--) to obtain a `TruffleFile` encoding.
+    - Added a possibility to set an [encoding in SourceBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html#encoding-java.nio.charset.Charset-)
+    - The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files and file URLs.
+    - Deprecated usage of NIO `FileTypeDetector` for MIME type detection.
 
 ## Version 1.0.0 RC14
 
