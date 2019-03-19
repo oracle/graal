@@ -28,6 +28,7 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
@@ -142,6 +143,6 @@ public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
     @Override
     @TruffleBoundary
     public String toString() {
-        return "tree " + modifiersToString() + "[" + MatcherBuilder.rangesToString(tree) + "]";
+        return "tree " + modifiersToString() + "[" + CharSet.rangesToString(tree) + "]";
     }
 }

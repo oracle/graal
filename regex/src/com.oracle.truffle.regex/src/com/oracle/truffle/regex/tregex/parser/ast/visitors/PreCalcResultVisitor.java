@@ -110,7 +110,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     @Override
     protected void visit(CharacterClass characterClass) {
         if (extractLiteral) {
-            literal.append(characterClass.getMatcherBuilder().getLo(0));
+            literal.append((char) characterClass.getMatcherBuilder().getLo(0));
         }
         index++;
     }

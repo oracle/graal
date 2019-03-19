@@ -24,10 +24,10 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
@@ -74,7 +74,7 @@ public final class NFAGenerator {
         this.astStepVisitor = new ASTStepVisitor(ast, compilationBuffer);
         this.transitionGBUpdateIndices = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.transitionGBClearIndices = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
-        dummyInitialState = new NFAState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getWrappedRoot()), MatcherBuilder.createEmpty(), Collections.emptySet(), false);
+        dummyInitialState = new NFAState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getWrappedRoot()), CharSet.getEmpty(), Collections.emptySet(), false);
         nfaStates.put(dummyInitialState.getStateSet(), dummyInitialState);
         anchoredFinalState = createFinalState(new ASTNodeSet<>(ast, ast.getReachableDollars()));
         anchoredFinalState.setForwardAnchoredFinalState(true);
@@ -222,7 +222,7 @@ public final class NFAGenerator {
     }
 
     private NFAState createFinalState(ASTNodeSet<? extends RegexASTNode> stateSet) {
-        NFAState state = new NFAState((short) stateID.inc(), stateSet, MatcherBuilder.createFull(), Collections.emptySet(), false);
+        NFAState state = new NFAState((short) stateID.inc(), stateSet, CharSet.getFull(), Collections.emptySet(), false);
         assert !nfaStates.containsKey(state.getStateSet());
         nfaStates.put(state.getStateSet(), state);
         return state;
@@ -233,7 +233,7 @@ public final class NFAGenerator {
     }
 
     private NFAState registerMatcherState(ASTNodeSet<CharacterClass> stateSetCC,
-                    MatcherBuilder matcherBuilder,
+                    CharSet matcherBuilder,
                     ASTNodeSet<LookBehindAssertion> finishedLookBehinds,
                     boolean containsPrefixStates) {
         if (nfaStates.containsKey(stateSetCC)) {

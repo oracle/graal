@@ -34,8 +34,8 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.chardata.CodePointRange;
 import com.oracle.truffle.regex.chardata.CodePointSet;
 import com.oracle.truffle.regex.chardata.Constants;
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -316,7 +316,7 @@ public final class RegexParser {
                 if (startLead > curLead) {
                     if (curTrails.matchesSomething()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(createCharClass(MatcherBuilder.create(curLead), src));
+                        finishedAlternative.add(createCharClass(CharSet.create(curLead), src));
                         finishedAlternative.add(createCharClass(curTrails, src));
                     }
                     curLead = startLead;
@@ -333,7 +333,7 @@ public final class RegexParser {
 
                     if (curTrails.matchesSomething()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(createCharClass(MatcherBuilder.create(curLead), src));
+                        finishedAlternative.add(createCharClass(CharSet.create(curLead), src));
                         finishedAlternative.add(createCharClass(curTrails, src));
                     }
                     curLead = endLead;
@@ -353,7 +353,7 @@ public final class RegexParser {
             }
             if (curTrails.matchesSomething()) {
                 Sequence lastAlternative = group.addSequence(ast);
-                lastAlternative.add(createCharClass(MatcherBuilder.create(curLead), src));
+                lastAlternative.add(createCharClass(CharSet.create(curLead), src));
                 lastAlternative.add(createCharClass(curTrails, src));
             }
 
@@ -362,7 +362,7 @@ public final class RegexParser {
                 Sequence completeRangesAlt = ast.createSequence();
                 group.insertFirst(completeRangesAlt);
                 completeRangesAlt.add(createCharClass(completeRanges, src));
-                completeRangesAlt.add(createCharClass(MatcherBuilder.createTrailSurrogateRange(), src));
+                completeRangesAlt.add(createCharClass(CharSet.getTrailSurrogateRange(), src));
             }
         }
 
@@ -386,7 +386,7 @@ public final class RegexParser {
         if (flags.isUnicode()) {
             if (codePointSet.matchesNothing()) {
                 // We need this branch because a Group with no alternatives is invalid
-                addTerm(createCharClass(MatcherBuilder.createEmpty(), token.getSourceSection()));
+                addTerm(createCharClass(CharSet.getEmpty(), token.getSourceSection()));
             } else {
                 addTerm(translateUnicodeCharClass(token));
             }
@@ -396,10 +396,10 @@ public final class RegexParser {
     }
 
     private CharacterClass createCharClass(CodePointSet codePointSet, SourceSection sourceSection) {
-        return createCharClass(MatcherBuilder.create(codePointSet), sourceSection);
+        return createCharClass(CharSet.create(codePointSet), sourceSection);
     }
 
-    private CharacterClass createCharClass(MatcherBuilder matcherBuilder, SourceSection sourceSection) {
+    private CharacterClass createCharClass(CharSet matcherBuilder, SourceSection sourceSection) {
         CharacterClass characterClass = ast.createCharacterClass(matcherBuilder);
         characterClass.setSourceSection(sourceSection);
         return characterClass;
@@ -563,7 +563,7 @@ public final class RegexParser {
         if (quantifier.getMin() == -1) {
             deleteVisitor.run(curSequence.getLastTerm());
             curSequence.removeLastTerm();
-            addTerm(createCharClass(MatcherBuilder.createEmpty(), null));
+            addTerm(createCharClass(CharSet.getEmpty(), null));
             curSequence.markAsDead();
             return;
         }

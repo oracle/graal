@@ -25,10 +25,12 @@
 
 package com.oracle.truffle.regex.tregex.buffer;
 
+import com.oracle.truffle.regex.tregex.matchers.ListOfRanges;
+
 /**
  * Extension of {@link CharArrayBuffer} that adds convenience functions for arrays of character
  * ranges in the form:
- * 
+ *
  * <pre>
  * [
  *     inclusive lower bound of range 1, inclusive upper bound of range 1,
@@ -38,7 +40,7 @@ package com.oracle.truffle.regex.tregex.buffer;
  * ]
  * </pre>
  */
-public class RangesArrayBuffer extends CharArrayBuffer {
+public class RangesArrayBuffer extends CharArrayBuffer implements ListOfRanges {
 
     public RangesArrayBuffer() {
         this(16);
@@ -53,7 +55,18 @@ public class RangesArrayBuffer extends CharArrayBuffer {
         add((char) rHi);
     }
 
-    public int sizeRanges() {
-        return size() / 2;
+    @Override
+    public int getLo(int i) {
+        return buf[i * 2];
+    }
+
+    @Override
+    public int getHi(int i) {
+        return buf[i * 2 + 1];
+    }
+
+    @Override
+    public int size() {
+        return length() / 2;
     }
 }

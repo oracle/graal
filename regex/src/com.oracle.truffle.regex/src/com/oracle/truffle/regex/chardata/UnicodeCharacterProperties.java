@@ -30,6 +30,10 @@ public class UnicodeCharacterProperties {
         return evaluatePropertySpec(normalizePropertySpec(propertySpec));
     }
 
+    public static CharacterSet getUnicodeProperty(String propertySpec) {
+        return evaluatePropertySpec(normalizePropertySpec(propertySpec));
+    }
+
     /**
      * @param propertySpec *Normalized* Unicode character property specification (i.e. only
      *            abbreviated properties and property values)
