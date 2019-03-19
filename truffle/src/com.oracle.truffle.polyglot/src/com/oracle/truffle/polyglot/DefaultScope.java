@@ -321,7 +321,7 @@ final class DefaultScope {
 
         @ExportMessage
         void writeArrayElement(long index, Object value) throws InvalidArrayIndexException {
-            if (index < 0L || index > Integer.MAX_VALUE) {
+            if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {

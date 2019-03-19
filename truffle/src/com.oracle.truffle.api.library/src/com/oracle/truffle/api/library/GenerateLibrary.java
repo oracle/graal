@@ -55,9 +55,9 @@ import java.lang.annotation.Target;
  * a library. There are no restrictions on the return type or argument types of a message. Every
  * method that specifies a message must have a name that is unique per library. Final or private
  * methods will always be ignored by the generator. Parameter type overloading is currently not
- * support for messages, therefore every public method must have a unique name per library. Generic
- * type arguments local to messages are generally supported, but generic type arguments on the
- * library type are not yet supported.
+ * supported for messages, therefore every public method must have a unique name per library.
+ * Generic type arguments local to messages are generally supported, but generic type arguments on
+ * the library type are not yet supported.
  * <p>
  *
  * <h3>Basic Usage</h3>
@@ -95,7 +95,7 @@ import java.lang.annotation.Target;
 public @interface GenerateLibrary {
 
     /**
-     * Specifies an assertion wrapper class that can be to verify pre and post conditions of a
+     * Specifies an assertion wrapper class that can be used to verify pre and post conditions of a
      * library. Assertion wrappers are only inserted when assertions (-ea) are enabled. It is
      * required that assertion wrappers don't introduce additional side-effects and call the
      * delegate methods exactly once. If assertions are disabled no library wrapper will be inserted
@@ -196,7 +196,7 @@ public @interface GenerateLibrary {
      * Makes a library message abstract, but allows to keep a default implementation. By default,
      * abstract messages throw an {@link AbstractMethodError} if they are not exported for a given
      * receiver type. To customize this behavior the library message can specify a method body and
-     * annotate it with {@link Abstract} to keep requring an implementation from exports.
+     * annotate it with {@link Abstract} to keep requiring an implementation from exports.
      * <p>
      * <b>For example:</b>
      *

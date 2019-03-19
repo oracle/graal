@@ -66,7 +66,7 @@ public @interface ExportMessage {
     /**
      * Returns the message simple name to export. If not specified, the exported message name is
      * inherited from the enclosing method name or class. In case of an exported class the first
-     * latter is automatically translated to lower-case. The name attribute should be specified if
+     * letter is automatically translated to lower-case. The name attribute should be specified if
      * the exported message does not match the exported method or class name or if multiple messages
      * need to be exported for a method or class.
      *

@@ -65,11 +65,11 @@ import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
  * Messages are exported by specifying methods annotated by
  * {@linkplain ExportMessage @ExportMessage} that match the name and signature of a library message.
  * By default the message name is inferred by the method name and the library is automatically
- * detected if it can be unambiguously be identified by its simple name. If the receiver type is
+ * detected if it can be unambiguously identified by its simple name. If the receiver type is
  * implicit then the receiver type parameter can be omitted. Exported messages allow the use of
  * {@linkplain Cached}, {@linkplain CachedLibrary}, {@linkplain CachedContext} and
- * {@linkplain CachedLanguage} parameters at the end of the method. This allows the use of of nodes
- * in implementations.
+ * {@linkplain CachedLanguage} parameters at the end of the method. This allows the use of nodes in
+ * implementations.
  *
  * <p>
  * <h4>Usage example</h4>

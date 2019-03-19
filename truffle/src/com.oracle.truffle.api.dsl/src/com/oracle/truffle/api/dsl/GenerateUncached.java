@@ -52,7 +52,7 @@ package com.oracle.truffle.api.dsl;
  * annotation will automatically use {@linkplain Cached#uncached() getUncached} instead of a cached
  * version to initialize the cache.
  * <p>
- * A node subclass must full-fill the following requirements in order to be uncachable:
+ * A node subclass must fullfill the following requirements in order to be uncachable:
  * <ul>
  * <li>At least one specialization and one execute method must be specified.
  * <li>The node has no instance fields.

@@ -61,7 +61,7 @@ import com.oracle.truffle.sl.runtime.SLBigNumber;
 @GenerateUncached
 public abstract class SLToMemberNode extends Node {
 
-    static final int LIMIT = Integer.MAX_VALUE;
+    static final int LIMIT = 5;
 
     public abstract String execute(Object value) throws UnknownIdentifierException;
 

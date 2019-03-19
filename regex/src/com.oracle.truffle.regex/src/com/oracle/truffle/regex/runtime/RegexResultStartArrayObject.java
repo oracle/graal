@@ -80,6 +80,9 @@ public final class RegexResultStartArrayObject implements RegexLanguageObject {
 
     @ExportMessage
     int readArrayElement(long index, @Cached RegexResultGetStartNode getStartNode) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
+        }
         return getStartNode.execute(getResult(), (int) index);
     }
 

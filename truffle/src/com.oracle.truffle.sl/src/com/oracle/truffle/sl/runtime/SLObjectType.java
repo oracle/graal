@@ -101,6 +101,7 @@ public final class SLObjectType extends ObjectType {
         }
 
         @Specialization(replaces = "doCached")
+        @TruffleBoundary
         static Keys doGeneric(DynamicObject receiver, boolean includeInternal) {
             return new Keys(receiver.getShape().getKeyList().toArray());
         }
@@ -122,6 +123,7 @@ public final class SLObjectType extends ObjectType {
         }
 
         @Specialization(replaces = "doCached")
+        @TruffleBoundary
         static boolean doGeneric(DynamicObject receiver, String member) {
             return receiver.getShape().getProperty(member) != null;
         }
@@ -148,12 +150,10 @@ public final class SLObjectType extends ObjectType {
 
         @ExportMessage
         Object readArrayElement(long index) throws InvalidArrayIndexException {
-            try {
-                return keys[(int) index];
-            } catch (IndexOutOfBoundsException e) {
-                CompilerDirectives.transferToInterpreter();
+            if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
+            return keys[(int) index];
         }
 
         @SuppressWarnings("static-method")

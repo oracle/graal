@@ -26,7 +26,6 @@ package com.oracle.truffle.regex.util;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -65,11 +64,9 @@ public class TruffleReadOnlyKeysArray implements RegexLanguageObject {
 
     @ExportMessage
     String readArrayElement(long index) throws InvalidArrayIndexException {
-        try {
-            return keys[(int) index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            CompilerDirectives.transferToInterpreter();
+        if (!isArrayElementReadable(index)) {
             throw InvalidArrayIndexException.create(index);
         }
+        return keys[(int) index];
     }
 }

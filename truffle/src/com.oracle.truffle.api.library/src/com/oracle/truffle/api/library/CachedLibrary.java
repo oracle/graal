@@ -141,7 +141,7 @@ public @interface CachedLibrary {
     /**
      * Sets the limit expression when using dispatched libraries. The limit expression sets the
      * number of internally dispatched specialized libraries until an
-     * {@link LibraryFactory#getUncached() uncachedd} version of the library will be used.
+     * {@link LibraryFactory#getUncached() uncached} version of the library will be used.
      *
      * @see CachedLibrary for usage examples.
      * @since 1.0

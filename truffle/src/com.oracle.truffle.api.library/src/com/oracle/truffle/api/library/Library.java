@@ -70,9 +70,9 @@ public abstract class Library extends Node {
      * {@link LibraryFactory#create(Object)} only guarantees to accept the value it was constructed
      * with. For other values, the method may return <code>false</code>. Such libraries need to
      * check for acceptance before calling a library method with a receiver. If receiver values are
-     * not accepted then a new library library needs to be created or fetched. Dispatched versions
-     * of libraries always return <code>true</code> for any value as they take care of dispatching
-     * to any receiver type.
+     * not accepted then a new library needs to be created or fetched. Dispatched versions of
+     * libraries always return <code>true</code> for any value as they take care of dispatching to
+     * any receiver type.
      * <p>
      * It is not necessary to call accepts manually for most use cases. Instead the
      * {@link CachedLibrary} should be used instead. For slow-paths the
