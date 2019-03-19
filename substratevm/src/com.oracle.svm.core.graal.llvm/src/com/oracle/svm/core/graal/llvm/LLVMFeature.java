@@ -110,7 +110,7 @@ public class LLVMFeature implements Feature, GraalFeature, Snippets {
     }
 
     private static void checkLLVMVersion() {
-        List<String> supportedVersions = Arrays.asList("6.0.0", "6.0.1");
+        List<String> supportedVersions = Arrays.asList("6.0.0", "6.0.1", "7.0.0");
 
         int status;
         String output = null;
