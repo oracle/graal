@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -54,11 +55,18 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.io.File;
 import java.io.FileReader;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(TruffleRunner.class)
 public class ErrnoNFITest extends NFITest {
+
+    @Before
+    public void checkOS() {
+        Assume.assumeFalse("Testcase not supported on Windows on SVM (GR-14522)", IS_WINDOWS && TruffleOptions.AOT);
+    }
 
     @TruffleBoundary
     private static void destroyErrno() {

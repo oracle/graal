@@ -139,7 +139,7 @@ public class Process {
     @CFunction
     public static native int SleepConditionVariableCS(PCONDITION_VARIABLE cond, PCRITICAL_SECTION mutex, int dwMilliseconds);
 
-    @CFunction(value = "SleepConditionVariable", transition = Transition.NO_TRANSITION)
+    @CFunction(value = "SleepConditionVariableCS", transition = Transition.NO_TRANSITION)
     public static native int SleepConditionVariableCSNoTrans(PCONDITION_VARIABLE cond, PCRITICAL_SECTION mutex, int dwMilliseconds);
 
     /** Wake a single thread waiting on the condition variable */
