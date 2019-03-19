@@ -62,7 +62,6 @@ import org.junit.runner.RunWith;
 @RunWith(TruffleRunner.class)
 public class ErrnoNFITest extends NFITest {
 
-
     @Before
     public void checkOS() {
         Assume.assumeFalse("Testcase not supported on Windows (GR-14522)", IS_WINDOWS);
