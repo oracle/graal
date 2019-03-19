@@ -585,9 +585,10 @@ def svm_gate_body(args, tasks):
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
-                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--tool:nfi', '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
-                native_unittest(native_unittest_args)
+                if mx.get_os() != 'windows':#GR-14578
+                    testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
+                    native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--tool:nfi', '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
+                    native_unittest(native_unittest_args)
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
