@@ -50,7 +50,9 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -87,6 +89,7 @@ public final class HostAccess {
     private final String name;
     private final Set<Class<? extends Annotation>> annotations;
     private final Set<AnnotatedElement> excludes;
+    private final Map<Class<?>, Boolean> excludeTypes;
     private final Set<AnnotatedElement> members;
     private final boolean allowPublic;
     private Object impl;
@@ -138,9 +141,10 @@ public final class HostAccess {
      */
     public static final HostAccess NONE = newBuilder().name("HostAccess.NONE").build();
 
-    HostAccess(Set<Class<? extends Annotation>> annotations, Set<AnnotatedElement> excludes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
+    HostAccess(Set<Class<? extends Annotation>> annotations, Set<AnnotatedElement> excludes, Map<Class<?>, Boolean> excludeTypes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
         this.annotations = annotations;
         this.excludes = excludes;
+        this.excludeTypes = excludeTypes;
         this.members = members;
         this.name = name;
         this.allowPublic = allowPublic;
@@ -153,12 +157,28 @@ public final class HostAccess {
      * @since 1.0
      */
     public static Builder newBuilder() {
-        return new HostAccess(null, null, null, null, false).new Builder();
+        return new HostAccess(null, null, null, null, null, false).new Builder();
     }
 
     boolean allowAccess(AnnotatedElement member) {
         if (excludes != null && excludes.contains(member)) {
             return false;
+        }
+        if (excludeTypes != null) {
+            Class<?> owner = getDeclaringClass(member);
+            for (Map.Entry<Class<?>, Boolean> entry : excludeTypes.entrySet()) {
+                Class<?> ban = entry.getKey();
+                if (entry.getValue()) {
+                    // include subclasses
+                    if (ban.isAssignableFrom(owner)) {
+                        return false;
+                    }
+                } else {
+                    if (ban == owner) {
+                        return false;
+                    }
+                }
+            }
         }
         if (allowPublic) {
             return true;
@@ -209,6 +229,22 @@ public final class HostAccess {
         return false;
     }
 
+    private static Class<?> getDeclaringClass(AnnotatedElement member) {
+        if (member instanceof Field) {
+            Field f = (Field) member;
+            return f.getDeclaringClass();
+        }
+        if (member instanceof Method) {
+            Method m = (Method) member;
+            return m.getDeclaringClass();
+        }
+        if (member instanceof Constructor) {
+            Constructor<?> c = (Constructor<?>) member;
+            return c.getDeclaringClass();
+        }
+        return Object.class;
+    }
+
     /**
      * Annotation used by the predefined {@link #EXPLICIT} access policy to mark public
      * constructors, methods and fields in public classes that should be accessible by the guest
@@ -250,6 +286,7 @@ public final class HostAccess {
     public final class Builder {
         private final Set<Class<? extends Annotation>> annotations = new HashSet<>();
         private final Set<AnnotatedElement> excludes = new HashSet<>();
+        private final Map<Class<?>, Boolean> excludeTypes = new HashMap<>();
         private final Set<AnnotatedElement> members = new HashSet<>();
         private boolean allowPublic;
         private String name;
@@ -329,21 +366,27 @@ public final class HostAccess {
         }
 
         /**
-         * Prevents access to all public members of given class.
+         * Prevents access to members of given class and its subclasses.
          *
+         * @param clazz the class to deny access to
+         * @return this builder
          * @since 1.0
          */
         public Builder denyAccess(Class<?> clazz) {
+            return denyAccess(clazz, true);
+        }
+
+        /**
+         * Prevents access to members of given class.
+         *
+         * @param clazz the class to deny access to
+         * @param includeSubclasses should subclasses be excuded as well?
+         * @return this builder
+         * @since 1.0
+         */
+        public Builder denyAccess(Class<?> clazz, boolean includeSubclasses) {
             Objects.requireNonNull(clazz);
-            for (Method method : clazz.getMethods()) {
-                excludes.add(method);
-            }
-            for (Field field : clazz.getFields()) {
-                excludes.add(field);
-            }
-            for (Constructor<?> cons : clazz.getConstructors()) {
-                excludes.add(cons);
-            }
+            excludeTypes.put(clazz, includeSubclasses);
             return this;
         }
 
@@ -358,7 +401,7 @@ public final class HostAccess {
          * @since 1.0
          */
         public HostAccess build() {
-            return new HostAccess(annotations, excludes, members, name, allowPublic);
+            return new HostAccess(annotations, excludes, excludeTypes, members, name, allowPublic);
         }
     }
 }

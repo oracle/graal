@@ -43,6 +43,8 @@ package com.oracle.truffle.api.test.polyglot;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.net.URL;
+import java.net.URLClassLoader;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -100,7 +102,7 @@ public class HostAccessTest {
             denyAccess(Method.class).
             denyAccess(Field.class).
             denyAccess(Proxy.class).
-            denyAccess(Object.class).
+            denyAccess(Object.class, false).
             build();
         // @formatter:on
 
@@ -150,6 +152,66 @@ public class HostAccessTest {
             Value res;
             try {
                 res = readValue.execute(new Object());
+            } catch (PolyglotException ex) {
+                return;
+            }
+            fail("expecting no result: " + res);
+        }
+    }
+
+    @Test
+    public void banAccessToLoadClass() throws Exception {
+        // @formatter:off
+        HostAccess config = HostAccess.newBuilder().
+            allowPublicAccess(true).
+            denyAccess(ClassLoader.class).
+            build();
+        // @formatter:on
+
+        try (Context c = Context.newBuilder().allowHostAccess(config).build()) {
+            Value loadClass = c.eval("sl", "" +
+                            "function loadClass(x) {\n" +
+                            "  return x.loadClass(\"java.lang.String\");\n" +
+                            "}\n" +
+                            "function main() {\n" +
+                            "  return loadClass;\n" +
+                            "}\n");
+
+            URLClassLoader loader = new URLClassLoader(new URL[0]);
+
+            Value res;
+            try {
+                res = loadClass.execute(loader);
+            } catch (PolyglotException ex) {
+                return;
+            }
+            fail("expecting no result: " + res);
+        }
+    }
+
+    @Test
+    public void banAccessToOverwrittenLoadClass() throws Exception {
+        // @formatter:off
+        HostAccess config = HostAccess.newBuilder().
+            allowPublicAccess(true).
+            denyAccess(ClassLoader.class).
+            build();
+        // @formatter:on
+
+        try (Context c = Context.newBuilder().allowHostAccess(config).build()) {
+            Value loadClass = c.eval("sl", "" +
+                            "function loadClass(x) {\n" +
+                            "  return x.loadClass(\"java.lang.String\");\n" +
+                            "}\n" +
+                            "function main() {\n" +
+                            "  return loadClass;\n" +
+                            "}\n");
+
+            URLClassLoader loader = new MyClassLoader(new URL[0]);
+
+            Value res;
+            try {
+                res = loadClass.execute(loader);
             } catch (PolyglotException ex) {
                 return;
             }
@@ -235,5 +297,21 @@ public class HostAccessTest {
             return;
         }
         Assert.assertNotEquals("cannot share engine for different HostAccess configs", c1.getEngine(), c2.getEngine());
+    }
+
+    public static class MyClassLoader extends URLClassLoader {
+        public MyClassLoader(URL[] urls) {
+            super(urls);
+        }
+
+        @Override
+        public Class<?> loadClass(String name) throws ClassNotFoundException {
+            return super.loadClass(name);
+        }
+
+        @Override
+        protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            return super.loadClass(name, resolve);
+        }
     }
 }
