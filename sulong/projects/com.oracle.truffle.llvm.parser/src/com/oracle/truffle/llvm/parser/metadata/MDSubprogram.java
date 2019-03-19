@@ -50,7 +50,6 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
     private MDBaseNode containingType;
     private MDBaseNode templateParams;
     private MDBaseNode declaration;
-    private MDBaseNode variables;
     private MDBaseNode function;
     private MDBaseNode compileUnit;
 
@@ -72,7 +71,6 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         this.containingType = MDVoidNode.INSTANCE;
         this.templateParams = MDVoidNode.INSTANCE;
         this.declaration = MDVoidNode.INSTANCE;
-        this.variables = MDVoidNode.INSTANCE;
         this.function = MDVoidNode.INSTANCE;
         this.compileUnit = MDVoidNode.INSTANCE;
     }
@@ -142,10 +140,6 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         return declaration;
     }
 
-    public MDBaseNode getVariables() {
-        return variables;
-    }
-
     public MDBaseNode getScope() {
         return scope;
     }
@@ -192,9 +186,6 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         }
         if (declaration == oldValue) {
             declaration = newValue;
-        }
-        if (variables == oldValue) {
-            variables = newValue;
         }
         if (function == oldValue) {
             function = newValue;
@@ -255,7 +246,6 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         subprogram.containingType = md.getNullable(args[8 + offsetA], subprogram);
         subprogram.templateParams = md.getNullable(args[13 + offsetB], subprogram);
         subprogram.declaration = md.getNullable(args[14 + offsetB], subprogram);
-        subprogram.variables = md.getNullable(args[15 + offsetB], subprogram);
 
         if (hasUnit) {
             subprogram.compileUnit = md.getNullable(args[12 + offsetB], subprogram);
@@ -285,7 +275,6 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
     private static final int ARGINDEX_32_FN = 16;
     private static final int ARGINDEX_32_TEMPLATEPARAMS = 17;
     private static final int ARGINDEX_32_DECLARATION = 18;
-    private static final int ARGINDEX_32_VARIABLES = 19;
     private static final int ARGINDEX_32_SCOPELINE = 20;
 
     public static MDSubprogram create32(long[] args, Metadata md) {
@@ -309,7 +298,6 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         subprogram.containingType = ParseUtil.resolveReference(args, ARGINDEX_32_CONTAININGTYPE, subprogram, md);
         subprogram.templateParams = ParseUtil.resolveReference(args, ARGINDEX_32_TEMPLATEPARAMS, subprogram, md);
         subprogram.declaration = ParseUtil.resolveReference(args, ARGINDEX_32_DECLARATION, subprogram, md);
-        subprogram.variables = ParseUtil.resolveReference(args, ARGINDEX_32_VARIABLES, subprogram, md);
 
         subprogram.function = ParseUtil.resolveSymbol(args, ARGINDEX_32_FN, md);
 
