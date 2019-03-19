@@ -29,27 +29,28 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -61,9 +62,10 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
+
     @Children private final LLVMExpressionNode[] args;
     @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
-    @Child private Node foreignInvoke;
+    @Child private InteropLibrary foreignInvoke;
     @Child private ForeignToLLVM toLLVM;
     @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
@@ -74,32 +76,31 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
             prepareValuesForEscape[i] = LLVMDataEscapeNode.create();
         }
-        this.foreignInvoke = Message.INVOKE.createNode();
+        this.foreignInvoke = InteropLibrary.getFactory().createDispatched(5);
     }
 
     @CompilationFinal private LLVMThreadingStack threadingStack = null;
 
-    private LLVMThreadingStack getThreadingStack(LLVMContext context) {
+    private LLVMThreadingStack getThreadingStack(ContextReference<LLVMContext> ctxRef) {
         if (threadingStack == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            threadingStack = context.getThreadingStack();
+            threadingStack = ctxRef.get().getThreadingStack();
         }
         return threadingStack;
     }
 
     @ExplodeLoop
-    private Object doInvoke(VirtualFrame frame, TruffleObject value, String id, ContextReference<LLVMContext> contextReference,
+    private Object doInvoke(VirtualFrame frame, TruffleObject value, String id, ContextReference<LLVMContext> ctxRef,
                     LLVMGetStackNode getStack) {
         Object[] evaluatedArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
             evaluatedArgs[i] = prepareValuesForEscape[i].executeWithTarget(args[i].executeGeneric(frame));
         }
         try {
-            LLVMContext context = contextReference.get();
-            LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
+            LLVMStack stack = getStack.executeWithTarget(getThreadingStack(ctxRef), Thread.currentThread());
             Object rawValue;
             try (StackPointer save = stack.newFrame()) {
-                rawValue = ForeignAccess.sendInvoke(foreignInvoke, value, id, evaluatedArgs);
+                rawValue = foreignInvoke.invokeMember(value, id, evaluatedArgs);
             }
             return toLLVM.executeWithTarget(rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
@@ -111,7 +112,7 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
     @Specialization
     protected Object doIntrinsic(VirtualFrame frame, LLVMManagedPointer value, Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         TruffleObject foreign = asForeign.execute(value);
         return doInvoke(frame, foreign, readStr.executeWithTarget(id), context, getStack);
@@ -119,9 +120,7 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
 
     @Fallback
     @SuppressWarnings("unused")
-    public Object fallback(Object value, Object id) {
-        CompilerDirectives.transferToInterpreter();
-        System.err.println("Invalid arguments to invoke-builtin.");
-        throw new IllegalArgumentException();
+    public Object fallback(Object object, Object name) {
+        throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
     }
 }

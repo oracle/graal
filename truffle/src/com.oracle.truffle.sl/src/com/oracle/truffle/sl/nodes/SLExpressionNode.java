@@ -40,14 +40,17 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper.IncomingConverter;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.sl.nodes.util.SLSimplifyNodeGen;
 
 /**
  * Base class for all SL nodes that produce a value and therefore benefit from type specialization.
@@ -74,6 +77,15 @@ public abstract class SLExpressionNode extends SLStatementNode {
     @Override
     public void executeVoid(VirtualFrame frame) {
         executeGeneric(frame);
+    }
+
+    /*
+     * Convert values introduced by instrumentation.
+     */
+    @IncomingConverter
+    @TruffleBoundary
+    static Object convertIncoming(Object value) {
+        return SLSimplifyNodeGen.getUncached().executeConvert(value);
     }
 
     @Override

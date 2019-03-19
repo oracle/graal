@@ -45,24 +45,23 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 
+@SuppressWarnings("deprecation")
 public class ForeignAccessToStringTest {
     @Test
     public void checkRegularFactory() {
-        ForeignAccess fa = ForeignAccess.create(new SimpleTestingFactory());
+        com.oracle.truffle.api.interop.ForeignAccess fa = com.oracle.truffle.api.interop.ForeignAccess.create(new SimpleTestingFactory());
         assertEquals("ForeignAccess[" + ForeignAccessToStringTest.class.getName() + "$SimpleTestingFactory]", fa.toString());
     }
 
     @Test
     public void check10Factory() {
-        ForeignAccess fa = ForeignAccess.createAccess(new Simple10TestingFactory(), null);
+        com.oracle.truffle.api.interop.ForeignAccess fa = com.oracle.truffle.api.interop.ForeignAccess.create(new Simple10TestingFactory(), null);
         assertEquals("ForeignAccess[" + ForeignAccessToStringTest.class.getName() + "$Simple10TestingFactory]", fa.toString());
     }
 
-    private static class SimpleTestingFactory implements ForeignAccess.Factory {
+    private static class SimpleTestingFactory implements com.oracle.truffle.api.interop.ForeignAccess.Factory {
         SimpleTestingFactory() {
         }
 
@@ -72,12 +71,12 @@ public class ForeignAccessToStringTest {
         }
 
         @Override
-        public CallTarget accessMessage(Message tree) {
+        public CallTarget accessMessage(com.oracle.truffle.api.interop.Message tree) {
             return null;
         }
     }
 
-    private static class Simple10TestingFactory implements ForeignAccess.StandardFactory, ForeignAccess.Factory {
+    private static class Simple10TestingFactory implements com.oracle.truffle.api.interop.ForeignAccess.StandardFactory, com.oracle.truffle.api.interop.ForeignAccess.Factory {
         @Override
         public CallTarget accessIsNull() {
             return null;
@@ -129,7 +128,7 @@ public class ForeignAccessToStringTest {
         }
 
         @Override
-        public CallTarget accessMessage(Message unknown) {
+        public CallTarget accessMessage(com.oracle.truffle.api.interop.Message unknown) {
             return null;
         }
 

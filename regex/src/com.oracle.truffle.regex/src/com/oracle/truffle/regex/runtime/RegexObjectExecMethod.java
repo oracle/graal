@@ -24,11 +24,17 @@
  */
 package com.oracle.truffle.regex.runtime;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.RegexLanguageObject;
 import com.oracle.truffle.regex.RegexObject;
 
+@ExportLibrary(InteropLibrary.class)
 public final class RegexObjectExecMethod implements RegexLanguageObject {
 
     private final RegexObject regex;
@@ -41,12 +47,17 @@ public final class RegexObjectExecMethod implements RegexLanguageObject {
         return regex;
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexObjectExecMethod;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return RegexObjectExecMethodMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    Object execute(Object[] args, @Cached ExecuteRegexObjectNode executeNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
+        if (args.length != 2) {
+            throw ArityException.create(2, args.length);
+        }
+        return executeNode.execute(getRegexObject(), args[0], args[1]);
     }
 }

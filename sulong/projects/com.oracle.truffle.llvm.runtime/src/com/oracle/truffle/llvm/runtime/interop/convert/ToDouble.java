@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,17 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 
 public abstract class ToDouble extends ForeignToLLVM {
-
-    @Child private ForeignToLLVM toDouble;
 
     @Specialization
     protected double fromInt(int value) {
@@ -86,26 +86,20 @@ public abstract class ToDouble extends ForeignToLLVM {
         return getSingleStringCharacter(value);
     }
 
-    @Specialization
-    protected double fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
-        return recursiveConvert(boxed.getValue());
-    }
-
-    @Specialization(guards = "notLLVM(obj)")
-    protected double fromTruffleObject(TruffleObject obj) {
-        return recursiveConvert(fromForeign(obj));
-    }
-
-    private double recursiveConvert(Object o) {
-        if (toDouble == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toDouble = insert(getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE));
+    @Specialization(limit = "5", guards = {"notLLVM(obj)", "interop.isNumber(obj)"})
+    protected double fromForeign(Object obj,
+                    @CachedLibrary("obj") InteropLibrary interop,
+                    @Cached BranchProfile exception) {
+        try {
+            return interop.asDouble(obj);
+        } catch (UnsupportedMessageException ex) {
+            exception.enter();
+            throw new LLVMPolyglotException(this, "Polyglot number can't be converted to double.");
         }
-        return (double) toDouble.executeWithTarget(o);
     }
 
     @TruffleBoundary
-    static double slowPathPrimitiveConvert(LLVMMemory memory, ForeignToLLVM thiz, Object value) {
+    static double slowPathPrimitiveConvert(ForeignToLLVM thiz, Object value) throws UnsupportedTypeException {
         if (value instanceof Number) {
             return ((Number) value).doubleValue();
         } else if (value instanceof Boolean) {
@@ -114,12 +108,12 @@ public abstract class ToDouble extends ForeignToLLVM {
             return (char) value;
         } else if (value instanceof String) {
             return thiz.getSingleStringCharacter((String) value);
-        } else if (value instanceof LLVMBoxedPrimitive) {
-            return slowPathPrimitiveConvert(memory, thiz, ((LLVMBoxedPrimitive) value).getValue());
-        } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
-            return slowPathPrimitiveConvert(memory, thiz, thiz.fromForeign((TruffleObject) value));
         } else {
-            throw UnsupportedTypeException.raise(new Object[]{value});
+            try {
+                return InteropLibrary.getFactory().getUncached().asDouble(value);
+            } catch (UnsupportedMessageException ex) {
+                throw UnsupportedTypeException.create(new Object[]{value});
+            }
         }
     }
 }

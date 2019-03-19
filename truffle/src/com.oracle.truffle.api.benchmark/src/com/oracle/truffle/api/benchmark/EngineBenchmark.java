@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.benchmark;
 
-import java.util.Collections;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
@@ -58,22 +56,15 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @Warmup(iterations = 10)
@@ -282,9 +273,11 @@ public class EngineBenchmark extends TruffleBenchmark {
     public static class CallTargetCallState {
         final Source source = Source.create(TEST_LANGUAGE, "");
         final Context context = Context.create(TEST_LANGUAGE);
-        final Value hostValue = context.getBindings(TEST_LANGUAGE).getMember("context");
+        {
+            context.initialize(TEST_LANGUAGE);
+        }
+        final Value hostValue = context.getPolyglotBindings().getMember("context");
         final BenchmarkContext internalContext = hostValue.asHostObject();
-        final Node executeNode = Message.EXECUTE.createNode();
         final Integer intValue = 42;
         final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
 
@@ -376,18 +369,12 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         @Override
         protected BenchmarkContext createContext(Env env) {
-            BenchmarkContext context = new BenchmarkContext(env, new Function<TruffleObject, Scope>() {
-                @Override
-                public Scope apply(TruffleObject obj) {
-                    return Scope.newBuilder("Benchmark top scope", obj).build();
-                }
-            });
-            return context;
+            return new BenchmarkContext(env);
         }
 
         @Override
         protected void initializeContext(BenchmarkContext context) throws Exception {
-            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) context.env.getPolyglotBindings(), "context", context.env.asGuestValue(context));
+            InteropLibrary.getFactory().getUncached().writeMember(context.env.getPolyglotBindings(), "context", context.env.asGuestValue(context));
         }
 
         @Override
@@ -414,20 +401,6 @@ public class EngineBenchmark extends TruffleBenchmark {
         }
 
         @Override
-        protected Iterable<Scope> findLocalScopes(BenchmarkContext context, Node node, Frame frame) {
-            if (node != null) {
-                return super.findLocalScopes(context, node, frame);
-            } else {
-                return context.topScopes;
-            }
-        }
-
-        @Override
-        protected Iterable<Scope> findTopScopes(BenchmarkContext context) {
-            return context.topScopes;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return object instanceof BenchmarkObject;
         }
@@ -438,14 +411,14 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         final Env env;
         final BenchmarkObject object = new BenchmarkObject();
-        final Iterable<Scope> topScopes;
 
-        BenchmarkContext(Env env, Function<TruffleObject, Scope> scopeProvider) {
+        BenchmarkContext(Env env) {
             this.env = env;
-            topScopes = Collections.singleton(scopeProvider.apply(new TopScopeObject(this)));
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused", "hiding"})
     public static class BenchmarkObject implements TruffleObject {
 
         private static final Integer constant = 42;
@@ -456,146 +429,94 @@ public class EngineBenchmark extends TruffleBenchmark {
             return constant;
         };
 
-        public ForeignAccess getForeignAccess() {
-            return BenchmarkObjectMRForeign.ACCESS;
+        @ExportMessage
+        final boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof BenchmarkObject;
+        @ExportMessage
+        final boolean hasArrayElements() {
+            return true;
         }
 
-    }
-
-    static final class TopScopeObject implements TruffleObject {
-
-        private final BenchmarkContext context;
-
-        private TopScopeObject(BenchmarkContext context) {
-            this.context = context;
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return TopScopeObjectMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        final Object getMembers(boolean includeInternal) {
+            return null;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof TopScopeObject;
+        @ExportMessage
+        final Object readArrayElement(long index) {
+            return value;
         }
 
-        @MessageResolution(receiverType = TopScopeObject.class)
-        static class TopScopeObjectMessageResolution {
-
-            @Resolve(message = "READ")
-            abstract static class VarsMapReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(TopScopeObject ts, String name) {
-                    if ("context".equals(name)) {
-                        return ts.context.env.asGuestValue(ts.context);
-                    } else {
-                        return ts.context.env.asGuestValue(ts.context.object);
-                    }
-                }
-            }
-
-            @Resolve(message = "KEY_INFO")
-            abstract static class VarsMapKeyInfoNode extends Node {
-
-                public int access(@SuppressWarnings("unused") TopScopeObject ts, String propertyName) {
-                    if ("context".equals(propertyName)) {
-                        return KeyInfo.READABLE;
-                    }
-                    return 0;
-                }
-            }
-
-            @Resolve(message = "KEYS")
-            abstract static class VarsMapKeysNode extends Node {
-
-                @TruffleBoundary
-                public Object access(TopScopeObject ts) {
-                    return ts.context.env.asGuestValue(new String[]{"context"});
-                }
-            }
-        }
-    }
-
-    @MessageResolution(receiverType = BenchmarkObject.class)
-    @SuppressWarnings("unused")
-    static class BenchmarkObjectMR {
-
-        @Resolve(message = "READ")
-        abstract static class ReadNode extends Node {
-
-            public Object access(BenchmarkObject obj, String name) {
-                return obj.value;
-            }
-
-            public Object access(BenchmarkObject obj, Number name) {
-                return obj.value;
-            }
+        @ExportMessage
+        final void writeArrayElement(long index, Object value) {
+            this.value = value;
         }
 
-        @Resolve(message = "EXECUTE")
-        abstract static class ExecuteNode extends Node {
-
-            @CompilationFinal private Supplier<Object> runOnExecute;
-
-            public Object access(Object obj, Object[] args) {
-                if (runOnExecute == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    runOnExecute = ((BenchmarkObject) obj).runOnExecute;
-                }
-                return runOnExecute.get();
-            }
+        @ExportMessage
+        final boolean isArrayElementInsertable(long index) {
+            return true;
         }
 
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class IsExecutableNode extends Node {
-
-            public boolean access(Object obj) {
-                return true;
-            }
+        @ExportMessage
+        final long getArraySize() {
+            return 0L;
         }
 
-        @Resolve(message = "HAS_SIZE")
-        abstract static class HasSizeNode extends Node {
-
-            public boolean access(Object obj) {
-                return true;
-            }
+        @ExportMessage
+        final boolean isArrayElementReadable(long index) {
+            return true;
         }
 
-        @Resolve(message = "IS_POINTER")
-        abstract static class IsNativeNode extends Node {
-
-            public boolean access(Object obj) {
-                return true;
-            }
+        @ExportMessage
+        final boolean isArrayElementModifiable(long index) {
+            return true;
         }
 
-        @Resolve(message = "AS_POINTER")
-        abstract static class AsPointerNode extends Node {
-
-            public long access(BenchmarkObject obj) {
-                return obj.longValue;
-            }
+        @ExportMessage
+        final Object execute(Object[] arguments, @Cached("this.runOnExecute") Supplier<Object> runOnExecute) {
+            return runOnExecute.get();
         }
 
-        @Resolve(message = "WRITE")
-        abstract static class WriteNode extends Node {
+        @ExportMessage
+        final boolean isMemberReadable(String member) {
+            return true;
+        }
 
-            public Object access(BenchmarkObject obj, String name, Object value) {
-                obj.value = value;
-                return value;
-            }
+        @ExportMessage
+        final boolean isMemberModifiable(String member) {
+            return true;
+        }
 
-            public Object access(BenchmarkObject obj, Number index, Object value) {
-                obj.value = value;
-                return value;
-            }
+        @ExportMessage
+        final boolean isMemberInsertable(String member) {
+            return true;
+        }
 
+        @ExportMessage
+        final void writeMember(String member, Object value) {
+            this.value = value;
+        }
+
+        @ExportMessage
+        final Object readMember(String member) {
+            return value;
+        }
+
+        @ExportMessage
+        final boolean isPointer() {
+            return true;
+        }
+
+        @ExportMessage
+        final long asPointer() {
+            return longValue;
         }
 
     }

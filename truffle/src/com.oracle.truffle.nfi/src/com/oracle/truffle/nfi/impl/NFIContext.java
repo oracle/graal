@@ -60,6 +60,7 @@ import com.oracle.truffle.nfi.types.NativeTypeMirror.Kind;
 
 class NFIContext {
 
+    final NFILanguageImpl language;
     Env env;
 
     private long nativeContext;
@@ -97,7 +98,8 @@ class NFIContext {
         }
     }
 
-    NFIContext(Env env) {
+    NFIContext(NFILanguageImpl language, Env env) {
+        this.language = language;
         this.env = env;
     }
 

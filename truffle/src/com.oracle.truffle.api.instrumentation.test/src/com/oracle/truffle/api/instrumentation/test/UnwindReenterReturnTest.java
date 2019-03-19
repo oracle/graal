@@ -416,7 +416,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
     @Test
     public void testUnwindRepeated() throws Exception {
         UnwindRepeated unwindRepeated = engine.getInstruments().get("testUnwindRepeated").lookup(UnwindRepeated.class);
-        int repeats = 100000;
+        int repeats = 1000;
         unwindRepeated.submit("STATEMENT()", "CALL(a)", repeats);
         int ret = context.eval(lines(CODE2)).asInt();
         assertEquals(4242, ret);

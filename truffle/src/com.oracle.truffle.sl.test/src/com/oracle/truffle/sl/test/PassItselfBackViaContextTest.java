@@ -50,11 +50,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 public class PassItselfBackViaContextTest {
     private Context context;
@@ -102,26 +101,22 @@ public class PassItselfBackViaContextTest {
         context.close();
     }
 
-    @MessageResolution(receiverType = MyObj.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class MyObj implements TruffleObject {
         private Object value;
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return com.oracle.truffle.sl.test.MyObjForeign.ACCESS;
+        @ExportMessage
+        Object execute(Object[] arguments) {
+            value = arguments[0];
+            return "";
         }
 
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof MyObj;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
 
-        @Resolve(message = "EXECUTE")
-        abstract static class ExecNode extends Node {
-            protected Object access(MyObj obj, Object... value) {
-                obj.value = value[0];
-                return "";
-            }
-        }
     }
 
     abstract static class MyLang extends TruffleLanguage<Object> {

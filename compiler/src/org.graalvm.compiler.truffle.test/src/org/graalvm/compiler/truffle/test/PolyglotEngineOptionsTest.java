@@ -25,8 +25,8 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -34,7 +34,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
 public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
@@ -52,7 +51,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     @Test
     public void testCompilationThreshold() {
         // does not work with a different inline cache size.
-        Assert.assertEquals(2, SLDispatchNode.INLINE_CACHE_SIZE);
+        Assert.assertEquals(2, SLFunction.INLINE_CACHE_SIZE);
 
         // doWhile must run isolated and should not affect other compilation thresholds
         Runnable doWhile = () -> testCompilationThreshold(50, "50", null);

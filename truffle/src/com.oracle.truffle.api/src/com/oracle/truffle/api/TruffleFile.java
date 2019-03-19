@@ -1482,7 +1482,7 @@ public final class TruffleFile {
         if (TruffleLanguage.AccessAPI.engineAccess().isDefaultFileSystem(fs)) {
             throw sthrow(t);
         }
-        throw TruffleLanguage.AccessAPI.engineAccess().wrapHostException(TruffleLanguage.AccessAPI.engineAccess().getCurrentHostContext(), t);
+        throw TruffleLanguage.AccessAPI.engineAccess().wrapHostException(null, TruffleLanguage.AccessAPI.engineAccess().getCurrentHostContext(), t);
     }
 
     @SuppressWarnings("unchecked")

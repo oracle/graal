@@ -47,21 +47,9 @@
 
 /**
  * This package contains classes that specify the contract for inter-operability between Truffle
- * languages.
- * <p>
- * Languages can exchange primitive Java type wrapper objects (e.g., {@link java.lang.Byte},
- * {@link java.lang.Short}, {@link java.lang.Integer}, {@link java.lang.Long},
- * {@link java.lang.Float}, {@link java.lang.Double}, {@link java.lang.Character},
- * {@link java.lang.Boolean}, and {@link java.lang.String}) as well as any type implementing
- * {@link com.oracle.truffle.api.interop.TruffleObject}. Foreign objects are precisely those
- * implementing {@link com.oracle.truffle.api.interop.TruffleObject}.
- * <p>
- * To use a {@link com.oracle.truffle.api.interop.TruffleObject} from a different language, you need
- * to ask the language to build appropriate AST for a given
- * {@link com.oracle.truffle.api.interop.Message} with
- * {@link com.oracle.truffle.api.interop.Message#createNode}. The message can then be executed with
- * {@link com.oracle.truffle.api.interop.ForeignAccess} methods.
+ * guest languages and tools.
  *
+ * @see com.oracle.truffle.api.interop.InteropLibrary
  * @since 0.8 or older
  */
 package com.oracle.truffle.api.interop;

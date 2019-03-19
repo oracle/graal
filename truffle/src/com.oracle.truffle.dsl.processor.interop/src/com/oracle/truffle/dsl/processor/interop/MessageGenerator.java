@@ -53,13 +53,11 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.Arrays;
 import javax.tools.Diagnostic;
 
+@SuppressWarnings("deprecation")
 abstract class MessageGenerator extends InteropNodeGenerator {
     protected static final String ACCESS_METHOD_NAME = "access";
 
@@ -67,7 +65,8 @@ abstract class MessageGenerator extends InteropNodeGenerator {
     protected final String receiverClassName;
     protected final String rootNodeName;
 
-    MessageGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+    MessageGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.Resolve resolveAnnotation, com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation,
+                    TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, element, containingForeignAccessFactory);
         this.receiverClassName = Utils.getReceiverTypeFullClassName(messageResolutionAnnotation);
@@ -173,7 +172,9 @@ abstract class MessageGenerator extends InteropNodeGenerator {
         return clazzName;
     }
 
-    public static MessageGenerator getGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+    @SuppressWarnings("deprecation")
+    public static MessageGenerator getGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.Resolve resolveAnnotation,
+                    com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         String messageName = resolveAnnotation.message();
 
@@ -184,25 +185,30 @@ abstract class MessageGenerator extends InteropNodeGenerator {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, "Unknown message " + messageName + " (add @SuppressWarnings(\"unknown-message\") to ignore this warning)", element);
             }
         }
-        if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName) ||
-                        Message.REMOVE.toString().equalsIgnoreCase(messageName)) {
+        if (com.oracle.truffle.api.interop.Message.READ.toString().equalsIgnoreCase(messageName) || com.oracle.truffle.api.interop.Message.KEY_INFO.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.REMOVE.toString().equalsIgnoreCase(messageName)) {
             return new ReadGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-        } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
+        } else if (com.oracle.truffle.api.interop.Message.WRITE.toString().equalsIgnoreCase(messageName)) {
             return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-        } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
-                        Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
-                        Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
-                        Message.IS_INSTANTIABLE.toString().equalsIgnoreCase(messageName) || Message.HAS_KEYS.toString().equalsIgnoreCase(messageName) ||
-                        Message.IS_POINTER.toString().equalsIgnoreCase(messageName) ||
-                        Message.AS_POINTER.toString().equalsIgnoreCase(messageName) || Message.TO_NATIVE.toString().equalsIgnoreCase(messageName)) {
+        } else if (com.oracle.truffle.api.interop.Message.IS_NULL.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.IS_BOXED.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.GET_SIZE.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.HAS_KEYS.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.IS_POINTER.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.AS_POINTER.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.TO_NATIVE.toString().equalsIgnoreCase(messageName)) {
             return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-        } else if (Message.KEYS.toString().equalsIgnoreCase(messageName)) {
+        } else if (com.oracle.truffle.api.interop.Message.KEYS.toString().equalsIgnoreCase(messageName)) {
             return new KeysGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-        } else if (Message.EXECUTE.toString().equalsIgnoreCase(messageName) || Message.INVOKE.toString().equalsIgnoreCase(messageName) ||
-                        Message.NEW.toString().equalsIgnoreCase(messageName)) {
+        } else if (com.oracle.truffle.api.interop.Message.EXECUTE.toString().equalsIgnoreCase(messageName) || com.oracle.truffle.api.interop.Message.INVOKE.toString().equalsIgnoreCase(messageName) ||
+                        com.oracle.truffle.api.interop.Message.NEW.toString().equalsIgnoreCase(messageName)) {
             return new ExecuteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         } else {
-            assert !InteropDSLProcessor.KNOWN_MESSAGES.contains(currentMessage);
+            assert !InteropDSLProcessor.getKnownMessages().contains(currentMessage);
             return new GenericGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         }
     }

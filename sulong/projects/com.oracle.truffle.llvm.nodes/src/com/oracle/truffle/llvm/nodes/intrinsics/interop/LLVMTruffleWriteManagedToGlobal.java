@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,14 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNode.AttachInteropTypeNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -54,8 +57,9 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
 
     @TruffleBoundary
     @Specialization
-    protected Object write(LLVMPointer address, Object value) {
-        LLVMGlobal global = getContextReference().get().findGlobal(address);
+    protected Object write(LLVMPointer address, Object value,
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        LLVMGlobal global = ctx.findGlobal(address);
         if (global == null) {
             throw new LLVMPolyglotException(this, "First argument to truffle_assign_managed must be a pointer to a global.");
         }

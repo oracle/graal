@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * The SL type for a {@code null} (i.e., undefined) value. In Truffle, it is generally discouraged
@@ -51,6 +53,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
  * language {@code null} as a singleton, as in {@link #SINGLETON this class}, is the recommended
  * practice.
  */
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class SLNull implements TruffleObject {
 
     /**
@@ -71,16 +75,14 @@ public final class SLNull implements TruffleObject {
      */
     @Override
     public String toString() {
-        return "null";
+        return "NULL";
     }
 
     /**
-     * In case you want some of your objects to co-operate with other languages, you need to make
-     * them implement {@link TruffleObject} and provide additional {@link SLNullMessageResolution
-     * foreign access implementation}.
+     * {@link SLNull} values are interpreted as null values by other languages.
      */
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return SLNullMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    boolean isNull() {
+        return true;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,14 +31,13 @@ package com.oracle.truffle.llvm.test.interop.values;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.test.interop.values.TestCallback.Function;
 
-@MessageResolution(receiverType = TestConstructor.class)
+@ExportLibrary(InteropLibrary.class)
 public class TestConstructor implements TruffleObject {
 
     private final int arity;
@@ -50,30 +49,23 @@ public class TestConstructor implements TruffleObject {
     }
 
     @TruffleBoundary
-    Object call(Object... args) {
+    Object call(Object... args) throws ArityException {
         if (args.length == arity) {
             Object ret = constructor.call(args);
             return ret;
         } else {
-            throw ArityException.raise(arity, args.length);
+            throw ArityException.create(arity, args.length);
         }
     }
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof TestConstructor;
+    @ExportMessage
+    boolean isInstantiable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return TestConstructorForeign.ACCESS;
-    }
-
-    @Resolve(message = "NEW")
-    abstract static class NewNode extends Node {
-
-        Object access(TestConstructor constructor, Object[] arguments) {
-            Object res = constructor.call(arguments);
-            return res == null ? new NullValue() : res;
-        }
+    @ExportMessage
+    Object instantiate(Object[] arguments) throws ArityException {
+        Object res = call(arguments);
+        return res == null ? new NullValue() : res;
     }
 }

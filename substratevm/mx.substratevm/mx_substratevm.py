@@ -585,9 +585,10 @@ def svm_gate_body(args, tasks):
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
-                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--tool:nfi', '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
-                native_unittest(native_unittest_args)
+                if mx.get_os() != 'windows':#GR-14578
+                    testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
+                    native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--tool:nfi', '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
+                    native_unittest(native_unittest_args)
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
@@ -608,7 +609,7 @@ def svm_gate_body(args, tasks):
                         mx.abort('TCK tests not found.')
                     unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
                     vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-                    tests_image = native_image(vm_image_args + ['--tool:truffle', '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature', '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*', '-H:MaxRuntimeCompileMethods=2000'])
+                    tests_image = native_image(vm_image_args + ['--tool:truffle', '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature', '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*', '-H:MaxRuntimeCompileMethods=3000'])
                     with open(unittest_file) as f:
                         test_classes = [l.rstrip() for l in f.readlines()]
                     mx.run([tests_image, '-Dtck.inlineVerifierInstrument=false'] + test_classes)

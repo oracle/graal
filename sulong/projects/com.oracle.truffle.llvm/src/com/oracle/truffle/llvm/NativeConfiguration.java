@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.parser.factories.BasicSystemContextExtension;
 import com.oracle.truffle.llvm.runtime.Configuration;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -56,6 +57,11 @@ public final class NativeConfiguration implements Configuration {
     }
 
     @Override
+    public int getPriority() {
+        return 0;
+    }
+
+    @Override
     public List<OptionDescriptor> getOptionDescriptors() {
         return SulongEngineOption.describeOptions();
     }
@@ -63,6 +69,11 @@ public final class NativeConfiguration implements Configuration {
     @Override
     public NodeFactory createNodeFactory(LLVMContext context) {
         return new BasicNodeFactory(context);
+    }
+
+    @Override
+    public Loader createLoader() {
+        return new DefaultLoader();
     }
 
     @Override

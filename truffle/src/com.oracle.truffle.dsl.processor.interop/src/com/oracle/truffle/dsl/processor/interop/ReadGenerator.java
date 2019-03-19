@@ -50,17 +50,17 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
+@SuppressWarnings("deprecation")
 final class ReadGenerator extends MessageGenerator {
 
     private static final int NUMBER_OF_READ = 2; // TruffleObject receiver,
                                                  // Object identifier
     private final String targetablePropReadNode;
 
-    ReadGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+    ReadGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.Resolve resolveAnnotation, com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation,
+                    TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         this.targetablePropReadNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
@@ -78,7 +78,7 @@ final class ReadGenerator extends MessageGenerator {
         appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
-        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object receiver = com.oracle.truffle.api.interop.ForeignAccess.getReceiver(frame);\n");
         w.append(indent).append("            Object identifier = frame.getArguments()[1];\n");
         w.append(indent).append("            try {\n");
         w.append(indent).append("                return node.executeWithTarget(frame, receiver, identifier);\n");

@@ -49,12 +49,19 @@ import com.oracle.truffle.api.nodes.Node;
 @SuppressWarnings("serial")
 class NFIUnsatisfiedLinkError extends java.lang.UnsatisfiedLinkError implements TruffleException {
 
+    private final Node location;
+
     NFIUnsatisfiedLinkError(String message) {
+        this(message, null);
+    }
+
+    NFIUnsatisfiedLinkError(String message, Node location) {
         super(message);
+        this.location = location;
     }
 
     public Node getLocation() {
-        return null;
+        return location;
     }
 
     @Override

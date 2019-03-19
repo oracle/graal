@@ -89,12 +89,13 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.C
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FunctionsObject;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.LoopTag;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.ExportMessage.Ignore;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -502,7 +503,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 case "MATERIALIZE_CHILD_EXPRESSION":
                     return new MaterializeChildExpressionNode(childArray);
                 case "TRY":
-                    return new TryCatchNode(childArray, lang.getContextReference());
+                    return new TryCatchNode(childArray);
                 case "CATCH":
                     return new CatchNode(idents[0], childArray);
                 case "THROW":
@@ -662,6 +663,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     @GenerateWrapper
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
     public abstract static class InstrumentedNode extends BaseNode implements InstrumentableNode, TruffleObject {
 
         @Children final BaseNode[] children;
@@ -680,6 +683,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         @ExplodeLoop
+        @Ignore
         public Object execute(VirtualFrame frame) {
             Object returnValue = Null.INSTANCE;
             for (BaseNode child : children) {
@@ -693,8 +697,38 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return returnValue;
         }
 
-        public ForeignAccess getForeignAccess() {
-            return InstrumentedNodeAttributesForeign.ACCESS;
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            if (this instanceof ConstantNode) {
+                return new KeysObject(new String[]{"simpleName", "constant"});
+            } else {
+                return new KeysObject(new String[]{"simpleName"});
+            }
+        }
+
+        @ExportMessage
+        final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+            return true;
+        }
+
+        @ExportMessage
+        Object readMember(String key) throws UnknownIdentifierException {
+            switch (key) {
+                case "simpleName":
+                    return getClass().getSimpleName();
+            }
+            if (this instanceof ConstantNode) {
+                switch (key) {
+                    case "constant":
+                        return ((ConstantNode) this).constant;
+                }
+            }
+            throw UnknownIdentifierException.create(key);
         }
 
         public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
@@ -748,14 +782,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Child TryNode tryNode;
         @Children private final CatchNode[] catchNodes;
 
-        TryCatchNode(BaseNode[] children, ContextReference<InstrumentContext> contextRef) {
+        TryCatchNode(BaseNode[] children) {
             super();
             BaseNode[] tryNodes = selectTryBlock(children);
             int tn = tryNodes.length;
             int cn = children.length - tn;
             catchNodes = new CatchNode[cn];
             System.arraycopy(children, tn, catchNodes, 0, cn);
-            tryNode = new TryNode(tryNodes, catchNodes, contextRef);
+            tryNode = new TryNode(tryNodes, catchNodes);
         }
 
         @Override
@@ -812,9 +846,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         private final TruffleObject catchesInfoNode;
 
-        TryNode(BaseNode[] children, CatchNode[] catches, ContextReference<InstrumentContext> contextRef) {
+        TryNode(BaseNode[] children, CatchNode[] catches) {
             super(children);
-            this.catchesInfoNode = new CatchesInfoObject(catches, contextRef);
+            this.catchesInfoNode = new CatchesInfoObject(catches);
         }
 
         @Override
@@ -822,77 +856,48 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return catchesInfoNode;
         }
 
+        @SuppressWarnings("static-method")
+        @ExportLibrary(InteropLibrary.class)
         static class CatchesInfoObject implements TruffleObject {
 
             private final CatchNode[] catches;
-            private final ContextReference<InstrumentContext> contextRef;
 
-            CatchesInfoObject(CatchNode[] catches, ContextReference<InstrumentContext> contextRef) {
+            CatchesInfoObject(CatchNode[] catches) {
                 this.catches = catches;
-                this.contextRef = contextRef;
-            }
-
-            @Override
-            public ForeignAccess getForeignAccess() {
-                return CatchesInfoObjectMessageResolutionForeign.ACCESS;
             }
 
             public static boolean isInstance(TruffleObject obj) {
                 return obj instanceof CatchesInfoObject;
             }
 
-            @MessageResolution(receiverType = CatchesInfoObject.class)
-            static class CatchesInfoObjectMessageResolution {
+            @ExportMessage
+            boolean hasMembers() {
+                return true;
+            }
 
-                @Resolve(message = "HAS_KEYS")
-                abstract static class HasKeysNode extends Node {
+            @ExportMessage
+            @TruffleBoundary
+            final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+                return new KeysObject(new String[]{"catches"});
+            }
 
-                    @SuppressWarnings("unused")
-                    public Object access(CatchesInfoObject info) {
-                        return true;
-                    }
-                }
+            @ExportMessage
+            final boolean isMemberInvocable(@SuppressWarnings("unused") String member) {
+                return "catches".equals(member);
+            }
 
-                @Resolve(message = "KEYS")
-                abstract static class KeysNode extends Node {
-
-                    @TruffleBoundary
-                    public Object access(CatchesInfoObject info) {
-                        return info.contextRef.get().env.asGuestValue(new String[]{"catches"});
-                    }
-                }
-
-                @Resolve(message = "KEY_INFO")
-                abstract static class KeyInfoNode extends Node {
-
-                    @TruffleBoundary
-                    public Object access(CatchesInfoObject info, String name) {
-                        assert info != null;
-                        if ("catches".equals(name)) {
-                            return KeyInfo.INVOCABLE;
-                        } else {
-                            return 0;
+            @ExportMessage
+            final Object invokeMember(String member, Object[] arguments) throws UnknownIdentifierException {
+                if ("catches".equals(member)) {
+                    String type = arguments[0].toString();
+                    for (CatchNode c : catches) {
+                        if (type.startsWith(c.getExceptionName())) {
+                            return true;
                         }
                     }
-                }
-
-                @Resolve(message = "INVOKE")
-                abstract static class InvokeNode extends Node {
-
-                    @TruffleBoundary
-                    public Object access(CatchesInfoObject info, String name, Object[] arguments) {
-                        if ("catches".equals(name)) {
-                            String type = arguments[0].toString();
-                            for (CatchNode c : info.catches) {
-                                if (type.startsWith(c.getExceptionName())) {
-                                    return true;
-                                }
-                            }
-                            return false;
-                        } else {
-                            throw UnknownIdentifierException.raise(name);
-                        }
-                    }
+                    return false;
+                } else {
+                    throw UnknownIdentifierException.create(member);
                 }
             }
         }
@@ -1037,7 +1042,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private void defineFunction() {
-            InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
             if (context.callFunctions.callTargets.containsKey(identifier)) {
                 if (context.callFunctions.callTargets.get(identifier) != target) {
                     throw new IllegalArgumentException("Identifier redefinition not supported.");
@@ -1077,7 +1082,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private TruffleContext createInnerContext() {
-            InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
             return context.env.newContextBuilder().build();
         }
     }
@@ -1096,7 +1101,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
                 CallTarget target = context.callFunctions.callTargets.get(identifier);
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
@@ -1118,7 +1123,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
                 CallTarget target = context.callFunctions.callTargets.get(identifier);
                 callNode = Truffle.getRuntime().createDirectCallNode(target);
             }
@@ -1128,7 +1133,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private void spawnCall() {
-            InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
             Thread t = context.env.createThread(new Runnable() {
                 @Override
                 public void run() {
@@ -1156,7 +1161,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private void joinSpawnedThreads() {
-            InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
             List<Thread> threads;
             do {
                 threads = new ArrayList<>();
@@ -1197,7 +1202,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 currentDepth++;
                 if (callNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                    InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
                     CallTarget target = context.callFunctions.callTargets.get(identifier);
                     callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
                 }
@@ -1235,7 +1240,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
                 CallTarget target = context.callFunctions.callTargets.get(identifier);
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
@@ -1250,10 +1255,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         AllocatedObject(String name) {
             this.metaObject = name;
-        }
-
-        public ForeignAccess getForeignAccess() {
-            return null;
         }
 
     }
@@ -1294,6 +1295,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             try {
                 Thread.sleep(timeToSleep);
             } catch (InterruptedException e) {
+                throw new AssertionError();
             }
         }
     }
@@ -1626,7 +1628,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             if (writer == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                InstrumentContext context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
                 switch (where) {
                     case OUT:
                         writer = new PrintWriter(new OutputStreamWriter(context.out));
@@ -1766,6 +1768,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         return rootSourceSectionQueryCount;
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class Function implements TruffleObject {
 
         private final CallTarget ct;
@@ -1774,35 +1777,20 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             this.ct = ct;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return FunctionMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof Function;
+        @ExportMessage
+        Object execute(Object[] arguments) {
+            return ct.call(arguments);
         }
 
-        @MessageResolution(receiverType = Function.class)
-        static final class FunctionMessageResolution {
-
-            @Resolve(message = "EXECUTE")
-            public abstract static class FunctionExecuteNode extends Node {
-
-                public Object access(Function receiver, Object[] arguments) {
-                    return receiver.ct.call(arguments);
-                }
-            }
-
-            @Resolve(message = "IS_EXECUTABLE")
-            public abstract static class FunctionIsExecutableNode extends Node {
-                public Object access(Object receiver) {
-                    return receiver instanceof Function;
-                }
-            }
-        }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class Null implements TruffleObject {
 
         static final Null INSTANCE = new Null();
@@ -1819,24 +1807,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return "Null";
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return NullMessageResolutionForeign.ACCESS;
-        }
-
-        @MessageResolution(receiverType = Null.class)
-        static final class NullMessageResolution {
-
-            @Resolve(message = "IS_NULL")
-            public abstract static class NullIsNullNode extends Node {
-
-                public boolean access(Null aNull) {
-                    return Null.INSTANCE == aNull;
-                }
-            }
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isNull() {
+            return true;
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static class FunctionsObject implements TruffleObject {
 
         final Map<String, CallTarget> callTargets = new LinkedHashMap<>();
@@ -1858,225 +1836,68 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return functionObject;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return FunctionsObjectMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof FunctionsObject;
+        @ExportMessage
+        @TruffleBoundary
+        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new KeysObject(callTargets.keySet().toArray(new String[0]));
         }
 
-        @MessageResolution(receiverType = FunctionsObject.class)
-        static final class FunctionsObjectMessageResolution {
-
-            @Resolve(message = "KEYS")
-            abstract static class FunctionsObjectKeysNode extends Node {
-
-                @TruffleBoundary
-                public Object access(FunctionsObject fo) {
-                    return new FunctionNamesObject(fo.callTargets.keySet());
-                }
-            }
-
-            @Resolve(message = "KEY_INFO")
-            abstract static class FunctionsObjectKeyInfoNode extends Node {
-
-                @TruffleBoundary
-                public Object access(FunctionsObject fo, String name) {
-                    if (fo.callTargets.containsKey(name)) {
-                        return KeyInfo.READABLE;
-                    } else {
-                        return KeyInfo.NONE;
-                    }
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class FunctionsObjectReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(FunctionsObject fo, String name) {
-                    return fo.findFunction(name);
-                }
-            }
+        @ExportMessage
+        final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+            return callTargets.containsKey(member);
         }
 
-        static final class FunctionNamesObject implements TruffleObject {
-
-            private final Set<String> names;
-
-            private FunctionNamesObject(Set<String> names) {
-                this.names = names;
-            }
-
-            @Override
-            public ForeignAccess getForeignAccess() {
-                return FunctionNamesMessageResolutionForeign.ACCESS;
-            }
-
-            public static boolean isInstance(TruffleObject obj) {
-                return obj instanceof FunctionNamesObject;
-            }
-
-            @MessageResolution(receiverType = FunctionNamesObject.class)
-            static final class FunctionNamesMessageResolution {
-
-                @Resolve(message = "HAS_SIZE")
-                abstract static class FunctionNamesHasSizeNode extends Node {
-
-                    @SuppressWarnings("unused")
-                    public Object access(FunctionNamesObject namesObject) {
-                        return true;
-                    }
-                }
-
-                @Resolve(message = "GET_SIZE")
-                abstract static class FunctionNamesGetSizeNode extends Node {
-
-                    public Object access(FunctionNamesObject namesObject) {
-                        return namesObject.names.size();
-                    }
-                }
-
-                @Resolve(message = "READ")
-                abstract static class FunctionNamesReadNode extends Node {
-
-                    @CompilerDirectives.TruffleBoundary
-                    public Object access(FunctionNamesObject namesObject, int index) {
-                        if (index >= namesObject.names.size()) {
-                            throw UnknownIdentifierException.raise(Integer.toString(index));
-                        }
-                        Iterator<String> iterator = namesObject.names.iterator();
-                        int i = index;
-                        while (i-- > 0) {
-                            iterator.next();
-                        }
-                        return iterator.next();
-                    }
-                }
-
-            }
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String key) {
+            return findFunction(key);
         }
 
     }
 
-    @MessageResolution(receiverType = InstrumentedNode.class)
-    static final class InstrumentedNodeAttributes {
-
-        @Resolve(message = "HAS_KEYS")
-        abstract static class HasKeysNode extends Node {
-
-            @SuppressWarnings("unused")
-            public Object access(InstrumentedNode namesObject) {
-                return true;
-            }
-        }
-
-        @Resolve(message = "READ")
-        abstract static class ReadNode extends Node {
-
-            @CompilerDirectives.TruffleBoundary
-            public Object access(InstrumentedNode namesObject, String name) {
-                switch (name) {
-                    case "simpleName":
-                        return namesObject.getClass().getSimpleName();
-                }
-                if (namesObject instanceof ConstantNode) {
-                    switch (name) {
-                        case "constant":
-                            return ((ConstantNode) namesObject).constant;
-                    }
-                }
-                throw UnknownIdentifierException.raise(name);
-            }
-        }
-
-        @Resolve(message = "KEYS")
-        abstract static class KeyNode extends Node {
-
-            @CompilerDirectives.TruffleBoundary
-            public Object access(InstrumentedNode namesObject) {
-                if (namesObject instanceof ConstantNode) {
-                    return new KeysObject(new String[]{"simpleName", "constant"});
-                } else {
-                    return new KeysObject(new String[]{"simpleName"});
-                }
-            }
-        }
-
-        @Resolve(message = "KEY_INFO")
-        abstract static class KeyInfoNode extends Node {
-
-            @SuppressWarnings("unused")
-            public int access(TruffleObject obj, String prop) {
-                return KeyInfo.READABLE;
-            }
-        }
-
-    }
-
+    @ExportLibrary(InteropLibrary.class)
     static class KeysObject implements TruffleObject {
 
-        final String[] keys;
+        private final String[] keys;
 
         KeysObject(String[] keys) {
             this.keys = keys;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return KeyObjectResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof KeysObject;
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < keys.length;
         }
 
-        @MessageResolution(receiverType = KeysObject.class)
-        static final class KeyObjectResolution {
-
-            @Resolve(message = "HAS_SIZE")
-            abstract static class HasSizeNode extends Node {
-
-                public Object access(@SuppressWarnings("unused") KeysObject obj) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "GET_SIZE")
-            abstract static class GetSizeNode extends Node {
-
-                public Object access(KeysObject obj) {
-                    return obj.keys.length;
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class ReadNode extends Node {
-
-                public Object access(KeysObject obj, Number index) {
-                    return obj.keys[index.intValue()];
-                }
-            }
+        @ExportMessage
+        long getArraySize() {
+            return keys.length;
         }
 
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            try {
+                return keys[(int) index];
+            } catch (IndexOutOfBoundsException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
     }
 
     static class FunctionMetaObject implements TruffleObject {
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return FunctionMetaObjectMessageResolutionForeign.ACCESS;
-        }
-
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof FunctionMetaObject;
-        }
-
-        @MessageResolution(receiverType = FunctionMetaObject.class)
-        static final class FunctionMetaObjectMessageResolution {
-        }
     }
 }
 

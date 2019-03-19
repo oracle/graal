@@ -24,14 +24,27 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
+import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit;
+import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleFunctionInlining;
+import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBoundaries;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIterativePartialEscape;
+
+import java.net.URI;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
@@ -45,6 +58,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -71,7 +85,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -98,26 +111,14 @@ import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPl
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
-import java.net.URI;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit;
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleFunctionInlining;
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBoundaries;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIterativePartialEscape;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -130,7 +131,7 @@ public abstract class PartialEvaluator {
     private final SnippetReflectionProvider snippetReflection;
     private final ResolvedJavaMethod callDirectMethod;
     private final ResolvedJavaMethod callInlinedMethod;
-    private final ResolvedJavaMethod callSiteProxyMethod;
+    private final ResolvedJavaMethod callIndirectMethod;
     private final ResolvedJavaMethod callRootMethod;
     private final GraphBuilderConfiguration configForParsing;
     private final InvocationPlugins decodingInvocationPlugins;
@@ -157,13 +158,10 @@ public abstract class PartialEvaluator {
         final MetaAccessProvider metaAccess = providers.getMetaAccess();
         ResolvedJavaType type = runtime.resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
         ResolvedJavaMethod[] methods = type.getDeclaredMethods();
-        this.callDirectMethod = findRequiredMethod(type, methods, "callDirect", "([Ljava/lang/Object;)Ljava/lang/Object;");
-        this.callInlinedMethod = findRequiredMethod(type, methods, "callInlined", "([Ljava/lang/Object;)Ljava/lang/Object;");
+        this.callDirectMethod = findRequiredMethod(type, methods, "callDirect", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
+        this.callInlinedMethod = findRequiredMethod(type, methods, "callInlined", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
+        this.callIndirectMethod = findRequiredMethod(type, methods, "callIndirect", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
         this.callRootMethod = findRequiredMethod(type, methods, "callRoot", "([Ljava/lang/Object;)Ljava/lang/Object;");
-
-        type = runtime.resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode");
-        this.callSiteProxyMethod = findRequiredMethod(type, type.getDeclaredMethods(), "callProxy",
-                        "(Lcom/oracle/truffle/api/nodes/Node;Lcom/oracle/truffle/api/CallTarget;[Ljava/lang/Object;Z)Ljava/lang/Object;");
 
         this.configForParsing = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins(configForRoot.getPlugins());
@@ -213,7 +211,7 @@ public abstract class PartialEvaluator {
     }
 
     public ResolvedJavaMethod[] getNeverInlineMethods() {
-        return new ResolvedJavaMethod[]{callSiteProxyMethod, callDirectMethod};
+        return new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod};
     }
 
     @SuppressWarnings("try")
@@ -293,8 +291,7 @@ public abstract class PartialEvaluator {
 
     private class PEInlineInvokePlugin implements InlineInvokePlugin {
 
-        private Deque<TruffleInliningPlan> inlining;
-        private JavaConstant lastDirectCallNode;
+        private final Deque<TruffleInliningPlan> inlining;
 
         PEInlineInvokePlugin(TruffleInliningPlan inlining) {
             this.inlining = new ArrayDeque<>();
@@ -311,16 +308,12 @@ public abstract class PartialEvaluator {
             assert !builder.parsingIntrinsic();
 
             if (TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
-                if (original.equals(callSiteProxyMethod)) {
-                    ValueNode arg0 = arguments[0];
+                if (original.equals(callDirectMethod)) {
+                    ValueNode arg0 = arguments[1];
                     if (!arg0.isConstant()) {
                         GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
                     }
-
-                    lastDirectCallNode = (JavaConstant) arg0.asConstant();
-                } else if (original.equals(callDirectMethod)) {
-                    TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), lastDirectCallNode);
-                    lastDirectCallNode = null;
+                    TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), (JavaConstant) arg0.asConstant());
                     if (decision != null && decision.shouldInline()) {
                         inlining.push(decision);
                         JavaConstant assumption = decision.getNodeRewritingAssumption();
@@ -399,7 +392,7 @@ public abstract class PartialEvaluator {
             if (!inlineInfo.allowsInlining()) {
                 return inlineInfo;
             }
-            if (original.equals(callSiteProxyMethod) || original.equals(callDirectMethod)) {
+            if (original.equals(callIndirectMethod) || original.equals(callDirectMethod)) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
             if (hasMethodHandleArgument(arguments)) {

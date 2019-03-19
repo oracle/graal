@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,16 +37,16 @@ import org.graalvm.polyglot.Value;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
+import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
 
 public class DynamicTypeCastInteropTest extends InteropTestBase {
 
@@ -61,7 +61,8 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
         test = testLibrary.getMember("test_dynamic_cast");
     }
 
-    @MessageResolution(receiverType = DynamicStructlikeObject.class)
+    @ExportLibrary(InteropLibrary.class)
+    @ExportLibrary(NativeTypeLibrary.class)
     static class DynamicStructlikeObject implements TruffleObject {
         final HashMap<String, Object> map = new HashMap<>();
 
@@ -70,43 +71,55 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
             map.put("base", this);
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return DynamicStructlikeObjectForeign.ACCESS;
-        }
-
         public static boolean isInstance(TruffleObject obj) {
             return obj instanceof DynamicStructlikeObject;
         }
 
-        @Resolve(message = "READ")
-        abstract static class InvokeNode extends Node {
-            Object access(DynamicStructlikeObject object, String name) {
-                Object value = object.map.get(name);
-                if (value == null) {
-                    throw UnknownIdentifierException.raise(name);
-                }
-                return value;
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String name) {
+            return map.containsKey(name);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String name) throws UnknownIdentifierException {
+            Object value = map.get(name);
+            if (value == null) {
+                throw UnknownIdentifierException.create(name);
+            }
+            return value;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new ArrayObject(map.keySet().toArray());
+        }
+
+        @ExportMessage
+        boolean hasNativeType() {
+            return true;
+        }
+
+        static Object lookupNativeType() {
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            try {
+                Object typecall = interop.readMember(testLibraryInternal, "get_object2_typeid");
+                return interop.execute(typecall);
+            } catch (InteropException e) {
+                throw new IllegalStateException("could not determine typeid");
             }
         }
 
-        @Resolve(message = "com.oracle.truffle.llvm.spi.GetDynamicType")
-        abstract static class GetDynamicType extends Node {
-
-            @CompilationFinal Object cachedType;
-
-            Object access(@SuppressWarnings("unused") DynamicStructlikeObject object) {
-                if (cachedType == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    try {
-                        TruffleObject typecall = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibraryInternal, "get_object2_typeid");
-                        cachedType = ForeignAccess.send(Message.EXECUTE.createNode(), typecall);
-                    } catch (InteropException e) {
-                        throw new IllegalStateException("could not determine typeid");
-                    }
-                }
-                return cachedType;
-            }
+        @ExportMessage
+        Object getNativeType(@Cached(value = "lookupNativeType()", allowUncached = true) Object nativeType) {
+            return nativeType;
         }
     }
 

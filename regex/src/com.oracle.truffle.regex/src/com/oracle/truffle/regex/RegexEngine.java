@@ -24,13 +24,15 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.runtime.nodes.ExpectStringNode;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.regex.runtime.nodes.ToStringNode;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
@@ -52,6 +54,7 @@ import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
  * <p>
  * A {@link RegexEngine} can be obtained by executing the {@link RegexEngineBuilder}.
  */
+@ExportLibrary(InteropLibrary.class)
 public class RegexEngine implements RegexLanguageObject {
 
     private final RegexCompiler compiler;
@@ -83,42 +86,22 @@ public class RegexEngine implements RegexLanguageObject {
         return regexObject;
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexEngine;
+    @ExportMessage
+    public boolean isExecutable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return RegexEngineMessageResolutionForeign.ACCESS;
-    }
-
-    @MessageResolution(receiverType = RegexEngine.class)
-    static class RegexEngineMessageResolution {
-
-        @Resolve(message = "EXECUTE")
-        abstract static class RegexEngineExecuteNode extends Node {
-
-            @Child private ExpectStringNode expectPatternNode = ExpectStringNode.create();
-            @Child private ExpectStringNode expectFlagsNode = ExpectStringNode.create();
-
-            public Object access(RegexEngine receiver, Object[] args) {
-                if (!(args.length == 1 || args.length == 2)) {
-                    throw ArityException.raise(2, args.length);
-                }
-                String pattern = expectPatternNode.execute(args[0]);
-                String flags = args.length == 2 ? expectFlagsNode.execute(args[1]) : "";
-                RegexSource regexSource = new RegexSource(pattern, flags);
-                return receiver.compile(regexSource);
-            }
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Cached ToStringNode patternToStringNode,
+                    @Cached ToStringNode flagsToStringNode) throws ArityException, UnsupportedTypeException {
+        if (!(args.length == 1 || args.length == 2)) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(2, args.length);
         }
-
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class RegexEngineIsExecutableNode extends Node {
-
-            @SuppressWarnings("unused")
-            public boolean access(RegexEngine receiver) {
-                return true;
-            }
-        }
+        String pattern = patternToStringNode.execute(args[0]);
+        String flags = args.length == 2 ? flagsToStringNode.execute(args[1]) : "";
+        RegexSource regexSource = new RegexSource(pattern, flags);
+        return compile(regexSource);
     }
 }

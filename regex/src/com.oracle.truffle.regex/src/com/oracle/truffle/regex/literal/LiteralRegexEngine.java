@@ -57,7 +57,11 @@ public final class LiteralRegexEngine {
                         ((caret || dollar) && ast.getFlags().isMultiline())) {
             return null;
         }
-        return createLiteralNode(language, ast, caret, dollar);
+        LiteralRegexExecRootNode execNode = createLiteralNode(language, ast, caret, dollar);
+        if (execNode != null) {
+            execNode.createCallTarget(language);
+        }
+        return execNode;
     }
 
     private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast, boolean caret, boolean dollar) {

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
+import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -65,12 +66,16 @@ public final class CodeVariableElement extends CodeElement<Element> implements V
 
     public CodeVariableElement(TypeMirror type, String name) {
         super(ElementUtils.modifiers());
+        Objects.requireNonNull(type);
+        Objects.requireNonNull(name);
         this.type = type;
         this.name = CodeNames.of(name);
     }
 
     public CodeVariableElement(Set<Modifier> modifiers, TypeMirror type, String name) {
         super(modifiers);
+        Objects.requireNonNull(type);
+        Objects.requireNonNull(name);
         this.type = type;
         this.name = CodeNames.of(name);
     }
@@ -87,6 +92,23 @@ public final class CodeVariableElement extends CodeElement<Element> implements V
         builder.setEnclosingElement(this);
         init = builder.getTree();
         return builder;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof CodeVariableElement) {
+            CodeVariableElement other = (CodeVariableElement) obj;
+            return Objects.equals(name, other.name) && //
+                            ElementUtils.typeEquals(type, other.type) && //
+                            Objects.equals(constantValue, other.constantValue) && //
+                            Objects.equals(init, other.init) && super.equals(obj);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, ElementUtils.getTypeId(type), constantValue, init, super.hashCode());
     }
 
     public void setInit(CodeTree init) {

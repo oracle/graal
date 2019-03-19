@@ -51,16 +51,16 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
+@SuppressWarnings("deprecation")
 class KeysGenerator extends MessageGenerator {
 
     private static final String TARGETABLE_KEYS_NODE = "TargetableKeysNode";
     private int parameterCount = 1;
 
-    KeysGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+    KeysGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.Resolve resolveAnnotation, com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation,
+                    TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
     }
@@ -82,7 +82,7 @@ class KeysGenerator extends MessageGenerator {
         appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
-        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object receiver = com.oracle.truffle.api.interop.ForeignAccess.getReceiver(frame);\n");
         if (parameterCount == 2) {
             w.append(indent).append("            Object[] arguments = frame.getArguments();\n");
             w.append(indent).append("            Object internal = (arguments.length < 2) ? false : arguments[1];\n");

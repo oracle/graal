@@ -29,24 +29,22 @@
  */
 package com.oracle.truffle.llvm.runtime.global;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternalTruffleObject, LLVMObjectNativeLibrary.Provider {
+@ExportLibrary(InteropLibrary.class)
+public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternalTruffleObject {
 
     private long address;
     private Object contents;
@@ -63,8 +61,18 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         contents = value;
     }
 
-    public boolean isInNative() {
+    @ExportMessage
+    public boolean isPointer() {
         return address != 0;
+    }
+
+    @ExportMessage
+    public long asPointer() throws UnsupportedMessageException {
+        if (isPointer()) {
+            return address;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     public long getAddress() {
@@ -77,7 +85,8 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
     }
 
     @TruffleBoundary
-    public void transformToNative(LLVMToNativeNode toNative) {
+    @ExportMessage
+    public void toNative(@Cached LLVMToNativeNode toNative) {
         if (address == 0) {
             LLVMMemory memory = LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
             LLVMNativePointer pointer = memory.allocateMemory(8);
@@ -90,11 +99,6 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
             }
             memory.putI64(pointer, value);
         }
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return ContainerForeignAccessForeign.ACCESS;
     }
 
     @Override
@@ -123,127 +127,5 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
 
     private static NodeFactory getNodeFactory() {
         return LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory();
-    }
-
-    @MessageResolution(receiverType = LLVMGlobalContainer.class)
-    static class ContainerForeignAccess {
-        @CanResolve
-        public abstract static class Check extends Node {
-
-            protected static boolean test(TruffleObject receiver) {
-                return receiver instanceof LLVMGlobalContainer;
-            }
-        }
-
-        @Resolve(message = "HAS_SIZE")
-        public abstract static class ForeignHasSizeNode extends Node {
-
-            protected Object access(@SuppressWarnings("unused") LLVMGlobalContainer receiver) {
-                return true;
-            }
-        }
-
-        @Resolve(message = "GET_SIZE")
-        public abstract static class ForeignGetSizeNode extends Node {
-
-            protected Object access(LLVMGlobalContainer receiver) {
-                return receiver.getSize();
-            }
-        }
-
-        @Resolve(message = "READ")
-        public abstract static class ForeignReadNode extends Node {
-
-            protected Object access(LLVMGlobalContainer receiver, int index) {
-                assert index == 0;
-                return receiver.get();
-            }
-        }
-
-        @Resolve(message = "IS_POINTER")
-        public abstract static class ForeignIsPointerNode extends Node {
-
-            protected boolean access(LLVMGlobalContainer receiver) {
-                return receiver.getAddress() != 0;
-            }
-        }
-
-        @Resolve(message = "AS_POINTER")
-        public abstract static class ForeignAsPointerNode extends Node {
-
-            protected long access(LLVMGlobalContainer receiver) {
-                return receiver.getAddress();
-            }
-        }
-
-        @Resolve(message = "TO_NATIVE")
-        public abstract static class ForeignToNativeNode extends Node {
-
-            @Child private LLVMToNativeNode toNative;
-
-            protected Object access(LLVMGlobalContainer receiver) {
-                if (receiver.getAddress() == 0) {
-                    if (toNative == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
-                    }
-                    receiver.transformToNative(toNative);
-                }
-                return receiver;
-            }
-        }
-
-        @Resolve(message = "WRITE")
-        public abstract static class ForeignWriteNode extends Node {
-
-            protected Object access(LLVMGlobalContainer receiver, int index, Object value) {
-                assert index == 0;
-                receiver.set(value);
-                return value;
-            }
-        }
-    }
-
-    private static final class LLVMGlobalContainerNativeLibrary extends LLVMObjectNativeLibrary {
-
-        @Child private LLVMToNativeNode toNative;
-
-        @Override
-        public boolean guard(Object obj) {
-            return obj instanceof LLVMGlobalContainer;
-        }
-
-        @Override
-        public boolean isPointer(Object obj) {
-            return ((LLVMGlobalContainer) obj).address != 0;
-        }
-
-        @Override
-        public boolean isNull(Object obj) {
-            return false;
-        }
-
-        @Override
-        public long asPointer(Object obj) {
-            return ((LLVMGlobalContainer) obj).address;
-        }
-
-        @Override
-        public Object toNative(Object obj) {
-            LLVMGlobalContainer receiver = (LLVMGlobalContainer) obj;
-            if (receiver.address == 0) {
-                if (toNative == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
-                }
-                receiver.transformToNative(toNative);
-            }
-            return receiver;
-        }
-    }
-
-    @Override
-    public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
-        return new LLVMGlobalContainerNativeLibrary();
     }
 }

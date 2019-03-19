@@ -25,14 +25,15 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
 
@@ -45,8 +46,9 @@ import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
  * <li>{@link RegexObject} {@code regexObject}: the {@link RegexObject} to which this
  * {@link CompiledRegexObject} belongs</li>
  * <li>{@link Object} {@code input}: the character sequence to search in. This may either be a
- * {@link String} or a {@link TruffleObject} that responds to {@link Message#GET_SIZE} and returns
- * {@link Character}s on indexed {@link Message#READ} requests.</li>
+ * {@link String} or a {@link TruffleObject} that responds to
+ * {@link InteropLibrary#hasArrayElements(Object)} and returns {@link Character}s on indexed
+ * {@link InteropLibrary#readArrayElement(Object, long)} requests.</li>
  * <li>{@link Number} {@code fromIndex}: the position to start searching from. This argument will be
  * cast to {@code int}, since a {@link String} can not be longer than {@link Integer#MAX_VALUE}. If
  * {@code fromIndex} is greater than {@link Integer#MAX_VALUE}, this method will immediately return
@@ -59,6 +61,7 @@ import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
  * {@link TruffleObject}s that can be passed around via interop and can come from external RegExp
  * compilers (e.g. see {@link ForeignRegexCompiler}).
  */
+@ExportLibrary(InteropLibrary.class)
 public class CompiledRegexObject implements RegexLanguageObject {
 
     private final CompiledRegex compiledRegex;
@@ -71,41 +74,26 @@ public class CompiledRegexObject implements RegexLanguageObject {
         return compiledRegex;
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof CompiledRegexObject;
+    @ExportMessage
+    public boolean isExecutable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return CompiledRegexObjectMessageResolutionForeign.ACCESS;
-    }
+    @ExportMessage
+    public static class Execute {
 
-    @MessageResolution(receiverType = CompiledRegexObject.class)
-    static class CompiledRegexObjectMessageResolution {
-
-        @Resolve(message = "EXECUTE")
-        abstract static class CompiledRegexObjectExecuteNode extends Node {
-
-            @Child private ExecuteRegexDispatchNode doExecute = ExecuteRegexDispatchNode.create();
-
-            public Object access(CompiledRegexObject receiver, Object[] args) {
-                if (args.length != 3) {
-                    throw ArityException.raise(3, args.length);
-                }
-                if (!(args[0] instanceof RegexObject)) {
-                    throw UnsupportedTypeException.raise(args);
-                }
-                return doExecute.execute(receiver.getCompiledRegex(), (RegexObject) args[0], args[1], args[2]);
+        @Specialization
+        static Object doExecute(CompiledRegexObject receiver, Object[] args,
+                        @Cached ExecuteRegexDispatchNode dispatchNode) throws ArityException, UnsupportedTypeException {
+            if (args.length != 3) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(3, args.length);
             }
-        }
-
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class CompiledRegexObjectIsExecutableNode extends Node {
-
-            @SuppressWarnings("unused")
-            public boolean access(CompiledRegexObject receiver) {
-                return true;
+            if (!(args[0] instanceof RegexObject)) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.create(args);
             }
+            return dispatchNode.execute(receiver.getCompiledRegex(), (RegexObject) args[0], args[1], args[2]);
         }
     }
 }

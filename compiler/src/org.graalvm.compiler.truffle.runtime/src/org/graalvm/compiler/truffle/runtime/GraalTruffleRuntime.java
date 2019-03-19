@@ -536,7 +536,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 } else {
                     skipFrames--;
                 }
-            } else if (frame.isMethod(methods.callNodeMethod)) {
+            } else if (frame.isMethod(methods.callDirectMethod) || frame.isMethod(methods.callIndirectMethod) || frame.isMethod(methods.callInlinedMethod) ||
+                            frame.isMethod(methods.callInliningForcedMethod)) {
                 callNodeFrame = frame;
             }
             return null;
@@ -907,16 +908,22 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected static final class CallMethods {
-        public final ResolvedJavaMethod callNodeMethod;
+        public final ResolvedJavaMethod callDirectMethod;
+        public final ResolvedJavaMethod callInlinedMethod;
+        public final ResolvedJavaMethod callInliningForcedMethod;
+        public final ResolvedJavaMethod callIndirectMethod;
         public final ResolvedJavaMethod callTargetMethod;
         public final ResolvedJavaMethod callOSRMethod;
         public final ResolvedJavaMethod[] anyFrameMethod;
 
         private CallMethods(MetaAccessProvider metaAccess) {
-            this.callNodeMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_NODE_METHOD);
+            this.callDirectMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_DIRECT);
+            this.callIndirectMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INDIRECT);
+            this.callInlinedMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED);
+            this.callInliningForcedMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED_FORCED);
             this.callTargetMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_TARGET_METHOD);
             this.callOSRMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_OSR_METHOD);
-            this.anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod, callTargetMethod, callOSRMethod};
+            this.anyFrameMethod = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, callTargetMethod, callOSRMethod, callInliningForcedMethod};
         }
 
         public static CallMethods lookup(MetaAccessProvider metaAccess) {

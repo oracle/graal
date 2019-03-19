@@ -71,11 +71,6 @@ final class HostException extends RuntimeException implements TruffleException {
     }
 
     @Override
-    public Node getLocation() {
-        return null;
-    }
-
-    @Override
     public boolean isCancelled() {
         return getOriginal() instanceof InterruptedException;
     }
@@ -84,5 +79,9 @@ final class HostException extends RuntimeException implements TruffleException {
     public Object getExceptionObject() {
         Throwable exception = getOriginal();
         return PolyglotContextImpl.requireContext().getHostContext().toGuestValue(exception);
+    }
+
+    public Node getLocation() {
+        return null;
     }
 }

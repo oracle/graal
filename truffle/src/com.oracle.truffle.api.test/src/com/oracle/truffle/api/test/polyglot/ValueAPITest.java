@@ -49,7 +49,6 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABL
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -94,14 +93,15 @@ import org.junit.ComparisonFailure;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
@@ -147,11 +147,11 @@ public class ValueAPITest {
     public void testString() {
         for (Object string : STRINGS) {
             assertValue(context.asValue(string), STRING);
-            assertValue(context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> string), STRING, PROXY_OBJECT);
+            assertValue(context.asValue(new StringWrapper(string.toString())), STRING);
         }
     }
 
-    private static final Object[] NUMBERS = new Object[]{
+    private static final Number[] NUMBERS = new Number[]{
                     (byte) 0, (byte) 1, Byte.MAX_VALUE, Byte.MIN_VALUE,
                     (short) 0, (short) 1, Short.MAX_VALUE, Short.MIN_VALUE,
                     0, 1, Integer.MAX_VALUE, Integer.MIN_VALUE,
@@ -163,22 +163,22 @@ public class ValueAPITest {
     @SuppressWarnings("deprecation")
     @Test
     public void testNumbers() {
-        for (Object number : NUMBERS) {
+        for (Number number : NUMBERS) {
             assertValue(context.asValue(number), NUMBER);
-            assertValue(context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> number), NUMBER, PROXY_OBJECT);
+            assertValue(context.asValue(new NumberWrapper(number)), NUMBER);
         }
     }
 
-    private static final Object[] BOOLEANS = new Object[]{
+    private static final boolean[] BOOLEANS = new boolean[]{
                     false, true,
     };
 
     @SuppressWarnings("deprecation")
     @Test
     public void testBooleans() {
-        for (Object bool : BOOLEANS) {
+        for (boolean bool : BOOLEANS) {
             assertValue(context.asValue(bool), BOOLEAN);
-            assertValue(context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
+            assertValue(context.asValue(new BooleanWrapper(bool)), BOOLEAN);
         }
     }
 
@@ -201,15 +201,11 @@ public class ValueAPITest {
                         public Object apply(Object t) {
                             return t;
                         }
-                    },
-                    new Supplier<String>() {
+                    }, new Supplier<String>() {
                         public String get() {
                             return "foobar";
                         }
-                    },
-                    BigDecimal.class,
-                    Class.class,
-                    Proxy.newProxyInstance(ValueAPITest.class.getClassLoader(), new Class<?>[]{ProxyInterface.class}, new InvocationHandler() {
+                    }, BigDecimal.class, Class.class, Proxy.newProxyInstance(ValueAPITest.class.getClassLoader(), new Class<?>[]{ProxyInterface.class}, new InvocationHandler() {
                         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                             switch (method.getName()) {
                                 case "foobar":
@@ -804,116 +800,72 @@ public class ValueAPITest {
 
     }
 
-    static class MembersAndInvocable implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    static final class MembersAndInvocable implements TruffleObject {
 
         String invokeMember;
         Object invocableResult;
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return MembersAndInvocableMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof MembersAndInvocable;
+        @ExportMessage
+        Object getMembers(@SuppressWarnings("unused") boolean internal) {
+            return new KeysArray(new String[]{invokeMember});
         }
 
-        @MessageResolution(receiverType = MembersAndInvocable.class)
-        static final class MembersAndInvocableMessageResolution {
-
-            @Resolve(message = "HAS_KEYS")
-            abstract static class MemberHasKeysNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(MembersAndInvocable mi) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "KEYS")
-            abstract static class MemberKeysNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(MembersAndInvocable mi, boolean internal) {
-                    return new MemberKeysTruffleObject(mi.invokeMember);
-                }
-            }
-
-            @Resolve(message = "INVOKE")
-            abstract static class MemberInvokeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(MembersAndInvocable mi, String name, Object... arguments) {
-                    if (name.equals(mi.invokeMember)) {
-                        return mi.invocableResult;
-                    } else {
-                        throw UnknownIdentifierException.raise(name);
-                    }
-                }
-            }
-
-            @Resolve(message = "KEY_INFO")
-            abstract static class MemberKeyInfoNode extends Node {
-
-                public int access(MembersAndInvocable mi, String propName) {
-                    if (propName.equals(mi.invokeMember)) {
-                        return KeyInfo.READABLE | KeyInfo.INVOCABLE;
-                    } else {
-                        return KeyInfo.NONE;
-                    }
-                }
+        @ExportMessage
+        Object invokeMember(String member, @SuppressWarnings("unused") Object[] arguments) throws UnknownIdentifierException {
+            if (member.equals(invokeMember)) {
+                return invocableResult;
+            } else {
+                throw UnknownIdentifierException.create(member);
             }
         }
 
-        static final class MemberKeysTruffleObject implements TruffleObject {
+        @ExportMessage
+        boolean isMemberInvocable(String member) {
+            return invokeMember.equals(member);
+        }
 
-            private final String keyName;
+        @ExportLibrary(InteropLibrary.class)
+        static final class KeysArray implements TruffleObject {
 
-            MemberKeysTruffleObject(String keyName) {
-                this.keyName = keyName;
+            private final String[] keys;
+
+            KeysArray(String[] keys) {
+                this.keys = keys;
             }
 
-            @Override
-            public ForeignAccess getForeignAccess() {
-                return MemberKeysMessageResolutionForeign.ACCESS;
+            @SuppressWarnings("static-method")
+            @ExportMessage
+            boolean hasArrayElements() {
+                return true;
             }
 
-            public static boolean isInstance(TruffleObject obj) {
-                return obj instanceof MemberKeysTruffleObject;
+            @ExportMessage
+            boolean isArrayElementReadable(long index) {
+                return index >= 0 && index < keys.length;
             }
 
-            @MessageResolution(receiverType = MemberKeysTruffleObject.class)
-            static final class MemberKeysMessageResolution {
+            @ExportMessage
+            long getArraySize() {
+                return keys.length;
+            }
 
-                @Resolve(message = "HAS_SIZE")
-                abstract static class MemberKeysHasSizeNode extends Node {
-
-                    @SuppressWarnings("unused")
-                    public boolean access(MemberKeysTruffleObject keys) {
-                        return true;
-                    }
-                }
-
-                @Resolve(message = "GET_SIZE")
-                abstract static class MemberKeysGetSizeNode extends Node {
-
-                    @SuppressWarnings("unused")
-                    public int access(MemberKeysTruffleObject keys) {
-                        return 1;
-                    }
-                }
-
-                @Resolve(message = "READ")
-                abstract static class MemberKeysReadNode extends Node {
-
-                    @SuppressWarnings("unused")
-                    public Object access(MemberKeysTruffleObject keys, int index) {
-                        return keys.keyName;
-                    }
+            @ExportMessage
+            Object readArrayElement(long index) throws InvalidArrayIndexException {
+                try {
+                    return keys[(int) index];
+                } catch (IndexOutOfBoundsException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw InvalidArrayIndexException.create(index);
                 }
             }
         }
-
     }
 
     @Test
@@ -1492,7 +1444,7 @@ public class ValueAPITest {
 
     @Test
     public void testValueContextPropagation() {
-        ProxyInteropObject o = new ProxyInteropObject() {
+        ProxyLegacyInteropObject o = new ProxyLegacyInteropObject() {
             @Override
             public boolean hasKeys() {
                 return true;
@@ -1622,7 +1574,7 @@ public class ValueAPITest {
         Context context1 = Context.create();
         Context context2 = Context.create();
         List<Object> nonSharables = new ArrayList<>();
-        ProxyInteropObject interopObject = new ProxyInteropObject() {
+        ProxyLegacyInteropObject interopObject = new ProxyLegacyInteropObject() {
 
             @Override
             public boolean isExecutable() {
@@ -1715,7 +1667,7 @@ public class ValueAPITest {
         }
 
         // special case for context less TruffleObject
-        Value contextLessValue = Value.asValue(new ProxyInteropObject() {
+        Value contextLessValue = Value.asValue(new ProxyLegacyInteropObject() {
         });
         context1.getPolyglotBindings().putMember("foo", contextLessValue);
         context2.getPolyglotBindings().putMember("foo", contextLessValue);
@@ -1746,6 +1698,128 @@ public class ValueAPITest {
             objects.add(Value.asValue(v)); // migrate from Value
             objects.add(Value.asValue(object)); // directly from object
         }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class StringWrapper implements TruffleObject {
+
+        final String string;
+
+        StringWrapper(String string) {
+            this.string = string;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isString() {
+            return true;
+        }
+
+        @ExportMessage
+        String asString() {
+            return string;
+        }
+
+    }
+
+    static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class NumberWrapper implements TruffleObject {
+
+        final Number number;
+
+        NumberWrapper(Number number) {
+            this.number = number;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isNumber() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean fitsInByte() {
+            return INTEROP.fitsInByte(number);
+        }
+
+        @ExportMessage
+        boolean fitsInShort() {
+            return INTEROP.fitsInShort(number);
+        }
+
+        @ExportMessage
+        boolean fitsInInt() {
+            return INTEROP.fitsInInt(number);
+        }
+
+        @ExportMessage
+        boolean fitsInLong() {
+            return INTEROP.fitsInLong(number);
+        }
+
+        @ExportMessage
+        boolean fitsInFloat() {
+            return INTEROP.fitsInFloat(number);
+        }
+
+        @ExportMessage
+        boolean fitsInDouble() {
+            return INTEROP.fitsInDouble(number);
+        }
+
+        @ExportMessage
+        byte asByte() throws UnsupportedMessageException {
+            return INTEROP.asByte(number);
+        }
+
+        @ExportMessage
+        short asShort() throws UnsupportedMessageException {
+            return INTEROP.asShort(number);
+        }
+
+        @ExportMessage
+        int asInt() throws UnsupportedMessageException {
+            return INTEROP.asInt(number);
+        }
+
+        @ExportMessage
+        long asLong() throws UnsupportedMessageException {
+            return INTEROP.asLong(number);
+        }
+
+        @ExportMessage
+        float asFloat() throws UnsupportedMessageException {
+            return INTEROP.asFloat(number);
+        }
+
+        @ExportMessage
+        double asDouble() throws UnsupportedMessageException {
+            return INTEROP.asDouble(number);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class BooleanWrapper implements TruffleObject {
+
+        final boolean delegate;
+
+        BooleanWrapper(boolean delegate) {
+            this.delegate = delegate;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isBoolean() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean asBoolean() {
+            return delegate;
+        }
+
     }
 
 }

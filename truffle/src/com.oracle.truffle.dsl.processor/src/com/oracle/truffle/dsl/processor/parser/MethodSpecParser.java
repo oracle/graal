@@ -114,7 +114,7 @@ public final class MethodSpecParser {
                 String expectedReturnType = returnTypeSpec.toSignatureString(true);
                 String actualReturnType = ElementUtils.getSimpleName(returnType);
 
-                String message = String.format("The provided return type \"%s\" does not match expected return type \"%s\".\nExpected signature: \n %s", actualReturnType, expectedReturnType,
+                String message = String.format("The provided return type \"%s\" does not match expected return type \"%s\".%nExpected signature: %n %s", actualReturnType, expectedReturnType,
                                 methodSpecification.toSignatureString(method.getSimpleName().toString()));
                 invalidMethod.addError(message);
                 return invalidMethod;
@@ -127,7 +127,7 @@ public final class MethodSpecParser {
         if (parameters == null) {
             if (isEmitErrors() && method != null) {
                 TemplateMethod invalidMethod = new TemplateMethod(id, naturalOrder, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<Parameter> emptyList());
-                String message = String.format("Method signature %s does not match to the expected signature: \n%s", createActualSignature(method),
+                String message = String.format("Method signature %s does not match to the expected signature: %n%s", createActualSignature(method),
                                 methodSpecification.toSignatureString(method.getSimpleName().toString()));
                 invalidMethod.addError(message);
                 return invalidMethod;

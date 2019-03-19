@@ -50,16 +50,16 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
+@SuppressWarnings("deprecation")
 final class UnaryGenerator extends MessageGenerator {
 
     private static final int NUMBER_OF_UNARY = 1; // TruffleObject receiver
     private final String targetableUnaryNode;
 
-    UnaryGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+    UnaryGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.Resolve resolveAnnotation, com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation,
+                    TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         this.targetableUnaryNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
@@ -87,7 +87,7 @@ final class UnaryGenerator extends MessageGenerator {
         appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
-        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object receiver = com.oracle.truffle.api.interop.ForeignAccess.getReceiver(frame);\n");
         w.append(indent).append("            try {\n");
         w.append(indent).append("                return node.executeWithTarget(frame, receiver);\n");
         w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");

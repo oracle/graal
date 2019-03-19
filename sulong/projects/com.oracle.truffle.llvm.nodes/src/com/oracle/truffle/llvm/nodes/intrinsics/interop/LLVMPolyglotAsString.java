@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,18 +31,14 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotAsStringNodeGen.BoxedEncodeStringNodeGen;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotAsStringNodeGen.EncodeStringNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotAsStringNodeGen.WriteStringNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadCharsetNode.LLVMCharset;
@@ -87,42 +83,27 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
 
         @Specialization
         ByteBuffer doForeign(LLVMManagedPointer obj, LLVMCharset charset,
-                        @Cached("create()") LLVMAsForeignNode asForeign,
-                        @Cached("create()") BoxedEncodeStringNode encode) {
+                        @Cached LLVMAsForeignNode asForeign,
+                        @Cached BoxedEncodeStringNode encode) {
             return encode.execute(asForeign.execute(obj), charset);
         }
     }
 
     abstract static class BoxedEncodeStringNode extends LLVMNode {
 
-        @Child Node isBoxed = Message.IS_BOXED.createNode();
-        @Child Node unbox = Message.UNBOX.createNode();
+        abstract ByteBuffer execute(Object object, LLVMCharset charset);
 
-        abstract ByteBuffer execute(TruffleObject object, LLVMCharset charset);
-
-        boolean checkBoxed(TruffleObject object) {
-            return ForeignAccess.sendIsBoxed(isBoxed, object);
-        }
-
-        @Specialization(guards = "checkBoxed(object)")
-        ByteBuffer doBoxed(TruffleObject object, LLVMCharset charset) {
+        @Specialization(limit = "3")
+        ByteBuffer doBoxed(Object object, LLVMCharset charset,
+                        @CachedLibrary("object") InteropLibrary interop,
+                        @Cached BranchProfile exception) {
             try {
-                String unboxed = (String) ForeignAccess.sendUnbox(unbox, object);
+                String unboxed = interop.asString(object);
                 return charset.encode(unboxed);
             } catch (UnsupportedMessageException ex) {
-                throw ex.raise();
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Polyglot value is not a string.");
             }
-        }
-
-        @Fallback
-        @TruffleBoundary
-        @SuppressWarnings("unused")
-        ByteBuffer doFail(TruffleObject object, LLVMCharset charset) {
-            throw new LLVMPolyglotException(this, "Polyglot value is not a string.");
-        }
-
-        public static BoxedEncodeStringNode create() {
-            return BoxedEncodeStringNodeGen.create();
         }
     }
 

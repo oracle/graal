@@ -47,25 +47,26 @@ import java.util.logging.Logger;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 public class CallerSensitiveTest extends ProxyLanguageEnvTest {
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     @Test
     public void testLogger() throws InteropException {
         TruffleObject loggerClass = asTruffleHostSymbol(Logger.class);
         String loggerName = "test-logger-name";
         TruffleObject logger;
 
-        TruffleObject getLogger = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), loggerClass, "getLogger");
-        logger = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), getLogger, loggerName);
+        TruffleObject getLogger = (TruffleObject) INTEROP.readMember(loggerClass, "getLogger");
+        logger = (TruffleObject) INTEROP.execute(getLogger, loggerName);
         assertTrue(env.isHostObject(logger));
         assertTrue(env.asHostObject(logger) instanceof Logger);
         assertEquals(loggerName, asJavaObject(Logger.class, logger).getName());
 
-        logger = (TruffleObject) ForeignAccess.sendInvoke(Message.INVOKE.createNode(), loggerClass, "getLogger", loggerName);
+        logger = (TruffleObject) INTEROP.invokeMember(loggerClass, "getLogger", loggerName);
         assertTrue(env.isHostObject(logger));
         assertTrue(env.asHostObject(logger) instanceof Logger);
         assertEquals(loggerName, asJavaObject(Logger.class, logger).getName());

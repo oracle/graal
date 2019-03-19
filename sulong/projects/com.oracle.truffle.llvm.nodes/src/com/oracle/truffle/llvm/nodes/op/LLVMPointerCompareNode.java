@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,19 +34,17 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMManagedCompareNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMNativeCompareNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMNegateNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMObjectEqualsNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMPointToSameObjectNodeGen;
 import com.oracle.truffle.llvm.nodes.op.ToComparableValue.ManagedToComparableValue;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -58,24 +56,33 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         this.op = op;
     }
 
-    @Specialization(guards = {"libA.guard(a)", "libB.guard(b)"})
-    protected boolean doCached(Object a, Object b,
-                    @Cached("createCached(a)") LLVMObjectNativeLibrary libA,
-                    @Cached("createCached(b)") LLVMObjectNativeLibrary libB,
-                    @Cached("createCompare()") LLVMNativeCompareNode compare) {
-        return compare.execute(a, libA, b, libB, op);
+    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3", rewriteOn = UnsupportedMessageException.class)
+    protected boolean doPointerPointer(Object a, Object b,
+                    @CachedLibrary("a") LLVMNativeLibrary libA,
+                    @CachedLibrary("b") LLVMNativeLibrary libB) throws UnsupportedMessageException {
+        return op.compare(libA.asPointer(a), libB.asPointer(b));
     }
 
-    @Specialization(replaces = "doCached", guards = {"lib.guard(a)", "lib.guard(b)"})
-    protected boolean doGeneric(Object a, Object b,
-                    @Cached("createGeneric()") LLVMObjectNativeLibrary lib,
-                    @Cached("createCompare()") LLVMNativeCompareNode compare) {
-        return compare.execute(a, lib, b, lib, op);
+    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3")
+    protected boolean doPointerPointerException(Object a, Object b,
+                    @CachedLibrary("a") LLVMNativeLibrary libA,
+                    @CachedLibrary("b") LLVMNativeLibrary libB,
+                    @Cached LLVMManagedCompareNode managedCompare) {
+        try {
+            return doPointerPointer(a, b, libA, libB);
+        } catch (UnsupportedMessageException ex) {
+            // even though both say isPointer == true, one of them threw an exception in asPointer
+            // this is the same as if one of the objects has isPointer == false
+            return doOther(a, b, libA, libB, managedCompare);
+        }
     }
 
-    @TruffleBoundary
-    protected static LLVMNativeCompareNode createCompare() {
-        return LLVMNativeCompareNodeGen.create();
+    @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)", limit = "3")
+    protected boolean doOther(Object a, Object b,
+                    @CachedLibrary("a") LLVMNativeLibrary libA,
+                    @CachedLibrary("b") LLVMNativeLibrary libB,
+                    @Cached LLVMManagedCompareNode managedCompare) {
+        return managedCompare.execute(a, libA, b, libB, op);
     }
 
     public static LLVMAbstractCompareNode create(Kind kind, LLVMExpressionNode l, LLVMExpressionNode r) {
@@ -135,25 +142,6 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         abstract boolean compare(long a, long b);
     }
 
-    abstract static class LLVMNativeCompareNode extends LLVMNode {
-        abstract boolean execute(Object a, LLVMObjectNativeLibrary libA, Object b, LLVMObjectNativeLibrary libB, NativePointerCompare op);
-
-        @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"})
-        protected boolean doPointerPointer(Object a, LLVMObjectNativeLibrary libA, Object b, LLVMObjectNativeLibrary libB, NativePointerCompare op) {
-            try {
-                return op.compare(libA.asPointer(a), libB.asPointer(b));
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
-        }
-
-        @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)")
-        protected boolean doOther(Object a, LLVMObjectNativeLibrary libA, Object b, LLVMObjectNativeLibrary libB, NativePointerCompare op,
-                        @Cached("create()") LLVMManagedCompareNode managedCompare) {
-            return managedCompare.execute(a, libA, b, libB, op);
-        }
-    }
-
     /**
      * Whenever we used {@link ManagedToComparableValue} in this class, we only convert the managed
      * object to a long value and ignore the pointer offset (including the offset would increase the
@@ -163,11 +151,11 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
     abstract static class LLVMManagedCompareNode extends LLVMNode {
         private static final long TYPICAL_POINTER = 0x00007f0000000000L;
 
-        abstract boolean execute(Object a, LLVMObjectNativeLibrary libA, Object b, LLVMObjectNativeLibrary libB, NativePointerCompare op);
+        abstract boolean execute(Object a, LLVMNativeLibrary libA, Object b, LLVMNativeLibrary libB, NativePointerCompare op);
 
         @Specialization(guards = {"pointToSameObject.execute(a, b)"})
-        protected boolean doForeign(LLVMManagedPointer a, @SuppressWarnings("unused") LLVMObjectNativeLibrary libA,
-                        LLVMManagedPointer b, @SuppressWarnings("unused") LLVMObjectNativeLibrary libB, NativePointerCompare op,
+        protected boolean doForeign(LLVMManagedPointer a, @SuppressWarnings("unused") LLVMNativeLibrary libA,
+                        LLVMManagedPointer b, @SuppressWarnings("unused") LLVMNativeLibrary libB, NativePointerCompare op,
                         @Cached("create()") @SuppressWarnings("unused") LLVMPointToSameObjectNode pointToSameObject) {
             // when comparing pointers to the same object, it is not sufficient to simply compare
             // the offsets if we have an unsigned comparison and one of the offsets is negative. So,
@@ -176,8 +164,8 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         }
 
         @Specialization(guards = "!pointToSameObject.execute(a, b)")
-        protected boolean doForeign(LLVMManagedPointer a, @SuppressWarnings("unused") LLVMObjectNativeLibrary libA,
-                        LLVMManagedPointer b, @SuppressWarnings("unused") LLVMObjectNativeLibrary libB, NativePointerCompare op,
+        protected boolean doForeign(LLVMManagedPointer a, @SuppressWarnings("unused") LLVMNativeLibrary libA,
+                        LLVMManagedPointer b, @SuppressWarnings("unused") LLVMNativeLibrary libB, NativePointerCompare op,
                         @Cached("create()") @SuppressWarnings("unused") LLVMPointToSameObjectNode pointToSameObject,
                         @Cached("createIgnoreOffset()") ManagedToComparableValue convertA,
                         @Cached("createIgnoreOffset()") ManagedToComparableValue convertB) {
@@ -185,46 +173,47 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         }
 
         @Specialization(guards = "pointToSameObject.execute(a, b)")
-        protected boolean doVirtual(LLVMVirtualAllocationAddress a, @SuppressWarnings("unused") LLVMObjectNativeLibrary libA,
-                        LLVMVirtualAllocationAddress b, @SuppressWarnings("unused") LLVMObjectNativeLibrary libB, NativePointerCompare op,
+        protected boolean doVirtual(LLVMVirtualAllocationAddress a, @SuppressWarnings("unused") LLVMNativeLibrary libA,
+                        LLVMVirtualAllocationAddress b, @SuppressWarnings("unused") LLVMNativeLibrary libB, NativePointerCompare op,
                         @Cached("create()") @SuppressWarnings("unused") LLVMPointToSameObjectNode pointToSameObject) {
             return op.compare(TYPICAL_POINTER + a.getOffset(), TYPICAL_POINTER + b.getOffset());
         }
 
         @Specialization(guards = "!pointToSameObject.execute(a, b)")
-        protected boolean doVirtual(LLVMVirtualAllocationAddress a, @SuppressWarnings("unused") LLVMObjectNativeLibrary libA,
-                        LLVMVirtualAllocationAddress b, @SuppressWarnings("unused") LLVMObjectNativeLibrary libB, NativePointerCompare op,
+        protected boolean doVirtual(LLVMVirtualAllocationAddress a, @SuppressWarnings("unused") LLVMNativeLibrary libA,
+                        LLVMVirtualAllocationAddress b, @SuppressWarnings("unused") LLVMNativeLibrary libB, NativePointerCompare op,
                         @Cached("create()") @SuppressWarnings("unused") LLVMPointToSameObjectNode pointToSameObject,
                         @Cached("createIgnoreOffset()") ManagedToComparableValue convertA,
                         @Cached("createIgnoreOffset()") ManagedToComparableValue convertB) {
             return op.compare(convertA.executeWithTarget(a), convertB.executeWithTarget(b));
         }
 
-        @Specialization(guards = "libA.isPointer(a)")
-        protected boolean doManagedNative(Object a, LLVMObjectNativeLibrary libA, Object b, LLVMObjectNativeLibrary libB, NativePointerCompare op,
+        @Specialization(guards = "libA.isPointer(a)", rewriteOn = UnsupportedMessageException.class)
+        @SuppressWarnings("unused")
+        protected boolean doNativeManaged(Object a, LLVMNativeLibrary libA, Object b, LLVMNativeLibrary libB, NativePointerCompare op,
+                        @Cached("createIgnoreOffset()") ManagedToComparableValue convert) throws UnsupportedMessageException {
+            return op.compare(libA.asPointer(a), convert.executeWithTarget(b));
+        }
+
+        @Specialization(guards = "libB.isPointer(b)", rewriteOn = UnsupportedMessageException.class)
+        @SuppressWarnings("unused")
+        protected boolean doManagedNative(Object a, LLVMNativeLibrary libA, Object b, LLVMNativeLibrary libB, NativePointerCompare op,
+                        @Cached("createIgnoreOffset()") ManagedToComparableValue convert) throws UnsupportedMessageException {
+            return op.compare(convert.executeWithTarget(a), libB.asPointer(b));
+        }
+
+        @Specialization(guards = "libA.isPointer(a) || libB.isPointer(b)")
+        protected boolean doManagedNativeException(Object a, LLVMNativeLibrary libA, Object b, LLVMNativeLibrary libB, NativePointerCompare op,
                         @Cached("createIgnoreOffset()") ManagedToComparableValue convert) {
-            assert !libB.isPointer(b);
             try {
                 return op.compare(libA.asPointer(a), convert.executeWithTarget(b));
-            } catch (InteropException e) {
-                throw e.raise();
+            } catch (UnsupportedMessageException e) {
+                try {
+                    return op.compare(convert.executeWithTarget(a), libB.asPointer(b));
+                } catch (UnsupportedMessageException ex) {
+                    return op.compare(convert.executeWithTarget(a), convert.executeWithTarget(b));
+                }
             }
-        }
-
-        @Specialization(guards = "libB.isPointer(b)")
-        protected boolean doManagedNative(LLVMManagedPointer a, LLVMObjectNativeLibrary libA, Object b, LLVMObjectNativeLibrary libB, NativePointerCompare op,
-                        @Cached("createIgnoreOffset()") ManagedToComparableValue convert) {
-            assert !libA.isPointer(a);
-            try {
-                return op.compare(convert.executeWithTarget(a), libB.asPointer(b));
-            } catch (InteropException e) {
-                throw e.raise();
-            }
-        }
-
-        @TruffleBoundary
-        public static LLVMManagedCompareNode create() {
-            return LLVMManagedCompareNodeGen.create();
         }
     }
 
@@ -288,21 +277,12 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
             return CompilerDirectives.castExact(a, cachedClass).equals(b);
         }
 
-        @Specialization(guards = {"!isTypedForeignObject(a)", "!isTypedForeignObject(b)"}, replaces = "pointToSameObjectCached")
-        protected boolean pointToSameObject(Object a, Object b) {
-            return a.equals(b);
-        }
-
         protected static Class<?> getObjectClass(LLVMTypedForeignObject foreignObject) {
             return foreignObject.getForeign().getClass();
         }
 
         protected static boolean isTypedForeignObject(Object object) {
             return object instanceof LLVMTypedForeignObject;
-        }
-
-        public static LLVMObjectEqualsNode create() {
-            return LLVMObjectEqualsNodeGen.create();
         }
     }
 

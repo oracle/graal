@@ -43,9 +43,9 @@ package com.oracle.truffle.object;
 import java.util.Iterator;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.LocationFactory;
+import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
@@ -335,9 +335,16 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         return cloneWithShape(currentShape);
     }
 
-    /** @since 0.17 or earlier */
+    /**
+     * @since 0.17 or earlier
+     *
+     * @deprecated use {@link ObjectType#dispatch()} instead
+     */
+    @SuppressWarnings("deprecation")
     @Override
-    public ForeignAccess getForeignAccess() {
+    @Deprecated
+    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
         return getShapeImpl().getForeignAccessFactory(this);
     }
+
 }

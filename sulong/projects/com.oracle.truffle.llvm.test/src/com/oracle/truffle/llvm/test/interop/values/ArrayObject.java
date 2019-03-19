@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,13 @@
  */
 package com.oracle.truffle.llvm.test.interop.values;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = ArrayObject.class)
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class ArrayObject implements TruffleObject {
 
     final Object[] array;
@@ -44,49 +44,40 @@ public final class ArrayObject implements TruffleObject {
         this.array = array;
     }
 
-    public Object get(int i) {
-        return array[i];
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
     }
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof ArrayObject;
+    @ExportMessage(name = "isArrayElementReadable")
+    @ExportMessage(name = "isArrayElementModifiable")
+    @ExportMessage(name = "isArrayElementRemovable")
+    boolean inBounds(long idx) {
+        return 0 <= idx && idx < array.length;
     }
 
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
-
-        Object access(ArrayObject obj, Number idx) {
-            return obj.array[(int) idx.longValue()];
-        }
+    @ExportMessage
+    boolean isArrayElementInsertable(@SuppressWarnings("unused") long idx) {
+        return false;
     }
 
-    @Resolve(message = "WRITE")
-    abstract static class WriteNode extends Node {
-
-        Object access(ArrayObject obj, Number idx, Object value) {
-            return obj.array[(int) idx.longValue()] = value;
-        }
+    @ExportMessage(name = "readArrayElement")
+    public Object get(long i) {
+        return array[(int) i];
     }
 
-    @Resolve(message = "REMOVE")
-    abstract static class RemoveNode extends Node {
-
-        boolean access(ArrayObject obj, Number idx) {
-            obj.array[(int) idx.longValue()] = "<removed>";
-            return true;
-        }
+    @ExportMessage
+    void writeArrayElement(long idx, Object value) {
+        array[(int) idx] = value;
     }
 
-    @Resolve(message = "GET_SIZE")
-    abstract static class SizeNode extends Node {
-
-        int access(ArrayObject obj) {
-            return obj.array.length;
-        }
+    @ExportMessage
+    void removeArrayElement(long idx) {
+        array[(int) idx] = "<removed>";
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return ArrayObjectForeign.ACCESS;
+    @ExportMessage
+    long getArraySize() {
+        return array.length;
     }
 }

@@ -42,10 +42,11 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * An exception thrown if a {@link TruffleObject} does not support the type of one ore more
- * arguments provided by a foreign access.
+ * arguments.
  *
  * @since 0.11
  */
@@ -60,8 +61,9 @@ public final class UnsupportedTypeException extends InteropException {
         this.suppliedValues = suppliedValues;
     }
 
-    private UnsupportedTypeException(Object[] suppliedValues) {
-        this(null, suppliedValues);
+    private UnsupportedTypeException(String message, Object[] suppliedValues) {
+        super(message);
+        this.suppliedValues = suppliedValues;
     }
 
     /**
@@ -76,34 +78,48 @@ public final class UnsupportedTypeException extends InteropException {
     }
 
     /**
-     * Raises an {@link UnsupportedTypeException}, hidden as a {@link RuntimeException}, which
-     * allows throwing it without an explicit throws declaration. The {@link ForeignAccess} methods
-     * (e.g. <code> ForeignAccess.sendRead </code>) catch the exceptions and re-throw them as
-     * checked exceptions.
-     *
-     * @param suppliedValues values that were not supported
-     *
-     * @return the exception
      * @since 0.11
+     * @deprecated use {@link #create(Object[])} instead. Interop exceptions should directly be
+     *             thrown and no longer be hidden as runtime exceptions.
      */
+    @Deprecated
     public static RuntimeException raise(Object[] suppliedValues) {
         return raise(null, suppliedValues);
     }
 
     /**
-     * Raises an {@link UnsupportedTypeException}, hidden as a {@link RuntimeException}, which
-     * allows throwing it without an explicit throws declaration. The {@link ForeignAccess} methods
-     * (e.g. <code> ForeignAccess.sendRead </code>) catch the exceptions and re-throw them as
-     * checked exceptions.
-     *
-     * @param cause cause of this exception
-     * @param suppliedValues values that were not supported
-     *
-     * @return the exception
      * @since 0.11
+     * @deprecated use {@link #create(Object[])} instead. Interop exceptions should directly be
+     *             thrown and no longer be hidden as runtime exceptions.
      */
+    @Deprecated
     public static RuntimeException raise(Exception cause, Object[] suppliedValues) {
         CompilerDirectives.transferToInterpreter();
         return silenceException(RuntimeException.class, new UnsupportedTypeException(cause, suppliedValues));
     }
+
+    /**
+     * Creates an {@link UnsupportedTypeException} to indicate that an argument type is not
+     * supported.
+     *
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public static UnsupportedTypeException create(Object[] suppliedValues) {
+        CompilerDirectives.transferToInterpreter();
+        return new UnsupportedTypeException((String) null, suppliedValues);
+    }
+
+    /**
+     * Creates an {@link UnsupportedTypeException} to indicate that an argument type is not
+     * supported.
+     *
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public static UnsupportedTypeException create(Object[] suppliedValues, String hint) {
+        CompilerDirectives.transferToInterpreter();
+        return new UnsupportedTypeException(hint, suppliedValues);
+    }
+
 }

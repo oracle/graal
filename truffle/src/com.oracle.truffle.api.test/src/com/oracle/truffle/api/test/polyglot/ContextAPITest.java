@@ -74,12 +74,13 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
@@ -358,7 +359,7 @@ public class ContextAPITest {
     }
 
     private static void testExecute(Context context) {
-        ContextAPITestLanguage.runinside = (env) -> new ProxyInteropObject() {
+        ContextAPITestLanguage.runinside = (env) -> new ProxyLegacyInteropObject() {
             @Override
             public boolean isExecutable() {
                 return true;
@@ -412,28 +413,61 @@ public class ContextAPITest {
         assertEquals(42, bindings.getMember("obj").getMember("bazz").execute().asInt());
     }
 
-    private static void testBindings(Context context) {
+    @ExportLibrary(InteropLibrary.class)
+    static final class TopScope implements TruffleObject {
+
         Map<String, Object> values = new HashMap<>();
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String key) {
+            return values.get(key);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object writeMember(String key, Object value) {
+            values.put(key, value);
+            return value;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return values.containsKey(member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberModifiable(String member) {
+            return values.containsKey(member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberInsertable(String member) {
+            return !values.containsKey(member);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+    }
+
+    private static void testBindings(Context context) {
+        TopScope values = new TopScope();
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected Iterable<Scope> findTopScopes(LanguageContext env) {
-                return Arrays.asList(Scope.newBuilder("top", new ProxyInteropObject() {
-                    @Override
-                    public Object read(String key) throws UnsupportedMessageException, UnknownIdentifierException {
-                        return values.get(key);
-                    }
-
-                    @Override
-                    public Object write(String key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-                        values.put(key, value);
-                        return value;
-                    }
-
-                    @Override
-                    public boolean hasKeys() {
-                        return true;
-                    }
-                }).build());
+                return Arrays.asList(Scope.newBuilder("top", values).build());
             }
         });
         Value bindings = context.getBindings(ProxyLanguage.ID);
@@ -558,9 +592,9 @@ public class ContextAPITest {
                     }
 
                     @TruffleBoundary
-                    private Object boundary() throws UnknownIdentifierException, UnsupportedMessageException, UnsupportedTypeException, ArityException {
-                        TruffleObject o = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
-                        return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), o);
+                    private Object boundary() throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
+                        Object o = InteropLibrary.getFactory().getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                        return InteropLibrary.getFactory().getUncached().execute(o);
                     }
                 });
             }

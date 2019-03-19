@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,24 +30,24 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen.ForeignReadStringNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen.PointerReadStringNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -91,33 +91,19 @@ public abstract class LLVMReadStringNode extends LLVMNode {
     @NodeChild(value = "foreign", type = LLVMAsForeignNode.class, executeWith = "object")
     abstract static class ForeignReadStringNode extends LLVMNode {
 
-        @Child Node isBoxed = Message.IS_BOXED.createNode();
-
         protected abstract String execute(LLVMManagedPointer foreign);
 
-        @Specialization(guards = "isBoxed(foreign)")
-        String readUnbox(@SuppressWarnings("unused") LLVMManagedPointer object, TruffleObject foreign,
-                        @Cached("createUnbox()") Node unbox) {
-            try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, foreign);
-                return (String) unboxed;
-            } catch (UnsupportedMessageException ex) {
-                throw ex.raise();
+        @Specialization(limit = "3")
+        String doDefault(@SuppressWarnings("unused") LLVMManagedPointer object, TruffleObject foreign,
+                        @CachedLibrary("foreign") InteropLibrary interop,
+                        @Cached PointerReadStringNode read) {
+            if (interop.isString(foreign)) {
+                try {
+                    return interop.asString(foreign);
+                } catch (UnsupportedMessageException e) {
+                }
             }
-        }
-
-        @Specialization(guards = "!isBoxed(foreign)")
-        String readOther(LLVMManagedPointer object, @SuppressWarnings("unused") TruffleObject foreign,
-                        @Cached("create()") PointerReadStringNode read) {
             return read.execute(object);
-        }
-
-        protected boolean isBoxed(TruffleObject foreign) {
-            return foreign != null && ForeignAccess.sendIsBoxed(isBoxed, foreign);
-        }
-
-        protected static Node createUnbox() {
-            return Message.UNBOX.createNode();
         }
 
         public static ForeignReadStringNode create() {
@@ -134,7 +120,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
         boolean isReadOnlyMemory(LLVMPointer address) {
             CompilerAsserts.neverPartOfCompilation();
-            LLVMGlobal global = getContextReference().get().findGlobal(address);
+            LLVMGlobal global = lookupContextReference(LLVMLanguage.class).get().findGlobal(address);
             if (global != null) {
                 return global.isReadOnly();
             } else {

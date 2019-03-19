@@ -245,14 +245,12 @@ public class ReplacesTest {
     @NodeChild("a")
     abstract static class ReplacesError5 extends ValueNode {
 
-        @ExpectError({"Circular replaced specialization 'f0(int)' found.", "Circular replaced specialization 'f1(double)' found.",
-                        "The replaced specialization 'f1' must be declared before the replacing specialization."})
+        @ExpectError({"The replaced specialization 'f1' must be declared before the replacing specialization."})
         @Specialization(replaces = "f1")
         int f0(int a) {
             return a;
         }
 
-        @ExpectError("Circular replaced specialization 'f1(double)' found.")
         @Specialization(replaces = {"f0"})
         Object f1(double a) {
             return a;

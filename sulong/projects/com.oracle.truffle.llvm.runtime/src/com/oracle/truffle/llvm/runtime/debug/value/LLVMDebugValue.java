@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.debug.value;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.NodeInterface;
 
 public interface LLVMDebugValue {
 
@@ -125,7 +126,7 @@ public interface LLVMDebugValue {
         return builder.toString();
     }
 
-    interface Builder {
+    interface Builder extends NodeInterface {
 
         LLVMDebugValue build(Object irValue);
 

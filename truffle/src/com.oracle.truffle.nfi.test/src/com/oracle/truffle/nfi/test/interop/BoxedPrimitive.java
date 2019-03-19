@@ -40,20 +40,116 @@
  */
 package com.oracle.truffle.nfi.test.interop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 public class BoxedPrimitive implements TruffleObject {
 
     final Object primitive;
+    boolean toNativeCalled;
 
     public BoxedPrimitive(Object primitive) {
         this.primitive = primitive;
+        this.toNativeCalled = false;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return BoxedPrimitiveMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    void toNative() {
+        this.toNativeCalled = true;
+    }
+
+    public boolean isNative() {
+        return toNativeCalled;
+    }
+
+    @ExportMessage
+    boolean isBoolean(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.isBoolean(primitive);
+    }
+
+    @ExportMessage
+    boolean asBoolean(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asBoolean(primitive);
+    }
+
+    @ExportMessage
+    boolean isString(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.isString(primitive);
+    }
+
+    @ExportMessage
+    String asString(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asString(primitive);
+    }
+
+    @ExportMessage
+    boolean isNumber(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.isNumber(primitive);
+    }
+
+    @ExportMessage
+    boolean fitsInByte(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.fitsInByte(primitive);
+    }
+
+    @ExportMessage
+    boolean fitsInShort(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.fitsInShort(primitive);
+    }
+
+    @ExportMessage
+    boolean fitsInInt(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.fitsInInt(primitive);
+    }
+
+    @ExportMessage
+    boolean fitsInLong(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.fitsInLong(primitive);
+    }
+
+    @ExportMessage
+    boolean fitsInFloat(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.fitsInFloat(primitive);
+    }
+
+    @ExportMessage
+    boolean fitsInDouble(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.fitsInDouble(primitive);
+    }
+
+    @ExportMessage
+    byte asByte(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asByte(primitive);
+    }
+
+    @ExportMessage
+    short asShort(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asShort(primitive);
+    }
+
+    @ExportMessage
+    int asInt(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asInt(primitive);
+    }
+
+    @ExportMessage
+    long asLong(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asLong(primitive);
+    }
+
+    @ExportMessage
+    float asFloat(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asFloat(primitive);
+    }
+
+    @ExportMessage
+    double asDouble(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asDouble(primitive);
     }
 
     @Override

@@ -58,9 +58,11 @@ public class Log {
     }
 
     private final ProcessingEnvironment processingEnv;
+    private final boolean emitWarnings;
 
-    public Log(ProcessingEnvironment env) {
+    public Log(ProcessingEnvironment env, boolean emitWarnings) {
         this.processingEnv = env;
+        this.emitWarnings = emitWarnings;
     }
 
     public void debug(String message, Object... args) {
@@ -81,7 +83,9 @@ public class Log {
                 message = String.format("Element %s: %s", element, message);
             }
         }
-        processingEnv.getMessager().printMessage(kind, message, usedElement, usedMirror, usedValue);
+        if (kind != Kind.WARNING || emitWarnings) {
+            processingEnv.getMessager().printMessage(kind, message, usedElement, usedMirror, usedValue);
+        }
     }
 
 }

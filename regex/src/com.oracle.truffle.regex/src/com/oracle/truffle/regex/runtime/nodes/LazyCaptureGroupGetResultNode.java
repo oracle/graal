@@ -25,25 +25,29 @@
 package com.oracle.truffle.regex.runtime.nodes;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
 
+@GenerateUncached
 public abstract class LazyCaptureGroupGetResultNode extends Node {
 
     public abstract int[] execute(LazyCaptureGroupsResult receiver);
 
     @Specialization(guards = {"receiver.getResult() == null", "receiver.getFindStartCallTarget() == null"})
-    int[] doLazyCaptureGroupsCalc(LazyCaptureGroupsResult receiver,
-                    @Cached("create()") CalcResultNode calcResult) {
+    static int[] doLazyCaptureGroupsCalc(LazyCaptureGroupsResult receiver,
+                    @Shared("calcResult") @Cached CalcResultNode calcResult) {
         calcResult.execute(receiver.getCaptureGroupCallTarget(), receiver.createArgsCGNoFindStart());
         return receiver.getResult();
     }
 
     @Specialization(guards = {"receiver.getResult() == null", "receiver.getFindStartCallTarget() != null"})
-    int[] doLazyCaptureGroupsCalcWithFindStart(LazyCaptureGroupsResult receiver,
-                    @Cached("create()") CalcResultNode calcStart,
-                    @Cached("create()") CalcResultNode calcResult) {
+    static int[] doLazyCaptureGroupsCalcWithFindStart(LazyCaptureGroupsResult receiver,
+                    @Exclusive @Cached CalcResultNode calcStart,
+                    @Shared("calcResult") @Cached CalcResultNode calcResult) {
         final int start = (int) calcStart.execute(receiver.getFindStartCallTarget(), receiver.createArgsFindStart());
         calcResult.execute(receiver.getCaptureGroupCallTarget(), receiver.createArgsCG(start));
         return receiver.getResult();
@@ -52,9 +56,5 @@ public abstract class LazyCaptureGroupGetResultNode extends Node {
     @Specialization(guards = {"receiver.getResult() != null"})
     int[] doLazyCaptureGroups(LazyCaptureGroupsResult receiver) {
         return receiver.getResult();
-    }
-
-    public static LazyCaptureGroupGetResultNode create() {
-        return LazyCaptureGroupGetResultNodeGen.create();
     }
 }

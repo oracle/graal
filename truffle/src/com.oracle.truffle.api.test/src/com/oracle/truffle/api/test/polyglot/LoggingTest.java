@@ -52,7 +52,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -60,6 +63,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -73,14 +77,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.function.Consumer;
-import org.graalvm.polyglot.Engine;
 
 public class LoggingTest {
 
@@ -1147,10 +1146,6 @@ public class LoggingTest {
             this.stringValue = stringValue;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return null;
-        }
     }
 
     public abstract static class AbstractLoggingLanguage extends TruffleLanguage<LoggingContext> {
@@ -1184,17 +1179,18 @@ public class LoggingTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
+            Class<? extends AbstractLoggingLanguage> language = getClass();
             final RootNode root = new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     boolean doDefaultLogging = true;
                     if (action != null) {
-                        doDefaultLogging = action.test(getContextReference().get(), allLoggers);
+                        doDefaultLogging = action.test(lookupContextReference(language).get(), allLoggers);
                     }
                     if (doDefaultLogging) {
                         doLog();
                     }
-                    return getContextReference().get().getEnv().asGuestValue(null);
+                    return lookupContextReference(language).get().getEnv().asGuestValue(null);
                 }
             };
             return Truffle.getRuntime().createCallTarget(root);

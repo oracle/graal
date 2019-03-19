@@ -33,8 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -44,15 +42,22 @@ public final class GraalFrameInstance implements FrameInstance {
     private static final int CALL_TARGET_INDEX = 0;
     private static final int CALL_TARGET_FRAME_INDEX = 1;
 
-    private static final int CALL_NODE_NOTIFY_INDEX = 0;
+    private static final int CALL_NODE_NOTIFY_INDEX = 1;
 
     public static final Method CALL_TARGET_METHOD;
-    public static final Method CALL_NODE_METHOD;
+    public static final Method CALL_DIRECT;
+    public static final Method CALL_INLINED;
+    public static final Method CALL_INLINED_FORCED;
+    public static final Method CALL_INDIRECT;
     public static final Method CALL_OSR_METHOD;
 
     static {
         try {
-            CALL_NODE_METHOD = OptimizedDirectCallNode.class.getDeclaredMethod("callProxy", Node.class, CallTarget.class, Object[].class, boolean.class);
+            CALL_DIRECT = OptimizedCallTarget.class.getDeclaredMethod("callDirect", Node.class, Object[].class);
+            CALL_INLINED = OptimizedCallTarget.class.getDeclaredMethod("callInlined", Node.class, Object[].class);
+            CALL_INLINED_FORCED = OptimizedCallTarget.class.getDeclaredMethod("callInlinedForced", Node.class, Object[].class);
+            CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, Object[].class);
+
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("callProxy", VirtualFrame.class);
             CALL_OSR_METHOD = OptimizedOSRLoopNode.OSRRootNode.class.getDeclaredMethod("callProxy", OSRRootNode.class, VirtualFrame.class);
         } catch (NoSuchMethodException | SecurityException e) {
@@ -98,7 +103,7 @@ public final class GraalFrameInstance implements FrameInstance {
     public Node getCallNode() {
         if (callNodeFrame != null) {
             Object receiver = callNodeFrame.getLocal(CALL_NODE_NOTIFY_INDEX);
-            if (receiver instanceof DirectCallNode || receiver instanceof IndirectCallNode) {
+            if (receiver instanceof Node) {
                 return (Node) receiver;
             }
         }

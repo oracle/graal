@@ -40,13 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.DeclaredType;
-
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -54,6 +47,13 @@ import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -76,9 +76,6 @@ class AnnotationProcessor<M extends Template> {
 
     @SuppressWarnings({"unchecked"})
     public void process(Element element, boolean callback) {
-        if (!(element instanceof TypeElement)) {
-            return;
-        }
         // since it is not guaranteed to be called only once by the compiler
         // we check for already processed elements to avoid errors when writing files.
         if (!callback) {
@@ -101,25 +98,28 @@ class AnnotationProcessor<M extends Template> {
             context.registerTemplate(type, model);
 
             if (model != null) {
-                CodeTypeElement unit;
+                List<CodeTypeElement> units;
                 try {
-                    unit = factory.create(ProcessorContext.getInstance(), model);
+                    units = factory.create(ProcessorContext.getInstance(), model);
                 } catch (Throwable e) {
-                    throw new RuntimeException(String.format("Failed to write code for %s. Parserdump:%s.", ElementUtils.getQualifiedName(type), ""), e);
+                    RuntimeException ex = new RuntimeException(String.format("Failed to write code for %s. Parserdump:%s.", ElementUtils.getQualifiedName(type), ""));
+                    e.addSuppressed(ex);
+                    throw e;
                 }
-                if (unit == null) {
+                if (units == null || units.isEmpty()) {
                     return;
                 }
-                unit.setGeneratorAnnotationMirror(model.getTemplateTypeAnnotation());
-                unit.setGeneratorElement(model.getTemplateType());
+                for (CodeTypeElement unit : units) {
+                    unit.setGeneratorAnnotationMirror(model.getTemplateTypeAnnotation());
+                    unit.setGeneratorElement(model.getTemplateType());
 
-                DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
-                DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
-                unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
+                    DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
+                    unit.accept(new GenerateOverrideVisitor(overrideType), null);
+                    unit.accept(new FixWarningsVisitor(model.getTemplateType(), overrideType), null);
 
-                if (!callback) {
-                    unit.accept(new CodeWriter(context.getEnvironment(), element), null);
+                    if (!callback) {
+                        unit.accept(new CodeWriter(context.getEnvironment(), element), null);
+                    }
                 }
             }
         }

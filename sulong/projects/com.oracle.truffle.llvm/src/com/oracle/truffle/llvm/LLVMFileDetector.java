@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm;
 
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,9 +50,9 @@ public class LLVMFileDetector extends FileTypeDetector {
     public String probeContentType(Path path) throws IOException {
         long magicWord = readMagicWord(path);
         if (magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD) {
-            return Sulong.LLVM_BITCODE_MIME_TYPE;
+            return LLVMLanguage.LLVM_BITCODE_MIME_TYPE;
         } else if (magicWord == ELF_MAGIC_WORD) {
-            return Sulong.LLVM_ELF_SHARED_MIME_TYPE;
+            return LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE;
         }
         return null;
     }

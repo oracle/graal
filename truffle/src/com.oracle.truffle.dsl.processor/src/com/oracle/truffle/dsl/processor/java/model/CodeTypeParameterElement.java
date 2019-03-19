@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -56,29 +57,49 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public class CodeTypeParameterElement extends CodeElement<Element> implements TypeParameterElement {
 
-    private final Name simpleName;
-    private final List<TypeMirror> bounds;
+    private final Name name;
+    private final List<TypeMirror> bounds = new ArrayList<>();
 
-    public CodeTypeParameterElement(String name, TypeMirror... bounds) {
+    public CodeTypeParameterElement(Name name, TypeMirror... bounds) {
         super(ElementUtils.modifiers());
-        this.simpleName = CodeNames.of(name);
-        this.bounds = Arrays.asList(bounds);
+        this.name = name;
+        this.bounds.addAll(Arrays.asList(bounds));
     }
 
     public TypeMirror asType() {
-        return new CodeTypeParameterMirror(null, null);
+        return new Mirror(null, null);
     }
 
     public TypeMirror createMirror(TypeMirror upperBound, TypeMirror lowerBound) {
-        return new CodeTypeParameterMirror(upperBound, lowerBound);
+        return new Mirror(upperBound, lowerBound);
     }
 
-    private class CodeTypeParameterMirror extends CodeTypeMirror implements TypeVariable {
+    public ElementKind getKind() {
+        return ElementKind.TYPE_PARAMETER;
+    }
+
+    public Name getSimpleName() {
+        return name;
+    }
+
+    public <R, P> R accept(ElementVisitor<R, P> v, P p) {
+        return v.visitTypeParameter(this, p);
+    }
+
+    public Element getGenericElement() {
+        return getEnclosingElement();
+    }
+
+    public List<TypeMirror> getBounds() {
+        return bounds;
+    }
+
+    private class Mirror extends CodeTypeMirror implements TypeVariable {
 
         private final TypeMirror upperBound;
         private final TypeMirror lowerBound;
 
-        CodeTypeParameterMirror(TypeMirror upperBound, TypeMirror lowerBound) {
+        Mirror(TypeMirror upperBound, TypeMirror lowerBound) {
             super(TypeKind.TYPEVAR);
             this.upperBound = upperBound;
             this.lowerBound = lowerBound;
@@ -96,26 +117,6 @@ public class CodeTypeParameterElement extends CodeElement<Element> implements Ty
             return lowerBound;
         }
 
-    }
-
-    public ElementKind getKind() {
-        return ElementKind.TYPE_PARAMETER;
-    }
-
-    public Name getSimpleName() {
-        return simpleName;
-    }
-
-    public <R, P> R accept(ElementVisitor<R, P> v, P p) {
-        return null;
-    }
-
-    public Element getGenericElement() {
-        return this;
-    }
-
-    public List<? extends TypeMirror> getBounds() {
-        return bounds;
     }
 
 }

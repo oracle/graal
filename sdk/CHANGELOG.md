@@ -5,6 +5,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 ## Version 1.0.0 RC14
 * Added [Context.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental options can be passed to a Context.
 * Added [Engine.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental instrument and engine options can be passed.
+* Removed deprecated API class `ProxyPrimitive`.
 
 ## Version 1.0.0 RC13
 * [OptionCategory.DEBUG](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionCategory.html) has been renamed to `OptionCategory.INTERNAL` for clarity.

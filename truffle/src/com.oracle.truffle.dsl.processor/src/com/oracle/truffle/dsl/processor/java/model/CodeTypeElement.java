@@ -41,7 +41,7 @@
 package com.oracle.truffle.dsl.processor.java.model;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -59,6 +59,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 
 public class CodeTypeElement extends CodeElement<Element> implements TypeElement {
@@ -67,13 +68,15 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
 
     private final PackageElement packageElement;
 
-    private final Name simpleName;
+    private Name simpleName;
     private final Name packageName;
     private Name qualifiedName;
 
     private final List<TypeMirror> implementsInterfaces = new ArrayList<>();
-    private final ElementKind kind;
+    private final List<TypeParameterElement> typeParameters = parentableList(this, new ArrayList<>());
+    private ElementKind kind;
     private TypeMirror superClass;
+    private CodeTree docTree;
 
     private final DeclaredCodeTypeMirror mirror = new DeclaredCodeTypeMirror(this);
 
@@ -90,9 +93,33 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
         this.qualifiedName = createQualifiedName();
     }
 
+    public CodeTreeBuilder createDocBuilder() {
+        CodeTreeBuilder builder = new CodeTreeBuilder(null);
+        builder.setEnclosingElement(this);
+        this.docTree = builder.getTree();
+        return builder;
+    }
+
+    public CodeTree getDocTree() {
+        return docTree;
+    }
+
+    public void setDocTree(CodeTree docTree) {
+        this.docTree = docTree;
+    }
+
+    public void setSimpleName(Name simpleName) {
+        this.simpleName = simpleName;
+        this.qualifiedName = createQualifiedName();
+    }
+
     @Override
     public TypeMirror asType() {
         return mirror;
+    }
+
+    public void setKind(ElementKind kind) {
+        this.kind = kind;
     }
 
     @Override
@@ -134,8 +161,8 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
     }
 
     @Override
-    public List<? extends TypeParameterElement> getTypeParameters() {
-        return Collections.emptyList();
+    public List<TypeParameterElement> getTypeParameters() {
+        return typeParameters;
     }
 
     public boolean isTopLevelClass() {
@@ -227,6 +254,18 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
     @Override
     public <R, P> R accept(ElementVisitor<R, P> v, P p) {
         return v.visitType(this, p);
+    }
+
+    public static CodeTypeElement cloneShallow(TypeElement typeElement) {
+        CodeTypeElement copy = new CodeTypeElement(new HashSet<>(typeElement.getModifiers()), typeElement.getKind(), ElementUtils.findPackageElement(typeElement),
+                        typeElement.getSimpleName().toString());
+        copy.setEnclosingElement(typeElement.getEnclosingElement());
+        copy.setSuperClass(typeElement.getSuperclass());
+        copy.getTypeParameters().addAll(typeElement.getTypeParameters());
+        copy.getImplements().addAll(typeElement.getInterfaces());
+        copy.getAnnotationMirrors().addAll(typeElement.getAnnotationMirrors());
+        copy.getEnclosedElements().addAll(typeElement.getEnclosedElements());
+        return copy;
     }
 
 }

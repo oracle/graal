@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
@@ -37,7 +37,7 @@ import com.oracle.truffle.api.frame.Frame;
  * {@link TruffleCompilerListener} events to {@link GraalTruffleRuntimeListener} events.
  */
 @SuppressWarnings("serial")
-final class GraalTruffleRuntimeListenerDispatcher extends ArrayList<GraalTruffleRuntimeListener> implements GraalTruffleRuntimeListener, TruffleCompilerListener {
+final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<GraalTruffleRuntimeListener> implements GraalTruffleRuntimeListener, TruffleCompilerListener {
 
     @Override
     public boolean add(GraalTruffleRuntimeListener e) {

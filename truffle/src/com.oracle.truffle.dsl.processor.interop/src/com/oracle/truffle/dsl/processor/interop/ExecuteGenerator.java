@@ -50,11 +50,9 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
+@SuppressWarnings("deprecation")
 final class ExecuteGenerator extends MessageGenerator {
 
     private final int numberOfArguments;
@@ -63,15 +61,16 @@ final class ExecuteGenerator extends MessageGenerator {
     // New: TruffleObject receiver, Object[] args
     private final String targetableExecuteNode;
 
-    ExecuteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+    ExecuteGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.Resolve resolveAnnotation, com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation,
+                    TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         this.targetableExecuteNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
-        if (Message.EXECUTE.toString().equalsIgnoreCase(messageName)) {
+        if (com.oracle.truffle.api.interop.Message.EXECUTE.toString().equalsIgnoreCase(messageName)) {
             numberOfArguments = 2;
-        } else if (Message.INVOKE.toString().equalsIgnoreCase(messageName)) {
+        } else if (com.oracle.truffle.api.interop.Message.INVOKE.toString().equalsIgnoreCase(messageName)) {
             numberOfArguments = 3;
-        } else if (Message.NEW.toString().equalsIgnoreCase(messageName)) {
+        } else if (com.oracle.truffle.api.interop.Message.NEW.toString().equalsIgnoreCase(messageName)) {
             numberOfArguments = 2;
         } else {
             throw new AssertionError();
@@ -100,9 +99,9 @@ final class ExecuteGenerator extends MessageGenerator {
         appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
-        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object receiver = com.oracle.truffle.api.interop.ForeignAccess.getReceiver(frame);\n");
         w.append(indent).append("            Object[] arguments = frame.getArguments();\n");
-        boolean isInvoke = Message.INVOKE.toString().equalsIgnoreCase(messageName);
+        boolean isInvoke = com.oracle.truffle.api.interop.Message.INVOKE.toString().equalsIgnoreCase(messageName);
         if (isInvoke) {
             w.append(indent).append("            Object identifier = arguments[1];\n");
             w.append(indent).append("            Object[] args = new Object[arguments.length - 2];\n");
@@ -139,16 +138,16 @@ final class ExecuteGenerator extends MessageGenerator {
         int expectedNumberOfArguments = hasFrameArgument ? getParameterCount() + 1 : getParameterCount();
 
         if (params.size() != expectedNumberOfArguments) {
-            if (Message.INVOKE.toString().equalsIgnoreCase(messageName)) {
+            if (com.oracle.truffle.api.interop.Message.INVOKE.toString().equalsIgnoreCase(messageName)) {
                 return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String, arguments: Object[])";
-            } else if (Message.EXECUTE.toString().equalsIgnoreCase(messageName)) {
+            } else if (com.oracle.truffle.api.interop.Message.EXECUTE.toString().equalsIgnoreCase(messageName)) {
                 return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, arguments: Object[])";
             } else {
                 throw new IllegalStateException();
             }
         }
 
-        if (Message.INVOKE.toString().equalsIgnoreCase(messageName)) {
+        if (com.oracle.truffle.api.interop.Message.INVOKE.toString().equalsIgnoreCase(messageName)) {
             if (!ElementUtils.typeEquals(params.get(hasFrameArgument ? 2 : 1).asType(), Utils.getTypeMirror(processingEnv, String.class))) {
                 int i = hasFrameArgument ? 3 : 2;
                 return "The " + i + " argument must be a " + String.class.getName() + "- but is " + ElementUtils.getQualifiedName(params.get(hasFrameArgument ? 2 : 1).asType());

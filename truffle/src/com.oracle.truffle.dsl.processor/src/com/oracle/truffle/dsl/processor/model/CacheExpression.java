@@ -40,24 +40,133 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationValue;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionReducer;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public final class CacheExpression extends MessageContainer {
 
-    private final DSLExpression expression;
     private final Parameter sourceParameter;
     private final AnnotationMirror sourceAnnotationMirror;
     private int dimensions = -1;
+    private DSLExpression defaultExpression;
+    private DSLExpression uncachedExpression;
+    private boolean alwaysInitialized = false;
+    private Message uncachedExpressionError;
+    private boolean requiresBoundary;
+    private String sharedGroup;
+    private boolean mergedLibrary;
 
-    public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror, DSLExpression expression) {
+    private TypeMirror languageType;
+    private TypeMirror referenceType;
+
+    public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
-        this.expression = expression;
         this.sourceAnnotationMirror = sourceAnnotationMirror;
+    }
+
+    public CacheExpression copy() {
+        CacheExpression copy = new CacheExpression(sourceParameter, sourceAnnotationMirror);
+        copy.dimensions = this.dimensions;
+        copy.defaultExpression = this.defaultExpression;
+        copy.uncachedExpression = this.uncachedExpression;
+        copy.alwaysInitialized = this.alwaysInitialized;
+        copy.sharedGroup = this.sharedGroup;
+        return copy;
+    }
+
+    public void setLanguageType(TypeMirror languageType) {
+        this.languageType = languageType;
+    }
+
+    public boolean isReference() {
+        if (isCachedLanguage()) {
+            return !ElementUtils.typeEquals(getLanguageType(), getParameter().getType());
+        } else {
+            return ElementUtils.typeEquals(getReferenceType(), getParameter().getType());
+        }
+    }
+
+    public TypeMirror getReferenceType() {
+        return referenceType;
+    }
+
+    public void setReferenceType(TypeMirror supplierType) {
+        this.referenceType = supplierType;
+    }
+
+    public TypeMirror getLanguageType() {
+        return languageType;
+    }
+
+    public void setSharedGroup(String sharedGroup) {
+        this.sharedGroup = sharedGroup;
+    }
+
+    public AnnotationMirror getSharedGroupMirror() {
+        return ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), Shared.class);
+    }
+
+    public AnnotationValue getSharedGroupValue() {
+        AnnotationMirror sharedAnnotation = getSharedGroupMirror();
+        if (sharedAnnotation != null) {
+            return getAnnotationValue(sharedAnnotation, "value");
+        }
+        return null;
+    }
+
+    public String getSharedGroup() {
+        AnnotationMirror sharedAnnotation = getSharedGroupMirror();
+        if (sharedAnnotation != null) {
+            return getAnnotationValue(String.class, sharedAnnotation, "value");
+        }
+        return null;
+    }
+
+    public void setDefaultExpression(DSLExpression expression) {
+        this.defaultExpression = expression;
+    }
+
+    public void setUncachedExpressionError(Message message) {
+        this.uncachedExpressionError = message;
+    }
+
+    public void setUncachedExpression(DSLExpression getUncachedExpression) {
+        this.uncachedExpression = getUncachedExpression;
+    }
+
+    public Message getUncachedExpresionError() {
+        return uncachedExpressionError;
+    }
+
+    public DSLExpression getUncachedExpression() {
+        return uncachedExpression;
+    }
+
+    public void setAlwaysInitialized(boolean fastPathCache) {
+        this.alwaysInitialized = fastPathCache;
+    }
+
+    public boolean isAlwaysInitialized() {
+        return alwaysInitialized;
     }
 
     public void setDimensions(int dimensions) {
@@ -72,6 +181,26 @@ public final class CacheExpression extends MessageContainer {
         return sourceParameter;
     }
 
+    public boolean isCached() {
+        return isType(Cached.class);
+    }
+
+    public boolean isCachedLibrary() {
+        return isType(CachedLibrary.class);
+    }
+
+    public boolean isCachedContext() {
+        return isType(CachedContext.class);
+    }
+
+    public boolean isCachedLanguage() {
+        return isType(CachedLanguage.class);
+    }
+
+    private boolean isType(Class<?> type) {
+        return ElementUtils.typeEquals(sourceAnnotationMirror.getAnnotationType(), ProcessorContext.getInstance().getType(type));
+    }
+
     @Override
     public Element getMessageElement() {
         return sourceParameter.getVariableElement();
@@ -82,13 +211,64 @@ public final class CacheExpression extends MessageContainer {
         return sourceAnnotationMirror;
     }
 
-    @Override
-    public AnnotationValue getMessageAnnotationValue() {
-        return ElementUtils.getAnnotationValue(getMessageAnnotation(), "value");
+    public void setRequiresBoundary(boolean requiresBoundary) {
+        this.requiresBoundary = requiresBoundary;
     }
 
-    public DSLExpression getExpression() {
-        return expression;
+    public boolean isRequiresBoundary() {
+        return requiresBoundary;
+    }
+
+    public DSLExpression getDefaultExpression() {
+        return defaultExpression;
+    }
+
+    public void setMergedLibrary(boolean mergedLibrary) {
+        this.mergedLibrary = mergedLibrary;
+    }
+
+    public boolean isMergedLibrary() {
+        return mergedLibrary;
+    }
+
+    public String getMergedLibraryIdentifier() {
+        String libraryName = ElementUtils.getSimpleName(getParameter().getType());
+        DSLExpression identifierExpression = getDefaultExpression().reduce(new DSLExpressionReducer() {
+
+            public DSLExpression visitVariable(Variable binary) {
+                if (binary.getReceiver() == null) {
+                    Variable var = new Variable(binary.getReceiver(), "receiver");
+                    var.setResolvedTargetType(binary.getResolvedTargetType());
+                    var.setResolvedVariable(new CodeVariableElement(binary.getResolvedType(), "receiver"));
+                    return var;
+                } else {
+                    return binary;
+                }
+            }
+
+            public DSLExpression visitNegate(Negate negate) {
+                return negate;
+            }
+
+            public DSLExpression visitCall(Call binary) {
+                return binary;
+            }
+
+            public DSLExpression visitBinary(Binary binary) {
+                return binary;
+            }
+        });
+        String expressionText = identifierExpression.asString();
+        StringBuilder b = new StringBuilder(expressionText);
+        for (int i = 0; i < b.length(); i++) {
+            char charAt = b.charAt(i);
+            if (i == '.') {
+                b.setCharAt(i, '_');
+            } else if (!Character.isJavaIdentifierPart(charAt)) {
+                b.deleteCharAt(i);
+            }
+        }
+        return b.toString() + libraryName;
     }
 
 }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class IsPointer extends UnaryMessage {
     public static final int HASH = 423531;
     static final Message INSTANCE = new IsPointer();

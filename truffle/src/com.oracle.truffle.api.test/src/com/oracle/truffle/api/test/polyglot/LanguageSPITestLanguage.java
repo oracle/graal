@@ -54,9 +54,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
-@TruffleLanguage.Registration(id = LanguageSPITestLanguage.ID, name = LanguageSPITestLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED, services = {
-                LanguageSPITestLanguageService2.class, LanguageSPITestLanguageService3.class})
-public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> implements LanguageSPITestLanguageService {
+@TruffleLanguage.Registration(id = LanguageSPITestLanguage.ID, name = LanguageSPITestLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED)
+public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     static final String ID = "LanguageSPITest";
 
@@ -112,10 +111,6 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> im
         LanguageSPITest.langContext = new LanguageContext();
         LanguageSPITest.langContext.env = env;
         LanguageSPITest.langContext.config = env.getConfig();
-        env.registerService(new LanguageSPITestLanguageService2() {
-        });
-        env.registerService(new LanguageSPITestLanguageService3() {
-        });
         return LanguageSPITest.langContext;
     }
 
@@ -133,9 +128,9 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> im
             assertSame(context, new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    return null;
+                    return lookupContextReference(LanguageSPITestLanguage.class).get();
                 }
-            }.getLanguage(LanguageSPITestLanguage.class).getContextReference().get());
+            }.execute(null));
         }
 
         context.disposeCalled++;
@@ -145,16 +140,4 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> im
     protected boolean isObjectOfLanguage(Object object) {
         return false;
     }
-}
-
-interface LanguageSPITestLanguageService {
-}
-
-interface LanguageSPITestLanguageService2 {
-}
-
-interface LanguageSPITestLanguageService3 {
-}
-
-interface LanguageSPITestLanguageService4 {
 }

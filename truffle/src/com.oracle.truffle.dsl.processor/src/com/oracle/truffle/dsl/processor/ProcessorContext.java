@@ -76,7 +76,8 @@ public class ProcessorContext {
     public ProcessorContext(ProcessingEnvironment env, ProcessCallback callback) {
         this.environment = env;
         this.callback = callback;
-        this.log = new Log(environment);
+        boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.ignoreCompilerWarnings", "false"));
+        this.log = new Log(environment, emitWarnings);
         this.truffleTypes = new TruffleTypes(this);
     }
 
@@ -120,6 +121,11 @@ public class ProcessorContext {
 
     public TypeMirror getType(Class<?> element) {
         return ElementUtils.getType(environment, element);
+    }
+
+    public TypeElement getTypeElement(Class<?> element) {
+        DeclaredType type = getDeclaredType(element);
+        return (TypeElement) type.asElement();
     }
 
     public interface ProcessCallback {
@@ -171,5 +177,17 @@ public class ProcessorContext {
 
     public List<TypeMirror> getFrameTypes() {
         return Arrays.asList(getType(VirtualFrame.class), getType(MaterializedFrame.class), getType(Frame.class));
+    }
+
+    private final Map<Class<?>, Map<?, ?>> caches = new HashMap<>();
+
+    @SuppressWarnings("unchecked")
+    public <K, V> Map<K, V> getCacheMap(Class<?> key) {
+        Map<?, ?> cacheMap = caches.get(key);
+        if (cacheMap == null) {
+            cacheMap = new HashMap<>();
+            caches.put(key, cacheMap);
+        }
+        return (Map<K, V>) cacheMap;
     }
 }

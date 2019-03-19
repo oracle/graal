@@ -183,7 +183,8 @@ public class MethodSpec {
         b.append(")");
 
         if (typeDefinitions != null && !typeDefinitions.isEmpty()) {
-            b.append("\n\n");
+            b.append(System.lineSeparator());
+            b.append(System.lineSeparator());
 
             String lineSep = "";
             for (TypeDef def : typeDefinitions) {
@@ -196,7 +197,7 @@ public class MethodSpec {
                     separator = ", ";
                 }
                 b.append("}");
-                lineSep = "\n";
+                lineSep = System.lineSeparator();
 
             }
         }

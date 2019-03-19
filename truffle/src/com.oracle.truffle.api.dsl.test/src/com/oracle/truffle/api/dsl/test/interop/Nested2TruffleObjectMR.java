@@ -42,13 +42,12 @@ package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObject2.Nested2TruffleObject;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = Nested2TruffleObject.class)
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = Nested2TruffleObject.class)
+@SuppressWarnings("deprecation")
 public class Nested2TruffleObjectMR {
-    @Resolve(message = "READ")
+    @com.oracle.truffle.api.interop.Resolve(message = "READ")
     public abstract static class ReadNode9 extends Node {
 
         @SuppressWarnings("unused")

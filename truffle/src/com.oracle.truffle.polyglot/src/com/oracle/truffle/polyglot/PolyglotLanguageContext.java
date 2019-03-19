@@ -43,9 +43,12 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,13 +66,15 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import com.oracle.truffle.polyglot.PolyglotLanguageContextFactory.ToGuestValueNodeGen;
 
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
@@ -106,7 +111,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     volatile boolean finalized;
     @CompilationFinal private volatile Value hostBindings;
     @CompilationFinal private volatile Lazy lazy;
-
     @CompilationFinal volatile Env env; // effectively final
     @CompilationFinal private volatile List<Object> languageServices = Collections.emptyList();
 
@@ -150,6 +154,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (env != null) {
             return LANGUAGE.getContext(env);
         } else {
+            CompilerDirectives.transferToInterpreter();
             return null;
         }
     }
@@ -162,7 +167,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     Object prev = context.enterIfNeeded();
                     try {
                         Iterable<Scope> scopes = LANGUAGE.findTopScopes(env);
-                        this.hostBindings = this.asValue(new PolyglotLanguageBindings(scopes));
+                        this.hostBindings = this.asValue(PolyglotLanguageBindings.create(scopes));
                     } catch (Throwable t) {
                         throw PolyglotImpl.wrapGuestException(this, t);
                     } finally {
@@ -269,6 +274,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             seenThreads.remove(thread);
         }
         VMAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.truffleContext, thread);
+    }
+
+    boolean isCreated() {
+        return lazy != null;
     }
 
     void ensureCreated(PolyglotLanguage accessingLanguage) {
@@ -470,9 +479,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return null;
     }
 
-    static final class ToGuestValuesNode {
+    static final class ToGuestValuesNode extends Node {
 
-        @CompilationFinal(dimensions = 1) private volatile ToGuestValueNode[] toGuestValue;
+        @Children private volatile ToGuestValueNode[] toGuestValue;
         @CompilationFinal private volatile boolean needsCopy = false;
         @CompilationFinal private volatile boolean generic = false;
 
@@ -485,9 +494,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 nodes = new ToGuestValueNode[args.length];
                 for (int i = 0; i < nodes.length; i++) {
-                    nodes[i] = createToGuestValue();
+                    nodes[i] = ToGuestValueNodeGen.create();
                 }
-                toGuestValue = nodes;
+                toGuestValue = insert(nodes);
             }
             if (args.length == nodes.length) {
                 // fast path
@@ -502,9 +511,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     nodes = Arrays.copyOf(nodes, 1);
                     if (nodes[0] == null) {
-                        nodes[0] = createToGuestValue();
+                        nodes[0] = ToGuestValueNodeGen.create();
                     }
-                    this.toGuestValue = nodes;
+                    this.toGuestValue = insert(nodes);
                     this.generic = true;
                 }
                 if (args.length == 0) {
@@ -522,7 +531,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             Object[] newArgs = needsCopy ? new Object[nodes.length] : args;
             for (int i = 0; i < nodes.length; i++) {
                 Object arg = args[i];
-                Object newArg = nodes[i].apply(languageContext, arg);
+                Object newArg = nodes[i].execute(languageContext, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
@@ -545,7 +554,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             Object[] newArgs = needsCopy ? new Object[args.length] : args;
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
-                Object newArg = node.apply(languageContext, arg);
+                Object newArg = node.execute(languageContext, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
@@ -571,49 +580,26 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    static final class ToGuestValueNode {
+    @GenerateUncached
+    abstract static class ToGuestValueNode extends Node {
 
-        @CompilationFinal private volatile Class<?> cachedClass;
+        abstract Object execute(PolyglotLanguageContext context, Object receiver);
 
-        private ToGuestValueNode() {
-
+        @Specialization(guards = "receiver == null")
+        static Object doNull(PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
+            return context.toGuestValue(receiver);
         }
 
-        public Object apply(PolyglotLanguageContext languageContext, Object receiver) {
-            Class<?> cachedClassLocal = this.cachedClass;
-            if (cachedClassLocal == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (receiver == null) {
-                    // directly go to slow path for null
-                    cachedClass = cachedClassLocal = Generic.class;
-                } else {
-                    cachedClass = cachedClassLocal = receiver.getClass();
-                }
-            }
-            if (cachedClassLocal != Generic.class) {
-                assert cachedClassLocal != null;
-                if (receiver != null && cachedClassLocal == receiver.getClass()) {
-                    return languageContext.toGuestValue(cachedClassLocal.cast(receiver));
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedClass = cachedClassLocal = Generic.class; // switch to generic
-                }
-            }
-            return slowPath(languageContext, receiver);
+        @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
+        static Object doCached(PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
+            return context.toGuestValue(cachedReceiver.cast(receiver));
         }
 
+        @Specialization(replaces = "doCached")
         @TruffleBoundary
-        private static Object slowPath(PolyglotLanguageContext languageContext, Object receiver) {
-            return languageContext.toGuestValue(receiver);
+        static Object doUncached(PolyglotLanguageContext context, Object receiver) {
+            return context.toGuestValue(receiver);
         }
-
-        public static ToGuestValueNode create() {
-            return new ToGuestValueNode();
-        }
-    }
-
-    static ToGuestValueNode createToGuestValue() {
-        return new ToGuestValueNode();
     }
 
     @TruffleBoundary
@@ -687,7 +673,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return languageContext.asValue(value);
         }
 
-        static ToHostValueNode create(PolyglotImpl polyglot) {
+        public static ToHostValueNode create(PolyglotImpl polyglot) {
             return new ToHostValueNode(polyglot);
         }
     }

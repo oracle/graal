@@ -52,16 +52,12 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 public class PolyglotExceptionTest {
 
@@ -169,75 +165,43 @@ public class PolyglotExceptionTest {
         context.close();
     }
 
-    private static class CauseErrorTruffleObject implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    static class CauseErrorTruffleObject implements TruffleObject {
 
         RuntimeException thrownError;
 
-        public ForeignAccess getForeignAccess() {
-            return CauseErrorObjectFactory.INSTANCE;
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        final Object execute(@SuppressWarnings("unused") Object[] arguments) {
+            throw thrownError;
         }
 
     }
 
-    private static class CauseErrorObjectFactory implements StandardFactory {
-
-        private static final ForeignAccess INSTANCE = ForeignAccess.create(CauseErrorTruffleObject.class, new CauseErrorObjectFactory());
-
-        public CallTarget accessIsExecutable() {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
-        }
-
-        public CallTarget accessExecute(int argumentsLength) {
-            return Truffle.getRuntime().createCallTarget(new RootNode(null) {
-
-                @Child private Node execute = Message.EXECUTE.createNode();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    CauseErrorTruffleObject to = (CauseErrorTruffleObject) frame.getArguments()[0];
-                    throw to.thrownError;
-                }
-            });
-        }
-
-    }
-
-    private static class VerifyErrorTruffleObject implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    static class VerifyErrorTruffleObject implements TruffleObject {
 
         Consumer<Throwable> verifyError;
 
-        public ForeignAccess getForeignAccess() {
-            return VerifyErrorObjectFactory.INSTANCE;
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
 
-    }
-
-    private static class VerifyErrorObjectFactory implements StandardFactory {
-
-        private static final ForeignAccess INSTANCE = ForeignAccess.create(VerifyErrorTruffleObject.class, new VerifyErrorObjectFactory());
-
-        public CallTarget accessIsExecutable() {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
-        }
-
-        public CallTarget accessExecute(int argumentsLength) {
-            return Truffle.getRuntime().createCallTarget(new RootNode(null) {
-
-                @Child private Node execute = Message.EXECUTE.createNode();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    VerifyErrorTruffleObject to = (VerifyErrorTruffleObject) frame.getArguments()[0];
-                    Object arg = frame.getArguments()[1];
-                    try {
-                        ForeignAccess.sendExecute(execute, (TruffleObject) arg, new Object[0]);
-                        Assert.fail();
-                    } catch (Throwable e) {
-                        to.verifyError.accept(e);
-                    }
-                    return true;
-                }
-            });
+        @ExportMessage
+        final Object execute(Object[] arguments) {
+            Object arg = arguments[0];
+            try {
+                InteropLibrary.getFactory().getUncached().execute(arg);
+                Assert.fail();
+            } catch (Throwable e) {
+                verifyError.accept(e);
+            }
+            return true;
         }
 
     }

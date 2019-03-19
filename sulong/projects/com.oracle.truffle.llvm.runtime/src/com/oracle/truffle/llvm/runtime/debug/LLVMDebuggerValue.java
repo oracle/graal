@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,14 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
+@ExportLibrary(InteropLibrary.class)
 public abstract class LLVMDebuggerValue implements TruffleObject {
-
-    public static boolean isInstance(TruffleObject value) {
-        return value instanceof LLVMDebuggerValue;
-    }
 
     protected static final String[] NO_KEYS = new String[0];
 
@@ -50,8 +53,75 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
         return null;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMDebuggerValueMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        if (getElementCountForDebugger() == 0) {
+            return SubElements.EMPTY;
+        }
+
+        String[] keys = getKeysForDebugger();
+        return new SubElements(keys);
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(String key) {
+        Object element = getElementForDebugger(key);
+        return element != null;
+    }
+
+    @ExportMessage
+    Object readMember(String key,
+                    @Cached BranchProfile exception) throws UnknownIdentifierException {
+        Object element = getElementForDebugger(key);
+        if (element != null) {
+            return element;
+        } else {
+            exception.enter();
+            throw UnknownIdentifierException.create(key);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class SubElements implements TruffleObject {
+
+        private static final SubElements EMPTY = new SubElements(LLVMDebuggerValue.NO_KEYS);
+
+        private final String[] keys;
+
+        SubElements(String[] keys) {
+            this.keys = keys;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return keys.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return Long.compareUnsigned(idx, keys.length) < 0;
+        }
+
+        @ExportMessage
+        String readArrayElement(long idx,
+                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            if (isArrayElementReadable(idx)) {
+                return keys[(int) idx];
+            } else {
+                exception.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+        }
     }
 }

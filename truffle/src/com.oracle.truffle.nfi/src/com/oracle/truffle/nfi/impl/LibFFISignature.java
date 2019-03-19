@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi.impl;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.nfi.impl.LibFFIType.Direction;
 import com.oracle.truffle.nfi.types.NativeSignature;
 import com.oracle.truffle.nfi.impl.NativeAllocation.FreeDestructor;
@@ -57,7 +58,7 @@ final class LibFFISignature {
     }
 
     private final LibFFIType retType;
-    private final LibFFIType[] argTypes;
+    @CompilationFinal(dimensions = 1) private final LibFFIType[] argTypes;
 
     private final int primitiveSize;
     private final int objectCount;
@@ -187,7 +188,7 @@ final class LibFFISignature {
         } else {
             NativeArgumentBuffer.Array retBuffer = new NativeArgumentBuffer.Array(retType.size, retType.objectCount);
             ctx.executeNative(cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects, retBuffer.prim);
-            return retType.deserialize(retBuffer);
+            return retType.deserializeRet(retBuffer);
         }
     }
 }

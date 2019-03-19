@@ -43,7 +43,6 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.NFILanguage.Context;
 import com.oracle.truffle.nfi.types.NativeSource;
@@ -87,10 +86,7 @@ public class NFILanguage extends TruffleLanguage<Context> {
         }
 
         Source backendSource = Source.newBuilder(backendId, source.getLibraryDescriptor(), "<nfi-impl>").build();
-        CallTarget backendTarget = getContextReference().get().env.parse(backendSource);
-        DirectCallNode loadLibrary = DirectCallNode.create(backendTarget);
-
-        return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, loadLibrary, source));
+        return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, backendSource, source));
     }
 
     @Override

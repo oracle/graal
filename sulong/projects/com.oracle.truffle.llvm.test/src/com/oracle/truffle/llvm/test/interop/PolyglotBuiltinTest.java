@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,10 +43,12 @@ import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
-import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
+import com.oracle.truffle.llvm.test.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.test.interop.values.NullValue;
 import com.oracle.truffle.llvm.test.interop.values.StructObject;
 import com.oracle.truffle.llvm.test.interop.values.TestConstructor;
@@ -72,11 +74,18 @@ public class PolyglotBuiltinTest extends InteropTestBase {
 
     @Test
     public void testNew(@Inject(TestNewNode.class) CallTarget testNew) {
-        Object ret = testNew.call(new TestConstructor(1, args -> new BoxedTestValue(args[0])));
+        Object ret = testNew.call(new TestConstructor(1, args -> {
+            try {
+                int arg = InteropLibrary.getFactory().getUncached().asInt(args[0]);
+                return new BoxedIntValue(arg);
+            } catch (UnsupportedMessageException ex) {
+                throw new AssertionError(ex);
+            }
+        }));
 
-        Assert.assertThat(ret, is(instanceOf(BoxedTestValue.class)));
-        BoxedTestValue value = (BoxedTestValue) ret;
-        Assert.assertEquals(42, value.getValue());
+        Assert.assertThat(ret, is(instanceOf(BoxedIntValue.class)));
+        BoxedIntValue value = (BoxedIntValue) ret;
+        Assert.assertEquals(42, value.asInt());
     }
 
     public static class TestRemoveMemberNode extends SulongTestNode {

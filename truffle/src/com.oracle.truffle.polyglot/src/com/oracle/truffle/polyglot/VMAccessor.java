@@ -87,8 +87,13 @@ class VMAccessor extends Accessor {
     }
 
     @Override
-    protected Object callProfiled(CallTarget target, Object... args) {
-        return super.callProfiled(target, args);
+    protected CallInlined getCallInlined() {
+        return super.getCallInlined();
+    }
+
+    @Override
+    protected CallProfiled getCallProfiled() {
+        return super.getCallProfiled();
     }
 
     @Override

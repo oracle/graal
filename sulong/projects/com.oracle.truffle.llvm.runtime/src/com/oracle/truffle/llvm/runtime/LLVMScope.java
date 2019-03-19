@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,17 +34,19 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMSymbol> symbols;
@@ -126,11 +128,6 @@ public final class LLVMScope implements TruffleObject {
         return new Keys(this);
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMGlobalScopeMessageResolutionForeign.ACCESS;
-    }
-
     private void put(String name, LLVMSymbol symbol) {
         assert !symbols.containsKey(name);
         symbols.put(name, symbol);
@@ -156,42 +153,36 @@ public final class LLVMScope implements TruffleObject {
         return name.charAt(0) == '@' ? name.substring(1) : name;
     }
 
-    @MessageResolution(receiverType = LLVMScope.class)
-    static class LLVMGlobalScopeMessageResolution {
-
-        @CanResolve
-        abstract static class CanResolveLLVMScopeNode extends Node {
-
-            public boolean test(TruffleObject receiver) {
-                return receiver instanceof LLVMScope;
-            }
-        }
-
-        @Resolve(message = "KEYS")
-        public abstract static class KeysOfLLVMScope extends Node {
-
-            protected Object access(LLVMScope receiver) {
-                return receiver.getKeys();
-            }
-        }
-
-        @Resolve(message = "READ")
-        public abstract static class ReadFromLLVMScope extends Node {
-
-            protected Object access(LLVMScope scope, String globalName) {
-                String atname = "@" + globalName; // for interop
-                if (scope.contains(atname)) {
-                    return scope.get(atname);
-                }
-                if (scope.contains(globalName)) {
-                    return scope.get(globalName);
-                }
-                return null;
-            }
-        }
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
     }
 
-    @MessageResolution(receiverType = Keys.class)
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return getKeys();
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(@SuppressWarnings("unused") String name) {
+        return true;
+    }
+
+    @ExportMessage
+    Object readMember(String globalName,
+                    @Cached BranchProfile exception) throws UnknownIdentifierException {
+        String atname = "@" + globalName; // for interop
+        if (contains(atname)) {
+            return get(atname);
+        }
+        if (contains(globalName)) {
+            return get(globalName);
+        }
+        exception.enter();
+        throw UnknownIdentifierException.create(globalName);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
     static final class Keys implements TruffleObject {
 
         private final LLVMScope scope;
@@ -200,33 +191,29 @@ public final class LLVMScope implements TruffleObject {
             this.scope = scope;
         }
 
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof Keys;
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return KeysForeign.ACCESS;
+        @ExportMessage
+        long getArraySize() {
+            return scope.functionKeys.size();
         }
 
-        @Resolve(message = "GET_SIZE")
-        abstract static class GetSize extends Node {
-
-            int access(Keys receiver) {
-                return receiver.scope.functionKeys.size();
-            }
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return 0 <= index && index < getArraySize();
         }
 
-        @Resolve(message = "READ")
-        abstract static class Read extends Node {
-
-            Object access(Keys receiver, int index) {
-                try {
-                    return receiver.scope.functionKeys.get(index);
-                } catch (IndexOutOfBoundsException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnknownIdentifierException.raise(Integer.toString(index));
-                }
+        @ExportMessage
+        Object readArrayElement(long index,
+                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            if (isArrayElementReadable(index)) {
+                return scope.functionKeys.get((int) index);
+            } else {
+                exception.enter();
+                throw InvalidArrayIndexException.create(index);
             }
         }
     }

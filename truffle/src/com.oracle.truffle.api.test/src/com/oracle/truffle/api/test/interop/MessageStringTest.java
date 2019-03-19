@@ -51,26 +51,25 @@ import java.util.Locale;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.Message;
-
+@SuppressWarnings("deprecation")
 public class MessageStringTest {
 
     @Test
     public void testFields() throws Exception {
-        for (Field f : Message.class.getFields()) {
-            if (f.getType() != Message.class) {
+        for (Field f : com.oracle.truffle.api.interop.Message.class.getFields()) {
+            if (f.getType() != com.oracle.truffle.api.interop.Message.class) {
                 continue;
             }
             if ((f.getModifiers() & Modifier.STATIC) == 0) {
                 continue;
             }
-            Message msg = (Message) f.get(null);
+            com.oracle.truffle.api.interop.Message msg = (com.oracle.truffle.api.interop.Message) f.get(null);
 
-            String persistent = Message.toString(msg);
+            String persistent = com.oracle.truffle.api.interop.Message.toString(msg);
             assertNotNull("Found name for " + f, persistent);
             assertEquals("It is in upper case", persistent, persistent.toUpperCase(Locale.ENGLISH));
 
-            Message newMsg = Message.valueOf(persistent);
+            com.oracle.truffle.api.interop.Message newMsg = com.oracle.truffle.api.interop.Message.valueOf(persistent);
 
             assertSame("Same for " + f, msg, newMsg);
 
@@ -80,8 +79,8 @@ public class MessageStringTest {
 
     @Test
     public void testFactoryMethods() throws Exception {
-        for (Method m : Message.class.getMethods()) {
-            if (m.getReturnType() != Message.class) {
+        for (Method m : com.oracle.truffle.api.interop.Message.class.getMethods()) {
+            if (m.getReturnType() != com.oracle.truffle.api.interop.Message.class) {
                 continue;
             }
             if (!m.getName().startsWith("create")) {
@@ -90,13 +89,13 @@ public class MessageStringTest {
             if ((m.getModifiers() & Modifier.STATIC) == 0) {
                 continue;
             }
-            Message msg = (Message) m.invoke(null, 0);
+            com.oracle.truffle.api.interop.Message msg = (com.oracle.truffle.api.interop.Message) m.invoke(null, 0);
 
-            String persistent = Message.toString(msg);
+            String persistent = com.oracle.truffle.api.interop.Message.toString(msg);
             assertNotNull("Found name for " + m, persistent);
             assertEquals("It is in upper case", persistent, persistent.toUpperCase(Locale.ENGLISH));
 
-            Message newMsg = Message.valueOf(persistent);
+            com.oracle.truffle.api.interop.Message newMsg = com.oracle.truffle.api.interop.Message.valueOf(persistent);
 
             assertEquals("Same for " + m, msg, newMsg);
 
@@ -106,14 +105,14 @@ public class MessageStringTest {
     }
 
     @Test
-    public void specialMessagePersitance() {
+    public void specialPersistance() {
         SpecialMsg msg = new SpecialMsg();
-        String persistent = Message.toString(msg);
-        Message newMsg = Message.valueOf(persistent);
-        assertEquals("Message reconstructed", msg, newMsg);
+        String persistent = com.oracle.truffle.api.interop.Message.toString(msg);
+        com.oracle.truffle.api.interop.Message newMsg = com.oracle.truffle.api.interop.Message.valueOf(persistent);
+        assertEquals("com.oracle.truffle.api.interop.Message reconstructed", msg, newMsg);
     }
 
-    public static final class SpecialMsg extends Message {
+    public static final class SpecialMsg extends com.oracle.truffle.api.interop.Message {
 
         @Override
         public boolean equals(Object message) {

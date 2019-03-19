@@ -67,9 +67,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -164,6 +162,7 @@ public class Breakpoint {
         static final Kind[] VALUES = values();
     }
 
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
     private static final Breakpoint BUILDER_INSTANCE = new Breakpoint();
 
     private final SuspendAnchor suspendAnchor;
@@ -1366,8 +1365,6 @@ public class Breakpoint {
         @Child private SetThreadSuspensionEnabledNode suspensionEnabledNode = SetThreadSuspensionEnabledNodeGen.create();
         @Child private DirectCallNode conditionCallNode;
         @Child private ExecutableNode conditionSnippet;
-        @Child private Node nodeIsBoxed = Message.IS_BOXED.createNode();
-        @Child private Node nodeUnbox = Message.UNBOX.createNode();
         @CompilationFinal private Assumption conditionUnchanged;
 
         ConditionalBreakNode(EventContext context, Breakpoint breakpoint) {
@@ -1392,25 +1389,14 @@ public class Breakpoint {
             } finally {
                 suspensionEnabledNode.execute(true, sessions);
             }
-            result = unbox(result);
-            if (!(result instanceof Boolean)) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalArgumentException("Unsupported return type " + result + " in condition.");
-            }
-            return (Boolean) result;
-        }
-
-        private Object unbox(Object obj) {
-            if (obj instanceof TruffleObject) {
-                TruffleObject tobj = (TruffleObject) obj;
-                if (ForeignAccess.sendIsBoxed(nodeIsBoxed, tobj)) {
-                    try {
-                        return ForeignAccess.sendUnbox(nodeUnbox, tobj);
-                    } catch (UnsupportedMessageException ex) {
-                    }
+            if (INTEROP.isBoolean(result)) {
+                try {
+                    return INTEROP.asBoolean(result);
+                } catch (UnsupportedMessageException e) {
                 }
             }
-            return obj;
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException("Unsupported return type " + result + " in condition.");
         }
 
         private void initializeConditional(MaterializedFrame frame) {

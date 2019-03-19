@@ -40,10 +40,23 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 final class LibFFILibrary implements TruffleObject {
+
+    private static final KeysArray KEYS = new KeysArray(new String[0]);
 
     protected final long handle;
 
@@ -62,9 +75,50 @@ final class LibFFILibrary implements TruffleObject {
         this.handle = handle;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LibFFILibraryMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return KEYS;
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        return true;
+    }
+
+    @ExportMessage
+    @ImportStatic(NFILanguageImpl.class)
+    abstract static class ReadMember {
+
+        @Specialization(limit = "3", guards = {"receiver == cachedReceiver", "symbol.equals(cachedSymbol)"})
+        @SuppressWarnings("unused")
+        static TruffleObject doCached(LibFFILibrary receiver, String symbol,
+                        @Cached("receiver") LibFFILibrary cachedReceiver,
+                        @Cached("symbol") String cachedSymbol,
+                        @CachedContext(NFILanguageImpl.class) ContextReference<NFIContext> ctxRef,
+                        @Cached("lookupCached(cachedReceiver, cachedSymbol, ctxRef)") TruffleObject cachedRet) {
+            return cachedRet;
+        }
+
+        static TruffleObject lookupCached(LibFFILibrary receiver, String symbol, ContextReference<NFIContext> ctxRef) throws UnknownIdentifierException {
+            return doGeneric(receiver, symbol, BranchProfile.getUncached(), ctxRef.get());
+        }
+
+        @Specialization(replaces = "doCached")
+        static TruffleObject doGeneric(LibFFILibrary receiver, String symbol,
+                        @Cached BranchProfile exception,
+                        @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws UnknownIdentifierException {
+            try {
+                return ctx.lookupSymbol(receiver, symbol);
+            } catch (UnsatisfiedLinkError ex) {
+                exception.enter();
+                throw UnknownIdentifierException.create(symbol);
+            }
+        }
     }
 
     private static final class Destructor extends NativeAllocation.Destructor {

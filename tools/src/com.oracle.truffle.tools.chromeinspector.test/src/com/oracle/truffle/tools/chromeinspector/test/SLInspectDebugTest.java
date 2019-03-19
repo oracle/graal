@@ -179,7 +179,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -220,7 +220,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"
@@ -235,7 +235,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"4\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"5\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"6\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"6\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":2}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"
@@ -250,14 +250,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"7\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"8\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"9\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"9\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":9}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":10}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"10\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"11\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"12\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"12\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":2}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"
@@ -272,7 +272,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"13\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"14\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"15\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"15\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":19,\"lineNumber\":2}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"
@@ -313,14 +313,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":9}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":11}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"4\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"5\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"6\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"6\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":2}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -334,7 +334,7 @@ public class SLInspectDebugTest {
                                                  "\"scopeChain\":[{\"name\":\"block\",\"type\":\"block\",\"object\":{\"description\":\"block\",\"type\":\"object\",\"objectId\":\"7\"}}," +
                                                                  "{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"8\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"9\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"10\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"10\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":5}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -349,7 +349,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"11\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"12\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"13\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"13\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":7}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -395,7 +395,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":1}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"
@@ -411,7 +411,7 @@ public class SLInspectDebugTest {
                                     "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                      "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"" + (4 + 3 * numStep) + "\"}}," +
                                                                      "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"" + (5 + 3 * numStep) + "\"}}]," +
-                                                     "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"" + (6 + 3 * numStep) + "\"}," +
+                                                     "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"" + (6 + 3 * numStep) + "\"}," +
                                                      "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                      "\"location\":{\"scriptId\":\"1\",\"columnNumber\":" + colNum + ",\"lineNumber\":" + (2 + numStep) + "}," +
                                                      "\"url\":\"" + srcURL + "\"}]}}\n"
@@ -426,7 +426,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"16\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"17\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"18\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"18\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":3}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"
@@ -440,7 +440,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"19\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"20\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"21\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"21\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":4}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"
@@ -457,14 +457,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"fceWithBP\"," +
                                                  "\"scopeChain\":[{\"name\":\"fceWithBP\",\"type\":\"local\",\"object\":{\"description\":\"fceWithBP\",\"type\":\"object\",\"objectId\":\"22\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"23\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"24\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"24\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":8}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":9}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"25\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"26\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"27\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"27\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":4}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"
@@ -478,14 +478,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"fceWithBP\"," +
                                                  "\"scopeChain\":[{\"name\":\"fceWithBP\",\"type\":\"local\",\"object\":{\"description\":\"fceWithBP\",\"type\":\"object\",\"objectId\":\"28\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"29\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"30\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"30\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":8}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":10}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"31\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"32\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"33\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"33\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":4}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"
@@ -499,7 +499,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"34\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"35\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"36\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"36\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":15,\"lineNumber\":4}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"
@@ -538,7 +538,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -555,7 +555,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"4\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"5\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"6\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"6\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":4}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -573,7 +573,7 @@ public class SLInspectDebugTest {
                                                  "\"scopeChain\":[{\"name\":\"block\",\"type\":\"block\",\"object\":{\"description\":\"block\",\"type\":\"object\",\"objectId\":\"7\"}}," +
                                                                  "{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"8\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"9\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"10\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"10\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":5}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -678,7 +678,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -691,7 +691,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"4\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"5\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"6\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"6\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":2}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -704,7 +704,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"2\",\"type\":\"number\",\"value\":2},\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"7\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"8\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"9\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"9\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":10}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -717,7 +717,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"10\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"11\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"12\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"12\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -730,7 +730,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"13\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"14\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"15\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"15\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":8,\"lineNumber\":4}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -743,7 +743,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"16\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"17\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"18\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"18\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":7}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -756,14 +756,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"19\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"20\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"21\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"21\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"22\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"23\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"24\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"24\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":7}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -776,14 +776,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"25\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"26\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"27\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"27\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":2}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"28\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"29\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"30\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"30\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":7}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -796,14 +796,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"20\",\"type\":\"number\",\"value\":20},\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"31\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"32\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"33\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"33\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":10}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"34\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"35\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"36\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"36\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":7}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -816,14 +816,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"37\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"38\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"39\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"39\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":26,\"lineNumber\":7}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"40\"}}," +
                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"41\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"42\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"42\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":7}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -836,7 +836,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"20\",\"type\":\"number\",\"value\":20},\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"43\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"44\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"45\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"45\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":10}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
@@ -854,7 +854,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"46\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"47\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"48\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"48\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"2\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"2\",\"columnNumber\":2,\"lineNumber\":1}," +
                                                  "\"url\":\"" + publicMainURI + "\"}]}}\n"));
@@ -867,14 +867,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"49\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"50\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"51\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"51\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"52\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"53\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"54\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"54\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"2\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"2\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + publicMainURI + "\"}]}}\n"));
@@ -947,7 +947,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"3\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"3\",\"columnNumber\":2,\"lineNumber\":1}," +
                                                  "\"url\":\"" + publicMainURI + "\"}]}}\n"));
@@ -960,21 +960,21 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"4\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"5\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"6\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"6\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"2\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"2\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"black\"," +
                                                  "\"scopeChain\":[{\"name\":\"black\",\"type\":\"local\",\"object\":{\"description\":\"black\",\"type\":\"object\",\"objectId\":\"7\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"8\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"9\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"9\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":11,\"lineNumber\":2}," +
                                                  "\"url\":\"" + blackboxedSourceURI + "\"}," +
                                                 "{\"callFrameId\":\"2\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"10\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"11\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"12\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"12\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"3\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"3\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + publicMainURI + "\"}]}}\n"));
@@ -1055,28 +1055,28 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":6}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"4\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"5\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"6\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"6\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":12,\"lineNumber\":8}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"2\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"7\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"8\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"9\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"9\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":12,\"lineNumber\":8}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"3\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"10\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"11\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"12\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"12\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":2}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"));
@@ -1087,21 +1087,21 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"13\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"14\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"15\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"15\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":27,\"lineNumber\":8}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"16\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"17\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"18\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"18\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":12,\"lineNumber\":8}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"2\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"19\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"20\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"21\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"21\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":2}," +
                                                  "\"url\":\"" + srcURL + "\"}]}," +
@@ -1112,7 +1112,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"22\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"23\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"24\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"24\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":2}," +
                                                  "\"url\":\"" + srcURL + "\"}]}," +
@@ -1127,28 +1127,28 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"25\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"26\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"27\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"27\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":6}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"28\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"29\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"30\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"30\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":12,\"lineNumber\":8}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"2\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"31\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"32\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"33\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"33\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":12,\"lineNumber\":8}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"3\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"34\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"35\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"36\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"36\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":2}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"));
@@ -1182,7 +1182,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -1195,14 +1195,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"addThem\"," +
                                                  "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"4\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"5\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"6\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"6\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":5}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"7\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"8\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"9\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"9\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -1215,21 +1215,21 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"fn\"," +
                                                  "\"scopeChain\":[{\"name\":\"fn\",\"type\":\"local\",\"object\":{\"description\":\"fn\",\"type\":\"object\",\"objectId\":\"10\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"11\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"12\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"12\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":10}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":11}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"addThem\"," +
                                                  "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"13\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"14\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"15\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"15\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":5}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"2\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"16\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"17\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"18\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"18\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -1242,21 +1242,21 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"1\",\"type\":\"number\",\"value\":1},\"functionName\":\"fn\"," +
                                                  "\"scopeChain\":[{\"name\":\"fn\",\"type\":\"local\",\"object\":{\"description\":\"fn\",\"type\":\"object\",\"objectId\":\"19\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"20\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"21\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"21\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":10}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":12}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"addThem\"," +
                                                  "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"22\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"23\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"24\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"24\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":5}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"2\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"25\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"26\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"27\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"27\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -1269,14 +1269,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"addThem\"," +
                                                  "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"28\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"29\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"30\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"30\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":10,\"lineNumber\":5}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"31\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"32\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"33\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"33\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -1292,14 +1292,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"addThem\"," +
                                                  "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"34\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"35\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"36\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"36\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":6}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"37\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"38\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"39\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"39\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -1316,21 +1316,21 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"fn\"," +
                                                  "\"scopeChain\":[{\"name\":\"fn\",\"type\":\"local\",\"object\":{\"description\":\"fn\",\"type\":\"object\",\"objectId\":\"40\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"41\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"42\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"42\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":10}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":11}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"addThem\"," +
                                                  "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"43\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"44\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"45\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"45\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":6}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"2\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"46\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"47\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"48\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"48\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -1343,14 +1343,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"addThem\"," +
                                                  "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"49\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"50\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"51\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"51\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":10,\"lineNumber\":6}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"52\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"53\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"54\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"54\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"));
@@ -1393,7 +1393,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":1}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"));
@@ -1431,14 +1431,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"testLocations\"," +
                                                  "\"scopeChain\":[{\"name\":\"testLocations\",\"type\":\"local\",\"object\":{\"description\":\"testLocations\",\"type\":\"object\",\"objectId\":\"4\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"5\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"6\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"6\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":6}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"7\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"8\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"9\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"9\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":2}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"));
@@ -1474,7 +1474,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":1}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"));
@@ -1540,14 +1540,14 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"invert\"," +
                                                  "\"scopeChain\":[{\"name\":\"invert\",\"type\":\"local\",\"object\":{\"description\":\"invert\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":11,\"lineNumber\":5}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"4\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"5\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"6\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"6\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":2}," +
                                                  "\"url\":\"" + srcURL + "\"}" +
@@ -1589,7 +1589,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":" + suspendLine + "}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"));
@@ -1599,7 +1599,7 @@ public class SLInspectDebugTest {
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"m\",\"value\":{\"description\":\"4\",\"type\":\"number\",\"value\":4},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"b\",\"value\":{\"description\":\"true\",\"type\":\"boolean\",\"value\":true},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"bb\",\"value\":{\"description\":\"true\",\"type\":\"boolean\",\"value\":true},\"configurable\":true,\"writable\":true}," +
-                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"big\",\"value\":{\"description\":\"152415787532388367501905199875019052100\",\"type\":\"number\",\"value\":1.5241578753238836E38},\"configurable\":true,\"writable\":true}," +
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"big\",\"value\":{\"description\":\"152415787532388367501905199875019052100\",\"type\":\"number\",\"value\":\"152415787532388367501905199875019052100\"},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"str\",\"value\":{\"description\":\"A String\",\"type\":\"string\",\"value\":\"A String\"},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f\",\"value\":{\"description\":\"Function fn\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"4\"},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f2\",\"value\":{\"description\":\"0\",\"type\":\"number\",\"value\":0},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":5}\n"));
@@ -1626,7 +1626,7 @@ public class SLInspectDebugTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"5\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"6\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"7\"}," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"7\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":" + suspendLine + "}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"));
@@ -1636,7 +1636,7 @@ public class SLInspectDebugTest {
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"m\",\"value\":{\"description\":\"1000\",\"type\":\"number\",\"value\":1000},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"b\",\"value\":{\"description\":\"false\",\"type\":\"boolean\",\"value\":false},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"bb\",\"value\":{\"description\":\"false\",\"type\":\"boolean\",\"value\":false},\"configurable\":true,\"writable\":true}," +
-                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"big\",\"value\":{\"description\":\"23230572289118153328333583928030329684079829544396666111742077337982514410000\",\"type\":\"number\",\"value\":2.3230572289118153E76},\"configurable\":true,\"writable\":true}," +
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"big\",\"value\":{\"description\":\"23230572289118153328333583928030329684079829544396666111742077337982514410000\",\"type\":\"number\",\"value\":\"23230572289118153328333583928030329684079829544396666111742077337982514410000\"},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"str\",\"value\":{\"description\":\"A Different String\",\"type\":\"string\",\"value\":\"A Different String\"},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f\",\"value\":{\"description\":\"Function fn\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"8\"},\"configurable\":true,\"writable\":true}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"f2\",\"value\":{\"description\":\"Function fn\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"9\"},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":11}\n"));

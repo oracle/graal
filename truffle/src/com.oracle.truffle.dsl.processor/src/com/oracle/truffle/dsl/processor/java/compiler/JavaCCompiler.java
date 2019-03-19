@@ -62,4 +62,9 @@ public class JavaCCompiler extends AbstractCompiler {
         return environment.getElementUtils().getAllMembers(type);
     }
 
+    @Override
+    public List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type) {
+        return type.getEnclosedElements();
+    }
+
 }

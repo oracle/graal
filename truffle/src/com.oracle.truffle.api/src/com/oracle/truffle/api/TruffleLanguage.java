@@ -49,6 +49,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -86,7 +87,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.nio.file.Path;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -227,7 +227,8 @@ public abstract class TruffleLanguage<C> {
 
     // get and isFinal are frequent operations -> cache the engine access call
     @CompilationFinal private LanguageInfo languageInfo;
-    @CompilationFinal private ContextReference<C> reference;
+    @CompilationFinal private ContextReference<Object> reference;
+    @CompilationFinal private Object vmObject; // PolyglotLanguageInstance
 
     /**
      * Constructor to be called by subclasses.
@@ -1186,16 +1187,12 @@ public abstract class TruffleLanguage<C> {
      *
      * @since 0.25
      */
+    @SuppressWarnings("unchecked")
     public final ContextReference<C> getContextReference() {
         if (reference == null) {
             throw new IllegalStateException("TruffleLanguage instance is not initialized. Cannot get the current context reference.");
         }
-        return reference;
-    }
-
-    void initialize(LanguageInfo language, Object vmObject) {
-        this.languageInfo = language;
-        this.reference = new ContextReference<>(vmObject);
+        return (ContextReference<C>) reference;
     }
 
     CallTarget parse(Source source, String... argumentNames) {
@@ -1230,14 +1227,16 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the current language instance for the current {@link Thread thread}. If a root node
-     * is accessible then {@link RootNode#getLanguage(Class)} should be used instead. Throws an
-     * {@link IllegalStateException} if the language is not yet initialized or not executing on this
-     * thread. If invoked on the fast-path then <code>languageClass</code> must be a compilation
-     * final value.
+     * Returns the current language instance for the current {@link Thread thread}. If a {@link Node
+     * node} is accessible then {@link Node#lookupLanguageReference(Class)} should be used instead.
+     * Throws an {@link IllegalStateException} if the language is not yet initialized or not
+     * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
+     * a compilation final value.
      *
      * @param <T> the language type
      * @param languageClass the exact language class needs to be provided for the lookup.
+     * @see Node#lookupLanguageReference(Class)
+     * @see com.oracle.truffle.api.dsl.CachedLanguage
      * @since 0.27
      */
     protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
@@ -1245,17 +1244,17 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the current language context entered on the current thread. If a
-     * {@link TruffleLanguage language} instance is available, a
-     * {@link TruffleLanguage#getContextReference() context reference} should be used instead for
-     * performance reasons. An {@link IllegalStateException} is thrown if the language is not yet
-     * initialized or not executing on this thread. If invoked on the fast-path then
-     * <code>languageClass</code> must be a compilation final value.
+     * Returns the current language context entered on the current thread. If a {@link Node node} is
+     * accessible then {@link Node#lookupContextReference(Class)} should be used instead. An
+     * {@link IllegalStateException} is thrown if the language is not yet initialized or not
+     * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
+     * a compilation final value.
      *
      * @param <C> the context type
      * @param <T> the language type
      * @param languageClass the exact language class needs to be provided for the lookup.
-     * @see TruffleLanguage#getContextReference()
+     * @see Node#lookupContextReference(Class)
+     * @see com.oracle.truffle.api.dsl.CachedContext
      * @since 0.27
      */
     protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
@@ -2187,40 +2186,74 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Represents a reference to the current context to be stored in an AST. A reference can be
-     * created using {@link TruffleLanguage#getContextReference()} and the current context can be
-     * accessed using the {@link ContextReference#get()} method of the returned reference.
+     * Represents a reference to the language to be stored in an AST. A reference can be accessed
+     * using {@link Node#lookupLanguageReference(Class)} and the current language can be accessed
+     * using the {@link LanguageReference#get()} method of the returned reference.
      * <p>
-     * Please note that the current context might vary between {@link RootNode#execute(VirtualFrame)
-     * executions} if resources or code is shared between multiple contexts.
+     * The current language might vary between {@link RootNode#execute(VirtualFrame) executions} if
+     * the reference is used with interoperability APIs in the AST of a foreign language.
      *
-     * @since 0.25
+     * @since 1.0
      */
-    public static final class ContextReference<C> {
+    @SuppressWarnings("rawtypes")
+    public abstract static class LanguageReference<L extends TruffleLanguage> {
 
-        private final Object languageShared;
-
-        private ContextReference(Object languageShared) {
-            this.languageShared = languageShared;
+        /**
+         * Constructors for subclasses.
+         *
+         * @since 1.0
+         */
+        protected LanguageReference() {
         }
 
         /**
-         * Returns the current context associated with the language this reference was created with.
-         * If a context is accessed during {@link TruffleLanguage#createContext(Env) context
-         * creation} or in the language class constructor an {@link IllegalStateException} is
-         * thrown. This methods is designed to be called safely from compiled code paths.
+         * Returns the current language of the current execution context. If a context is accessed
+         * during {@link TruffleLanguage#createContext(Env) context creation} or in the language
+         * class constructor an {@link IllegalStateException} is thrown. This methods is designed to
+         * be called safely from compiled code paths.
          * <p>
-         * Please note that the current context might vary between
-         * {@link RootNode#execute(VirtualFrame) executions} if resources or code is shared between
-         * multiple contexts.
+         * The current language might vary between {@link RootNode#execute(VirtualFrame) executions}
+         * if the reference is used with interoperability APIs in the AST of a foreign language.
+         *
+         * @since 1.0
+         */
+        public abstract L get();
+
+    }
+
+    /**
+     * Represents a reference to the current context to be stored in an AST. A reference can be
+     * accessed using {@link Node#lookupContextReference(Class)} and the current context can be
+     * accessed using the {@link ContextReference#get()} method of the returned reference.
+     * <p>
+     * The current context might vary between {@link RootNode#execute(VirtualFrame) executions} if
+     * resources or code is shared between multiple contexts.
+     *
+     * @since 0.25
+     */
+    public abstract static class ContextReference<C> {
+
+        /**
+         * Constructors for subclasses.
+         *
+         * @since 1.0
+         */
+        protected ContextReference() {
+        }
+
+        /**
+         * Returns the current language context of the current execution context. If a context is
+         * accessed during {@link TruffleLanguage#createContext(Env) context creation} or in the
+         * language class constructor an {@link IllegalStateException} is thrown. This methods is
+         * designed to be called safely from compiled code paths.
+         * <p>
+         * The current context might vary between {@link RootNode#execute(VirtualFrame) executions}
+         * if resources or code is shared between multiple contexts.
          *
          * @since 0.25
          */
         @SuppressWarnings("unchecked")
-        public C get() {
-            return (C) AccessAPI.engineAccess().getCurrentContext(languageShared);
-        }
-
+        public abstract C get();
     }
 
     /**
@@ -2384,8 +2417,10 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object vmObject) {
-            impl.initialize(language, vmObject);
+        public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object languageVmObject, Object languageInstanceVMObject) {
+            impl.languageInfo = language;
+            impl.reference = AccessAPI.engineAccess().getCurrentContextReference(languageVmObject);
+            impl.vmObject = languageInstanceVMObject;
         }
 
         @Override
@@ -2526,17 +2561,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        @SuppressWarnings("rawtypes")
-        public LanguageInfo getLegacyLanguageInfo(Object vm, Class<? extends TruffleLanguage> languageClass) {
-            if (vm == null) {
-                return null;
-            }
-            Env env = AccessAPI.engineAccess().findEnv(vm, languageClass, false);
-            if (env != null) {
-                return env.getSpi().languageInfo;
-            } else {
-                return null;
-            }
+        public Object getVMObject(TruffleLanguage<?> language) {
+            return language.vmObject;
         }
 
         @Override
@@ -2629,6 +2655,14 @@ public abstract class TruffleLanguage<C> {
         @Override
         public Path getPath(TruffleFile file) {
             return file.getSPIPath();
+        }
+
+        @Override
+        public Object getLanguageInstance(TruffleLanguage<?> language) {
+            if (language == null) {
+                return null;
+            }
+            return language.vmObject;
         }
 
         @Override

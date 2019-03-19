@@ -41,6 +41,8 @@
 package com.oracle.truffle.dsl.processor;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -72,16 +74,31 @@ public class ExpectError {
         }
     }
 
-    public static boolean isExpectedError(ProcessingEnvironment processingEnv, Element element, String message) {
-        for (String errorType : EXPECT_ERROR_TYPES) {
-            if (isExpectedErrorImpl(element, message, ElementUtils.getTypeElement(processingEnv, errorType))) {
+    public static boolean isExpectedError(ProcessingEnvironment processingEnv, Element element, String actualText) {
+        List<String> expectedErrors = getExpectedErrors(processingEnv, element);
+        for (String expectedText : expectedErrors) {
+            String newExpectedText = expectedText.replaceAll("%n", System.lineSeparator());
+            if (newExpectedText.endsWith("%") && actualText.startsWith(newExpectedText.substring(0, newExpectedText.length() - 1))) {
+                return true;
+            } else if (actualText.equals(newExpectedText)) {
                 return true;
             }
         }
         return false;
     }
 
-    private static boolean isExpectedErrorImpl(Element element, String message, TypeElement eee) {
+    public static List<String> getExpectedErrors(ProcessingEnvironment processingEnv, Element element) {
+        if (element == null) {
+            return Collections.emptyList();
+        }
+        List<String> expectedErrors = new ArrayList<>();
+        for (String errorType : EXPECT_ERROR_TYPES) {
+            collectExpectedErrors(expectedErrors, element, processingEnv.getElementUtils().getTypeElement(errorType));
+        }
+        return expectedErrors;
+    }
+
+    private static void collectExpectedErrors(List<String> expectedErrors, Element element, TypeElement eee) {
         if (eee != null) {
             for (AnnotationMirror am : element.getAnnotationMirrors()) {
                 if (am.getAnnotationType().asElement().equals(eee)) {
@@ -93,9 +110,7 @@ public class ExpectError {
                             for (Object o : arr) {
                                 if (o instanceof AnnotationValue) {
                                     AnnotationValue ov = (AnnotationValue) o;
-                                    if (message.equals(ov.getValue())) {
-                                        return true;
-                                    }
+                                    expectedErrors.add((String) ov.getValue());
                                 }
                             }
                         }
@@ -103,7 +118,6 @@ public class ExpectError {
                 }
             }
         }
-        return false;
     }
 
 }

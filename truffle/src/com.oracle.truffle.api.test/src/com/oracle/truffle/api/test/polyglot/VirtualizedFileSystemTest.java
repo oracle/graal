@@ -1459,7 +1459,7 @@ public class VirtualizedFileSystemTest {
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    languageAction.accept(getContextReference().get().env());
+                    languageAction.accept(lookupContextReference(VirtualizedFileSystemTestLanguage.class).get().env());
                     return result;
                 }
             });

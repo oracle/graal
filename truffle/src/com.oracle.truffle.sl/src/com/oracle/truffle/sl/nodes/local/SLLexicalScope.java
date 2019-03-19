@@ -40,25 +40,21 @@
  */
 package com.oracle.truffle.sl.nodes.local;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -316,6 +312,7 @@ public final class SLLexicalScope {
         return args;
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class VariablesMapObject implements TruffleObject {
 
         final Map<String, ? extends FrameSlot> slots;
@@ -328,152 +325,111 @@ public final class SLLexicalScope {
             this.frame = frame;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return VariablesMapMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof VariablesMapObject;
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new KeysArray(slots.keySet().toArray(new String[0]));
         }
 
-        @MessageResolution(receiverType = VariablesMapObject.class)
-        static final class VariablesMapMessageResolution {
-
-            @Resolve(message = "HAS_KEYS")
-            abstract static class VarsMapHasKeysNode extends Node {
-
-                public Object access(VariablesMapObject varMap) {
-                    assert varMap != null;
-                    return true;
-                }
+        @ExportMessage
+        @TruffleBoundary
+        void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException {
+            if (frame == null) {
+                throw UnsupportedMessageException.create();
             }
-
-            @Resolve(message = "KEYS")
-            abstract static class VarsMapKeysNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap) {
-                    return new VariableNamesObject(varMap.slots.keySet());
-                }
-            }
-
-            @Resolve(message = "KEY_INFO")
-            abstract static class KeyInfoNode extends Node {
-
-                @TruffleBoundary
-                public int access(VariablesMapObject varMap, String name) {
-                    if (varMap.frame == null) {
-                        return KeyInfo.READABLE;
-                    }
-                    FrameSlot slot = varMap.slots.get(name);
-                    if (slot != null) {
-                        return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
-                    }
-                    return KeyInfo.NONE;
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class VarsMapReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap, String name) {
-                    if (varMap.frame == null) {
-                        return SLNull.SINGLETON;
-                    }
-                    FrameSlot slot = varMap.slots.get(name);
-                    if (slot == null) {
-                        throw UnknownIdentifierException.raise(name);
-                    } else {
-                        Object value;
-                        Object info = slot.getInfo();
-                        if (varMap.args != null && info != null) {
-                            value = varMap.args[(Integer) info];
-                        } else {
-                            value = varMap.frame.getValue(slot);
-                        }
-                        return value;
-                    }
-                }
-            }
-
-            @Resolve(message = "WRITE")
-            abstract static class VarsMapWriteNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap, String name, Object value) {
-                    if (varMap.frame == null) {
-                        throw UnsupportedMessageException.raise(Message.WRITE);
-                    }
-                    FrameSlot slot = varMap.slots.get(name);
-                    if (slot == null) {
-                        throw UnknownIdentifierException.raise(name);
-                    } else {
-                        Object info = slot.getInfo();
-                        if (varMap.args != null && info != null) {
-                            varMap.args[(Integer) info] = value;
-                        } else {
-                            varMap.frame.setObject(slot, value);
-                        }
-                        return value;
-                    }
+            FrameSlot slot = slots.get(member);
+            if (slot == null) {
+                throw UnknownIdentifierException.create(member);
+            } else {
+                Object info = slot.getInfo();
+                if (args != null && info != null) {
+                    args[(Integer) info] = value;
+                } else {
+                    frame.setObject(slot, value);
                 }
             }
         }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String member) throws UnknownIdentifierException {
+            if (frame == null) {
+                return SLNull.SINGLETON;
+            }
+            FrameSlot slot = slots.get(member);
+            if (slot == null) {
+                throw UnknownIdentifierException.create(member);
+            } else {
+                Object value;
+                Object info = slot.getInfo();
+                if (args != null && info != null) {
+                    value = args[(Integer) info];
+                } else {
+                    value = frame.getValue(slot);
+                }
+                return value;
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+            return false;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberModifiable(String member) {
+            return slots.containsKey(member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return frame == null || slots.containsKey(member);
+        }
+
     }
 
-    static final class VariableNamesObject implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    static final class KeysArray implements TruffleObject {
 
-        final List<String> names;
+        private final String[] keys;
 
-        private VariableNamesObject(Set<String> names) {
-            this.names = new ArrayList<>(names);
+        KeysArray(String[] keys) {
+            this.keys = keys;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return VariableNamesMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof VariableNamesObject;
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < keys.length;
         }
 
-        @MessageResolution(receiverType = VariableNamesObject.class)
-        static final class VariableNamesMessageResolution {
+        @ExportMessage
+        long getArraySize() {
+            return keys.length;
+        }
 
-            @Resolve(message = "HAS_SIZE")
-            abstract static class VarNamesHasSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(VariableNamesObject varNames) {
-                    return true;
-                }
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
+                throw InvalidArrayIndexException.create(index);
             }
-
-            @Resolve(message = "GET_SIZE")
-            abstract static class VarNamesGetSizeNode extends Node {
-
-                public Object access(VariableNamesObject varNames) {
-                    return varNames.names.size();
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class VarNamesReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariableNamesObject varNames, int index) {
-                    try {
-                        return varNames.names.get(index);
-                    } catch (IndexOutOfBoundsException ioob) {
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                }
-            }
-
+            return keys[(int) index];
         }
+
     }
 
 }

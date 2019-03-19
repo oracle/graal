@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
@@ -199,7 +200,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     private Object decorate(LLVMFunctionDescriptor function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
         FunctionType newFunctionType = new FunctionType(wrapperFunction.getType().getReturnType(), function.getType().getArgumentTypes(), function.getType().isVarargs());
-        NativeDecoratedRoot decoratedRoot = new NativeDecoratedRoot(getLLVMLanguage(), function, wrapperFunction);
+        NativeDecoratedRoot decoratedRoot = new NativeDecoratedRoot(lookupLanguageReference(LLVMLanguage.class).get(), function, wrapperFunction);
         return registerRoot(function.getLibrary(), newFunctionType, decoratedRoot);
     }
 
@@ -207,7 +208,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     private Object decorateForeign(TruffleObject function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
         FunctionType newFunctionType = new FunctionType(wrapperFunction.getType().getReturnType(), Type.EMPTY_ARRAY, true);
-        DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(getLLVMLanguage(), newFunctionType, function, wrapperFunction);
+        DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(lookupLanguageReference(LLVMLanguage.class).get(), newFunctionType, function, wrapperFunction);
         return registerRoot(wrapperFunction.getLibrary(), newFunctionType, decoratedRoot);
     }
 
@@ -224,7 +225,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     private LLVMContext getContext() {
         if (contextRef == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            contextRef = getContextReference();
+            contextRef = lookupContextReference(LLVMLanguage.class);
         }
         return contextRef.get();
     }

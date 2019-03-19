@@ -31,7 +31,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -62,7 +61,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             onInterpreterCall();
         }
         try {
-            return callProxy(this, getCurrentCallTarget(), arguments, true);
+            return getCurrentCallTarget().callDirect(this, arguments);
         } catch (Throwable t) {
             if (exceptionProfile == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -71,20 +70,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             Throwable profiledT = exceptionProfile.profile(t);
             OptimizedCallTarget.runtime().getTvmci().onThrowable(this, null, profiledT, null);
             throw OptimizedCallTarget.rethrow(profiledT);
-        }
-    }
-
-    // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public static Object callProxy(Node callNode, CallTarget callTarget, Object[] arguments, boolean direct) {
-        try {
-            if (direct) {
-                return ((OptimizedCallTarget) callTarget).callDirect(arguments);
-            } else {
-                return callTarget.call(arguments);
-            }
-        } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert callNode != null & callTarget != null;
         }
     }
 

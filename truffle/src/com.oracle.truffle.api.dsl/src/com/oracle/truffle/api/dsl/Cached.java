@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.Node;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 
 // Workaround for Eclipse formatter behaving different when running on JDK 9.
 // @formatter:off
@@ -237,6 +237,8 @@ import java.lang.annotation.Target;
  * @see Specialization#replaces()
  * @see Specialization#limit()
  * @see ImportStatic
+ * @see CachedContext @CachedContext to access the current context.
+ * @see CachedLanguage @CachedLanguage to access the current Truffle language.
  * @since 0.8 or earlier
  */
 // @formatter:on
@@ -250,7 +252,16 @@ public @interface Cached {
      * @see Cached
      * @since 0.8 or earlier
      */
-    String value();
+    String value() default "create($parameters)";
+
+    /**
+     * Defines the initializer that is used for {@link GenerateUncached uncached} nodes or uncached
+     * versions of exported library messages.
+     *
+     * @see GenerateUncached
+     * @since 1.0
+     */
+    String uncached() default "getUncached($parameters)";
 
     /**
      * Specifies the number of array dimensions to be marked as {@link CompilationFinal compilation
@@ -269,5 +280,56 @@ public @interface Cached {
      * @see CompilationFinal#dimensions()
      */
     int dimensions() default -1;
+
+    /**
+     * Allows the {@link #value()} to be used for {@link #uncached()}. This is useful if the
+     * expression is the same for {@link #value()} and {@link #uncached()}. By setting
+     * {@link #allowUncached()} to <code>true</code> it is not necessary to repeat the
+     * {@link #value()} expression in the {@link #uncached()} expression. This flag cannot be set in
+     * combination with {@link #uncached()}.
+     *
+     * @since 1.0
+     */
+    boolean allowUncached() default false;
+
+    /**
+     * Specifies the bindings used for the $parameters variable in cached or uncached initializers.
+     *
+     * @since 1.0
+     */
+    String[] parameters() default {};
+
+    /**
+     * Allows sharing between multiple Cached parameters between multiple specializations or
+     * exported library messages. If no sharing is desired then the {@link Cached cached} parameter
+     * can be annotated with {@link Exclusive exclusive}. The DSL will indicate sharing
+     * opportunities to the user by showing a warning.
+     *
+     * @see Exclusive
+     * @since 1.0
+     */
+    @Retention(RetentionPolicy.CLASS)
+    @Target({ElementType.PARAMETER})
+    public @interface Shared {
+
+        /**
+         * Specifies the sharing group of the shared cached element.
+         *
+         * @since 1.0
+         */
+        String value();
+
+    }
+
+    /**
+     * Disallows any sharing with other cached parameters. The DSL will indicate sharing
+     * opportunities to the user by showing a warning.
+     *
+     * @since 1.0
+     */
+    @Retention(RetentionPolicy.CLASS)
+    @Target({ElementType.PARAMETER, ElementType.METHOD, ElementType.TYPE})
+    public @interface Exclusive {
+    }
 
 }

@@ -41,9 +41,10 @@
 package com.oracle.truffle.api.interop;
 
 /**
- * Common super class for exceptions that can occur when sending {@link Message interop messages}.
- * This super class is used to catch any kind of these exceptions.
+ * Common super class for exceptions that can occur when sending {@link InteropLibrary interop
+ * messages}. This super class is used to catch any kind of these exceptions.
  *
+ * @see InteropLibrary
  * @since 0.11
  */
 public abstract class InteropException extends Exception {
@@ -56,17 +57,16 @@ public abstract class InteropException extends Exception {
         super(cause);
     }
 
+    InteropException() {
+        super();
+    }
+
     /**
-     * Re-throw an {@link InteropException} as a {@link RuntimeException}, which allows throwing it
-     * without an explicit throws declaration.
-     *
-     * The method returns {@link RuntimeException} so it can be used as
-     * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.RethrowExample} but the method never
-     * returns. It throws this exception internally rather than returning any value.
-     *
-     * @return the exception
      * @since 0.14
+     * @deprecated without replacement. Instead always handle interop exceptions directly or rethrow
+     *             them where it is allowed.
      */
+    @Deprecated
     public final RuntimeException raise() {
         return silenceException(RuntimeException.class, this);
     }

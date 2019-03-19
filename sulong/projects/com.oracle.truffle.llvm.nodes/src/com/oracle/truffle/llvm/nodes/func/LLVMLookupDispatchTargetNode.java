@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,12 +31,16 @@ package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -69,22 +73,27 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)", "cachedDescriptor != null"})
+    @SuppressWarnings("unused")
     protected static LLVMFunctionDescriptor doHandleCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
                     @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @Cached("lookupFunction(pointer)") LLVMFunctionDescriptor cachedDescriptor) {
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
+                    @Cached("lookupFunction(ctxRef, pointer)") LLVMFunctionDescriptor cachedDescriptor) {
         return cachedDescriptor;
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)", "cachedDescriptor == null"})
+    @SuppressWarnings("unused")
     protected static LLVMNativePointer doNativeFunctionCached(LLVMNativePointer pointer,
                     @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @Cached("lookupFunction(pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor) {
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
+                    @Cached("lookupFunction(ctxRef, pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor) {
         return pointer;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(pointer.asNative())", replaces = {"doHandleCached", "doNativeFunctionCached"})
-    protected Object doLookup(LLVMNativePointer pointer) {
-        LLVMFunctionDescriptor descriptor = lookupFunction(pointer);
+    protected Object doLookup(LLVMNativePointer pointer,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
+        LLVMFunctionDescriptor descriptor = lookupFunction(ctxRef, pointer);
         if (descriptor != null) {
             return descriptor;
         } else {
@@ -98,8 +107,8 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         return doForeign(foreignFunction);
     }
 
-    protected LLVMFunctionDescriptor lookupFunction(LLVMNativePointer function) {
-        return getContextReference().get().getFunctionDescriptor(function);
+    protected LLVMFunctionDescriptor lookupFunction(ContextReference<LLVMContext> ctxRef, LLVMNativePointer function) {
+        return ctxRef.get().getFunctionDescriptor(function);
     }
 
     protected static boolean isForeignFunction(TruffleObject object) {

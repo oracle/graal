@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.spi;
 
-import com.oracle.truffle.api.interop.Message;
-
 /**
  * Interop message to get the type of a foreign object.
  *
@@ -41,9 +39,11 @@ import com.oracle.truffle.api.interop.Message;
  * Casting objects that support this message with {@code polyglot_to_Struct} functions has no
  * effect, the dynamic type returned from this message always has precedence.
  */
-public final class GetDynamicType extends Message {
+@SuppressWarnings("deprecation")
+@Deprecated
+public final class GetDynamicType extends com.oracle.truffle.api.interop.Message {
 
-    public static final Message INSTANCE = new GetDynamicType();
+    public static final com.oracle.truffle.api.interop.Message INSTANCE = new GetDynamicType();
 
     private GetDynamicType() {
     }

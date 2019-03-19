@@ -40,10 +40,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -60,6 +58,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class NFIContextExtension implements ContextExtension {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     @CompilerDirectives.CompilationFinal private TruffleObject defaultLibraryHandle;
     private final ExternalLibrary defaultLibrary;
     // we use an EconomicMap because iteration order must match the insertion order
@@ -104,7 +105,7 @@ public final class NFIContextExtension implements ContextExtension {
         try {
             NativeLookupResult result = getNativeDataObjectOrNull(context, name);
             if (result != null) {
-                long pointer = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), result.getObject());
+                long pointer = INTEROP.asPointer(result.getObject());
                 return new NativePointerIntoLibrary(result.getLibrary(), pointer);
             }
             return null;
@@ -125,7 +126,7 @@ public final class NFIContextExtension implements ContextExtension {
             String signature = getNativeSignature(descriptor.getType(), 0);
             TruffleObject createNativeWrapper = getNativeFunction(descriptor.getContext(), "@createNativeWrapper", String.format("(env, %s):object", signature));
             try {
-                wrapper = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), createNativeWrapper, new LLVMNativeWrapper(descriptor));
+                wrapper = (TruffleObject) INTEROP.execute(createNativeWrapper, new LLVMNativeWrapper(descriptor));
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }
@@ -246,13 +247,15 @@ public final class NFIContextExtension implements ContextExtension {
     private static TruffleObject getNativeFunctionOrNull(TruffleObject library, String name) {
         CompilerAsserts.neverPartOfCompilation();
         String demangledName = name.substring(1);
-        if (!KeyInfo.isReadable(ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), library, demangledName))) {
+        if (!INTEROP.isMemberReadable(library, demangledName)) {
             // try another library
             return null;
         }
         try {
-            return (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, demangledName);
-        } catch (Throwable ex) {
+            return (TruffleObject) INTEROP.readMember(library, demangledName);
+        } catch (UnknownIdentifierException ex) {
+            return null;
+        } catch (InteropException ex) {
             throw new IllegalStateException(ex);
         }
     }
@@ -341,8 +344,8 @@ public final class NFIContextExtension implements ContextExtension {
 
     private static TruffleObject getNativeDataObjectOrNull(TruffleObject libraryHandle, String name) {
         try {
-            TruffleObject symbol = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), libraryHandle, name);
-            if (symbol != null && 0 != ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), symbol)) {
+            TruffleObject symbol = (TruffleObject) INTEROP.readMember(libraryHandle, name);
+            if (symbol != null && 0 != INTEROP.asPointer(symbol)) {
                 return symbol;
             } else {
                 return null;
@@ -350,7 +353,7 @@ public final class NFIContextExtension implements ContextExtension {
         } catch (UnknownIdentifierException ex) {
             // try another library
             return null;
-        } catch (Throwable ex) {
+        } catch (InteropException ex) {
             throw new IllegalStateException(ex);
         }
     }
@@ -358,7 +361,7 @@ public final class NFIContextExtension implements ContextExtension {
     private static TruffleObject bindNativeFunction(TruffleObject symbol, String signature) {
         CompilerAsserts.neverPartOfCompilation();
         try {
-            return (TruffleObject) ForeignAccess.sendInvoke(Message.INVOKE.createNode(), symbol, "bind", signature);
+            return (TruffleObject) INTEROP.invokeMember(symbol, "bind", signature);
         } catch (InteropException ex) {
             throw new IllegalStateException(ex);
         }

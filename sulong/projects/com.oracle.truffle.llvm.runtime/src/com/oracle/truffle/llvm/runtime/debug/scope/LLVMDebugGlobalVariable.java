@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
@@ -52,10 +51,5 @@ public final class LLVMDebugGlobalVariable implements LLVMInternalTruffleObject 
 
     public static boolean isInstance(TruffleObject object) {
         return object instanceof LLVMDebugGlobalVariable;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        throw new RuntimeException("should not reach here - should not escape out of Sulong");
     }
 }

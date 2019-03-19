@@ -1089,16 +1089,17 @@ public class ContextPreInitializationTest {
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
             final CharSequence result = request.getSource().getCharacters();
+            Class<? extends TruffleLanguage<CountingContext>> languageClass = getClass();
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     String msg = parseStdOutOutput.get(getLanguageInfo().getId());
                     if (msg != null) {
-                        write(getContextReference().get().environment().out(), msg);
+                        write(lookupContextReference(languageClass).get().environment().out(), msg);
                     }
                     msg = parseStdErrOutput.get(getLanguageInfo().getId());
                     if (msg != null) {
-                        write(getContextReference().get().environment().err(), msg);
+                        write(lookupContextReference(languageClass).get().environment().err(), msg);
                     }
                     return result;
                 }

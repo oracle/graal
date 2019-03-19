@@ -57,11 +57,9 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.C
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ExpressionNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.MaterializeChildExpressionNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.MaterializedChildExpressionNode;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 
 public class InstrumentableNodeTest extends InstrumentationEventTest {
 
@@ -216,23 +214,21 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
             assertTrue(receiver instanceof TruffleObject);
             TruffleObject obj = (TruffleObject) receiver;
 
-            Node hasKeysNode = Message.HAS_KEYS.createNode();
-            Node keysNode = Message.KEYS.createNode();
-            assertTrue(ForeignAccess.sendHasKeys(hasKeysNode, obj));
-            TruffleObject keys = ForeignAccess.sendKeys(keysNode, obj);
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+
+            assertTrue(interop.hasMembers(obj));
+            Object keys = interop.getMembers(obj);
 
             for (int i = 0; i < properties.length; i = i + 2) {
                 String expectedKey = (String) properties[i];
                 Object expectedValue = properties[i + 1];
-                Node readNode = Message.READ.createNode();
-                Object key = ForeignAccess.sendRead(readNode, keys, i / 2);
+                Object key = interop.readArrayElement(keys, i / 2);
                 assertEquals(expectedKey, key);
-                assertEquals(expectedValue, ForeignAccess.sendRead(readNode, obj, key));
+                assertEquals(expectedValue, interop.readMember(obj, interop.asString(key)));
             }
         } catch (InteropException e) {
-            throw e.raise();
+            throw new AssertionError(e);
         }
-
     }
 
     @Test

@@ -74,7 +74,7 @@ abstract class HostFieldDesc {
 
     public abstract Object get(Object receiver);
 
-    public abstract void set(Object receiver, Object value);
+    public abstract void set(Object receiver, Object value) throws UnsupportedTypeException, UnknownIdentifierException;
 
     static HostFieldDesc unreflect(Field reflectionField) {
         assert isAccessible(reflectionField);
@@ -101,8 +101,6 @@ abstract class HostFieldDesc {
         public Object get(Object receiver) {
             try {
                 return reflectGet(field, receiver);
-            } catch (IllegalArgumentException e) {
-                throw UnsupportedTypeException.raise(e, HostInteropReflect.EMPTY);
             } catch (IllegalAccessException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
@@ -110,15 +108,15 @@ abstract class HostFieldDesc {
         }
 
         @Override
-        public void set(Object receiver, Object value) {
+        public void set(Object receiver, Object value) throws UnsupportedTypeException, UnknownIdentifierException {
             try {
                 reflectSet(field, receiver, value);
             } catch (IllegalArgumentException e) {
-                throw UnsupportedTypeException.raise(e, HostInteropReflect.EMPTY);
+                throw UnsupportedTypeException.create(HostInteropReflect.EMPTY);
             } catch (IllegalAccessException e) {
                 CompilerDirectives.transferToInterpreter();
                 if (Modifier.isFinal(field.getModifiers())) {
-                    throw UnknownIdentifierException.raise(field.getName());
+                    throw UnknownIdentifierException.create(field.getName());
                 } else {
                     throw new IllegalStateException(e);
                 }
@@ -159,15 +157,13 @@ abstract class HostFieldDesc {
             }
             try {
                 return invokeGetHandle(getHandle, receiver);
-            } catch (Exception e) {
-                throw UnsupportedTypeException.raise(e, HostInteropReflect.EMPTY);
             } catch (Throwable e) {
                 throw HostInteropReflect.rethrow(e);
             }
         }
 
         @Override
-        public void set(Object receiver, Object value) {
+        public void set(Object receiver, Object value) throws UnsupportedTypeException, UnknownIdentifierException {
             if (setHandle == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 setHandle = makeSetMethodHandle();
@@ -175,7 +171,7 @@ abstract class HostFieldDesc {
             try {
                 invokeSetHandle(setHandle, receiver, value);
             } catch (Exception e) {
-                throw UnsupportedTypeException.raise(e, new Object[]{value});
+                throw UnsupportedTypeException.create(new Object[]{value});
             } catch (Throwable e) {
                 throw HostInteropReflect.rethrow(e);
             }
@@ -205,7 +201,7 @@ abstract class HostFieldDesc {
             }
         }
 
-        private MethodHandle makeSetMethodHandle() {
+        private MethodHandle makeSetMethodHandle() throws UnknownIdentifierException {
             try {
                 if (Modifier.isStatic(field.getModifiers())) {
                     MethodHandle setter = MethodHandles.publicLookup().findStaticSetter(field.getDeclaringClass(), field.getName(), field.getType());
@@ -215,10 +211,10 @@ abstract class HostFieldDesc {
                     return setter.asType(MethodType.methodType(void.class, Object.class, Object.class));
                 }
             } catch (NoSuchFieldException e) {
-                throw UnknownIdentifierException.raise(field.getName());
+                throw UnknownIdentifierException.create(field.getName());
             } catch (IllegalAccessException e) {
                 if (Modifier.isFinal(field.getModifiers())) {
-                    throw UnknownIdentifierException.raise(field.getName());
+                    throw UnknownIdentifierException.create(field.getName());
                 } else {
                     throw new IllegalStateException(e);
                 }

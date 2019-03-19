@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,7 +113,7 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
         OptionValues options = TruffleRuntimeOptions.getOptions();
         try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
             try (AutoCloseable s = testContext.debug.scope("UnitTest")) {
-                truffleRuntime.doCompile(testContext.debug, compilation, TruffleRuntimeOptions.asMap(options), callTarget, null);
+                truffleRuntime.doCompile(testContext.debug, compilation, TruffleRuntimeOptions.asMap(options), callTarget, new CancellableCompileTask(true));
             } catch (Throwable e) {
                 throw new InternalError(e);
             }

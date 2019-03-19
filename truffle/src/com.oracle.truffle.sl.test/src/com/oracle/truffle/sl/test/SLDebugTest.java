@@ -72,11 +72,11 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.StepConfig;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tck.DebuggerTester;
 
@@ -567,7 +567,7 @@ public class SLDebugTest {
 
                 DebugScope scope = frame.getScope();
                 DebugValue v = scope.getDeclaredValue("a");
-                assertEquals("Null", v.getMetaObject().as(String.class));
+                assertEquals("NULL", v.getMetaObject().as(String.class));
                 v = scope.getDeclaredValue("b");
                 assertEquals("Boolean", v.getMetaObject().as(String.class));
                 v = scope.getDeclaredValue("c");

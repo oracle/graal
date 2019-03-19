@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -197,6 +197,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
                 LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) arg;
                 overflowArea += obj.getSize();
             } else {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(arg);
             }
         }
@@ -303,6 +304,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
             }
             return floatVec.getLength() * Float.BYTES;
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError(object);
         }
     }
@@ -325,6 +327,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         } else if (arg instanceof Double) {
             value = Double.doubleToRawLongBits((double) arg);
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError(arg);
         }
         storeNode.executeWithTarget(currentPtr, value);

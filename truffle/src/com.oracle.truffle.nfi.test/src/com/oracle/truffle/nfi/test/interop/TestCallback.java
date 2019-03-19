@@ -42,9 +42,12 @@ package com.oracle.truffle.nfi.test.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 public class TestCallback implements TruffleObject {
 
     public interface Function {
@@ -60,18 +63,23 @@ public class TestCallback implements TruffleObject {
         this.function = function;
     }
 
-    @TruffleBoundary
-    Object call(Object... args) {
-        if (args.length == arity) {
-            Object ret = function.call(args);
-            return ret;
-        } else {
-            throw ArityException.raise(arity, args.length);
-        }
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return TestCallbackMessageResolutionForeign.ACCESS;
+    @TruffleBoundary
+    @ExportMessage
+    Object execute(Object... args) throws ArityException {
+        if (args.length == arity) {
+            Object ret = function.call(args);
+            if (ret == null) {
+                return new NullObject();
+            } else {
+                return ret;
+            }
+        } else {
+            throw ArityException.create(arity, args.length);
+        }
     }
 }

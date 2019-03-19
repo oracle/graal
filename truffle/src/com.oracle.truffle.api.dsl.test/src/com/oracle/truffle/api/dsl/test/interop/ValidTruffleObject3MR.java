@@ -42,15 +42,13 @@ package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject3.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject3.class)
 public class ValidTruffleObject3MR {
     @ExpectError("Inconsistent argument length.")
-    @Resolve(message = "com.oracle.truffle.api.dsl.test.interop.MyMessage")
+    @com.oracle.truffle.api.interop.Resolve(message = "com.oracle.truffle.api.dsl.test.interop.MyMessage")
     public abstract static class AcceptMyMessage2 extends Node {
         public Object access(VirtualFrame frame, ValidTruffleObject0 object, int a, double b, Object c) {
             return true;

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.io.Closeable;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -50,11 +51,13 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.impl.Accessor.CallInlined;
+import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.io.Closeable;
 
 /**
  * An interface between Truffle API and hosting virtual machine. Not interesting for regular Truffle
@@ -248,10 +251,6 @@ public abstract class TVMCI {
     protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
     }
 
-    protected Object callProfiled(CallTarget target, Object... args) {
-        return target.call(args);
-    }
-
     /**
      * Accessor for {@link TVMCI#Test} class.
      *
@@ -314,4 +313,21 @@ public abstract class TVMCI {
     @SuppressWarnings("unused")
     protected void reportPolymorphicSpecialize(Node node) {
     }
+
+    protected ThreadLocal<Object> createFastThreadLocal() {
+        return new ThreadLocal<>();
+    }
+
+    protected IndirectCallNode createUncachedIndirectCall() {
+        return null;
+    }
+
+    protected CallInlined getCallInlined() {
+        return null;
+    }
+
+    protected CallProfiled getCallProfiled() {
+        return null;
+    }
+
 }

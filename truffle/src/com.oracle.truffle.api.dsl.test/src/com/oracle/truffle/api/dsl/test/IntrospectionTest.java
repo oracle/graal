@@ -60,6 +60,7 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.IntrospectionTestFactory.FallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.IntrospectionTestFactory.Introspection1NodeGen;
+import com.oracle.truffle.api.dsl.test.IntrospectionTestFactory.TrivialNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
 public class IntrospectionTest {
@@ -299,7 +300,27 @@ public class IntrospectionTest {
                 assertEquals(cachedData1.get(j), cachedData2.get(j));
             }
         }
+    }
 
+    @Test
+    public void testTrivialNode() {
+        TrivialNode node = TrivialNodeGen.create();
+
+        SpecializationInfo specialization = Introspection.getSpecialization(node, "doGeneric");
+        assertTrue(specialization.isActive());
+        assertFalse(specialization.isExcluded());
+        assertEquals(1, specialization.getInstances());
+    }
+
+    @Introspectable
+    abstract static class TrivialNode extends Node {
+
+        abstract Object execute(Object o);
+
+        @Specialization
+        protected static Object doGeneric(Object value) {
+            return value;
+        }
     }
 
 }

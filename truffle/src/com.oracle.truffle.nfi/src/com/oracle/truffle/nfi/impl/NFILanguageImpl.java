@@ -47,6 +47,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.nfi.impl.FunctionExecuteNode.SlowPathExecuteNode;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.types.Parser;
 
@@ -55,9 +56,19 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
     public static final String MIME_TYPE = "trufflenfi/native";
 
+    @CompilationFinal private CallTarget slowPathCall;
+
+    CallTarget getSlowPathCall() {
+        if (slowPathCall == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            slowPathCall = Truffle.getRuntime().createCallTarget(new SlowPathExecuteNode(this));
+        }
+        return slowPathCall;
+    }
+
     @Override
     protected NFIContext createContext(Env env) {
-        return new NFIContext(env);
+        return new NFIContext(this, env);
     }
 
     @Override
@@ -95,7 +106,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
             super(language);
             this.name = name;
             this.flags = flags;
-            this.ctxRef = language.getContextReference();
+            this.ctxRef = lookupContextReference(NFILanguageImpl.class);
         }
 
         @Override
@@ -107,7 +118,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         public Object execute(VirtualFrame frame) {
             if (!ctxRef.get().env.isNativeAccessAllowed()) {
                 CompilerDirectives.transferToInterpreter();
-                throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.");
+                throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", this);
             }
             if (cached == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -123,7 +134,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
         GetDefaultLibraryNode(NFILanguageImpl language) {
             super(language);
-            this.ctxRef = language.getContextReference();
+            this.ctxRef = lookupContextReference(NFILanguageImpl.class);
         }
 
         @Override
@@ -135,7 +146,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         public Object execute(VirtualFrame frame) {
             if (!ctxRef.get().env.isNativeAccessAllowed()) {
                 CompilerDirectives.transferToInterpreter();
-                throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.");
+                throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", this);
             }
             return LibFFILibrary.createDefault();
         }
@@ -181,10 +192,6 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         }
 
         return Truffle.getRuntime().createCallTarget(root);
-    }
-
-    static ContextReference<NFIContext> getCurrentContextReference() {
-        return getCurrentLanguage(NFILanguageImpl.class).getContextReference();
     }
 
     @Override

@@ -56,11 +56,10 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
@@ -99,14 +98,13 @@ public class NumericNFITest extends NFITest {
     }
 
     static long unboxNumber(Object arg) {
-        Object value = arg;
-        while (value instanceof TruffleObject) {
-            TruffleObject obj = (TruffleObject) value;
-            Assert.assertTrue("isBoxed", isBoxed(obj));
-            value = unbox(obj);
+        Assert.assertTrue("isNumber", UNCACHED_INTEROP.isNumber(arg));
+        Assert.assertTrue("fitsInLong", UNCACHED_INTEROP.fitsInLong(arg));
+        try {
+            return UNCACHED_INTEROP.asLong(arg);
+        } catch (UnsupportedMessageException ex) {
+            throw new AssertionError(ex);
         }
-        Assert.assertThat(value, is(instanceOf(Number.class)));
-        return ((Number) value).longValue();
     }
 
     private void checkExpected(String thing, long expected, Object arg) {
@@ -136,10 +134,7 @@ public class NumericNFITest extends NFITest {
                 break;
             case POINTER:
                 Assert.assertThat(thing + " type", value, is(instanceOf(TruffleObject.class)));
-                TruffleObject obj = (TruffleObject) value;
-                Assert.assertTrue(thing + " is boxed", isBoxed(obj));
-                value = unbox(obj);
-                Assert.assertThat("unboxed " + thing, value, is(instanceOf(Long.class)));
+                unboxNumber(value); // for the assertions
                 break;
             default:
                 Assert.fail();
@@ -202,19 +197,19 @@ public class NumericNFITest extends NFITest {
 
         final TruffleObject getIncrement = lookupAndBind("callback_ret_" + type, String.format("() : (%s):%s", type, type));
 
-        @Child Node executeGetIncrement = Message.EXECUTE.createNode();
-        @Child Node executeClosure = Message.EXECUTE.createNode();
+        @Child InteropLibrary getIncrementInterop = getInterop(getIncrement);
+        @Child InteropLibrary closureInterop = getInterop();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
-            Object functionPtr = ForeignAccess.sendExecute(executeGetIncrement, getIncrement);
+            Object functionPtr = getIncrementInterop.execute(getIncrement);
             checkIsClosure(functionPtr);
-            return ForeignAccess.sendExecute(executeClosure, (TruffleObject) functionPtr, 42);
+            return closureInterop.execute(functionPtr, 42);
         }
 
         @TruffleBoundary
         private void checkIsClosure(Object value) {
-            Assert.assertThat("closure", value, is(instanceOf(TruffleObject.class)));
+            Assert.assertTrue("closure", UNCACHED_INTEROP.isExecutable(value));
         }
     }
 
@@ -249,7 +244,7 @@ public class NumericNFITest extends NFITest {
             TruffleObject wrapped = new TestCallback(1, (innerArgs) -> {
                 checkExpectedArg(6, innerArgs[0]);
                 try {
-                    return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), fn, unboxNumber(innerArgs[0]) * 3);
+                    return UNCACHED_INTEROP.execute(fn, unboxNumber(innerArgs[0]) * 3);
                 } catch (InteropException ex) {
                     throw new AssertionError(ex);
                 }
