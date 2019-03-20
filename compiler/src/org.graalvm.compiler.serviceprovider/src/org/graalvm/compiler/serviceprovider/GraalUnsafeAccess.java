@@ -53,13 +53,17 @@ public class GraalUnsafeAccess {
         }
     }
 
+    /**
+     * Gets the {@link Unsafe} singleton.
+     *
+     * @throws SecurityException if a security manager is present and it denies
+     *             {@link RuntimePermission}("accessUnsafe")
+     */
     public static Unsafe getUnsafe() {
-        /*
-         * Ideally we should check here that the caller class has the same class loader as this
-         * class or is in the same module of this class. Unfortunately, Reflection.getCallerClass()
-         * requires the caller to be annotated by CallerSensitive and this annotation is ignored for
-         * classes not loaded by the boot loader.
-         */
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(new RuntimePermission("accessUnsafe"));
+        }
         return UNSAFE;
     }
 }
