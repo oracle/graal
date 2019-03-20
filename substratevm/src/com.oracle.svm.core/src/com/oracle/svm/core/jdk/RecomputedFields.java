@@ -75,6 +75,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import sun.misc.Unsafe;
 
 /*
  * This file contains JDK fields that need to be intercepted because their value in the hosted environment is not
@@ -174,7 +175,7 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
         this.cclass = tclass;
         this.tclass = tclass;
         this.vclass = vclass;
-        this.offset = GraalUnsafeAccess.UNSAFE.objectFieldOffset(field);
+        this.offset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(field);
     }
 }
 
@@ -211,7 +212,7 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
-        this.offset = GraalUnsafeAccess.UNSAFE.objectFieldOffset(field);
+        this.offset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(field);
     }
 }
 
@@ -248,7 +249,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
-        this.offset = GraalUnsafeAccess.UNSAFE.objectFieldOffset(field);
+        this.offset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(field);
     }
 
 }
@@ -286,7 +287,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
-        this.offset = GraalUnsafeAccess.UNSAFE.objectFieldOffset(field);
+        this.offset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(field);
     }
 }
 
@@ -298,6 +299,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
 @AutomaticFeature
 class AtomicFieldUpdaterFeature implements Feature {
 
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private final ConcurrentMap<Object, Boolean> processedUpdaters = new ConcurrentHashMap<>();
     private Consumer<Field> markAsUnsafeAccessed;
 
@@ -346,7 +348,7 @@ class AtomicFieldUpdaterFeature implements Feature {
             // search the declared fields for a field with a matching offset
             for (Field f : tclass.getDeclaredFields()) {
                 if (!Modifier.isStatic(f.getModifiers())) {
-                    long fieldOffset = GraalUnsafeAccess.UNSAFE.objectFieldOffset(f);
+                    long fieldOffset = UNSAFE.objectFieldOffset(f);
                     if (fieldOffset == searchOffset) {
                         markAsUnsafeAccessed.accept(f);
                         return;

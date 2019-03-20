@@ -35,7 +35,7 @@ import sun.misc.Unsafe;
  */
 public class GraalUnsafeAccess {
 
-    public static final Unsafe UNSAFE = initUnsafe();
+    private static final Unsafe UNSAFE = initUnsafe();
 
     private static Unsafe initUnsafe() {
         try {
@@ -51,5 +51,15 @@ public class GraalUnsafeAccess {
                 throw new RuntimeException("exception while trying to get Unsafe", e);
             }
         }
+    }
+
+    public static Unsafe getUnsafe() {
+        /*
+         * Ideally we should check here that the caller class has the same class loader as this
+         * class or is in the same module of this class. Unfortunately, Reflection.getCallerClass()
+         * requires the caller to be annotated by CallerSensitive and this annotation is ignored for
+         * classes not loaded by the boot loader.
+         */
+        return UNSAFE;
     }
 }

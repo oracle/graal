@@ -35,6 +35,10 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
+// Checkstyle: stop
+import sun.misc.Unsafe;
+// Checkstyle resume
+
 /**
  * This class is the plumbing under java.lang.ref.Reference. Instances of this class are discovered
  * by the collector and put on a list. The list can then be inspected to implement
@@ -69,6 +73,8 @@ public class DiscoverableReference {
     /*
      * List access methods.
      */
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /** Push a DiscoverableReference onto the list. */
     public DiscoverableReference prependToDiscoveredReference(DiscoverableReference newNext) {
@@ -183,7 +189,7 @@ public class DiscoverableReference {
 
     private static long getFieldOffset(String fieldName) {
         try {
-            return GraalUnsafeAccess.UNSAFE.objectFieldOffset(DiscoverableReference.class.getDeclaredField(fieldName));
+            return UNSAFE.objectFieldOffset(DiscoverableReference.class.getDeclaredField(fieldName));
         } catch (NoSuchFieldException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

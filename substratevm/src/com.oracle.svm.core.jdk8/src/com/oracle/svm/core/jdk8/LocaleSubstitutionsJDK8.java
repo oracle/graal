@@ -65,7 +65,7 @@ final class Util_sun_text_normalizer_UBiDiProps_JDK8 {
     static final UBiDiProps singleton;
 
     static {
-        GraalUnsafeAccess.UNSAFE.ensureClassInitialized(sun.text.normalizer.NormalizerImpl.class);
+        GraalUnsafeAccess.getUnsafe().ensureClassInitialized(sun.text.normalizer.NormalizerImpl.class);
 
         try {
             singleton = UBiDiProps.getSingleton();

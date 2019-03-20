@@ -67,6 +67,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.misc.Unsafe;
 
 /**
  * This plugin does HotSpot-specific customization of bytecode parsing:
@@ -81,6 +82,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * </ul>
  */
 public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     protected final WordOperationPlugin wordOperationPlugin;
     private final GraalHotSpotVMConfig config;
     private final HotSpotWordTypes wordTypes;
@@ -217,7 +219,7 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
                                 config.jvmciCompileStateCanPostOnExceptionsOffset != Integer.MIN_VALUE &&
                                 config.javaThreadShouldPostOnExceptionsFlagOffset != Integer.MIN_VALUE) {
                     long canPostOnExceptionsOffset = compileState + config.jvmciCompileStateCanPostOnExceptionsOffset;
-                    boolean canPostOnExceptions = GraalUnsafeAccess.UNSAFE.getByte(canPostOnExceptionsOffset) != 0;
+                    boolean canPostOnExceptions = UNSAFE.getByte(canPostOnExceptionsOffset) != 0;
                     if (canPostOnExceptions) {
                         // If the exception capability is set, then generate code
                         // to check the JavaThread.should_post_on_exceptions flag to see

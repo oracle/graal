@@ -55,6 +55,7 @@ import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
+import sun.misc.Unsafe;
 
 /**
  * This node can be used to add a counter to the code that will estimate the dynamic number of calls
@@ -128,10 +129,12 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
     static class SnippetCounterSnippets implements Snippets {
 
+        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
         @Fold
         static int countOffset() {
             try {
-                return (int) GraalUnsafeAccess.UNSAFE.objectFieldOffset(SnippetCounter.class.getDeclaredField("value"));
+                return (int) UNSAFE.objectFieldOffset(SnippetCounter.class.getDeclaredField("value"));
             } catch (Exception e) {
                 throw new GraalError(e);
             }

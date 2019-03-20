@@ -30,7 +30,7 @@ import static org.graalvm.compiler.core.common.util.TypeConversion.asS4;
 import static org.graalvm.compiler.core.common.util.TypeConversion.asU1;
 import static org.graalvm.compiler.core.common.util.TypeConversion.asU2;
 import static org.graalvm.compiler.core.common.util.TypeConversion.asU4;
-import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import sun.misc.Unsafe;
 
@@ -46,6 +46,7 @@ import sun.misc.Unsafe;
  */
 public abstract class UnsafeArrayTypeWriter implements TypeWriter {
 
+    private static final Unsafe UNSAFE = getUnsafe();
     private static final int MIN_CHUNK_LENGTH = 200;
     private static final int MAX_CHUNK_LENGTH = 16000;
 
@@ -136,6 +137,8 @@ public abstract class UnsafeArrayTypeWriter implements TypeWriter {
 }
 
 final class UnalignedUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
+    private static final Unsafe UNSAFE = getUnsafe();
+
     @Override
     public void putS2(long value) {
         long offset = writeOffset(Short.BYTES);
@@ -156,6 +159,8 @@ final class UnalignedUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
 }
 
 final class AlignedUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
+    private static final Unsafe UNSAFE = getUnsafe();
+
     @Override
     public void putS2(long value) {
         long offset = writeOffset(Short.BYTES);

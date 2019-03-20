@@ -29,6 +29,10 @@ import java.util.function.Supplier;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
+// Checkstyle: stop
+import sun.misc.Unsafe;
+// Checkstyle: resume
+
 /**
  * An object reference that is set lazily to the non-null reference returned by the provided
  * {@link Supplier}, in a thread-safe manner: {@link Supplier#get()} might be called more than once
@@ -36,11 +40,13 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
  */
 public final class LazyFinalReference<T> {
 
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
     private static final long VALUE_OFFSET;
 
     static {
         try {
-            VALUE_OFFSET = GraalUnsafeAccess.UNSAFE.objectFieldOffset(LazyFinalReference.class.getDeclaredField("value"));
+            VALUE_OFFSET = UNSAFE.objectFieldOffset(LazyFinalReference.class.getDeclaredField("value"));
         } catch (Throwable ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -63,14 +69,14 @@ public final class LazyFinalReference<T> {
         T v = value;
         if (v == null) {
             // Try volatile read first in case of memory inconsistency to avoid Supplier call
-            v = (T) GraalUnsafeAccess.UNSAFE.getObjectVolatile(this, VALUE_OFFSET);
+            v = (T) UNSAFE.getObjectVolatile(this, VALUE_OFFSET);
             if (v == null) {
                 T obj = Objects.requireNonNull(supplier.get());
 
-                if (GraalUnsafeAccess.UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, null, v)) {
+                if (UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, null, v)) {
                     v = obj;
                 } else {
-                    v = (T) GraalUnsafeAccess.UNSAFE.getObjectVolatile(this, VALUE_OFFSET);
+                    v = (T) UNSAFE.getObjectVolatile(this, VALUE_OFFSET);
                 }
                 assert v != null;
             }

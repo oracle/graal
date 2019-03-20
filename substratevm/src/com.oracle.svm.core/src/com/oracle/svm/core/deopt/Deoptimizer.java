@@ -87,6 +87,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
+import sun.misc.Unsafe;
 
 /**
  * Performs deoptimization. The method to deoptimize (= the source method) is either a specialized
@@ -143,6 +144,8 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * </ol>
  */
 public final class Deoptimizer {
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     private static final RingBuffer<char[]> recentDeoptimizationEvents = new RingBuffer<>();
 
@@ -914,7 +917,7 @@ public final class Deoptimizer {
             curIdx = 2;
         } else {
             try {
-                obj = GraalUnsafeAccess.UNSAFE.allocateInstance(DynamicHub.toClass(hub));
+                obj = UNSAFE.allocateInstance(DynamicHub.toClass(hub));
             } catch (InstantiationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }

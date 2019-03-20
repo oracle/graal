@@ -38,8 +38,11 @@ import com.oracle.svm.reflect.helpers.ReflectionProxyHelper;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import sun.misc.Unsafe;
 
 public final class AccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -51,7 +54,7 @@ public final class AccessorComputer implements RecomputeFieldValue.CustomFieldVa
             throw VMError.shouldNotReachHere();
         }
         try {
-            Proxy proxyInstance = (Proxy) GraalUnsafeAccess.UNSAFE.allocateInstance(proxyClass);
+            Proxy proxyInstance = (Proxy) UNSAFE.allocateInstance(proxyClass);
             ReflectionProxyHelper.setDefaultInvocationHandler(proxyInstance);
             return proxyInstance;
 

@@ -24,13 +24,16 @@
  */
 package com.oracle.svm.core.jdk;
 
-import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
-
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
+
+// Checkstyle: stop
+import sun.misc.Unsafe;
+// Checkstyle: resume
 
 /**
  * Annotated replacements to be called from uninterruptible code for methods whose source I do not
@@ -43,6 +46,7 @@ public class UninterruptibleUtils {
 
     public static class AtomicInteger {
 
+        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -87,6 +91,7 @@ public class UninterruptibleUtils {
 
     public static class AtomicPointer<T extends PointerBase> {
 
+        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -117,6 +122,7 @@ public class UninterruptibleUtils {
 
     public static class AtomicReference<T> {
 
+        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {

@@ -57,6 +57,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.misc.Unsafe;
 
 /**
  * Wraps a field whose value is recomputed when added to an image.
@@ -66,6 +67,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class ComputedValueField implements ReadableJavaField, ComputedValue {
 
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
 
@@ -328,7 +330,7 @@ public class ComputedValueField implements ReadableJavaField, ComputedValue {
         // search the declared fields for a field with a matching offset
         for (Field f : tclass.getDeclaredFields()) {
             if (!Modifier.isStatic(f.getModifiers())) {
-                long fieldOffset = GraalUnsafeAccess.UNSAFE.objectFieldOffset(f);
+                long fieldOffset = UNSAFE.objectFieldOffset(f);
                 if (fieldOffset == searchOffset) {
                     HostedField sf = hMetaAccess.lookupJavaField(f);
                     guarantee(sf.isAccessed() && sf.getLocation() > 0, "Field not marked as accessed: " + sf.format("%H.%n"));

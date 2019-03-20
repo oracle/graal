@@ -53,6 +53,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import sun.misc.Unsafe;
 
 /**
  * This file contains most of the code necessary for supporting VarHandle in native images. The
@@ -94,6 +95,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 @AutomaticFeature
 public class VarHandleFeature implements Feature {
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
     private final Map<Class<?>, VarHandleInfo> infos = new HashMap<>();
 
     private final ConcurrentMap<Object, Boolean> processedVarHandles = new ConcurrentHashMap<>();
@@ -149,7 +152,7 @@ public class VarHandleFeature implements Feature {
                 /* Search the declared fields for a field with a matching offset. */
                 for (Field field : cur.getDeclaredFields()) {
                     if (Modifier.isStatic(field.getModifiers()) == info.isStatic) {
-                        long fieldOffset = info.isStatic ? GraalUnsafeAccess.UNSAFE.staticFieldOffset(field) : GraalUnsafeAccess.UNSAFE.objectFieldOffset(field);
+                        long fieldOffset = info.isStatic ? UNSAFE.staticFieldOffset(field) : UNSAFE.objectFieldOffset(field);
                         if (fieldOffset == originalFieldOffset) {
                             return field;
                         }

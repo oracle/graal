@@ -25,7 +25,7 @@
 package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
-import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
@@ -45,8 +45,11 @@ import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import sun.misc.Unsafe;
 
 public class ConstantStringIndexOfSnippets implements Snippets {
+    private static final Unsafe UNSAFE = getUnsafe();
+
     public static class Templates extends AbstractTemplates {
 
         private final SnippetInfo indexOfConstant = snippet(ConstantStringIndexOfSnippets.class, "indexOfConstant");

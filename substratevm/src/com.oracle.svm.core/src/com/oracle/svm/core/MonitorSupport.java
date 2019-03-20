@@ -48,6 +48,10 @@ import com.oracle.svm.core.thread.ThreadingSupportImpl.PauseRecurringCallback;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
+//Checkstyle: stop
+import sun.misc.Unsafe;
+//Checkstyle resume
+
 /**
  * Implementation of synchronized-related operations.
  * <p>
@@ -70,6 +74,7 @@ import com.oracle.svm.core.util.VMError;
  */
 public class MonitorSupport {
 
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     /**
      * Secondary storage for monitor slots.
      *
@@ -320,7 +325,7 @@ public class MonitorSupport {
             }
             /* Atomically put a new lock in place of the null at the monitorOffset. */
             final ReentrantLock newMonitor = new ReentrantLock();
-            if (GraalUnsafeAccess.UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
+            if (UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
                 return newMonitor;
             }
             /* We lost the race, use the lock some other thread installed. */

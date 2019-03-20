@@ -51,7 +51,7 @@ public class VerifyUnsafeAccess extends VerifyPhase<PhaseContext> {
         ResolvedJavaMethod caller = graph.method();
         String holderQualified = caller.format("%H");
         String holderUnqualified = caller.format("%h");
-        String packageName = holderQualified.substring(0, holderQualified.length() - holderUnqualified.length() - 1);
+        String packageName = holderQualified.equals(holderUnqualified) ? "" : holderQualified.substring(0, holderQualified.length() - holderUnqualified.length() - 1);
         if ((holderQualified.equals(GraalUnsafeAccess.class.getName()) ||
                         holderQualified.equals("org.graalvm.compiler.truffle.runtime.UnsafeAccess") ||
                         holderQualified.equals("jdk.vm.ci.hotspot.UnsafeAccess")) &&
@@ -63,28 +63,30 @@ public class VerifyUnsafeAccess extends VerifyPhase<PhaseContext> {
             return true;
         }
 
-        for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            ResolvedJavaMethod callee = t.targetMethod();
-            if (callee.getDeclaringClass().equals(unsafeType)) {
-                if (callee.getName().equals("getUnsafe")) {
-                    throw new VerificationError("Call to %s at callsite %s is prohibited. Call Services.getSavedProperties().get(String) instead.",
-                                    callee.format("%H.%n(%p)"),
-                                    caller.format("%H.%n(%p)"));
-                }
-            }
-        }
-
         for (InstanceOfNode node : graph.getNodes().filter(InstanceOfNode.class)) {
             TypeReference typeRef = node.type();
             if (typeRef != null) {
                 if (unsafeType.isAssignableFrom(typeRef.getType())) {
-                    throw new VerificationError("Cast to %s in %s is prohibited as it implies accessing Unsafe.theUnsafe via reflection. Use Graal.Unsafe.UNSAFE instead.",
+                    throw new VerificationError("Cast to %s in %s is prohibited as it implies accessing Unsafe.theUnsafe via reflection. Use %s.getUnsafe() instead.",
                                     unsafeType.toJavaName(),
-                                    caller.format("%H.%n(%p)"));
+                                    caller.format("%H.%n(%p)"),
+                                    GraalUnsafeAccess.class.getName());
 
                 }
             }
         }
+        for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            ResolvedJavaMethod callee = t.targetMethod();
+            if (callee.getDeclaringClass().equals(unsafeType)) {
+                if (callee.getName().equals("getUnsafe")) {
+                    throw new VerificationError("Call to %s at callsite %s is prohibited. Use %s.getUnsafe() instead.",
+                                    callee.format("%H.%n(%p)"),
+                                    caller.format("%H.%n(%p)"),
+                                    GraalUnsafeAccess.class.getName());
+                }
+            }
+        }
+
         return true;
     }
 }

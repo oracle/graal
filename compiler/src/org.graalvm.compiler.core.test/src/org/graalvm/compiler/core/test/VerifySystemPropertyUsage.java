@@ -76,7 +76,7 @@ public class VerifySystemPropertyUsage extends VerifyPhase<PhaseContext> {
         ResolvedJavaMethod caller = graph.method();
         String holderQualified = caller.format("%H");
         String holderUnqualified = caller.format("%h");
-        String packageName = holderQualified.substring(0, holderQualified.length() - holderUnqualified.length() - 1);
+        String packageName = holderQualified.equals(holderUnqualified) ? "" : holderQualified.substring(0, holderQualified.length() - holderUnqualified.length() - 1);
         if (packageName.startsWith("jdk.vm.ci")) {
             if (JVMCI_VERSION_MAJOR >= 0 && JVMCI_VERSION_MINOR > 56) {
                 // This JVMCI version should not use non-saved system properties

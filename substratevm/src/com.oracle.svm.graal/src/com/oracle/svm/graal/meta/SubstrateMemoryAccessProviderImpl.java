@@ -48,9 +48,11 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.misc.Unsafe;
 
 public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryAccessProvider {
 
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     public static final SubstrateMemoryAccessProviderImpl SINGLETON = new SubstrateMemoryAccessProviderImpl();
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -91,7 +93,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
             checkRead(JavaKind.Object, displacement, baseObjectType, baseObject);
             Object rawValue = BarrieredAccess.readObject(baseObject, offset);
             if (isVolatile) {
-                GraalUnsafeAccess.UNSAFE.loadFence();
+                UNSAFE.loadFence();
             }
             return SubstrateObjectConstant.forObject(rawValue, (compressedEncoding != null));
         }
@@ -109,7 +111,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
             Word address = baseAddress.add(offset);
             Object rawValue = ReferenceAccess.singleton().readObjectAt(address, false);
             if (isVolatile) {
-                GraalUnsafeAccess.UNSAFE.loadFence();
+                UNSAFE.loadFence();
             }
             return SubstrateObjectConstant.forObject(rawValue, false);
         }
@@ -212,7 +214,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
             return null;
         }
         if (isVolatile) {
-            GraalUnsafeAccess.UNSAFE.loadFence();
+            UNSAFE.loadFence();
         }
         return toConstant(kind, rawValue);
     }

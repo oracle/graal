@@ -30,7 +30,7 @@ import static org.graalvm.compiler.graph.Edges.translateInto;
 import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
 import static org.graalvm.compiler.graph.InputEdges.translateInto;
 import static org.graalvm.compiler.graph.Node.WithAllEdges;
-import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -71,6 +71,8 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 
+import sun.misc.Unsafe;
+
 /**
  * Metadata for every {@link Node} type. The metadata includes:
  * <ul>
@@ -81,6 +83,7 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
  */
 public final class NodeClass<T> extends FieldIntrospection<T> {
 
+    private static final Unsafe UNSAFE = getUnsafe();
     // Timers for creation of a NodeClass instance
     private static final TimerKey Init_FieldScanning = DebugContext.timer("NodeClass.Init.FieldScanning");
     private static final TimerKey Init_FieldScanningInner = DebugContext.timer("NodeClass.Init.FieldScanning.Inner");

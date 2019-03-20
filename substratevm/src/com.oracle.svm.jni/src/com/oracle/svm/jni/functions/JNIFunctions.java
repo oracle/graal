@@ -97,6 +97,7 @@ import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 import com.oracle.svm.jni.nativeapi.JNIVersion;
 
 import jdk.vm.ci.meta.MetaUtil;
+import sun.misc.Unsafe;
 
 /**
  * Implementations of the functions defined by the Java Native Interface. Not all functions are
@@ -113,6 +114,8 @@ final class JNIFunctions {
     /*
      * jint GetVersion(JNIEnv *env);
      */
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
@@ -413,7 +416,7 @@ final class JNIFunctions {
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
         Object instance;
         try {
-            instance = GraalUnsafeAccess.UNSAFE.allocateInstance(clazz);
+            instance = UNSAFE.allocateInstance(clazz);
         } catch (InstantiationException e) {
             instance = null;
         }

@@ -35,6 +35,10 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.annotate.NeverInline;
 
+// Checkstyle: stop
+import sun.misc.Unsafe;
+// Checkstyle: resume
+
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
  * {@link #initialize implementation} of class initialization according to the Java VM
@@ -45,6 +49,8 @@ import com.oracle.svm.core.annotate.NeverInline;
  * initialization at runtime so factoring out the information reduces image size.
  */
 public final class ClassInitializationInfo {
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
      * Singleton for classes that are already initialized during image building and do not need
@@ -325,7 +331,7 @@ public final class ClassInitializationInfo {
             this.initState = state;
             this.initThread = null;
             /* Make sure previous stores are all done, notably the initState. */
-            GraalUnsafeAccess.UNSAFE.storeFence();
+            UNSAFE.storeFence();
 
             if (initCondition != null) {
                 initCondition.signalAll();

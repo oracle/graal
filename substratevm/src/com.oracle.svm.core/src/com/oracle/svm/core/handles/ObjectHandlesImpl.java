@@ -24,12 +24,9 @@
  */
 package com.oracle.svm.core.handles;
 
-// Allow unsafe
-// Checkstyle: stop
-import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.UNSAFE;
-
 import java.lang.ref.WeakReference;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.word.SignedWord;
@@ -38,6 +35,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.heap.FeebleReference;
 
+//Checkstyle: stop
+import sun.misc.Unsafe;
 // Checkstyle: resume
 
 /**
@@ -58,6 +57,8 @@ import com.oracle.svm.core.heap.FeebleReference;
  * significant role in how indexing is implemented.
  */
 public final class ObjectHandlesImpl implements ObjectHandles {
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
     /**
      * Internal weak reference. Other code can create its own {@link WeakReference} objects and
      * handles to them, which we should distinguish from explicit weak references. Therefore, we
