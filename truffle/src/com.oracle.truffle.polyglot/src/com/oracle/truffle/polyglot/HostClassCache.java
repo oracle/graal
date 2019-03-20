@@ -73,11 +73,7 @@ final class HostClassCache {
 
     @TruffleBoundary
     public static HostClassCache forInstance(HostObject receiver) {
-        PolyglotContextImpl context = receiver.languageContext != null ? receiver.languageContext.context : null;
-        if (context == null) {
-            context = PolyglotContextImpl.requireContext();
-        }
-        return context.engine.getHostClassCache();
+        return receiver.getEngine().getHostClassCache();
     }
 
     @TruffleBoundary
@@ -97,7 +93,7 @@ final class HostClassCache {
         return this.hostAccess == toVerify;
     }
 
-    public boolean isPublicAccess() {
+    boolean isPublicAccess() {
         return publicAccess;
     }
 

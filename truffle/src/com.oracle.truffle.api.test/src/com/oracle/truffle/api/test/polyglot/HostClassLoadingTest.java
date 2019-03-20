@@ -66,6 +66,7 @@ import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleException;
@@ -76,9 +77,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import java.io.OutputStream;
-import java.nio.file.StandardOpenOption;
-import org.graalvm.polyglot.HostAccess;
 
 public class HostClassLoadingTest extends AbstractPolyglotTest {
 
