@@ -563,6 +563,30 @@ public final class Context implements AutoCloseable {
     }
 
     /**
+     * {@inheritDoc}
+     * 
+     * @since 1.0
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Context) {
+            Context other = ((Context) obj);
+            return impl.equals(other.impl);
+        }
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     * 
+     * @since 1.0
+     */
+    @Override
+    public int hashCode() {
+        return impl.hashCode();
+    }
+
+    /**
      * Explicitly leaves the context on the current thread. The context must be {@link #enter()
      * entered} before calling this method.
      *
