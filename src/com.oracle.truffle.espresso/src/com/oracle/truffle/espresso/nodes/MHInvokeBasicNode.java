@@ -33,7 +33,6 @@ import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 public class MHInvokeBasicNode extends EspressoBaseNode {
 
-    // TODO(garcia) Cache.
     @Child BasicNode node;
 
     public MHInvokeBasicNode(Method method) {
@@ -62,8 +61,7 @@ abstract class BasicNode extends Node {
     Object directBasic(StaticObjectImpl methodHandle, Object[] args, Meta meta,
                     @Cached("methodHandle") StaticObjectImpl cachedHandle,
                     @Cached("getSOIField(methodHandle, meta.form)") StaticObjectImpl lform,
-                    @Cached("getSOIField(lform, meta.vmentry)") StaticObjectImpl mname,
-                    @Cached("getMethodHiddenField(mname, vmtarget)") Method target) {
+                    @Cached("getMethodHiddenField(getSOIField(lform, meta.vmentry), vmtarget)") Method target) {
         return target.invokeDirect(null, args);
     }
 

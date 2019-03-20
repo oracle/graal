@@ -77,6 +77,15 @@ public class MHLinkToNode extends EspressoBaseNode {
             Symbol<Type> t = Signatures.parameterType(targetSig, i);
             if (t == Type._boolean) {
                 res[i] = ((int) args[i + from] != 0);
+            } else if (t == Type._short) { // Unbox to cast.
+                int value = (int) args[i + from];
+                res[i] = (short) value;
+            } else if (t == Type._byte) {
+                int value = (int) args[i + from];
+                res[i] = (byte) value;
+            } else if (t == Type._char) {
+                int value = (int) args[i + from];
+                res[i] = (char) value;
             } else {
                 res[i] = args[i + from];
             }
