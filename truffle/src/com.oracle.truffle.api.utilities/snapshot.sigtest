@@ -6,6 +6,8 @@ meth public abstract boolean isValid()
 meth public abstract java.lang.String getName()
 meth public abstract void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
 meth public abstract void invalidate()
+meth public static boolean isValidAssumption(com.oracle.truffle.api.Assumption)
+meth public static boolean isValidAssumption(com.oracle.truffle.api.Assumption[])
 meth public void invalidate(java.lang.String)
 
 CLSS public final com.oracle.truffle.api.utilities.AlwaysValidAssumption
@@ -34,7 +36,7 @@ meth public void invalidate(java.lang.String)
 supr java.lang.Object
 hfds ASSUMPTION_UPDATER,assumption,name
 
-CLSS public com.oracle.truffle.api.utilities.JSONHelper
+CLSS public final com.oracle.truffle.api.utilities.JSONHelper
 innr public abstract static JSONStringBuilder
 innr public final static JSONArrayBuilder
 innr public final static JSONObjectBuilder

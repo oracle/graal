@@ -124,6 +124,8 @@ fld public final static org.graalvm.polyglot.tck.TypeDescriptor BOOLEAN
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE_ANY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor HOST_OBJECT
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor INSTANTIABLE
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor INSTANTIABLE_ANY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NATIVE_POINTER
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NULL
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NUMBER
@@ -131,6 +133,7 @@ fld public final static org.graalvm.polyglot.tck.TypeDescriptor OBJECT
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor STRING
 meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor executable(org.graalvm.polyglot.tck.TypeDescriptor,boolean,org.graalvm.polyglot.tck.TypeDescriptor[])
 meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor executable(org.graalvm.polyglot.tck.TypeDescriptor,org.graalvm.polyglot.tck.TypeDescriptor[])
+meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor instantiable(org.graalvm.polyglot.tck.TypeDescriptor,boolean,org.graalvm.polyglot.tck.TypeDescriptor[])
 meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor intersection(org.graalvm.polyglot.tck.TypeDescriptor[])
 meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor union(org.graalvm.polyglot.tck.TypeDescriptor[])
 meth public boolean equals(java.lang.Object)
@@ -143,7 +146,7 @@ meth public static org.graalvm.polyglot.tck.TypeDescriptor array(org.graalvm.pol
 meth public static org.graalvm.polyglot.tck.TypeDescriptor forValue(org.graalvm.polyglot.Value)
 supr java.lang.Object
 hfds NOTYPE,PREDEFINED_TYPES,impl
-hcls ArrayImpl,ExecutableImpl,IntersectionImpl,PrimitiveImpl,PrimitiveKind,TypeDescriptorImpl,UnionImpl
+hcls ArrayImpl,ExecutableImpl,InstantiableImpl,IntersectionImpl,PrimitiveImpl,PrimitiveKind,TypeDescriptorImpl,UnionImpl
 
 CLSS abstract interface org.graalvm.polyglot.tck.package-info
 
