@@ -54,7 +54,6 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
  */
 public class MatchContext {
     private static final CounterKey MatchContextSuccessDifferentBlocks = DebugContext.counter("MatchContextSuccessDifferentBlocks");
-    private static final CounterKey MatchContextSuccessSideEffects = DebugContext.counter("MatchContextSuccessSideEffects");
 
     private final Node root;
 
@@ -185,39 +184,6 @@ public class MatchContext {
     }
 
     public Result validate() {
-        boolean oldResult = oldValidate();
-        Result newResult = newValidate();
-        if (newResult != Result.OK && oldResult) {
-            throw new RuntimeException("New matching scheme regressed");
-        }
-        return newResult;
-    }
-
-    public boolean oldValidate() {
-        final List<Node> nodes = schedule.getBlockToNodesMap().get(rootBlock);
-        int startIndex = nodes.indexOf(root);
-        for (ConsumedNode cn : consumed) {
-            int index = nodes.indexOf(cn.node);
-            if (index == -1) {
-                return false;
-            }
-            startIndex = Math.min(startIndex, index);
-        }
-        // Ensure that there's no unsafe work in between these operations.
-        for (int i = startIndex; i <= rootIndex; i++) {
-            Node node = nodes.get(i);
-            if (node instanceof VirtualObjectNode || node instanceof FloatingNode) {
-                // The order of evaluation of these nodes controlled by data dependence so they
-                // don't interfere with this match.
-                continue;
-            } else if (!consumed.contains(node) && node != root) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public Result newValidate() {
         Result result = findEarlyPosition();
         if (result != Result.OK) {
             return result;
@@ -334,11 +300,6 @@ public class MatchContext {
             }
         }
         assert verifyInputsDifferentBlock(root) == Result.OK;
-        if (MatchContextSuccessSideEffects.isEnabled(debug)) {
-            if (!oldValidate()) {
-                MatchContextSuccessSideEffects.increment(debug);
-            }
-        }
         return Result.OK;
     }
 
