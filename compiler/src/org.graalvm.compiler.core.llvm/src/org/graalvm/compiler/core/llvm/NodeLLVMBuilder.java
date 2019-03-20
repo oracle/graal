@@ -244,6 +244,11 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
         gen.getLLVMResult().setProcessed(block);
     }
 
+    @Override
+    public void matchBlock(Block b, StructuredGraph graph, StructuredGraph.ScheduleResult blockMap) {
+
+    }
+
     private void doRoot(ValueNode instr) {
         DebugContext debug = instr.getDebug();
         debug.log("Visiting %s", instr);
