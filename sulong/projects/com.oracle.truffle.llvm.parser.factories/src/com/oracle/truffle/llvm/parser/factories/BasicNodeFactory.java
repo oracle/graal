@@ -391,10 +391,13 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugManagedValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -445,6 +448,7 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
@@ -2250,8 +2254,49 @@ public class BasicNodeFactory implements NodeFactory {
         return new LLVMDebugTrapNode(location);
     }
 
+    private TruffleObject asDebuggerIRValue(Object llvmType, Object value) {
+        final Type type;
+        if (llvmType instanceof Type) {
+            type = (Type) llvmType;
+        } else {
+            return null;
+        }
+
+        // e.g. debugger symbols
+        if (type instanceof MetaType) {
+            return null;
+        }
+
+        final LLVMSourceType sourceType = LLVMSourceTypeFactory.resolveType(type, context);
+        if (sourceType == null) {
+            return null;
+        }
+
+        // after frame-nulling the actual vector length does not correspond to the type anymore
+        if (value instanceof LLVMVector && ((LLVMVector) value).getLength() == 0) {
+            return null;
+        }
+
+        // after frame-nulling the actual bitsize does not correspond to the type anymore
+        if (value instanceof LLVMIVarBit && ((LLVMIVarBit) value).getBitSize() == 0) {
+            return null;
+        }
+
+        final LLVMDebugValue debugValue = createDebugValueBuilder().build(value);
+        if (debugValue == LLVMDebugValue.UNAVAILABLE) {
+            return null;
+        }
+
+        return LLVMDebugObject.instantiate(sourceType, 0L, debugValue, null);
+    }
+
     @Override
     public TruffleObject toGenericDebuggerValue(Object llvmType, Object value) {
+        final TruffleObject complexObject = asDebuggerIRValue(llvmType, value);
+        if (complexObject != null) {
+            return complexObject;
+        }
+
         return LLVMDebugManagedValue.create(llvmType, value);
     }
 

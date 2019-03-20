@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -31,58 +31,58 @@
 BREAK 13 STEP_OVER "@test"
     OPEN_SCOPE partial
         MEMBER structured "< 4 x i32 >" "%1"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "2"
-            MEMBER int "i32" "2" "4"
-            MEMBER int "i32" "3" "6"
+            MEMBER int "i32" "[0]" "0"
+            MEMBER int "i32" "[1]" "2"
+            MEMBER int "i32" "[2]" "4"
+            MEMBER int "i32" "[3]" "6"
         END_MEMBERS
 
 
 STOP 14 STEP_OVER "@test"
     OPEN_SCOPE partial
         MEMBER structured "< 4 x i32 >" "%1"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "2"
-            MEMBER int "i32" "2" "4"
-            MEMBER int "i32" "3" "6"
+            MEMBER int "i32" "[0]" "0"
+            MEMBER int "i32" "[1]" "2"
+            MEMBER int "i32" "[2]" "4"
+            MEMBER int "i32" "[3]" "6"
         END_MEMBERS
         MEMBER structured "< 4 x i32 >" "%2"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "1"
-            MEMBER int "i32" "2" "4"
-            MEMBER int "i32" "3" "9"
+            MEMBER int "i32" "[0]" "0"
+            MEMBER int "i32" "[1]" "1"
+            MEMBER int "i32" "[2]" "4"
+            MEMBER int "i32" "[3]" "9"
         END_MEMBERS
 
 
 STOP 15 CONTINUE "@test"
     OPEN_SCOPE partial
         MEMBER structured "< 4 x i32 >" "%1"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "2"
-            MEMBER int "i32" "2" "4"
-            MEMBER int "i32" "3" "6"
+            MEMBER int "i32" "[0]" "0"
+            MEMBER int "i32" "[1]" "2"
+            MEMBER int "i32" "[2]" "4"
+            MEMBER int "i32" "[3]" "6"
         END_MEMBERS
         MEMBER structured "< 4 x i32 >" "%2"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "1"
-            MEMBER int "i32" "2" "4"
-            MEMBER int "i32" "3" "9"
+            MEMBER int "i32" "[0]" "0"
+            MEMBER int "i32" "[1]" "1"
+            MEMBER int "i32" "[2]" "4"
+            MEMBER int "i32" "[3]" "9"
         END_MEMBERS
         MEMBER structured "< 4 x i32 >" "%3"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "-1"
-            MEMBER int "i32" "2" "0"
-            MEMBER int "i32" "3" "3"
+            MEMBER int "i32" "[0]" "0"
+            MEMBER int "i32" "[1]" "-1"
+            MEMBER int "i32" "[2]" "0"
+            MEMBER int "i32" "[3]" "3"
         END_MEMBERS
 
 
 BREAK 18 CONTINUE "@test"
     OPEN_SCOPE partial
         MEMBER structured "< 4 x i32 >" "%6"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "5"
-            MEMBER int "i32" "2" "12"
-            MEMBER int "i32" "3" "21"
+            MEMBER int "i32" "[0]" "0"
+            MEMBER int "i32" "[1]" "5"
+            MEMBER int "i32" "[2]" "12"
+            MEMBER int "i32" "[3]" "21"
         END_MEMBERS
 
 
