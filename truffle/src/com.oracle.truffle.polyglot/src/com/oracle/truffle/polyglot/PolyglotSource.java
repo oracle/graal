@@ -56,8 +56,6 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Collection;
 
 class PolyglotSource extends AbstractSourceImpl {
 

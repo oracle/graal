@@ -70,11 +70,9 @@ import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import java.util.Map;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.TruffleLanguage.Registration")
 public final class LanguageRegistrationProcessor extends AbstractProcessor {
@@ -145,7 +143,8 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             }
             int fileTypeDetectorCounter = 0;
             for (TypeMirror fileTypeDetectorTypeMirror : ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "fileTypeDetectors")) {
-                p.setProperty(prefix + "fileTypeDetector" + fileTypeDetectorCounter++, processingEnv.getElementUtils().getBinaryName(ElementUtils.fromTypeMirror(fileTypeDetectorTypeMirror)).toString());
+                p.setProperty(prefix + "fileTypeDetector" + fileTypeDetectorCounter++,
+                                processingEnv.getElementUtils().getBinaryName(ElementUtils.fromTypeMirror(fileTypeDetectorTypeMirror)).toString());
             }
         }
         if (cnt > 0) {
@@ -239,10 +238,10 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                     }
 
                     Set<String> mimeTypes = new HashSet<>();
-                    if (!validateMimeTypes(mimeTypes, e, mirror, getAnnotationValue(mirror, "characterMimeTypes"), annotation.characterMimeTypes())) {
+                    if (!validateMimeTypes(mimeTypes, e, mirror, ElementUtils.getAnnotationValue(mirror, "characterMimeTypes"), annotation.characterMimeTypes())) {
                         continue;
                     }
-                    if (!validateMimeTypes(mimeTypes, e, mirror, getAnnotationValue(mirror, "byteMimeTypes"), annotation.byteMimeTypes())) {
+                    if (!validateMimeTypes(mimeTypes, e, mirror, ElementUtils.getAnnotationValue(mirror, "byteMimeTypes"), annotation.byteMimeTypes())) {
                         continue;
                     }
 
@@ -250,14 +249,14 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                     if (mimeTypes.size() > 1 && (defaultMimeType == null || defaultMimeType.equals(""))) {
                         emitError("No defaultMimeType attribute specified. " +
                                         "The defaultMimeType attribute needs to be specified if more than one MIME type was specified.", e,
-                                        mirror, getAnnotationValue(mirror, "defaultMimeType"));
+                                        mirror, ElementUtils.getAnnotationValue(mirror, "defaultMimeType"));
                         continue;
                     }
 
                     if (defaultMimeType != null && !defaultMimeType.equals("") && !mimeTypes.contains(defaultMimeType)) {
                         emitError("The defaultMimeType is not contained in the list of supported characterMimeTypes or byteMimeTypes. Add the specified default MIME type to" +
                                         " character or byte MIME types to resolve this.", e,
-                                        mirror, getAnnotationValue(mirror, "defaultMimeType"));
+                                        mirror, ElementUtils.getAnnotationValue(mirror, "defaultMimeType"));
                         continue;
                     }
 
@@ -268,7 +267,7 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                             continue;
                         }
                         if (RESERVED_IDS.contains(id)) {
-                            emitError(String.format("Id '%s' is reserved for other use and must not be used as id.", id), e, mirror, getAnnotationValue(mirror, "id"));
+                            emitError(String.format("Id '%s' is reserved for other use and must not be used as id.", id), e, mirror, ElementUtils.getAnnotationValue(mirror, "id"));
                             continue;
                         }
                     }
@@ -319,8 +318,8 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
     }
 
     private boolean validateFileTypeDetectors(Element annotatedElement, AnnotationMirror mirror) {
-        AnnotationValue value = getAnnotationValue(mirror, "fileTypeDetectors", true);
-        for (TypeMirror fileTypeDetectorType : getAnnotationValueList(TypeMirror.class, mirror, "fileTypeDetectors")) {
+        AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "fileTypeDetectors", true);
+        for (TypeMirror fileTypeDetectorType : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "fileTypeDetectors")) {
             TypeElement fileTypeDetectorElement = ElementUtils.fromTypeMirror(fileTypeDetectorType);
             if (!fileTypeDetectorElement.getModifiers().contains(Modifier.PUBLIC)) {
                 emitError("Registered FileTypeDetector class must be public.", annotatedElement, mirror, value);
@@ -387,54 +386,5 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
         public synchronized Enumeration<Object> keys() {
             return Collections.enumeration(new TreeSet<>(super.keySet()));
         }
-    }
-
-    /**
-     * Temporary local implementation of
-     * {@link ElementUtils#getAnnotationValue(javax.lang.model.element.AnnotationMirror, java.lang.String)}
-     * . The {@code ElementUtils.getAnnotationValue} does not work on Eclipse JDT compiler when an
-     * annotation type is nested in a generic type, see issue:
-     * https://bugs.eclipse.org/bugs/show_bug.cgi?id=544940
-     */
-    private AnnotationValue getAnnotationValue(AnnotationMirror mirror, String name) {
-        return getAnnotationValue(mirror, name, true);
-    }
-
-    /**
-     * Temporary local implementation of
-     * {@link ElementUtils#getAnnotationValue(javax.lang.model.element.AnnotationMirror, java.lang.String, boolean)}
-     * . The {@code ElementUtils.getAnnotationValue} does not work on Eclipse JDT compiler when an
-     * annotation type is nested in a generic type, see issue:
-     * https://bugs.eclipse.org/bugs/show_bug.cgi?id=544940
-     */
-    private AnnotationValue getAnnotationValue(AnnotationMirror mirror, String name, boolean resolveDefault) {
-        Map<? extends ExecutableElement, ? extends AnnotationValue> valuesMap = resolveDefault ? processingEnv.getElementUtils().getElementValuesWithDefaults(mirror) : mirror.getElementValues();
-        for (ExecutableElement e : valuesMap.keySet()) {
-            if (name.contentEquals(e.getSimpleName())) {
-                return valuesMap.get(e);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Temporary local implementation of
-     * {@link ElementUtils#getAnnotationValueList(java.lang.Class, javax.lang.model.element.AnnotationMirror, java.lang.String)}
-     * . The {@code ElementUtils.getAnnotationValueList} does not work on Eclipse JDT compiler when
-     * an annotation type is nested in a generic type, see issue:
-     * https://bugs.eclipse.org/bugs/show_bug.cgi?id=544940
-     */
-    private <T> List<T> getAnnotationValueList(Class<T> expectedListType, AnnotationMirror mirror, String name) {
-        List<?> values = ElementUtils.resolveAnnotationValue(List.class, getAnnotationValue(mirror, name));
-        List<T> result = new ArrayList<>();
-        if (values != null) {
-            for (Object value : values) {
-                T annotationValue = ElementUtils.resolveAnnotationValue(expectedListType, (AnnotationValue) value);
-                if (annotationValue != null) {
-                    result.add(annotationValue);
-                }
-            }
-        }
-        return result;
     }
 }

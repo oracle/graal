@@ -27,10 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import java.io.IOException;
 import java.io.InputStream;

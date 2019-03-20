@@ -44,7 +44,6 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
-import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleStackTraceElement;

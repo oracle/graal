@@ -60,7 +60,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
-import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleException;

@@ -484,13 +484,13 @@ final class LanguageCache implements Comparable<LanguageCache> {
             synchronized (this) {
                 if (fileTypeDetectors == null) {
                     List<FileTypeDetector> instances = new ArrayList<>(fileTypeDetectorClassNames.size());
-                    for (String className : fileTypeDetectorClassNames) {
+                    for (String fileTypeDetectorClassName : fileTypeDetectorClassNames) {
                         try {
-                            Class<? extends FileTypeDetector> detectorClass = Class.forName(className, true, loader).asSubclass(FileTypeDetector.class);
+                            Class<? extends FileTypeDetector> detectorClass = Class.forName(fileTypeDetectorClassName, true, loader).asSubclass(FileTypeDetector.class);
                             FileTypeDetector instance = detectorClass.getDeclaredConstructor().newInstance();
                             instances.add(instance);
                         } catch (ReflectiveOperationException e) {
-                            throw new IllegalStateException("Cannot instantiate FileTypeDetector, class  " + className + ".", e);
+                            throw new IllegalStateException("Cannot instantiate FileTypeDetector, class  " + fileTypeDetectorClassName + ".", e);
                         }
                     }
                     fileTypeDetectors = Collections.unmodifiableList(instances);

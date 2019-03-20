@@ -1554,9 +1554,7 @@ public final class TruffleFile {
             Iterable<? extends FileTypeDetector> result = fileTypeDetectors;
             if (result == null) {
                 result = fileTypeDetectorsSupplier.get();
-                if (result == null) {
-                    throw new IllegalStateException("FileTypeDetectorsSupplier returned null.");
-                }
+                assert result != null : "FileTypeDetectorsSupplier returned null.";
                 fileTypeDetectors = result;
             }
             return result;
