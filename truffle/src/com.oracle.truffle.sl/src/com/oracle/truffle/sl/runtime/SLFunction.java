@@ -59,8 +59,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
-import com.oracle.truffle.sl.nodes.util.SLNormalizeArrayNode;
-import com.oracle.truffle.sl.nodes.util.SLSimplifyNode;
 
 /**
  * Represents a SL function. On the Truffle level, a callable element is represented by a
@@ -205,14 +203,11 @@ public final class SLFunction implements TruffleObject {
         protected static Object doDirect(SLFunction function, Object[] arguments,
                         @Cached("function.getCallTargetStable()") Assumption callTargetStable,
                         @Cached("function.getCallTarget()") RootCallTarget cachedTarget,
-                        @Cached("create(cachedTarget)") DirectCallNode callNode,
-                        @Cached SLSimplifyNode returnNormalize,
-                        @Cached SLNormalizeArrayNode argumentsNormalize) {
+                        @Cached("create(cachedTarget)") DirectCallNode callNode) {
 
             /* Inline cache hit, we are safe to execute the cached call target. */
-            Object[] normalizedArguments = argumentsNormalize.executeConvert(arguments);
-            Object returnValue = callNode.call(normalizedArguments);
-            return returnNormalize.executeConvert(returnValue);
+            Object returnValue = callNode.call(arguments);
+            return returnValue;
         }
 
         /**
@@ -222,15 +217,12 @@ public final class SLFunction implements TruffleObject {
          */
         @Specialization(replaces = "doDirect")
         protected static Object doIndirect(SLFunction function, Object[] arguments,
-                        @Cached IndirectCallNode callNode,
-                        @Cached SLSimplifyNode returnNormalize,
-                        @Cached SLNormalizeArrayNode argumentsNormalize) {
+                        @Cached IndirectCallNode callNode) {
             /*
              * SL has a quite simple call lookup: just ask the function for the current call target,
              * and call it.
              */
-            Object returnValue = callNode.call(function.getCallTarget(), argumentsNormalize.executeConvert(arguments));
-            return returnNormalize.executeConvert(returnValue);
+            return callNode.call(function.getCallTarget(), arguments);
         }
     }
 

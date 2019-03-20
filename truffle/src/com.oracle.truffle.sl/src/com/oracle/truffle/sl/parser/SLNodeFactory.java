@@ -93,6 +93,7 @@ import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNodeGen;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNodeGen;
+import com.oracle.truffle.sl.nodes.util.SLUnboxNodeGen;
 
 /**
  * Helper class used by the SL {@link Parser} to create nodes. The code is factored out of the
@@ -345,8 +346,8 @@ public class SLNodeFactory {
         if (leftNode == null || rightNode == null) {
             return null;
         }
-        final SLExpressionNode leftUnboxed = leftNode;
-        final SLExpressionNode rightUnboxed = rightNode;
+        final SLExpressionNode leftUnboxed = SLUnboxNodeGen.create(leftNode);
+        final SLExpressionNode rightUnboxed = SLUnboxNodeGen.create(rightNode);
 
         final SLExpressionNode result;
         switch (opToken.getText()) {
