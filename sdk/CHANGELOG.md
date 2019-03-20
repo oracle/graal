@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Graal SDK versions. The main focus is on APIs exported by Graal SDK.
 
+## Version 1.0.0 RC15
+* Added optional [FileSystem.getMimeType](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getMimeType-java.nio.file.Path-) and [FileSystem.getEncoding](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getEncoding-java.nio.file.Path-) methods. These methods can be used by `FileSystem` implementer to provide file MIME type and encoding.
+* Added a possibility to set an [encoding in Source builder](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#encoding-java.nio.charset.Charset-)
+
 ## Version 1.0.0 RC14
 * Added [Context.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental options can be passed to a Context.
 * Added [Engine.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental instrument and engine options can be passed.

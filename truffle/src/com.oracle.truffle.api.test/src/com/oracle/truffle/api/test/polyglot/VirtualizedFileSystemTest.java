@@ -103,6 +103,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.nio.charset.Charset;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assume;
 
@@ -1679,6 +1680,21 @@ public class VirtualizedFileSystemTest {
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
             delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
+        }
+
+        @Override
+        public String getSeparator() {
+            return delegate.getSeparator();
+        }
+
+        @Override
+        public String getMimeType(Path path) {
+            return delegate.getMimeType(path);
+        }
+
+        @Override
+        public Charset getEncoding(Path path) {
+            return delegate.getEncoding(path);
         }
     }
 

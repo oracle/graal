@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.TruffleFile;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -53,11 +55,14 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.io.FileSystem;
 
@@ -98,6 +103,10 @@ final class FileSystems {
 
     static boolean isNoIOFileSystem(FileSystem fileSystem) {
         return fileSystem != null && fileSystem.getClass() == DeniedIOFileSystem.class;
+    }
+
+    static Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> newFileTypeDetectorsSupplier(Iterable<LanguageCache> languageCaches) {
+        return new FileTypeDetectorsSupplier(languageCaches);
     }
 
     /**
@@ -157,7 +166,11 @@ final class FileSystems {
 
         @Override
         public Path parsePath(URI path) {
-            return delegate.parsePath(path);
+            try {
+                return delegate.parsePath(path);
+            } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         @Override
@@ -264,7 +277,11 @@ final class FileSystems {
 
         @Override
         public Path parsePath(URI uri) {
-            return delegate.getPath(uri);
+            try {
+                return delegate.getPath(uri);
+            } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         @Override
@@ -396,7 +413,11 @@ final class FileSystems {
 
         @Override
         public Path parsePath(final URI uri) {
-            return Paths.get(uri);
+            try {
+                return Paths.get(uri);
+            } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         @Override
@@ -613,6 +634,24 @@ final class FileSystems {
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
             throw forbidden(currentWorkingDirectory);
+        }
+    }
+
+    private static final class FileTypeDetectorsSupplier implements Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> {
+
+        private final Iterable<LanguageCache> languageCaches;
+
+        FileTypeDetectorsSupplier(Iterable<LanguageCache> languageCaches) {
+            this.languageCaches = languageCaches;
+        }
+
+        @Override
+        public Iterable<? extends TruffleFile.FileTypeDetector> get() {
+            Collection<TruffleFile.FileTypeDetector> detectors = new ArrayList<>();
+            for (LanguageCache cache : languageCaches) {
+                detectors.addAll(cache.getFileTypeDetectors());
+            }
+            return detectors;
         }
     }
 

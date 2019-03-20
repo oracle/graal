@@ -48,6 +48,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Objects;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
@@ -705,6 +706,7 @@ public final class Source {
         private boolean cached = true;
         private Object content;
         private String mimeType;
+        private Charset fileEncoding;
 
         Builder(String language, Object origin) {
             Objects.requireNonNull(language);
@@ -880,6 +882,20 @@ public final class Source {
         }
 
         /**
+         * Assigns an encoding used to read the file content. If the encoding is {@code null} then
+         * the file contained encoding information is used. If the file doesn't provide an encoding
+         * information the default {@code UTF-8} encoding is used.
+         *
+         * @param encoding the new file encoding to be used for reading the content
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
+         * @since 1.0
+         */
+        public Builder encoding(Charset encoding) {
+            this.fileEncoding = encoding;
+            return this;
+        }
+
+        /**
          * Uses configuration of this builder to create new {@link Source} object. The method throws
          * an {@link IOException} if an error loading the source occured.
          *
@@ -887,7 +903,7 @@ public final class Source {
          * @since 1.0
          */
         public Source build() throws IOException {
-            Source source = getImpl().build(language, origin, uri, name, mimeType, content, interactive, internal, cached);
+            Source source = getImpl().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, fileEncoding);
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {

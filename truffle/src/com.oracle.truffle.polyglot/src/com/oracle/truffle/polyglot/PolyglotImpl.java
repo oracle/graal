@@ -1141,5 +1141,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return (PolyglotLanguageInstance) VMAccessor.LANGUAGE.getLanguageInstance(sourceLanguageSPI);
         }
 
+        @Override
+        public FileSystem getFileSystem(Object contextVMObject) {
+            return ((PolyglotContextImpl) contextVMObject).config.fileSystem;
+        }
+
+        @Override
+        public Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> getFileTypeDetectorsSupplier(Object contextVMObject) {
+            return ((PolyglotContextImpl) contextVMObject).engine.getFileTypeDetectorsSupplier();
+        }
     }
 }

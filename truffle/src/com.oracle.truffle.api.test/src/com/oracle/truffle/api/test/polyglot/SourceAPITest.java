@@ -445,7 +445,6 @@ public class SourceAPITest {
             out.write(content);
         }
         url = new URL("jar:" + archive.toURI().toURL().toExternalForm() + "!/Hello.java");
-        assertEquals("text/x-java", Source.findMimeType(url));
         builder = Source.newBuilder("TestJava", url);
         source = builder.build();
         assertNull("MIME type should be null if not specified", source.getMimeType());

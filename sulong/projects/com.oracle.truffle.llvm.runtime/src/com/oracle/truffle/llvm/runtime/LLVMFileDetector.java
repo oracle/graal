@@ -27,28 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import java.io.FileInputStream;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
+import java.nio.charset.Charset;
+import java.nio.file.StandardOpenOption;
 
 /**
- * Used by Truffle (via the ServiceLoader infrastructure) to determine the mime-type of input files.
+ * Used by Truffle to determine the mime-type of input files. Registered by
+ * {@link Registration#fileTypeDetectors()}.
  */
-public class LLVMFileDetector extends FileTypeDetector {
+public class LLVMFileDetector implements TruffleFile.FileTypeDetector {
     private static final long BC_MAGIC_WORD = 0xdec04342L; // 'BC' c0de
     private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;
     private static final long ELF_MAGIC_WORD = 0x464C457FL;
 
     @Override
-    public String probeContentType(Path path) throws IOException {
-        long magicWord = readMagicWord(path);
+    public String findMimeType(TruffleFile file) throws IOException {
+        long magicWord = readMagicWord(file);
         if (magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD) {
             return LLVMLanguage.LLVM_BITCODE_MIME_TYPE;
         } else if (magicWord == ELF_MAGIC_WORD) {
@@ -57,14 +58,19 @@ public class LLVMFileDetector extends FileTypeDetector {
         return null;
     }
 
-    private static long readMagicWord(Path path) {
-        try (InputStream is = new FileInputStream(path.toString())) {
+    @Override
+    public Charset findEncoding(TruffleFile file) throws IOException {
+        return null;
+    }
+
+    private static long readMagicWord(TruffleFile file) {
+        try (InputStream is = file.newInputStream(StandardOpenOption.READ)) {
             byte[] buffer = new byte[4];
             if (is.read(buffer) != buffer.length) {
                 return 0;
             }
             return Integer.toUnsignedLong(ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getInt());
-        } catch (IOException e) {
+        } catch (IOException | SecurityException e) {
             return 0;
         }
     }

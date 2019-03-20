@@ -83,6 +83,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -96,6 +97,7 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
+import java.util.function.Supplier;
 
 class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -157,6 +159,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     volatile Object runtimeData;
     Map<String, Level> logLevels;    // effectively final
     private volatile Object engineLoggers;
+    private volatile Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectorsSupplier;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine,
@@ -1196,4 +1199,21 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return engineLoggers;
     }
 
+    Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> getFileTypeDetectorsSupplier() {
+        Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> res = fileTypeDetectorsSupplier;
+        if (res == null) {
+            synchronized (this) {
+                res = fileTypeDetectorsSupplier;
+                if (res == null) {
+                    Collection<LanguageCache> languageCaches = new ArrayList<>(idToLanguage.size());
+                    for (PolyglotLanguage language : idToLanguage.values()) {
+                        languageCaches.add(language.cache);
+                    }
+                    res = FileSystems.newFileTypeDetectorsSupplier(languageCaches);
+                    fileTypeDetectorsSupplier = res;
+                }
+            }
+        }
+        return res;
+    }
 }

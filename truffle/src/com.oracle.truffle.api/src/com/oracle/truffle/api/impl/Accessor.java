@@ -44,8 +44,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.net.URL;
-import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -157,14 +157,13 @@ public abstract class Accessor {
 
         public abstract org.graalvm.polyglot.Source getPolyglotSource(Source source);
 
-        public abstract String findMimeType(File file) throws IOException;
-
-        public abstract String findMimeType(URL url) throws IOException;
+        public abstract String findMimeType(URL url, Object fileSystemContext) throws IOException;
 
         public abstract boolean isLegacySource(Source soure);
 
         public abstract SourceBuilder newBuilder(String language, File origin);
 
+        public abstract void setFileSystemContext(SourceBuilder builder, Object fileSystemContext);
     }
 
     public abstract static class DumpSupport {
@@ -363,6 +362,9 @@ public abstract class Accessor {
 
         public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> getDirectContextReference(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
 
+        public abstract FileSystem getFileSystem(Object contextVMObject);
+
+        public abstract Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> getFileTypeDetectorsSupplier(Object contextVMObject);
     }
 
     public abstract static class LanguageSupport {
@@ -370,7 +372,7 @@ public abstract class Accessor {
         public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object languageVmObject, Object languageInstanceVMObject);
 
         public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem);
+                        String[] applicationArguments, FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors);
 
         public abstract boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions);
 
@@ -437,7 +439,7 @@ public abstract class Accessor {
         public abstract Iterable<Scope> findTopScopes(Env env);
 
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem);
+                        FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors);
 
         public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
 
@@ -459,12 +461,17 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
-        public abstract Path getPath(TruffleFile file);
+        public abstract Object createFileSystemContext(FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors);
 
-        public abstract TruffleFile getTruffleFile(FileSystem fs, String path);
+        public abstract Object getCurrentFileSystemContext();
+
+        public abstract String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException;
 
         public abstract Object getLanguageInstance(TruffleLanguage<?> language);
 
+        public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
+
+        public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
     }
 
     public abstract static class InstrumentSupport {

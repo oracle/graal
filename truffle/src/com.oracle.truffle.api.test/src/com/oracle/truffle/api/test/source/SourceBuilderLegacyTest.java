@@ -62,13 +62,15 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 /*
  * Legacy tests are necessary to make sure deprecated APIs don't change behavior.
  * To be removed with Source builder deprecations.
  */
 @SuppressWarnings("deprecation")
-public class SourceBuilderLegacyTest {
+public class SourceBuilderLegacyTest extends AbstractPolyglotTest {
+
     @Test
     public void assignMimeTypeAndIdentity() {
         Source.Builder<RuntimeException, com.oracle.truffle.api.source.MissingMIMETypeException, RuntimeException> builder = Source.newBuilder("// a comment\n").name("Empty comment");
@@ -99,6 +101,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void assignMimeTypeAndIdentityForFile() throws IOException {
+        setupEnv();
         File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.deleteOnExit();
 
@@ -130,6 +133,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void mimeTypeIsDetectedRandomBytes() throws IOException {
+        setupEnv();
         File file = File.createTempFile("Hello", ".bin").getCanonicalFile();
         file.deleteOnExit();
 
@@ -144,6 +148,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void mimeTypeIsDetectedRandomBytesForURI() throws IOException {
+        setupEnv();
         File file = File.createTempFile("Hello", ".bin").getCanonicalFile();
         file.deleteOnExit();
 
@@ -158,6 +163,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void ioExceptionWhenFileDoesntExist() throws Exception {
+        setupEnv();
         File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.delete();
         assertFalse("Doesn't exist", file.exists());
@@ -202,6 +208,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void assignMimeTypeAndIdentityForVirtualFile() throws Exception {
+        setupEnv();
         File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.deleteOnExit();
 
@@ -221,6 +228,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void noIOWhenContentSpecified() {
+        setupEnv();
         File file = new File("some.tjs");
 
         String text = "// Hello";
@@ -234,6 +242,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void fromTextWithFileURI() {
+        setupEnv();
         File file = new File("some.tjs");
 
         String text = "// Hello";
@@ -248,6 +257,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void assignMimeTypeAndIdentityForURL() throws IOException {
+        setupEnv();
         File file = File.createTempFile("Hello", ".java");
         file.deleteOnExit();
 
@@ -285,6 +295,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void clientManagedSourceChange() {
+        setupEnv();
         final String path = "test.input";
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
@@ -300,6 +311,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void clientManagedSourceChangeAbsolute() {
+        setupEnv();
         final String path = new File("test.input").getAbsolutePath();
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
@@ -315,6 +327,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void jarURLGetsAName() throws IOException {
+        setupEnv();
         File sample = File.createTempFile("sample", ".jar");
         sample.deleteOnExit();
         JarOutputStream os = new JarOutputStream(new FileOutputStream(sample));
@@ -350,6 +363,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void fileWithReload() throws Exception {
+        setupEnv();
         File file = File.createTempFile("ChangeMe", ".java");
         file.deleteOnExit();
 
@@ -428,6 +442,7 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void subSourceFromTwoFiles() throws Exception {
+        setupEnv();
         File f1 = File.createTempFile("subSource", ".tjs").getCanonicalFile();
         File f2 = File.createTempFile("subSource", ".tjs").getCanonicalFile();
 
