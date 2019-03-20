@@ -86,7 +86,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     private final ExceptionsAttribute exceptionsAttribute;
     private final CodeAttribute codeAttribute;
 
-    private final int refKind;
+    @CompilationFinal private int refKind;
 
     @CompilationFinal //
     private CallTarget callTarget;
@@ -138,25 +138,24 @@ public final class Method implements ModifiersProvider, ContextAccess {
         this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
 
-        if (isStatic()) {
-            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeStatic;
-            return;
-        }
-        if (isPrivate() || isConstructor()) {
-            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeSpecial;
-            return;
-        }
-        for (ObjectKlass klassInterface : declaringKlass.getInterfaces()) {
-            if (klassInterface.lookupDeclaredMethod(this.name, this.rawSignature) != null) {
-                this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface;
-                return;
-            }
-        }
-        this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual;
+        initRefKind();
     }
 
-    public int getRefKind() {
+    public final int getRefKind() {
         return refKind;
+    }
+
+    public final void initRefKind() {
+        if (isStatic()) {
+            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeStatic;
+        } else if (isPrivate() || isConstructor() || isFinal() || declaringKlass.isFinalFlagSet()) {
+            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeSpecial;
+        } else if (declaringKlass.isInterface()) {
+            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface;
+        } else {
+            assert !declaringKlass.isPrimitive();
+            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual;
+        }
     }
 
     public final Attribute getAttribute(Symbol<Name> attrName) {

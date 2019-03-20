@@ -27,9 +27,11 @@ import java.util.function.IntFunction;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class MainLauncherRootNode extends RootNode {
@@ -43,11 +45,17 @@ public class MainLauncherRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert frame.getArguments().length == 0;
-        EspressoContext context = main.getContext();
-        main.getDeclaringKlass().initialize();
-        // No var-args here, pull parameters from the context.
-        return main.getCallTarget().call((Object) toGuestArguments(context, context.getMainArguments()));
+        try {
+            assert frame.getArguments().length == 0;
+            EspressoContext context = main.getContext();
+            main.getDeclaringKlass().initialize();
+            // No var-args here, pull parameters from the context.
+            return main.getCallTarget().call((Object) toGuestArguments(context, context.getMainArguments()));
+        } catch (EspressoException e) {
+            StaticObject guestException = e.getException();
+            guestException.getKlass().lookupMethod(Symbol.Name.printStackTrace, Symbol.Signature._void).invokeDirect(guestException);
+            return StaticObject.NULL;
+        }
     }
 
     private static StaticObject toGuestArguments(EspressoContext context, String... args) {
