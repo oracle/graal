@@ -1133,13 +1133,13 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
 
     def get_build_args(self):
         version = _suite.release_version()
-        graalvm_dist = get_final_graalvm_distribution()
-        if graalvm_dist.vm_config_name:
-            version += ' ' + graalvm_dist.vm_config_name.upper()
         build_args = [
             '-Dorg.graalvm.version={}'.format(version),
             '-Dgraalvm.version={}'.format(version),
         ]
+        graalvm_dist = get_final_graalvm_distribution()
+        if graalvm_dist.vm_config_name:
+            build_args += ['-Dorg.graalvm.config={}'.format(graalvm_dist.vm_config_name.upper())]
         if _debug_images():
             build_args += ['-ea', '-H:-AOTInline', '-H:+UseStackBasePointer']
         if self.svm_support.is_debug_supported():

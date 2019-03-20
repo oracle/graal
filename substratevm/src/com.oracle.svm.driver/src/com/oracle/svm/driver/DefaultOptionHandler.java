@@ -61,7 +61,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--version":
                 args.poll();
-                nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
+                String message = "GraalVM Version " + NativeImage.graalvmVersion;
+                if (!NativeImage.graalvmConfig.isEmpty()) {
+                    message += " " + NativeImage.graalvmConfig;
+                }
+                nativeImage.showMessage(message);
                 System.exit(0);
                 return true;
             case "--help-extra":

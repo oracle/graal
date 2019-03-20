@@ -27,6 +27,8 @@ package com.oracle.svm.core;
 import java.io.CharConversionException;
 import java.nio.ByteBuffer;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
@@ -39,10 +41,16 @@ public final class VM {
     private static final String valueSeparator = "\t";
     private static final String versionValue = getVersionValue();
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static String getVersionValue() {
         String version = System.getProperty("org.graalvm.version");
         VMError.guarantee(version != null);
-        return VM.class.getName() + valueSeparator + "GraalVM " + version;
+        version = VM.class.getName() + valueSeparator + "GraalVM " + version;
+        String config = System.getProperty("org.graalvm.config", "");
+        if (!config.isEmpty()) {
+            version += " " + config;
+        }
+        return version;
     }
 
     private static final String VERSION_INFO_SYMBOL_NAME = "__svm_version_info";
