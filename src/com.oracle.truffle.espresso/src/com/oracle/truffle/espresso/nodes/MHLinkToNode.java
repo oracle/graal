@@ -63,10 +63,10 @@ public class MHLinkToNode extends EspressoBaseNode {
             if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual || refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface) {
                 target = receiver.getKlass().lookupMethod(target.getName(), target.getRawSignature());
             }
-            return target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2));
+            return rebasic(target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2)), Signatures.returnType(target.getParsedSignature()));
         } else {
             // args of the form {arg1, arg2... , memberName}
-            return target.invokeDirect(null, unbasic(args, target.getParsedSignature(), 0, argCount - 1));
+            return rebasic(target.invokeDirect(null, unbasic(args, target.getParsedSignature(), 0, argCount - 1)), Signatures.returnType(target.getParsedSignature()));
         }
     }
 
@@ -91,5 +91,19 @@ public class MHLinkToNode extends EspressoBaseNode {
             }
         }
         return res;
+    }
+
+    private static Object rebasic(Object result, Symbol<Type> rtype) {
+        if (rtype == Type._boolean) {
+            return ((boolean) result) ? 1 : 0;
+        } else if (rtype == Type._short) { // Unbox to cast.
+            return (int) ((short) result);
+        } else if (rtype == Type._byte) {
+            return (int) ((byte) result);
+        } else if (rtype == Type._char) {
+            return (int) ((char) result);
+        } else {
+            return result;
+        }
     }
 }
