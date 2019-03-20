@@ -1133,6 +1133,9 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
 
     def get_build_args(self):
         version = _suite.release_version()
+        graalvm_dist = get_final_graalvm_distribution()
+        if graalvm_dist.vm_config_name:
+            version += ' ' + graalvm_dist.vm_config_name.upper()
         build_args = [
             '-Dorg.graalvm.version={}'.format(version),
             '-Dgraalvm.version={}'.format(version),
