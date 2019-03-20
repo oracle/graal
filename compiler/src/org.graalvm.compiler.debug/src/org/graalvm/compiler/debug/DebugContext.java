@@ -241,7 +241,7 @@ public final class DebugContext implements AutoCloseable {
 
             if (unscopedMemUseTrackers != null || trackMemUseValue != null) {
                 if (!GraalServices.isThreadAllocatedMemorySupported()) {
-                    throw new IllegalArgumentException("MemUseTrackers and TrackMemUse options require VM support for querying thread allocated memory");
+                    TTY.println("WARNING: Missing VM support for MemUseTrackers and TrackMemUse options so all reported memory usage will be 0");
                 }
             }
 
