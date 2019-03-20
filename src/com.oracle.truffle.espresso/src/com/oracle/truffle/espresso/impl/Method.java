@@ -86,7 +86,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     private final ExceptionsAttribute exceptionsAttribute;
     private final CodeAttribute codeAttribute;
 
-    private final int refKind;
+    @CompilationFinal private int refKind;
 
     @CompilationFinal //
     private CallTarget callTarget;
@@ -138,6 +138,14 @@ public final class Method implements ModifiersProvider, ContextAccess {
         this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
 
+        initRefKind();
+    }
+
+    public final int getRefKind() {
+        return refKind;
+    }
+
+    public final void initRefKind() {
         if (isStatic()) {
             this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeStatic;
         } else if (isPrivate() || isConstructor() || isFinal() || declaringKlass.isFinalFlagSet()) {
@@ -148,10 +156,6 @@ public final class Method implements ModifiersProvider, ContextAccess {
             assert !declaringKlass.isPrimitive();
             this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual;
         }
-    }
-
-    public int getRefKind() {
-        return refKind;
     }
 
     public final Attribute getAttribute(Symbol<Name> attrName) {
