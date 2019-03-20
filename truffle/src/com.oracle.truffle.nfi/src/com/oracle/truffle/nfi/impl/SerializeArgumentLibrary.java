@@ -310,21 +310,36 @@ abstract class SerializeArgumentLibrary extends Library {
                             @Shared("exception") @Cached BranchProfile exception) throws UnsupportedTypeException {
                 try {
                     interop.toNative(arg);
-                    buffer.putPointer(interop.asPointer(arg), ptrSize);
-                } catch (UnsupportedMessageException ex) {
-                    exception.enter();
-                    if (interop.isNull(arg)) {
-                        buffer.putPointer(0, ptrSize);
+                    if (interop.isPointer(arg)) {
+                        buffer.putPointer(interop.asPointer(arg), ptrSize);
                         return;
-                    } else {
-                        try {
+                    }
+                } catch (UnsupportedMessageException ex) {
+                    // fallthrough
+                }
+                exception.enter();
+                if (interop.isNull(arg)) {
+                    buffer.putPointer(0, ptrSize);
+                    return;
+                } else {
+                    try {
+                        if (interop.isNumber(arg)) {
                             buffer.putPointer(interop.asLong(arg), ptrSize);
                             return;
-                        } catch (UnsupportedMessageException ex2) {
                         }
+                    } catch (UnsupportedMessageException ex2) {
+                        // fallthrough
                     }
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                    try {
+                        // workaround: some objects do not yet adhere to the contract of
+                        // toNative/isPointer/asPointer, ask for pointer one more time
+                        buffer.putPointer(interop.asPointer(arg), ptrSize);
+                        return;
+                    } catch (UnsupportedMessageException e) {
+                        // fallthrough
+                    }
                 }
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 
@@ -348,14 +363,18 @@ abstract class SerializeArgumentLibrary extends Library {
                             @CachedLibrary("arg") InteropLibrary interop,
                             @Shared("exception") @Cached BranchProfile exception) throws UnsupportedTypeException {
                 try {
-                    buffer.putObject(TypeTag.STRING, interop.asString(arg), ptrSize);
-                } catch (UnsupportedMessageException ex) {
-                    exception.enter();
-                    if (interop.isNull(arg)) {
-                        buffer.putPointer(0, ptrSize);
-                    } else {
-                        throw UnsupportedTypeException.create(new Object[]{arg});
+                    if (interop.isString(arg)) {
+                        buffer.putObject(TypeTag.STRING, interop.asString(arg), ptrSize);
+                        return;
                     }
+                } catch (UnsupportedMessageException ex) {
+                    // fallthrough
+                }
+                exception.enter();
+                if (interop.isNull(arg)) {
+                    buffer.putPointer(0, ptrSize);
+                } else {
+                    throw UnsupportedTypeException.create(new Object[]{arg});
                 }
             }
         }

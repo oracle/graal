@@ -135,6 +135,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
                 try {
                     return doPointer(address, interop);
                 } catch (UnsupportedMessageException ex) {
+                    // fallthrough
                 }
             }
             return doFunction(address, interop);
