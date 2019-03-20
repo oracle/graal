@@ -480,7 +480,16 @@ public abstract class Launcher {
     }
 
     protected boolean isGraalVMAvailable() {
-        return nativeAccess != null && nativeAccess.getGraalVMHome() != null;
+        return getGraalVMHome() != null;
+    }
+
+    private Path home;
+
+    protected Path getGraalVMHome() {
+        if (home == null) {
+            home = Engine.findHome();
+        }
+        return home;
     }
 
     @SuppressWarnings("fallthrough")
@@ -1495,10 +1504,6 @@ public abstract class Launcher {
                 return jdkBin;
             }
             return graalVMHome.resolve("jre").resolve("bin").resolve(executableName);
-        }
-
-        Path getGraalVMHome() {
-            return Engine.findHome();
         }
 
         private void exec(Path executable, List<String> command) {
