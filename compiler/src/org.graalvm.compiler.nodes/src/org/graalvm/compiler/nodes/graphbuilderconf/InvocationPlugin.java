@@ -197,6 +197,11 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
                 return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3]);
             } else if (argsIncludingReceiver.length == 5) {
                 return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4]);
+            } else if (argsIncludingReceiver.length == 6) {
+                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4], argsIncludingReceiver[5]);
+            } else if (argsIncludingReceiver.length == 7) {
+                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4], argsIncludingReceiver[5],
+                                argsIncludingReceiver[6]);
             } else {
                 return defaultHandler(b, targetMethod, receiver, argsIncludingReceiver);
             }
