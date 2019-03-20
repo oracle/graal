@@ -35,10 +35,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitution
     public static void init(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObjectImpl self, @Host(Object.class) StaticObject ref) {
         Klass mnKlass = self.getKlass();
-        Meta meta = mnKlass.getContext().getMeta();
+        EspressoContext context = mnKlass.getContext();
+        Meta meta = context.getMeta();
 
         Klass targetKlass = ref.getKlass();
 
+        // TODO(garcia) Add Type.Constructor case.
         if (targetKlass.getType() == Type.Method) {
             // Actual planting
             Method target = Method.getHostReflectiveMethodRoot(ref);
@@ -46,8 +48,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             plantResolvedMethod(self, target, target.getRawSignature(), refKind, meta.MNflags);
             // Finish the job
             self.setField(meta.MNclazz, target.getDeclaringKlass().mirror());
-        } else {
-            assert (targetKlass.getType() == Type.Field);
+        } else if (targetKlass.getType() == Type.Field) {
             // Actual planting
             Field field = Field.getReflectiveFieldRoot(ref);
             int refkind = getRefKind((int) self.getField(meta.MNflags));
@@ -56,6 +57,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             StaticObjectImpl guestField = (StaticObjectImpl) ref;
             Klass fieldKlass = ((StaticObjectClass) guestField.getField(meta.Field_class)).getMirrorKlass();
             self.setField(meta.MNclazz, fieldKlass.mirror());
+        } else {
+            assert targetKlass.getType() == Type.Constructor;
+            StaticObjectImpl constructor = (StaticObjectImpl) ref;
+            Klass defKlass = ((StaticObjectClass) constructor.getField(meta.Constructor_clazz)).getMirrorKlass();
+            Symbol<Signature> constructorSig = context.getSignatures().lookupValidSignature(Meta.toHostString((StaticObject) constructor.getField(meta.Constructor_signature)));
+            plantMethodMemberName(self, constructorSig, defKlass, Name.INIT, meta.MNflags, REF_invokeSpecial);
+            self.setField(meta.MNclazz, defKlass.mirror());
         }
     }
 
@@ -118,7 +126,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @SuppressWarnings("unused")
     private static int findMemberNames(Klass klass, Symbol<Name> name, String sig, int matchFlags, Klass caller, int skip, StaticObject[] results) {
-        // TODO(Garcia) this.
+        // TODO(garcia) this.
         throw EspressoError.unimplemented();
     }
 
@@ -222,9 +230,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 }
             }
         }
-
-        StaticObject callerKlass = (caller == StaticObject.NULL) ? meta.Object.mirror() : caller;
-
+        // StaticObject callerKlass = (caller == StaticObject.NULL) ? meta.Object.mirror() : caller;
         String desc = Meta.toHostString(type);
         switch (flags & ALL_KINDS) {
             case MN_IS_CONSTRUCTOR:
@@ -246,18 +252,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         Method target = meta.invokeBasic;
                         plantInvokeBasic(memberName, target, basic, defKlass, nSymbol, flagField, refKind);
                     } else {
-                        StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1]);
-                        StaticObjectImpl result = (StaticObjectImpl) meta.linkMethod.invokeDirect(
-                                        null,
-                                        callerKlass, (int) (REF_invokeVirtual),
-                                        clazz, name, type,
-                                        appendix);
-
-                        StaticObject getAppendix = appendix.get(0);
-
-                        // TODO(garcia)
-                        throw EspressoError.unimplemented(result.toString() + getAppendix.toString());
-
+                        throw EspressoError.shouldNotReachHere("Should never need to resolve invokeGeneric MemberName");
                     }
                 } else if (refKind == REF_invokeVirtual || refKind == REF_invokeSpecial) {
                     plantMethodMemberName(memberName, sig, defKlass, nSymbol, flagField, refKind);
@@ -282,7 +277,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * 
      * @param sig Signature to convert
      * @param keepLastArg Whether or not to erase the last parameter.
-     * @param signatures known signatures for the contexr.
+     * @param signatures known signatures for the context.
      * @return A basic signature corresponding to @sig
      */
     @SuppressWarnings({"rawtypes", "unchecked"})

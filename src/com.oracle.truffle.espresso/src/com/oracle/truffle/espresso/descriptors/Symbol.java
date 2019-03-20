@@ -163,6 +163,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
         public static final Symbol<Name> target = StaticSymbols.putName("target");
         public static final Symbol<Name> arity = StaticSymbols.putName("arity");
+        public static final Symbol<Name> isCompiled = StaticSymbols.putName("isCompiled");
         public static final Symbol<Name> interpretWithArguments = StaticSymbols.putName("interpretWithArguments");
 
         public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
@@ -173,6 +174,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> toMethodDescriptorString = StaticSymbols.putName("toMethodDescriptorString");
         public static final Symbol<Name> fromMethodDescriptorString = StaticSymbols.putName("fromMethodDescriptorString");
         public static final Symbol<Name> getSignature = StaticSymbols.putName("getSignature");
+        public static final Symbol<Name> signature = StaticSymbols.putName("signature");
 
         // Polymorphic signature method names
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");

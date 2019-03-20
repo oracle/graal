@@ -162,6 +162,7 @@ public final class Meta implements ContextAccess {
         Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Type.Class);
         Constructor_root = Constructor.lookupDeclaredField(Name.root, Type.Constructor);
         Constructor_parameterTypes = Constructor.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
+        Constructor_signature = Constructor.lookupDeclaredField(Name.signature, Type.String);
         MagicAccessorImpl = knownKlass(Type.MagicAccessorImpl);
 
         Method = knownKlass(Type.Method);
@@ -206,10 +207,10 @@ public final class Meta implements ContextAccess {
 
         MemberName = knownKlass(Type.MemberName);
         getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
-        MNclazz = MemberName.lookupField(Name.clazz, Type.Class);
-        MNname = MemberName.lookupField(Name.name, Type.String);
-        MNtype = MemberName.lookupField(Name.type, Type.MethodType);
-        MNflags = MemberName.lookupField(Name.flags, Type._int);
+        MNclazz = MemberName.lookupDeclaredField(Name.clazz, Type.Class);
+        MNname = MemberName.lookupDeclaredField(Name.name, Type.String);
+        MNtype = MemberName.lookupDeclaredField(Name.type, Type.MethodType);
+        MNflags = MemberName.lookupDeclaredField(Name.flags, Type._int);
 
         MethodHandle = knownKlass(Type.MethodHandle);
         invokeExact = MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_ObjectArray);
@@ -220,22 +221,23 @@ public final class Meta implements ContextAccess {
         linkToSpecial = MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_ObjectArray);
         linkToStatic = MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_ObjectArray);
         linkToVirtual = MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_ObjectArray);
-        MHtype = MethodHandle.lookupField(Name.type, Type.MethodType);
-        form = MethodHandle.lookupField(Name.form, Type.LambdaForm);
+        MHtype = MethodHandle.lookupDeclaredField(Name.type, Type.MethodType);
+        form = MethodHandle.lookupDeclaredField(Name.form, Type.LambdaForm);
 
         MethodHandles = knownKlass(Type.MethodHandles);
         lookup = MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
 
         DirectMethodHandle = knownKlass(Type.DirectMethodHandle);
-        DMHmember = DirectMethodHandle.lookupField(Name.member, Type.MemberName);
+        DMHmember = DirectMethodHandle.lookupDeclaredField(Name.member, Type.MemberName);
 
         CallSite = knownKlass(Type.CallSite);
-        CStarget = CallSite.lookupField(Name.target, Type.MethodHandle);
+        CStarget = CallSite.lookupDeclaredField(Name.target, Type.MethodHandle);
 
         LambdaForm = knownKlass(Type.LambdaForm);
         interpretWithArguments = LambdaForm.lookupDeclaredMethod(Name.interpretWithArguments, Signature.Object_ObjectArray);
-        vmentry = LambdaForm.lookupField(Name.vmentry, Type.MemberName);
-        arity = LambdaForm.lookupField(Name.arity, Type._int);
+        vmentry = LambdaForm.lookupDeclaredField(Name.vmentry, Type.MemberName);
+        arity = LambdaForm.lookupDeclaredField(Name.arity, Type._int);
+        isCompiled = LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
 
         MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
         linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
@@ -316,6 +318,7 @@ public final class Meta implements ContextAccess {
     public final Field Constructor_clazz;
     public final Field Constructor_root;
     public final Field Constructor_parameterTypes;
+    public final Field Constructor_signature;
 
     public final ObjectKlass MagicAccessorImpl;
 
@@ -417,6 +420,7 @@ public final class Meta implements ContextAccess {
     public final Method interpretWithArguments;
     public final Field vmentry;
     public final Field arity;
+    public final Field isCompiled;
 
     public final ObjectKlass MethodHandleNatives;
     public final Method linkMethod;
