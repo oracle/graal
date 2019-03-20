@@ -178,18 +178,6 @@ suite = {
       },
       "dependencies": ["JAXB_API_2.1", "ACTIVATION_1.1.1"]
     },
-    # /SPECJBB2015
-
-    "LLVM_PLATFORM": {
-      "sha1" : "503402aa0cf80fd95ede043c0011152c2b4556fd",
-      "dependencies" : ["LLVM_WRAPPER", "LLVM_PLATFORM_SPECIFIC"],
-      "maven" : {
-        "groupId" : "org.bytedeco.javacpp-presets",
-        "artifactId" : "llvm-platform",
-        "version" : "6.0.1-1.4.2",
-      },
-      "license" : "GPLv2-CPE"
-    },
     "LLVM_WRAPPER": {
       "sha1" : "a990b2dba1c706f5c43c56fedfe70bad9a695852",
       "sourceSha1" : "decbd95d46092fa9afaf2523b5b23d07ad7ad6bc",
@@ -1353,7 +1341,8 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
-        "LLVM_PLATFORM",
+        "LLVM_WRAPPER",
+        "LLVM_PLATFORM_SPECIFIC",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -2363,7 +2352,10 @@ suite = {
       "dependencies" : ["org.graalvm.compiler.core.llvm"],
       "distDependencies" : [
         "GRAAL",
-        "LLVM_PLATFORM",
+      ],
+      "exclude": [
+        "LLVM_WRAPPER",
+        "LLVM_PLATFORM_SPECIFIC",
       ],
       "maven" : False,
     }
