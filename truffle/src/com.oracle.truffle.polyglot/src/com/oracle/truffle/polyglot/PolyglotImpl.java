@@ -110,7 +110,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static final Object[] EMPTY_ARGS = new Object[0];
 
-    static final String OPTION_GROUP_COMPILER = "compiler";
     static final String OPTION_GROUP_ENGINE = "engine";
 
     private final PolyglotSource sourceImpl = new PolyglotSource(this);
@@ -463,7 +462,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public OptionValues getCompilerOptionValues(RootNode rootNode) {
             Object vm = NODES.getSourceVM(rootNode);
             if (vm instanceof PolyglotEngineImpl) {
-                return ((PolyglotEngineImpl) vm).compilerOptionValues;
+                return ((PolyglotEngineImpl) vm).engineOptionValues;
             }
             return null;
         }
