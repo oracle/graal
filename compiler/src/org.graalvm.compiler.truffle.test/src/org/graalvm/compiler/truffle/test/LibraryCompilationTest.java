@@ -29,6 +29,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -68,6 +69,7 @@ public class LibraryCompilationTest extends PartialEvaluationTest {
         @SuppressWarnings("static-method")
         @ExportMessage
         Object foldAsConstant() {
+            CompilerAsserts.partialEvaluationConstant(this.getClass());
             return "FinalReceiver";
         }
     }
@@ -77,6 +79,7 @@ public class LibraryCompilationTest extends PartialEvaluationTest {
         @SuppressWarnings("static-method")
         @ExportMessage
         Object foldAsConstant() {
+            CompilerAsserts.partialEvaluationConstant(this.getClass());
             return "NonFinalReceiver";
         }
     }
@@ -87,7 +90,110 @@ public class LibraryCompilationTest extends PartialEvaluationTest {
         @SuppressWarnings("static-method")
         @ExportMessage
         Object foldAsConstant() {
+            CompilerAsserts.partialEvaluationConstant(this.getClass());
             return "SubClassReceiver";
+        }
+    }
+
+    @ExportLibrary(DynamicDispatchLibrary.class)
+    static final class DynamicDispatchReceiver1 {
+
+        private final Class<?> export;
+
+        DynamicDispatchReceiver1(Class<?> export) {
+            this.export = export;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        Class<?> dispatch() {
+            CompilerAsserts.partialEvaluationConstant(this.getClass());
+            return export;
+        }
+    }
+
+    @ExportLibrary(DynamicDispatchLibrary.class)
+    static class DynamicDispatchReceiver2 {
+
+        private final Class<?> export;
+
+        DynamicDispatchReceiver2(Class<?> export) {
+            this.export = export;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        Class<?> dispatch() {
+            CompilerAsserts.partialEvaluationConstant(this.getClass());
+            return export;
+        }
+    }
+
+    static class DynamicDispatchReceiver2Sub extends DynamicDispatchReceiver2 {
+
+        DynamicDispatchReceiver2Sub(Class<?> export) {
+            super(export);
+        }
+
+    }
+
+    @ExportLibrary(value = CompilationLibrary.class, receiverType = DynamicDispatchReceiver1.class)
+    static class DynamicDispatchExports1 {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        static Object foldAsConstant(@SuppressWarnings("unused") DynamicDispatchReceiver1 receiver) {
+            CompilerAsserts.partialEvaluationConstant(receiver.getClass());
+            return "DynamicDispatchExports1";
+        }
+    }
+
+    @ExportLibrary(value = CompilationLibrary.class, receiverType = DynamicDispatchReceiver1.class)
+    static class DynamicDispatchExports2 {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        static Object foldAsConstant(@SuppressWarnings("unused") DynamicDispatchReceiver1 receiver) {
+            CompilerAsserts.partialEvaluationConstant(receiver.getClass());
+            return "DynamicDispatchExports2";
+        }
+    }
+
+    @ExportLibrary(value = CompilationLibrary.class, receiverType = DynamicDispatchReceiver2.class)
+    static class DynamicDispatchExports3 {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        static Object foldAsConstant(@SuppressWarnings("unused") DynamicDispatchReceiver2 receiver) {
+            CompilerAsserts.partialEvaluationConstant(receiver.getClass());
+            return "DynamicDispatchExports3";
+        }
+    }
+
+    @ExportLibrary(value = CompilationLibrary.class, receiverType = DynamicDispatchReceiver2.class)
+    static class DynamicDispatchExports4 {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        static Object foldAsConstant(@SuppressWarnings("unused") DynamicDispatchReceiver2 receiver) {
+            CompilerAsserts.partialEvaluationConstant(receiver.getClass());
+            return "DynamicDispatchExports4";
+        }
+    }
+
+    @ExportLibrary(value = CompilationLibrary.class, receiverType = DynamicDispatchReceiver2.class)
+    static class DynamicDispatchExports5 {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        static Object foldAsConstant(@SuppressWarnings("unused") DynamicDispatchReceiver2 receiver) {
+            CompilerAsserts.partialEvaluationConstant(receiver.getClass());
+            return "DynamicDispatchExports5";
+        }
+    }
+
+    @ExportLibrary(value = CompilationLibrary.class, receiverType = DynamicDispatchReceiver2.class)
+    static class DynamicDispatchExports6 {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        static Object foldAsConstant(@SuppressWarnings("unused") DynamicDispatchReceiver2 receiver) {
+            CompilerAsserts.partialEvaluationConstant(receiver.getClass());
+            return "DynamicDispatchExports6";
         }
     }
 
@@ -97,10 +203,22 @@ public class LibraryCompilationTest extends PartialEvaluationTest {
         Object finalReceiver = new FinalReceiver();
         Object subReceiver = new SubClassReceiver();
         Object nonFinalReceiver = new NonFinalReceiver();
+        Object dynamicDispatchReceiver1 = new DynamicDispatchReceiver1(DynamicDispatchExports1.class);
+        Object dynamicDispatchReceiver2 = new DynamicDispatchReceiver1(DynamicDispatchExports2.class);
+        Object dynamicDispatchReceiver3 = new DynamicDispatchReceiver2(DynamicDispatchExports3.class);
+        Object dynamicDispatchReceiver4 = new DynamicDispatchReceiver2(DynamicDispatchExports4.class);
+        Object dynamicDispatchReceiver5 = new DynamicDispatchReceiver2Sub(DynamicDispatchExports5.class);
+        Object dynamicDispatchReceiver6 = new DynamicDispatchReceiver2Sub(DynamicDispatchExports6.class);
 
         assertCompiling(new CompilationConstantRoot(), finalReceiver);
         assertCompiling(new CompilationConstantRoot(), subReceiver);
         assertCompiling(new CompilationConstantRoot(), nonFinalReceiver);
+        assertCompiling(new CompilationConstantRoot(), dynamicDispatchReceiver1);
+        assertCompiling(new CompilationConstantRoot(), dynamicDispatchReceiver2);
+        assertCompiling(new CompilationConstantRoot(), dynamicDispatchReceiver3);
+        assertCompiling(new CompilationConstantRoot(), dynamicDispatchReceiver4);
+        assertCompiling(new CompilationConstantRoot(), dynamicDispatchReceiver5);
+        assertCompiling(new CompilationConstantRoot(), dynamicDispatchReceiver6);
     }
 
     private OptimizedCallTarget assertCompiling(RootNode node, Object... arguments) {
