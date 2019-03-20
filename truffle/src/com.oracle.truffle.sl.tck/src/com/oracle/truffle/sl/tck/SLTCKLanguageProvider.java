@@ -82,6 +82,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
     @Override
     public Collection<? extends Snippet> createValueConstructors(Context context) {
         final Collection<Snippet> res = new ArrayList<>();
+
         res.add(createValueConstructor(context, "1 == 2", "boolean", "createBoolean", TypeDescriptor.BOOLEAN));
         res.add(createValueConstructor(context, "1", "number", "createNumber", TypeDescriptor.NUMBER));
         res.add(createValueConstructor(context, "9223372036854775808", "bigNumber", "createBigNumber", TypeDescriptor.intersection()));
@@ -109,6 +110,11 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                                                         "}",
                                         "createFunction"),
                         TypeDescriptor.EXECUTABLE);
+
+        res.add(createValueConstructor(context, "wrapPrimitive(1 == 2)", "wrapped-boolean", "createWrappedBoolean", TypeDescriptor.BOOLEAN));
+        res.add(createValueConstructor(context, "wrapPrimitive(1)", "wrapped-number", "createWrappedNumber", TypeDescriptor.NUMBER));
+        res.add(createValueConstructor(context, "wrapPrimitive(\"string\")", "wrapped-string", "createWrappedString", TypeDescriptor.STRING));
+
         res.add(opb.build());
         return Collections.unmodifiableCollection(res);
     }

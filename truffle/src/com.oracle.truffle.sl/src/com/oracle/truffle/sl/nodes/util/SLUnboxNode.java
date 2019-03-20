@@ -41,13 +41,13 @@
 package com.oracle.truffle.sl.nodes.util;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -58,12 +58,10 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * expression nodes need to expect.
  */
 @TypeSystemReference(SLTypes.class)
-@GenerateUncached
-public abstract class SLSimplifyNode extends Node {
+@NodeChild
+public abstract class SLUnboxNode extends SLExpressionNode {
 
-    static final int LIMIT = Integer.MAX_VALUE;
-
-    public abstract Object executeConvert(Object value);
+    static final int LIMIT = 5;
 
     @Specialization
     protected static String fromString(String value) {
@@ -96,7 +94,7 @@ public abstract class SLSimplifyNode extends Node {
     }
 
     @Specialization(limit = "LIMIT")
-    protected static Object fromForeign(Object value, @CachedLibrary("value") InteropLibrary interop) {
+    public static Object fromForeign(Object value, @CachedLibrary("value") InteropLibrary interop) {
         try {
             if (interop.fitsInLong(value)) {
                 return interop.asLong(value);

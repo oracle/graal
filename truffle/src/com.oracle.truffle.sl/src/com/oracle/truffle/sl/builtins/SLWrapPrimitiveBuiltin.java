@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,32 +40,48 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.Message;
+import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
- * Built-in function that goes through to import a symbol from the polyglot bindings.
+ * Builtin function to wrap primitive values in order to increase coverage of the Truffle TCK test.
  */
-@NodeInfo(shortName = "import")
-public abstract class SLImportBuiltin extends SLBuiltinNode {
+@NodeInfo(shortName = "wrapPrimitive")
+@SuppressWarnings("unused")
+public abstract class SLWrapPrimitiveBuiltin extends SLBuiltinNode {
 
+    @TruffleBoundary
     @Specialization
-    public Object importSymbol(String symbol,
-                    @CachedLibrary(limit = "3") InteropLibrary arrays,
-                    @CachedContext(SLLanguage.class) SLContext context) {
-        try {
-            return arrays.readMember(context.getPolyglotBindings(), symbol);
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            return SLNull.SINGLETON;
+    public Object doDefault(Object value) {
+        if (value instanceof PrimitiveValueWrapper) {
+            return value;
+        } else {
+            return new PrimitiveValueWrapper(value);
         }
+    }
+
+    @ExportLibrary(ReflectionLibrary.class)
+    static final class PrimitiveValueWrapper implements TruffleObject {
+
+        final Object delegate;
+
+        PrimitiveValueWrapper(Object delegate) {
+            this.delegate = delegate;
+        }
+
+        @ExportMessage
+        Object send(Message message, Object[] args,
+                        @CachedLibrary("this.delegate") ReflectionLibrary reflection) throws Exception {
+            return reflection.send(this.delegate, message, args);
+        }
+
     }
 
 }
