@@ -102,4 +102,6 @@ public interface NodeLIRBuilderTool extends NodeValueMap {
     default ForeignCallLinkage lookupGraalStub(ValueNode valueNode) {
         return null;
     }
+
+    void matchBlock(Block b, StructuredGraph graph, StructuredGraph.ScheduleResult blockMap);
 }

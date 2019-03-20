@@ -43,10 +43,13 @@ package com.oracle.truffle.api.dsl.test.processor;
 import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
+import java.nio.charset.Charset;
 
 public class LanguageRegistrationTest {
 
@@ -137,4 +140,51 @@ public class LanguageRegistrationTest {
     public static class InvalidIDError5 extends ProxyLanguage {
     }
 
+    @Registration(id = "filedetector1", name = "filedetector1", fileTypeDetectors = {FileTypeDetectorRegistration1.Detector.class})
+    public static class FileTypeDetectorRegistration1 extends ProxyLanguage {
+        public static class Detector extends ProxyFileTypeDetector {
+        }
+    }
+
+    @ExpectError("Registered FileTypeDetector class must be public.")
+    @Registration(id = "filedetector2", name = "filedetector2", fileTypeDetectors = {FileTypeDetectorRegistration2.Detector.class})
+    public static class FileTypeDetectorRegistration2 extends ProxyLanguage {
+        static class Detector extends ProxyFileTypeDetector {
+        }
+    }
+
+    @ExpectError("Registered FileTypeDetector inner-class must be static.")
+    @Registration(id = "filedetector3", name = "filedetector3", fileTypeDetectors = {FileTypeDetectorRegistration3.Detector.class})
+    public static class FileTypeDetectorRegistration3 extends ProxyLanguage {
+        public class Detector extends ProxyFileTypeDetector {
+        }
+    }
+
+    @ExpectError("A FileTypeDetector subclass must have a public no argument constructor.")
+    @Registration(id = "filedetector5", name = "filedetector5", fileTypeDetectors = {FileTypeDetectorRegistration5.Detector.class})
+    public static class FileTypeDetectorRegistration5 extends ProxyLanguage {
+        public static class Detector extends ProxyFileTypeDetector {
+            Detector() {
+            }
+
+            @SuppressWarnings("unused")
+            public Detector(String name) {
+            }
+        }
+    }
+
+    static class ProxyFileTypeDetector implements FileTypeDetector {
+
+        @Override
+        @SuppressWarnings("unused")
+        public String findMimeType(TruffleFile file) throws IOException {
+            return null;
+        }
+
+        @Override
+        @SuppressWarnings("unused")
+        public Charset findEncoding(TruffleFile file) throws IOException {
+            return null;
+        }
+    }
 }

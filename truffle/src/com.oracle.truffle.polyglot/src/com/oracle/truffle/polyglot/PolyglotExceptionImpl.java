@@ -60,7 +60,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
-import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleException;
@@ -92,6 +91,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
     private final int exitStatus;
     private final Value guestObject;
     private final String message;
+    private Object fileSystemContext;
 
     // Exception coming from a language
     PolyglotExceptionImpl(PolyglotLanguageContext languageContext, Throwable original) {
@@ -342,8 +342,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         return guestObject;
     }
 
-    FileSystem getFileSystem() {
-        return context == null ? null : context.config.fileSystem;
+    Object getFileSystemContext() {
+        if (fileSystemContext != null) {
+            return fileSystemContext;
+        }
+        if (context == null) {
+            return null;
+        }
+        return VMAccessor.LANGUAGE.createFileSystemContext(context.config.fileSystem, context.engine.getFileTypeDetectorsSupplier());
     }
 
     /**

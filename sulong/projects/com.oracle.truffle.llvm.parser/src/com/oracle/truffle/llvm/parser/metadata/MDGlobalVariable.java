@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -119,10 +119,11 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
     private static final int ARGINDEX_38_TYPE = 6;
     private static final int ARGINDEX_38_LOCALTOCOMPILEUNIT = 7;
     private static final int ARGINDEX_38_DEFINEDINCOMPILEUNIT = 8;
-    private static final int ARGINDEX_38_VARIABLE = 9;
-    private static final int ARGINDEX_38_STATICMEMBERDECLARATION = 10;
 
     public static MDGlobalVariable create38(long[] args, MetadataValueList md) {
+
+        final long version = args[0] >> 1;
+
         final long line = args[ARGINDEX_38_LINE];
         final boolean localToCompileUnit = args[ARGINDEX_38_LOCALTOCOMPILEUNIT] == 1;
         final boolean definedInCompileUnit = args[ARGINDEX_38_DEFINEDINCOMPILEUNIT] == 1;
@@ -137,9 +138,14 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
         globalVariable.setName(name);
         globalVariable.displayName = name;
 
+        if (version == 2) {
+            globalVariable.staticMemberDeclaration = md.getNullable(args[9], globalVariable);
+        } else {
+            globalVariable.staticMemberDeclaration = md.getNullable(args[10], globalVariable);
+            globalVariable.variable = md.getNullable(args[9], globalVariable);
+        }
+
         globalVariable.linkageName = md.getNullable(args[ARGINDEX_38_LINKAGENAME], globalVariable);
-        globalVariable.staticMemberDeclaration = md.getNullable(args[ARGINDEX_38_STATICMEMBERDECLARATION], globalVariable);
-        globalVariable.variable = md.getNullable(args[ARGINDEX_38_VARIABLE], globalVariable);
 
         return globalVariable;
     }

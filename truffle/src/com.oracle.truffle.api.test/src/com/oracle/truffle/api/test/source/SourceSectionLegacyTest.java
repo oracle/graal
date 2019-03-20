@@ -53,9 +53,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings("deprecation")
-public class SourceSectionLegacyTest {
+public class SourceSectionLegacyTest extends AbstractPolyglotTest {
 
     private final Source emptySource = Source.newBuilder("").name("emptySource").mimeType("content/unknown").build();
 
@@ -301,19 +302,20 @@ public class SourceSectionLegacyTest {
 
     @Test
     public void onceObtainedAlwaysTheSame() throws Exception {
+        setupEnv();
         File sample = File.createTempFile("hello", ".txt");
         sample.deleteOnExit();
         try (FileWriter w = new FileWriter(sample)) {
             w.write("Hello world!");
         }
-        Source complexHello = Source.newBuilder(sample).build();
+        Source complexHello = Source.newBuilder(sample).mimeType("").build();
         SourceSection helloTo = complexHello.createSection(6, 5);
         assertEquals("world", helloTo.getCharacters());
 
         try (FileWriter w = new FileWriter(sample)) {
             w.write("Hi world!");
         }
-        Source simpleHi = Source.newBuilder(sample).build();
+        Source simpleHi = Source.newBuilder(sample).mimeType("").build();
         SourceSection hiTo = simpleHi.createSection(3, 5);
         assertEquals("world", hiTo.getCharacters());
 

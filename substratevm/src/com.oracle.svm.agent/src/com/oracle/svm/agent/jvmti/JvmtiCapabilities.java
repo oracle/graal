@@ -22,18 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef REFLECT_AGENT_H
-#define REFLECT_AGENT_H
+package com.oracle.svm.agent.jvmti;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.struct.CBitfield;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.word.PointerBase;
 
-jint OnLoad_Reflection(JavaVM *vm, char *options, jvmtiEnv *jvmti, jvmtiEventCallbacks *callbacks);
-void OnVMInit_Reflection(jvmtiEnv *jvmti, JNIEnv *jni, jthread thread);
+@CStruct("jvmtiCapabilities")
+@CContext(JvmtiDirectives.class)
+public interface JvmtiCapabilities extends PointerBase {
+    @CBitfield("can_generate_breakpoint_events")
+    void setCanGenerateBreakpointEvents(int value);
 
-#ifdef __cplusplus
+    @CBitfield("can_access_local_variables")
+    void setCanAccessLocalVariables(int value);
 }
-#endif
-
-#endif /* REFLECT_AGENT_H */

@@ -208,7 +208,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case METADATA_SUBPROGRAM:
-                metadata.add(MDSubprogram.create38(args, metadata));
+                metadata.add(MDSubprogram.createNewFormat(args, metadata));
                 break;
 
             case METADATA_SUBROUTINE_TYPE:

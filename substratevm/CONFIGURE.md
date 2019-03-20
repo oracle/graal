@@ -7,7 +7,7 @@ Native images are built ahead of runtime and their build relies on a static anal
 In order to make preparing these configuration files easier and more convenient, GraalVM provides an _agent_ that traces all usages of dynamic features of an execution on a regular Java VM. It can be enabled on the command line of the GraalVM `java` command:
 
 ```
-/path/to/graalvm/bin/java -agentlib:native-image-agent=output=/path/to/trace-file.json ...
+/path/to/graalvm/bin/java -agentlib:native-image-agent=trace-output=/path/to/trace-file.json ...
 ```
 
 During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources or request proxy accesses and writes a trace file with the specified path.
@@ -65,13 +65,13 @@ Instead of file paths, configuration files can also be provided via Java resourc
 Altering the `java` command line to inject the agent can prove difficult if the Java process is launched by an application or script file or if Java is even embedded in an existing process. In that case, it is also possible to inject the agent via the `JAVA_TOOL_OPTIONS` environment variable:
 
 ```
-export JAVA_TOOL_OPTIONS="-agentlib:native-image-agent=output=/path/to/trace-file.json"
+export JAVA_TOOL_OPTIONS="-agentlib:native-image-agent=trace-output=/path/to/trace-file.json"
 ```
 
-When running multiple Java instances with the agent at the same time, each of them must write to a different trace file. Placeholders in the agent's `output` option can be used to generate unique file names, which is particularly useful in combination with `JAVA_TOOL_OPTIONS`:
+When running multiple Java instances with the agent at the same time, each of them must write to a different trace file. Placeholders in the agent's `trace-output` option can be used to generate unique file names, which is particularly useful in combination with `JAVA_TOOL_OPTIONS`:
 
 ```
-java -agentlib:native-image-agent=output=/path/to/trace-{pid}-{datetime}.json ...
+java -agentlib:native-image-agent=trace-output=/path/to/trace-{pid}-{datetime}.json ...
 ```
 
 The `{pid}` placeholder is replaced with the process identifier, while `{datetime}` is replaced with the system date and time in UTC, formatted according to ISO 8601. For the above example, the resulting path could be: `/path/to/trace-31415-20181231T235950Z.json`.

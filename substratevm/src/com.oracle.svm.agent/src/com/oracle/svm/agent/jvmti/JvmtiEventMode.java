@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef TRACE_AGENT_H
-#define TRACE_AGENT_H
+package com.oracle.svm.agent.jvmti;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 
-#include <stdbool.h>
-#include <stdarg.h>
+@CEnum("jvmtiEventMode")
+@CContext(JvmtiDirectives.class)
+public enum JvmtiEventMode {
+    JVMTI_ENABLE,
+    JVMTI_DISABLE;
 
-#include <jvmti.h>
-
-void trace_append_v(JNIEnv *env, const char *tracer, jclass clazz, jclass caller_class,
-        const char *function, const char *result, va_list args);
-
-extern const jobject TRACE_OBJECT_NULL;
-extern const char * const TRACE_VALUE_NULL;
-extern const char * const TRACE_VALUE_TRUE;
-extern const char * const TRACE_VALUE_FALSE;
-extern const char * const TRACE_VALUE_UNKNOWN;
-extern const char * const TRACE_ARG_IGNORE;
-extern const char * const TRACE_NEXT_ARG_UNQUOTED_TAG;
-
-#ifdef __cplusplus
+    @CEnumValue
+    public native int getCValue();
 }
-#endif
-
-#endif /* TRACE_AGENT_H */

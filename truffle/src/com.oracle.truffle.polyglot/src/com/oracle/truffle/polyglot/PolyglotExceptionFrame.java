@@ -44,7 +44,6 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
-import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -119,7 +118,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         } else {
             b.append(rootName);
             b.append("(");
-            b.append(formatSource(sourceLocation, source.getFileSystem()));
+            b.append(formatSource(sourceLocation, source.getFileSystemContext()));
             b.append(")");
         }
         return b.toString();
@@ -179,7 +178,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         return b.toString();
     }
 
-    private static String formatSource(SourceSection sourceSection, FileSystem fs) {
+    private static String formatSource(SourceSection sourceSection, Object fileSystemContext) {
         if (sourceSection == null) {
             return "Unknown";
         }
@@ -193,10 +192,10 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         if (path == null) {
             b.append(source.getName());
         } else {
-            if (fs != null) {
+            if (fileSystemContext != null) {
                 try {
-                    TruffleFile pathAbsolute = VMAccessor.LANGUAGE.getTruffleFile(fs, path);
-                    TruffleFile pathBase = VMAccessor.LANGUAGE.getTruffleFile(fs, "").getAbsoluteFile();
+                    TruffleFile pathAbsolute = VMAccessor.LANGUAGE.getTruffleFile(path, fileSystemContext);
+                    TruffleFile pathBase = VMAccessor.LANGUAGE.getTruffleFile("", fileSystemContext).getAbsoluteFile();
                     TruffleFile pathRelative = pathBase.relativize(pathAbsolute);
                     b.append(pathRelative.getPath());
                 } catch (IllegalArgumentException | UnsupportedOperationException | SecurityException e) {

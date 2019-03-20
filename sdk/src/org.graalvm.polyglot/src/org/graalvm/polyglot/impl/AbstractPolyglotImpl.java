@@ -50,6 +50,7 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
@@ -225,7 +226,8 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException;
+        public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                        throws IOException;
 
         public abstract String getName(Object impl);
 
