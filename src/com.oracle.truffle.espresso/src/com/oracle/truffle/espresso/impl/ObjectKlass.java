@@ -69,6 +69,9 @@ public final class ObjectKlass extends Klass {
 
     private final Klass hostKlass;
 
+    private final VirtualTable vtable;
+    private final InterfaceTables itable;
+
     private int initState = LINKED;
 
     public static final int LOADED = 0;
@@ -112,6 +115,14 @@ public final class ObjectKlass extends Klass {
         }
         this.declaredFields = fields;
         this.declaredMethods = methods;
+
+        if (this.isInterface()) {
+            this.itable = new InterfaceTables(getName(), superInterfaces, declaredMethods);
+            this.vtable = null;
+        } else {
+            this.vtable = new VirtualTable(superKlass, declaredMethods);
+            this.itable = new InterfaceTables(superKlass, superInterfaces, this);
+        }
     }
 
     @Override
@@ -307,5 +318,25 @@ public final class ObjectKlass extends Klass {
     @Override
     public Klass getHostClass() {
         return hostKlass;
+    }
+
+    public int getVTableLength() {
+        return vtable.length();
+    }
+
+    public VirtualTable getVTable() {
+        return vtable;
+    }
+
+    public Method lookupMethod(int index) {
+        return vtable.lookupMethod(index);
+    }
+
+    public Method lookupMethod(Symbol<Name> interfName, int index) {
+        return itable.lookupMethod(interfName, index);
+    }
+
+    public InterfaceTables getItable() {
+        return itable;
     }
 }
