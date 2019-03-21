@@ -32,6 +32,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.posix.headers.Unistd;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -349,6 +351,21 @@ final class Target_java_lang_Shutdown {
     @Substitute
     static void halt0(int status) {
         LibC.exit(status);
+    }
+}
+
+@TargetClass(java.lang.Runtime.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@SuppressWarnings({"static-method"})
+final class Target_java_lang_Runtime {
+
+    @Substitute
+    private int availableProcessors() {
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            return (int) Unistd.sysconf(Unistd._SC_NPROCESSORS_ONLN());
+        } else {
+            return 1;
+        }
     }
 }
 

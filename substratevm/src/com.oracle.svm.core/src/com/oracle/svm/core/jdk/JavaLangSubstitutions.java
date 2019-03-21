@@ -244,7 +244,7 @@ final class Target_java_lang_Runtime {
     }
 
     @Substitute
-    @Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class, Platform.WINDOWS.class})
+    @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class, Platform.WINDOWS.class})
     private int availableProcessors() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return Jvm.JVM_ActiveProcessorCount();
