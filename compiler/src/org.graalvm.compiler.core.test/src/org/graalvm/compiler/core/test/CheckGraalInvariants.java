@@ -32,6 +32,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
@@ -270,6 +271,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyInstanceOfUsage());
         verifiers.add(new VerifyGraphAddUsage());
         verifiers.add(new VerifyGetOptionsUsage());
+        verifiers.add(new VerifyUnsafeAccess());
 
         VerifyFoldableMethods foldableMethodsVerifier = new VerifyFoldableMethods();
         if (tool.shouldVerifyFoldableMethods()) {
@@ -308,15 +310,23 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                     }
                 });
 
-                for (Method m : c.getDeclaredMethods()) {
-                    if (Modifier.isNative(m.getModifiers()) || Modifier.isAbstract(m.getModifiers())) {
+                ResolvedJavaType type = metaAccess.lookupJavaType(c);
+                List<ResolvedJavaMethod> methods = new ArrayList<>();
+                methods.addAll(Arrays.asList(type.getDeclaredMethods()));
+                methods.addAll(Arrays.asList(type.getDeclaredConstructors()));
+                ResolvedJavaMethod clinit = type.getClassInitializer();
+                if (clinit != null) {
+                    methods.add(clinit);
+                }
+
+                for (ResolvedJavaMethod method : methods) {
+                    if (Modifier.isNative(method.getModifiers()) || Modifier.isAbstract(method.getModifiers())) {
                         // ignore
                     } else {
-                        String methodName = className + "." + m.getName();
+                        String methodName = className + "." + method.getName();
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
                                 try (DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER)) {
-                                    ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                                     boolean isSubstitution = method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null;
                                     StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).setIsSubstitution(isSubstitution).build();
                                     try (DebugCloseable s = debug.disableIntercept(); DebugContext.Scope ds = debug.scope("CheckingGraph", graph, method)) {

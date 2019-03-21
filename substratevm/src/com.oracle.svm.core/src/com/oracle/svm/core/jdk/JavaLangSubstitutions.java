@@ -47,6 +47,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -61,7 +62,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
@@ -303,7 +303,7 @@ final class Target_java_lang_System {
         /* On the first invocation for an object create a new hash code. */
         hashCode = IdentityHashCodeSupport.generateHashCode();
 
-        if (!UnsafeAccess.UNSAFE.compareAndSwapInt(obj, hashCodeOffset, 0, hashCode)) {
+        if (!GraalUnsafeAccess.getUnsafe().compareAndSwapInt(obj, hashCodeOffset, 0, hashCode)) {
             /* We lost the race, so there now must be a hash code installed from another thread. */
             hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord);
         }

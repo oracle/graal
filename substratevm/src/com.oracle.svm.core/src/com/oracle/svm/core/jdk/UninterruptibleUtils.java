@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
+
+// Checkstyle: stop
+import sun.misc.Unsafe;
+// Checkstyle: resume
 
 /**
  * Annotated replacements to be called from uninterruptible code for methods whose source I do not
@@ -42,11 +46,12 @@ public class UninterruptibleUtils {
 
     public static class AtomicInteger {
 
+        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
             try {
-                VALUE_OFFSET = UnsafeAccess.UNSAFE.objectFieldOffset(AtomicInteger.class.getDeclaredField("value"));
+                VALUE_OFFSET = UNSAFE.objectFieldOffset(AtomicInteger.class.getDeclaredField("value"));
             } catch (Throwable ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
@@ -70,27 +75,28 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public int incrementAndGet() {
-            return UnsafeAccess.UNSAFE.getAndAddInt(this, VALUE_OFFSET, 1) + 1;
+            return UNSAFE.getAndAddInt(this, VALUE_OFFSET, 1) + 1;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public int decrementAndGet() {
-            return UnsafeAccess.UNSAFE.getAndAddInt(this, VALUE_OFFSET, -1) - 1;
+            return UNSAFE.getAndAddInt(this, VALUE_OFFSET, -1) - 1;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(int expected, int update) {
-            return UnsafeAccess.UNSAFE.compareAndSwapInt(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSwapInt(this, VALUE_OFFSET, expected, update);
         }
     }
 
     public static class AtomicPointer<T extends PointerBase> {
 
+        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
             try {
-                VALUE_OFFSET = UnsafeAccess.UNSAFE.objectFieldOffset(AtomicPointer.class.getDeclaredField("value"));
+                VALUE_OFFSET = UNSAFE.objectFieldOffset(AtomicPointer.class.getDeclaredField("value"));
             } catch (Throwable ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
@@ -110,17 +116,18 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UnsafeAccess.UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
+            return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
         }
     }
 
     public static class AtomicReference<T> {
 
+        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
             try {
-                VALUE_OFFSET = UnsafeAccess.UNSAFE.objectFieldOffset(AtomicReference.class.getDeclaredField("value"));
+                VALUE_OFFSET = UNSAFE.objectFieldOffset(AtomicReference.class.getDeclaredField("value"));
             } catch (Throwable ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
@@ -147,13 +154,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UnsafeAccess.UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, expected, update);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("unchecked")
         public final T getAndSet(T newValue) {
-            return (T) UnsafeAccess.UNSAFE.getAndSetObject(this, VALUE_OFFSET, newValue);
+            return (T) UNSAFE.getAndSetObject(this, VALUE_OFFSET, newValue);
         }
     }
 

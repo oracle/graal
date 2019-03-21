@@ -39,12 +39,12 @@ import org.graalvm.compiler.lir.CompositeValue;
 import org.graalvm.compiler.lir.CompositeValueClass;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
@@ -57,6 +57,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import sun.misc.Unsafe;
 
 /**
  * Graal uses unsafe memory accesses to access {@link Node}s and {@link LIRInstruction}s. The
@@ -66,6 +67,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * offsets.
  */
 public class FieldsOffsetsFeature implements Feature {
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     abstract static class IterationMaskRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
         @Override
@@ -227,7 +230,7 @@ public class FieldsOffsetsFeature implements Feature {
             long[] newOffsets = new long[fields.getCount()];
             for (int i = 0; i < newOffsets.length; i++) {
                 Field field = findField(fields, i);
-                assert UnsafeAccess.UNSAFE.objectFieldOffset(field) == fields.getOffsets()[i];
+                assert UNSAFE.objectFieldOffset(field) == fields.getOffsets()[i];
                 newOffsets[i] = hMetaAccess.lookupJavaField(field).getLocation();
             }
             replacement.newOffsets = newOffsets;

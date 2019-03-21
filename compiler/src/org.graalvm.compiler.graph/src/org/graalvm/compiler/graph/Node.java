@@ -27,7 +27,7 @@ package org.graalvm.compiler.graph;
 import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 import static org.graalvm.compiler.graph.Edges.Type.Successors;
 import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
-import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
@@ -86,6 +86,8 @@ import sun.misc.Unsafe;
  */
 @NodeInfo
 public abstract class Node implements Cloneable, Formattable, NodeInterface {
+
+    private static final Unsafe UNSAFE = getUnsafe();
 
     public static final NodeClass<?> TYPE = null;
 

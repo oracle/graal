@@ -27,11 +27,11 @@ package com.oracle.svm.hosted;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.RuntimeClassInitialization;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -39,6 +39,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.misc.Unsafe;
 
 /**
  * This class contains the hosted code to support initialization of select classes at runtime. It
@@ -47,6 +48,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * that are used at runtime to do the initialization.
  */
 public class ClassInitializationSupportImpl implements ClassInitializationSupport {
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
      * The initialization kind for a class. The order of the enum values matters, {@link #max}
@@ -128,7 +131,7 @@ public class ClassInitializationSupportImpl implements ClassInitializationSuppor
          * being used itself, e.g., a class initializer can write a static field in another class.
          */
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
-            if (entry.getValue() == InitKind.DELAY && !UnsafeAccess.UNSAFE.shouldBeInitialized(entry.getKey())) {
+            if (entry.getValue() == InitKind.DELAY && !UNSAFE.shouldBeInitialized(entry.getKey())) {
                 throw UserError.abort("Class that is marked for delaying initialization to run time got initialized during image building: " + entry.getKey().getTypeName());
             }
         }
@@ -196,7 +199,7 @@ public class ClassInitializationSupportImpl implements ClassInitializationSuppor
      */
     private InitKind ensureClassInitialized(Class<?> clazz) {
         try {
-            UnsafeAccess.UNSAFE.ensureClassInitialized(clazz);
+            UNSAFE.ensureClassInitialized(clazz);
             return InitKind.EAGER;
 
         } catch (Throwable ex) {
@@ -232,7 +235,7 @@ public class ClassInitializationSupportImpl implements ClassInitializationSuppor
         for (Class<?> clazz : classes) {
             checkEagerInitialization(clazz);
 
-            if (!UnsafeAccess.UNSAFE.shouldBeInitialized(clazz)) {
+            if (!UNSAFE.shouldBeInitialized(clazz)) {
                 throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName());
             }
 
@@ -259,7 +262,7 @@ public class ClassInitializationSupportImpl implements ClassInitializationSuppor
             checkEagerInitialization(clazz);
 
             try {
-                UnsafeAccess.UNSAFE.ensureClassInitialized(clazz);
+                UNSAFE.ensureClassInitialized(clazz);
             } catch (Throwable ex) {
                 throw UserError.abort("Class initialization failed: " + clazz.getTypeName(), ex);
             }
