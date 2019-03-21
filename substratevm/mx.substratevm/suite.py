@@ -606,9 +606,6 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "com.oracle.svm.hosted",
             ],
-            "buildDependencies" : [
-                "org.graalvm.polyglot.nativeapi.native",
-            ],
             "checkstyle": "org.graalvm.polyglot.nativeapi",
             "checkstyleVersion" : "8.8",
             "javaCompliance" : "8+",
@@ -619,37 +616,6 @@ suite = {
             ],
             "workingSets" : "SVM",
             "spotbugs": "false",
-        },
-
-        "org.graalvm.polyglot.nativeapi.native" : {
-            "subDir" : "src",
-            "native" : True,
-            "vpath": True,
-            "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
-            "buildEnv": {
-                "ARCH": "<arch>",
-                "OS": "<os>"
-            },
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
-                },
-                "windows": {
-                    "<others>": {
-                        "ignore": "windows is not supported",  # necessary until GR-12705 is resolved
-                    },
-                },
-                "<others>": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
-                    "<others>": {
-                        "ignore": False,
-                    },
-                },
-            },
         },
 
         "com.oracle.svm.graal.hotspot.libgraal" : {
@@ -938,41 +904,6 @@ suite = {
                 "./" : [
                     "extracted-dependency:POLYGLOT_NATIVE_API/*.h",
                 ],
-            },
-        },
-
-        "POLYGLOT_NATIVE_API_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "polyglot.nativeapi support distribution for the GraalVM",
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                         "layout" : {
-                             "./" : [
-                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
-                             ],
-                         },
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                         "layout" : {
-                             "./" : [
-                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
-                             ],
-                         },
-                    },
-                },
-                "windows": {
-                    "amd64" : {
-                         "layout" : {
-                             "./" : [
-                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.obj",
-                             ],
-                         },
-                    },
-                },
             },
         },
 
