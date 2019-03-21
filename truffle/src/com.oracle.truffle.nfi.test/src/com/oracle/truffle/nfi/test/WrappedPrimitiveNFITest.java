@@ -80,6 +80,16 @@ public class WrappedPrimitiveNFITest extends NFITest {
     @Parameter(0) public Object argument;
     @Parameter(1) public String argumentType;
 
+    private final TestCallback getObject = new TestCallback(0, (args) -> {
+        return argument;
+    });
+
+    private final TestCallback verifyObject = new TestCallback(2, (args) -> {
+        Assert.assertSame("arg 1", argument, args[0]);
+        Assert.assertSame("arg 2", argument, args[1]);
+        return argument;
+    });
+
     public static class PassObjectNode extends SendExecuteNode {
 
         public PassObjectNode() {
@@ -89,16 +99,6 @@ public class WrappedPrimitiveNFITest extends NFITest {
 
     @Test
     public void passObjectTest(@Inject(PassObjectNode.class) CallTarget target) {
-        TestCallback getObject = new TestCallback(0, (args) -> {
-            return argument;
-        });
-
-        TestCallback verifyObject = new TestCallback(2, (args) -> {
-            Assert.assertSame("arg 1", argument, args[0]);
-            Assert.assertSame("arg 2", argument, args[1]);
-            return argument;
-        });
-
         Object ret = target.call(argument, getObject, verifyObject);
         Assert.assertSame("return value", argument, ret);
     }

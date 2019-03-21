@@ -180,12 +180,13 @@ public class NumericNFITest extends NFITest {
         }
     }
 
+    private final TruffleObject callback = new TestCallback(1, (args) -> {
+        checkExpectedArg(42 + 1, args[0]);
+        return unboxNumber(args[0]) + 5;
+    });
+
     @Test
     public void testCallback(@Inject(TestCallbackNode.class) CallTarget callTarget) {
-        TruffleObject callback = new TestCallback(1, (args) -> {
-            checkExpectedArg(42 + 1, args[0]);
-            return unboxNumber(args[0]) + 5;
-        });
         Object ret = callTarget.call(callback, 42);
         checkExpectedRet((42 + 6) * 2, ret);
     }
@@ -235,23 +236,22 @@ public class NumericNFITest extends NFITest {
         }
     }
 
+    private final TruffleObject wrap = new TestCallback(1, (args) -> {
+        Assert.assertThat("argument", args[0], is(instanceOf(TruffleObject.class)));
+        TruffleObject fn = (TruffleObject) args[0];
+        TruffleObject wrapped = new TestCallback(1, (innerArgs) -> {
+            checkExpectedArg(6, innerArgs[0]);
+            try {
+                return UNCACHED_INTEROP.execute(fn, unboxNumber(innerArgs[0]) * 3);
+            } catch (InteropException ex) {
+                throw new AssertionError(ex);
+            }
+        });
+        return wrapped;
+    });
+
     @Test
     public void testPingPong(@Inject(TestPingPongNode.class) CallTarget callTarget) {
-
-        TruffleObject wrap = new TestCallback(1, (args) -> {
-            Assert.assertThat("argument", args[0], is(instanceOf(TruffleObject.class)));
-            TruffleObject fn = (TruffleObject) args[0];
-            TruffleObject wrapped = new TestCallback(1, (innerArgs) -> {
-                checkExpectedArg(6, innerArgs[0]);
-                try {
-                    return UNCACHED_INTEROP.execute(fn, unboxNumber(innerArgs[0]) * 3);
-                } catch (InteropException ex) {
-                    throw new AssertionError(ex);
-                }
-            });
-            return wrapped;
-        });
-
         Object ret = callTarget.call(wrap, 5);
         checkExpectedRet(38, ret);
     }
