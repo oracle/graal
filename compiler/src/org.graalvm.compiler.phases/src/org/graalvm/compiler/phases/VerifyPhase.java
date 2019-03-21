@@ -30,8 +30,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /***
- * This phase serves as a verification, in order to check a graph or {@linkplain #verifyClass class}
- * for certain properties.
+ * Verifies a {@linkplain #verify graph} or {@linkplain #verifyClass class} against one or more
+ * invariants.
  */
 public abstract class VerifyPhase<C> extends BasePhase<C> {
 
@@ -56,20 +56,18 @@ public abstract class VerifyPhase<C> extends BasePhase<C> {
 
     @Override
     protected final void run(StructuredGraph graph, C context) {
-        assert verify(graph, context);
+        verify(graph, context);
     }
 
     /**
-     * Performs the actual verification. This method will be used in an assertion. Instead of
-     * returning false to indicate a verification failure, {@link VerificationError} can be thrown
-     * instead.
+     * Checks {@code graph} against some invariants.
      *
      * @throws VerificationError if the verification fails
      */
-    protected abstract boolean verify(StructuredGraph graph, C context);
+    protected abstract void verify(StructuredGraph graph, C context);
 
     /**
-     * Verifies invariants of a class.
+     * Checks {@code clazz} against some invariants.
      *
      * @param clazz the class to verify
      * @param metaAccess an object to get a {@link ResolvedJavaType} for {@code clazz}

@@ -56,7 +56,7 @@ public class VerifyGetOptionsUsage extends VerifyPhase<PhaseContext> {
     }
 
     @Override
-    protected boolean verify(StructuredGraph graph, PhaseContext context) {
+    protected void verify(StructuredGraph graph, PhaseContext context) {
         MetaAccessProvider metaAccess = context.getMetaAccess();
         ResolvedJavaType canonicalizerToolClass = metaAccess.lookupJavaType(CanonicalizerTool.class);
         boolean hasTool = false;
@@ -86,8 +86,6 @@ public class VerifyGetOptionsUsage extends VerifyPhase<PhaseContext> {
                 }
             }
         }
-
-        return true;
     }
 
 }

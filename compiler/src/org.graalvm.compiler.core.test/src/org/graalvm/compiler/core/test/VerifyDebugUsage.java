@@ -78,7 +78,7 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
     MetaAccessProvider metaAccess;
 
     @Override
-    protected boolean verify(StructuredGraph graph, PhaseContext context) {
+    protected void verify(StructuredGraph graph, PhaseContext context) {
         metaAccess = context.getMetaAccess();
         ResolvedJavaType debugType = metaAccess.lookupJavaType(DebugContext.class);
         ResolvedJavaType nodeType = metaAccess.lookupJavaType(Node.class);
@@ -108,7 +108,6 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
                 }
             }
         }
-        return true;
     }
 
     private void verifyParameters(MethodCallTargetNode callTarget, StructuredGraph callerGraph, NodeInputList<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx) {

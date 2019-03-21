@@ -44,13 +44,12 @@ import jdk.vm.ci.meta.JavaKind;
 public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
 
     @Override
-    protected boolean verify(StructuredGraph graph, PhaseContext context) {
+    protected void verify(StructuredGraph graph, PhaseContext context) {
         for (ConstantNode node : getConstantNodes(graph)) {
             if (isIllegalObjectConstant(node)) {
                 throw new VerificationError("illegal object constant: " + node);
             }
         }
-        return true;
     }
 
     public static boolean isIllegalObjectConstant(ConstantNode node) {
