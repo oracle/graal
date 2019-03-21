@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * Compiler options that can be configured per {@link Engine engine} instance.
  */
-@Option.Group("compiler")
+@Option.Group("engine")
 public final class PolyglotCompilerOptions {
 
     // @formatter:off
