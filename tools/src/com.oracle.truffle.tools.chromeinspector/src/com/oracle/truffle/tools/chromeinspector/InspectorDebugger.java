@@ -215,45 +215,47 @@ public final class InspectorDebugger extends DebuggerDomain {
         if (script == null) {
             throw new CommandProcessException("Unknown scriptId: " + scriptId);
         }
+        JSONObject json = new JSONObject();
+        JSONArray arr = new JSONArray();
         Source source = script.getSource();
-        int l1 = start.getLine();
-        int c1 = start.getColumn();
-        if (c1 <= 0) {
-            c1 = -1;
-        }
-        int l2;
-        int c2;
-        if (end != null) {
-            if (source.hasCharacters()) {
-                int lc = source.getLineCount();
-                if (end.getLine() > lc) {
-                    l2 = lc;
+        if (source.getLength() > 0) {
+            int l1 = start.getLine();
+            int c1 = start.getColumn();
+            if (c1 <= 0) {
+                c1 = -1;
+            }
+            int l2;
+            int c2;
+            if (end != null) {
+                if (source.hasCharacters()) {
+                    int lc = source.getLineCount();
+                    if (end.getLine() > lc) {
+                        l2 = lc;
+                    } else {
+                        l2 = end.getLine();
+                    }
                 } else {
                     l2 = end.getLine();
                 }
+                c2 = end.getColumn();
+                if (c2 <= 0) {
+                    c2 = -1;
+                }
             } else {
-                l2 = end.getLine();
+                l2 = l1;
+                if (c1 == -1) {
+                    c2 = -1;
+                } else if (source.hasCharacters()) {
+                    c2 = source.getLineLength(l2);
+                } else {
+                    c2 = c1 + 1;
+                }
             }
-            c2 = end.getColumn();
-            if (c2 <= 0) {
-                c2 = -1;
+            SourceSection range = source.createSection(l1, c1, l2, c2);
+            Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, ds, context.getEnv());
+            for (SourceSection ss : locations) {
+                arr.put(new Location(scriptId, ss.getStartLine(), ss.getStartColumn()).toJSON());
             }
-        } else {
-            l2 = l1;
-            if (c1 == -1) {
-                c2 = -1;
-            } else if (source.hasCharacters()) {
-                c2 = source.getLineLength(l2);
-            } else {
-                c2 = c1 + 1;
-            }
-        }
-        SourceSection range = source.createSection(l1, c1, l2, c2);
-        Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, ds, context.getEnv());
-        JSONObject json = new JSONObject();
-        JSONArray arr = new JSONArray();
-        for (SourceSection ss : locations) {
-            arr.put(new Location(scriptId, ss.getStartLine(), ss.getStartColumn()).toJSON());
         }
         json.put("locations", arr);
         return new Params(json);
