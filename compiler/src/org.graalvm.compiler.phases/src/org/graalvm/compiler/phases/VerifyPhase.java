@@ -26,11 +26,12 @@ package org.graalvm.compiler.phases;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 /***
- * This phase serves as a verification, in order to check the graph for certain properties. The
- * {@link #verify(StructuredGraph, Object)} method will be used as an assertion, and implements the
- * actual check. Instead of returning false, it is also valid to throw an {@link VerificationError}
- * in the implemented {@link #verify(StructuredGraph, Object)} method.
+ * This phase serves as a verification, in order to check a graph or {@linkplain #verifyClass class}
+ * for certain properties.
  */
 public abstract class VerifyPhase<C> extends BasePhase<C> {
 
@@ -59,9 +60,21 @@ public abstract class VerifyPhase<C> extends BasePhase<C> {
     }
 
     /**
-     * Performs the actual verification.
+     * Performs the actual verification. This method will be used in an assertion. Instead of
+     * returning false to indicate a verification failure, {@link VerificationError} can be thrown
+     * instead.
      *
      * @throws VerificationError if the verification fails
      */
     protected abstract boolean verify(StructuredGraph graph, C context);
+
+    /**
+     * Verifies invariants of a class.
+     *
+     * @param clazz the class to verify
+     * @param metaAccess an object to get a {@link ResolvedJavaType} for {@code clazz}
+     * @throws VerificationError if the class violates some invariant
+     */
+    public void verifyClass(Class<?> clazz, MetaAccessProvider metaAccess) {
+    }
 }

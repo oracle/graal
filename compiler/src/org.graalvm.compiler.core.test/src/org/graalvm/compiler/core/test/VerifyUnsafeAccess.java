@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static java.lang.reflect.Modifier.isProtected;
+import static java.lang.reflect.Modifier.isPublic;
+
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
@@ -99,5 +104,15 @@ public class VerifyUnsafeAccess extends VerifyPhase<PhaseContext> {
         }
 
         return true;
+    }
+
+    @Override
+    public void verifyClass(Class<?> c, MetaAccessProvider metaAccess) {
+        for (Field field : c.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
+            if (field.getType() == Unsafe.class && (isPublic(modifiers) || isProtected(modifiers))) {
+                throw new VerificationError("Field of type %s must be private or package-private: %s", Unsafe.class.getName(), field);
+            }
+        }
     }
 }
