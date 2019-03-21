@@ -730,6 +730,7 @@ suite = {
                 "com.oracle.svm.core.posix.jdk9",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
+                "com.oracle.svm.jni",
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
@@ -785,7 +786,6 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM basic library-support components",
             "dependencies": [
-                "com.oracle.svm.jni",
                 "com.oracle.svm.jline",
                 "com.oracle.svm.junit",
                 "com.oracle.svm.polyglot",
