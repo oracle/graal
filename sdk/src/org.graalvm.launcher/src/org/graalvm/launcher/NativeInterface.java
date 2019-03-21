@@ -53,7 +53,10 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 @CContext(NativeInterface.NativeDirectives.class)
 class NativeInterface {
 
-    class NativeDirectives implements CContext.Directives {
+    static class NativeDirectives implements CContext.Directives {
+        NativeDirectives() {
+        }
+
         @Override
         public List<String> getHeaderFiles() {
             return Arrays.asList("<sys/errno.h>", "<unistd.h>", "<string.h>");

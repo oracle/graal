@@ -25,6 +25,8 @@
 package com.oracle.svm.core.heap;
 
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
+import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -63,32 +65,36 @@ public class CodeReferenceMapDecoder {
              * values, can keep track of the index in the byte array. Even with an instance of
              * ReusableTypeReader, we would need to worry about this method being reentrant.
              */
-            int shift;
-            long b;
+
             // Size of gap in bytes (negative means the next pointer has derived pointers)
-            long gap = 0;
-            shift = 0;
-            do {
-                b = ByteArrayReader.getU1(referenceMapEncoding, idx);
-                gap |= (b & 0x7f) << shift;
-                shift += 7;
-                idx++;
-            } while ((b & 0x80) != 0);
-            if ((b & 0x40) != 0 && shift < 64) {
-                gap |= -1L << shift;
+            long gap = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+            if (gap >= UnsafeArrayTypeWriter.NUM_LOW_CODES) {
+                long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                for (int i = 2;; i++) {
+                    long b = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+                    gap += b << shift;
+                    if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
+                        break;
+                    }
+                    shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                }
             }
+            gap = UnsafeArrayTypeReader.decodeSign(gap);
+
             // Number of pointers (sign distinguishes between compression and uncompression)
-            long count = 0;
-            shift = 0;
-            do {
-                b = ByteArrayReader.getU1(referenceMapEncoding, idx);
-                count |= (b & 0x7f) << shift;
-                shift += 7;
-                idx++;
-            } while ((b & 0x80) != 0);
-            if ((b & 0x40) != 0 && shift < 64) {
-                count |= -1L << shift;
+            long count = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+            if (count >= UnsafeArrayTypeWriter.NUM_LOW_CODES) {
+                long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                for (int i = 2;; i++) {
+                    long b = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+                    count += b << shift;
+                    if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
+                        break;
+                    }
+                    shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                }
             }
+            count = UnsafeArrayTypeReader.decodeSign(count);
 
             if (gap == 0 && count == 0) {
                 break; // reached end of table
@@ -123,17 +129,19 @@ public class CodeReferenceMapDecoder {
                 /* count in this case is the number of derived references for this base pointer */
                 for (long d = 0; d < count; d++) {
                     /* Offset in words from the base reference to the derived reference */
-                    long refOffset = 0;
-                    shift = 0;
-                    do {
-                        b = ByteArrayReader.getU1(referenceMapEncoding, idx);
-                        refOffset |= (b & 0x7f) << shift;
-                        shift += 7;
-                        idx++;
-                    } while ((b & 0x80) != 0);
-                    if ((b & 0x40) != 0 && shift < 64) {
-                        refOffset |= -1L << shift;
+                    long refOffset = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+                    if (refOffset >= UnsafeArrayTypeWriter.NUM_LOW_CODES) {
+                        long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                        for (int i = 2;; i++) {
+                            long b = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+                            refOffset += b << shift;
+                            if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
+                                break;
+                            }
+                            shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                        }
                     }
+                    refOffset = UnsafeArrayTypeReader.decodeSign(refOffset);
 
                     Pointer derivedRef;
                     if (refOffset >= 0) {

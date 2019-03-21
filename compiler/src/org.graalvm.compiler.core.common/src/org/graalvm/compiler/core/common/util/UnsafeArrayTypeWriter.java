@@ -32,6 +32,9 @@ import static org.graalvm.compiler.core.common.util.TypeConversion.asU2;
 import static org.graalvm.compiler.core.common.util.TypeConversion.asU4;
 import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
+import org.graalvm.compiler.core.common.calc.UnsignedMath;
+
+
 import sun.misc.Unsafe;
 
 /**
@@ -45,10 +48,15 @@ import sun.misc.Unsafe;
  * fallback that works on every hardware.
  */
 public abstract class UnsafeArrayTypeWriter implements TypeWriter {
-
     private static final Unsafe UNSAFE = getUnsafe();
     private static final int MIN_CHUNK_LENGTH = 200;
     private static final int MAX_CHUNK_LENGTH = 16000;
+
+    // Constants for UNSIGNED5 coding of Pack200
+    public static final long HIGH_WORD_SHIFT = 6;
+    public static final long NUM_HIGH_CODES = 1 << HIGH_WORD_SHIFT; // number of high codes (64)
+    public static final long NUM_LOW_CODES = (1 << Byte.SIZE) - NUM_HIGH_CODES;
+    public static final long MAX_BYTES = 11;
 
     static class Chunk {
         protected final byte[] data;
@@ -171,6 +179,44 @@ public abstract class UnsafeArrayTypeWriter implements TypeWriter {
         long targetOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET + offset - chunkStartOffset;
         assert targetOffset + Integer.BYTES <= chunk.size : "out of bounds";
         putS4(value, chunk, targetOffset);
+    }
+
+    @Override
+    public void putSV(long value) {
+        // this is a modified version of the SIGNED5 encoding from Pack200
+        write(encodeSign(value));
+    }
+
+    @Override
+    public void putUV(long value) {
+        // this is a modified version of the UNSIGNED5 encoding from Pack200
+        write(value);
+    }
+
+    private static long encodeSign(long value) {
+        return (value << 1) ^ (value >> 63);
+    }
+
+    private void write(long value) {
+        if (UnsignedMath.belowThan(value, NUM_LOW_CODES)) {
+            putU1(value);
+        } else {
+            writePacked(value);
+        }
+    }
+
+    private void writePacked(long value) {
+        long sum = value;
+        for (int i = 1; UnsignedMath.aboveOrEqual(sum, NUM_LOW_CODES) && i < MAX_BYTES; i++) {
+            sum -= NUM_LOW_CODES;
+            long u1 = NUM_LOW_CODES + (sum & (NUM_HIGH_CODES - 1)); // this is a "high code"
+            sum >>>= HIGH_WORD_SHIFT; // extracted 6 bits
+            putU1(u1);
+        }
+
+        // remainder is either a "low code" or the last byte
+        assert sum == (sum & 0xFF) : "not a byte";
+        putU1(sum & 0xFF);
     }
 }
 
