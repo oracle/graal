@@ -385,8 +385,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     /**
-     * Find if there is an "engine option" (covers engine and instruments options) present
-     * among the given options.
+     * Find if there is an "engine option" (covers engine and instruments options) present among the
+     * given options.
      */
     boolean isEngineGroup(String group) {
         return idToPublicInstrument.containsKey(group) || group.equals(PolyglotImpl.OPTION_GROUP_ENGINE);
