@@ -195,8 +195,6 @@ def suite_native_image_root(suite=None):
     if not suite:
         suite = svm_suite()
     root_basename = 'native-image-root-' + str(svm_java_compliance())
-    if llvmDistributions and all([mx.distribution(dist).exists() for dist in llvmDistributions if mx.dependency(dist).isDistribution()]):
-        root_basename = 'llvm-' + root_basename
     root_dir = join(svmbuild_dir(suite), root_basename)
     rev_file_name = join(root_dir, 'rev')
     rev_value = suite.vc.parent(suite.vc_dir)
