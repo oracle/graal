@@ -63,7 +63,7 @@ public final class VM {
             ByteBuffer buffer = CTypeConversion.asByteBuffer(versionInfoBytes, Math.toIntExact(SubstrateUtil.strlen(versionInfoBytes).rawValue()));
             String version = Utf8.utf8ToString(true, buffer);
             VMError.guarantee(versionValue.equals(version), "Version info mismatch: " + VERSION_INFO_SYMBOL_NAME + " contains " + version + " (expected " + versionValue + ")");
-            return version.split(valueSeparator)[1];
+            return SubstrateUtil.split(version, valueSeparator)[1];
         } catch (CharConversionException ignore) {
             throw VMError.shouldNotReachHere("Invalid version info in " + VERSION_INFO_SYMBOL_NAME);
         }
