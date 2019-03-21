@@ -34,6 +34,8 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.VM;
+
 /**
  * This class maintains the system properties at run time.
  *
@@ -90,7 +92,6 @@ public abstract class SystemPropertiesSupport {
 
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", "Oracle Corporation");
-        initializeProperty("java.vm.version", "Substrate VM " + System.getProperty("java.vm.version"));
         initializeProperty("java.vendor", "Oracle Corporation");
         initializeProperty("java.vendor.url", "https://www.graalvm.org/");
 
@@ -107,7 +108,7 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("user.dir", this::userDirValue);
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
-
+        lazyRuntimeValues.put("java.vm.version", VM::getVersion);
     }
 
     private void ensureFullyInitialized() {

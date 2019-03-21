@@ -247,6 +247,10 @@ public class FeatureImpl {
             aField.registerAsAccessed();
         }
 
+        public void registerAsRead(AnalysisField aField) {
+            aField.registerAsRead(null);
+        }
+
         @Override
         public void registerAsUnsafeAccessed(Field field) {
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
