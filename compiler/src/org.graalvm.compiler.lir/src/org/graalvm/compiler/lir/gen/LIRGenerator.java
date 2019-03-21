@@ -476,7 +476,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         double minDensity = 1 / Math.sqrt(strategy.getAverageEffort());
         Optional<Hasher> hasher = hasherFor(keyConstants, minDensity);
         double hashTableSwitchDensity = hasher.map(h -> keyCount / (double) h.cardinality()).orElse(0d);
-        long valueRange = keyConstants[keyCount - 1].asLong() - keyConstants[0].asLong() + 1;
+        // The value range computation below may overflow, so compute it as a long.
+        long valueRange = (long) keyConstants[keyCount - 1].asInt() - (long) keyConstants[0].asInt() + 1;
         double tableSwitchDensity = keyCount / (double) valueRange;
 
         /*
@@ -498,7 +499,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                     targets[i] = defaultTarget;
                 }
                 for (int i = 0; i < keyCount; i++) {
-                    int idx = h.hash(keyConstants[i].asLong());
+                    int idx = h.hash(keyConstants[i].asInt());
                     keys[idx] = keyConstants[i];
                     targets[idx] = keyTargets[i];
                 }
