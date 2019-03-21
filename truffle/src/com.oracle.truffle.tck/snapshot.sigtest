@@ -15,8 +15,8 @@ meth public java.lang.Thread getEvalThread()
 meth public java.lang.Throwable expectThrowable()
 meth public static com.oracle.truffle.api.source.Source getSourceImpl(org.graalvm.polyglot.Source)
 meth public void assertBreakpointsBreakEverywhere(org.graalvm.polyglot.Source)
-meth public void assertColumnBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String,java.lang.String) throws java.io.IOException
-meth public void assertLineBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String) throws java.io.IOException
+meth public void assertColumnBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String,java.lang.String)
+meth public void assertLineBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String)
 meth public void close()
 meth public void closeEngine()
 meth public void expectKilled()
