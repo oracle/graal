@@ -43,16 +43,19 @@ import org.graalvm.options.OptionKey;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
+import org.graalvm.options.OptionStability;
 
 public final class SulongEngineOption {
 
     public static final String OPTION_ARRAY_SEPARATOR = ":";
 
+    // @formatter:off
     @Option(name = "llvm.stackSizeKB", category = OptionCategory.USER, help = "The stack size in KB.") public static final OptionKey<Integer> STACK_SIZE_KB = new OptionKey<>(81920);
 
     public static final String LIBRARY_PATH_NAME = "llvm.libraryPath";
-    @Option(name = LIBRARY_PATH_NAME, category = OptionCategory.USER, help = "A list of paths where Sulong will search for relative libraries. Paths are delimited by " + OPTION_ARRAY_SEPARATOR +
-                    " .") public static final OptionKey<String> LIBRARY_PATH = new OptionKey<>("");
+    @Option(name = LIBRARY_PATH_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
+            help = "A list of paths where Sulong will search for relative libraries. Paths are delimited by " + OPTION_ARRAY_SEPARATOR + " .") //
+    public static final OptionKey<String> LIBRARY_PATH = new OptionKey<>("");
 
     @Option(name = "llvm.sourcePath", category = OptionCategory.USER, help = "This option is deprecated. Use --inspect.SourcePath instead.", deprecated = true) //
     public static final OptionKey<String> SOURCE_PATH = new OptionKey<>("");
@@ -94,9 +97,11 @@ public final class SulongEngineOption {
     public static final OptionKey<String> TRACE_IR = new OptionKey<>("");
 
     public static final String LIBRARIES_NAME = "llvm.libraries";
-    public static final String LIBRARIES_INFO = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " +
-                    OPTION_ARRAY_SEPARATOR + " .";
-    @Option(name = LIBRARIES_NAME, category = OptionCategory.USER, help = LIBRARIES_INFO) public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
+    @Option(name = LIBRARIES_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
+            help = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). " + //
+                   "Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " + OPTION_ARRAY_SEPARATOR + " .") //
+    public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
+    // @formatter:on
 
     public static List<OptionDescriptor> describeOptions() {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
