@@ -80,12 +80,7 @@ public class HotSpotDisassemblerProvider implements DisassemblerProvider {
             } else {
                 return null;
             }
-            Process proc = Runtime.getRuntime().exec(cmdline);
-            InputStream is = proc.getInputStream();
 
-            InputStreamReader isr = new InputStreamReader(is);
-            BufferedReader br = new BufferedReader(isr);
-            String line;
             Pattern p = Pattern.compile(" *(([0-9a-fA-F]+):\t.*)");
 
             TargetDescription target = codeCache.getTarget();
@@ -117,6 +112,13 @@ public class HotSpotDisassemblerProvider implements DisassemblerProvider {
                     putAnnotation(annotations, infopoint.pcOffset, "{infopoint: " + infopoint.reason + "}");
                 }
             }
+
+            Process proc = Runtime.getRuntime().exec(cmdline);
+            InputStream is = proc.getInputStream();
+
+            InputStreamReader isr = new InputStreamReader(is);
+            BufferedReader br = new BufferedReader(isr);
+            String line;
 
             StringBuilder sb = new StringBuilder();
             while ((line = br.readLine()) != null) {

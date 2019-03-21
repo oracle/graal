@@ -111,20 +111,36 @@ public enum ELFMachine/* implements Integral */ {
                                 return ELFAArch64Relocation.R_AARCH64_ABS64;
                             case 6:
                                 return ELFAArch64Relocation.R_AARCH64_ABS32;
-                            case 4:
-                                return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G1;
                             case 2:
-                                return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G0;
+                                return ELFAArch64Relocation.R_AARCH64_ABS16;
                             case 1:
                             default:
                                 return ELFAArch64Relocation.R_AARCH64_NONE;
                         }
+                    case AARCH64_R_MOVW_UABS_G0:
+                        return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G0;
+                    case AARCH64_R_MOVW_UABS_G0_NC:
+                        return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G0_NC;
+                    case AARCH64_R_MOVW_UABS_G1:
+                        return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G1;
+                    case AARCH64_R_MOVW_UABS_G1_NC:
+                        return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G1_NC;
+                    case AARCH64_R_MOVW_UABS_G2:
+                        return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G2;
+                    case AARCH64_R_MOVW_UABS_G2_NC:
+                        return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G2_NC;
+                    case AARCH64_R_MOVW_UABS_G3:
+                        return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G3;
                     case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
                         return ELFAArch64Relocation.R_AARCH64_ADR_PREL_PG_HI21;
                     case AARCH64_R_AARCH64_LDST128_ABS_LO12_NC:
                         return ELFAArch64Relocation.R_AARCH64_LDST128_ABS_LO12_NC;
                     case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
                         return ELFAArch64Relocation.R_AARCH64_ADD_ABS_LO12_NC;
+                    case AARCH64_R_GOT_LD_PREL19:
+                        return ELFAArch64Relocation.R_AARCH64_GOT_LD_PREL19;
+                    case AARCH64_R_LD_PREL_LO19:
+                        return ELFAArch64Relocation.R_AARCH64_LD_PREL_LO19;
                     case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
                         return ELFAArch64Relocation.R_AARCH64_LDST64_ABS_LO12_NC;
                     case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
@@ -518,7 +534,17 @@ enum ELFAArch64Relocation implements ELFRelocationMethod {
     R_AARCH64_MOVW_SABS_G0(0x10e),
     R_AARCH64_MOVW_SABS_G1(0x10f),
     R_AARCH64_MOVW_SABS_G2(0x110),
-    R_AARCH64_LD_PREL_LO19(0x111),
+    R_AARCH64_LD_PREL_LO19(0x111) {
+        @Override
+        public RelocationKind getKind() {
+            return RelocationKind.PC_RELATIVE;
+        }
+
+        @Override
+        public int getRelocatedByteSize() {
+            return 8; // no, 19 bits
+        }
+    },
     R_AARCH64_ADR_PREL_LO21(0x112),
     R_AARCH64_ADR_PREL_PG_HI21(0x113) {
         @Override

@@ -42,6 +42,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
+import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
@@ -510,7 +511,13 @@ public class AArch64Move {
                         masm.fmov(64, dst, scratch);
                     }
                 } else {
-                    masm.fldr(64, dst, (AArch64Address) crb.asDoubleConstRef(input));
+                    AbstractAddress constRef = crb.asDoubleConstRef(input);
+                    try (ScratchRegister scr = masm.getScratchRegister()) {
+                        Register scratch = scr.getRegister();
+                        masm.movNativeAddress(scratch, 0, true);
+                        masm.fldr(64, dst, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                    }
+                    //masm.fldr(64, dst, (AArch64Address) crb.asDoubleConstRef(input));
                 }
                 break;
             case Object:
@@ -683,21 +690,18 @@ public class AArch64Move {
             Register inputRegister = asRegister(getInput());
             Register resultRegister = getResultRegister();
             Register base = encoding.hasBase() ? getBaseRegister(crb) : null;
-            emitUncompressCode(masm, inputRegister, resultRegister, base, encoding.getShift(), nonNull);
-        }
 
-        public static void emitUncompressCode(AArch64MacroAssembler masm, Register inputRegister, Register resReg, Register baseReg, int shift, boolean nonNull) {
             // result = base + (ptr << shift)
-            if (nonNull || baseReg == null) {
-                masm.add(64, resReg, baseReg == null ? zr : baseReg, inputRegister, AArch64Assembler.ShiftType.LSL, shift);
+            if (nonNull || base == null) {
+                masm.add(64, resultRegister, base == null ? zr : base, inputRegister, AArch64Assembler.ShiftType.LSL, encoding.getShift());
             } else {
                 // if ptr is null it has to be null after decompression
                 Label done = new Label();
-                if (!resReg.equals(inputRegister)) {
-                    masm.mov(32, resReg, inputRegister);
+                if (!resultRegister.equals(inputRegister)) {
+                    masm.mov(32, resultRegister, inputRegister);
                 }
-                masm.cbz(32, resReg, done);
-                masm.add(64, resReg, baseReg, resReg, AArch64Assembler.ShiftType.LSL, shift);
+                masm.cbz(32, resultRegister, done);
+                masm.add(64, resultRegister, base, resultRegister, AArch64Assembler.ShiftType.LSL, encoding.getShift());
                 masm.bind(done);
             }
         }

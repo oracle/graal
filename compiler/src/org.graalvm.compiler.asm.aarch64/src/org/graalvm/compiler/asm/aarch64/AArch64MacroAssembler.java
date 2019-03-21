@@ -266,7 +266,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @return AArch64Address pointing to memory at {@code base + displacement}.
      */
     public AArch64Address makeAddress(Register base, long displacement, int transferSize) {
-        return makeAddress(base, displacement, zr, /* signExtend */false, transferSize, zr, /* allowOverwrite */false);
+        return makeAddress(base, displacement, zr, /* signExtend */false, transferSize, zr, /*
+                                                                                             * allowOverwrite
+                                                                                             */false);
     }
 
     /**
@@ -388,9 +390,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             // then sign extend
             // them. This allows us to cover immediates like ~1L with 2 instructions.
             mov(dst, (int) imm);
-            if (annotateImm) {
-                annotatePatchingImmediate(pos, 32, 0, 0);
-            }
+            //if (annotateImm) {
+                //annotatePatchingImmediate(pos, 32, 0, 0);
+            //}
             sxt(64, 32, dst, dst);
         } else {
             mov64(dst, imm);
@@ -1758,7 +1760,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public AArch64Address makeAddress(Register base, int displacement) {
-        return makeAddress(base, displacement, zr, /* signExtend */false, /* transferSize */0, zr, /* allowOverwrite */false);
+        return makeAddress(base, displacement, zr, /* signExtend */false, /* transferSize */0, zr, /*
+                                                                                                    * allowOverwrite
+                                                                                                    */false);
     }
 
     @Override
@@ -1768,9 +1772,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
     public void addressOf(Register dst) {
         // This will be fixed up later.
-        annotatePatchingImmediate(position(), 21, 5, 12);
+        //annotatePatchingImmediate(position(), 21, 5, 12);
+        if (codePatchingAnnotationConsumer != null) {
+            codePatchingAnnotationConsumer.accept(new AdrpAddMacroInstruction(position()));
+        }
         super.adrp(dst);
-        annotatePatchingImmediate(position(), 12, 10, 0);
+        //annotatePatchingImmediate(position(), 12, 10, 0);
         super.add(64, dst, dst, 0);
     }
 
@@ -1807,6 +1814,22 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         @Override
         public String toString() {
             return "ADR_PREL_PG";
+        }
+
+        @Override
+        public void patch(int codePos, int relative, byte[] code) {
+            throw GraalError.unimplemented();
+        }
+    }
+
+    public static class AdrpAddMacroInstruction extends CodeAnnotation implements MacroInstruction {
+        public AdrpAddMacroInstruction(int position) {
+            super(position);
+        }
+
+        @Override
+        public String toString() {
+            return "ADRP_ADD";
         }
 
         @Override

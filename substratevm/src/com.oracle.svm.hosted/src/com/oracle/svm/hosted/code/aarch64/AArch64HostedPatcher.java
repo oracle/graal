@@ -33,14 +33,12 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.OperandDataAnnotation;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.objectfile.ObjectFile.RelocationKind;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
@@ -66,10 +64,12 @@ class AArch64HostedPatcherFeature implements Feature {
                     public void accept(CodeAnnotation annotation) {
                         if (annotation instanceof OperandDataAnnotation) {
                             compilationResult.addAnnotation(new AArch64HostedPatcher(annotation.instructionPosition, (OperandDataAnnotation) annotation));
-                        } else if (annotation instanceof AArch64Assembler.NativeAddressOperandDataAnnotation) {
-                            compilationResult.addAnnotation(new AArch64NativeAddressHostedPatcher(annotation.instructionPosition, (AArch64Assembler.NativeAddressOperandDataAnnotation) annotation));
+                        } else if (annotation instanceof AArch64Assembler.MovSequenceAnnotation) {
+                            compilationResult.addAnnotation(new AArch64MovSequenceHostedPatcher(annotation.instructionPosition, (AArch64Assembler.MovSequenceAnnotation) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.ADRADDPRELMacroInstruction) {
                             compilationResult.addAnnotation(new ADRADDPRELMacroInstructionHostedPatcher((AArch64MacroAssembler.ADRADDPRELMacroInstruction) annotation));
+                        } else if (annotation instanceof AArch64MacroAssembler.AdrpAddMacroInstruction) {
+                            compilationResult.addAnnotation(new AdrpAddMacroInstructionHostedPatcher((AArch64MacroAssembler.AdrpAddMacroInstruction) annotation));
                         }
                     }
                 };
@@ -136,10 +136,11 @@ public class AArch64HostedPatcher extends CompilationResult.CodeAnnotation imple
          * out of the RelocationSiteInfo accounts for the first two, since we pass it the whole
          * method. We add the method start to get the section-relative offset.
          */
-        int siteOffset = compStart + annotation.instructionPosition - 4;
+        int siteOffset = compStart + annotation.instructionPosition;
         relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 0, Long.valueOf(0), ref);
         siteOffset += 4;
         relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, 0, Long.valueOf(0), ref);
+        //relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_GOT_LD_PREL19, 0, Long.valueOf(0), ref);
     }
 }
 
@@ -171,10 +172,38 @@ class ADRADDPRELMacroInstructionHostedPatcher extends CompilationResult.CodeAnno
     }
 }
 
-class AArch64NativeAddressHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
-    private final AArch64Assembler.NativeAddressOperandDataAnnotation annotation;
+class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
+    private final AArch64MacroAssembler.AdrpAddMacroInstruction macroInstruction;
 
-    AArch64NativeAddressHostedPatcher(int instructionStartPosition, AArch64Assembler.NativeAddressOperandDataAnnotation annotation) {
+    AdrpAddMacroInstructionHostedPatcher(AArch64MacroAssembler.AdrpAddMacroInstruction macroInstruction) {
+        super(macroInstruction.instructionPosition);
+        this.macroInstruction = macroInstruction;
+    }
+
+    @Override
+    public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+        int siteOffset = compStart + macroInstruction.instructionPosition;
+
+        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 0, Long.valueOf(0), ref);
+        siteOffset += 4;
+        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, 0, Long.valueOf(0), ref);
+    }
+
+    @Override
+    public void patch(int codePos, int relative, byte[] code) {
+        macroInstruction.patch(codePos, relative, code);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this == obj;
+    }
+}
+
+class AArch64MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
+    private final AArch64Assembler.MovSequenceAnnotation annotation;
+
+    AArch64MovSequenceHostedPatcher(int instructionStartPosition, AArch64Assembler.MovSequenceAnnotation annotation) {
         super(instructionStartPosition);
         this.annotation = annotation;
     }
@@ -215,13 +244,36 @@ class AArch64NativeAddressHostedPatcher extends CompilationResult.CodeAnnotation
          * out of the RelocationSiteInfo accounts for the first two, since we pass it the whole
          * method. We add the method start to get the section-relative offset.
          */
-        long siteOffset = compStart + annotation.instructionPosition;
+        int siteOffset = compStart + annotation.instructionPosition;
         if (ref instanceof DataSectionReference || ref instanceof CGlobalDataReference) {
             long addend = 0;
-            relocs.addPCRelativeRelocationWithAddend((int) siteOffset, annotation.numInstrs * 2, addend, ref);
+            if ( annotation.numInstrs == 1 ) {
+                relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G0, 2, Long.valueOf(0), ref);
+                siteOffset = siteOffset + 4;
+            } else if ( annotation.numInstrs > 1){
+                relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G0_NC, 2, Long.valueOf(0), ref);
+                siteOffset = siteOffset + 4;
+            }
+            if ( annotation.numInstrs == 2 ) {
+                relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G1, 2, Long.valueOf(0), ref);
+                siteOffset = siteOffset + 4;
+            } else if ( annotation.numInstrs > 2 ) {
+                relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G1_NC, 2, Long.valueOf(0), ref);
+                siteOffset = siteOffset + 4;
+            }
+            if ( annotation.numInstrs == 3 ) {
+                relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G2, 2, Long.valueOf(0), ref);
+                siteOffset = siteOffset + 4;
+            } else if ( annotation.numInstrs > 3 ) {
+                relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G2_NC, 2, Long.valueOf(0), ref);
+                siteOffset = siteOffset + 4;
+            }
+            if ( annotation.numInstrs == 4 ) {
+                relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G3, 2, Long.valueOf(0), ref);
+                siteOffset = siteOffset + 4;
+            }
         } else if (ref instanceof ConstantReference) {
-            assert SubstrateOptions.SpawnIsolates.getValue() : "Inlined object references must be base-relative";
-            relocs.addDirectRelocationWithoutAddend((int) siteOffset, annotation.numInstrs * 2, ref);
+            relocs.addDirectRelocationWithoutAddend(siteOffset, annotation.numInstrs * 2, ref);
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");
         }

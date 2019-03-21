@@ -70,7 +70,7 @@ public final class AArch64CGlobalDataLoadAddressOp extends AArch64LIRInstruction
                 // Data: load its address
                 AArch64Address address = masm.getPlaceholder(before);
                 masm.loadAddress(asRegister(result), address, 1);
-                crb.compilationResult.recordDataPatch(before + 4, new CGlobalDataReference(dataInfo));
+                crb.compilationResult.recordDataPatch(before, new CGlobalDataReference(dataInfo));
             }
         } else {
             // Runtime compilation: compute the actual address

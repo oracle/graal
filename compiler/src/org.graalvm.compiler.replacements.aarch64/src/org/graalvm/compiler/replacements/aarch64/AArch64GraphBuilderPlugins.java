@@ -25,11 +25,19 @@
 package org.graalvm.compiler.replacements.aarch64;
 
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins;
+import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
+import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPECIFICATION_VERSION;
 import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java11OrEarlier;
 import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -41,6 +49,8 @@ import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -56,7 +66,7 @@ public class AArch64GraphBuilderPlugins {
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, AArch64IntegerSubstitutions.class, JavaKind.Int, bytecodeProvider);
                 registerIntegerLongPlugins(invocationPlugins, AArch64LongSubstitutions.class, JavaKind.Long, bytecodeProvider);
-                // registerMathPlugins(invocationPlugins);
+                //registerMathPlugins(invocationPlugins);
                 registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
                 registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
                 registerUnsafePlugins(invocationPlugins, bytecodeProvider);
@@ -100,32 +110,61 @@ public class AArch64GraphBuilderPlugins {
     }
 
     /*
-     * private static void registerMathPlugins(InvocationPlugins plugins) { Registration r = new
-     * Registration(plugins, Math.class); registerUnaryMath(r, "sin", SIN); registerUnaryMath(r,
-     * "cos", COS); registerUnaryMath(r, "tan", TAN); registerUnaryMath(r, "exp", EXP);
-     * registerUnaryMath(r, "log", LOG); registerUnaryMath(r, "log10", LOG10); r.register2("pow",
-     * Double.TYPE, Double.TYPE, new InvocationPlugin() {
-     * 
-     * @Override public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
-     * Receiver receiver, ValueNode x, ValueNode y) { b.push(JavaKind.Double,
-     * b.append(BinaryMathIntrinsicNode.create(x, y, BinaryMathIntrinsicNode.BinaryOperation.POW)));
-     * return true; } }); registerRound(r, "rint", RoundingMode.NEAREST); registerRound(r, "ceil",
-     * RoundingMode.UP); registerRound(r, "floor", RoundingMode.DOWN); }
-     * 
-     * private static void registerUnaryMath(Registration r, String name, UnaryOperation operation)
-     * { r.register1(name, Double.TYPE, new InvocationPlugin() {
-     * 
-     * @Override public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
-     * Receiver receiver, ValueNode value) { b.push(JavaKind.Double,
-     * b.append(UnaryMathIntrinsicNode.create(value, operation))); return true; } }); }
-     * 
-     * private static void registerRound(Registration r, String name, RoundingMode mode) {
-     * r.register1(name, Double.TYPE, new InvocationPlugin() {
-     * 
-     * @Override public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
-     * Receiver receiver, ValueNode arg) { b.push(JavaKind.Double, b.append(new
-     * AArch64RoundNode(arg, mode))); return true; } }); }
-     */
+    private static void registerMathPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Math.class);
+        registerUnaryMath(r, "sin", SIN);
+        registerUnaryMath(r, "cos", COS);
+        registerUnaryMath(r, "tan", TAN);
+        registerUnaryMath(r, "exp", EXP);
+        registerUnaryMath(r, "log", LOG);
+        registerUnaryMath(r, "log10", LOG10);
+        registerBinaryMath(r, "pow", POW);
+        registerRound(r, "rint", AArch64ArithmeticLIRGeneratorTool.RoundingMode.NEAREST);
+        registerRound(r, "ceil", AArch64ArithmeticLIRGeneratorTool.RoundingMode.UP);
+        registerRound(r, "floor", AArch64ArithmeticLIRGeneratorTool.RoundingMode.DOWN);
+    }
+    */
+
+    /*
+    private static void registerUnaryMath(Registration r, String name, UnaryMathIntrinsicNode.UnaryOperation operation) {
+        r.register1(name, Double.TYPE, new InvocationPlugin() {
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
+                            Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Double,
+                                b.append(UnaryMathIntrinsicNode.create(value, operation)));
+                return true;
+            }
+        });
+    }
+    */
+
+    /*
+    private static void registerBinaryMath(Registration r, String name, BinaryMathIntrinsicNode.BinaryOperation operation) {
+        r.register2(name, Double.TYPE, Double.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, operation)));
+                return true;
+            }
+        });
+    }
+    */
+
+    /*
+    private static void registerRound(Registration r, String name, AArch64ArithmeticLIRGeneratorTool.RoundingMode mode) {
+        r.register1(name, Double.TYPE, new InvocationPlugin() {
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
+                            Receiver receiver, ValueNode arg) {
+                b.push(JavaKind.Double, b.append(new AArch64RoundNode(arg, mode)));
+                return true;
+            }
+        });
+    }
+    */
 
     private static void registerStringLatin1Plugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
         if (JAVA_SPECIFICATION_VERSION >= 9) {
