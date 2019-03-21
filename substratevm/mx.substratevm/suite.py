@@ -731,6 +731,7 @@ suite = {
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
+                "com.oracle.svm.reflect",
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
