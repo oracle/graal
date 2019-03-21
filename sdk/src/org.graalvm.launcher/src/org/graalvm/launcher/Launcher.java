@@ -480,7 +480,16 @@ public abstract class Launcher {
     }
 
     protected boolean isGraalVMAvailable() {
-        return nativeAccess != null && nativeAccess.getGraalVMHome() != null;
+        return getGraalVMHome() != null;
+    }
+
+    private Path home;
+
+    protected Path getGraalVMHome() {
+        if (home == null) {
+            home = Engine.findHome();
+        }
+        return home;
     }
 
     @SuppressWarnings("fallthrough")
@@ -1054,7 +1063,11 @@ public abstract class Launcher {
                         throw abort("'--jvm' and '--native' options can not be used together.");
                     }
                     if (!isGraalVMAvailable()) {
-                        throw abort("'--jvm.*' options are deprecated and only supported when this launcher is part of a GraalVM.");
+                        if (arg.equals("--jvm")) {
+                            throw abort("'--jvm' is only supported when this launcher is part of a GraalVM.");
+                        } else {
+                            throw abort("'--jvm.*' options are deprecated and only supported when this launcher is part of a GraalVM.");
+                        }
                     }
                     if (arg.equals("--jvm.help")) {
                         if (defaultVmType == VMType.JVM) {
@@ -1495,10 +1508,6 @@ public abstract class Launcher {
                 return jdkBin;
             }
             return graalVMHome.resolve("jre").resolve("bin").resolve(executableName);
-        }
-
-        Path getGraalVMHome() {
-            return Engine.findHome();
         }
 
         private void exec(Path executable, List<String> command) {
