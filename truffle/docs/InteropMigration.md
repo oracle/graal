@@ -1,7 +1,7 @@
 
 # Truffle Interop 2.0
 
-It is recommended to read the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibaries.md) first, before proceeding. This document is targeted at guest language and tool implementers.
+It is recommended to read the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibraries.md) first, before proceeding. This document is targeted at guest language and tool implementers.
 
 ## Motivation 
 

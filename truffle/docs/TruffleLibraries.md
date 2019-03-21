@@ -17,7 +17,7 @@ To keep the example simple we will only support `int` values and we will ignore 
 
 To make the example more interesting, we will implement an optimization that will let the compiler allow to constant fold sequenced array accesses even if the array receiver value is not constant. Let's assume we have the following code snippet `range(start, stride, length)[2]`. In this snippet, the variables `start` and `stride` are not known to be constant values, therefore, equivalent code to `start + stride * 2` gets compiled. However, if the `start` and `stride` values are known to always be the same then the compiler could constant-fold the entire operation. This optimization requires the use of caching, we will see later how this works.
 
-In the dynamic array implementation of Graal.js, we use 20 different representations. There are representations for constant, zero-based, contiguous, holes and sparse arrays. Some representations are further specialized for the types `byte`, `int`, `double`, `JSObject` and `Object`. The source code can be found [here](https://github.com/graalvm/graaljs/tree/master/graal-js/src/com.oracle.truffle.js.runtime/src/com/oracle/truffle/js/runtime/array/dyn). Note that currently, JS arrays don't use Truffle Libraries yet.
+In the dynamic array implementation of Graal.js, we use 20 different representations. There are representations for constant, zero-based, contiguous, holes and sparse arrays. Some representations are further specialized for the types `byte`, `int`, `double`, `JSObject` and `Object`. The source code can be found [here](https://github.com/graalvm/graaljs/tree/master/graal-js/src/com.oracle.truffle.js/src/com/oracle/truffle/js/runtime/array/dyn). Note that currently, JS arrays don't use Truffle Libraries yet.
 
 In the following sections, we discuss multiple implementation strategies for the array representations, ultimately describing how Truffle Libraries can be used to achieve this.
 
@@ -69,7 +69,7 @@ Now let's try to make the array read specialize on the constant-ness of values o
 
 ```java
 @NodeChild @NodeChild
-class ReadArrayNode extends ExpressionNode {
+class ArrayReadNode extends ExpressionNode {
     /* doBuffer() */
     @Specialization(guards = {"seq.stride == cachedStride",
                               "seq.start  == cachedStart"}, limit = "1")
@@ -86,7 +86,7 @@ If the speculation guards of this specialization succeed then the start and stri
 
 ```java
 @NodeChild @NodeChild
-class ReadArrayNode extends ExpressionNode {
+class ArrayReadNode extends ExpressionNode {
     /* doSequenceCached() */
     @Specialization(replaces = "doSequenceCached")
     int doSequence(SequenceArray seq, int index) {

@@ -12,7 +12,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* Introduced new classes: `InteropLibrary` and `InvalidArrayIndexException`.
 	* Added `ObjectType.dispatch` to configure the dynamic dispatch and deprecated `ObjectType.getForeignAccessFactory`.
 * Added Truffle Library API that allows language implementations to use polymorphic dispatch for receiver types with support for implementation specific caching/profiling with support for uncached dispatch. 
-	* Please see the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibaries.md) for further details.
+	* Please see the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibraries.md) for further details.
 	* Introduced new package: `com.oracle.truffle.api.library`.
 * Added `@GenerateUncached` to allow the generation of uncached Truffle DSL nodes accessible via the new static generated method`getUncached()`.
 	* Set the default value for @Cached to `"create()"`. This allows `@Cached` to be used without attribute.
