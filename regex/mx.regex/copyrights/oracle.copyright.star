@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,3 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.parser.ast.visitors;
-
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-
-public interface RegexASTVisitorIterable {
-
-    boolean visitorHasNext();
-
-    RegexASTNode visitorGetNext(boolean reverse);
-
-    void resetVisitorIterator();
-}
