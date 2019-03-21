@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
@@ -37,6 +38,8 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
 
     private final StaticObject appendix;
     private final boolean hasAppendix;
+    private final Symbol<Type> returnType;
+    private final JavaKind returnKind;
     @Child private DirectCallNode callNode;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Symbol.Type>[] parsedSignature;
@@ -45,6 +48,8 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         Method target = (Method) memberName.getHiddenField("vmtarget");
         this.appendix = appendix;
         this.parsedSignature = parsedSignature;
+        this.returnType = Signatures.returnType(parsedSignature);
+        this.returnKind = Signatures.returnKind(parsedSignature);
         this.hasAppendix = appendix != StaticObject.NULL;
         target.getDeclaringKlass().initialize();
         this.callNode = DirectCallNode.create(target.getCallTarget());
@@ -61,6 +66,24 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         }
         Object result = callNode.call(args);
         int resultAt = top - Signatures.slotsForParameters(parsedSignature); // no receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, Signatures.returnKind(parsedSignature));
+        return (resultAt - top) + root.putKind(frame, resultAt, unbasic(result, returnType), returnKind);
+    }
+
+    // Transforms ints to sub-words
+    private static Object unbasic(Object arg, Symbol<Type> t) {
+        if (t == Type._boolean) {
+            return ((int) arg != 0);
+        } else if (t == Type._short) { // Unbox to cast.
+            int value = (int) arg;
+            return (short) value;
+        } else if (t == Type._byte) {
+            int value = (int) arg;
+            return (byte) value;
+        } else if (t == Type._char) {
+            int value = (int) arg;
+            return (char) value;
+        } else {
+            return arg;
+        }
     }
 }

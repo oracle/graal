@@ -1124,7 +1124,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     }
                     // System.err.println("Internal error (caught in invocation): " + this +
                     // "\nBCI:" + curBCI);
-                    // e.printStackTrace();
+                    e.printStackTrace();
                     CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwEx(NullPointerException.class);
                 }
@@ -1865,6 +1865,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     // Effort to prevent double copies.
     @ExplodeLoop
     public Object[] peekArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount) {
+        // Use basic types
         CompilerAsserts.partialEvaluationConstant(argCount);
         CompilerAsserts.partialEvaluationConstant(signature);
 
@@ -1874,10 +1875,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             // @formatter:off
             // Checkstyle: stop
             switch (kind) {
-                case Boolean : args[i] = (peekInt(frame, argAt) != 0);  break;
-                case Byte    : args[i] = (byte) peekInt(frame, argAt);  break;
-                case Short   : args[i] = (short) peekInt(frame, argAt); break;
-                case Char    : args[i] = (char) peekInt(frame, argAt);  break;
+                case Boolean : args[i] = peekInt(frame, argAt);  break;
+                case Byte    : args[i] = peekInt(frame, argAt);  break;
+                case Short   : args[i] = peekInt(frame, argAt); break;
+                case Char    : args[i] = peekInt(frame, argAt);  break;
                 case Int     : args[i] = peekInt(frame, argAt);         break;
                 case Float   : args[i] = peekFloat(frame, argAt);       break;
                 case Long    : args[i] = peekLong(frame, argAt);        break;
