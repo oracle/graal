@@ -100,8 +100,8 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static HostMethodDesc findMethod(Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static HostMethodDesc findMethod(PolyglotEngineImpl impl, Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod == null && isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
@@ -110,14 +110,14 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static HostFieldDesc findField(Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static HostFieldDesc findField(PolyglotEngineImpl impl, Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
         return classDesc.lookupField(name, onlyStatic);
     }
 
     @TruffleBoundary
-    static boolean isReadable(Class<?> clazz, String name, boolean onlyStatic, boolean isClass) {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static boolean isReadable(HostObject object, Class<?> clazz, String name, boolean onlyStatic, boolean isClass) {
+        HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return true;
@@ -151,8 +151,8 @@ final class HostInteropReflect {
     }
 
     @TruffleBoundary
-    static boolean isModifiable(Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static boolean isModifiable(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
         HostFieldDesc foundField = classDesc.lookupField(name, onlyStatic);
         if (foundField != null) {
             return true;
@@ -161,8 +161,8 @@ final class HostInteropReflect {
     }
 
     @TruffleBoundary
-    static boolean isInvokable(Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static boolean isInvokable(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return true;
@@ -176,8 +176,8 @@ final class HostInteropReflect {
     }
 
     @TruffleBoundary
-    static boolean isInternal(Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static boolean isInternal(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod == null && isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
@@ -256,8 +256,8 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findUniquePublicMemberNames(Class<?> clazz, boolean isStatic, boolean isClass, boolean includeInternal) throws SecurityException {
-        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+    static String[] findUniquePublicMemberNames(PolyglotEngineImpl engine, Class<?> clazz, boolean isStatic, boolean isClass, boolean includeInternal) throws SecurityException {
+        HostClassDesc classDesc = HostClassDesc.forClass(engine, clazz);
         EconomicSet<String> names = EconomicSet.create();
         names.addAll(classDesc.getFieldNames(isStatic));
         names.addAll(classDesc.getMethodNames(isStatic, includeInternal));

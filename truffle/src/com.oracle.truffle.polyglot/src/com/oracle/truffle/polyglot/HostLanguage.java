@@ -99,7 +99,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         private void checkHostAccessAllowed() {
-            if (!internalContext.context.config.hostAccessAllowed) {
+            if (!internalContext.context.config.hostLookupAllowed) {
                 throw new HostLanguageException(String.format("Host class access is not allowed."));
             }
         }

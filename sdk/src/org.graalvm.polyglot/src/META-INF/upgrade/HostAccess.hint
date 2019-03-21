@@ -1,0 +1,25 @@
+<!suppress-warnings="sourcebuilder">
+
+'Use HostAccess':
+$cb.allowHostAccess(true) :: $cb instanceof org.graalvm.polyglot.Context.Builder
+=>
+'Use HostAccess.ALL and load any class':
+$cb.allowHostAccess(org.graalvm.polyglot.HostAccess.ALL)
+   .allowHostClassLookup((s) -> true)
+;;
+
+'Use HostAccess':
+$cb.allowHostAccess(false) :: $cb instanceof org.graalvm.polyglot.Context.Builder
+=>
+'Use HostAccess.ALL but load no class':
+$cb.allowHostAccess(org.graalvm.polyglot.HostAccess.ALL)
+   .allowHostClassLookup(null)
+;;
+
+'Use HostAccess':
+$cb.hostClassFilter($filter) :: $cb instanceof org.graalvm.polyglot.Context.Builder
+=>
+'Use HostAccess.ALL and load any class':
+$cb.allowHostClassLookup($filter)
+;;
+
