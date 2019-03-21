@@ -74,16 +74,18 @@ public class MHLinkToNode extends EspressoBaseNode {
             StaticObjectImpl receiver = (StaticObjectImpl) args[0];
             assert receiver.getKlass() instanceof ObjectKlass;
             if (target.getRefKind() == Target_java_lang_invoke_MethodHandleNatives.REF_invokeSpecial ||
-                    refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeSpecial) {
+                            refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeSpecial) {
                 return rebasic(target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2)), Signatures.returnType(target.getParsedSignature()));
             }
             if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual) {
-                target = ((ObjectKlass)receiver.getKlass()).lookupMethod(target.getVTableIndex());
-//                target = node.executeLookup(target.getName(), target.getRawSignature(), receiver.getKlass());
+                target = ((ObjectKlass) receiver.getKlass()).lookupMethod(target.getVTableIndex());
+                // target = node.executeLookup(target.getName(), target.getRawSignature(),
+                // receiver.getKlass());
             }
             if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface) {
-                target = ((ObjectKlass)receiver.getKlass()).lookupMethod(target.getDeclaringKlass().getName(), target.getITableIndex());
-//                target = receiver.getKlass().lookupMethod(target.getName(), target.getRawSignature());
+                target = ((ObjectKlass) receiver.getKlass()).lookupMethod(target.getDeclaringKlass().getName(), target.getITableIndex());
+                // target = receiver.getKlass().lookupMethod(target.getName(),
+                // target.getRawSignature());
             }
             return rebasic(target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2)), Signatures.returnType(target.getParsedSignature()));
         } else {

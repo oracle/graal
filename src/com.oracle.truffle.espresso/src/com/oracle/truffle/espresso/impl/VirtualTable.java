@@ -19,7 +19,7 @@ public class VirtualTable {
         }
         Method override;
         int pos;
-        for (Method m: declaredMethods) {
+        for (Method m : declaredMethods) {
             if (m.getRefKind() == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual) {
                 if (superKlass != null) {
                     override = superKlass.lookupMethod(m.getName(), m.getRawSignature());
@@ -48,6 +48,5 @@ public class VirtualTable {
     final Method lookupMethod(int index) {
         return table[index];
     }
-
 
 }

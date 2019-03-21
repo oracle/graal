@@ -17,7 +17,7 @@ public class InterfaceTables {
         } else {
             tmp = new ArrayList<>();
         }
-        for (ObjectKlass interf: superInterfaces) {
+        for (ObjectKlass interf : superInterfaces) {
             tmp.add(new InterfaceTable(interf, thisKlass));
         }
         this.itables = tmp.toArray(new InterfaceTable[0]);
@@ -26,21 +26,20 @@ public class InterfaceTables {
     InterfaceTables(Symbol<Name> name, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
         ArrayList<InterfaceTable> tmp = new ArrayList<>();
         tmp.add(new InterfaceTable(name, declaredMethods));
-        for (ObjectKlass interf: superInterfaces) {
+        for (ObjectKlass interf : superInterfaces) {
             tmp.addAll(Arrays.asList(interf.getItable().itables));
         }
         this.itables = tmp.toArray(new InterfaceTable[0]);
     }
 
     public Method lookupMethod(Symbol<Name> interfName, int index) {
-        for (InterfaceTable itable: itables) {
+        for (InterfaceTable itable : itables) {
             if (itable.getName() == interfName) {
                 return itable.lookupMethod(interfName, index);
             }
         }
         return null;
     }
-
 
 }
 
@@ -65,7 +64,7 @@ class InterfaceTable {
         this.iname = name;
         table = declaredMethods;
         int i = 0;
-        for(Method m: declaredMethods) {
+        for (Method m : declaredMethods) {
             m.setITableIndex(i++);
         }
     }
