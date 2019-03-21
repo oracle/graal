@@ -480,14 +480,6 @@ def extract_compiler_args(args, useDoubleDash=False):
                 remainder += [arg]
     return compilerArgs, remainder
 
-def runLLVM(args=None, out=None):
-    """uses Sulong to execute a LLVM IR file"""
-    vmArgs, sulongArgs = truffle_extract_VM_args(args)
-    dists = []
-    if "tools" in (s.name for s in mx.suites()):
-        dists.append('CHROMEINSPECTOR')
-    return mx.run_java(getCommonOptions(False) + vmArgs + getClasspathOptions(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, out=out)
-
 def getCommonOptions(withAssertion, lib_args=None):
     options = ['-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true']
@@ -644,6 +636,16 @@ def ensureLLVMBinariesExist():
     for llvmBinary in basicLLVMDependencies:
         if findLLVMProgram(llvmBinary) is None:
             raise Exception(llvmBinary + ' not found')
+
+
+def runLLVM(args=None, out=None, get_classpath_options=getClasspathOptions):
+    """uses Sulong to execute a LLVM IR file"""
+    vmArgs, sulongArgs = truffle_extract_VM_args(args)
+    dists = []
+    if "tools" in (s.name for s in mx.suites()):
+        dists.append('CHROMEINSPECTOR')
+    return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, out=out)
+
 
 _env_flags = []
 if 'CPPFLAGS' in os.environ:
