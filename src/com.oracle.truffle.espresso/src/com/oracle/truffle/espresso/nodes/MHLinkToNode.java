@@ -86,29 +86,11 @@ public class MHLinkToNode extends EspressoBaseNode {
         Object[] res = new Object[length];
         for (int i = 0; i < length; i++) {
             Symbol<Type> t = Signatures.parameterType(targetSig, i);
-            res[i] = unbasic(args[i + from], t);
+            res[i] = InvokeDynamicCallSiteNode.unbasic(args[i + from], t);
         }
         return res;
     }
-
-    // Transforms ints to sub-words
-    private static Object unbasic(Object arg, Symbol<Type> t) {
-        if (t == Type._boolean) {
-            return ((int) arg != 0);
-        } else if (t == Type._short) { // Unbox to cast.
-            int value = (int) arg;
-            return (short) value;
-        } else if (t == Type._byte) {
-            int value = (int) arg;
-            return (byte) value;
-        } else if (t == Type._char) {
-            int value = (int) arg;
-            return (char) value;
-        } else {
-            return arg;
-        }
-    }
-
+    
     // Tranform sub-words to int
     private static Object rebasic(Object result, Symbol<Type> rtype) {
         if (rtype == Type._boolean) {
