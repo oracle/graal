@@ -141,5 +141,5 @@ builds += [
   ${bench-renaissance-hwloc-forks-c2-batch1}
   ${bench-renaissance-hwloc-forks-c2-batch2}
   ${bench-renaissance-hwloc-forks-c2-batch3}
-  #${bench-specjbb2015-forks-c2}
+  ${bench-specjbb2015-forks-c2}
 ]
