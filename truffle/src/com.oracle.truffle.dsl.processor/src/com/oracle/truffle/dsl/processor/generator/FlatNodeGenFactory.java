@@ -1017,7 +1017,7 @@ public class FlatNodeGenFactory {
         }
         method.getThrownTypes().addAll(thrownTypes);
 
-        CodeTree result = visitSpecializationGroup(CodeTreeBuilder.createBuilder(), group, executableType, frameState, null);
+        CodeTree result = visitSpecializationGroup(CodeTreeBuilder.createBuilder(), null, group, executableType, frameState, null);
 
         if (!fallbackNeedsState) {
             VariableElement toRemove = null;
@@ -1209,9 +1209,10 @@ public class FlatNodeGenFactory {
                 TypeMirror evaluatedType = signatureParameters.get(i);
                 TypeMirror specializedType = specialization.findParameterOrDie(node.getChildExecutions().get(i)).getType();
 
-                if (typeSystem.lookupCast(evaluatedType, specializedType) == null && !isSubtypeBoxed(context, evaluatedType, specializedType) &&
-                                !isSubtypeBoxed(context, specializedType, evaluatedType)) {
-                    // not compatible parameter
+                if (typeSystem.lookupCast(evaluatedType, specializedType) == null && !isSubtypeBoxed(context, specializedType, evaluatedType) &&
+                                !isSubtypeBoxed(context, evaluatedType, specializedType)) {
+                    // unreachable type parameter for the execute signature. For example evaluated
+                    // int and specialized long. This does not account for reachability.
                     continue outer;
                 }
             }
@@ -1336,7 +1337,7 @@ public class FlatNodeGenFactory {
 
         SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
         FrameState originalFrameState = frameState.copy();
-        builder.tree(visitSpecializationGroup(builder, group, forType, frameState, allSpecializations));
+        builder.tree(visitSpecializationGroup(builder, null, group, forType, frameState, allSpecializations));
         if (group.hasFallthrough()) {
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
@@ -1494,7 +1495,7 @@ public class FlatNodeGenFactory {
 
         FrameState originalFrameState = frameState.copy();
         SpecializationGroup group = createSpecializationGroups();
-        CodeTree execution = visitSpecializationGroup(builder, group, executeAndSpecializeType, frameState, null);
+        CodeTree execution = visitSpecializationGroup(builder, null, group, executeAndSpecializeType, frameState, null);
 
         builder.tree(execution);
 
@@ -1763,7 +1764,7 @@ public class FlatNodeGenFactory {
             builder.tree(createFastPathExecuteChild(builder, originalFrameState, frameState, currentType, group, execution));
         }
 
-        builder.tree(visitSpecializationGroup(builder, group, currentType, frameState, allowedSpecializations));
+        builder.tree(visitSpecializationGroup(builder, null, group, currentType, frameState, allowedSpecializations));
 
         if (group.hasFallthrough()) {
             builder.tree(createTransferToInterpreterAndInvalidate());
@@ -2726,9 +2727,10 @@ public class FlatNodeGenFactory {
         return null;
     }
 
-    private CodeTree visitSpecializationGroup(CodeTreeBuilder parent, SpecializationGroup group, ExecutableTypeData forType, FrameState frameState,
-                    Collection<SpecializationData> allowedSpecializations) {
+    private CodeTree visitSpecializationGroup(CodeTreeBuilder parent, SpecializationGroup originalPrev, SpecializationGroup group, ExecutableTypeData forType,
+                    FrameState frameState, Collection<SpecializationData> allowedSpecializations) {
         final CodeTreeBuilder builder = parent.create();
+        SpecializationGroup prev = originalPrev;
 
         NodeExecutionMode mode = frameState.getMode();
         boolean hasFallthrough = false;
@@ -2867,14 +2869,8 @@ public class FlatNodeGenFactory {
 
             BlockState innerIfCount = BlockState.NONE;
             innerIfCount = innerIfCount.add(IfTriple.materialize(innerBuilder, IfTriple.optimize(cachedTriples), false));
-            SpecializationGroup prev = null;
-            for (SpecializationGroup child : group.getChildren()) {
-                if (prev != null && !prev.hasFallthrough()) {
-                    break;
-                }
-                innerBuilder.tree(visitSpecializationGroup(builder, child, forType, frameState.copy(), allowedSpecializations));
-            }
-            if (specialization != null) {
+            prev = visitSpecializationGroupChildren(builder, frameState, prev, group, forType, allowedSpecializations);
+            if (specialization != null && (prev == null || prev.hasFallthrough())) {
                 innerBuilder.tree(createFastPathExecute(builder, forType, specialization, frameState));
             }
 
@@ -2909,14 +2905,7 @@ public class FlatNodeGenFactory {
 
                 outerIfCount = outerIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
 
-                SpecializationGroup prev = null;
-                for (SpecializationGroup child : group.getChildren()) {
-                    if (prev != null && !prev.hasFallthrough()) {
-                        break;
-                    }
-                    builder.tree(visitSpecializationGroup(builder, child, forType, frameState.copy(), allowedSpecializations));
-                    prev = child;
-                }
+                prev = visitSpecializationGroupChildren(builder, frameState, prev, group, forType, allowedSpecializations);
             } else {
                 outerIfCount = outerIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
 
@@ -3056,17 +3045,8 @@ public class FlatNodeGenFactory {
             }
 
             innerIfCount = innerIfCount.add(IfTriple.materialize(builder, cachedTriples, false));
-
-            SpecializationGroup prev = null;
-            for (SpecializationGroup child : group.getChildren()) {
-                if (prev != null && !prev.hasFallthrough()) {
-                    break;
-                }
-                builder.tree(visitSpecializationGroup(builder, child, forType, frameState.copy(), allowedSpecializations));
-                prev = child;
-            }
-
-            if (specialization != null) {
+            prev = visitSpecializationGroupChildren(builder, frameState, prev, group, forType, allowedSpecializations);
+            if (specialization != null && (prev == null || prev.hasFallthrough())) {
                 builder.returnFalse();
             }
 
@@ -3087,13 +3067,7 @@ public class FlatNodeGenFactory {
 
             BlockState innerIfCount = IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false);
 
-            SpecializationGroup prev = null;
-            for (SpecializationGroup child : group.getChildren()) {
-                if (prev != null && !prev.hasFallthrough()) {
-                    break;
-                }
-                builder.tree(visitSpecializationGroup(builder, child, forType, frameState.copy(), allowedSpecializations));
-            }
+            prev = visitSpecializationGroupChildren(builder, frameState, prev, group, forType, allowedSpecializations);
             if (specialization != null && (prev == null || prev.hasFallthrough())) {
                 builder.tree(createCallSpecialization(builder, frameState, forType, specialization));
             }
@@ -3107,6 +3081,19 @@ public class FlatNodeGenFactory {
         group.setFallthrough(hasFallthrough);
 
         return builder.build();
+    }
+
+    private SpecializationGroup visitSpecializationGroupChildren(final CodeTreeBuilder builder, FrameState frameState, SpecializationGroup prev, SpecializationGroup group, ExecutableTypeData forType,
+                    Collection<SpecializationData> allowedSpecializations) {
+        SpecializationGroup currentPrev = prev;
+        for (SpecializationGroup child : group.getChildren()) {
+            if (currentPrev != null && !currentPrev.hasFallthrough()) {
+                break;
+            }
+            builder.tree(visitSpecializationGroup(builder, prev, child, forType, frameState.copy(), allowedSpecializations));
+            currentPrev = child;
+        }
+        return currentPrev;
     }
 
     private int boundaryIndex = 0;
