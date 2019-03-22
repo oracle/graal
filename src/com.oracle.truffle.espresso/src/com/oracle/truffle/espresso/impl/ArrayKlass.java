@@ -91,6 +91,16 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
+    public final Method lookupMethod(int vtableIndex) {
+        return getSuperKlass().lookupMethod(vtableIndex);
+    }
+
+    @Override
+    public final Method lookupMethod(Klass interfKlass, int itableIndex) {
+        return getSuperKlass().lookupMethod(interfKlass, itableIndex);
+    }
+
+    @Override
     public boolean isLocal() {
         return false;
     }

@@ -1125,8 +1125,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     // System.err.println("Internal error (caught in invocation): " + this +
                     // "\nBCI:" + curBCI);
                     // e.printStackTrace();
-                    CompilerDirectives.transferToInterpreter();
-                    throw getMeta().throwEx(NullPointerException.class);
+                    // CompilerDirectives.transferToInterpreter();
+                    // throw getMeta().throwEx(VirtualMachineError.class);
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();

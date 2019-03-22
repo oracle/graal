@@ -117,7 +117,7 @@ public final class ObjectKlass extends Klass {
         this.declaredMethods = methods;
 
         if (this.isInterface()) {
-            this.itable = new InterfaceTables(getName(), superInterfaces, declaredMethods);
+            this.itable = new InterfaceTables(this, superInterfaces, declaredMethods);
             this.vtable = null;
         } else {
             this.vtable = new VirtualTable(superKlass, declaredMethods);
@@ -320,23 +320,21 @@ public final class ObjectKlass extends Klass {
         return hostKlass;
     }
 
-    public int getVTableLength() {
-        return vtable.length();
-    }
-
-    public VirtualTable getVTable() {
+    VirtualTable getVTable() {
         return vtable;
     }
 
-    public Method lookupMethod(int index) {
+    @Override
+    public final Method lookupMethod(int index) {
         return vtable.lookupMethod(index);
     }
 
-    public Method lookupMethod(Symbol<Name> interfName, int index) {
-        return itable.lookupMethod(interfName, index);
+    @Override
+    public final Method lookupMethod(Klass interfKlass, int index) {
+        return itable.lookupMethod(interfKlass, index);
     }
 
-    public InterfaceTables getItable() {
+    InterfaceTables getItable() {
         return itable;
     }
 }

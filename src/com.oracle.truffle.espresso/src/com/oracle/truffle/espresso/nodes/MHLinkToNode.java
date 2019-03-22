@@ -26,13 +26,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
@@ -42,13 +38,10 @@ public class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
     final int id;
 
-    @Child LinkToNode node;
-
     public MHLinkToNode(Method method, int id) {
         super(method);
         this.id = id;
         this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
-        this.node = LinkToNodeGen.create();
     }
 
     @Override
@@ -78,15 +71,12 @@ public class MHLinkToNode extends EspressoBaseNode {
                 return rebasic(target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2)), Signatures.returnType(target.getParsedSignature()));
             }
             if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual) {
-                target = ((ObjectKlass) receiver.getKlass()).lookupMethod(target.getVTableIndex());
-                // target = node.executeLookup(target.getName(), target.getRawSignature(),
-                // receiver.getKlass());
+                target = (receiver.getKlass()).lookupMethod(target.getVTableIndex());
             }
             if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface) {
-                target = ((ObjectKlass) receiver.getKlass()).lookupMethod(target.getDeclaringKlass().getName(), target.getITableIndex());
-                // target = receiver.getKlass().lookupMethod(target.getName(),
-                // target.getRawSignature());
+                target = (receiver.getKlass()).lookupMethod(target.getDeclaringKlass(), target.getITableIndex());
             }
+            // Constructors...
             return rebasic(target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2)), Signatures.returnType(target.getParsedSignature()));
         } else {
             // args of the form {arg1, arg2... , memberName}
@@ -117,36 +107,5 @@ public class MHLinkToNode extends EspressoBaseNode {
         } else {
             return result;
         }
-    }
-}
-
-abstract class LinkToNode extends Node {
-    /**
-     * Cache gets full really fast. Unlike regular invocations, we do not know the descriptor of the
-     * target method at the site, and we do not know the klass of the receiver.
-     *
-     * This 2-factor cache lookup blows it up fairly fast.
-     */
-
-    static final int INLINE_CACHE_SIZE_LIMIT = 15;
-
-    public abstract Method executeLookup(Symbol<Name> name, Symbol<Signature> signature, Klass defKlass);
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"name == cachedName", "signature == cachedSignature", "defKlass == cachedKlass"})
-    Method directLookup(Symbol<Name> name, Symbol<Signature> signature, Klass defKlass,
-                    @Cached("name") Symbol<Name> cachedName,
-                    @Cached("signature") Symbol<Symbol.Signature> cachedSignature,
-                    @Cached("defKlass") Klass cachedKlass,
-                    @Cached("cachedKlass.lookupMethod(cachedName, cachedSignature)") Method cachedMethod) {
-        return cachedMethod;
-    }
-
-    @Specialization(replaces = "directLookup")
-    Method normalLookup(Symbol<Name> name, Symbol<Symbol.Signature> signature, Klass defKlass) {
-        return defKlass.lookupMethod(name, signature);
-    }
-
-    LinkToNode() {
     }
 }

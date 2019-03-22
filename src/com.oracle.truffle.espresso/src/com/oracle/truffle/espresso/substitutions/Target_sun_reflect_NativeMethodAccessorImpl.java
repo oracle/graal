@@ -293,8 +293,11 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                 } else {
                     // if the method can be overridden, we resolve using the vtable index.
                     method = reflectedMethod;
+                    // VTable is live, use it
+                    method = targetKlass.lookupMethod(method.getVTableIndex());
                     // No vtable in Espresso, just lookup.
-                    method = targetKlass.lookupMethod(method.getName(), method.getRawSignature());
+                    // method = targetKlass.lookupMethod(method.getName(),
+                    // method.getRawSignature());
                     if (method != null) {
                         // Check for abstract methods as well
                         if (method.isAbstract()) {

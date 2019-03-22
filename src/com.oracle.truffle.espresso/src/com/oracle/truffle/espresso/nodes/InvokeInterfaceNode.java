@@ -38,6 +38,8 @@ import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 public abstract class InvokeInterfaceNode extends QuickNode {
 
     final Method resolutionSeed;
+    final Klass interfKlass;
+    final int itableIndex;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -55,15 +57,16 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     @Specialization(replaces = "callVirtualDirect")
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
-        // Brute virtual method resolution, walk the whole klass hierarchy.
-        // TODO(peterssen): Implement itable-based lookup.
-        Method targetMethod = methodLookup(resolutionSeed, receiver);
+        // itable Lookup
+        Method targetMethod = receiver.getKlass().lookupMethod(interfKlass, itableIndex);
         return indirectCallNode.call(targetMethod.getCallTarget(), arguments);
     }
 
     InvokeInterfaceNode(Method resolutionSeed) {
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
+        this.interfKlass = resolutionSeed.getDeclaringKlass();
+        this.itableIndex = resolutionSeed.getITableIndex();
     }
 
     @TruffleBoundary

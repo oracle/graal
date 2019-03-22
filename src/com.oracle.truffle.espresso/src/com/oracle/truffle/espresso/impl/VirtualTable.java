@@ -1,13 +1,13 @@
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
 public class VirtualTable {
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final Method[] table;
+    @CompilationFinal(dimensions = 1) private final Method[] table;
     private final int length;
 
     VirtualTable(ObjectKlass superKlass, Method[] declaredMethods) {
