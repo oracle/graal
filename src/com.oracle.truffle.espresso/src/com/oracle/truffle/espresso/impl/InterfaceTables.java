@@ -15,6 +15,17 @@ public class InterfaceTables {
         } else {
             tmp = new ArrayList<>();
         }
+        for (int n_itable = 0; n_itable < tmp.size(); n_itable++) {
+            InterfaceTable curItable = tmp.get(n_itable);
+            for (int n_method = 0; n_method < curItable.table.length; n_method++) {
+                Method im = curItable.table[n_method];
+                Method override = thisKlass.lookupDeclaredMethod(im.getName(), im.getRawSignature());
+                if (override != null) {
+                    tmp.set(n_itable, new InterfaceTable((ObjectKlass) curItable.getKlass(), thisKlass));
+                    break;
+                }
+            }
+        }
         for (ObjectKlass interf : superInterfaces) {
             tmp.add(new InterfaceTable(interf, thisKlass));
         }
@@ -43,7 +54,7 @@ public class InterfaceTables {
 
 class InterfaceTable {
     private final Klass thisInterfKlass;
-    @CompilationFinal(dimensions = 1) private final Method[] table;
+    @CompilationFinal(dimensions = 1) final Method[] table;
 
     InterfaceTable(ObjectKlass interf, Klass thisKlass) {
         this.thisInterfKlass = interf;
