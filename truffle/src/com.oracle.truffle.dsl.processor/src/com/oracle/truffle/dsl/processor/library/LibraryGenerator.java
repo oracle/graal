@@ -350,13 +350,13 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         for (MessageObjects message : methods) {
             CodeExecutableElement execute = cachedToUncached.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
-            execute.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
             execute.renameArguments("receiver_");
             removeAbstractModifiers(execute);
             builder = execute.createBuilder();
             if (message.model.getName().equals(ACCEPTS)) {
                 builder.returnTrue();
             } else {
+                execute.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
                 builder.startStatement().type(context.getType(Node.class)).string(" prev_ = ").//
                                 startStaticCall(context.getType(NodeUtil.class), "pushEncapsulatingNode").string("getParent()").end().end();
                 builder.startTryBlock();
