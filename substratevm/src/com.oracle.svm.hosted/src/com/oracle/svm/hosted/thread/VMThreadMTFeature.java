@@ -49,7 +49,7 @@ import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.VMThreadLocalMTObjectReferenceWalker;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
+import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -266,7 +266,7 @@ public class VMThreadMTFeature implements GraalFeature {
         }
         VMError.guarantee(threadLocalAtOffsetZero == null || threadLocalCollector.getInfo(threadLocalAtOffsetZero).offset == 0);
 
-        CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
+        InstanceReferenceMapEncoder encoder = new InstanceReferenceMapEncoder();
         encoder.add(referenceMap);
         objectReferenceWalker.vmThreadReferenceMapEncoding = encoder.encodeAll(null);
         objectReferenceWalker.vmThreadReferenceMapIndex = encoder.lookupEncoding(referenceMap);

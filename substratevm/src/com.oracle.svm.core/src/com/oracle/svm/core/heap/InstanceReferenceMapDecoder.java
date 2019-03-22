@@ -27,22 +27,24 @@ package com.oracle.svm.core.heap;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 public class InstanceReferenceMapDecoder {
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    public static boolean walkOffsetsFromPointer(byte[] referenceMapEncoding, long referenceMapIndex, Pointer baseAddress, ObjectReferenceVisitor visitor) {
-        assert referenceMapIndex >= InstanceReferenceMapEncoder.EMPTY_REFERENCE_MAP;
+    public static boolean walkOffsetsFromPointer(Pointer baseAddress, byte[] referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
+        assert referenceMapIndex >= CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
         assert referenceMapEncoding != null;
 
-        int mapSize = ByteArrayReader.getS4(referenceMapEncoding, referenceMapIndex - InstanceReferenceMapEncoder.MAP_HEADER_SIZE);
-        assert mapSize >= 0;
+        int entryCount = ByteArrayReader.getS4(referenceMapEncoding, referenceMapIndex);
+        assert entryCount >= 0;
 
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
 
-        for (long idx = referenceMapIndex; idx < referenceMapIndex + mapSize * InstanceReferenceMapEncoder.MAP_ENTRY_SIZE; idx += InstanceReferenceMapEncoder.MAP_ENTRY_SIZE) {
+        long entryStart = referenceMapIndex + InstanceReferenceMapEncoder.MAP_HEADER_SIZE;
+        for (long idx = entryStart; idx < entryStart + entryCount * InstanceReferenceMapEncoder.MAP_ENTRY_SIZE; idx += InstanceReferenceMapEncoder.MAP_ENTRY_SIZE) {
             int offset = ByteArrayReader.getS4(referenceMapEncoding, idx);
             long count = ByteArrayReader.getU4(referenceMapEncoding, idx + 4);
 

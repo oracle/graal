@@ -197,9 +197,7 @@ public final class NativeLibraries {
         } else if (method.getAnnotation(CConstant.class) != null) {
             context.appendConstantAccessor(method);
         } else if (method.getAnnotation(CFunction.class) != null) {
-            /*
-             * Nothing to do, handled elsewhere but the NativeCodeContext above is important.
-             */
+            /* Nothing to do, handled elsewhere but the NativeCodeContext above is important. */
         } else {
             addError("Method is not annotated with supported C interface annotation", method);
         }

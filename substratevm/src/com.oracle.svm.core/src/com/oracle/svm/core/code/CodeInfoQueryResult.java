@@ -106,8 +106,8 @@ public class CodeInfoQueryResult {
 
     /**
      * Returns the encoded reference map information, to be used together with
-     * {@link #getReferenceMapIndex()}. Encoding is handled by {@link CodeReferenceMapEncoder}, decoding
-     * is handled by {@link CodeReferenceMapDecoder}.
+     * {@link #getReferenceMapIndex()}. Encoding is handled by {@link CodeReferenceMapEncoder},
+     * decoding is handled by {@link CodeReferenceMapDecoder}.
      */
     public byte[] getReferenceMapEncoding() {
         return referenceMapEncoding;

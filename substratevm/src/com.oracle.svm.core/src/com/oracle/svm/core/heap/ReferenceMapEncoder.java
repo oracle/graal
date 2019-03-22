@@ -36,6 +36,7 @@ import java.util.Set;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 
+import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 public abstract class ReferenceMapEncoder {
@@ -92,6 +93,18 @@ public abstract class ReferenceMapEncoder {
 
         int length = TypeConversion.asS4(writeBuffer.getBytesWritten());
         return writeBuffer.toArray(newByteArray(allocator, length));
+    }
+
+    public long lookupEncoding(ReferenceMapEncoder.Input referenceMap) {
+        if (referenceMap == null) {
+            return CodeInfoQueryResult.NO_REFERENCE_MAP;
+        } else if (referenceMap.isEmpty()) {
+            return CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
+        } else {
+            Long result = encodings.get(referenceMap);
+            assert result != null && result.longValue() != CodeInfoQueryResult.NO_REFERENCE_MAP && result.longValue() != CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
+            return result.longValue();
+        }
     }
 
     protected abstract void encodeAll(List<Entry<Input, Long>> sortedEntries);

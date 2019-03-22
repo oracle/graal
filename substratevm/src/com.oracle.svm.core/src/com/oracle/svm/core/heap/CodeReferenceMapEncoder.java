@@ -52,18 +52,6 @@ public class CodeReferenceMapEncoder extends ReferenceMapEncoder {
         }
     }
 
-    public long lookupEncoding(ReferenceMapEncoder.Input referenceMap) {
-        if (referenceMap == null) {
-            return CodeInfoQueryResult.NO_REFERENCE_MAP;
-        } else if (referenceMap.isEmpty()) {
-            return CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
-        } else {
-            Long result = encodings.get(referenceMap);
-            assert result != null && result.longValue() != CodeInfoQueryResult.NO_REFERENCE_MAP && result.longValue() != CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
-            return result.longValue();
-        }
-    }
-
     /**
      * Build a byte array that encodes the passed list of offsets. The encoding is a run-length
      * encoding of runs of compressed or of uncompressed references, with

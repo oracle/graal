@@ -34,7 +34,6 @@ import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 
-
 import sun.misc.Unsafe;
 
 /**
@@ -171,14 +170,14 @@ public abstract class UnsafeArrayTypeWriter implements TypeWriter {
     public void patchS4(long value, long offset) {
         long chunkStartOffset = 0;
         Chunk chunk = firstChunk;
-        while (chunkStartOffset + chunk.size < offset) {
+        while (chunkStartOffset + chunk.size <= offset) {
             chunkStartOffset += chunk.size;
             chunk = chunk.next;
         }
 
-        long targetOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET + offset - chunkStartOffset;
+        long targetOffset = offset - chunkStartOffset;
         assert targetOffset + Integer.BYTES <= chunk.size : "out of bounds";
-        putS4(value, chunk, targetOffset);
+        putS4(value, chunk, Unsafe.ARRAY_BYTE_BASE_OFFSET + targetOffset);
     }
 
     @Override

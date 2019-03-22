@@ -80,6 +80,6 @@ public class InteriorObjRefWalker {
         long referenceMapIndex = objHub.getReferenceMapIndex();
 
         // Visit Object reference in the fields of the Object.
-        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(referenceMapEncoding, referenceMapIndex, objPointer, visitor);
+        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(objPointer, referenceMapEncoding, referenceMapIndex, visitor);
     }
 }

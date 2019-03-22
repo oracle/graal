@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -37,7 +38,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public class LayoutEncoding {
 
-    // TODO (chaeubl): add a comment that this is linked to C++ code and can't be changed easily
     private static final int NEUTRAL_VALUE = 0;
     private static final int PRIMITIVE_VALUE = NEUTRAL_VALUE + 1;
     private static final int INTERFACE_VALUE = PRIMITIVE_VALUE + 1;
@@ -52,8 +52,6 @@ public class LayoutEncoding {
     private static final int ARRAY_TAG_SHIFT = Integer.SIZE - ARRAY_TAG_BITS;
     private static final int ARRAY_TAG_PRIMITIVE_VALUE = ~0x00; // 0xC0000000 >> 30
     private static final int ARRAY_TAG_OBJECT_VALUE = ~0x01; // 0x80000000 >> 30
-
-    private static final int ALIGNMENT_MASK = ImageSingletons.lookup(ObjectLayout.class).getAlignment() - 1;
 
     public static int forPrimitive() {
         return PRIMITIVE_VALUE;
@@ -141,7 +139,8 @@ public class LayoutEncoding {
     }
 
     public static UnsignedWord getArraySize(int encoding, int length) {
-        return getArrayElementOffset(encoding, length).add(ALIGNMENT_MASK).and(~ALIGNMENT_MASK);
+        int alignmentMask = getAlignmentMask();
+        return getArrayElementOffset(encoding, length).add(alignmentMask).and(~alignmentMask);
     }
 
     public static UnsignedWord getSizeFromObject(Object obj) {
@@ -171,5 +170,10 @@ public class LayoutEncoding {
     public static boolean isInstance(Object obj) {
         final int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         return isInstance(encoding);
+    }
+
+    @Fold
+    protected static int getAlignmentMask() {
+        return ImageSingletons.lookup(ObjectLayout.class).getAlignment() - 1;
     }
 }
