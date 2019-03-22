@@ -878,7 +878,7 @@ public class GraphDecoder {
                 registerNode(outerScope, proxyOrderId, phiInput, true, false);
                 replacement = phiInput;
 
-            } else if (!merge.isPhiAtMerge(existing)) {
+            } else if (!merge.isPhiAtMerge(existing)) { // TODO: `merge` could be null
                 /* Now we have two different values, so we need to create a phi node. */
                 PhiNode phi;
                 if (proxy instanceof ValueProxyNode) {
@@ -1814,6 +1814,7 @@ class LoopDetector implements Runnable {
             }
         }
         assert loopVariableIndex != -1;
+        assert explosionHeadValue != null;
 
         ValuePhiNode loopVariablePhi;
         SortedMap<Integer, AbstractBeginNode> dispatchTable = new TreeMap<>();

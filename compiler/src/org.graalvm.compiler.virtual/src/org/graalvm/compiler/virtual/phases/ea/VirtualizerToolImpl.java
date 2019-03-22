@@ -138,6 +138,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         ValueNode oldValue = getEntry(virtual, index);
         boolean canVirtualize = entryKind == accessKind || (entryKind == accessKind.getStackKind() && virtual instanceof VirtualInstanceNode);
         if (!canVirtualize) {
+            // TODO: `newValue` can be null
             if (entryKind == JavaKind.Long && oldValue.getStackKind() == newValue.getStackKind() && oldValue.getStackKind().isPrimitive()) {
                 /*
                  * Special case: If the entryKind is long, allow arbitrary kinds as long as a value

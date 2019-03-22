@@ -95,14 +95,17 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                     }
                     EndNode newEnd = graph.add(new EndNode());
                     merge.addForwardEnd(newEnd);
+                    // TODO: `reasonActionPhi` and `speculationPhi` can be null
                     reasonActionPhi.addInput(deopt.getActionAndReason(context.getMetaAccess()));
                     speculationPhi.addInput(deopt.getSpeculation(context.getMetaAccess()));
                     deopt.replaceAtPredecessor(newEnd);
                     exitLoops(deopt, newEnd, cfg);
+                    // TODO: `obsoletes` can be null
                     obsoletes.add(deopt);
                 }
             }
             if (obsoletes != null) {
+                // TODO: `target` can be null
                 ((DynamicDeoptimizeNode) ((AbstractMergeNode) target).next()).setStateBefore(fs);
                 for (AbstractDeoptimizeNode obsolete : obsoletes) {
                     obsolete.safeDelete();

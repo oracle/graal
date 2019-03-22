@@ -2807,6 +2807,9 @@ public class BytecodeParser implements GraphBuilderContext {
                     loopExit.setStateAfter(newState.create(bci, loopExit));
                 }
 
+                // Fortify: Suppress Null Dereference false positive
+                assert lastLoopExit != null;
+
                 lastLoopExit.setNext(target);
                 return new Target(firstLoopExit, newState);
             }
