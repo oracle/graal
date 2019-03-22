@@ -3127,15 +3127,19 @@ public class FlatNodeGenFactory {
         }
         usedBoundaryNames.add(boundaryMethodName);
 
+        String includeFrameParameter = null;
+        if (specialization.getFrame() != null) {
+            includeFrameParameter = FRAME_VALUE;
+        }
         CodeExecutableElement boundaryMethod = new CodeExecutableElement(modifiers(PRIVATE), parentMethod.getReturnType(), boundaryMethodName);
-        frameState.addParametersTo(boundaryMethod, Integer.MAX_VALUE, STATE_VALUE, FRAME_VALUE,
+        frameState.addParametersTo(boundaryMethod, Integer.MAX_VALUE, STATE_VALUE, includeFrameParameter,
                         createSpecializationLocalName(specialization));
         boundaryMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
         boundaryMethod.getThrownTypes().addAll(parentMethod.getThrownTypes());
         innerBuilder = boundaryMethod.createBuilder();
         ((CodeTypeElement) parentMethod.getEnclosingElement()).add(boundaryMethod);
         builder.startReturn().startCall("this", boundaryMethod);
-        frameState.addReferencesTo(builder, STATE_VALUE, FRAME_VALUE, createSpecializationLocalName(specialization));
+        frameState.addReferencesTo(builder, STATE_VALUE, includeFrameParameter, createSpecializationLocalName(specialization));
         builder.end().end();
 
         return innerBuilder;

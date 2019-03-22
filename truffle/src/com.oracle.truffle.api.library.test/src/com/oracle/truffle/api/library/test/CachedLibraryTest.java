@@ -535,13 +535,24 @@ public class CachedLibraryTest extends AbstractLibraryTest {
 
     }
 
-    public abstract static class TestBoundaryAndVirtualFrame extends Node {
+    public abstract static class TestBoundaryAndVirtualFrame1 extends Node {
 
         public abstract Object execute(VirtualFrame frame, Object arg);
 
         @SuppressWarnings("unused")
         @Specialization(limit = "3")
         String doDefault(VirtualFrame frame, Object arg, @CachedLibrary("arg") SomethingLibrary interop) {
+            return null;
+        }
+    }
+
+    public abstract static class TestBoundaryAndVirtualFrame2 extends Node {
+
+        public abstract Object execute(VirtualFrame frame, Object arg);
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "3")
+        String doDefault(Object arg, @CachedLibrary("arg") SomethingLibrary interop) {
             return null;
         }
     }
