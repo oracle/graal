@@ -614,16 +614,17 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native String getSimpleName0();
 
     @KeepOriginal
-    @TargetElement(name="getCanonicalName", onlyWith = JDK8OrEarlier.class)
+    @TargetElement(name = "getCanonicalName", onlyWith = JDK8OrEarlier.class)
     private native String getCanonicalNameJDK8OrEarlier();
 
     @Substitute
-    @TargetElement(name="getCanonicalName", onlyWith = JDK9OrLater.class)
+    @TargetElement(name = "getCanonicalName", onlyWith = JDK9OrLater.class)
     private String getCanonicalNameJDK9OrLater() {
         return getCanonicalName0();
     }
 
     @KeepOriginal
+    @TargetElement(onlyWith = JDK9OrLater.class)
     private native String getCanonicalName0();
 
     @KeepOriginal
@@ -702,10 +703,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         if (nullaryConstructor == null) {
             if (JavaVersionUtil.Java8OrEarlier) {
                 throw new InstantiationException("Type `" + this.getCanonicalNameJDK8OrEarlier() +
-                        "` can not be instantiated reflectively as it does not have a no-parameter constructor or the no-parameter constructor has not been added explicitly to the native image.");
+                                "` can not be instantiated reflectively as it does not have a no-parameter constructor or the no-parameter constructor has not been added explicitly to the native image.");
             } else {
                 throw new InstantiationException("Type `" + this.getCanonicalNameJDK9OrLater() +
-                        "` can not be instantiated reflectively as it does not have a no-parameter constructor or the no-parameter constructor has not been added explicitly to the native image.");
+                                "` can not be instantiated reflectively as it does not have a no-parameter constructor or the no-parameter constructor has not been added explicitly to the native image.");
             }
         }
         try {
