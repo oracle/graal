@@ -24,9 +24,13 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import org.graalvm.compiler.lir.Variable;
+
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 
 public interface SubstrateNodeLIRBuilder {
 
     void emitCGlobalDataLoadAddress(CGlobalDataLoadAddressNode node);
+
+    Variable emitReadReturnAddress();
 }

@@ -64,7 +64,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
@@ -72,6 +71,7 @@ import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -105,6 +105,7 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
+import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
 import org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
@@ -155,14 +156,12 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.graal.GraalConfiguration;
-import com.oracle.svm.core.graal.code.SubstrateAddressLoweringPhaseFactory;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.jdk.ArraycopySnippets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
@@ -258,8 +257,10 @@ import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -326,17 +327,23 @@ public class NativeImageGenerator {
             return (Platform) result;
         }
 
-        Architecture hostedArchitecture = GraalAccess.getOriginalTarget().arch;
+        final Architecture hostedArchitecture = GraalAccess.getOriginalTarget().arch;
+        final OS currentOs = OS.getCurrent();
         if (hostedArchitecture instanceof AMD64) {
-            final String osName = System.getProperty("os.name");
-            if (OS.getCurrent() == OS.LINUX) {
+            if (currentOs == OS.LINUX) {
                 return new Platform.LINUX_AMD64();
-            } else if (OS.getCurrent() == OS.DARWIN) {
+            } else if (currentOs == OS.DARWIN) {
                 return new Platform.DARWIN_AMD64();
-            } else if (OS.getCurrent() == OS.WINDOWS) {
+            } else if (currentOs == OS.WINDOWS) {
                 return new Platform.WINDOWS_AMD64();
             } else {
-                throw VMError.shouldNotReachHere("Unsupported operating system: " + osName);
+                throw VMError.shouldNotReachHere("Unsupported architecture/operating system: " + hostedArchitecture.getName() + "/" + currentOs.className);
+            }
+        } else if (hostedArchitecture instanceof AArch64) {
+            if (OS.getCurrent() == OS.LINUX) {
+                return new Platform.LINUX_AArch64();
+            } else {
+                throw VMError.shouldNotReachHere("Unsupported architecture/operating system: " + hostedArchitecture.getName() + "/" + currentOs.className);
             }
         } else {
             throw VMError.shouldNotReachHere("Unsupported architecture: " + hostedArchitecture.getClass().getSimpleName());
@@ -385,6 +392,18 @@ public class NativeImageGenerator {
             assert architecture instanceof AMD64 : "SVM supports only AMD64 architectures.";
             boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
+            return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
+        } else if (includedIn(platform, Platform.AArch64.class)) {
+            Architecture architecture;
+            if (NativeImageOptions.NativeArchitecture.getValue()) {
+                architecture = GraalAccess.getOriginalTarget().arch;
+            } else {
+                EnumSet<AArch64.CPUFeature> features = EnumSet.noneOf(AArch64.CPUFeature.class);
+                features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue()));
+                architecture = new AArch64(features, EnumSet.noneOf(AArch64.Flag.class));
+            }
+            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue();
+            int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers.
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
         } else {
             throw UserError.abort("Architecture specified by platform is not supported: " + platform.getClass().getTypeName());
@@ -581,9 +600,9 @@ public class NativeImageGenerator {
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
             }
-
+            CodeCacheProvider codeCacheProvider = runtime.getRuntimeConfig().getBackendForNormalMethod().getProviders().getCodeCache();
             try (Indent indent = debug.logAndIndent("create native image")) {
-                try (DebugContext.Scope buildScope = debug.scope("CreateBootImage")) {
+                try (DebugContext.Scope buildScope = debug.scope("CreateBootImage", codeCacheProvider)) {
                     try (StopTimer t = new Timer(imageName, "image").start()) {
 
                         // Start building the model of the native image heap.
@@ -608,6 +627,8 @@ public class NativeImageGenerator {
                             codeCache.printCompilationResults();
                         }
                     }
+                } catch (Throwable e) {
+                    throw VMError.shouldNotReachHere(e);
                 }
             }
 
@@ -1117,8 +1138,17 @@ public class NativeImageGenerator {
         BytecodeProvider replacementBytecodeProvider = replacements.getDefaultReplacementBytecodeProvider();
         final boolean explicitUnsafeNullChecks = SubstrateOptions.SpawnIsolates.getValue();
         registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacementBytecodeProvider, !hosted, explicitUnsafeNullChecks);
-        AMD64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, (AMD64) ConfigurationValues.getTarget().arch, explicitUnsafeNullChecks,
-                        SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JAVA_SPECIFICATION_VERSION >= 9);
+
+        Architecture architecture = ConfigurationValues.getTarget().arch;
+        if (architecture instanceof AMD64) {
+            AMD64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, (AMD64) architecture, explicitUnsafeNullChecks,
+                            SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JAVA_SPECIFICATION_VERSION >= 9);
+        } else if (architecture instanceof AArch64) {
+            AArch64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, explicitUnsafeNullChecks, //
+                            /* registerMathPlugins */false);
+        } else {
+            throw GraalError.shouldNotReachHere("Unimplemented GraphBuilderPlugin for architecture " + architecture);
+        }
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we
@@ -1258,11 +1288,7 @@ public class NativeImageGenerator {
 
         lowTier.addBeforeLast(new OptimizeExceptionCallsPhase());
 
-        SubstrateAddressLoweringPhaseFactory addressLoweringFactory = ImageSingletons.lookup(SubstrateAddressLoweringPhaseFactory.class);
-        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
-        SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) runtimeCallProviders.getCodeCache().getRegisterConfig();
-
-        Phase addressLoweringPhase = addressLoweringFactory.newAddressLowering(compressEncoding, registerConfig);
+        Phase addressLoweringPhase = backend.newAddressLoweringPhase(runtimeCallProviders.getCodeCache());
         if (firstTier) {
             lowTier.findPhase(ExpandLogicPhase.class).add(addressLoweringPhase);
         } else {

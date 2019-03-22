@@ -307,7 +307,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public void patchMethods(RelocatableBuffer relocs, ObjectFile objectFile) {
+    public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
         Element rodataSection = objectFile.elementForName(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()));
         Element dataSection = objectFile.elementForName(SectionName.DATA.getFormatDependentName(objectFile.getFormat()));
         for (CompilationResult result : getCompilations().values()) {

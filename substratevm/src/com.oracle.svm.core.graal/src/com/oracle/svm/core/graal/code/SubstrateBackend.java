@@ -30,7 +30,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -67,7 +67,7 @@ public abstract class SubstrateBackend extends Backend {
         return new RegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo);
     }
 
-    public abstract AddressLowering newAddressLowering(CodeCacheProvider codeCache);
+    public abstract Phase newAddressLoweringPhase(CodeCacheProvider codeCache);
 
     public abstract CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, RegisterValue methodIdArg, int offset);
 }

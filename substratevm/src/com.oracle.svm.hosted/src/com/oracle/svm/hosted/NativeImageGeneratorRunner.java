@@ -68,7 +68,9 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractBootImage;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 
 public class NativeImageGeneratorRunner implements ImageBuildTask {
 
@@ -169,11 +171,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     private static boolean isValidArchitecture() {
-        return GraalAccess.getOriginalTarget().arch instanceof AMD64;
+        final Architecture originalTargetArch = GraalAccess.getOriginalTarget().arch;
+        return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64;
     }
 
     private static boolean isValidOperatingSystem() {
-        return OS.getCurrent() == OS.LINUX || OS.getCurrent() == OS.DARWIN || OS.getCurrent() == OS.WINDOWS;
+        final OS currentOs = OS.getCurrent();
+        return currentOs == OS.LINUX || currentOs == OS.DARWIN || currentOs == OS.WINDOWS;
     }
 
     @SuppressWarnings("try")
