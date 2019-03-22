@@ -69,7 +69,7 @@ public final class ObjectKlass extends Klass {
 
     private final Klass hostKlass;
 
-    private final VirtualTable vtable;
+    private final Method[] vtable;
     private final InterfaceTables itable;
 
     private int initState = LINKED;
@@ -120,7 +120,7 @@ public final class ObjectKlass extends Klass {
             this.itable = new InterfaceTables(this, superInterfaces, declaredMethods);
             this.vtable = null;
         } else {
-            this.vtable = new VirtualTable(superKlass, declaredMethods);
+            this.vtable = VirtualTable.create(superKlass, declaredMethods);
             this.itable = new InterfaceTables(superKlass, superInterfaces, this);
         }
     }
@@ -320,17 +320,18 @@ public final class ObjectKlass extends Klass {
         return hostKlass;
     }
 
-    VirtualTable getVTable() {
+    Method[] getVTable() {
         return vtable;
     }
 
     @Override
     public final Method lookupMethod(int index) {
-        return vtable.lookupMethod(index);
+        return (index == -1) ? null : vtable[index];
     }
 
     @Override
     public final Method lookupMethod(Klass interfKlass, int index) {
+        assert (index >= 0) : "Undeclared interface method"; // At this point, we should be sure to
         return itable.lookupMethod(interfKlass, index);
     }
 

@@ -1,19 +1,20 @@
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
+// Helper for creating virtual tables
 public class VirtualTable {
-    @CompilationFinal(dimensions = 1) private final Method[] table;
-    private final int length;
 
-    VirtualTable(ObjectKlass superKlass, Method[] declaredMethods) {
+    private VirtualTable() {
+    }
+
+    public static Method[] create(ObjectKlass superKlass, Method[] declaredMethods) {
         ArrayList<Method> tmp;
         if (superKlass != null) {
-            tmp = new ArrayList<>(Arrays.asList(superKlass.getVTable().table));
+            tmp = new ArrayList<>(Arrays.asList(superKlass.getVTable()));
         } else {
             tmp = new ArrayList<>();
         }
@@ -37,16 +38,6 @@ public class VirtualTable {
                 }
             }
         }
-        this.table = tmp.toArray(Method.EMPTY_ARRAY);
-        this.length = table.length;
+        return tmp.toArray(Method.EMPTY_ARRAY);
     }
-
-    final public int length() {
-        return this.length;
-    }
-
-    final Method lookupMethod(int index) {
-        return table[index];
-    }
-
 }
