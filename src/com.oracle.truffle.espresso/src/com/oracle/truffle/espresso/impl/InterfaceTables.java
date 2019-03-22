@@ -21,7 +21,7 @@ public class InterfaceTables {
                 Method im = curItable.table[n_method];
                 Method override = thisKlass.lookupDeclaredMethod(im.getName(), im.getRawSignature());
                 if (override != null) {
-                    tmp.set(n_itable, new InterfaceTable((ObjectKlass) curItable.getKlass(), thisKlass));
+                    tmp.set(n_itable, new InterfaceTable(curItable, thisKlass));
                     break;
                 }
             }
@@ -75,6 +75,19 @@ class InterfaceTable {
         int i = 0;
         for (Method m : declaredMethods) {
             m.setITableIndex(i++);
+        }
+    }
+
+    InterfaceTable(InterfaceTable inherit, Klass thisKlass) {
+        this.thisInterfKlass = inherit.thisInterfKlass;
+        table = Arrays.copyOf(inherit.table, inherit.table.length);
+        for (int i = 0; i < table.length; i++) {
+            Method im = table[i];
+            Method m = thisKlass.lookupDeclaredMethod(im.getName(), im.getRawSignature());
+            if (m != null) {
+                m.setITableIndex(i);
+                table[i] = m;
+            }
         }
     }
 
