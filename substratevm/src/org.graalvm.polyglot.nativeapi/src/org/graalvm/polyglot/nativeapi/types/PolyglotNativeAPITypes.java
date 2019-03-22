@@ -24,6 +24,7 @@
  */
 package org.graalvm.polyglot.nativeapi.types;
 
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.c.CContext;
@@ -40,6 +41,9 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.CTypedef;
+import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolatePointer;
+import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
 
 @CContext(PolyglotNativeAPICContext.class)
 public class PolyglotNativeAPITypes {
@@ -207,8 +211,25 @@ public class PolyglotNativeAPITypes {
         PolyglotValue invoke(PolyglotIsolateThread ithread, PolyglotCallbackInfo info);
     }
 
-    @CStruct(value = "poly_thread", isIncomplete = true)
+    @CStruct(isIncomplete = true)
     @CTypedef(name = "poly_thread")
     public interface PolyglotIsolateThread extends IsolateThread {
+    }
+
+    @CPointerTo(nameOfCType = "poly_thread")
+    public interface PolyglotIsolateThreadPointer extends IsolateThreadPointer {
+    }
+
+    @CStruct(isIncomplete = true)
+    @CTypedef(name = "poly_isolate")
+    public interface PolyglotIsolate extends Isolate {
+    }
+
+    @CPointerTo(nameOfCType = "poly_isolate")
+    public interface PolyglotIsolatePointer extends IsolatePointer {
+    }
+
+    @CStruct("poly_isolate_params")
+    public interface PolyglotIsolateParameters extends CEntryPointCreateIsolateParameters {
     }
 }

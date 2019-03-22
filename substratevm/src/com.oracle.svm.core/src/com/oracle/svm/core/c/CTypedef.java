@@ -30,14 +30,17 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Defines the name of the typedef to be used in signatures instead of pointers.
+ * Defines a name for C type to be used in an entry-point method signature.
+ *
+ * Can be placed either on a type declaration or at a type-use site. If placed on both, the type-use
+ * site takes precedence.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
+@Target({ElementType.TYPE_USE})
 public @interface CTypedef {
 
     /**
-     * Name of the typedef to be used for this pointer.
+     * Name to be used for this C type.
      */
     String name();
 

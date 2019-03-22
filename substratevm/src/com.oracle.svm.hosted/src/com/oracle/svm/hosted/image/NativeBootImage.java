@@ -29,8 +29,11 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -43,6 +46,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -76,6 +80,7 @@ import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CHeader.Header;
+import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.CUnsigned;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
@@ -289,12 +294,13 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.append("typedef ");
         }
 
+        AnnotatedType annotatedReturnType = getAnnotatedReturnType(m);
         writer.append(CSourceCodeWriter.toCTypeName(m,
                         (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
+                        Optional.ofNullable(annotatedReturnType.getAnnotation(CTypedef.class)).map(CTypedef::name),
                         false,
-                        false, // GR-9242
-                        metaAccess,
-                        nativeLibs));
+                        annotatedReturnType.isAnnotationPresent(CUnsigned.class),
+                        metaAccess, nativeLibs));
         writer.append(" ");
 
         assert !symbolName.isEmpty();
@@ -306,22 +312,47 @@ public abstract class NativeBootImage extends AbstractBootImage {
         writer.append("(");
 
         String sep = "";
-        Parameter[] parameterInfo = m.getParameters();
+        AnnotatedType[] annotatedParameterTypes = getAnnotatedParameterTypes(m);
+        Parameter[] parameters = m.getParameters();
+        assert parameters != null;
         for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
             writer.append(sep);
             sep = ", ";
             writer.append(CSourceCodeWriter.toCTypeName(m,
                             (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
-                            parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CConst.class) != null,
-                            parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CUnsigned.class) != null,
+                            Optional.ofNullable(annotatedParameterTypes[i].getAnnotation(CTypedef.class)).map(CTypedef::name),
+                            annotatedParameterTypes[i].isAnnotationPresent(CConst.class),
+                            annotatedParameterTypes[i].isAnnotationPresent(CUnsigned.class),
                             metaAccess, nativeLibs));
-            if (parameterInfo != null && parameterInfo[i].isNamePresent()) {
+            if (parameters[i].isNamePresent()) {
                 writer.append(" ");
-                writer.append(parameterInfo[i].getName());
+                writer.append(parameters[i].getName());
             }
         }
         writer.appendln(");");
         writer.appendln();
+    }
+
+    /** Workaround for lack of `Method.getAnnotatedReturnType` in the JVMCI API (GR-9241). */
+    private AnnotatedType getAnnotatedReturnType(HostedMethod hostedMethod) {
+        return getMethod(hostedMethod).getAnnotatedReturnType();
+    }
+
+    /** Workaround for lack of `Method.getAnnotatedParameterTypes` in the JVMCI API (GR-9241). */
+    private AnnotatedType[] getAnnotatedParameterTypes(HostedMethod hostedMethod) {
+        return getMethod(hostedMethod).getAnnotatedParameterTypes();
+    }
+
+    private Method getMethod(HostedMethod hostedMethod) {
+        AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub(((CEntryPointCallStubMethod) hostedMethod.wrapped.wrapped));
+        Method method;
+        try {
+            method = entryPoint.getDeclaringClass().getJavaClass().getDeclaredMethod(entryPoint.getName(),
+                            MethodType.fromMethodDescriptorString(entryPoint.getSignature().toMethodDescriptor(), imageClassLoader).parameterArray());
+        } catch (NoSuchMethodException e) {
+            throw shouldNotReachHere(e);
+        }
+        return method;
     }
 
     private boolean shouldWriteHeader(HostedMethod method) {

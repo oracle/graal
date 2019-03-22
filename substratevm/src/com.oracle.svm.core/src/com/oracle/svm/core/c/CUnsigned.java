@@ -30,12 +30,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Qualifies a C integer type as unsigned in the method signature.
+ * Qualifies a C integer type as unsigned in an entry-point method signature.
  *
- * Can be placed only on integer types function arguments as it applies only to the function
- * declaration where const primitive types have no effect.
+ * Can be placed only on integer types.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE_USE})
+@Target({ElementType.TYPE_USE})
 public @interface CUnsigned {
 }

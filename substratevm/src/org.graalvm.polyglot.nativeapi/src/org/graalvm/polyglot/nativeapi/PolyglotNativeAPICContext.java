@@ -24,7 +24,6 @@
  */
 package org.graalvm.polyglot.nativeapi;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,7 +33,7 @@ public class PolyglotNativeAPICContext implements Directives {
 
     @Override
     public List<String> getHeaderFiles() {
-        return Arrays.asList("<polyglot_types.h>");
+        return Collections.singletonList("<polyglot_types.h>");
     }
 
     @Override
