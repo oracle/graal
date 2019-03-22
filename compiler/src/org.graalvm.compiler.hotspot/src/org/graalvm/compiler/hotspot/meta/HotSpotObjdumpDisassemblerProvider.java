@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,7 @@ import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.services.Services;
 
 /**
  * This disassembles the code immediatly with objdump.
@@ -72,7 +73,7 @@ public class HotSpotObjdumpDisassemblerProvider extends HotSpotDisassemblerProvi
                 fos.write(compResult.getTargetCode());
             }
             String[] cmdline;
-            String arch = System.getProperty("os.arch");
+            String arch = Services.getSavedProperties().get("os.arch");
             if (arch.equals("amd64")) {
                 cmdline = new String[]{"objdump", "-D", "-b", "binary", "-M", "x86-64", "-m", "i386", tmp.getAbsolutePath()};
             } else if (arch.equals("aarch64")) {
