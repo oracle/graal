@@ -429,8 +429,16 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
                 self.vm_config_name = config_name.replace('-', '_')
                 vm_config_additional_components = config_additional_components
 
-        name = (self.base_name + (('_' + self.vm_config_name) if self.vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
-        base_dir = name.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
+        if self.vm_config_name:
+            name = self.base_name + '_' + self.vm_config_name
+            base_dir = self.base_name + '_' + self.vm_config_name
+        else:
+            name = self.base_name
+            base_dir = self.base_name + '_unknown'
+        if vm_config_additional_components:
+            name += '_' + '_'.join(vm_config_additional_components)
+        name = name.upper()
+        base_dir = base_dir.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
 
         layout = deepcopy(base_layout)
         super(GraalVmLayoutDistribution, self).__init__(
