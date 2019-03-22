@@ -304,7 +304,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 String className = c.getName();
                 executor.execute(() -> {
                     try {
-                        checkClass(c, metaAccess);
+                        checkClass(c, metaAccess, verifiers);
                     } catch (Throwable e) {
                         errors.add(String.format("Error while checking %s:%n%s", className, printStackTraceToString(e)));
                     }
@@ -411,13 +411,17 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
     /**
      * @param metaAccess
+     * @param verifiers
      */
-    private static void checkClass(Class<?> c, MetaAccessProvider metaAccess) {
+    private static void checkClass(Class<?> c, MetaAccessProvider metaAccess, List<VerifyPhase<PhaseContext>> verifiers) {
         if (Node.class.isAssignableFrom(c)) {
             if (c.getAnnotation(NodeInfo.class) == null) {
                 throw new AssertionError(String.format("Node subclass %s requires %s annotation", c.getName(), NodeClass.class.getSimpleName()));
             }
             VerifyNodeCosts.verifyNodeClass(c);
+        }
+        for (VerifyPhase<PhaseContext> verifier : verifiers) {
+            verifier.verifyClass(c, metaAccess);
         }
     }
 

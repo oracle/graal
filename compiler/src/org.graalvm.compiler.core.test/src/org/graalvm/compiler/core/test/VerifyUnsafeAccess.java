@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static java.lang.reflect.Modifier.isProtected;
+import static java.lang.reflect.Modifier.isPublic;
+
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
@@ -44,7 +49,7 @@ import sun.misc.Unsafe;
 public class VerifyUnsafeAccess extends VerifyPhase<PhaseContext> {
 
     @Override
-    protected boolean verify(StructuredGraph graph, PhaseContext context) {
+    protected void verify(StructuredGraph graph, PhaseContext context) {
         MetaAccessProvider metaAccess = context.getMetaAccess();
         final ResolvedJavaType unsafeType = metaAccess.lookupJavaType(Unsafe.class);
 
@@ -56,11 +61,11 @@ public class VerifyUnsafeAccess extends VerifyPhase<PhaseContext> {
                         holderQualified.equals("jdk.vm.ci.hotspot.UnsafeAccess")) &&
                         caller.getName().equals("initUnsafe")) {
             // This is the blessed way access Unsafe in Graal and JVMCI
-            return true;
+            return;
         } else if (packageName.startsWith("com.oracle.truffle") || packageName.startsWith("org.graalvm.compiler.truffle.runtime")) {
             // Truffle and GraalTruffleRuntime do not depend on Graal and so cannot use
             // GraalUnsafeAccess
-            return true;
+            return;
         }
 
         if (caller.getSignature().getReturnType(caller.getDeclaringClass()).equals(unsafeType)) {
@@ -97,7 +102,15 @@ public class VerifyUnsafeAccess extends VerifyPhase<PhaseContext> {
                 }
             }
         }
+    }
 
-        return true;
+    @Override
+    public void verifyClass(Class<?> c, MetaAccessProvider metaAccess) {
+        for (Field field : c.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
+            if (field.getType() == Unsafe.class && (isPublic(modifiers) || isProtected(modifiers))) {
+                throw new VerificationError("Field of type %s must be private or package-private: %s", Unsafe.class.getName(), field);
+            }
+        }
     }
 }

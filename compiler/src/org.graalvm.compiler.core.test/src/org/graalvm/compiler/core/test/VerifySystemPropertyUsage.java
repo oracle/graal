@@ -65,7 +65,7 @@ public class VerifySystemPropertyUsage extends VerifyPhase<PhaseContext> {
     }
 
     @Override
-    protected boolean verify(StructuredGraph graph, PhaseContext context) {
+    protected void verify(StructuredGraph graph, PhaseContext context) {
         MetaAccessProvider metaAccess = context.getMetaAccess();
         final ResolvedJavaType systemType = metaAccess.lookupJavaType(System.class);
         final ResolvedJavaType[] boxTypes = new ResolvedJavaType[BOXES.length];
@@ -82,20 +82,20 @@ public class VerifySystemPropertyUsage extends VerifyPhase<PhaseContext> {
                 // This JVMCI version should not use non-saved system properties
             } else {
                 // This JVMCI version still has some calls that need to be removed
-                return true;
+                return;
             }
         } else if (holderQualified.equals("org.graalvm.compiler.hotspot.JVMCIVersionCheck") && caller.getName().equals("main")) {
             // The main method in JVMCIVersionCheck is only called from the shell
-            return true;
+            return;
         } else if (packageName.startsWith("com.oracle.truffle") || packageName.startsWith("org.graalvm.polyglot")) {
             // Truffle and Polyglot do not depend on JVMCI so cannot use
             // Services.getSavedProperties()
-            return true;
+            return;
         } else if (packageName.startsWith("com.oracle.svm")) {
             // SVM must read system properties in:
             // * its JDK substitutions to mimic required JDK semantics
             // * native-image for config info
-            return true;
+            return;
         }
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
@@ -120,7 +120,6 @@ public class VerifySystemPropertyUsage extends VerifyPhase<PhaseContext> {
                 }
             }
         }
-        return true;
     }
 
 }

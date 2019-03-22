@@ -63,7 +63,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private static final long[] EMPTY_LONG_ARRAY = {};
     private static final byte[] EMPTY_BYTE_ARRAY = {};
 
-    public static final Unsafe UNSAFE = initUnsafe();
+    private static final Unsafe UNSAFE = initUnsafe();
 
     static {
         assert OBJECT_TAG == FrameSlotKind.Object.tag;
