@@ -305,7 +305,7 @@ public class ComputedValueField implements ReadableJavaField, ComputedValue {
 
     @Override
     public boolean allowConstantFolding() {
-        return isFinal;
+        return getDeclaringClass().isInitialized() && isFinal;
     }
 
     @Override

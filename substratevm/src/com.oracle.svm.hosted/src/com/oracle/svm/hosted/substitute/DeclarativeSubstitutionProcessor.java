@@ -71,8 +71,8 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
-import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 

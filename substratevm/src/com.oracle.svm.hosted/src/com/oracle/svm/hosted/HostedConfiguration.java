@@ -40,6 +40,10 @@ import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.classinitialization.ConservativeClassInitialization;
+import com.oracle.svm.hosted.classinitialization.EagerClassInitialization;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -62,7 +66,9 @@ public class HostedConfiguration {
 
     static void setDefaultIfEmpty(FeatureImpl.AfterRegistrationAccessImpl access) {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
-            ClassInitializationSupport classInitializationSupport = new ClassInitializationSupportImpl(access.getMetaAccess());
+            ClassInitializationSupport classInitializationSupport = NativeImageOptions.EagerlyInitializeClasses.getValue()
+                            ? new EagerClassInitialization(access.getMetaAccess())
+                            : new ConservativeClassInitialization(access.getMetaAccess());
             ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
             ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration(classInitializationSupport));
             ClassInitializationFeature.processClassInitializationOptions(access, classInitializationSupport);
