@@ -48,6 +48,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     - Added a possibility to set an [encoding in SourceBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html#encoding-java.nio.charset.Charset-)
     - The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files and file URLs.
     - Deprecated usage of NIO `FileTypeDetector` for MIME type detection.
+* TruffleFile's paths from image building time are translated in image execution time into new paths using Context's FileSystem. The absolute paths pointing to files in language homes in image generation time are resolved using image execution time language homes.
 
 ## Version 1.0.0 RC14
 * Removed some deprecated elements:

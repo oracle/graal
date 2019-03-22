@@ -1219,7 +1219,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             disposeStaticContext(context);
             return context;
         } finally {
-            fs.patchDelegate(FileSystems.INVALID_FILESYSTEM);
+            fs.onPreInitializeContextEnd();
             FileSystems.resetDefaultFileSystemProvider();
             if (!config.logLevels.isEmpty()) {
                 VMAccessor.LANGUAGE.configureLoggers(context, null, getAllLoggers(engine));
