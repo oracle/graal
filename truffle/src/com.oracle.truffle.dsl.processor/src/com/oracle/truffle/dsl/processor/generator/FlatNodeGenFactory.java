@@ -108,6 +108,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -2844,6 +2845,12 @@ public class FlatNodeGenFactory {
                 List<CacheExpression> caches = specialization.getCaches();
                 if (!pushEnclosingNode) {
                     extractInBoundary |= cachesRequireFastPathBoundary(caches);
+                    if (specialization.getFrame() != null) {
+                        if (ElementUtils.typeEquals(specialization.getFrame().getType(), context.getType(VirtualFrame.class))) {
+                            // not supported for frames
+                            extractInBoundary = false;
+                        }
+                    }
                 }
                 cachedTriples.addAll(initializeCaches(frameState, frameState.getMode(), group, specialization.getCaches(), true, false));
             }
@@ -3121,14 +3128,14 @@ public class FlatNodeGenFactory {
         usedBoundaryNames.add(boundaryMethodName);
 
         CodeExecutableElement boundaryMethod = new CodeExecutableElement(modifiers(PRIVATE), parentMethod.getReturnType(), boundaryMethodName);
-        frameState.addParametersTo(boundaryMethod, Integer.MAX_VALUE, STATE_VALUE,
+        frameState.addParametersTo(boundaryMethod, Integer.MAX_VALUE, STATE_VALUE, FRAME_VALUE,
                         createSpecializationLocalName(specialization));
         boundaryMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
         boundaryMethod.getThrownTypes().addAll(parentMethod.getThrownTypes());
         innerBuilder = boundaryMethod.createBuilder();
         ((CodeTypeElement) parentMethod.getEnclosingElement()).add(boundaryMethod);
         builder.startReturn().startCall("this", boundaryMethod);
-        frameState.addReferencesTo(builder, STATE_VALUE, createSpecializationLocalName(specialization));
+        frameState.addReferencesTo(builder, STATE_VALUE, FRAME_VALUE, createSpecializationLocalName(specialization));
         builder.end().end();
 
         return innerBuilder;
