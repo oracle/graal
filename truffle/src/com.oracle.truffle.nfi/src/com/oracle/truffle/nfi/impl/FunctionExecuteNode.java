@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -145,8 +144,7 @@ abstract class FunctionExecuteNode extends Node {
     @Specialization(replaces = "cachedSignature", guards = "receiver.getSignature().getArgTypes().length == libs.length")
     protected Object cachedArgCount(LibFFIFunction receiver, Object[] args,
                     @Cached("getGenericNativeArgumentLibraries(receiver.getSignature().getArgTypes().length)") NativeArgumentLibrary[] libs,
-                    @CachedLanguage NFILanguageImpl language,
-                    @Cached IndirectCallNode callNode,
+                    @Cached("createSlowPathCall()") DirectCallNode slowPathCall,
                     @Cached BranchProfile exception) throws ArityException, UnsupportedTypeException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
@@ -172,7 +170,12 @@ abstract class FunctionExecuteNode extends Node {
             throw ArityException.create(argIdx, args.length);
         }
 
-        return slowPathExecute(language, callNode, receiver, buffer);
+        return slowPathCall.call(receiver, buffer);
+    }
+
+    DirectCallNode createSlowPathCall() {
+        NFILanguageImpl language = lookupLanguageReference(NFILanguageImpl.class).get();
+        return DirectCallNode.create(language.getSlowPathCall());
     }
 
     private static void raiseArityException(LibFFIType[] argTypes, int actualArgCount) throws ArityException {
@@ -197,9 +200,7 @@ abstract class FunctionExecuteNode extends Node {
     @Specialization(replaces = "cachedArgCount")
     static Object genericExecute(LibFFIFunction receiver, Object[] args,
                     @CachedLibrary(limit = "ARG_DISPATCH_LIMIT") NativeArgumentLibrary nativeArguments,
-                    @CachedLanguage NFILanguageImpl language,
-                    @Cached IndirectCallNode callNode,
-                    @SuppressWarnings("unused") @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws ArityException, UnsupportedTypeException {
+                    @CachedLanguage NFILanguageImpl language) throws ArityException, UnsupportedTypeException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
 
@@ -222,11 +223,7 @@ abstract class FunctionExecuteNode extends Node {
             throw ArityException.create(argIdx, args.length);
         }
 
-        return slowPathExecute(language, callNode, receiver, buffer);
-    }
-
-    private static Object slowPathExecute(NFILanguageImpl language, IndirectCallNode callNode, LibFFIFunction receiver, NativeArgumentBuffer.Array buffer) {
-        return callNode.call(language.getSlowPathCall(), receiver, buffer);
+        return IndirectCallNode.getUncached().call(language.getSlowPathCall(), receiver, buffer);
     }
 
     static class SlowPathExecuteNode extends RootNode {
