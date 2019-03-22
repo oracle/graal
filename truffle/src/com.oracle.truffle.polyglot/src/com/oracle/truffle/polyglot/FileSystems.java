@@ -73,6 +73,7 @@ import java.util.function.Supplier;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleFile;
+import java.nio.charset.Charset;
 import org.graalvm.polyglot.io.FileSystem;
 
 final class FileSystems {
@@ -286,11 +287,21 @@ final class FileSystems {
             return delegate.getSeparator();
         }
 
+        @Override
+        public Charset getEncoding(Path path) {
+            return delegate.getEncoding(unwrap(path));
+        }
+
+        @Override
+        public String getMimeType(Path path) {
+            return delegate.getMimeType(unwrap(path));
+        }
+
         Path wrap(Path path) {
             return path == null ? null : factory.apply(path);
         }
 
-        Path unwrap(Path path) {
+        static Path unwrap(Path path) {
             return path.getClass() == PreInitializePath.class ? ((PreInitializePath) path).getDelegate() : path;
         }
 
@@ -359,13 +370,14 @@ final class FileSystems {
             private Path getDelegate() {
                 if (delegatePath instanceof Path) {
                     return (Path) delegatePath;
-                } else if (delegatePath instanceof String[]) {
-                    String[] pair = (String[]) delegatePath;
-                    String languageId = pair[0];
-                    String path = pair[1];
+                } else if (delegatePath instanceof ImageHeapPath) {
+                    ImageHeapPath imageHeapPath = (ImageHeapPath) delegatePath;
+                    String languageId = imageHeapPath.languageId;
+                    String path = imageHeapPath.path;
                     Path result;
-                    if (languageId != null) {
-                        result = delegate.parsePath(LanguageCache.languages(null).get(languageId).getLanguageHome()).resolve(path);
+                    String newLanguageHome;
+                    if (languageId != null && (newLanguageHome = LanguageCache.languages(null).get(languageId).getLanguageHome()) != null) {
+                        result = delegate.parsePath(newLanguageHome).resolve(path);
                     } else {
                         result = delegate.parsePath(path);
                     }
@@ -386,7 +398,7 @@ final class FileSystems {
                         break;
                     }
                 }
-                delegatePath = new String[]{languageId, internalPath.toString()};
+                delegatePath = new ImageHeapPath(languageId, internalPath.toString());
             }
 
             @Override
@@ -538,6 +550,18 @@ final class FileSystems {
             @Override
             public String toString() {
                 return getDelegate().toString();
+            }
+        }
+
+        private static final class ImageHeapPath {
+
+            private final String languageId;
+            private final String path;
+
+            ImageHeapPath(String languageId, String path) {
+                assert path != null;
+                this.languageId = languageId;
+                this.path = path;
             }
         }
     }
