@@ -1456,12 +1456,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         // Checkstyle: stop
         switch (opCode) {
             case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed);          break;
-            case INVOKEINTERFACE :
-                assert resolutionSeed.getDeclaringKlass().isInterface();
-                invoke = InvokeInterfaceNodeGen.create(resolutionSeed); break;
-            case INVOKEVIRTUAL   :
-                assert !resolutionSeed.getDeclaringKlass().isInterface();
-                invoke = InvokeVirtualNodeGen.create(resolutionSeed);   break;
+            case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed); break;
+            case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed);   break;
             case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed);         break;
             default              :
                 throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
