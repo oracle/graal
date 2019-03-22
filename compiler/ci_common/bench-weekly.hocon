@@ -84,6 +84,16 @@ bench-specjbb2015-forks : ${x52.default} ${bench-specjbb2015} ${weeklys-bench-no
   }
 }
 
+bench-specjbb2005-forks : ${x52.default} ${bench-specjbb2005} ${weeklys-bench-notifications} ${labsjdk8} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-specjbb2005.setup}
+  name: "bench-forks-compiler-specjbb2005-linux-x52"
+  timelimit: "08:00:00"
+  environment : ${x52.default.environment} ${bench-specjbb2005.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjbb2005_forks.json"
+  }
+}
+
 bench-renaissance-hwloc-forks-batch0 : ${x52.tmpfs10g} ${bench-renaissance-hwloc} ${weeklys-bench-notifications} ${labsjdk8} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
@@ -133,5 +143,6 @@ builds += [
   ${bench-renaissance-hwloc-forks-batch1}
   ${bench-renaissance-hwloc-forks-batch2}
   ${bench-renaissance-hwloc-forks-batch3}
+  ${bench-specjbb2005-forks}
   ${bench-specjbb2015-forks}
 ]
