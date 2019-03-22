@@ -245,10 +245,31 @@ public final class LLVMContext {
 
     public void initialize() {
         assert this.threadingStack == null;
-        this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
+        this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
         for (ContextExtension ext : contextExtensions) {
             ext.initialize();
         }
+    }
+
+    public static long parseStackSize(String v) {
+        String valueString = v.trim().toLowerCase();
+        long scale = 1;
+        if (valueString.endsWith("k")) {
+            scale = 1024L;
+        } else if (valueString.endsWith("m")) {
+            scale = 1024L * 1024L;
+        } else if (valueString.endsWith("g")) {
+            scale = 1024L * 1024L * 1024L;
+        } else if (valueString.endsWith("t")) {
+            scale = 1024L * 1024L * 1024L * 1024L;
+        }
+
+        if (scale != 1) {
+            /* Remove trailing scale character. */
+            valueString = valueString.substring(0, valueString.length() - 1);
+        }
+
+        return Long.parseLong(valueString) * scale;
     }
 
     public boolean isInitialized() {

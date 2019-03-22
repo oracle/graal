@@ -43,7 +43,7 @@ public final class LLVMStack {
 
     public static final String FRAME_ID = "<stackpointer>";
 
-    private final int stackSize;
+    private final long stackSize;
 
     private long lowerBounds;
     private long upperBounds;
@@ -52,7 +52,7 @@ public final class LLVMStack {
     private long stackPointer;
     private long uniquesRegionPointer;
 
-    public LLVMStack(int stackSize) {
+    public LLVMStack(long stackSize) {
         this.stackSize = stackSize;
 
         lowerBounds = 0;
@@ -187,7 +187,7 @@ public final class LLVMStack {
 
     @TruffleBoundary
     private void allocate(LLVMMemory memory) {
-        long size = stackSize * 1024L;
+        long size = stackSize;
         long stackAllocation = memory.allocateMemory(size).asNative();
         lowerBounds = stackAllocation;
         upperBounds = stackAllocation + size;

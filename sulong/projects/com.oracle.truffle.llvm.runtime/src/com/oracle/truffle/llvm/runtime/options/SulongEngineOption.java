@@ -39,6 +39,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Option;
@@ -48,7 +49,9 @@ public final class SulongEngineOption {
 
     public static final String OPTION_ARRAY_SEPARATOR = ":";
 
-    @Option(name = "llvm.stackSizeKB", category = OptionCategory.USER, help = "The stack size in KB.") public static final OptionKey<Integer> STACK_SIZE_KB = new OptionKey<>(81920);
+    @Option(name = "llvm.stackSize", category = OptionCategory.USER, stability = OptionStability.STABLE,
+            help = "The stack size, please end the input with one of: k, m, g, or t. (Note: the stack size will be in bytes if no appropriate suffix is give.)")
+            public static final OptionKey<String> STACK_SIZE = new OptionKey<>("81920k");
 
     public static final String LIBRARY_PATH_NAME = "llvm.libraryPath";
     @Option(name = LIBRARY_PATH_NAME, category = OptionCategory.USER, help = "A list of paths where Sulong will search for relative libraries. Paths are delimited by " + OPTION_ARRAY_SEPARATOR +
