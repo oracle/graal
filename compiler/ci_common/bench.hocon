@@ -180,7 +180,7 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
 # spark-sql-perf-related targets
 
 bench-spark-sql-perf: ${bench-common} ${default-heap} {
-  targets: [bench, post-merge]
+  targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments}
   ]
