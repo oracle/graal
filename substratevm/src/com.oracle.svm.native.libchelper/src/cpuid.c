@@ -25,7 +25,7 @@
 
 #include "cpufeatures.h"
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(_WIN64)
 #ifndef _WIN64
 #include <cpuid.h>
 
