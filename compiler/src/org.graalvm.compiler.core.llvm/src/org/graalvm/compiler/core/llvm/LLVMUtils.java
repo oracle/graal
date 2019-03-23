@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.llvm;
 
+import static org.bytedeco.javacpp.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
@@ -140,7 +141,7 @@ public class LLVMUtils {
         return builder.toString();
     }
 
-    static class LLVMVariable extends Variable implements LLVMValueWrapper {
+    public static class LLVMVariable extends Variable implements LLVMValueWrapper {
         private static int id = 0;
 
         private LLVMValueRef value;
@@ -153,8 +154,9 @@ public class LLVMUtils {
             this(LLVMKind.toLIRKind(type));
         }
 
-        LLVMVariable(LLVMValueRef value) {
-            this(LLVM.LLVMTypeOf(value));
+        public LLVMVariable(LLVMValueRef value) {
+            this(LLVMKind.toLIRKind(LLVMTypeOf(value)));
+
             this.value = value;
         }
 

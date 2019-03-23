@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
+import org.graalvm.compiler.core.llvm.LLVMUtils;
 import org.graalvm.compiler.core.llvm.NodeLLVMBuilder;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -54,6 +56,7 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
 
     @Override
     public Variable emitReadReturnAddress() {
-        return null;
+        LLVMValueRef returnAddress = getLIRGeneratorTool().getBuilder().buildReturnAddress(getLIRGeneratorTool().getBuilder().constantInt(0));
+        return new LLVMUtils.LLVMVariable(returnAddress);
     }
 }
