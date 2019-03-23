@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.debug;
 
-import static org.graalvm.compiler.serviceprovider.GraalServices.isThreadAllocatedMemorySupported;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
  * Tracks memory usage within a scope using {@link com.sun.management.ThreadMXBean}. This facility
@@ -56,6 +56,6 @@ public interface MemUseTrackerKey extends MetricKey {
     MemUseTrackerKey doc(String string);
 
     static long getCurrentThreadAllocatedBytes() {
-        return isThreadAllocatedMemorySupported() ? getCurrentThreadAllocatedBytes() : 0;
+        return GraalServices.isThreadAllocatedMemorySupported() ? GraalServices.getCurrentThreadAllocatedBytes() : 0;
     }
 }
