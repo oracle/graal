@@ -3128,7 +3128,7 @@ public class FlatNodeGenFactory {
         usedBoundaryNames.add(boundaryMethodName);
 
         String includeFrameParameter = null;
-        if (specialization.getFrame() != null) {
+        if (specialization != null && specialization.getFrame() != null) {
             includeFrameParameter = FRAME_VALUE;
         }
         CodeExecutableElement boundaryMethod = new CodeExecutableElement(modifiers(PRIVATE), parentMethod.getReturnType(), boundaryMethodName);
