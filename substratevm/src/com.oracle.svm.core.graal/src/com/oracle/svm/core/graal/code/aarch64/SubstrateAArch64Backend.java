@@ -153,6 +153,11 @@ import jdk.vm.ci.meta.Value;
 @Platforms(Platform.AArch64.class)
 class SubstrateAArch64BackendFeature implements Feature {
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return Platform.includedIn(Platform.AArch64.class) && SubstrateOptions.CompilerBackend.getValue().equals("lir");
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
             @Override
