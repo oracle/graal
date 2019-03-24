@@ -512,7 +512,6 @@ GraalTags = Tags([
     'maven',
     'js',
     'build',
-    'test',
     'benchmarktest',
     'truffletck'
 ])
