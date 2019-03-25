@@ -51,6 +51,7 @@ import java.util.Map;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 
 public abstract class AbstractLanguageLauncher extends Launcher {
@@ -116,9 +117,9 @@ public abstract class AbstractLanguageLauncher extends Launcher {
 
         Context.Builder builder;
         if (isPolyglot()) {
-            builder = Context.newBuilder().options(polyglotOptions);
+            builder = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).options(polyglotOptions);
         } else {
-            builder = Context.newBuilder(getDefaultLanguages()).options(polyglotOptions);
+            builder = Context.newBuilder(getDefaultLanguages()).allowPolyglotAccess(PolyglotAccess.NONE).options(polyglotOptions);
         }
         builder.allowAllAccess(true);
 
