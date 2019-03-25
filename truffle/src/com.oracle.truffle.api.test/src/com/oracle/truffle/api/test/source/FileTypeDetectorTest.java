@@ -41,12 +41,19 @@
 package com.oracle.truffle.api.test.source;
 
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assert;
@@ -244,6 +251,39 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
         Assert.assertEquals("text/foo+xml", truffleSource.getMimeType());
     }
 
+    @Test
+    public void testFileTypeDetectorFiltering() throws IOException {
+        setupEnv(Context.newBuilder().allowIO(true).build());
+        File firsta = createTmpFile("test", "." + FirstLanguage.EXT_A, "");
+        File firstb = createTmpFile("test", "." + FirstLanguage.EXT_B, "");
+        File seconda = createTmpFile("test", "." + SecondLanguage.EXT_A, "");
+        File secondb = createTmpFile("test", "." + SecondLanguage.EXT_B, "");
+
+        FirstFileTypeDetector.events.clear();
+        SecondFileTypeDetector.events.clear();
+        com.oracle.truffle.api.source.Source.newBuilder(FirstLanguage.LANG_ID, languageEnv.getTruffleFile(firsta.getAbsolutePath())).build();
+        Assert.assertEquals(1, FirstFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.MIME).count());
+        Assert.assertEquals(0, FirstFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.ENCODING).count());
+        Assert.assertTrue(SecondFileTypeDetector.events.isEmpty());
+        FirstFileTypeDetector.events.clear();
+        com.oracle.truffle.api.source.Source.newBuilder(FirstLanguage.LANG_ID, languageEnv.getTruffleFile(firstb.getAbsolutePath())).build();
+        Assert.assertEquals(1, FirstFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.MIME).count());
+        Assert.assertEquals(1, FirstFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.ENCODING).count());
+        Assert.assertTrue(SecondFileTypeDetector.events.isEmpty());
+        FirstFileTypeDetector.events.clear();
+
+        com.oracle.truffle.api.source.Source.newBuilder(SecondLanguage.LANG_ID, languageEnv.getTruffleFile(seconda.getAbsolutePath())).build();
+        Assert.assertTrue(FirstFileTypeDetector.events.isEmpty());
+        Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.MIME).count());
+        Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.ENCODING).count());
+        SecondFileTypeDetector.events.clear();
+        com.oracle.truffle.api.source.Source.newBuilder(SecondLanguage.LANG_ID, languageEnv.getTruffleFile(secondb.getAbsolutePath())).build();
+        Assert.assertTrue(FirstFileTypeDetector.events.isEmpty());
+        Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.MIME).count());
+        Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.ENCODING).count());
+        SecondFileTypeDetector.events.clear();
+    }
+
     private static File createTmpFile(String name, String ext, String... content) throws IOException {
         File tmpFile = File.createTempFile(name, ext);
         if (content.length > 0) {
@@ -255,5 +295,111 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
         }
         tmpFile.deleteOnExit();
         return tmpFile;
+    }
+
+    public static class AbstractFileTypeDetector implements TruffleFile.FileTypeDetector {
+
+        private final List<? super Event> sink;
+        private final Map<String, String> mimeTypes;
+
+        protected AbstractFileTypeDetector(List<? super Event> sink, Map<String, String> mimeTypes) {
+            this.sink = sink;
+            this.mimeTypes = mimeTypes;
+        }
+
+        @Override
+        public String findMimeType(TruffleFile file) throws IOException {
+            sink.add(new Event(Event.Type.MIME, file));
+            String name = file.getName();
+            if (name != null) {
+                for (Map.Entry<String, String> e : mimeTypes.entrySet()) {
+                    if (name.endsWith(e.getKey())) {
+                        return e.getValue();
+                    }
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public Charset findEncoding(TruffleFile file) throws IOException {
+            sink.add(new Event(Event.Type.ENCODING, file));
+            return null;
+        }
+
+        static Map<String, String> createMimeMap(String... extMimePairs) {
+            assert (extMimePairs.length & 1) == 0;
+            Map<String, String> res = new HashMap<>();
+            for (int i = 0; i < extMimePairs.length; i += 2) {
+                res.put("." + extMimePairs[i], extMimePairs[i + 1]);
+            }
+            return res;
+        }
+
+        static final class Event {
+
+            enum Type {
+                MIME,
+                ENCODING
+            }
+
+            private final Type type;
+            private final TruffleFile file;
+
+            Event(Type type, TruffleFile file) {
+                this.type = type;
+                this.file = file;
+            }
+
+            Type getType() {
+                return type;
+            }
+
+            TruffleFile getSource() {
+                return file;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("Find {0} for {1}", type, file);
+            }
+        }
+    }
+
+    public static final class FirstFileTypeDetector extends AbstractFileTypeDetector {
+
+        static final List<Event> events = new ArrayList<>();
+
+        public FirstFileTypeDetector() {
+            super(events, createMimeMap(FirstLanguage.EXT_A, FirstLanguage.MIME_A, FirstLanguage.EXT_B, FirstLanguage.MIME_B));
+        }
+    }
+
+    public static final class SecondFileTypeDetector extends AbstractFileTypeDetector {
+
+        static final List<Event> events = new ArrayList<>();
+
+        public SecondFileTypeDetector() {
+            super(events, createMimeMap(SecondLanguage.EXT_A, SecondLanguage.MIME_A, SecondLanguage.EXT_B, SecondLanguage.MIME_B));
+        }
+    }
+
+    @TruffleLanguage.Registration(id = FirstLanguage.LANG_ID, name = "", byteMimeTypes = FirstLanguage.MIME_A, characterMimeTypes = FirstLanguage.MIME_B, defaultMimeType = FirstLanguage.MIME_A, fileTypeDetectors = FirstFileTypeDetector.class)
+    public static final class FirstLanguage extends ProxyLanguage {
+        public static final String LANG_ID = "FirstFileTypeDetectorLanguage";
+        public static final String EXT_A = "firsta";
+        public static final String MIME_A = "application/firsta";
+        public static final String EXT_B = "firstb";
+        public static final String MIME_B = "application/firstb";
+    }
+
+    @TruffleLanguage.Registration(id = SecondLanguage.LANG_ID, name = "", characterMimeTypes = {SecondLanguage.MIME_A,
+                    SecondLanguage.MIME_B}, defaultMimeType = SecondLanguage.MIME_A, fileTypeDetectors = SecondFileTypeDetector.class)
+    public static final class SecondLanguage extends ProxyLanguage {
+        public static final String LANG_ID = "SecondFileTypeDetectorLanguage";
+        public static final String EXT_A = "seconda";
+        public static final String MIME_A = "application/seconda";
+        public static final String EXT_B = "secondb";
+        public static final String MIME_B = "application/secondb";
     }
 }

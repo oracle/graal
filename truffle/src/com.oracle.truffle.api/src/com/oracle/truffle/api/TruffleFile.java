@@ -1425,7 +1425,7 @@ public final class TruffleFile {
             if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
                 return result;
             }
-            for (FileTypeDetector detector : fileSystemContext.getFileTypeDetectors()) {
+            for (FileTypeDetector detector : fileSystemContext.getFileTypeDetectors(validMimeTypes)) {
                 result = detector.findMimeType(this);
                 if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
                     return result;
@@ -1478,12 +1478,18 @@ public final class TruffleFile {
      */
     @TruffleBoundary
     public Charset getEncoding() throws IOException {
+        String mimeType = getMimeType();
+        return mimeType != null ? getEncoding(mimeType) : null;
+    }
+
+    Charset getEncoding(String mimeType) throws IOException {
         try {
+            assert mimeType != null;
             Charset result = fileSystemContext.fileSystem.getEncoding(normalizedPath);
             if (result != null) {
                 return result;
             }
-            for (FileTypeDetector detector : fileSystemContext.getFileTypeDetectors()) {
+            for (FileTypeDetector detector : fileSystemContext.getFileTypeDetectors(Collections.singleton(mimeType))) {
                 result = detector.findEncoding(this);
                 if (result != null) {
                     return result;
@@ -1540,24 +1546,30 @@ public final class TruffleFile {
 
     static final class FileSystemContext {
         final FileSystem fileSystem;
-        private final Supplier<Iterable<? extends FileTypeDetector>> fileTypeDetectorsSupplier;
-        private volatile Iterable<? extends FileTypeDetector> fileTypeDetectors;
+        private final Supplier<Map<String, Collection<? extends FileTypeDetector>>> fileTypeDetectorsSupplier;
+        private volatile Map<String, Collection<? extends FileTypeDetector>> fileTypeDetectors;
 
-        FileSystemContext(FileSystem fileSystem, Supplier<Iterable<? extends FileTypeDetector>> fileTypeDetectorsSupplier) {
+        FileSystemContext(FileSystem fileSystem, Supplier<Map<String, Collection<? extends FileTypeDetector>>> fileTypeDetectorsSupplier) {
             Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
             Objects.requireNonNull(fileTypeDetectorsSupplier, "FileTypeDetectorsSupplier must be non null.");
             this.fileSystem = fileSystem;
             this.fileTypeDetectorsSupplier = fileTypeDetectorsSupplier;
         }
 
-        Iterable<? extends FileTypeDetector> getFileTypeDetectors() {
-            Iterable<? extends FileTypeDetector> result = fileTypeDetectors;
+        Iterable<? extends FileTypeDetector> getFileTypeDetectors(Set<String> mimeTypes) {
+            Map<String, Collection<? extends FileTypeDetector>> result = fileTypeDetectors;
             if (result == null) {
                 result = fileTypeDetectorsSupplier.get();
                 assert result != null : "FileTypeDetectorsSupplier returned null.";
                 fileTypeDetectors = result;
             }
-            return result;
+            Set<FileTypeDetector> filtered = new HashSet<>();
+            for (Map.Entry<String, Collection<? extends FileTypeDetector>> e : result.entrySet()) {
+                if (mimeTypes == null || mimeTypes.contains(e.getKey())) {
+                    filtered.addAll(e.getValue());
+                }
+            }
+            return filtered;
         }
     }
 

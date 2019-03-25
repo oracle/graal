@@ -1037,14 +1037,14 @@ public abstract class Source {
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? file.getPath() : usePath;
             useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
-            useEncoding = useEncoding == null ? file.getEncoding() : useEncoding;
-            useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
+                useEncoding = useEncoding == null ? getEncoding(file, useMimeType) : useEncoding;
                 useContent = useContent == CONTENT_UNSET ? read(file, useEncoding) : useContent;
             } else {
                 if (useContent == CONTENT_UNSET) {
                     if (isCharacterBased(language, useMimeType)) {
+                        useEncoding = useEncoding == null ? getEncoding(file, useMimeType) : useEncoding;
                         useContent = read(file, useEncoding);
                     } else {
                         useContent = ByteSequence.create(file.readAllBytes());
@@ -1066,15 +1066,15 @@ public abstract class Source {
             usePath = usePath == null ? url.toExternalForm() : usePath;
             try {
                 TruffleFile truffleFile = SourceAccessor.getTruffleFile(tmpUri, fileSystemContext.get());
-                useEncoding = useEncoding == null ? truffleFile.getEncoding() : useEncoding;
-                useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
                 if (legacy) {
                     useMimeType = useMimeType == null ? SourceAccessor.getMimeType(truffleFile, getValidMimeTypes(language)) : useMimeType;
                     useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
+                    useEncoding = useEncoding == null ? getEncoding(truffleFile, useMimeType) : useEncoding;
                     useContent = useContent == CONTENT_UNSET ? read(truffleFile, useEncoding) : useContent;
                 } else {
                     if (useContent == CONTENT_UNSET) {
                         if (isCharacterBased(language, useMimeType)) {
+                            useEncoding = useEncoding == null ? getEncoding(truffleFile, useMimeType) : useEncoding;
                             useContent = read(truffleFile, useEncoding);
                         } else {
                             useContent = ByteSequence.create(truffleFile.readAllBytes());
@@ -1392,6 +1392,12 @@ public abstract class Source {
     @SuppressWarnings({"unchecked", "unused"})
     static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
         throw (E) ex;
+    }
+
+    private static Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
+        Charset encoding = SourceAccessor.getEncoding(file, mimeType);
+        encoding = encoding == null ? StandardCharsets.UTF_8 : encoding;
+        return encoding;
     }
 
     /**

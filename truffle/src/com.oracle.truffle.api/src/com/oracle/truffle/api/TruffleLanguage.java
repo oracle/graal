@@ -48,8 +48,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -436,7 +438,10 @@ public abstract class TruffleLanguage<C> {
         /**
          * Declarative list of {@link TruffleFile.FileTypeDetector} classes provided by this
          * language.
-         * 
+         * <p>
+         * The language has to support all MIME types recognized by the registered
+         * {@link TruffleFile.FileTypeDetector file type detectors}.
+         *
          * @return list of file type detectors
          * @since 1.0
          */
@@ -1315,7 +1320,7 @@ public abstract class TruffleLanguage<C> {
 
         @SuppressWarnings("unchecked")
         private Env(Object vmObject, TruffleLanguage<?> language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors) {
+                        FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
             this.vmObject = vmObject;
             this.spi = (TruffleLanguage<Object>) language;
             this.in = in;
@@ -2459,7 +2464,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors) {
+                        String[] applicationArguments, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
             Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config, options, applicationArguments, fileSystem, fileTypeDetectors);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             LanguageInfo info = language.languageInfo;
@@ -2647,7 +2652,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors) {
+                        FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
             assert env.spi != null;
             final Env newEnv = createEnv(
                             env.vmObject,
@@ -2666,7 +2671,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Object createFileSystemContext(FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors) {
+        public Object createFileSystemContext(FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
             return new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectors);
         }
 
@@ -2677,13 +2682,18 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalStateException("No current context");
             }
             FileSystem fileSystem = AccessAPI.engineAccess().getFileSystem(polyglotContextImpl);
-            Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectorsSupplier = AccessAPI.engineAccess().getFileTypeDetectorsSupplier(polyglotContextImpl);
+            Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = AccessAPI.engineAccess().getFileTypeDetectorsSupplier(polyglotContextImpl);
             return new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
         }
 
         @Override
         public String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
             return file.getMimeType(validMimeTypes);
+        }
+
+        @Override
+        public Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
+            return mimeType == null ? file.getEncoding() : file.getEncoding(mimeType);
         }
 
         @Override
