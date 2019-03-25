@@ -57,7 +57,7 @@
 #endif
 
 static void cacheFFIType(JNIEnv *env, jclass nativeSimpleType, jobject context, jmethodID initializeSimpleType, const char *enumName, ffi_type *type) {
-    jfieldID enumField = (*env)->GetStaticFieldID(env, nativeSimpleType, enumName, "Lcom/oracle/truffle/nfi/types/NativeSimpleType;");
+    jfieldID enumField = (*env)->GetStaticFieldID(env, nativeSimpleType, enumName, "Lcom/oracle/truffle/nfi/spi/types/NativeSimpleType;");
     jobject enumValue = (*env)->GetStaticObjectField(env, nativeSimpleType, enumField);
 
     (*env)->CallVoidMethod(env, context, initializeSimpleType, enumValue, type->size, type->alignment, (jlong) type);
@@ -112,8 +112,8 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     ret->RetPatches_objects = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "objects", "[Ljava/lang/Object;");
 
 
-    initializeSimpleType = (*env)->GetMethodID(env, NFIContext, "initializeSimpleType", "(Lcom/oracle/truffle/nfi/types/NativeSimpleType;IIJ)V");
-    NativeSimpleType = (*env)->FindClass(env, "com/oracle/truffle/nfi/types/NativeSimpleType");
+    initializeSimpleType = (*env)->GetMethodID(env, NFIContext, "initializeSimpleType", "(Lcom/oracle/truffle/nfi/spi/types/NativeSimpleType;IIJ)V");
+    NativeSimpleType = (*env)->FindClass(env, "com/oracle/truffle/nfi/spi/types/NativeSimpleType");
 
     // it's important to initialize "POINTER" first, because the primitive array types depend on it
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "POINTER", &ffi_type_pointer);

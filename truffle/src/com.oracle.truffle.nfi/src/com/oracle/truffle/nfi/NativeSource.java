@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,49 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.impl;
+package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
+import java.util.ArrayList;
+import java.util.List;
 
-@ExportLibrary(InteropLibrary.class)
-final class KeysArray implements TruffleObject {
+/**
+ * Parsed representation of a Truffle NFI source. To use the Truffle NFI, evaluate a source with the
+ * mime-type application/x-native. See {@link Parser} for the syntax of the Truffle NFI source.
+ */
+final class NativeSource {
 
-    @CompilationFinal(dimensions = 1) private final String[] keys;
+    private final String nfiId;
+    private final NativeLibraryDescriptor libraryDescriptor;
 
-    KeysArray(String[] keys) {
-        this.keys = keys;
+    private final List<String> preBoundSymbols;
+    private final List<String> preBoundSignatures;
+
+    NativeSource(String nfiId, NativeLibraryDescriptor libraryDescriptor) {
+        this.nfiId = nfiId;
+        this.libraryDescriptor = libraryDescriptor;
+        this.preBoundSymbols = new ArrayList<>();
+        this.preBoundSignatures = new ArrayList<>();
     }
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean hasArrayElements() {
-        return true;
+    public boolean isDefaultBackend() {
+        return nfiId == null;
     }
 
-    @ExportMessage
-    long getArraySize() {
-        return keys.length;
+    public String getNFIBackendId() {
+        return nfiId;
     }
 
-    @ExportMessage
-    boolean isArrayElementReadable(long idx) {
-        return 0 <= idx && idx < keys.length;
+    public NativeLibraryDescriptor getLibraryDescriptor() {
+        return libraryDescriptor;
     }
 
-    @ExportMessage
-    String readArrayElement(long idx,
-                    @Cached BranchProfile exception) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(idx)) {
-            exception.enter();
-            throw InvalidArrayIndexException.create(idx);
-        }
-        return keys[(int) idx];
+    public int preBoundSymbolsLength() {
+        return preBoundSymbols.size();
+    }
+
+    public String getPreBoundSymbol(int i) {
+        return preBoundSymbols.get(i);
+    }
+
+    public String getPreBoundSignature(int i) {
+        return preBoundSignatures.get(i);
+    }
+
+    void register(String symbol, String signature) {
+        preBoundSymbols.add(symbol);
+        preBoundSignatures.add(signature);
     }
 }

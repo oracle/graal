@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.types;
+package com.oracle.truffle.nfi.spi.types;
 
-public final class NativeFunctionTypeMirror extends NativeTypeMirror {
+import java.util.Collections;
+import java.util.List;
 
-    private final NativeSignature signature;
+public final class NativeSignature {
 
-    NativeFunctionTypeMirror(NativeSignature signature) {
-        super(Kind.FUNCTION);
-        this.signature = signature;
+    static final int NOT_VARARGS = -1;
+
+    private final NativeTypeMirror retType;
+    private final List<NativeTypeMirror> argTypes;
+
+    private final int fixedArgCount;
+
+    NativeSignature(NativeTypeMirror retType, int fixedArgCount, List<NativeTypeMirror> argTypes) {
+        this.retType = retType;
+        this.argTypes = argTypes;
+        this.fixedArgCount = fixedArgCount;
     }
 
-    public NativeSignature getSignature() {
-        return signature;
+    public NativeTypeMirror getRetType() {
+        return retType;
+    }
+
+    public List<NativeTypeMirror> getArgTypes() {
+        return Collections.unmodifiableList(argTypes);
+    }
+
+    public boolean isVarargs() {
+        return fixedArgCount != NOT_VARARGS;
+    }
+
+    public int getFixedArgCount() {
+        return isVarargs() ? fixedArgCount : argTypes.size();
     }
 }

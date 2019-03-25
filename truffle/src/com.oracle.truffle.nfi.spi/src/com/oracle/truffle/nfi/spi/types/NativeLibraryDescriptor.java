@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,24 +38,54 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.types;
+package com.oracle.truffle.nfi.spi.types;
 
-public abstract class NativeTypeMirror {
+import java.util.Collections;
+import java.util.List;
 
-    private final Kind kind;
+/**
+ * Parsed representation of library descriptors of the Truffle NFI.
+ *
+ * Implementors of a Truffle NFI backend must use this class (returned by
+ * {@link Parser#parseLibraryDescriptor(java.lang.CharSequence)}) to interpret their source string.
+ */
+public final class NativeLibraryDescriptor {
 
-    public enum Kind {
-        SIMPLE,
-        ARRAY,
-        FUNCTION,
-        ENV;
+    private final String filename;
+    private final List<String> flags;
+
+    NativeLibraryDescriptor(String filename, List<String> flags) {
+        this.filename = filename;
+        this.flags = flags;
     }
 
-    NativeTypeMirror(Kind kind) {
-        this.kind = kind;
+    /**
+     * Check whether this represents the default library.
+     */
+    public boolean isDefaultLibrary() {
+        return filename == null;
     }
 
-    public final Kind getKind() {
-        return kind;
+    /**
+     * @return the filename of the library, or {@code null} for the default library
+     */
+    public String getFilename() {
+        return filename;
     }
+
+    /**
+     * An optional array of implementation dependent flags. Implementors of the TruffleNFI backends
+     * should ignore unknown flags, and should always provide sensible default behavior if no flags
+     * are specified.
+     *
+     * This can for example be used to specify the {@code RTLD_*} flags on posix compliant systems.
+     */
+    public List<String> getFlags() {
+        if (flags == null) {
+            return null;
+        } else {
+            return Collections.unmodifiableList(flags);
+        }
+    }
+
 }

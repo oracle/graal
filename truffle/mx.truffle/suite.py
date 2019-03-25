@@ -579,7 +579,7 @@ suite = {
       "jniHeaders" : True,
       "dependencies" : [
         "com.oracle.truffle.api.interop",
-        "com.oracle.truffle.nfi.types",
+        "com.oracle.truffle.nfi.spi",
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
@@ -602,13 +602,15 @@ suite = {
       },
     },
 
-    "com.oracle.truffle.nfi.types" : {
+    "com.oracle.truffle.nfi.spi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "TRUFFLE_API",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "workingSets" : "Truffle",
     },
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,53 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.nfi.spi;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.nfi.spi.NFIBackend;
+import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
 
-@TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true)
-public class NFILanguage extends TruffleLanguage<NFIContext> {
+public interface NFIBackend {
 
-    public static final String MIME_TYPE = "application/x-native";
-
-    @Override
-    protected NFIContext createContext(Env env) {
-        return new NFIContext(env);
-    }
-
-    @Override
-    protected boolean patchContext(NFIContext context, Env newEnv) {
-        context.patch(newEnv);
-        return true;
-    }
-
-    @Override
-    protected CallTarget parse(ParsingRequest request) throws Exception {
-        CharSequence nfiSource = request.getSource().getCharacters();
-        NativeSource source = Parser.parseNFISource(nfiSource);
-
-        String backendId;
-        if (source.isDefaultBackend()) {
-            backendId = "native";
-        } else {
-            backendId = source.getNFIBackendId();
-        }
-
-        NFIBackend backend = getContextReference().get().getBackend(backendId);
-        CallTarget loadLibrary = backend.parse(source.getLibraryDescriptor());
-        return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, loadLibrary, source));
-    }
-
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof NFILibrary || object instanceof NFISymbol;
-    }
-
-    @Override
-    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-        return true;
-    }
+    CallTarget parse(NativeLibraryDescriptor descriptor);
 }

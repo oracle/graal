@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,35 @@
  */
 package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.nfi.impl.LibFFIType.Direction;
+import com.oracle.truffle.nfi.spi.NativeSymbolLibrary;
+import com.oracle.truffle.nfi.spi.types.NativeSignature;
 
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(SerializeArgumentLibrary.class)
+@ExportLibrary(NativeSymbolLibrary.class)
 @SuppressWarnings("unused")
 class NativePointer implements TruffleObject {
 
-    private static final KeysArray KEYS = new KeysArray(new String[]{"bind"});
-
     final long nativePointer;
+
+    static Object create(NFILanguageImpl language, long nativePointer) {
+        return language.getTools().createBindableSymbol(new NativePointer(nativePointer));
+    }
+
+    static Object createBound(NFILanguageImpl language, long nativePointer, LibFFISignature signature) {
+        return language.getTools().createBoundSymbol(new NativePointer(nativePointer), signature);
+    }
 
     NativePointer(long nativePointer) {
         this.nativePointer = nativePointer;
@@ -79,55 +90,39 @@ class NativePointer implements TruffleObject {
     }
 
     @ExportMessage
-    NativePointer toNative() {
-        return this;
-    }
-
-    @ExportMessage
     boolean isNull() {
         return nativePointer == 0;
     }
 
     @ExportMessage
-    boolean hasMembers() {
+    void putPointer(NativeArgumentBuffer buffer, int ptrSize) {
+        buffer.putPointer(nativePointer, ptrSize);
+    }
+
+    @ExportMessage
+    boolean isBindable() {
         return nativePointer != 0;
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) {
-        return KEYS;
-    }
-
-    @ExportMessage
-    boolean isMemberReadable(String member) {
-        return false;
-    }
-
-    @ExportMessage
-    Object readMember(String member) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    boolean isMemberInvocable(String member) {
-        return "bind".equals(member);
-    }
-
-    @ExportMessage
-    Object invokeMember(String method, Object[] args,
-                    @Cached BindSignatureNode bind) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
-        if (!"bind".equals(method)) {
-            throw UnknownIdentifierException.create(method);
+    @TruffleBoundary
+    Object prepareSignature(NativeSignature signature,
+                    @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+        LibFFISignature ret = LibFFISignature.create(ctx, signature);
+        if (ret.getAllowedCallDirection() == Direction.NATIVE_TO_JAVA_ONLY) {
+            throw new IllegalArgumentException("signature is only valid for native to Java callbacks");
         }
-        if (args.length != 1) {
-            throw ArityException.create(1, args.length);
+        return ret;
+    }
+
+    @ExportMessage
+    Object call(Object signature, Object[] args,
+                    @Cached FunctionExecuteNode execute) throws ArityException, UnsupportedTypeException {
+        if (!(signature instanceof LibFFISignature)) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{signature});
         }
 
-        return bind.execute(this, args[0]);
-    }
-
-    @ExportMessage
-    void putPointer(NativeArgumentBuffer buffer, int ptrSize) {
-        buffer.putPointer(nativePointer, ptrSize);
+        return execute.execute(this, (LibFFISignature) signature, args);
     }
 }

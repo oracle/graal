@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
@@ -55,7 +56,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 @ExportLibrary(InteropLibrary.class)
 final class NFILibrary implements TruffleObject {
@@ -92,7 +92,7 @@ final class NFILibrary implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Keys getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new Keys(symbols.keySet());
+        return new Keys(symbols.keySet().toArray());
     }
 
     @ExportMessage(limit = "3")
@@ -134,10 +134,10 @@ final class NFILibrary implements TruffleObject {
     @ExportLibrary(InteropLibrary.class)
     static final class Keys implements TruffleObject {
 
-        private final Object[] keys;
+        @CompilationFinal(dimensions = 1) private final Object[] keys;
 
-        private Keys(Set<String> keySet) {
-            this.keys = keySet.toArray();
+        Keys(Object... keys) {
+            this.keys = keys;
         }
 
         @SuppressWarnings("static-method")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,12 +67,12 @@ abstract class FunctionExecuteNode extends Node {
 
     static final int ARG_DISPATCH_LIMIT = 5;
 
-    public abstract Object execute(LibFFIFunction receiver, Object[] args) throws ArityException, UnsupportedTypeException;
+    public abstract Object execute(NativePointer receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
 
-    @Specialization(guards = "receiver.getSignature() == signature")
-    protected Object cachedSignature(LibFFIFunction receiver, Object[] args,
-                    @Cached("receiver.getSignature()") @SuppressWarnings("unused") LibFFISignature signature,
-                    @Cached("createCachedSignatureCall(signature)") DirectCallNode execute) {
+    @Specialization(guards = "signature == cachedSignature")
+    protected Object cachedSignature(NativePointer receiver, @SuppressWarnings("unused") LibFFISignature signature, Object[] args,
+                    @Cached("signature") @SuppressWarnings("unused") LibFFISignature cachedSignature,
+                    @Cached("createCachedSignatureCall(cachedSignature)") DirectCallNode execute) {
         return execute.call(receiver.asPointer(), args);
     }
 
@@ -142,12 +142,11 @@ abstract class FunctionExecuteNode extends Node {
     }
 
     @ExplodeLoop
-    @Specialization(replaces = "cachedSignature", guards = "receiver.getSignature().getArgTypes().length == libs.length")
-    protected Object cachedArgCount(LibFFIFunction receiver, Object[] args,
-                    @Cached("getGenericNativeArgumentLibraries(receiver.getSignature().getArgTypes().length)") NativeArgumentLibrary[] libs,
+    @Specialization(replaces = "cachedSignature", guards = "signature.getArgTypes().length == libs.length")
+    protected Object cachedArgCount(NativePointer receiver, LibFFISignature signature, Object[] args,
+                    @Cached("getGenericNativeArgumentLibraries(signature.getArgTypes().length)") NativeArgumentLibrary[] libs,
                     @Cached("createSlowPathCall()") DirectCallNode slowPathCall,
                     @Cached BranchProfile exception) throws ArityException, UnsupportedTypeException {
-        LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
 
         NativeArgumentBuffer.Array buffer = signature.prepareBuffer();
@@ -171,7 +170,7 @@ abstract class FunctionExecuteNode extends Node {
             throw ArityException.create(argIdx, args.length);
         }
 
-        return slowPathCall.call(receiver, buffer);
+        return slowPathCall.call(receiver, signature, buffer);
     }
 
     DirectCallNode createSlowPathCall() {
@@ -199,10 +198,9 @@ abstract class FunctionExecuteNode extends Node {
     }
 
     @Specialization(replaces = "cachedArgCount")
-    static Object genericExecute(LibFFIFunction receiver, Object[] args,
+    static Object genericExecute(NativePointer receiver, LibFFISignature signature, Object[] args,
                     @CachedLibrary(limit = "ARG_DISPATCH_LIMIT") NativeArgumentLibrary nativeArguments,
                     @CachedLanguage NFILanguageImpl language) throws ArityException, UnsupportedTypeException {
-        LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
 
         NativeArgumentBuffer.Array buffer = signature.prepareBuffer();
@@ -224,7 +222,7 @@ abstract class FunctionExecuteNode extends Node {
             throw ArityException.create(argIdx, args.length);
         }
 
-        return IndirectCallNode.getUncached().call(language.getSlowPathCall(), receiver, buffer);
+        return IndirectCallNode.getUncached().call(language.getSlowPathCall(), receiver, signature, buffer);
     }
 
     static class SlowPathExecuteNode extends RootNode {
@@ -238,10 +236,11 @@ abstract class FunctionExecuteNode extends Node {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            LibFFIFunction receiver = (LibFFIFunction) frame.getArguments()[0];
-            NativeArgumentBuffer.Array buffer = (NativeArgumentBuffer.Array) frame.getArguments()[1];
+            NativePointer receiver = (NativePointer) frame.getArguments()[0];
+            LibFFISignature signature = (LibFFISignature) frame.getArguments()[1];
+            NativeArgumentBuffer.Array buffer = (NativeArgumentBuffer.Array) frame.getArguments()[2];
 
-            return slowPathExecute(ctxRef.get(), receiver.getSignature(), receiver.getAddress(), buffer);
+            return slowPathExecute(ctxRef.get(), signature, receiver.asPointer(), buffer);
         }
 
         @TruffleBoundary

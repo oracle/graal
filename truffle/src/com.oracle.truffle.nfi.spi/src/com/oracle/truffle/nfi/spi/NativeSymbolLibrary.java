@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,54 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.types;
+package com.oracle.truffle.nfi.spi;
 
-import java.util.Collections;
-import java.util.List;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.nfi.spi.types.NativeSignature;
 
-/**
- * Parsed representation of library descriptors of the Truffle NFI.
- *
- * Implementors of a Truffle NFI backend must use this class (returned by
- * {@link Parser#parseLibraryDescriptor(java.lang.CharSequence)}) to interpret their source string.
- */
-public final class NativeLibraryDescriptor {
+@GenerateLibrary
+@SuppressWarnings("unused")
+public abstract class NativeSymbolLibrary extends Library {
 
-    private final String filename;
-    private final List<String> flags;
-
-    NativeLibraryDescriptor(String filename, List<String> flags) {
-        this.filename = filename;
-        this.flags = flags;
+    @Abstract
+    public boolean isBindable(Object receiver) {
+        return false;
     }
 
-    /**
-     * Check whether this represents the default library.
-     */
-    public boolean isDefaultLibrary() {
-        return filename == null;
+    @Abstract
+    public Object prepareSignature(Object receiver, NativeSignature signature) throws UnsupportedMessageException, UnsupportedTypeException {
+        throw UnsupportedMessageException.create();
     }
 
-    /**
-     * @return the filename of the library, or {@code null} for the default library
-     */
-    public String getFilename() {
-        return filename;
+    @Abstract
+    public Object call(Object receiver, Object signature, Object... args) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
+        throw UnsupportedMessageException.create();
     }
-
-    /**
-     * An optional array of implementation dependent flags. Implementors of the TruffleNFI backends
-     * should ignore unknown flags, and should always provide sensible default behavior if no flags
-     * are specified.
-     *
-     * This can for example be used to specify the {@code RTLD_*} flags on posix compliant systems.
-     */
-    public List<String> getFlags() {
-        if (flags == null) {
-            return null;
-        } else {
-            return Collections.unmodifiableList(flags);
-        }
-    }
-
 }
