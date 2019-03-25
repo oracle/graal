@@ -89,6 +89,8 @@ public class TraceProcessor extends AbstractProcessor {
                 String event = (String) entry.get("event");
                 if (event.equals("phase_change")) {
                     setInLivePhase(entry.get("phase").equals("live"));
+                } else if (event.equals("initialization")) {
+                    // not needed for now, but contains version for breaking changes
                 } else {
                     logWarning("Unknown meta event, ignoring: " + event);
                 }

@@ -30,11 +30,12 @@ import static com.oracle.svm.agent.Support.checkNoException;
 import static com.oracle.svm.agent.Support.clearException;
 import static com.oracle.svm.agent.Support.fromCString;
 import static com.oracle.svm.agent.Support.getClassNameOr;
+import static com.oracle.svm.agent.Support.getFieldDeclaringClass;
+import static com.oracle.svm.agent.Support.getMethodDeclaringClass;
 import static com.oracle.svm.agent.Support.jniFunctions;
 import static com.oracle.svm.agent.Support.jvmtiEnv;
 import static com.oracle.svm.agent.Support.jvmtiFunctions;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
-import static org.graalvm.word.WordFactory.nullPointer;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -57,13 +58,18 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 final class JniCallInterceptor {
     private static TraceWriter traceWriter;
 
-    private static void traceCall(JNIEnvironment env, String function, JNIObjectHandle clazz, Object result, Object... args) {
+    private static void traceCall(JNIEnvironment env, String function, JNIObjectHandle clazz, JNIObjectHandle declaringClass, Object result, Object... args) {
         JNIObjectHandle pending = jniFunctions().getExceptionOccurred().invoke(env);
         clearException(env);
 
         JNIObjectHandle callerClass = Support.getCallerClass(0);
-        traceWriter.traceCall("jni", function, getClassNameOr(env, clazz, null, TraceWriter.UNKNOWN_VALUE),
-                        getClassNameOr(env, callerClass, null, TraceWriter.UNKNOWN_VALUE), result, args);
+        traceWriter.traceCall("jni",
+                        function,
+                        getClassNameOr(env, clazz, null, TraceWriter.UNKNOWN_VALUE),
+                        getClassNameOr(env, declaringClass, null, TraceWriter.UNKNOWN_VALUE),
+                        getClassNameOr(env, callerClass, null, TraceWriter.UNKNOWN_VALUE),
+                        result,
+                        args);
         checkNoException(env);
 
         if (pending.notEqual(nullHandle())) {
@@ -75,7 +81,7 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIObjectHandle defineClass(JNIEnvironment env, CCharPointer name, JNIObjectHandle loader, CCharPointer buf, int bufLen) {
         JNIObjectHandle result = jniFunctions().getDefineClass().invoke(env, name, loader, buf, bufLen);
-        traceCall(env, "DefineClass", nullHandle(), result.notEqual(nullHandle()), fromCString(name));
+        traceCall(env, "DefineClass", nullHandle(), nullHandle(), result.notEqual(nullHandle()), fromCString(name));
         return result;
     }
 
@@ -83,7 +89,7 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIObjectHandle findClass(JNIEnvironment env, CCharPointer name) {
         JNIObjectHandle result = jniFunctions().getFindClass().invoke(env, name);
-        traceCall(env, "FindClass", nullPointer(), result.notEqual(nullHandle()), fromCString(name));
+        traceCall(env, "FindClass", nullHandle(), nullHandle(), result.notEqual(nullHandle()), fromCString(name));
         return result;
     }
 
@@ -91,7 +97,7 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIMethodId getMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIMethodId result = jniFunctions().getGetMethodID().invoke(env, clazz, name, signature);
-        traceCall(env, "GetMethodID", clazz, result.isNonNull(), fromCString(name), fromCString(signature));
+        traceCall(env, "GetMethodID", clazz, getMethodDeclaringClass(result), result.isNonNull(), fromCString(name), fromCString(signature));
         return result;
     }
 
@@ -99,7 +105,7 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIMethodId getStaticMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIMethodId result = jniFunctions().getGetStaticMethodID().invoke(env, clazz, name, signature);
-        traceCall(env, "GetStaticMethodID", clazz, result.isNonNull(), fromCString(name), fromCString(signature));
+        traceCall(env, "GetStaticMethodID", clazz, getMethodDeclaringClass(result), result.isNonNull(), fromCString(name), fromCString(signature));
         return result;
     }
 
@@ -107,7 +113,7 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIFieldId getFieldID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIFieldId result = jniFunctions().getGetFieldID().invoke(env, clazz, name, signature);
-        traceCall(env, "GetFieldID", clazz, result.isNonNull(), fromCString(name), fromCString(signature));
+        traceCall(env, "GetFieldID", clazz, getFieldDeclaringClass(clazz, result), result.isNonNull(), fromCString(name), fromCString(signature));
         return result;
     }
 
@@ -115,7 +121,7 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIFieldId getStaticFieldID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIFieldId result = jniFunctions().getGetStaticFieldID().invoke(env, clazz, name, signature);
-        traceCall(env, "GetStaticFieldID", clazz, result.isNonNull(), fromCString(name), fromCString(signature));
+        traceCall(env, "GetStaticFieldID", clazz, getFieldDeclaringClass(clazz, result), result.isNonNull(), fromCString(name), fromCString(signature));
         return result;
     }
 

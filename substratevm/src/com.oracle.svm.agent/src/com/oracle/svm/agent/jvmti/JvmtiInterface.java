@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
@@ -145,5 +146,13 @@ public interface JvmtiInterface extends PointerBase {
     interface GetMethodNameFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv env, JNIMethodId method, CCharPointerPointer namePtr, CCharPointerPointer signature, CCharPointerPointer genericPtr);
+    }
+
+    @CField("GetFieldDeclaringClass")
+    GetFieldDeclaringClassFunctionPointer GetFieldDeclaringClass();
+
+    interface GetFieldDeclaringClassFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, JNIObjectHandle klass, JNIFieldId method, WordPointer declaringClassPtr);
     }
 }

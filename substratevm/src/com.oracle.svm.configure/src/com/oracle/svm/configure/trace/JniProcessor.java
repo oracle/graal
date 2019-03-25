@@ -54,11 +54,13 @@ class JniProcessor extends AbstractProcessor {
         }
         String function = (String) entry.get("function");
         String clazz = (String) entry.get("class");
+        String declaringClass = (String) entry.get("declaring_class");
         String callerClass = (String) entry.get("caller_class");
         List<?> args = (List<?>) entry.get("args");
         if (filter && shouldFilter(function, clazz, callerClass, args)) {
             return;
         }
+        String declaringClassOrClazz = (declaringClass != null) ? declaringClass : clazz;
         switch (function) {
             case "DefineClass": {
                 String name = singleElement(args);
@@ -82,14 +84,14 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
-                configuration.getOrCreateType(clazz).getMethods().add(new JniMethod(name, signature));
+                configuration.getOrCreateType(declaringClassOrClazz).getMethods().add(new JniMethod(name, signature));
                 break;
             }
             case "GetFieldID":
             case "GetStaticFieldID": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
-                configuration.getOrCreateType(clazz).getFields().add(name);
+                configuration.getOrCreateType(declaringClassOrClazz).getFields().add(name);
                 break;
             }
         }

@@ -45,6 +45,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
@@ -99,6 +100,7 @@ final class Support {
 
         public final JNIMethodId javaLangClassGetName;
         public final JNIMethodId javaLangClassForName3;
+        public final JNIMethodId javaLangReflectMemberGetDeclaringClass;
         public final JNIMethodId javaUtilEnumerationHasMoreElements;
 
         private JavaHandles(JNIEnvironment env) {
@@ -114,6 +116,16 @@ final class Support {
             try (CCharPointerHolder name = toCString("forName"); CCharPointerHolder signature = toCString("(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;")) {
                 javaLangClassForName3 = jniFunctions.getGetStaticMethodID().invoke(env, javaLangClass, name.get(), signature.get());
                 guarantee(javaLangClassForName3.isNonNull());
+            }
+
+            JNIObjectHandle javaLangReflectMember;
+            try (CCharPointerHolder name = toCString("java/lang/reflect/Member")) {
+                javaLangReflectMember = jniFunctions.getFindClass().invoke(env, name.get());
+                guarantee(javaLangReflectMember.notEqual(nullHandle()));
+            }
+            try (CCharPointerHolder name = toCString("getDeclaringClass"); CCharPointerHolder signature = toCString("()Ljava/lang/Class;")) {
+                javaLangReflectMemberGetDeclaringClass = jniFunctions.getGetMethodID().invoke(env, javaLangReflectMember, name.get(), signature.get());
+                guarantee(javaLangReflectMemberGetDeclaringClass.isNonNull());
             }
 
             JNIObjectHandle javaUtilEnumeration;
@@ -184,6 +196,22 @@ final class Support {
             return result;
         }
         return forNullHandle;
+    }
+
+    static JNIObjectHandle getMethodDeclaringClass(JNIMethodId method) {
+        WordPointer declaringClass = StackValue.get(WordPointer.class);
+        if (method.isNull() || jvmtiFunctions().GetMethodDeclaringClass().invoke(jvmtiEnv(), method, declaringClass) != JvmtiError.JVMTI_ERROR_NONE) {
+            declaringClass.write(nullPointer());
+        }
+        return declaringClass.read();
+    }
+
+    static JNIObjectHandle getFieldDeclaringClass(JNIObjectHandle clazz, JNIFieldId method) {
+        WordPointer declaringClass = StackValue.get(WordPointer.class);
+        if (method.isNull() || jvmtiFunctions().GetFieldDeclaringClass().invoke(jvmtiEnv(), clazz, method, declaringClass) != JvmtiError.JVMTI_ERROR_NONE) {
+            declaringClass.write(nullPointer());
+        }
+        return declaringClass.read();
     }
 
     public static boolean clearException(JNIEnvironment localEnv) {
