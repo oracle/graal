@@ -30,6 +30,13 @@ public class UnicodeCharacterProperties {
         return evaluatePropertySpec(normalizePropertySpec(propertySpec));
     }
 
+    /**
+     * Returns the set of characters having a given unicode character property.
+     *
+     * @param propertySpec a regexp unicode property specification, like "gc=LC".
+     * @return a {@link CharacterSet} representing the set of unicode characters that have the given
+     *         property.
+     */
     public static CharacterSet getUnicodeProperty(String propertySpec) {
         return evaluatePropertySpec(normalizePropertySpec(propertySpec));
     }

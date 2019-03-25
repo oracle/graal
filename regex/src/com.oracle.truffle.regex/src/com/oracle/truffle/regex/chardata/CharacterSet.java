@@ -24,7 +24,14 @@
  */
 package com.oracle.truffle.regex.chardata;
 
+/**
+ * Represents a set of unicode characters.
+ */
 public interface CharacterSet {
 
+    /**
+     * Returns {@code true} if the given code point is contained in this set, {@code false}
+     * otherwise.
+     */
     boolean contains(int codepoint);
 }

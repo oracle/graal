@@ -205,7 +205,11 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(VirtualFrame frame, Object input, int fromIndex) {
-            return fromIndex == 0 && startsWithNode.execute(input, literal) ? resultFactory.createFromStart(0) : NoMatchResult.getInstance();
+            if (fromIndex == 0 && startsWithNode.execute(input, literal)) {
+                return resultFactory.createFromStart(0);
+            } else {
+                return NoMatchResult.getInstance();
+            }
         }
     }
 
@@ -224,7 +228,11 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(VirtualFrame frame, Object input, int fromIndex) {
-            return fromIndex <= inputLength(input) - literal.length() && endsWithNode.execute(input, literal) ? resultFactory.createFromEnd(inputLength(input)) : NoMatchResult.getInstance();
+            if (fromIndex <= inputLength(input) - literal.length() && endsWithNode.execute(input, literal)) {
+                return resultFactory.createFromEnd(inputLength(input));
+            } else {
+                return NoMatchResult.getInstance();
+            }
         }
     }
 
@@ -243,7 +251,11 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(VirtualFrame frame, Object input, int fromIndex) {
-            return fromIndex == 0 && equalsNode.execute(input, literal) ? resultFactory.createFromStart(0) : NoMatchResult.getInstance();
+            if (fromIndex == 0 && equalsNode.execute(input, literal)) {
+                return resultFactory.createFromStart(0);
+            } else {
+                return NoMatchResult.getInstance();
+            }
         }
     }
 
@@ -262,7 +274,11 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(VirtualFrame frame, Object input, int fromIndex) {
-            return regionMatchesNode.execute(input, literal, fromIndex) ? resultFactory.createFromStart(fromIndex) : NoMatchResult.getInstance();
+            if (regionMatchesNode.execute(input, literal, fromIndex)) {
+                return resultFactory.createFromStart(fromIndex);
+            } else {
+                return NoMatchResult.getInstance();
+            }
         }
     }
 }
