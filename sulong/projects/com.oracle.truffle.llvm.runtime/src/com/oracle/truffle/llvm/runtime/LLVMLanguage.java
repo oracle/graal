@@ -68,8 +68,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String LLVM_BITCODE_EXTENSION = "bc";
 
     /*
-     * Using this mimeType is deprecated, it is just here for backwards compatibility. Bitcode should
-     * be passed directly using binary sources instead.
+     * Using this mimeType is deprecated, it is just here for backwards compatibility. Bitcode
+     * should be passed directly using binary sources instead.
      */
     public static final String LLVM_BITCODE_BASE64_MIME_TYPE = "application/x-llvm-ir-bitcode-base64";
 
