@@ -1261,7 +1261,9 @@ public final class Context implements AutoCloseable {
 
             PolyglotAccess polyglotAccess = this.polylgotAccess;
             if (polyglotAccess == null) {
-                polyglotAccess = this.allowAllAccess ? PolyglotAccess.ALL : PolyglotAccess.NONE;
+                // TODO make NONE the default if allowAllAccess is false GR-14657
+                // polyglotAccess = this.allowAllAccess ? PolyglotAccess.ALL : PolyglotAccess.NONE;
+                polyglotAccess = PolyglotAccess.ALL;
             }
 
             if (localHostLookupFilter == UNSET_HOST_LOOKUP) {
