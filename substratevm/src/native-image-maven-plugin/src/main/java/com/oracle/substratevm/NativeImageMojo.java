@@ -84,6 +84,9 @@ public class NativeImageMojo extends AbstractMojo {
     @Parameter(property = "buildArgs")//
     private String buildArgs;
 
+    @Parameter(property = "skip", defaultValue = "false")//
+    private boolean skip;
+
     private Logger tarGzLogger = new AbstractLogger(Logger.LEVEL_WARN, "NativeImageMojo.tarGzLogger") {
         @Override
         public void debug(String message, Throwable throwable) {
@@ -146,6 +149,11 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     public void execute() throws MojoExecutionException {
+        if (skip) {
+            getLog().info("Skipping native-image generation (parameter 'skip' is true).");
+            return;
+        }
+
         classpath.clear();
         List<String> imageClasspathScopes = Arrays.asList(Artifact.SCOPE_COMPILE, Artifact.SCOPE_RUNTIME);
         project.setArtifactFilter(artifact -> imageClasspathScopes.contains(artifact.getScope()));
