@@ -115,6 +115,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
         string_substitutions = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         string_substitutions.register_no_arg('version', _suite.release_version)
+        string_substitutions.register_no_arg('graalvm_os', get_graalvm_os())
 
         _layout_provenance = {}
 
@@ -1327,7 +1328,6 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
         self.base_dir_name = installable.string_substitutions.substitute(installable.main_component.standalone_dir_name)
-
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
 

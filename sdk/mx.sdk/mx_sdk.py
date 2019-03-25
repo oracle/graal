@@ -231,7 +231,7 @@ class GraalVmTruffleComponent(GraalVmComponent):
                                                       boot_jars, priority)
         self.include_in_polyglot = include_in_polyglot
         self.post_install_msg = post_install_msg
-        self.standalone_dir_name = standalone_dir_name or '{}-<version>-<os>-<arch>'.format(self.dir_name)
+        self.standalone_dir_name = standalone_dir_name or '{}-<version>-<graalvm_os>-<arch>'.format(self.dir_name)
         assert isinstance(self.include_in_polyglot, bool)
 
 
