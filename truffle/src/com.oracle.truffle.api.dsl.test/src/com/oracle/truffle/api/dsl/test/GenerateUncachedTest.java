@@ -632,4 +632,74 @@ public class GenerateUncachedTest {
 
     }
 
+    @GenerateUncached
+    public abstract static class SpecializedExecuteTest1Node extends Node {
+
+        public abstract long execute(Object o);
+
+        public abstract long executeInt(int o);
+
+        public abstract long executeLong(long o);
+
+        public abstract long executeLong(Number o);
+
+        @Specialization
+        long s0(int i) {
+            return i;
+        }
+
+        @Specialization
+        long s1(long l) {
+            return l;
+        }
+
+        @Specialization
+        long s2Number(Number l) {
+            return l.longValue();
+        }
+
+        @Specialization
+        long s3(Object l) {
+            if (l instanceof Number) {
+                return ((Number) l).longValue();
+            }
+            throw new IllegalArgumentException();
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class SpecializedExecuteTest2Node extends Node {
+
+        public abstract long execute(Object o);
+
+        public abstract long executeInt(int o);
+
+        public abstract long executeLong(long o);
+
+        public abstract long executeLong(Number o);
+
+        @Specialization(guards = "i == 0")
+        long s0(int i) {
+            return i;
+        }
+
+        @Specialization(guards = "l == 0")
+        long s1(long l) {
+            return l;
+        }
+
+        @Specialization
+        long s2Number(Number l) {
+            return l.longValue();
+        }
+
+        @Specialization
+        long s3(Object l) {
+            if (l instanceof Number) {
+                return ((Number) l).longValue();
+            }
+            throw new IllegalArgumentException();
+        }
+    }
+
 }

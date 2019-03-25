@@ -55,7 +55,6 @@ import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 
@@ -198,7 +197,7 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
 
     public TypeElement getEnclosingClass() {
         Element p = enclosingElement;
-        while (p != null && p.getKind() != ElementKind.CLASS && p.getKind() != ElementKind.INTERFACE && p.getKind() != ElementKind.ENUM) {
+        while (p != null && !p.getKind().isClass() && !p.getKind().isInterface()) {
             p = p.getEnclosingElement();
         }
         return (TypeElement) p;
