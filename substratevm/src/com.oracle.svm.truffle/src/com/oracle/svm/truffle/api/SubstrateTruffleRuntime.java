@@ -376,4 +376,10 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     public void log(String message) {
         TTY.println(message);
     }
+
+    @Override
+    public String getName() {
+        String name = super.getName();
+        return name + " polyglot-native";
+    }
 }

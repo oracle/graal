@@ -69,6 +69,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
 
 import java.lang.reflect.Method;
+import java.util.regex.Pattern;
 
 public class EngineAPITest {
 
@@ -269,7 +270,8 @@ public class EngineAPITest {
         if (name.equals("DefaultCallTarget")) {
             assertEquals(implName, "Interpreted");
         } else if (name.endsWith("OptimizedCallTarget")) {
-            assertTrue(implName, implName.equals("GraalVM EE") || implName.equals("GraalVM CE"));
+            Pattern p = Pattern.compile("GraalVM (EE|CE)( (polyglot-native|compiler-native))?");
+            assertTrue(implName, p.matcher(implName).matches());
         }
     }
 
