@@ -133,14 +133,30 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     @Test
     public void testNoAccess() {
         setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(PolyglotAccess.NONE).build());
-        context.initialize(LANGUAGE1);
-        context.initialize(LANGUAGE2);
         try {
             // not an embedder language
             context.initialize(DEPENDENT);
             fail();
         } catch (IllegalArgumentException e) {
         }
+        testNoAccessImpl();
+    }
+
+    @Test
+    public void testNoPolyglotAccessWithAllAccess() {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowAllAccess(true).allowPolyglotAccess(PolyglotAccess.NONE).build());
+        try {
+            // not an embedder language
+            context.initialize(DEPENDENT);
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+        testNoAccessImpl();
+    }
+
+    private void testNoAccessImpl() {
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
         Env env1 = Language1.getContext(Language1.class);
         Env env2 = Language2.getContext(Language2.class);
         assertTrue(env1.getLanguages().containsKey(INTERNAL));
@@ -187,31 +203,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     @Test
     public void testAllLanguagesNoAccess() {
         setupEnv(Context.newBuilder().allowPolyglotAccess(PolyglotAccess.NONE).build());
-        context.initialize(LANGUAGE1);
-        context.initialize(LANGUAGE2);
-        Env env1 = Language1.getContext(Language1.class);
-        Env env2 = Language2.getContext(Language2.class);
-        assertTrue(env1.getLanguages().containsKey(INTERNAL));
-        assertTrue(env2.getLanguages().containsKey(INTERNAL));
-        assertLanguages(env1.getLanguages(), LANGUAGE1, DEPENDENT);
-        assertLanguages(env2.getLanguages(), LANGUAGE2);
-
-        assertNotNull(env1.parse(Source.newBuilder(LANGUAGE1, "", "").build()));
-        assertNotNull(env1.parse(Source.newBuilder(INTERNAL, "", "").build()));
-        assertNotNull(env1.parse(Source.newBuilder(DEPENDENT, "", "").build()));
-        assertAccessNotPermitted(env1, LANGUAGE2);
-        assertAccessNotPermitted(env1, LANGUAGE3);
-        assertNotNull(env2.parse(Source.newBuilder(LANGUAGE2, "", "").build()));
-        assertNotNull(env2.parse(Source.newBuilder(INTERNAL, "", "").build()));
-        assertAccessNotPermitted(env2, DEPENDENT);
-        assertAccessNotPermitted(env2, LANGUAGE1);
-        assertAccessNotPermitted(env2, LANGUAGE3);
-
-        assertExportNotAcccessible(env1);
-        assertImportNotAcccessible(env1);
-
-        assertExportNotAcccessible(env2);
-        assertImportNotAcccessible(env2);
+        context.initialize(DEPENDENT);
+        testNoAccessImpl();
     }
 
     private static void assertLanguages(Map<String, LanguageInfo> languages, String... expectedLanguages) {
