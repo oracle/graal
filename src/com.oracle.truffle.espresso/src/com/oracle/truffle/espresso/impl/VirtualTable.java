@@ -40,6 +40,8 @@ public class VirtualTable {
                 }
             }
         }
+        // Miranda methods can be called with an invokevirtual. We need to add them to the vtable to
+        // deal with that.
         if (!mirandas.isEmpty()) {
             pos = tmp.size();
             tmp.addAll(mirandas);

@@ -7,6 +7,9 @@ import java.util.Arrays;
  * Helper to create itables in ObjectKlass.
  */
 class InterfaceTables {
+    /**
+     * Pretty much the same as a 3-tuple. Used to wrap the results of ITable creation.
+     */
     static class CreationResult {
         final Method[][] itable;
         final Klass[] interfaceKlassTable;
@@ -32,16 +35,6 @@ class InterfaceTables {
 
         ArrayList<Method> getMirandas() {
             return mirandas;
-        }
-    }
-
-    static private class TempResult {
-        ArrayList<Method[]> itables;
-        ArrayList<Klass> iklass;
-
-        TempResult(ArrayList<Method[]> itables, ArrayList<Klass> iklass) {
-            this.itables = itables;
-            this.iklass = iklass;
         }
     }
 
@@ -86,9 +79,7 @@ class InterfaceTables {
         // Hopefully, a class does not re-implements a superklass' interface (though it works, we
         // will have a second itable for that particular interface)
         for (ObjectKlass interf : superInterfaces) {
-            TempResult superTable = getSuperInterfaceTables(interf, thisKlass, mirandas);
-            tmpTable.addAll(superTable.itables);
-            tmpKlass.addAll(superTable.iklass);
+            fillSuperInterfaceTables(interf, thisKlass, mirandas, tmpTable, tmpKlass);
         }
         return new CreationResult(tmpTable.toArray(new Method[0][]), tmpKlass.toArray(Klass.EMPTY_ARRAY), mirandas);
     }
@@ -114,16 +105,13 @@ class InterfaceTables {
         return new CreationResult(tmp.toArray(new Method[0][]), tmpKlass.toArray(Klass.EMPTY_ARRAY));
     }
 
-    private static TempResult getSuperInterfaceTables(ObjectKlass superInterface, ObjectKlass thisKlass, ArrayList<Method> mirandas) {
-        ArrayList<Method[]> tmpITable = new ArrayList<>();
-        ArrayList<Klass> tmpKlassTable = new ArrayList<>();
+    private static void fillSuperInterfaceTables(ObjectKlass superInterface, ObjectKlass thisKlass, ArrayList<Method> mirandas, ArrayList<Method[]> tmpITable, ArrayList<Klass> tmpKlassTable) {
         Method[][] superTable = superInterface.getItable();
         Klass[] superInterfKlassTable = superInterface.getiKlassTable();
         for (int i = 0; i < superTable.length; i++) {
             tmpITable.add(InterfaceTable.inherit(superTable[i], thisKlass, mirandas));
             tmpKlassTable.add(superInterfKlassTable[i]);
         }
-        return new TempResult(tmpITable, tmpKlassTable);
     }
 
 }
@@ -138,6 +126,14 @@ final class InterfaceTable {
         return declaredMethods;
     }
 
+    /**
+     * Given a single interface table, produces a new interface table that contains the
+     * implementation of the interface by thisKlass
+     *
+     * @param interfTable a single interface table
+     * @param thisKlass The class implementing this interface
+     * @return the interface table for thisKlass.
+     */
     static Method[] inherit(Method[] interfTable, Klass thisKlass) {
         Method[] res = Arrays.copyOf(interfTable, interfTable.length);
         for (int i = 0; i < res.length; i++) {
@@ -155,6 +151,8 @@ final class InterfaceTable {
         Method[] res = Arrays.copyOf(interfTable, interfTable.length);
         for (int i = 0; i < res.length; i++) {
             Method im = res[i];
+            // Lookup does not check inside interfaces declared method. Exploit this to detect
+            // mirandas.
             Method m = thisKlass.lookupMethod(im.getName(), im.getRawSignature());
             if (m != null) {
                 m.setITableIndex(i);
@@ -173,7 +171,7 @@ final class InterfaceTable {
                     mirandaMethod = new Method(thisKlass, im);
                 }
                 mirandas.add(mirandaMethod);
-            }
+            } 
         }
         return res;
     }

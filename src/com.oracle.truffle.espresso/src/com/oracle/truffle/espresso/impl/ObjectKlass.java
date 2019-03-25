@@ -128,6 +128,7 @@ public final class ObjectKlass extends Klass {
             this.itable = cr.getItable();
             this.iKlassTable = cr.getiKlass();
             this.vtable = VirtualTable.create(superKlass, declaredMethods, cr.getMirandas());
+            // Artificially declare miranda methods.
             if (!cr.getMirandas().isEmpty()) {
                 ArrayList<Method> declaredMethodAndMirandas = new ArrayList<>(Arrays.asList(methods));
                 declaredMethodAndMirandas.addAll(cr.getMirandas());
