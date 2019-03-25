@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Before;
@@ -63,7 +64,7 @@ public class SLParseInContextTest {
 
     @Before
     public void setup() throws Exception {
-        context = Context.create();
+        context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
     }
 
     @After

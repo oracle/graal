@@ -366,6 +366,10 @@ public abstract class Accessor {
         public abstract FileSystem getFileSystem(Object contextVMObject);
 
         public abstract Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object contextVMObject);
+
+        public abstract Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> getFileTypeDetectorsSupplier(Object contextVMObject);
+
+        public abstract boolean isPolyglotAccessAllowed(Object vmObject);
     }
 
     public abstract static class LanguageSupport {
