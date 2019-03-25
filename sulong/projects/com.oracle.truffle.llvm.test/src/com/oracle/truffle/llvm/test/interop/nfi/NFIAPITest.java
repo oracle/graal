@@ -62,7 +62,7 @@ public class NFIAPITest {
 
     @BeforeClass
     public static void initialize() {
-        sulongObject = loadLibrary("basicTest", SULONG_FILENAME, "application/x-sulong");
+        sulongObject = loadLibrary("basicTest", SULONG_FILENAME);
         lookupAndBind = lookupAndBind();
     }
 
@@ -70,10 +70,10 @@ public class NFIAPITest {
         return Truffle.getRuntime().createCallTarget(new LookupAndBindNode());
     }
 
-    private static TruffleObject loadLibrary(String lib, String filename, String mimetype) {
+    private static TruffleObject loadLibrary(String lib, String filename) {
         File file = new File(TEST_DIR.toFile(), lib + "/" + filename);
-        String loadLib = "load '" + file.getAbsolutePath() + "'";
-        Source source = Source.newBuilder("llvm", loadLib, "loadLibrary").mimeType(mimetype).build();
+        String loadLib = "with llvm load '" + file.getAbsolutePath() + "'";
+        Source source = Source.newBuilder("nfi", loadLib, "loadLibrary").build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
         return (TruffleObject) target.call();
     }
