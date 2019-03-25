@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,7 +40,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -309,12 +309,12 @@ public final class LLVMContext {
     @TruffleBoundary
     private LLVMManagedPointer getRandomValues() {
         byte[] result = new byte[16];
-        random().nextBytes(result);
+        secureRandom().nextBytes(result);
         return toManagedPointer(toTruffleObject(result));
     }
 
-    private static Random random() {
-        return new Random();
+    private static SecureRandom secureRandom() {
+        return new SecureRandom();
     }
 
     private LLVMManagedPointer toTruffleObjects(String[] values) {
