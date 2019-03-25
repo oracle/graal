@@ -1479,9 +1479,14 @@ public abstract class TruffleLanguage<C> {
          * string identifiers, a list of symbols may be requested with the keys message. Existing
          * identifiers are removable, modifiable, readable and any new identifiers are insertable.
          *
+         * @throws SecurityException if polyglot access is not enabled
+         * @see #isPolyglotAccessAllowed()
          * @since 0.32
          */
         public Object getPolyglotBindings() {
+            if (!isPolyglotAccessAllowed()) {
+                throw new SecurityException("Polyglot bindings are not accessible for this language.");
+            }
             return AccessAPI.engineAccess().getPolyglotBindingsForLanguage(vmObject);
         }
 
