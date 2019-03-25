@@ -171,7 +171,7 @@ final class InterfaceTable {
                     mirandaMethod = new Method(thisKlass, im);
                 }
                 mirandas.add(mirandaMethod);
-            } 
+            }
         }
         return res;
     }
