@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,9 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
@@ -216,7 +216,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return register(new BackReference(groupNumber));
     }
 
-    public CharacterClass createCharacterClass(MatcherBuilder matcherBuilder) {
+    public CharacterClass createCharacterClass(CharSet matcherBuilder) {
         return register(new CharacterClass(matcherBuilder));
     }
 
@@ -447,7 +447,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      * set to true.
      */
     private CharacterClass createPrefixAnyMatcher() {
-        final CharacterClass anyMatcher = createCharacterClass(MatcherBuilder.createFull());
+        final CharacterClass anyMatcher = createCharacterClass(CharSet.getFull());
         anyMatcher.setPrefix();
         return anyMatcher;
     }

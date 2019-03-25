@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,15 +39,15 @@ public abstract class LazyCaptureGroupGetResultNode extends Node {
 
     @Specialization(guards = {"receiver.getResult() == null", "receiver.getFindStartCallTarget() == null"})
     static int[] doLazyCaptureGroupsCalc(LazyCaptureGroupsResult receiver,
-                    @Shared("calcResult") @Cached CalcResultNode calcResult) {
+                    @Shared("calcResult") @Cached DispatchNode calcResult) {
         calcResult.execute(receiver.getCaptureGroupCallTarget(), receiver.createArgsCGNoFindStart());
         return receiver.getResult();
     }
 
     @Specialization(guards = {"receiver.getResult() == null", "receiver.getFindStartCallTarget() != null"})
     static int[] doLazyCaptureGroupsCalcWithFindStart(LazyCaptureGroupsResult receiver,
-                    @Exclusive @Cached CalcResultNode calcStart,
-                    @Shared("calcResult") @Cached CalcResultNode calcResult) {
+                    @Exclusive @Cached DispatchNode calcStart,
+                    @Shared("calcResult") @Cached DispatchNode calcResult) {
         final int start = (int) calcStart.execute(receiver.getFindStartCallTarget(), receiver.createArgsFindStart());
         calcResult.execute(receiver.getCaptureGroupCallTarget(), receiver.createArgsCG(start));
         return receiver.getResult();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.runtime;
+package com.oracle.truffle.regex.runtime.nodes;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.regex.RegexLanguageObject;
-import com.oracle.truffle.regex.RegexObject;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 
-@ExportLibrary(InteropLibrary.class)
-public final class RegexObjectExecMethod implements RegexLanguageObject {
+@GenerateUncached
+public abstract class ToIntNode extends Node {
 
-    private final RegexObject regex;
+    public abstract int execute(Object arg) throws UnsupportedTypeException;
 
-    public RegexObjectExecMethod(RegexObject regex) {
-        this.regex = regex;
+    @Specialization
+    static int doPrimitiveInt(int arg) {
+        return arg;
     }
 
-    public RegexObject getRegexObject() {
-        return regex;
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object execute(Object[] args, @Cached ExecuteRegexObjectNode executeNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        if (args.length != 2) {
-            throw ArityException.create(2, args.length);
+    @Specialization(guards = "args.fitsInInt(arg)", limit = "2")
+    static int doBoxed(Object arg, @CachedLibrary("arg") InteropLibrary args) throws UnsupportedTypeException {
+        try {
+            return args.asInt(arg);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{arg});
         }
-        return executeNode.execute(getRegexObject(), args[0], args[1]);
+    }
+
+    public static ToIntNode create() {
+        return ToIntNodeGen.create();
     }
 }

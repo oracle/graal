@@ -38,8 +38,18 @@ public abstract class ToLongNode extends Node {
 
     public abstract long execute(Object arg) throws UnsupportedTypeException;
 
+    @Specialization
+    static long doPrimitiveInt(int arg) {
+        return arg;
+    }
+
+    @Specialization
+    static long doPrimitiveLong(long arg) {
+        return arg;
+    }
+
     @Specialization(guards = "args.fitsInLong(arg)", limit = "2")
-    static long doLong(Object arg, @CachedLibrary("arg") InteropLibrary args) throws UnsupportedTypeException {
+    static long doBoxed(Object arg, @CachedLibrary("arg") InteropLibrary args) throws UnsupportedTypeException {
         try {
             return args.asLong(arg);
         } catch (UnsupportedMessageException e) {

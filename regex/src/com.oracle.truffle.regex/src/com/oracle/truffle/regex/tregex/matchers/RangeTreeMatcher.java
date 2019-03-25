@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
@@ -142,6 +143,6 @@ public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
     @Override
     @TruffleBoundary
     public String toString() {
-        return "tree " + modifiersToString() + "[" + MatcherBuilder.rangesToString(tree) + "]";
+        return "tree " + modifiersToString() + "[" + CharSet.rangesToString(tree) + "]";
     }
 }

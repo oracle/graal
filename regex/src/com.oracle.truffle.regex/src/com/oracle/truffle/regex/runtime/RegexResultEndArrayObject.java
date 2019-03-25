@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,11 +38,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.regex.RegexLanguageObject;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
+import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.result.SingleIndexArrayResult;
 import com.oracle.truffle.regex.result.SingleResult;
 import com.oracle.truffle.regex.result.SingleResultLazyStart;
-import com.oracle.truffle.regex.result.StartsEndsIndexArrayResult;
 import com.oracle.truffle.regex.result.TraceFinderResult;
 import com.oracle.truffle.regex.runtime.nodes.LazyCaptureGroupGetResultNode;
 import com.oracle.truffle.regex.runtime.nodes.TraceFinderGetResultNode;
@@ -91,7 +91,7 @@ public final class RegexResultEndArrayObject implements RegexLanguageObject {
         abstract int execute(RegexResult receiver, int groupNumber) throws InvalidArrayIndexException;
 
         @Specialization
-        static int doNoMatch(@SuppressWarnings("unused") RegexResult.NoMatchResult receiver, int groupNumber) throws InvalidArrayIndexException {
+        static int doNoMatch(@SuppressWarnings("unused") NoMatchResult receiver, int groupNumber) throws InvalidArrayIndexException {
             CompilerDirectives.transferToInterpreter();
             throw invalidIndexException(groupNumber);
         }
@@ -113,16 +113,6 @@ public final class RegexResultEndArrayObject implements RegexLanguageObject {
             if (boundsProfile.profile(groupNumber == 0)) {
                 return receiver.getEnd();
             } else {
-                CompilerDirectives.transferToInterpreter();
-                throw invalidIndexException(groupNumber);
-            }
-        }
-
-        @Specialization
-        static int doStartsEndsIndexArray(StartsEndsIndexArrayResult receiver, int groupNumber) throws InvalidArrayIndexException {
-            try {
-                return receiver.getEnds()[groupNumber];
-            } catch (ArrayIndexOutOfBoundsException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw invalidIndexException(groupNumber);
             }

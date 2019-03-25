@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.result;
+package com.oracle.truffle.regex.chardata;
 
-import com.oracle.truffle.regex.RegexObject;
+/**
+ * Represents a set of unicode characters.
+ */
+public interface CharacterSet {
 
-public final class StartsEndsIndexArrayResult extends RegexResult {
-
-    private final int[] starts;
-    private final int[] ends;
-
-    public StartsEndsIndexArrayResult(RegexObject regex, Object input, int[] starts, int[] ends) {
-        super(regex, input, starts.length);
-        this.starts = starts;
-        this.ends = ends;
-    }
-
-    public int[] getStarts() {
-        return starts;
-    }
-
-    public int[] getEnds() {
-        return ends;
-    }
-
+    /**
+     * Returns {@code true} if the given code point is contained in this set, {@code false}
+     * otherwise.
+     */
+    boolean contains(int codepoint);
 }
