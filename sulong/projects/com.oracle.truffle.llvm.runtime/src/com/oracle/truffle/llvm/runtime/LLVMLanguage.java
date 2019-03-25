@@ -134,6 +134,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
+    protected void finalizeContext(LLVMContext context) {
+        context.finalizeContext();
+    }
+
+    @Override
     protected void disposeContext(LLVMContext context) {
         LLVMMemory memory = getCapability(LLVMMemory.class);
         context.dispose(memory);
