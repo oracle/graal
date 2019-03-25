@@ -24,46 +24,29 @@
  */
 package com.oracle.svm.hosted.config;
 
-import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
-import com.oracle.svm.hosted.ImageClassLoader;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
     private final Consumer<String> resourceRegistry;
     private final Consumer<String> resourceBundleRegistry;
 
-    public ResourceConfigurationParser(ImageClassLoader classLoader, Consumer<String> resourceRegistry, Consumer<String> resourceBundleRegistry) {
-        super(classLoader);
+    public ResourceConfigurationParser(Consumer<String> resourceRegistry, Consumer<String> resourceBundleRegistry) {
         this.resourceRegistry = resourceRegistry;
         this.resourceBundleRegistry = resourceBundleRegistry;
     }
 
     @Override
-    protected void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String[]> option) {
-        try {
-            JSONParser parser = new JSONParser(reader);
-            Object json = parser.parse();
-            parseTopLevelObject(asMap(json, "first level of document must be an object"));
-        } catch (IOException | JSONParserException e) {
-            String errorMessage = e.getMessage();
-            if (errorMessage == null || errorMessage.isEmpty()) {
-                errorMessage = e.toString();
-            }
-            throw UserError.abort("Error parsing " + featureName + " configuration in " + location + ":\n" + errorMessage +
-                            "\nVerify that the configuration matches the schema described in the " +
-                            SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
-        }
+    public void parseAndRegister(Reader reader) throws IOException {
+        JSONParser parser = new JSONParser(reader);
+        Object json = parser.parse();
+        parseTopLevelObject(asMap(json, "first level of document must be an object"));
     }
 
     private void parseTopLevelObject(Map<String, Object> obj) {

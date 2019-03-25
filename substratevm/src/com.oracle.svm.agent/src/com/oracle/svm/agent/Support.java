@@ -51,7 +51,7 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
-final class Support {
+public final class Support {
 
     public static void initialize(JvmtiEnv jvmti, JNIEnvironment localJni) {
         VMError.guarantee(jvmtiEnv.isNull() && jniFunctions.isNull() && handles == null);
@@ -65,8 +65,9 @@ final class Support {
         handles = new JavaHandles(localJni);
     }
 
-    public static void destroy() {
+    public static void destroy(JNIEnvironment env) {
         jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), jniFunctions);
+        handles().destroy(env);
         handles = null;
         jniFunctions = nullPointer();
         jvmtiEnv = nullPointer();
@@ -102,6 +103,10 @@ final class Support {
         public final JNIMethodId javaLangClassForName3;
         public final JNIMethodId javaLangReflectMemberGetDeclaringClass;
         public final JNIMethodId javaUtilEnumerationHasMoreElements;
+        public final JNIObjectHandle javaLangSecurityException;
+        public final JNIObjectHandle javaLangNoClassDefFoundError;
+        public final JNIObjectHandle javaLangNoSuchMethodError;
+        public final JNIObjectHandle javaLangNoSuchFieldError;
 
         private JavaHandles(JNIEnvironment env) {
             JNIObjectHandle javaLangClass;
@@ -137,6 +142,38 @@ final class Support {
                 javaUtilEnumerationHasMoreElements = jniFunctions.getGetMethodID().invoke(env, javaUtilEnumeration, name.get(), signature.get());
                 guarantee(javaUtilEnumerationHasMoreElements.isNonNull());
             }
+
+            try (CCharPointerHolder name = toCString("java/lang/SecurityException")) {
+                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                guarantee(h.notEqual(nullHandle()));
+                javaLangSecurityException = jniFunctions.getNewGlobalRef().invoke(env, h);
+                guarantee(javaLangSecurityException.notEqual(nullHandle()));
+            }
+            try (CCharPointerHolder name = toCString("java/lang/NoClassDefFoundError")) {
+                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                guarantee(h.notEqual(nullHandle()));
+                javaLangNoClassDefFoundError = jniFunctions.getNewGlobalRef().invoke(env, h);
+                guarantee(javaLangNoClassDefFoundError.notEqual(nullHandle()));
+            }
+            try (CCharPointerHolder name = toCString("java/lang/NoSuchMethodError")) {
+                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                guarantee(h.notEqual(nullHandle()));
+                javaLangNoSuchMethodError = jniFunctions.getNewGlobalRef().invoke(env, h);
+                guarantee(javaLangNoSuchMethodError.notEqual(nullHandle()));
+            }
+            try (CCharPointerHolder name = toCString("java/lang/NoSuchFieldError")) {
+                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                guarantee(h.notEqual(nullHandle()));
+                javaLangNoSuchFieldError = jniFunctions.getNewGlobalRef().invoke(env, h);
+                guarantee(javaLangNoSuchFieldError.notEqual(nullHandle()));
+            }
+        }
+
+        public void destroy(JNIEnvironment env) {
+            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangSecurityException);
+            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoClassDefFoundError);
+            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchMethodError);
+            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchFieldError);
         }
     }
 
@@ -196,6 +233,10 @@ final class Support {
             return result;
         }
         return forNullHandle;
+    }
+
+    public static Object getClassNameOrNull(JNIEnvironment env, JNIObjectHandle clazz) {
+        return getClassNameOr(env, clazz, null, null);
     }
 
     static JNIObjectHandle getMethodDeclaringClass(JNIMethodId method) {

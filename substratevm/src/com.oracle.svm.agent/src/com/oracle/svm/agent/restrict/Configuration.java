@@ -22,34 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.trace;
+package com.oracle.svm.agent.restrict;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
-public abstract class AbstractProcessor {
-    AbstractProcessor() {
-    }
+public class Configuration {
+    private final Map<String, ConfigurationType> types = new HashMap<>();
 
-    abstract void processEntry(Map<String, ?> entry);
-
-    void setInLivePhase(@SuppressWarnings("unused") boolean live) {
-    }
-
-    static void logWarning(String warning) {
-        System.err.println("WARNING: " + warning);
-    }
-
-    @SuppressWarnings("unchecked")
-    static <T> T singleElement(List<?> list) {
-        expectSize(list, 1);
-        return (T) list.get(0);
-    }
-
-    static void expectSize(Collection<?> collection, int size) {
-        if (collection.size() != size) {
-            throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
+    public void add(ConfigurationType type) {
+        if (types.containsKey(type.getName())) {
+            throw new RuntimeException("Type must be registered exactly once");
         }
+        types.putIfAbsent(type.getName(), type);
+    }
+
+    public ConfigurationType get(String name) {
+        return types.get(name);
     }
 }

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.config;
 
+import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -36,27 +38,24 @@ import java.util.stream.Stream;
 
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.ImageClassLoader;
 
 public abstract class ConfigurationParser {
 
-    protected final ImageClassLoader classLoader;
-
-    ConfigurationParser(ImageClassLoader classLoader) {
-        this.classLoader = classLoader;
-    }
-
     /**
      * Parses configurations in files specified by {@code configFilesOption} and resources specified
      * by {@code configResourcesOption} and registers the parsed elements using
-     * {@link #parseAndRegister(Reader, String, Object, HostedOptionKey)} .
+     * {@link #parseAndRegister(Reader)} .
      *
      * @param featureName name of the feature using the configuration (e.g., "JNI")
      * @param directoryFileName file name for searches via {@link ConfigurationDirectories}.
      */
-    public void parseAndRegisterConfigurations(String featureName, HostedOptionKey<String[]> configFilesOption, HostedOptionKey<String[]> configResourcesOption, String directoryFileName) {
+    public static void parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
+                    HostedOptionKey<String[]> configFilesOption, HostedOptionKey<String[]> configResourcesOption, String directoryFileName) {
+
         Stream<String> files = Stream.concat(OptionUtils.flatten(",", configFilesOption.getValue()).stream(),
                         ConfigurationDirectories.findConfigurationFiles(directoryFileName).stream());
         files.forEach(path -> {
@@ -65,7 +64,7 @@ public abstract class ConfigurationParser {
                 throw UserError.abort("The " + featureName + " configuration file \"" + file + "\" does not exist.");
             }
             try (Reader reader = new FileReader(file)) {
-                parseAndRegister(reader, featureName, file, configFilesOption);
+                doParseAndRegister(parser, reader, featureName, file, configFilesOption);
             } catch (IOException e) {
                 throw UserError.abort("Could not open " + file + ": " + e.getMessage());
             }
@@ -79,14 +78,28 @@ public abstract class ConfigurationParser {
                 throw UserError.abort("Could not find " + featureName + " configuration resource \"" + resource + "\".");
             }
             try (Reader reader = new InputStreamReader(url.openStream())) {
-                parseAndRegister(reader, featureName, url, configResourcesOption);
+                doParseAndRegister(parser, reader, featureName, url, configResourcesOption);
             } catch (IOException e) {
                 throw UserError.abort("Could not open " + url + ": " + e.getMessage());
             }
         });
     }
 
-    protected abstract void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String[]> configFilesOption);
+    private static void doParseAndRegister(ConfigurationParser parser, Reader reader, String featureName, Object location, HostedOptionKey<String[]> option) {
+        try {
+            parser.parseAndRegister(reader);
+        } catch (IOException | JSONParserException e) {
+            String errorMessage = e.getMessage();
+            if (errorMessage == null || errorMessage.isEmpty()) {
+                errorMessage = e.toString();
+            }
+            throw UserError.abort("Error parsing " + featureName + " configuration in " + location + ":\n" + errorMessage +
+                            "\nVerify that the configuration matches the schema described in the " +
+                            SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
+        }
+    }
+
+    public abstract void parseAndRegister(Reader reader) throws IOException;
 
     @SuppressWarnings("unchecked")
     static List<Object> asList(Object data, String errorMessage) {

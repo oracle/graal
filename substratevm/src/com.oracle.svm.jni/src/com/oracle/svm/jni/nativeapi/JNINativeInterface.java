@@ -46,9 +46,12 @@ import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetMemberIDFunctionP
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetObjectArrayElementFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetObjectClassFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetStringUTFCharsFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetSuperclassFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.IsAssignableFromFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.NewGlobalRefFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ReleaseStringUTFCharsFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ThrowFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ThrowNewFunctionPointer;
 
 @CContext(JNIHeaderDirectives.class)
 @CStruct(value = "JNINativeInterface_", addStructKeyword = true)
@@ -103,16 +106,16 @@ public interface JNINativeInterface extends PointerBase {
     void setToReflectedMethod(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getGetSuperclass();
+    GetSuperclassFunctionPointer getGetSuperclass();
 
     @CField
-    void setGetSuperclass(CFunctionPointer p);
+    void setGetSuperclass(GetSuperclassFunctionPointer p);
 
     @CField
-    CFunctionPointer getIsAssignableFrom();
+    IsAssignableFromFunctionPointer getIsAssignableFrom();
 
     @CField
-    void setIsAssignableFrom(CFunctionPointer p);
+    void setIsAssignableFrom(IsAssignableFromFunctionPointer p);
 
     @CField
     CFunctionPointer getToReflectedField();
@@ -127,10 +130,10 @@ public interface JNINativeInterface extends PointerBase {
     void setThrow(ThrowFunctionPointer p);
 
     @CField
-    CFunctionPointer getThrowNew();
+    ThrowNewFunctionPointer getThrowNew();
 
     @CField
-    void setThrowNew(CFunctionPointer p);
+    void setThrowNew(ThrowNewFunctionPointer p);
 
     @CField
     ExceptionOccurredFunctionPointer getExceptionOccurred();

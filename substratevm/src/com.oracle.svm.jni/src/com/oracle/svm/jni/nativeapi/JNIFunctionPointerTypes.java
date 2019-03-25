@@ -148,6 +148,21 @@ public final class JNIFunctionPointerTypes {
         int invoke(JNIEnvironment env, JNIObjectHandle throwable);
     }
 
+    public interface ThrowNewFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer message);
+    }
+
+    public interface GetSuperclassFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz);
+    }
+
+    public interface IsAssignableFromFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle toClazz);
+    }
+
     private JNIFunctionPointerTypes() {
     }
 }

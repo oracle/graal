@@ -31,6 +31,7 @@ import static com.oracle.svm.agent.Support.fromCString;
 import static com.oracle.svm.agent.Support.fromJniString;
 import static com.oracle.svm.agent.Support.getCallerClass;
 import static com.oracle.svm.agent.Support.getClassNameOr;
+import static com.oracle.svm.agent.Support.getClassNameOrNull;
 import static com.oracle.svm.agent.Support.getObjectArgument;
 import static com.oracle.svm.agent.Support.handles;
 import static com.oracle.svm.agent.Support.jniFunctions;
@@ -219,7 +220,7 @@ final class BreakpointInterceptor {
             if (!clearException(jni) && enclosingID.isNonNull()) {
                 WordPointer holderPtr = StackValue.get(WordPointer.class);
                 if (jvmtiFunctions().GetMethodDeclaringClass().invoke(jvmtiEnv(), enclosingID, holderPtr) == JvmtiError.JVMTI_ERROR_NONE) {
-                    Object holderName = getClassNameOr(jni, holderPtr.read(), null, null);
+                    Object holderName = getClassNameOrNull(jni, holderPtr.read());
                     if (holderName != null) {
                         CCharPointerPointer namePtr = StackValue.get(CCharPointerPointer.class);
                         CCharPointerPointer signaturePtr = StackValue.get(CCharPointerPointer.class);
@@ -374,7 +375,7 @@ final class BreakpointInterceptor {
     private static final CEntryPointLiteral<CFunctionPointer> onBreakpointLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onBreakpoint",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIMethodId.class, long.class);
 
-    public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks) {
+    public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer) {
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
         capabilities.setCanGenerateBreakpointEvents(1);
@@ -385,45 +386,44 @@ final class BreakpointInterceptor {
         Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_BREAKPOINT, nullHandle()));
 
         callbacks.setBreakpoint(onBreakpointLiteral.getFunctionPointer());
+
+        BreakpointInterceptor.traceWriter = writer;
     }
 
     public static void onVMInit(JvmtiEnv jvmti, JNIEnvironment jni) {
         Map<Long, Breakpoint> breakpoints = new HashMap<>(BREAKPOINT_SPECIFICATIONS.length);
-
-        JNIObjectHandle lastClass = nullHandle();
-        String lastClassName = null;
-        for (BreakpointSpecification br : BREAKPOINT_SPECIFICATIONS) {
-            JNIObjectHandle clazz;
-            if (lastClassName != null && lastClassName.equals(br.className)) {
-                clazz = lastClass;
-            } else {
-                try (CCharPointerHolder cname = toCString(br.className)) {
-                    clazz = jniFunctions().getFindClass().invoke(jni, cname.get());
+        if (traceWriter != null) {
+            JNIObjectHandle lastClass = nullHandle();
+            String lastClassName = null;
+            for (BreakpointSpecification br : BREAKPOINT_SPECIFICATIONS) {
+                JNIObjectHandle clazz;
+                if (lastClassName != null && lastClassName.equals(br.className)) {
+                    clazz = lastClass;
+                } else {
+                    try (CCharPointerHolder cname = toCString(br.className)) {
+                        clazz = jniFunctions().getFindClass().invoke(jni, cname.get());
+                        checkNoException(jni);
+                    }
+                    clazz = jniFunctions().getNewGlobalRef().invoke(jni, clazz);
                     checkNoException(jni);
+                    lastClass = clazz;
+                    lastClassName = br.className;
                 }
-                clazz = jniFunctions().getNewGlobalRef().invoke(jni, clazz);
-                checkNoException(jni);
-                lastClass = clazz;
-                lastClassName = br.className;
-            }
-            guarantee(clazz.notEqual(nullHandle()));
-            JNIMethodId method;
-            try (CCharPointerHolder cname = toCString(br.methodName); CCharPointerHolder csignature = toCString(br.signature)) {
-                method = jniFunctions().getGetMethodID().invoke(jni, clazz, cname.get(), csignature.get());
-                if (method.isNull()) {
-                    clearException(jni);
-                    method = jniFunctions().getGetStaticMethodID().invoke(jni, clazz, cname.get(), csignature.get());
+                guarantee(clazz.notEqual(nullHandle()));
+                JNIMethodId method;
+                try (CCharPointerHolder cname = toCString(br.methodName); CCharPointerHolder csignature = toCString(br.signature)) {
+                    method = jniFunctions().getGetMethodID().invoke(jni, clazz, cname.get(), csignature.get());
+                    if (method.isNull()) {
+                        clearException(jni);
+                        method = jniFunctions().getGetStaticMethodID().invoke(jni, clazz, cname.get(), csignature.get());
+                    }
+                    guarantee(!testException(jni) && method.isNonNull());
+                    check(jvmtiFunctions().SetBreakpoint().invoke(jvmti, method, 0L));
                 }
-                guarantee(!testException(jni) && method.isNonNull());
-                check(jvmtiFunctions().SetBreakpoint().invoke(jvmti, method, 0L));
+                breakpoints.put(method.rawValue(), new Breakpoint(br, clazz, method));
             }
-            breakpoints.put(method.rawValue(), new Breakpoint(br, clazz, method));
         }
         installedBreakpoints = breakpoints;
-    }
-
-    public static void onVMStart(TraceWriter writer) {
-        BreakpointInterceptor.traceWriter = writer;
     }
 
     public static void onUnload(JNIEnvironment env) {
