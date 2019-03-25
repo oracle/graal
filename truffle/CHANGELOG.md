@@ -48,6 +48,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     - The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files and file URLs.
     - Deprecated usage of NIO `FileTypeDetector` for MIME type detection.
 * TruffleFile's paths from image building time are translated in image execution time into new paths using Context's FileSystem. The absolute paths pointing to files in language homes in image generation time are resolved using image execution time language homes.
+* Added [Env.isPolylgotAccessAllowed()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#isPolyglotAccessAllowed--) to check whether polyglot access (e.g. access to polyglot builtins) is allowed.
 
 ## Version 1.0.0 RC14
 * Removed some deprecated elements:
