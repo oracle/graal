@@ -38,8 +38,6 @@ public abstract class InvokeVirtualNode extends QuickNode {
 
     final Method resolutionSeed;
     final int vtableIndex;
-    final int itableIndex;
-    final Klass declaringKlass;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -49,7 +47,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
     Object callVirtualDirect(StaticObjectImpl receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
-                    @Cached("methodLookup(receiver, vtableIndex, itableIndex, declaringKlass)") Method resolvedMethod,
+                    @Cached("methodLookup(receiver, vtableIndex)") Method resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
         return directCallNode.call(args);
     }
@@ -58,7 +56,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // vtable lookup.
-        Method targetMethod = methodLookup(receiver, vtableIndex, itableIndex, declaringKlass);
+        Method targetMethod = methodLookup(receiver, vtableIndex);
         return indirectCallNode.call(targetMethod.getCallTarget(), arguments);
     }
 
@@ -66,21 +64,16 @@ public abstract class InvokeVirtualNode extends QuickNode {
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
         this.vtableIndex = resolutionSeed.getVTableIndex();
-        this.itableIndex = resolutionSeed.getITableIndex();
-        this.declaringKlass = resolutionSeed.getDeclaringKlass();
     }
 
     @TruffleBoundary
-    static Method methodLookup(StaticObject receiver, int vtableIndex, int itableIndex, Klass declaringKlass) {
+    static Method methodLookup(StaticObject receiver, int vtableIndex) {
         // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
         Klass clazz = receiver.getKlass();
         Method m = clazz.lookupMethod(vtableIndex);
-        // Suprisingly (?), invokeVirtuals can try to invoke interface methods, even non-default
+        // Suprisingly, invokeVirtuals can try to invoke interface methods, even non-default
         // ones.
-        if (m == null) {
-            return clazz.lookupMethod(declaringKlass, itableIndex);
-        }
-
+        // Good thing is, miranda methods are taken care of at vtable creation !
         return m;
     }
 

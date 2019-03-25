@@ -72,7 +72,7 @@ public class MHLinkToNode extends EspressoBaseNode {
             } else if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface) {
                 target = (receiver.getKlass()).lookupMethod(target.getDeclaringKlass(), target.getITableIndex());
             }
-            // Constructors...
+            // Constructors, etc...
             return rebasic(target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2)), Signatures.returnType(target.getParsedSignature()));
         } else {
             // args of the form {arg1, arg2... , memberName}

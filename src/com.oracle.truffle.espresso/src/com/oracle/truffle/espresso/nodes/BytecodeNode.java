@@ -1879,15 +1879,15 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             // @formatter:off
             // Checkstyle: stop
             switch (kind) {
-                case Boolean : args[i] = peekInt(frame, argAt);  break;
-                case Byte    : args[i] = peekInt(frame, argAt);  break;
-                case Short   : args[i] = peekInt(frame, argAt); break;
-                case Char    : args[i] = peekInt(frame, argAt);  break;
-                case Int     : args[i] = peekInt(frame, argAt);         break;
-                case Float   : args[i] = peekFloat(frame, argAt);       break;
-                case Long    : args[i] = peekLong(frame, argAt);        break;
-                case Double  : args[i] = peekDouble(frame, argAt);      break;
-                case Object  : args[i] = peekObject(frame, argAt);      break;
+                case Boolean : args[i] = peekInt(frame, argAt);    break;
+                case Byte    : args[i] = peekInt(frame, argAt);    break;
+                case Short   : args[i] = peekInt(frame, argAt);    break;
+                case Char    : args[i] = peekInt(frame, argAt);    break;
+                case Int     : args[i] = peekInt(frame, argAt);    break;
+                case Float   : args[i] = peekFloat(frame, argAt);  break;
+                case Long    : args[i] = peekLong(frame, argAt);   break;
+                case Double  : args[i] = peekDouble(frame, argAt); break;
+                case Object  : args[i] = peekObject(frame, argAt); break;
                 default      : throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
