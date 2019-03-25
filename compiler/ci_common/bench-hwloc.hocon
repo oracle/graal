@@ -8,8 +8,8 @@ hwloc.bench-common : {
     BENCH_RESULTS_FILE_PATH: undefined
   }
   teardown : [
-    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
-    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
+    ["bench-uploader.py", "node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+    ["bench-uploader.py", "node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
   ]
   logs : [
     "*output.log"
@@ -17,8 +17,8 @@ hwloc.bench-common : {
 }
 hwloc.scala.bench-common : ${hwloc.bench-common} {
   teardown : ${hwloc.bench-common.teardown} [
-    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "serial-node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
-    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "serial-node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
+    ["bench-uploader.py", "serial-node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+    ["bench-uploader.py", "serial-node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
   ]
 }
 
