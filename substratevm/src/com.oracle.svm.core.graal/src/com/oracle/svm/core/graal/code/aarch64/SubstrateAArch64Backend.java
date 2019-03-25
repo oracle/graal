@@ -707,10 +707,14 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        RegisterValue nullRegisterValue = useLinearPointerCompression() ? getHeapBaseRegister(lirGenRes).asValue(LIRKind.unknownReference(AArch64Kind.QWORD)) : null;
+        RegisterValue nullRegisterValue = useLinearPointerCompression() ? getHeapBaseRegister(lirGenRes).asValue(LIRKind.unknownReference(getCompressedOopKind())) : null;
         AArch64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen(nullRegisterValue);
         AArch64MoveFactory moveFactory = createMoveFactory(lirGenRes);
         return new SubstrateAArch64LIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);
+    }
+
+    protected AArch64Kind getCompressedOopKind() {
+        return AArch64Kind.QWORD;
     }
 
     protected AArch64NodeMatchRules createMatchRules(LIRGeneratorTool lirGen) {
