@@ -519,7 +519,7 @@ public abstract class PartialEvaluator {
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
             if (methodCallTargetNode.invoke().useForInlining()) {
                 StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(), graph.trackNodeSourcePosition(),
-                                methodCallTargetNode.asNode().getNodeSourcePosition());
+                                methodCallTargetNode.asNode().getNodeSourcePosition(), debug.getOptions());
                 if (inlineGraph != null) {
                     InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
                 }

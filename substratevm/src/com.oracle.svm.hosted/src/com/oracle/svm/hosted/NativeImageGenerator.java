@@ -951,7 +951,7 @@ public class NativeImageGenerator {
                 }
             }
 
-            for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options))) {
+            for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options)) {
                 new SVMMethodTypeFlowBuilder(bigbang, graph).registerUsedElements();
             }
         }
@@ -973,7 +973,7 @@ public class NativeImageGenerator {
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
                         aWordTypes);
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        SubstrateReplacements aReplacments = new SubstrateReplacements(options, aProviders, aSnippetReflection, bytecodeProvider, target, new SubstrateGraphMakerFactory(aWordTypes));
+        SubstrateReplacements aReplacments = new SubstrateReplacements(aProviders, aSnippetReflection, bytecodeProvider, target, new SubstrateGraphMakerFactory(aWordTypes));
         aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, aReplacments, aStampProvider,
                         aSnippetReflection,
                         aWordTypes);

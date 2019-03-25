@@ -123,9 +123,11 @@ public class HotSpotGraphBuilderPlugins {
      * @param constantReflection
      * @param snippetReflection
      * @param foreignCalls
+     * @param options
      */
     public static Plugins create(CompilerConfiguration compilerConfiguration, GraalHotSpotVMConfig config, HotSpotWordTypes wordTypes, MetaAccessProvider metaAccess,
-                    ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, ReplacementsImpl replacements) {
+                    ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, ReplacementsImpl replacements,
+                    OptionValues options) {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, compilerConfiguration);
 
         Plugins plugins = new Plugins(invocationPlugins);
@@ -135,7 +137,6 @@ public class HotSpotGraphBuilderPlugins {
 
         plugins.appendTypePlugin(nodePlugin);
         plugins.appendNodePlugin(nodePlugin);
-        OptionValues options = replacements.getOptions();
         if (!GeneratePIC.getValue(options)) {
             plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
         }

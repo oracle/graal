@@ -144,7 +144,7 @@ public class InliningData {
         OptionValues options = rootGraph.getOptions();
         if (method == null) {
             return "the method is not resolved";
-        } else if (method.isNative() && (!Intrinsify.getValue(options) || !InliningUtil.canIntrinsify(context.getReplacements(), method, invokeBci))) {
+        } else if (method.isNative() && (!Intrinsify.getValue(options) || !context.getReplacements().hasSubstitution(method, invokeBci))) {
             return "it is a non-intrinsic native method";
         } else if (method.isAbstract()) {
             return "it is an abstract method";
@@ -457,7 +457,7 @@ public class InliningData {
         assert callerCallsiteHolder.containsInvoke(calleeInfo.invoke());
         counterInliningConsidered.increment(debug);
 
-        InliningPolicy.Decision decision = inliningPolicy.isWorthInlining(context.getReplacements(), calleeInvocation, inliningDepth, true);
+        InliningPolicy.Decision decision = inliningPolicy.isWorthInlining(context.getReplacements(), calleeInvocation, calleeInfo, inliningDepth, true);
         if (decision.shouldInline()) {
             doInline(callerCallsiteHolder, calleeInvocation, decision.getReason());
             return true;
@@ -718,7 +718,8 @@ public class InliningData {
 
         final MethodInvocation currentInvocation = currentInvocation();
 
-        final boolean backtrack = (!currentInvocation.isRoot() && !inliningPolicy.isWorthInlining(context.getReplacements(), currentInvocation, inliningDepth(), false).shouldInline());
+        final boolean backtrack = (!currentInvocation.isRoot() &&
+                        !inliningPolicy.isWorthInlining(context.getReplacements(), currentInvocation, currentInvocation.callee(), inliningDepth(), false).shouldInline());
         if (backtrack) {
             int remainingGraphs = currentInvocation.totalGraphs() - currentInvocation.processedGraphs();
             assert remainingGraphs > 0;

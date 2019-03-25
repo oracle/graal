@@ -59,12 +59,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * them.
  */
 public class HotSpotReplacementsImpl extends ReplacementsImpl {
-    public HotSpotReplacementsImpl(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
-        super(options, new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
+    public HotSpotReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
+        super(new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
     }
 
-    protected HotSpotReplacementsImpl(HotSpotReplacementsImpl replacements, Providers providers) {
-        super(replacements.options, new GraalDebugHandlersFactory(replacements.snippetReflection), providers, replacements.snippetReflection,
+    HotSpotReplacementsImpl(HotSpotReplacementsImpl replacements, Providers providers) {
+        super(new GraalDebugHandlersFactory(replacements.snippetReflection), providers, replacements.snippetReflection,
                         replacements.getDefaultReplacementBytecodeProvider(), replacements.target);
     }
 
@@ -73,14 +73,14 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return method.getAnnotation(HotSpotOperation.class) != null ? HotSpotWordOperationPlugin.class : super.getIntrinsifyingPlugin(method);
     }
 
-    public void registerMethodSubstitution(ResolvedJavaMethod method, ResolvedJavaMethod original) {
+    public void registerMethodSubstitution(ResolvedJavaMethod method, ResolvedJavaMethod original, OptionValues options) {
         if (!IS_IN_NATIVE_IMAGE) {
             if (IS_BUILDING_NATIVE_IMAGE || UseEncodedSnippets.getValue(options)) {
                 synchronized (HotSpotReplacementsImpl.class) {
                     if (snippetEncoder == null) {
                         snippetEncoder = new SymbolicSnippetEncoder(this);
                     }
-                    snippetEncoder.registerMethodSubstitution(method, original);
+                    snippetEncoder.registerMethodSubstitution(method, original, options);
                 }
             }
         }
@@ -93,7 +93,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             InvocationPlugin plugin = replacements.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
             if (plugin instanceof MethodSubstitutionPlugin) {
                 MethodSubstitutionPlugin msp = (MethodSubstitutionPlugin) plugin;
-                return replacements.getMethodSubstitution(msp, method);
+                return replacements.getMethodSubstitution(msp, method, debug.getOptions());
             }
             return null;
         }
@@ -118,7 +118,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     private boolean snippetRegistrationClosed;
 
     @Override
-    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
+    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         if (!IS_IN_NATIVE_IMAGE) {
             assert !snippetRegistrationClosed : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
             assert registeredSnippets.add(method) : "Cannot register snippet twice: " + method.format("%H.%n(%p)");
@@ -127,7 +127,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                     if (snippetEncoder == null) {
                         snippetEncoder = new SymbolicSnippetEncoder(this);
                     }
-                    snippetEncoder.registerSnippet(method, original, receiver, trackNodeSourcePosition);
+                    snippetEncoder.registerSnippet(method, original, receiver, trackNodeSourcePosition, options);
                 }
             }
         }
@@ -138,7 +138,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         snippetRegistrationClosed = true;
     }
 
-    static SymbolicSnippetEncoder.EncodedSnippets getEncodedSnippets() {
+    private static SymbolicSnippetEncoder.EncodedSnippets getEncodedSnippets() {
         return encodedSnippets;
     }
 
@@ -153,10 +153,10 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         HotSpotReplacementsImpl.encodedSnippets = encodedSnippets;
     }
 
-    public boolean encode() {
+    public boolean encode(OptionValues options) {
         SymbolicSnippetEncoder encoder = HotSpotReplacementsImpl.snippetEncoder;
         if (encoder != null) {
-            return encoder.encode();
+            return encoder.encode(options);
         }
         return false;
     }
@@ -166,27 +166,28 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     @NativeImageReinitialize static SymbolicSnippetEncoder snippetEncoder;
 
     @Override
-    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
-        StructuredGraph graph = getEncodedSnippet(method, args);
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+                    OptionValues options) {
+        StructuredGraph graph = getEncodedSnippet(method, args, options);
         if (graph != null) {
             return graph;
         }
 
         assert !IS_IN_NATIVE_IMAGE : "should be using encoded snippets";
-        return super.getSnippet(method, recursiveEntry, args, trackNodeSourcePosition, replaceePosition);
+        return super.getSnippet(method, recursiveEntry, args, trackNodeSourcePosition, replaceePosition, options);
     }
 
-    public StructuredGraph getEncodedSnippet(ResolvedJavaMethod method, Object[] args) {
+    public StructuredGraph getEncodedSnippet(ResolvedJavaMethod method, Object[] args, OptionValues options) {
         if (IS_IN_NATIVE_IMAGE || UseEncodedSnippets.getValue(options)) {
             synchronized (HotSpotReplacementsImpl.class) {
                 if (!IS_IN_NATIVE_IMAGE && UseEncodedSnippets.getValue(options)) {
-                    snippetEncoder.encode();
+                    snippetEncoder.encode(options);
                 }
 
                 if (getEncodedSnippets() == null) {
                     throw GraalError.shouldNotReachHere("encoded snippets not found");
                 }
-                StructuredGraph graph = getEncodedSnippets().getEncodedSnippet(method, this, args);
+                StructuredGraph graph = getEncodedSnippets().getEncodedSnippet(method, this, args, options);
                 if (graph == null) {
                     throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)"));
                 }
@@ -198,12 +199,12 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return null;
     }
 
-    public StructuredGraph getMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original) {
+    public StructuredGraph getMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, OptionValues options) {
         if (IS_IN_NATIVE_IMAGE || UseEncodedSnippets.getValue(options)) {
             if (getEncodedSnippets() == null) {
                 throw GraalError.shouldNotReachHere("encoded snippets not found");
             }
-            return getEncodedSnippets().getMethodSubstitutionGraph(plugin, original, this);
+            return getEncodedSnippets().getMethodSubstitutionGraph(plugin, original, this, options);
         }
         return null;
     }

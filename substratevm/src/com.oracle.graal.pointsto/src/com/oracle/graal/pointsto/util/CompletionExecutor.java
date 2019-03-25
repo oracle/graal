@@ -124,7 +124,7 @@ public final class CompletionExecutor {
         /**
          * Gets a {@link DebugContext} the executor will use for this task.
          *
-         * A task can override this and return {@link DebugContext#DISABLED} to avoid the cost of
+         * A task can override this and return {@link DebugContext#disabled} to avoid the cost of
          * creating a {@link DebugContext} if one is not needed.
          */
         default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {

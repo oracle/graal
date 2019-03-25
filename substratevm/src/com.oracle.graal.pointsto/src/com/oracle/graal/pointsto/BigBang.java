@@ -384,8 +384,9 @@ public abstract class BigBang {
             }
 
             @Override
-            public DebugContext getDebug(OptionValues ignored, List<DebugHandlersFactory> factories) {
-                return DebugContext.DISABLED;
+            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
+                assert opts == getOptions();
+                return DebugContext.disabled(opts);
             }
         });
 
@@ -520,7 +521,8 @@ public abstract class BigBang {
 
             @Override
             public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
-                return DebugContext.DISABLED;
+                assert opts == getOptions();
+                return DebugContext.disabled(opts);
             }
         });
     }
