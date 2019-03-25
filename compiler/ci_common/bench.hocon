@@ -18,7 +18,7 @@ bench-jvmci : {
   mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
   mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:*"]
-  mx-teardown : ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "${BENCH_RESULTS_FILE_PATH}"]
+  mx-teardown : ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
 }
 
 bench-common : ${compilerCommon} {
@@ -141,7 +141,7 @@ bench-specjbb2015: ${bench-common} ${large-heap} ${specjbb-bench-notifications} 
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
   ]
   downloads: {
-    SPECJBB2015: { name: specjbb2015, version: "1.00" }
+    SPECJBB2015: { name: specjbb2015, version: "1.02" }
   }
   timelimit: "3:00:00"
 }
@@ -180,7 +180,7 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
 # spark-sql-perf-related targets
 
 bench-spark-sql-perf: ${bench-common} ${default-heap} {
-  targets: [bench, post-merge]
+  targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments}
   ]

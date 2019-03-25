@@ -150,13 +150,7 @@ public class KeyInfoNFITest extends NFITest {
             /*
              * Even in the optional case, the actual read should fail.
              */
-            boolean success;
-            try {
-                interop.readMember(object, symbol);
-                success = true;
-            } catch (InteropException ex) {
-                success = false;
-            }
+            boolean success = tryRead(interop, object, symbol);
             assertBoolean("trying to read member", read, success);
 
             assertBoolean("isMemberInvocable", invoke, interop.isMemberInvocable(object, symbol));
@@ -166,6 +160,16 @@ public class KeyInfoNFITest extends NFITest {
             assertBoolean("isMemberWritable", false, interop.isMemberWritable(object, symbol));
             assertBoolean("isMemberRemovable", false, interop.isMemberRemovable(object, symbol));
             assertBoolean("isMemberInternal", false, interop.isMemberInternal(object, symbol));
+        }
+
+        @TruffleBoundary
+        static boolean tryRead(InteropLibrary interop, Object object, String symbol) {
+            try {
+                interop.readMember(object, symbol);
+                return true;
+            } catch (InteropException ex) {
+                return false;
+            }
         }
     }
 

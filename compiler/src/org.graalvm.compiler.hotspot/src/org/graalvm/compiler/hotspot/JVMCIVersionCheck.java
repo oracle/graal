@@ -41,9 +41,9 @@ import java.util.Properties;
  */
 class JVMCIVersionCheck {
 
-    // 0.55 introduces new HotSpotSpeculationLog API
+    // 0.57 introduces HotSpotJVMCIRuntime.excludeFromJVMCICompilation
     private static final int JVMCI8_MIN_MAJOR_VERSION = 0;
-    private static final int JVMCI8_MIN_MINOR_VERSION = 55;
+    private static final int JVMCI8_MIN_MINOR_VERSION = 57;
 
     private static void failVersionCheck(Map<String, String> props, boolean exit, String reason, Object... args) {
         Formatter errorMessage = new Formatter().format(reason, args);
@@ -54,7 +54,9 @@ class JVMCIVersionCheck {
         errorMessage.format("Currently used Java home directory is %s.%n", javaHome);
         errorMessage.format("Currently used VM configuration is: %s%n", vmName);
         if (props.get("java.specification.version").compareTo("1.9") < 0) {
-            errorMessage.format("Download the latest JVMCI JDK 8 from http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html");
+            errorMessage.format("Download the latest JVMCI JDK 8 from " +
+                            "http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html or " +
+                            "https://github.com/graalvm/openjdk8-jvmci-builder/releases");
         } else {
             errorMessage.format("Download JDK 11 or later.");
         }

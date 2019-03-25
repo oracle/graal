@@ -429,8 +429,16 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
                 self.vm_config_name = config_name.replace('-', '_')
                 vm_config_additional_components = config_additional_components
 
-        name = (self.base_name + (('_' + self.vm_config_name) if self.vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
-        base_dir = name.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
+        if self.vm_config_name:
+            name = self.base_name + '_' + self.vm_config_name
+            base_dir = self.base_name + '_' + self.vm_config_name
+        else:
+            name = self.base_name
+            base_dir = self.base_name + '_unknown'
+        if vm_config_additional_components:
+            name += '_' + '_'.join(vm_config_additional_components)
+        name = name.upper()
+        base_dir = base_dir.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
 
         layout = deepcopy(base_layout)
         super(GraalVmLayoutDistribution, self).__init__(
@@ -1883,9 +1891,9 @@ mx.add_argument('--no-sources', action='store_true', help='Do not include the ar
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
-register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'tfl', 'libpoly', 'poly', 'vvm'])
-register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'tfl', 'poly', 'vvm'])
-register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svmag', 'svmcf', 'tfl', 'bnative-image', 'bpolyglot'])
+register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
+register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'poly', 'vvm'])
+register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'bnative-image', 'bpolyglot'])
 
 
 def _debug_images():

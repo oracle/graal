@@ -97,10 +97,10 @@ public class ImplicitConvertNFITest extends NFITest {
     @Parameter(2) public long numericValue;
     @Parameter(3) public Class<?> valueClass;
 
-    private Object callback(Object... args) {
+    private final TruffleObject callback = new TestCallback(1, (args) -> {
         Assert.assertEquals("callback argument", numericValue + 1, NumericNFITest.unboxNumber(args[0]));
         return value;
-    }
+    });
 
     /**
      * Test implicit conversion between different numeric types when used as argument to native
@@ -116,7 +116,6 @@ public class ImplicitConvertNFITest extends NFITest {
     @Test
     public void testConvert(@Inject(TestConvertNode.class) CallTarget callTarget) {
         Assume.assumeFalse(isCompileImmediately());
-        TruffleObject callback = new TestCallback(1, this::callback);
         Object ret = callTarget.call(callback, value);
 
         if (type == NativeSimpleType.POINTER) {

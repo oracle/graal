@@ -23,7 +23,7 @@ benchCommon: ${linux-amd64} ${labsjdk8} {
     ["mx", "build" ]
   ] ${download-hsdis.setup}
   teardown : [
-    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "${BENCH_RESULTS_FILE_PATH}"]
+    ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
   ]
 }
 

@@ -152,7 +152,6 @@ function libpolyglot() {
         "-Dgraalvm.libpolyglot=true"
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature"
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${graalvm_home}/jre/lib/polyglot"
-        "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=${graalvm_home}/jre/lib/polyglot"
         "-H:CStandard=C11"
         "-H:+IncludeAllTimeZones"
         "-H:+SpawnIsolates"

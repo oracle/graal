@@ -92,6 +92,7 @@ public class CompilationTask {
     private final boolean installAsDefault;
 
     private final boolean useProfilingInfo;
+    private final boolean shouldRetainLocalVariables;
     private final OptionValues options;
 
     final class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
@@ -186,7 +187,7 @@ public class CompilationTask {
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 // Begin the compilation event.
                 compilationEvent.begin();
-                result = compiler.compile(method, entryBCI, useProfilingInfo, compilationId, options, debug);
+                result = compiler.compile(method, entryBCI, useProfilingInfo, shouldRetainLocalVariables, compilationId, options, debug);
             } catch (Throwable e) {
                 throw debug.handle(e);
             } finally {
@@ -212,10 +213,16 @@ public class CompilationTask {
 
     public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault,
                     OptionValues options) {
+        this(jvmciRuntime, compiler, request, useProfilingInfo, false, installAsDefault, options);
+    }
+
+    public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean shouldRetainLocalVariables,
+                    boolean installAsDefault, OptionValues options) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.compilationId = new HotSpotCompilationIdentifier(request);
         this.useProfilingInfo = useProfilingInfo;
+        this.shouldRetainLocalVariables = shouldRetainLocalVariables;
         this.installAsDefault = installAsDefault;
 
         /*

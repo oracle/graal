@@ -68,7 +68,7 @@ bench_vm_ce_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_li
     [mx, --no-sources, --env, ce, build]
   ]
   teardown: [
-    [bench-uploader.py, --url, "$BENCH_SERVER_URL", ${bench_vm_ce_linux_base.resultFile}]
+    [bench-uploader.py, ${bench_vm_ce_linux_base.resultFile}]
   ]
   logs: ${sulong_logs}
   capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]

@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.TruffleFile;
+import java.io.File;
 import java.io.IOException;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
@@ -53,17 +55,25 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import java.util.function.Function;
 
+import com.oracle.truffle.api.TruffleFile;
+import java.nio.charset.Charset;
 import org.graalvm.polyglot.io.FileSystem;
 
 final class FileSystems {
@@ -154,20 +164,28 @@ final class FileSystems {
     static final class PreInitializeContextFileSystem implements FileSystem {
 
         private FileSystem delegate; // effectively final after patch context
+        private Function<Path, PreInitializePath> factory;
 
         PreInitializeContextFileSystem() {
-            this.delegate = newDefaultFileSystem(null);
+            this.delegate = newDefaultFileSystem();
+            this.factory = new ImageBuildTimeFactory();
         }
 
-        void patchDelegate(final FileSystem newDelegate) {
+        void onPreInitializeContextEnd() {
+            ((ImageBuildTimeFactory) factory).onPreInitializeContextEnd();
+            delegate = INVALID_FILESYSTEM;
+        }
+
+        void onLoadPreinitializedContext(FileSystem newDelegate) {
             Objects.requireNonNull(newDelegate, "NewDelegate must be non null.");
             this.delegate = newDelegate;
+            this.factory = new ImageExecutionTimeFactory();
         }
 
         @Override
         public Path parsePath(URI path) {
             try {
-                return delegate.parsePath(path);
+                return wrap(delegate.parsePath(path));
             } catch (IllegalArgumentException | FileSystemNotFoundException e) {
                 throw new UnsupportedOperationException(e);
             }
@@ -175,82 +193,376 @@ final class FileSystems {
 
         @Override
         public Path parsePath(String path) {
-            return delegate.parsePath(path);
+            return wrap(delegate.parsePath(path));
         }
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            delegate.checkAccess(path, modes, linkOptions);
+            delegate.checkAccess(unwrap(path), modes, linkOptions);
         }
 
         @Override
         public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-            delegate.createDirectory(dir, attrs);
+            delegate.createDirectory(unwrap(dir), attrs);
         }
 
         @Override
         public void delete(Path path) throws IOException {
-            delegate.delete(path);
+            delegate.delete(unwrap(path));
         }
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-            return delegate.newByteChannel(path, options, attrs);
+            return delegate.newByteChannel(unwrap(path), options, attrs);
         }
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            return delegate.newDirectoryStream(dir, filter);
+            DirectoryStream<Path> delegateStream = delegate.newDirectoryStream(unwrap(dir), filter);
+            return new DirectoryStream<Path>() {
+                @Override
+                public Iterator<Path> iterator() {
+                    return new WrappingPathIterator(delegateStream.iterator());
+                }
+
+                @Override
+                public void close() throws IOException {
+                    delegateStream.close();
+                }
+            };
         }
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return delegate.toAbsolutePath(path);
+            return wrap(delegate.toAbsolutePath(unwrap(path)));
         }
 
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-            return delegate.toRealPath(path, linkOptions);
+            return wrap(delegate.toRealPath(unwrap(path), linkOptions));
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            return delegate.readAttributes(path, attributes, options);
+            return delegate.readAttributes(unwrap(path), attributes, options);
         }
 
         @Override
         public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
-            delegate.setAttribute(path, attribute, value, options);
+            delegate.setAttribute(unwrap(path), attribute, value, options);
         }
 
         @Override
         public void copy(Path source, Path target, CopyOption... options) throws IOException {
-            delegate.copy(source, target, options);
+            delegate.copy(unwrap(source), unwrap(target), options);
         }
 
         @Override
         public void move(Path source, Path target, CopyOption... options) throws IOException {
-            delegate.move(source, target, options);
+            delegate.move(unwrap(source), unwrap(target), options);
         }
 
         @Override
         public void createLink(Path link, Path existing) throws IOException {
-            delegate.createLink(link, existing);
+            delegate.createLink(unwrap(link), unwrap(existing));
         }
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-            delegate.createSymbolicLink(link, target, attrs);
+            delegate.createSymbolicLink(unwrap(link), unwrap(target), attrs);
         }
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
-            return delegate.readSymbolicLink(link);
+            return wrap(delegate.readSymbolicLink(unwrap(link)));
         }
 
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
-            delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
+            delegate.setCurrentWorkingDirectory(unwrap(currentWorkingDirectory));
+        }
+
+        @Override
+        public String getSeparator() {
+            return delegate.getSeparator();
+        }
+
+        @Override
+        public Charset getEncoding(Path path) {
+            return delegate.getEncoding(unwrap(path));
+        }
+
+        @Override
+        public String getMimeType(Path path) {
+            return delegate.getMimeType(unwrap(path));
+        }
+
+        Path wrap(Path path) {
+            return path == null ? null : factory.apply(path);
+        }
+
+        static Path unwrap(Path path) {
+            return path.getClass() == PreInitializePath.class ? ((PreInitializePath) path).getDelegate() : path;
+        }
+
+        private class ImageExecutionTimeFactory implements Function<Path, PreInitializePath> {
+
+            @Override
+            public PreInitializePath apply(Path path) {
+                return new PreInitializePath(path);
+            }
+        }
+
+        private final class ImageBuildTimeFactory extends ImageExecutionTimeFactory {
+
+            private final Collection<Reference<PreInitializePath>> emittedPaths = new ArrayList<>();
+
+            @Override
+            public PreInitializePath apply(Path path) {
+                PreInitializePath preInitPath = super.apply(path);
+                emittedPaths.add(new WeakReference<>(preInitPath));
+                return preInitPath;
+            }
+
+            void onPreInitializeContextEnd() {
+                Map<String, Path> languageHomes = new HashMap<>();
+                for (LanguageCache cache : LanguageCache.languages(null).values()) {
+                    final String languageHome = cache.getLanguageHome();
+                    if (languageHome != null) {
+                        languageHomes.put(cache.getId(), delegate.parsePath(languageHome));
+                    }
+                }
+                for (Reference<PreInitializePath> pathRef : emittedPaths) {
+                    PreInitializePath path = pathRef.get();
+                    if (path != null) {
+                        path.onPreInitializeContextEnd(languageHomes);
+                    }
+                }
+            }
+        }
+
+        private final class WrappingPathIterator implements Iterator<Path> {
+
+            private final Iterator<Path> delegateIterator;
+
+            WrappingPathIterator(Iterator<Path> delegateIterator) {
+                this.delegateIterator = delegateIterator;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return delegateIterator.hasNext();
+            }
+
+            @Override
+            public Path next() {
+                return wrap(delegateIterator.next());
+            }
+        }
+
+        private final class PreInitializePath implements Path {
+            private Object delegatePath;
+
+            PreInitializePath(Path delegatePath) {
+                this.delegatePath = delegatePath;
+            }
+
+            private Path getDelegate() {
+                if (delegatePath instanceof Path) {
+                    return (Path) delegatePath;
+                } else if (delegatePath instanceof ImageHeapPath) {
+                    ImageHeapPath imageHeapPath = (ImageHeapPath) delegatePath;
+                    String languageId = imageHeapPath.languageId;
+                    String path = imageHeapPath.path;
+                    Path result;
+                    String newLanguageHome;
+                    if (languageId != null && (newLanguageHome = LanguageCache.languages(null).get(languageId).getLanguageHome()) != null) {
+                        result = delegate.parsePath(newLanguageHome).resolve(path);
+                    } else {
+                        result = delegate.parsePath(path);
+                    }
+                    delegatePath = result;
+                    return result;
+                } else {
+                    throw new IllegalStateException("Unknown delegate " + String.valueOf(delegatePath));
+                }
+            }
+
+            void onPreInitializeContextEnd(Map<String, Path> languageHomes) {
+                Path internalPath = (Path) delegatePath;
+                String languageId = null;
+                for (Map.Entry<String, Path> e : languageHomes.entrySet()) {
+                    if (internalPath.startsWith(e.getValue())) {
+                        internalPath = e.getValue().relativize(internalPath);
+                        languageId = e.getKey();
+                        break;
+                    }
+                }
+                delegatePath = new ImageHeapPath(languageId, internalPath.toString());
+            }
+
+            @Override
+            public java.nio.file.FileSystem getFileSystem() {
+                return getDelegate().getFileSystem();
+            }
+
+            @Override
+            public boolean isAbsolute() {
+                return getDelegate().isAbsolute();
+            }
+
+            @Override
+            public Path getRoot() {
+                return wrap(getDelegate().getRoot());
+            }
+
+            @Override
+            public Path getFileName() {
+                return wrap(getDelegate().getFileName());
+            }
+
+            @Override
+            public Path getParent() {
+                return wrap(getDelegate().getParent());
+            }
+
+            @Override
+            public int getNameCount() {
+                return getDelegate().getNameCount();
+            }
+
+            @Override
+            public Path getName(int index) {
+                return wrap(getDelegate().getName(index));
+            }
+
+            @Override
+            public Path subpath(int beginIndex, int endIndex) {
+                return wrap(getDelegate().subpath(beginIndex, endIndex));
+            }
+
+            @Override
+            public boolean startsWith(Path other) {
+                return getDelegate().startsWith(unwrap(other));
+            }
+
+            @Override
+            public boolean startsWith(String other) {
+                return getDelegate().startsWith(other);
+            }
+
+            @Override
+            public boolean endsWith(Path other) {
+                return getDelegate().endsWith(unwrap(other));
+            }
+
+            @Override
+            public boolean endsWith(String other) {
+                return getDelegate().endsWith(other);
+            }
+
+            @Override
+            public Path normalize() {
+                return wrap(getDelegate().normalize());
+            }
+
+            @Override
+            public Path resolve(Path other) {
+                return wrap(getDelegate().resolve(unwrap(other)));
+            }
+
+            @Override
+            public Path resolve(String other) {
+                return wrap(getDelegate().resolve(other));
+            }
+
+            @Override
+            public Path resolveSibling(Path other) {
+                return wrap(getDelegate().resolveSibling(unwrap(other)));
+            }
+
+            @Override
+            public Path resolveSibling(String other) {
+                return wrap(getDelegate().resolveSibling(other));
+            }
+
+            @Override
+            public Path relativize(Path other) {
+                return wrap(getDelegate().relativize(unwrap(other)));
+            }
+
+            @Override
+            public URI toUri() {
+                return getDelegate().toUri();
+            }
+
+            @Override
+            public Path toAbsolutePath() {
+                return wrap(getDelegate().toAbsolutePath());
+            }
+
+            @Override
+            public Path toRealPath(LinkOption... options) throws IOException {
+                return wrap(getDelegate().toRealPath(options));
+            }
+
+            @Override
+            public File toFile() {
+                return getDelegate().toFile();
+            }
+
+            @Override
+            public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
+                return getDelegate().register(watcher, events, modifiers);
+            }
+
+            @Override
+            public WatchKey register(WatchService watcher, WatchEvent.Kind<?>... events) throws IOException {
+                return getDelegate().register(watcher, events);
+            }
+
+            @Override
+            public Iterator<Path> iterator() {
+                return new WrappingPathIterator(getDelegate().iterator());
+            }
+
+            @Override
+            public int compareTo(Path other) {
+                return getDelegate().compareTo(unwrap(other));
+            }
+
+            @Override
+            public int hashCode() {
+                return getDelegate().hashCode();
+            }
+
+            @Override
+            public boolean equals(Object other) {
+                if (other == this) {
+                    return true;
+                }
+                if (!(other instanceof Path)) {
+                    return false;
+                }
+                return getDelegate().equals(unwrap((Path) other));
+            }
+
+            @Override
+            public String toString() {
+                return getDelegate().toString();
+            }
+        }
+
+        private static final class ImageHeapPath {
+
+            private final String languageId;
+            private final String path;
+
+            ImageHeapPath(String languageId, String path) {
+                assert path != null;
+                this.languageId = languageId;
+                this.path = path;
+            }
         }
     }
 

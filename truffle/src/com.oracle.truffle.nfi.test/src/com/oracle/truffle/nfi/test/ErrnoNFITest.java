@@ -105,12 +105,13 @@ public class ErrnoNFITest extends NFITest {
         }
     }
 
+    private static final TestCallback callback = new TestCallback(0, (args) -> {
+        destroyErrno();
+        return null;
+    });
+
     @Test
     public void testErrnoCallback(@Inject(TestErrnoCallback.class) CallTarget target) {
-        TestCallback callback = new TestCallback(0, (args) -> {
-            destroyErrno();
-            return null;
-        });
         Object ret = target.call(42, callback);
         Assert.assertEquals(42, ret);
     }
