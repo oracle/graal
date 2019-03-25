@@ -510,12 +510,7 @@ public class AArch64Move {
                         masm.fmov(64, dst, scratch);
                     }
                 } else {
-                    crb.asDoubleConstRef(input);
-                    try (ScratchRegister scr = masm.getScratchRegister()) {
-                        Register scratch = scr.getRegister();
-                        masm.movNativeAddress(scratch, 0, true);
-                        masm.fldr(64, dst, AArch64Address.createBaseRegisterOnlyAddress(scratch));
-                    }
+                    masm.fldr(64, dst, (AArch64Address) crb.asDoubleConstRef(input));
                 }
                 break;
             case Object:
