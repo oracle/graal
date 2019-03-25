@@ -86,6 +86,7 @@ import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.BeforeClass;
 
 public class ContextAPITest {
@@ -598,7 +599,7 @@ public class ContextAPITest {
 
     @Test
     public void testTransferControlToOtherThreadWhileEntered() {
-        Context context = Context.newBuilder().allowHostAccess(CONFIG).build();
+        Context context = Context.newBuilder().allowHostAccess(CONFIG).allowPolyglotAccess(PolyglotAccess.ALL).build();
 
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
