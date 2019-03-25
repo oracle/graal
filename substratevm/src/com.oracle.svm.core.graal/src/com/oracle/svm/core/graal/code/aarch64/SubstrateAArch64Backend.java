@@ -118,6 +118,7 @@ import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
+import com.oracle.svm.core.graal.lir.VerificationMarkerOp;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
@@ -276,6 +277,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         public Value emitReadInstructionPointer() {
             throw unimplemented();
+        }
+
+        @Override
+        public void emitVerificationMarker(Object marker) {
+            append(new VerificationMarkerOp(marker));
         }
 
         @Override

@@ -33,6 +33,10 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -40,8 +44,21 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class SubstrateBackend extends Backend {
+
+    private RuntimeConfiguration runtimeConfiguration;
+
     protected SubstrateBackend(Providers providers) {
         super(providers);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setRuntimeConfiguration(RuntimeConfiguration runtimeConfiguration) {
+        this.runtimeConfiguration = runtimeConfiguration;
+    }
+
+    public RuntimeConfiguration getRuntimeConfiguration() {
+        assert runtimeConfiguration != null : "Access before initialization";
+        return runtimeConfiguration;
     }
 
     @Override

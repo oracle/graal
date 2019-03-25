@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.stack;
+package com.oracle.svm.core.graal.lir;
 
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-/**
- * A stack-based structure that is present in the stack frame of a Java method that calls to C code.
- * It stores the last Java frame information (stack pointer and instruction pointer), so that stack
- * walking can start the stack walk from there. The head of the linked list is maintained by
- * {@link JavaFrameAnchors}
- */
-@RawStructure
-public interface JavaFrameAnchor extends PointerBase {
-    @RawField
-    JavaFrameAnchor getPreviousAnchor();
+public final class VerificationMarkerOp extends LIRInstruction {
+    public static final LIRInstructionClass<VerificationMarkerOp> TYPE = LIRInstructionClass.create(VerificationMarkerOp.class);
 
-    @RawField
-    void setPreviousAnchor(JavaFrameAnchor value);
+    private final Object marker;
 
-    @RawField
-    Pointer getLastJavaSP();
+    public VerificationMarkerOp(Object marker) {
+        super(TYPE);
+        this.marker = marker;
+    }
 
-    @RawField
-    void setLastJavaSP(Pointer value);
+    public Object getMarker() {
+        return marker;
+    }
 
-    @RawField
-    CodePointer getLastJavaIP();
-
-    @RawField
-    void setLastJavaIP(CodePointer value);
+    @Override
+    public void emitCode(CompilationResultBuilder crb) {
+        /* Nothing to do, operation is a no-op. */
+    }
 }

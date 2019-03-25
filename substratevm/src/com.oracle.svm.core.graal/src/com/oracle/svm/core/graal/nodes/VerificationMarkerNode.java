@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,54 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.nodes;
-
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+package com.oracle.svm.core.graal.nodes;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.word.LocationIdentity;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class CFunctionEpilogueNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single, ControlFlowAnchored {
-    public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
+import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
+import com.oracle.svm.core.util.VMError;
 
-    /** See comment in {@link CFunctionPrologueNode}. */
-    private CFunctionEpilogueMarker marker;
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+public final class VerificationMarkerNode extends FixedWithNextNode implements LIRLowerable, ControlFlowAnchored {
+    public static final NodeClass<VerificationMarkerNode> TYPE = NodeClass.create(VerificationMarkerNode.class);
 
-    public CFunctionEpilogueNode() {
+    private final Object marker;
+
+    public VerificationMarkerNode(Object marker) {
         super(TYPE, StampFactory.forVoid());
-        marker = new CFunctionEpilogueMarker();
+        this.marker = marker;
     }
 
     @Override
     protected void afterClone(Node other) {
-        super.afterClone(other);
-        marker = new CFunctionEpilogueMarker();
-    }
-
-    public CFunctionEpilogueMarker getMarker() {
-        return marker;
+        throw VMError.shouldNotReachHere("Marker must be unique, therefore the node cannot be cloned");
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+    public void generate(NodeLIRBuilderTool generator) {
+        SubstrateLIRGenerator sgenerator = (SubstrateLIRGenerator) generator.getLIRGeneratorTool();
+        sgenerator.emitVerificationMarker(marker);
     }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.any();
-    }
-
-    @NodeIntrinsic
-    public static native void cFunctionEpilogue();
 }

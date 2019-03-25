@@ -275,4 +275,8 @@ public class VMThreadMTFeature implements GraalFeature {
         /* Remember the final sorted list. */
         VMThreadLocalInfos.setInfos(sortedThreadLocalInfos);
     }
+
+    public int offsetOf(FastThreadLocal threadLocal) {
+        return threadLocalCollector.getInfo(threadLocal).offset;
+    }
 }

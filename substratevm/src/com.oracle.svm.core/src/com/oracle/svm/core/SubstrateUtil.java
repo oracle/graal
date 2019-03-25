@@ -334,7 +334,7 @@ public class SubstrateUtil {
             log.string("No anchors").newline();
         }
         while (anchor.isNonNull()) {
-            log.string("Anchor ").zhex(anchor.rawValue()).string(" LastJavaSP ").zhex(anchor.getLastJavaSP().rawValue()).newline();
+            log.string("Anchor ").zhex(anchor.rawValue()).string(" LastJavaSP ").zhex(anchor.getLastJavaSP().rawValue()).string(" LastJavaIP ").zhex(anchor.getLastJavaIP().rawValue()).newline();
             anchor = anchor.getPreviousAnchor();
         }
         log.indent(false);
@@ -375,7 +375,7 @@ public class SubstrateUtil {
                     log.string("Found matching Anchor:").zhex(anchor.rawValue()).newline();
                     Pointer lastSp = anchor.getLastJavaSP();
                     log.string("LastJavaSP ").zhex(lastSp.rawValue()).newline();
-                    CodePointer lastIp = FrameAccess.singleton().readReturnAddress(lastSp);
+                    CodePointer lastIp = anchor.getLastJavaIP();
                     log.string("LastJavaIP ").zhex(lastIp.rawValue()).newline();
                 }
             }

@@ -42,6 +42,7 @@ import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 
@@ -55,9 +56,9 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
     private final ClassInitializationSupport classInitializationSupport;
 
     public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
-                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
+                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider, NativeLibraries nativeLibraries,
                     ClassInitializationSupport classInitializationSupport) {
-        super(options, hostVM, metaAccess, backendProvider);
+        super(options, hostVM, metaAccess, backendProvider, nativeLibraries);
         this.aUniverse = aUniverse;
         this.originalReflectionProvider = originalReflectionProvider;
         this.classInitializationSupport = classInitializationSupport;
