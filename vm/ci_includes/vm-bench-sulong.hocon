@@ -54,7 +54,7 @@ bench-llvm-sulong-core: ${bench-llvm-sulong-common} ${bench-llvm-linux} {
   setup: ${bench-llvm-linux.setup} [
     [cd, ${compiler-suite-root}]
     [mx, --dynamicimport, "/sulong", build]
-  ]
+  ] ${download-hsdis.setup}
   run: [
     ${bench-llvm-linux.cmd} [--, --native-vm, sulong, --native-vm-config, default, --jvm, server, --jvm-config, "hosted-${JVM_CONFIG}"]
   ]
@@ -66,7 +66,7 @@ bench_vm_ce_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_li
     [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
     [cd, vm]
     [mx, --no-sources, --env, ce, build]
-  ]
+  ] ${download-hsdis.setup}
   teardown: [
     [bench-uploader.py, ${bench_vm_ce_linux_base.resultFile}]
   ]
