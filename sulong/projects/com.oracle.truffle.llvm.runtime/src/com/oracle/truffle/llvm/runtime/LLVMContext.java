@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -333,9 +334,7 @@ public final class LLVMContext {
         return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(value));
     }
 
-    public void dispose(LLVMMemory memory) {
-        printNativeCallStatistic();
-
+    public void finalizeContext() {
         // the following cases exist for cleanup:
         // - exit() or interop: execute all atexit functions, shutdown stdlib, flush IO, and execute
         // destructors
@@ -350,12 +349,14 @@ public final class LLVMContext {
                 // nothing needs to be done as the behavior is not defined
             }
         }
+    }
 
-        if (isInitialized()) {
-            threadingStack.freeMainStack(memory);
+    private CallTarget freeGlobalBlocks;
 
-            // free the space allocated for non-pointer globals
-            Truffle.getRuntime().createCallTarget(new RootNode(language) {
+    private void initFreeGlobalBlocks() {
+        // lazily initialized, this is not necessary if there are no global blocks allocated
+        if (freeGlobalBlocks == null) {
+            freeGlobalBlocks = Truffle.getRuntime().createCallTarget(new RootNode(language) {
 
                 @Child LLVMMemoryOpNode freeRo = nodeFactory.createFreeGlobalsBlock(true);
                 @Child LLVMMemoryOpNode freeRw = nodeFactory.createFreeGlobalsBlock(false);
@@ -374,7 +375,20 @@ public final class LLVMContext {
                     }
                     return null;
                 }
-            }).call();
+            });
+        }
+    }
+
+    public void dispose(LLVMMemory memory) {
+        printNativeCallStatistic();
+
+        if (isInitialized()) {
+            threadingStack.freeMainStack(memory);
+        }
+
+        if (freeGlobalBlocks != null) {
+            // free the space allocated for non-pointer globals
+            freeGlobalBlocks.call();
         }
 
         // free the space which might have been when putting pointer-type globals into native memory
@@ -732,11 +746,13 @@ public final class LLVMContext {
 
     @TruffleBoundary
     public void registerReadOnlyGlobals(LLVMPointer nonPointerStore) {
+        initFreeGlobalBlocks();
         globalsReadOnlyStore.add(nonPointerStore);
     }
 
     @TruffleBoundary
     public void registerGlobals(LLVMPointer nonPointerStore) {
+        initFreeGlobalBlocks();
         globalsNonPointerStore.add(nonPointerStore);
     }
 
