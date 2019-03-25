@@ -968,7 +968,7 @@ public class LLVMIRBuilder {
         buildIntrinsicCall("llvm.prefetch", prefetchType, address, constantInt(1), constantInt(0), constantInt(1));
     }
 
-    LLVMValueRef buildReturnAddress(LLVMValueRef level) {
+    public LLVMValueRef buildReturnAddress(LLVMValueRef level) {
         LLVMTypeRef returnAddressType = functionType(rawPointerType(), intType());
         return buildIntrinsicCall("llvm.returnaddress", returnAddressType, level);
     }

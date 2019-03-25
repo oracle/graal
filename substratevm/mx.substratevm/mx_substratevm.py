@@ -98,6 +98,7 @@ def add_opens_from_packages(packageNameList):
 graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.runtime',
     'jdk.internal.vm.ci/jdk.vm.ci.code',
+    'jdk.internal.vm.ci/jdk.vm.ci.aarch64',
     'jdk.internal.vm.ci/jdk.vm.ci.amd64',
     'jdk.internal.vm.ci/jdk.vm.ci.meta',
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
@@ -368,8 +369,8 @@ librarySupportDistribution = ['substratevm:LIBRARY_SUPPORT']
 def layout_native_image_root(native_image_root):
 
     def names_to_dists(dist_names):
-        deps = [mx.dependency(dist_name) for dist_name in dist_names]
-        return [dep for dep in deps if not dep.isDistribution() or dep.exists()]
+        deps = [mx.dependency(dist_name, fatalIfMissing=False) for dist_name in dist_names]
+        return [dep for dep in deps if dep and (not dep.isDistribution() or dep.exists())]
 
     def native_image_layout_dists(subdir, dist_names):
         native_image_layout(names_to_dists(dist_names), subdir, native_image_root)

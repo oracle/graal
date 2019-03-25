@@ -599,9 +599,6 @@ suite = {
           },
         },
         "<others>" : {
-          "aarch64" : {
-            "ignore" : "temporarily disabled",  # necessary until GR-13214 is resolved
-          },
           "<others>" : {
             "ignore" : False,
           },
@@ -809,6 +806,7 @@ suite = {
       "platformDependent" : True,
       "platforms" : [
           "linux-amd64",
+          "linux-aarch64",
           "darwin-amd64",
       ],
       "layout" : {
