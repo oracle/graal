@@ -29,6 +29,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 
@@ -55,12 +56,24 @@ public final class PolyglotCompilerOptions {
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
 
+    @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
+    public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
+
+    @Option(help = "Print information for compilation queuing.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceCompilationDetails = new OptionKey<>(false);
+
+    @Option(help = "Print information for inlining decisions.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
+
+    @Option(help = "Print information for splitting decisions.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
+
     /*
      * TODO planned options:
      *
     @Option(help = "Enable automatic inlining of guest language roots.",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> InliningEnabled = new OptionKey<>(true);
+    public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
     @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.",
                     category = OptionCategory.EXPERT)
@@ -72,28 +85,14 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Enable automatic duplication of compilation profiles (splitting).",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> SplittingEnabled = new OptionKey<>(true);
+    public static final OptionKey<Boolean> Splitting = new OptionKey<>(true);
 
     @Option(help = "Enable automatic on-stack-replacement of loops.",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> OSREnabled = new OptionKey<>(true);
-
-    // DEBUG OPTIONS
-
-    @Option(help = "Trace compilation decisions to the standard output.",
-                    category = OptionCategory.DEBUG)
-    public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
-
-    @Option(help = "Trace inlining decisions to the standard output.",
-                    category = OptionCategory.DEBUG)
-    public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
-
-    @Option(help = "Trace splitting decisions to the standard output.",
-                    category = OptionCategory.DEBUG)
-    public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
+    public static final OptionKey<Boolean> OSR = new OptionKey<>(true);
 
     @Option(help = "Trace deoptimization of compilation units.",
-                    category = OptionCategory.DEBUG)
+                    category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceDeoptimization = new OptionKey<>(false);
     */
 
@@ -107,6 +106,11 @@ public final class PolyglotCompilerOptions {
     private static void initializePolyglotToGraalMapping() {
         POLYGLOT_TO_TRUFFLE.put(CompilationThreshold, SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         POLYGLOT_TO_TRUFFLE.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
+
+        POLYGLOT_TO_TRUFFLE.put(TraceCompilation, SharedTruffleRuntimeOptions.TraceTruffleCompilation);
+        POLYGLOT_TO_TRUFFLE.put(TraceCompilationDetails, SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails);
+        POLYGLOT_TO_TRUFFLE.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
+        POLYGLOT_TO_TRUFFLE.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);
     }
 
     static OptionValues getPolyglotValues(RootNode root) {

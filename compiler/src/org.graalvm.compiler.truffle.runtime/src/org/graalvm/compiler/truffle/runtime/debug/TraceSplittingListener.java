@@ -34,8 +34,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -47,9 +46,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleSplitting)) {
-            runtime.addListener(new TraceSplittingListener());
-        }
+        runtime.addListener(new TraceSplittingListener());
     }
 
     private int splitCount;
@@ -57,10 +54,12 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
     @Override
     public void onCompilationSplit(OptimizedDirectCallNode callNode) {
         OptimizedCallTarget callTarget = callNode.getCallTarget();
-        String label = String.format("split %3s-%-4s-%-4s ", splitCount++, Integer.toHexString(callNode.getCurrentCallTarget().hashCode()), callNode.getCallCount());
-        final Map<String, Object> debugProperties = callTarget.getDebugProperties(null);
-        debugProperties.put("SourceSection", extractSourceSection(callNode));
-        TruffleCompilerRuntime.getRuntime().logEvent(0, label, callTarget.toString(), debugProperties);
+        if (callTarget.getOptionValue(PolyglotCompilerOptions.TraceSplitting)) {
+            String label = String.format("split %3s-%-4s-%-4s ", splitCount++, Integer.toHexString(callNode.getCurrentCallTarget().hashCode()), callNode.getCallCount());
+            final Map<String, Object> debugProperties = callTarget.getDebugProperties(null);
+            debugProperties.put("SourceSection", extractSourceSection(callNode));
+            TruffleCompilerRuntime.getRuntime().logEvent(0, label, callTarget.toString(), debugProperties);
+        }
     }
 
     private static String extractSourceSection(OptimizedDirectCallNode node) {
