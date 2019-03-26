@@ -790,14 +790,17 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         fail("Unexpected MIME type: " + mimeType);
     }
 
-    @Registration(id = "TestJava", name = "", characterMimeTypes = "text/x-java")
+    @Registration(id = "TestJava", name = "", characterMimeTypes = "text/x-java", fileTypeDetectors = CommonMIMETypeTestDetector.class)
     public static class TestJavaLanguage extends ProxyLanguage {
 
     }
 
-    @Registration(id = "TestJS", name = "", byteMimeTypes = "application/test-js")
+    @Registration(id = "TestJS", name = "", byteMimeTypes = "application/test-js", fileTypeDetectors = CommonMIMETypeTestDetector.class)
     public static class TestJSLanguage extends ProxyLanguage {
+    }
 
+    @Registration(id = "TestTxt", name = "", byteMimeTypes = "text/plain", fileTypeDetectors = CommonMIMETypeTestDetector.class)
+    public static class TestTxtLanguage extends ProxyLanguage {
     }
 
     @SuppressWarnings("deprecation")

@@ -115,7 +115,7 @@ final class FileSystems {
         return fileSystem != null && fileSystem.getClass() == DeniedIOFileSystem.class;
     }
 
-    static Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> newFileTypeDetectorsSupplier(Iterable<LanguageCache> languageCaches) {
+    static Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> newFileTypeDetectorsSupplier(Iterable<LanguageCache> languageCaches) {
         return new FileTypeDetectorsSupplier(languageCaches);
     }
 
@@ -949,7 +949,7 @@ final class FileSystems {
         }
     }
 
-    private static final class FileTypeDetectorsSupplier implements Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> {
+    private static final class FileTypeDetectorsSupplier implements Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> {
 
         private final Iterable<LanguageCache> languageCaches;
 
@@ -958,10 +958,12 @@ final class FileSystems {
         }
 
         @Override
-        public Iterable<? extends TruffleFile.FileTypeDetector> get() {
-            Collection<TruffleFile.FileTypeDetector> detectors = new ArrayList<>();
+        public Map<String, Collection<? extends TruffleFile.FileTypeDetector>> get() {
+            Map<String, Collection<? extends TruffleFile.FileTypeDetector>> detectors = new HashMap<>();
             for (LanguageCache cache : languageCaches) {
-                detectors.addAll(cache.getFileTypeDetectors());
+                for (String mimeType : cache.getMimeTypes()) {
+                    detectors.put(mimeType, cache.getFileTypeDetectors());
+                }
             }
             return detectors;
         }
