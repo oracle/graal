@@ -130,7 +130,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
             Map<String, LanguageInfo> resolvedLanguages = new LinkedHashMap<>();
             for (String id : resolveLanguages) {
-                resolvedLanguages.put(id, engine.idToLanguage.get(id).info);
+                PolyglotLanguage resolvedLanguage = engine.idToLanguage.get(id);
+                if (resolvedLanguage != null) { // resolved languages might not be on the
+                                                // class-path.
+                    resolvedLanguages.put(id, resolvedLanguage.info);
+                }
             }
             addDependentLanguages(engine, resolvedLanguages, thisLanguage);
 
@@ -155,6 +159,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         private void addDependentLanguages(PolyglotEngineImpl engine, Map<String, LanguageInfo> resolvedLanguages, PolyglotLanguage currentLanguage) {
             for (String dependentLanguage : currentLanguage.cache.getDependentLanguages()) {
                 PolyglotLanguage dependent = engine.idToLanguage.get(dependentLanguage);
+                if (dependent == null) { // dependent languages might not exist.
+                    continue;
+                }
                 if (resolvedLanguages.containsKey(dependentLanguage)) {
                     continue; // cycle or duplicate detection
                 }

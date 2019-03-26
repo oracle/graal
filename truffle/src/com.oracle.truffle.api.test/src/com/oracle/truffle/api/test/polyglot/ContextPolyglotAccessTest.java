@@ -42,6 +42,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -76,6 +77,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     public static final String INTERNAL = "ContextPolyglotAccessTestInternalLanguage";
     public static final String LANGUAGE3 = "ContextPolyglotAccessTestLanguage3";
 
+    public static final String NOT_EXISTING_LANGUAGE = "$$$LanguageThatDoesNotExist$$$";
+
     @Test
     public void testNull() {
         try {
@@ -83,6 +86,30 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             fail();
         } catch (NullPointerException e) {
         }
+    }
+
+    @Test
+    public void testNotExistingDependent() {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE2).allowPolyglotAccess(PolyglotAccess.NONE).build());
+        context.initialize(LANGUAGE2);
+        Env env2 = Language2.getContext(Language2.class);
+        assertTrue(env2.getLanguages().containsKey(LANGUAGE2));
+        assertFalse(env2.getLanguages().containsKey(NOT_EXISTING_LANGUAGE));
+    }
+
+    @Test
+    public void testNotExistingEmbedder() {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, NOT_EXISTING_LANGUAGE).allowPolyglotAccess(PolyglotAccess.ALL).build());
+        context.initialize(LANGUAGE1);
+        try {
+            context.initialize(NOT_EXISTING_LANGUAGE);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id '" + NOT_EXISTING_LANGUAGE + "' is not installed."));
+        }
+        Env env1 = Language1.getContext(Language1.class);
+        assertTrue(env1.getLanguages().containsKey(LANGUAGE1));
+        assertFalse(env1.getLanguages().containsKey(NOT_EXISTING_LANGUAGE));
     }
 
     @Test
@@ -307,7 +334,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
     }
 
-    @Registration(id = LANGUAGE2, name = LANGUAGE2)
+    @Registration(id = LANGUAGE2, name = LANGUAGE2, dependentLanguages = NOT_EXISTING_LANGUAGE)
     public static class Language2 extends Language1 {
     }
 
