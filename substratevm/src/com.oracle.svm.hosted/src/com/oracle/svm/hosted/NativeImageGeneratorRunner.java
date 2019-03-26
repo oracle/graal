@@ -111,7 +111,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 timerTask.cancel();
             }
         }
-        System.exit(exitStatus == 0 ? 0 : 1);
+        System.exit(exitStatus);
     }
 
     public static NativeImageClassLoader installNativeImageClassLoader(String[] classpath) {
@@ -183,7 +183,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     @SuppressWarnings("try")
     private int buildImage(String[] arguments, String[] classpath, ClassLoader classLoader) {
         if (!verifyValidJavaVersionAndPlatform()) {
-            return -1;
+            return 1;
         }
         Timer totalTimer = new Timer("[total]", false);
         ForkJoinPool analysisExecutor = null;
@@ -296,12 +296,15 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             }
             e.getReason().ifPresent(NativeImageGeneratorRunner::info);
             return 0;
+        } catch (FallbackFeature.FallbackImageRequest e) {
+            warn(e.getMessage());
+            return 2;
         } catch (UserException e) {
             reportUserError(e, parsedHostedOptions);
-            return -1;
+            return 1;
         } catch (AnalysisError e) {
             reportUserError(e, parsedHostedOptions);
-            return -1;
+            return 1;
         } catch (ParallelExecutionException pee) {
             boolean hasUserError = false;
             for (Throwable exception : pee.getExceptions()) {
@@ -314,7 +317,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 }
             }
             if (hasUserError) {
-                return -1;
+                return 1;
             }
 
             if (pee.getExceptions().size() > 1) {
@@ -323,10 +326,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             for (Throwable exception : pee.getExceptions()) {
                 NativeImageGeneratorRunner.reportFatalError(exception);
             }
-            return -1;
+            return 1;
         } catch (Throwable e) {
             NativeImageGeneratorRunner.reportFatalError(e);
-            return -1;
+            return 1;
         } finally {
             ImageSingletonsSupportImpl.HostedManagement.clearInThread();
         }
@@ -399,10 +402,19 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     /**
      * Report an informational message in SVM.
      *
-     * @param msg error message that is printed.
+     * @param msg message that is printed.
      */
     private static void info(String msg) {
         System.out.println("Info: " + msg);
+    }
+
+    /**
+     * Report a warning message in SVM.
+     *
+     * @param msg warning message that is printed.
+     */
+    private static void warn(String msg) {
+        System.err.println("Warning: " + msg);
     }
 
     @Override

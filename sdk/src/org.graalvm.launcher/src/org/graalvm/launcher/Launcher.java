@@ -78,10 +78,10 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
+import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
 import org.graalvm.nativeimage.VMRuntime;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -1527,19 +1527,7 @@ public abstract class Launcher {
             for (String arg : command) {
                 argv[i++] = arg;
             }
-            if (execv(executable.toString(), argv) != 0) {
-                int errno = NativeInterface.errno();
-                StringBuilder sb = formatExec(executable, command);
-                sb.append(" failed! ").append(CTypeConversion.toJavaString(NativeInterface.strerror(errno)));
-                throw abort(sb.toString());
-            }
-        }
-
-        private int execv(String executable, String[] argv) {
-            try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable);
-                            CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(argv)) {
-                return NativeInterface.execv(pathHolder.get(), argvHolder.get());
-            }
+            ProcessProperties.exec(executable, argv);
         }
 
         private StringBuilder formatExec(Path executable, List<String> command) {

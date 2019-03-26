@@ -94,7 +94,7 @@ public class UnsupportedFeatures {
      * @throws UnsupportedFeatureException if unsupported features are found
      */
     public void report(BigBang bb) {
-        if (!messages.isEmpty()) {
+        if (exist()) {
             List<Data> entries = new ArrayList<>(messages.values());
             Collections.sort(entries);
 
@@ -134,6 +134,10 @@ public class UnsupportedFeatures {
             }
 
         }
+    }
+
+    public boolean exist() {
+        return !messages.isEmpty();
     }
 
     public void checkMethod(AnalysisMethod method, StructuredGraph graph) {
