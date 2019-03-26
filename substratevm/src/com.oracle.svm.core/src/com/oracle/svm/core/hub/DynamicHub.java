@@ -190,9 +190,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private int[] assignableFromMatches;
 
     /**
-     * List of enum values for subclasses of {@link Enum}; null otherwise.
+     * Reference to a list of enum values for subclasses of {@link Enum}; null otherwise.
      */
-    private Enum<?>[] enumConstants;
+    private Object enumConstantsReference;
 
     /**
      * Reference map information for this hub. The byte[] array encoding data is available via
@@ -373,8 +373,42 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setEnumConstants(Enum<?>[] enumConstants) {
-        this.enumConstants = enumConstants;
+    public boolean shouldInitEnumConstants() {
+        return enumConstantsReference == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void initEnumConstants(Enum<?>[] enumConstants) {
+        /* Enum is eagerly initialized, so no need for `LazyFinalReference`. */
+        enumConstantsReference = enumConstants;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void initEnumConstantsAtRuntime(Class<?> enumClass) {
+        /* Adapted from `Class.getEnumConstantsShared`. */
+        try {
+            Method values = enumClass.getMethod("values");
+            values.setAccessible(true);
+            enumConstantsReference = new LazyFinalReference<>(() -> initEnumConstantsAtRuntime(values));
+        } catch (NoSuchMethodException e) {
+            /*
+             * This can happen when users concoct enum-like classes that don't comply with the enum
+             * spec.
+             */
+        }
+    }
+
+    private static Object initEnumConstantsAtRuntime(Method values) {
+        /* Executed at runtime. */
+        try {
+            return values.invoke(null);
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            /*
+             * These can happen when users concoct enum-like classes that don't comply with the enum
+             * spec.
+             */
+            return null;
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -552,14 +586,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return this.getSuperclass() == java.lang.Enum.class;
     }
 
-    @Substitute
-    private Enum<?>[] getEnumConstants() {
-        return enumConstants != null ? enumConstants.clone() : null;
-    }
+    @KeepOriginal
+    private native Enum<?>[] getEnumConstants();
 
     @Substitute
     public Enum<?>[] getEnumConstantsShared() {
-        return enumConstants;
+        if (enumConstantsReference instanceof LazyFinalReference) {
+            return (Enum<?>[]) ((LazyFinalReference<?>) enumConstantsReference).get();
+        }
+        return (Enum<?>[]) enumConstantsReference;
     }
 
     @Substitute
