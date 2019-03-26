@@ -5,20 +5,24 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNode;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMPThreadIntrinsics {
@@ -58,10 +62,6 @@ public class LLVMPThreadIntrinsics {
             LLVMManagedPointer functionPtr = (LLVMManagedPointer) startRoutine;
             LLVMNativePointer argPtr = (LLVMNativePointer) arg;
 
-            // function pointer
-            TruffleObject function = functionPtr.getObject();
-            LLVMFunctionDescriptor funcDesc = (LLVMFunctionDescriptor) functionPtr.getObject();
-
             // print arg types of function
             Type[] typeArr = ((LLVMFunctionDescriptor) functionPtr.getObject()).asFunction().getType().getArgumentTypes();
             for (Type t : typeArr) {
@@ -72,10 +72,8 @@ public class LLVMPThreadIntrinsics {
 
             // create thread for execution of function
             Thread t = getContextReference().get().getEnv().createThread(() -> {
-                funcDesc.getLLVMIRFunction().getRootNode().execute(frame); // only works when no
-                                                                           // param
-                // funcDesc.getLLVMIRFunction().call(argPtr); // does not work
-                // callN.executeGeneric(frame);
+                CompilerDirectives.transferToInterpreter();
+                Truffle.getRuntime().createCallTarget(new RunNewThreadNode(getLLVMLanguage())).call(startRoutine, arg);
 
                 debugOut.println("func is done...");
                 debugOut.flush();
@@ -102,6 +100,64 @@ public class LLVMPThreadIntrinsics {
         private void printDebug(String str) {
             debugOut.write(str);
             debugOut.flush();
+        }
+    }
+
+    static class MyArgNode extends LLVMExpressionNode {
+
+        private FrameSlot slot;
+
+        private MyArgNode(FrameSlot slot) {
+            this.slot = slot;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return frame.getValue(slot);
+        }
+    }
+
+    private static class RunNewThreadNode extends RootNode {
+
+        @Child LLVMExpressionNode callNode = null;
+
+        @CompilerDirectives.CompilationFinal
+        FrameSlot functionSlot = null;
+
+        @CompilerDirectives.CompilationFinal
+        FrameSlot argSlot = null;
+
+        protected RunNewThreadNode(LLVMLanguage language) {
+            super(language);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+
+            if (callNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                functionSlot = frame.getFrameDescriptor().findOrAddFrameSlot("function");
+                argSlot = frame.getFrameDescriptor().findOrAddFrameSlot("arg");
+
+                callNode = getCurrentContext(LLVMLanguage.class).getNodeFactory().createFunctionCall(
+                        new MyArgNode(functionSlot),
+                        new LLVMExpressionNode[] {
+                                new MyArgNode(argSlot)
+                        },
+                        new FunctionType(PointerType.VOID, new Type[] {}, false),
+                        null
+                );
+            }
+
+            // copy arguments to frame
+            final Object[] arguments = frame.getArguments();
+            Object function = arguments[0];
+            Object arg = arguments[1];
+            frame.setObject(functionSlot, function);
+            frame.setObject(argSlot, arg);
+
+            callNode.executeGeneric(frame);
+            return null;
         }
     }
 
