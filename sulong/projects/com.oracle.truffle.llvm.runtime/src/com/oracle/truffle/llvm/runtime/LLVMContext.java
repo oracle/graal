@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.*;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -87,6 +88,11 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
+    // my code start
+    public final Map<Long, Object> retValStorage;
+    public final Map<Long, Object> threadStorage;
+    // my code end
+
     private final List<Path> libraryPaths = new ArrayList<>();
     @CompilationFinal private Path internalLibraryPath;
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
@@ -212,6 +218,8 @@ public final class LLVMContext {
         } else {
             tracer = null;
         }
+        retValStorage = new HashMap<>();
+        threadStorage = new HashMap<>();
     }
 
     private static final class InitializeContextNode extends LLVMStatementNode {

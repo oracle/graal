@@ -122,9 +122,6 @@ int pthread_condattr_init(pthread_condattr_t *attr) {
 int pthread_condattr_setpshared(pthread_condattr_t *attr, int pshared) {
   ERR_UNSUPPORTED(pthread_condattr_setpshared);
 }
-int pthread_create(pthread_t *restrict thread, const pthread_attr_t *restrict attr, void *(*start_routine)(void *), void *restrict arg) {
-  ERR_UNSUPPORTED(pthread_create);
-}
 int pthread_detach(pthread_t thread) {
   ERR_UNSUPPORTED(pthread_detach);
 }
@@ -134,9 +131,6 @@ int pthread_equal(pthread_t t1, pthread_t t2) {
   ERR_UNSUPPORTED(pthread_equal);
 }
 #endif
-void pthread_exit(void *value_ptr) {
-  ERR_UNSUPPORTED(pthread_exit);
-}
 int pthread_getconcurrency(void) {
   ERR_UNSUPPORTED(pthread_getconcurrency);
 }
@@ -145,9 +139,6 @@ int pthread_getschedparam(pthread_t thread, int *restrict policy, struct sched_p
 }
 void *pthread_getspecific(pthread_key_t key) {
   ERR_UNSUPPORTED(pthread_getspecific);
-}
-int pthread_join(pthread_t thread, void **value_ptr) {
-  ERR_UNSUPPORTED(pthread_join);
 }
 int pthread_key_create(pthread_key_t *key, void (*destructor)(void *)) {
   ERR_UNSUPPORTED(pthread_key_create);
