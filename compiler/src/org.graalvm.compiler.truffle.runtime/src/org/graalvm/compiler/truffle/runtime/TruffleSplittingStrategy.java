@@ -49,7 +49,7 @@ final class TruffleSplittingStrategy {
 
     static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         if (RuntimeOptionsCache.isTraceSplittingSummary()) {
-            final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
+            final EngineData engineData = getEngineData(call, tvmci);
             reporter.engineDataSet.add(engineData);
             if (call.getCurrentCallTarget().getCompilationProfile().getCallCount() == 0) {
                 reporter.totalExecutedNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
@@ -57,7 +57,7 @@ final class TruffleSplittingStrategy {
         }
         if (RuntimeOptionsCache.isLegacySplitting()) {
             if (call.getCallCount() == 2) {
-                final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
+                final EngineData engineData = getEngineData(call, tvmci);
                 if (legacyShouldSplit(call, engineData)) {
                     engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
                     doSplit(call);
@@ -66,13 +66,13 @@ final class TruffleSplittingStrategy {
             return;
         }
         if (shouldSplit(call, tvmci)) {
-            final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
+            final EngineData engineData = tvmci.getEngineData(call.getRootNode());
             engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
             doSplit(call);
         }
     }
 
-    private static GraalTVMCI.EngineData getEngineData(OptimizedDirectCallNode callNode, GraalTVMCI tvmci) {
+    private static EngineData getEngineData(OptimizedDirectCallNode callNode, GraalTVMCI tvmci) {
         return tvmci.getEngineData(callNode.getCallTarget().getRootNode());
     }
 
@@ -93,7 +93,7 @@ final class TruffleSplittingStrategy {
         if (!callTarget.isNeedsSplit()) {
             return false;
         }
-        final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
+        final EngineData engineData = getEngineData(call, tvmci);
         if (!canSplit(call) || isRecursiveSplit(call, EXPERIMENTAL_RECURSIVE_SPLIT_DEPTH) || engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
             return false;
         }
@@ -108,7 +108,7 @@ final class TruffleSplittingStrategy {
             if (!canSplit(call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
                 return;
             }
-            final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
+            final EngineData engineData = getEngineData(call, tvmci);
             engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
             doSplit(call);
             if (RuntimeOptionsCache.isTraceSplittingSummary()) {
@@ -130,7 +130,7 @@ final class TruffleSplittingStrategy {
         return true;
     }
 
-    private static boolean legacyShouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
+    private static boolean legacyShouldSplit(OptimizedDirectCallNode call, EngineData engineData) {
         // In general, splitting in multi-tier compilations could be useful,
         // but enabling splitting as-is currently overflows the compiler with too many requests.
         if (SharedTruffleRuntimeOptions.TruffleMultiTier.getValue(getOptions())) {
@@ -229,7 +229,7 @@ final class TruffleSplittingStrategy {
     static void newTargetCreated(GraalTVMCI tvmci, RootCallTarget target) {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
         if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplitting)) {
-            final GraalTVMCI.EngineData engineData = tvmci.getEngineData(target.getRootNode());
+            final EngineData engineData = tvmci.getEngineData(target.getRootNode());
             final int newLimit = (int) (engineData.splitLimit + TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit) * callTarget.getUninitializedNodeCount());
             engineData.splitLimit = Math.min(newLimit, TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes));
         }
@@ -268,7 +268,7 @@ final class TruffleSplittingStrategy {
     }
 
     static class SplitStatisticsReporter extends Thread {
-        final Set<GraalTVMCI.EngineData> engineDataSet = new HashSet<>();
+        final Set<EngineData> engineDataSet = new HashSet<>();
         final Map<Class<? extends Node>, Integer> polymorphicNodes = new HashMap<>();
         final Map<OptimizedCallTarget, Integer> splitTargets = new HashMap<>();
         int splitCount;
@@ -293,7 +293,7 @@ final class TruffleSplittingStrategy {
         @Override
         public void run() {
             final GraalTruffleRuntime rt = GraalTruffleRuntime.getRuntime();
-            for (GraalTVMCI.EngineData engineData : engineDataSet) {
+            for (EngineData engineData : engineDataSet) {
                 rt.log(String.format(D_FORMAT, "Split count", engineData.splitCount));
                 rt.log(String.format(D_FORMAT, "Split limit", engineData.splitLimit));
             }

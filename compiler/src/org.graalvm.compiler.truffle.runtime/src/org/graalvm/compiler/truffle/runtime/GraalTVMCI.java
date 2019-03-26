@@ -141,15 +141,6 @@ final class GraalTVMCI extends TVMCI {
         return super.getOrCreateRuntimeData(rootNode, constructor);
     }
 
-    /**
-     * Class used to store data used by the compiler in the Engine. Enables "global" compiler state
-     * per engine.
-     */
-    static class EngineData {
-        int splitLimit;
-        int splitCount;
-    }
-
     private static final Supplier<EngineData> engineDataConstructor = new Supplier<EngineData>() {
         @Override
         public EngineData get() {
