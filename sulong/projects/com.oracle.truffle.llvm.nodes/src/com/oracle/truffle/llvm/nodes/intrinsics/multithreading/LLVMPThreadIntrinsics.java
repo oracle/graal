@@ -22,6 +22,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMPThreadIntrinsics {
+
     public static PrintWriter debugOut = null;
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -41,6 +42,7 @@ public class LLVMPThreadIntrinsics {
             }
 
             if (debugOut == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 try {
                     debugOut = new PrintWriter(new FileWriter("/home/florian/debug out"));
                 } catch (IOException e) {
@@ -62,9 +64,10 @@ public class LLVMPThreadIntrinsics {
 
             // print arg types of function
             Type[] typeArr = ((LLVMFunctionDescriptor) functionPtr.getObject()).asFunction().getType().getArgumentTypes();
-            for (Type t : typeArr)
-                debugOut.write("type: " + t.toString() + "\n");
-            debugOut.flush();
+            for (Type t : typeArr) {
+                printDebug("type: " + t.toString() + "\n");
+            }
+
             // void pointer arg is type i8*...
 
             // create thread for execution of function
@@ -94,7 +97,15 @@ public class LLVMPThreadIntrinsics {
 
             return 0;
         }
+
+        @CompilerDirectives.TruffleBoundary
+        private void printDebug(String str) {
+            debugOut.write(str);
+            debugOut.flush();
+        }
     }
+
+
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadExit extends LLVMBuiltin {
