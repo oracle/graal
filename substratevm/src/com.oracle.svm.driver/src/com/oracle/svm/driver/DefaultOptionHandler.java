@@ -45,6 +45,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         super(nativeImage);
     }
 
+    boolean useDebugAttach = false;
+
     @Override
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
@@ -126,6 +128,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
         String debugAttach = "--debug-attach";
         if (headArg.startsWith(debugAttach)) {
+            if (useDebugAttach) {
+                throw NativeImage.showError("The " + debugAttach + " option can only be used once.");
+            }
+            useDebugAttach = true;
             String debugAttachArg = args.poll();
             String portSuffix = debugAttachArg.substring(debugAttach.length());
             int debugPort = 8000;
@@ -133,7 +139,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 try {
                     debugPort = Integer.parseInt(portSuffix.substring(1));
                 } catch (NumberFormatException e) {
-                    NativeImage.showError("Invalid --debug-attach option: " + debugAttachArg);
+                    NativeImage.showError("Invalid " + debugAttach + " option: " + debugAttachArg);
                 }
             }
             nativeImage.addImageBuilderJavaArgs("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
