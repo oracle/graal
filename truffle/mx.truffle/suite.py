@@ -969,6 +969,9 @@ suite = {
       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
       "distDependencies" : [
         "TRUFFLE_API",
+        "TRUFFLE_SL",
+        "TRUFFLE_TCK",
+        "sdk:POLYGLOT_TCK",
         "TRUFFLE_DSL_PROCESSOR",
       ],
       "description" : "Instrumentation tests including InstrumentationTestLanguage.",
