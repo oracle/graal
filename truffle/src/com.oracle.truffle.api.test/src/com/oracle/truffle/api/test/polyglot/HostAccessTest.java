@@ -40,21 +40,29 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
-import org.junit.Assert;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Test;
+
+import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
 public class HostAccessTest {
     public static class OK {
@@ -67,17 +75,17 @@ public class HostAccessTest {
 
     @Test
     public void usefulToStringExplicit() {
-        Assert.assertEquals("HostAccess.EXPLICIT", HostAccess.EXPLICIT.toString());
+        assertEquals("HostAccess.EXPLICIT", HostAccess.EXPLICIT.toString());
     }
 
     @Test
     public void usefulToStringPublic() {
-        Assert.assertEquals("HostAccess.ALL", HostAccess.ALL.toString());
+        assertEquals("HostAccess.ALL", HostAccess.ALL.toString());
     }
 
     @Test
     public void usefulToStringNone() {
-        Assert.assertEquals("HostAccess.NONE", HostAccess.NONE.toString());
+        assertEquals("HostAccess.NONE", HostAccess.NONE.toString());
     }
 
     public static class MyEquals {
@@ -259,14 +267,11 @@ public class HostAccessTest {
     public void useOneHostAccessByTwoContexts() throws Exception {
         HostAccess config = HostAccess.newBuilder().allowAccess(OK.class.getField("value")).build();
 
-        Context c1 = Context.newBuilder().allowHostAccess(config).build();
-        Context c2 = Context.newBuilder().allowHostAccess(config).build();
-        try {
+        try (
+                        Context c1 = Context.newBuilder().allowHostAccess(config).build();
+                        Context c2 = Context.newBuilder().allowHostAccess(config).build()) {
             assertAccess(c1);
             assertAccess(c2);
-        } finally {
-            c2.close();
-            c1.close();
         }
     }
 
@@ -278,7 +283,7 @@ public class HostAccessTest {
                         "function main() {\n" +
                         "  return readValue;\n" +
                         "}\n");
-        Assert.assertEquals(42, readValue.execute(new OK()).asInt());
+        assertEquals(42, readValue.execute(new OK()).asInt());
         ExposeToGuestTest.assertPropertyUndefined("public isn't enough by default", "value", readValue, new Ban());
     }
 
@@ -287,16 +292,117 @@ public class HostAccessTest {
         Engine shared = Engine.create();
 
         HostAccess config = HostAccess.newBuilder().allowAccess(OK.class.getField("value")).build();
-
         Context c1 = Context.newBuilder().engine(shared).allowHostAccess(config).build();
-        Context c2;
+        Context.Builder builder = Context.newBuilder().engine(shared).allowHostAccess(HostAccess.ALL);
         try {
-            c2 = Context.newBuilder().engine(shared).allowHostAccess(HostAccess.ALL).build();
+            builder.build();
+            fail();
         } catch (IllegalStateException ex) {
-            Assert.assertNotEquals("Can't have one engine between two HostAccess configs: " + ex.getMessage(), -1, ex.getMessage().indexOf("Cannot share engine"));
-            return;
+            assertTrue(ex.getMessage(), ex.getMessage().startsWith("Found different host access configuration for a context with a shared engine."));
         }
-        Assert.assertNotEquals("cannot share engine for different HostAccess configs", c1.getEngine(), c2.getEngine());
+        c1.close();
+    }
+
+    @Test
+    public void testArrayAccessEnabled() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowArrayAccess(true).build();
+        try (Context context = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            int[] array = new int[]{1, 2, 3};
+            Value value = context.asValue(array);
+            assertTrue(value.hasArrayElements());
+            assertEquals(3, value.getArraySize());
+            assertEquals(1, value.getArrayElement(0).asInt());
+            assertEquals(2, value.getArrayElement(1).asInt());
+            assertEquals(3, value.getArrayElement(2).asInt());
+            value.setArrayElement(2, 42);
+            assertEquals(42, value.getArrayElement(2).asInt());
+            assertEquals(42, array[2]);
+            assertSame(array, value.asHostObject());
+            array[2] = 43;
+            assertEquals(43, value.getArrayElement(2).asInt());
+            try {
+                value.removeArrayElement(2);
+                fail();
+            } catch (UnsupportedOperationException e) {
+            }
+            assertEquals(0, value.getMemberKeys().size());
+            ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT);
+        }
+    }
+
+    @Test
+    public void testArrayAccessDisabled() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowArrayAccess(false).build();
+        try (Context context = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            assertArrayAccessDisabled(context);
+        }
+    }
+
+    @Test
+    public void testPublicAccessNoArrayAccess() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowPublicAccess(true).build();
+        try (Context context = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            assertArrayAccessDisabled(context);
+        }
+    }
+
+    private static void assertArrayAccessDisabled(Context context) {
+        int[] array = new int[]{1, 2, 3};
+        Value value = context.asValue(array);
+        assertSame(array, value.asHostObject());
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    @Test
+    public void testListAccessEnabled() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowListAccess(true).build();
+        try (Context context = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            List<Integer> array = new ArrayList<>(Arrays.asList(1, 2, 3));
+            Value value = context.asValue(array);
+            assertTrue(value.hasArrayElements());
+            assertEquals(3, value.getArraySize());
+            assertEquals(1, value.getArrayElement(0).asInt());
+            assertEquals(2, value.getArrayElement(1).asInt());
+            assertEquals(3, value.getArrayElement(2).asInt());
+            value.setArrayElement(2, 42);
+            assertEquals(42, value.getArrayElement(2).asInt());
+            assertEquals(42, (int) array.get(2));
+
+            array.set(2, 43);
+            assertEquals(43, value.getArrayElement(2).asInt());
+
+            value.removeArrayElement(2);
+            assertEquals(2, value.getArraySize());
+            assertSame(array, value.asHostObject());
+
+            assertEquals(0, value.getMemberKeys().size());
+
+            ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT);
+            assertArrayAccessDisabled(context);
+        }
+    }
+
+    @Test
+    public void testListAccessDisabled() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowListAccess(false).build();
+        try (Context context = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            assertListAccessDisabled(context);
+        }
+    }
+
+    @Test
+    public void testPublicAccessNoListAccess() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowPublicAccess(true).allowListAccess(false).build();
+        try (Context context = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            assertListAccessDisabled(context);
+        }
+    }
+
+    private static void assertListAccessDisabled(Context context) {
+        List<Integer> array = new ArrayList<>(Arrays.asList(1, 2, 3));
+        Value value = context.asValue(array);
+        assertSame(array, value.asHostObject());
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
     public static class MyClassLoader extends URLClassLoader {

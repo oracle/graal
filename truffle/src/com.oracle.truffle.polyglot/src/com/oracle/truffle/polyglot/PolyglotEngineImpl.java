@@ -926,15 +926,16 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
         ENGINES.clear();
     }
 
-    void assignHostAccess(HostAccess policy) {
+    void initializeHostAccess(HostAccess policy) {
         assert Thread.holdsLock(this);
-        HostAccess nonNullAccess = policy == null ? HostAccess.EXPLICIT : policy;
-        if (hostClassCache != null) {
-            if (!hostClassCache.checkHostAccess(nonNullAccess)) {
-                throw new IllegalStateException("Cannot share engine between contexts with different HostAccess");
-            }
+        assert policy != null;
+        HostClassCache cache = HostClassCache.findOrInitialize(getAPIAccess(), policy);
+        if (this.hostClassCache != null && this.hostClassCache != cache) {
+            throw new IllegalStateException("Found different host access configuration for a context with a shared engine. " +
+                            "The host access configuration must be the same for all contexts of an engine. " +
+                            "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
         } else {
-            hostClassCache = HostClassCache.find(getAPIAccess(), nonNullAccess);
+            this.hostClassCache = cache;
         }
     }
 
@@ -1105,7 +1106,7 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
                             "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
         }
 
-        assignHostAccess(access);
+        initializeHostAccess(access);
 
         Set<String> allowedLanguages;
         if (onlyLanguages.length == 0) {
@@ -1134,9 +1135,10 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
 
         Handler useHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
         useHandler = useHandler != null ? useHandler : logHandler;
-        useHandler = useHandler != null ? useHandler : PolyglotLogHandler.createStreamHandler(
-                        configErr == null ? INSTRUMENT.getOut(this.err) : configErr,
-                        false, true);
+        useHandler = useHandler != null ? useHandler
+                        : PolyglotLogHandler.createStreamHandler(
+                                        configErr == null ? INSTRUMENT.getOut(this.err) : configErr,
+                                        false, true);
 
         final InputStream useIn = configIn == null ? this.in : configIn;
 

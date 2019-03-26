@@ -44,6 +44,7 @@ import java.lang.reflect.Array;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -60,6 +61,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
 @ExportLibrary(InteropLibrary.class)
@@ -141,14 +143,6 @@ final class HostObject implements TruffleObject {
         return false;
     }
 
-    private boolean isList() {
-        return obj instanceof List;
-    }
-
-    private boolean isArray() {
-        return obj != null && obj.getClass().isArray();
-    }
-
     boolean isDefaultClass() {
         if (isClass() && !asClass().isArray()) {
             return true;
@@ -184,13 +178,49 @@ final class HostObject implements TruffleObject {
 
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    final class KeysArray implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final String[] keys;
+
+        KeysArray(String[] keys) {
+            this.keys = keys;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return keys.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return 0 <= idx && idx < keys.length;
+        }
+
+        @ExportMessage
+        String readArrayElement(long idx,
+                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(idx)) {
+                exception.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+            return keys[(int) idx];
+        }
+    }
+
     @ExportMessage
     Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
         if (isNull()) {
             throw UnsupportedMessageException.create();
         }
         String[] fields = HostInteropReflect.findUniquePublicMemberNames(getEngine(), getLookupClass(), isStaticClass(), isClass(), includeInternal);
-        return HostObject.forObject(fields, this.languageContext);
+        return new KeysArray(fields);
     }
 
     @ExportMessage
@@ -658,7 +688,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    protected boolean isNumber() {
+    boolean isNumber() {
         if (isNull()) {
             return false;
         }
@@ -1171,9 +1201,9 @@ final class HostObject implements TruffleObject {
 
         @Specialization
         public boolean doDefault(HostObject receiver,
-                        @Cached(value = "receiver.getHostClassCache().isPublicAccess()", allowUncached = true) boolean publicAccess) {
-            assert receiver.getHostClassCache().isPublicAccess() == publicAccess;
-            return publicAccess && receiver.isList();
+                        @Cached(value = "receiver.getHostClassCache().isListAccess()", allowUncached = true) boolean isListAccess) {
+            assert receiver.getHostClassCache().isListAccess() == isListAccess;
+            return isListAccess && receiver.obj instanceof List;
         }
 
     }
@@ -1185,9 +1215,9 @@ final class HostObject implements TruffleObject {
 
         @Specialization
         public boolean doDefault(HostObject receiver,
-                        @Cached(value = "receiver.getHostClassCache().isPublicAccess()", allowUncached = true) boolean publicAccess) {
-            assert receiver.getHostClassCache().isPublicAccess() == publicAccess;
-            return publicAccess && receiver.obj != null && receiver.obj.getClass().isArray();
+                        @Cached(value = "receiver.getHostClassCache().isArrayAccess()", allowUncached = true) boolean isArrayAccess) {
+            assert receiver.getHostClassCache().isArrayAccess() == isArrayAccess;
+            return isArrayAccess && receiver.obj != null && receiver.obj.getClass().isArray();
         }
 
     }

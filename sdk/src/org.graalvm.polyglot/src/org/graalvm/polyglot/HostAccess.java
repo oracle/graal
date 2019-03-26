@@ -52,11 +52,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * Represents the host access policy of a polyglot context. The host access policy specifies which
@@ -79,19 +79,15 @@ import java.util.function.Function;
  * @since 1.0
  */
 public final class HostAccess {
-    private static final BiFunction<HostAccess, AnnotatedElement, Boolean> ACCESS = new BiFunction<HostAccess, AnnotatedElement, Boolean>() {
-        @Override
-        public Boolean apply(HostAccess t, AnnotatedElement u) {
-            return t.allowAccess(u);
-        }
-    };
 
     private final String name;
     private final Set<Class<? extends Annotation>> annotations;
     private final Map<Class<?>, Boolean> excludeTypes;
     private final Set<AnnotatedElement> members;
     private final boolean allowPublic;
-    private Object impl;
+    final boolean allowArrayAccess;
+    final boolean allowListAccess;
+    volatile Object impl;
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
@@ -120,12 +116,12 @@ public final class HostAccess {
      * Equivalent of using the following builder configuration:
      *
      * <pre>
-     * HostAccess.newBuilder().allowPublicAccess(true).build();
+     * HostAccess.newBuilder().allowPublicAccess(true).allowArrayAccess(true).allowListAccess(true).build();
      * </pre>
      *
      * @since 1.0
      */
-    public static final HostAccess ALL = newBuilder().allowPublicAccess(true).name("HostAccess.ALL").build();
+    public static final HostAccess ALL = newBuilder().allowPublicAccess(true).allowArrayAccess(true).allowListAccess(true).name("HostAccess.ALL").build();
 
     /**
      * Predefined host access policy that disallows any access to public host methods or fields.
@@ -140,12 +136,16 @@ public final class HostAccess {
      */
     public static final HostAccess NONE = newBuilder().name("HostAccess.NONE").build();
 
-    HostAccess(Set<Class<? extends Annotation>> annotations, Map<Class<?>, Boolean> excludeTypes, Set<AnnotatedElement> members, String name, boolean allowPublic) {
-        this.annotations = annotations;
-        this.excludeTypes = excludeTypes;
-        this.members = members;
+    HostAccess(Set<Class<? extends Annotation>> annotations, Map<Class<?>, Boolean> excludeTypes, Set<AnnotatedElement> members, String name, boolean allowPublic, boolean allowArrayAccess,
+                    boolean allowListAccess) {
+        // create defensive copies
+        this.annotations = annotations != null ? new LinkedHashSet<>(annotations) : null;
+        this.excludeTypes = excludeTypes != null ? new LinkedHashMap<>(excludeTypes) : null;
+        this.members = members != null ? new LinkedHashSet<>(members) : null;
         this.name = name;
         this.allowPublic = allowPublic;
+        this.allowArrayAccess = allowArrayAccess;
+        this.allowListAccess = allowListAccess;
     }
 
     /**
@@ -155,10 +155,10 @@ public final class HostAccess {
      * @since 1.0
      */
     public static Builder newBuilder() {
-        return new HostAccess(null, null, null, null, false).new Builder();
+        return new HostAccess(null, null, null, null, false, false, false).new Builder();
     }
 
-    boolean allowAccess(AnnotatedElement member) {
+    boolean allowsAccess(AnnotatedElement member) {
         if (excludeTypes != null) {
             Class<?> owner = getDeclaringClass(member);
             for (Map.Entry<Class<?>, Boolean> entry : excludeTypes.entrySet()) {
@@ -189,13 +189,6 @@ public final class HostAccess {
             }
         }
         return false;
-    }
-
-    synchronized <T> T connectHostAccess(Class<T> type, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory) {
-        if (impl == null) {
-            impl = factory.apply(ACCESS);
-        }
-        return type.cast(impl);
     }
 
     /**
@@ -283,6 +276,8 @@ public final class HostAccess {
         private final Map<Class<?>, Boolean> excludeTypes = new HashMap<>();
         private final Set<AnnotatedElement> members = new HashSet<>();
         private boolean allowPublic;
+        private boolean allowListAccess;
+        private boolean allowArrayAccess;
         private String name;
 
         Builder() {
@@ -362,6 +357,30 @@ public final class HostAccess {
             return this;
         }
 
+        /**
+         * Allows the guest application to access arrays as values with
+         * {@link Value#hasArrayElements() array elements}. By default no array access is allowed.
+         *
+         * @see Value#hasArrayElements()
+         * @since 1.0
+         */
+        public Builder allowArrayAccess(boolean arrayAccess) {
+            this.allowArrayAccess = arrayAccess;
+            return this;
+        }
+
+        /**
+         * Allows the guest application to access lists as values with
+         * {@link Value#hasArrayElements() array elements}. By default no array access is allowed.
+         *
+         * @see Value#hasArrayElements()
+         * @since 1.0
+         */
+        public Builder allowListAccess(boolean listAccess) {
+            this.allowListAccess = listAccess;
+            return this;
+        }
+
         HostAccess.Builder name(String givenName) {
             this.name = givenName;
             return this;
@@ -373,7 +392,7 @@ public final class HostAccess {
          * @since 1.0
          */
         public HostAccess build() {
-            return new HostAccess(annotations, excludeTypes, members, name, allowPublic);
+            return new HostAccess(annotations, excludeTypes, members, name, allowPublic, allowArrayAccess, allowListAccess);
         }
     }
 }

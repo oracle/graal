@@ -59,9 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
@@ -142,7 +140,15 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
-        public abstract <T> T connectHostAccess(Class<T> impl, HostAccess conf, Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, T> factory);
+        public abstract boolean allowsAccess(HostAccess access, AnnotatedElement element);
+
+        public abstract boolean isArrayAccessible(HostAccess access);
+
+        public abstract boolean isListAccessible(HostAccess access);
+
+        public abstract Object getHostAccessImpl(HostAccess conf);
+
+        public abstract void setHostAccessImpl(HostAccess conf, Object impl);
     }
 
     // shared SPI
