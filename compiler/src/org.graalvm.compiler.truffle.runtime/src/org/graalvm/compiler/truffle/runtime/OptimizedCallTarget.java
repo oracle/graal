@@ -773,7 +773,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     void polymorphicSpecialize(Node source) {
-        assert engineData.options.isLegacySplitting();
+        assert !engineData.options.isLegacySplitting();
         List<Node> toDump = null;
         if (engineData.options.isSplittingDumpDecisions()) {
             toDump = new ArrayList<>();
