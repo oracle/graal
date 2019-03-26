@@ -71,17 +71,15 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
+    @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
+
+    @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(4);
+
     /*
      * TODO planned options:
      *
-    @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.",
-                    category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
-
-    @Option(help = "Maximum depth for recursive inlining.",
-                    category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(4);
-
     @Option(help = "Enable automatic duplication of compilation profiles (splitting).",
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Splitting = new OptionKey<>(true);
@@ -110,7 +108,10 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(TraceCompilationDetails, SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails);
         POLYGLOT_TO_TRUFFLE.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
         POLYGLOT_TO_TRUFFLE.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);
+
         POLYGLOT_TO_TRUFFLE.put(Inlining, SharedTruffleRuntimeOptions.TruffleFunctionInlining);
+        POLYGLOT_TO_TRUFFLE.put(InliningNodeBudget, SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
+        POLYGLOT_TO_TRUFFLE.put(InliningRecursionDepth, SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining);
     }
 
     static OptionValues getPolyglotValues(RootNode root) {

@@ -175,7 +175,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 buildDecisions(true);
         // @formatter:on
         assertNotInlined(decisions, "callee");
-        Assert.assertTrue("Wrong reason for not inlining!", decisions.getCallSites().get(0).getProfile().getFailedReason().startsWith("deepNodeCount * callSites  >"));
+        Assert.assertTrue("Wrong reason for not inlining!", decisions.getCallSites().get(0).getProfile().getDebugProperties().get("reason").toString().startsWith("deepNodeCount * callSites >"));
     }
 
     @Test
