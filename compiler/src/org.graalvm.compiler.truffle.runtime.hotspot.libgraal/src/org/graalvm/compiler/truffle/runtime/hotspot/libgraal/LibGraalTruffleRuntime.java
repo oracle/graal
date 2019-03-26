@@ -132,12 +132,6 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         HotSpotToSVMCalls.log(getIsolateThreadId(), message);
     }
 
-    @Override
-    public String getName() {
-        String name = super.getName();
-        return name + " compiler-native";
-    }
-
     /**
      * Clears JNI GlobalReferences to HotSpot objects held by object on SVM heap. NOTE: This method
      * is called reflectively by Truffle tests.
