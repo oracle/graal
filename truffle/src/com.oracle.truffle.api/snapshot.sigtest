@@ -232,7 +232,6 @@ meth public java.lang.String getPath()
 meth public java.lang.String toString()
 meth public java.net.URI toRelativeUri()
 meth public java.net.URI toUri()
-meth public java.nio.charset.Charset getEncoding() throws java.io.IOException
 meth public java.nio.file.DirectoryStream<com.oracle.truffle.api.TruffleFile> newDirectoryStream() throws java.io.IOException
 meth public java.util.Collection<com.oracle.truffle.api.TruffleFile> list() throws java.io.IOException
 meth public void createLink(com.oracle.truffle.api.TruffleFile) throws java.io.IOException

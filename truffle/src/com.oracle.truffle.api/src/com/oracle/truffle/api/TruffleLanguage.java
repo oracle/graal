@@ -2693,7 +2693,8 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
-            return mimeType == null ? file.getEncoding() : file.getEncoding(mimeType);
+            String useMimeType = mimeType == null ? file.getMimeType() : mimeType;
+            return useMimeType == null ? null : file.getEncoding(useMimeType);
         }
 
         @Override

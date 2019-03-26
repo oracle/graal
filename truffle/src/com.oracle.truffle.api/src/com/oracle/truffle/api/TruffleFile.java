@@ -1467,21 +1467,6 @@ public final class TruffleFile {
         }
     }
 
-    /**
-     * Returns the {@link TruffleFile file} encoding. For a file containing an encoding information
-     * returns the encoding.
-     *
-     * @return the file encoding or {@code null} if the file does not provide encoding
-     * @throws IOException in case of IO error
-     * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
-     */
-    @TruffleBoundary
-    public Charset getEncoding() throws IOException {
-        String mimeType = getMimeType();
-        return mimeType != null ? getEncoding(mimeType) : null;
-    }
-
     Charset getEncoding(String mimeType) throws IOException {
         try {
             assert mimeType != null;
@@ -1535,7 +1520,9 @@ public final class TruffleFile {
         /**
          * For a file containing an encoding information returns the encoding.
          *
-         * @param file the {@link TruffleFile file} to find an encoding for
+         * @param file the {@link TruffleFile file} to find an encoding for. It's guaranteed that
+         *            the {@code file} has a MIME type supported by the language registering this
+         *            {@link FileTypeDetector}.
          * @return the file encoding or {@code null} if the file does not provide encoding
          * @throws IOException of an I/O error occurs
          * @throws SecurityException if the {@link FileSystem} denies the file access

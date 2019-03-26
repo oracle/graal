@@ -703,7 +703,7 @@ public abstract class Source {
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @since 1.0
      */
     @Override
@@ -1597,9 +1597,8 @@ public abstract class Source {
 
         /**
          * Explicitly assigns an encoding used to read the file content. If the encoding is
-         * {@code null} then the {@link TruffleFile#getEncoding() file contained encoding
-         * information} is used. If the file doesn't provide an encoding information the default
-         * {@code UTF-8} encoding is used.
+         * {@code null} then the file contained encoding information is used. If the file doesn't
+         * provide an encoding information the default {@code UTF-8} encoding is used.
          *
          * @param encoding the new file encoding to be used for reading the content
          * @return instance of <code>this</code> builder ready to {@link #build() create new source}
