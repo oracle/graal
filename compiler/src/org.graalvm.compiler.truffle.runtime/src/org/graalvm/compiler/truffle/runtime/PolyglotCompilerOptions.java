@@ -68,13 +68,12 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print information for splitting decisions.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
 
+    @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
+
     /*
      * TODO planned options:
      *
-    @Option(help = "Enable automatic inlining of guest language roots.",
-                    category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
-
     @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.",
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
@@ -111,6 +110,7 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(TraceCompilationDetails, SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails);
         POLYGLOT_TO_TRUFFLE.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
         POLYGLOT_TO_TRUFFLE.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);
+        POLYGLOT_TO_TRUFFLE.put(Inlining, SharedTruffleRuntimeOptions.TruffleFunctionInlining);
     }
 
     static OptionValues getPolyglotValues(RootNode root) {
