@@ -62,6 +62,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 
@@ -1175,7 +1176,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         engine.err,
                         engine.in,
                         false,
-                        null,
+                        PolyglotAccess.ALL, // TODO change this to NONE with GR-14657
                         false,
                         false,
                         false,
