@@ -799,6 +799,15 @@ suite = {
       "description": "Sulong documentation, license",
       "license" : "BSD-new",
     },
+    "SULONG_LEGACY" : {
+      "native" : True,
+      "layout" : {
+        "./include/" : [
+          "file:include/truffle.h",
+        ],
+      },
+      "license" : "BSD-new",
+    },
     "SULONG_GRAALVM_DOCS" : {
       "native" : True,
       "platformDependent" : True,
