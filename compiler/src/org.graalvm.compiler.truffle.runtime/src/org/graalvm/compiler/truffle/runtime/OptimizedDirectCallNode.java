@@ -52,7 +52,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     public OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
         assert target.getSourceCallTarget() == null;
-        RuntimeOptionsCache.reinitialize();
     }
 
     @Override
