@@ -570,7 +570,7 @@ public final class Context implements AutoCloseable {
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @since 1.0
      */
     @Override
@@ -584,7 +584,7 @@ public final class Context implements AutoCloseable {
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @since 1.0
      */
     @Override

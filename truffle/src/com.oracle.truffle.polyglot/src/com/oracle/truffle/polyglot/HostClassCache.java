@@ -40,28 +40,47 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.function.BiFunction;
-import java.util.function.Function;
+
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class HostClassCache {
-    private final HostAccess hostAccess;
-    private final BiFunction<HostAccess, AnnotatedElement, Boolean> access;
-    private final boolean publicAccess;
 
-    private HostClassCache(BiFunction<HostAccess, AnnotatedElement, Boolean> access, HostAccess conf) {
-        this.access = access;
+    private final APIAccess apiAccess;
+    private final HostAccess hostAccess;
+    private final boolean arrayAccess;
+    private final boolean listAccess;
+
+    private HostClassCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
         this.hostAccess = conf;
-        this.publicAccess = access.apply(conf, HostClassCache.class);
+        this.arrayAccess = apiAccess.isArrayAccessible(hostAccess);
+        this.listAccess = apiAccess.isListAccessible(hostAccess);
+        this.apiAccess = apiAccess;
     }
 
-    public static HostClassCache find(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
-        return apiAccess.connectHostAccess(HostClassCache.class, conf, new Factory(conf));
+    public static HostClassCache findOrInitialize(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
+        HostClassCache cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
+        if (cache == null) {
+            cache = initializeHostCache(apiAccess, conf);
+        }
+        return cache;
+    }
+
+    private static HostClassCache initializeHostCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
+        HostClassCache cache;
+        synchronized (conf) {
+            cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
+            if (cache == null) {
+                cache = new HostClassCache(apiAccess, conf);
+                apiAccess.setHostAccessImpl(conf, cache);
+            }
+        }
+        return cache;
     }
 
     private final ClassValue<HostClassDesc> descs = new ClassValue<HostClassDesc>() {
@@ -82,32 +101,19 @@ final class HostClassCache {
     }
 
     boolean allowsAccess(Method m) {
-        return access.apply(hostAccess, m);
+        return apiAccess.allowsAccess(hostAccess, m);
     }
 
     boolean allowsAccess(Field f) {
-        return access.apply(hostAccess, f);
+        return apiAccess.allowsAccess(hostAccess, f);
     }
 
-    boolean checkHostAccess(HostAccess toVerify) {
-        return this.hostAccess == toVerify;
+    boolean isArrayAccess() {
+        return arrayAccess;
     }
 
-    boolean isPublicAccess() {
-        return publicAccess;
-    }
-
-    private static class Factory implements Function<BiFunction<HostAccess, AnnotatedElement, Boolean>, HostClassCache> {
-        private final HostAccess conf;
-
-        Factory(HostAccess conf) {
-            this.conf = conf;
-        }
-
-        @Override
-        public HostClassCache apply(BiFunction<HostAccess, AnnotatedElement, Boolean> access) {
-            return new HostClassCache(access, conf);
-        }
+    boolean isListAccess() {
+        return listAccess;
     }
 
 }
