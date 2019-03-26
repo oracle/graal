@@ -24,7 +24,6 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -61,8 +60,17 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Field[] declaredFields;
 
+    @CompilationFinal(dimensions = 1)
+    private Field[] fieldTable;
+
+    @CompilationFinal(dimensions = 1)
+    private Field[] staticFieldTable;
+
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
+
+    @CompilationFinal
+    int trueDeclaredMethods;
 
     private final InnerClassesAttribute innerClasses;
 
@@ -107,33 +115,29 @@ public final class ObjectKlass extends Klass {
         LinkedField[] linkedFields = linkedKlass.getLinkedFields();
         Field[] fields = new Field[linkedFields.length];
         for (int i = 0; i < fields.length; ++i) {
-            fields[i] = new Field(linkedFields[i], this);
+            Field f = new Field(linkedFields[i], this);
+            fields[i] = f;
         }
+        this.declaredFields = fields;
 
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
         for (int i = 0; i < methods.length; ++i) {
             methods[i] = new Method(this, linkedMethods[i]);
         }
-        this.declaredFields = fields;
+
         this.declaredMethods = methods;
-        InterfaceTables.CreationResult cr;
+        InterfaceTables.CreationResult methodCR;
         if (this.isInterface()) {
-            cr = InterfaceTables.create(this, superInterfaces, declaredMethods);
-            this.itable = cr.getItable();
-            this.iKlassTable = cr.getiKlass();
+            methodCR = InterfaceTables.create(this, superInterfaces, declaredMethods);
+            this.itable = methodCR.getItable();
+            this.iKlassTable = methodCR.getiKlass();
             this.vtable = null;
         } else {
-            cr = InterfaceTables.create(superKlass, superInterfaces, this);
-            this.itable = cr.getItable();
-            this.iKlassTable = cr.getiKlass();
-            this.vtable = VirtualTable.create(superKlass, declaredMethods, cr.getMirandas());
-            // Artificially declare miranda methods.
-            if (!cr.getMirandas().isEmpty()) {
-                ArrayList<Method> declaredMethodAndMirandas = new ArrayList<>(Arrays.asList(methods));
-                declaredMethodAndMirandas.addAll(cr.getMirandas());
-                this.declaredMethods = declaredMethodAndMirandas.toArray(Method.EMPTY_ARRAY);
-            }
+            methodCR = InterfaceTables.create(superKlass, superInterfaces, this);
+            this.itable = methodCR.getItable();
+            this.iKlassTable = methodCR.getiKlass();
+            this.vtable = VirtualTable.create(superKlass, declaredMethods, this);
         }
     }
 
@@ -354,11 +358,11 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
-    Method[][] getItable() {
+    final Method[][] getItable() {
         return itable;
     }
 
-    Klass[] getiKlassTable() {
+    final Klass[] getiKlassTable() {
         return iKlassTable;
     }
 
@@ -367,6 +371,35 @@ public final class ObjectKlass extends Klass {
             if (m.getName() == name && m.getRawSignature() == signature) {
                 return m;
             }
+        }
+        return null;
+    }
+
+    final Field[] getFieldTable() {
+        return fieldTable;
+    }
+
+    final void setMirandas(ArrayList<InterfaceTables.Miranda> mirandas) {
+        this.trueDeclaredMethods = declaredMethods.length;
+        Method[] declaredAndMirandaMethods = new Method[declaredMethods.length + mirandas.size()];
+        System.arraycopy(declaredMethods, 0, declaredAndMirandaMethods, 0, declaredMethods.length);
+        int pos = declaredMethods.length;
+        for (InterfaceTables.Miranda miranda:mirandas) {
+            declaredAndMirandaMethods[pos++] = miranda.method;
+        }
+        this.declaredMethods = declaredAndMirandaMethods;
+    }
+
+    final Method lookupTrueMethod(Symbol<Name> name, Symbol<Symbol.Signature> signature) {
+        ObjectKlass k = this;
+        while (k != null) {
+            for (int i = 0; i < k.trueDeclaredMethods; i++) {
+                Method m = k.declaredMethods[i];
+                if (m.getName() == name && m.getRawSignature() == signature) {
+                    return m;
+                }
+            }
+            k = k.getSuperKlass();
         }
         return null;
     }

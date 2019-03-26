@@ -214,25 +214,34 @@ public final class Target_sun_misc_Unsafe {
         if (!(0 <= slot && slot < (1 << 16))) {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
-        if (holder.isStaticStorage()) {
-            // Lookup static field in current class.
-            for (Field f : holder.getKlass().getDeclaredFields()) {
-                if (f.isStatic() && f.getSlot() == slot) {
-                    return f;
-                }
+        if (ObjectKlass.USE_FIELDTABLE) {
+            if (holder.isStaticStorage()) {
+                // Lookup static field in current class.
+                return holder.getKlass().lookupStaticField(slot);
+            } else {
+                return holder.getKlass().lookupField(slot);
+
             }
         } else {
-            // Lookup nstance field in current class and superclasses.
-            for (Klass k = holder.getKlass(); k != null; k = k.getSuperKlass()) {
-                for (Field f : k.getDeclaredFields()) {
-                    if (!f.isStatic() && f.getSlot() == slot) {
+            if (holder.isStaticStorage()) {
+                // Lookup static field in current class.
+                for (Field f : holder.getKlass().getDeclaredFields()) {
+                    if (f.isStatic() && f.getSlot() == slot) {
                         return f;
+                    }
+                }
+            } else {
+                // Lookup nstance field in current class and superclasses.
+                for (Klass k = holder.getKlass(); k != null; k = k.getSuperKlass()) {
+                    for (Field f : k.getDeclaredFields()) {
+                        if (!f.isStatic() && f.getSlot() == slot) {
+                            return f;
+                        }
                     }
                 }
             }
         }
-
-        throw EspressoError.shouldNotReachHere("Field with slot " + slot + " not found");
+        throw EspressoError.shouldNotReachHere();
     }
 
     @Substitution(hasReceiver = true)

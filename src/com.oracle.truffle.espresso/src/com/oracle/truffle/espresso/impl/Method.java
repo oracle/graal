@@ -123,12 +123,32 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return parsedSignature;
     }
 
-    Method(ObjectKlass declaringKlass, Method method) {
-        this(declaringKlass, method.linkedMethod, method.rawSignature);
+    Method(Method method) {
+        this.declaringKlass = method.declaringKlass;
+        // TODO(peterssen): Custom constant pool for methods is not supported.
+        this.pool = declaringKlass.getConstantPool();
+
+        this.name = method.linkedMethod.getName();
+        this.linkedMethod = method.linkedMethod;
+
+        this.rawSignature = method.getRawSignature();
+        this.parsedSignature = getSignatures().parsed(this.rawSignature);
+
+        // clone the codeAttribute. Node quickening patches the BCI, (and we see this) but we do not have see the nodes that are created after duplication.
+        this.codeAttribute = method.codeAttribute.dupe();
+        this.callTarget = method.callTarget;
+
+        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
+
+        initRefKind();
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod) {
         this(declaringKlass, linkedMethod, linkedMethod.getRawSignature());
+    }
+
+    Method(ObjectKlass declaringKlass, Method method) {
+        this(declaringKlass, method.linkedMethod, method.getRawSignature());
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature) {
@@ -530,5 +550,13 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     final public int getITableIndex() {
         return itableIndex;
+    }
+
+    public final boolean hasCode() {
+        return codeAttribute != null;
+    }
+
+    public final boolean isVirtualCall() {
+        return !isStatic() && !isConstructor() && !isPrivate() && !getDeclaringKlass().isInterface();
     }
 }
