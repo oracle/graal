@@ -39,7 +39,7 @@ public class RuntimeOptionsCache {
     private boolean traceSplittingSummary;
     private int splittingMaxCalleeSize;
     private int splittingMaxPropagationDepth;
-    //Inlining
+    // Inlining
     private boolean inlining;
     private int inliningMaxCallerSize;
     private int inliningMaximumRecursiveInlining;
@@ -58,7 +58,7 @@ public class RuntimeOptionsCache {
         splittingMaxPropagationDepth = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
         splittingTraceEvents = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
         traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
-        //Inlining
+        // Inlining
         inlining = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleFunctionInlining);
         inliningMaxCallerSize = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
         inliningMaximumRecursiveInlining = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining);
@@ -70,35 +70,35 @@ public class RuntimeOptionsCache {
         }
     }
 
-     boolean isSplittingDumpDecisions() {
+    boolean isSplittingDumpDecisions() {
         return splittingDumpDecisions;
     }
 
-     boolean isLegacySplitting() {
+    boolean isLegacySplitting() {
         return legacySplitting;
     }
 
-     boolean isSplittingAllowForcedSplits() {
+    boolean isSplittingAllowForcedSplits() {
         return splittingAllowForcedSplits;
     }
 
-     boolean isSplitting() {
+    boolean isSplitting() {
         return splitting;
     }
 
-     boolean isSplittingTraceEvents() {
+    boolean isSplittingTraceEvents() {
         return splittingTraceEvents;
     }
 
-     boolean isTraceSplittingSummary() {
+    boolean isTraceSplittingSummary() {
         return traceSplittingSummary;
     }
 
-     int getSplittingMaxCalleeSize() {
+    int getSplittingMaxCalleeSize() {
         return splittingMaxCalleeSize;
     }
 
-     int getSplittingMaxPropagationDepth() {
+    int getSplittingMaxPropagationDepth() {
         return splittingMaxPropagationDepth;
     }
 

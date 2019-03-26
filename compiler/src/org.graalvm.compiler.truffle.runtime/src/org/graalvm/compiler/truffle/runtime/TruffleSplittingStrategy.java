@@ -92,7 +92,8 @@ final class TruffleSplittingStrategy {
             return false;
         }
         final EngineData engineData = getEngineData(call, tvmci);
-        if (!canSplit(options, call) || isRecursiveSplit(call, EXPERIMENTAL_RECURSIVE_SPLIT_DEPTH) || engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
+        if (!canSplit(options, call) || isRecursiveSplit(call, EXPERIMENTAL_RECURSIVE_SPLIT_DEPTH) ||
+                        engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
             return false;
         }
         if (callTarget.getUninitializedNodeCount() > options.getSplittingMaxCalleeSize()) {
