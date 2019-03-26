@@ -34,6 +34,7 @@ public class TruffleInliningProfile {
     private final int deepNodeCount;
     private final double frequency;
     private final int recursions;
+    private final RuntimeOptionsCache runtimeOptionsCache;
 
     private TruffleInliningPolicy.FailedReason failedReason;
     private int queryIndex = -1;
@@ -41,12 +42,13 @@ public class TruffleInliningProfile {
 
     private TruffleInliningProfile cached;
 
-    public TruffleInliningProfile(OptimizedDirectCallNode callNode, int nodeCount, int deepNodeCount, double frequency, int recursions) {
+    public TruffleInliningProfile(OptimizedDirectCallNode callNode, int nodeCount, int deepNodeCount, double frequency, int recursions, RuntimeOptionsCache runtimeOptionsCache) {
         this.callNode = callNode;
         this.nodeCount = nodeCount;
         this.deepNodeCount = deepNodeCount;
         this.frequency = frequency;
         this.recursions = recursions;
+        this.runtimeOptionsCache = runtimeOptionsCache;
     }
 
     public boolean isCached() {
@@ -119,6 +121,10 @@ public class TruffleInliningProfile {
         } else {
             return failedReason.format(callNode.getCallTarget());
         }
+    }
+
+    public RuntimeOptionsCache getRuntimeOptionsCache() {
+        return runtimeOptionsCache;
     }
 
     public Map<String, Object> getDebugProperties() {

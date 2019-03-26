@@ -62,6 +62,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
 
+    // @formatter:on
+
     public enum EngineModeEnum {
         DEFAULT,
         THROUGHPUT,
@@ -81,6 +83,8 @@ public final class PolyglotCompilerOptions {
                         }
                     });
 
+    // @formatter:off
+    
     @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.",
                     category = OptionCategory.EXPERT)
     public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);

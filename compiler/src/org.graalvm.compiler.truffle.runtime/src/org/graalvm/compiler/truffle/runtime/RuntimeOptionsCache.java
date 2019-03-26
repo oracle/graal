@@ -30,6 +30,7 @@ package org.graalvm.compiler.truffle.runtime;
  */
 class RuntimeOptionsCache {
 
+    // Splitting
     private boolean legacySplitting;
     private boolean splitting;
     private boolean splittingAllowForcedSplits;
@@ -38,12 +39,17 @@ class RuntimeOptionsCache {
     private boolean traceSplittingSummary;
     private int splittingMaxCalleeSize;
     private int splittingMaxPropagationDepth;
+    //Inlining
+    private boolean inlining;
+    private int inliningMaxCallerSize;
+    private int inliningMaximumRecursiveInlining;
 
     public RuntimeOptionsCache() {
         reinitialize();
     }
 
     void reinitialize() {
+        // Splitting
         legacySplitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting);
         splitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplitting);
         splittingAllowForcedSplits = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
@@ -52,9 +58,15 @@ class RuntimeOptionsCache {
         splittingMaxPropagationDepth = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
         splittingTraceEvents = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
         traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
+        //Inlining
+        inlining = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleFunctionInlining);
+        inliningMaxCallerSize = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
+        inliningMaximumRecursiveInlining = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining);
+        // Mode overrides
         if (TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY) {
             splitting = false;
-            // TODO limit inlining.
+            inliningMaxCallerSize = inliningMaxCallerSize / 4;
+            // TODO set compiler compiler configuration
         }
     }
 
@@ -88,5 +100,17 @@ class RuntimeOptionsCache {
 
      int getSplittingMaxPropagationDepth() {
         return splittingMaxPropagationDepth;
+    }
+
+    public boolean isInlining() {
+        return inlining;
+    }
+
+    public int getInliningMaxCallerSize() {
+        return inliningMaxCallerSize;
+    }
+
+    public int getInliningMaximumRecursiveInlining() {
+        return inliningMaximumRecursiveInlining;
     }
 }
