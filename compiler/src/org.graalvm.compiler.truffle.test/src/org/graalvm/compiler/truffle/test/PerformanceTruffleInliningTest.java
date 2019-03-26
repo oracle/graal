@@ -34,6 +34,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.RuntimeOptionsCache;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
@@ -155,7 +156,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
         int[] visitedNodes = {0};
         int nodeCount = target.getNonTrivialNodeCount();
         try {
-            exploreCallSites.invoke(TruffleInlining.class, new ArrayList<>(Arrays.asList(target)), nodeCount, POLICY, visitedNodes, new HashMap<>());
+            exploreCallSites.invoke(TruffleInlining.class, new ArrayList<>(Arrays.asList(target)), nodeCount, POLICY, visitedNodes, new HashMap<>(), new RuntimeOptionsCache());
             Assert.assertEquals("Budget not in effect! Too many nodes visited!", 100 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize), visitedNodes[0]);
         } catch (IllegalAccessException | InvocationTargetException e) {
             Assert.assertFalse("Could not invoke exploreCallSites: " + e, true);
@@ -167,7 +168,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
     private static Method reflectivelyGetExploreMethod() {
         try {
             final Class<?> truffleInliningClass = Class.forName(TruffleInlining.class.getName());
-            final Class<?>[] args = {List.class, int.class, TruffleInliningPolicy.class, int[].class, Map.class};
+            final Class<?>[] args = {List.class, int.class, TruffleInliningPolicy.class, int[].class, Map.class, RuntimeOptionsCache.class};
             final Method exploreCallSitesMethod = truffleInliningClass.getDeclaredMethod("exploreCallSites", args);
             ReflectionUtils.setAccessible(exploreCallSitesMethod, true);
             return exploreCallSitesMethod;
