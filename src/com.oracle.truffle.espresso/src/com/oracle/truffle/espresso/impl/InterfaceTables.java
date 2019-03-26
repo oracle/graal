@@ -16,7 +16,6 @@ class InterfaceTables {
         final Method[][] itable;
         final Klass[] interfaceKlassTable;
 
-
         CreationResult(Method[][] itable, Klass[] interfaceKlassTable) {
             this.interfaceKlassTable = interfaceKlassTable;
             this.itable = itable;
@@ -65,7 +64,12 @@ class InterfaceTables {
             Method[] curItable = superKlassITable[n_itable];
             for (int n_method = 0; n_method < curItable.length; n_method++) {
                 Method im = curItable[n_method];
-                Method override = thisKlass.lookupDeclaredMethod(im.getName(), im.getRawSignature()); // At this points, we have mirandas
+                Method override = thisKlass.lookupDeclaredMethod(im.getName(), im.getRawSignature()); // At
+                                                                                                      // this
+                                                                                                      // points,
+                                                                                                      // we
+                                                                                                      // have
+                                                                                                      // mirandas
                 if (override != null) {
                     // Interface method override detected, make a copy of the inherited table and
                     // re-fill it.
@@ -170,12 +174,14 @@ class InterfaceTables {
                         // This was an unseen default method
                         mirandaMethod = new Miranda(new Method(im));
                     } else {
-                        // This is a *still* unimplemented method. Further searching could prove us wrong.
+                        // This is a *still* unimplemented method. Further searching could prove us
+                        // wrong.
                         mirandaMethod = new Miranda(im, n_itable, i);
                     }
                     mirandas.add(mirandaMethod);
                 } else {
-                    res[i] = new Method(mirandaMethod.method); // We already have a default implementation. Use it.
+                    res[i] = new Method(mirandaMethod.method); // We already have a default
+                                                               // implementation. Use it.
                     res[i].setITableIndex(i);
                 }
             }
@@ -186,10 +192,11 @@ class InterfaceTables {
     private static Miranda lookupMirandaWithOverride(Method im, ArrayList<Miranda> mirandas, int itable, int index) {
         Symbol<Symbol.Name> methodName = im.getName();
         Symbol<Symbol.Signature> methodSig = im.getRawSignature();
-        for (Miranda miranda: mirandas) {
+        for (Miranda miranda : mirandas) {
             Method m = miranda.method;
             if (m.getName() == methodName && m.getRawSignature() == methodSig) {
-                if (im.hasCode() && !m.hasCode()) { // We will be linking to this method for further inquiries
+                if (im.hasCode() && !m.hasCode()) { // We will be linking to this method for further
+                                                    // inquiries
                     // mirandas.set(pos, new Miranda(im)); // Doesn't need fixing
                     miranda.method = im;
                     return miranda;
@@ -206,9 +213,9 @@ class InterfaceTables {
 
     // Yet unimplemented methods that have found a default one in another interface
     private static void fixMirandas(ArrayList<Miranda> mirandas, ArrayList<Method[]> tmpITTable) {
-        for (Miranda miranda: mirandas) {
+        for (Miranda miranda : mirandas) {
             if (miranda.toFix) {
-                for(int i = 0; i< miranda.length; i++) {
+                for (int i = 0; i < miranda.length; i++) {
                     if (miranda.method.hasCode()) {
                         Method toPut = new Method(miranda.method);
                         toPut.setITableIndex(miranda.itablesIndex.get(i));

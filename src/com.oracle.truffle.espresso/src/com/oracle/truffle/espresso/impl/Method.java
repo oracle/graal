@@ -134,7 +134,8 @@ public final class Method implements ModifiersProvider, ContextAccess {
         this.rawSignature = method.getRawSignature();
         this.parsedSignature = getSignatures().parsed(this.rawSignature);
 
-        // clone the codeAttribute. Node quickening patches the BCI, (and we see this) but we do not have see the nodes that are created after duplication.
+        // clone the codeAttribute. Node quickening patches the BCI, (and we see this) but we do not
+        // have see the nodes that are created after duplication.
         this.codeAttribute = method.codeAttribute.dupe();
         this.callTarget = method.callTarget;
 

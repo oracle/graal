@@ -63,8 +63,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
 
-    @CompilationFinal
-    int trueDeclaredMethods;
+    @CompilationFinal int trueDeclaredMethods;
 
     private final InnerClassesAttribute innerClasses;
 
@@ -373,7 +372,7 @@ public final class ObjectKlass extends Klass {
         Method[] declaredAndMirandaMethods = new Method[declaredMethods.length + mirandas.size()];
         System.arraycopy(declaredMethods, 0, declaredAndMirandaMethods, 0, declaredMethods.length);
         int pos = declaredMethods.length;
-        for (InterfaceTables.Miranda miranda:mirandas) {
+        for (InterfaceTables.Miranda miranda : mirandas) {
             declaredAndMirandaMethods[pos++] = miranda.method;
         }
         this.declaredMethods = declaredAndMirandaMethods;
