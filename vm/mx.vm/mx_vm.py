@@ -115,6 +115,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
         string_substitutions = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         string_substitutions.register_no_arg('version', _suite.release_version)
+        string_substitutions.register_no_arg('graalvm_os', get_graalvm_os())
 
         _layout_provenance = {}
 
@@ -1288,7 +1289,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
 
         other_involved_components = []
         if _get_svm_support().is_supported() and _get_launcher_configs(component):
-            other_involved_components += [c for c in registered_graalvm_components() if c.dir_name == 'svm']
+            other_involved_components += [c for c in registered_graalvm_components() if c.short_name in ('svm', 'svmee')]
 
         name = '{}_INSTALLABLE'.format(component.dir_name.upper())
         for launcher_config in _get_launcher_configs(component):
@@ -1321,13 +1322,12 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         support_dir_pattern = '<jdk_base>/jre/languages/{}/'.format(installable.main_component.dir_name)
         other_comp_names = []
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
-            other_comp_names += [c.short_name for c in registered_graalvm_components() if c.dir_name == 'svm']
+            other_comp_names += [c.short_name for c in registered_graalvm_components() if c.short_name in ('svm', 'svmee')]
 
         self.main_comp_dir_name = installable.main_component.dir_name
-        version = _suite.release_version()
 
         name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
-        self.base_dir_name = '{comp_name}-{version}-{os}-{arch}'.format(comp_name=self.main_comp_dir_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
+        self.base_dir_name = installable.string_substitutions.substitute(installable.main_component.standalone_dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
 

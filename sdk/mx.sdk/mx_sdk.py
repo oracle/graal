@@ -213,12 +213,15 @@ class GraalVmTruffleComponent(GraalVmComponent):
                  library_configs=None, provided_executables=None, polyglot_lib_build_args=None,
                  polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False, boot_jars=None, include_in_polyglot=True, priority=None,
-                 post_install_msg=None):
+                 post_install_msg=None, standalone_dir_name=None):
         """
-        :param truffle_jars list[str]: JAR distributions that should be on the classpath for the language implementation.
-        :param bool include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images.
+        :param truffle_jars: JAR distributions that should be on the classpath for the language implementation.
+        :param include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images.
         :param post_install_msg: Post-installation message to be printed
+        :type truffle_jars: list[str]
+        :type include_in_polyglot: bool
         :type post_install_msg: str
+        :type standalone_dir_name: str
         """
         super(GraalVmTruffleComponent, self).__init__(suite, name, short_name, license_files, third_party_license_files,
                                                       truffle_jars, builder_jar_distributions, support_distributions,
@@ -228,6 +231,7 @@ class GraalVmTruffleComponent(GraalVmComponent):
                                                       boot_jars, priority)
         self.include_in_polyglot = include_in_polyglot
         self.post_install_msg = post_install_msg
+        self.standalone_dir_name = standalone_dir_name or '{}-<version>-<graalvm_os>-<arch>'.format(self.dir_name)
         assert isinstance(self.include_in_polyglot, bool)
 
 
