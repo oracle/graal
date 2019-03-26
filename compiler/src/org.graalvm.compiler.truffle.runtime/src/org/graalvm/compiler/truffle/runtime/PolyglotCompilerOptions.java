@@ -24,12 +24,15 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.function.Function;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 
@@ -58,6 +61,29 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
+
+    public enum EngineModeEnum {
+        DEFAULT,
+        THROUGHPUT,
+        LATENCY
+    }
+
+    static final OptionType<EngineModeEnum> ENGINE_MODE_TYPE = new OptionType<>("EngineMode",
+                    EngineModeEnum.DEFAULT,
+                    new Function<String, EngineModeEnum>() {
+                        @Override
+                        public EngineModeEnum apply(String s) {
+                            try {
+                                return EngineModeEnum.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("Mode can be: 'latency' or 'throughput'.");
+                            }
+                        }
+                    });
+
+    @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.",
+                    category = OptionCategory.EXPERT)
+    public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
 
     @Option(help = "Print information for compilation queuing.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceCompilationDetails = new OptionKey<>(false);
