@@ -214,29 +214,19 @@ public final class Target_sun_misc_Unsafe {
         if (!(0 <= slot && slot < (1 << 16))) {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
-        if (ObjectKlass.USE_FIELDTABLE) {
-            if (holder.isStaticStorage()) {
-                // Lookup static field in current class.
-                return holder.getKlass().lookupStaticField(slot);
-            } else {
-                return holder.getKlass().lookupField(slot);
-
+        if (holder.isStaticStorage()) {
+            // Lookup static field in current class.
+            for (Field f : holder.getKlass().getDeclaredFields()) {
+                if (f.isStatic() && f.getSlot() == slot) {
+                    return f;
+                }
             }
         } else {
-            if (holder.isStaticStorage()) {
-                // Lookup static field in current class.
-                for (Field f : holder.getKlass().getDeclaredFields()) {
-                    if (f.isStatic() && f.getSlot() == slot) {
+            // Lookup nstance field in current class and superclasses.
+            for (Klass k = holder.getKlass(); k != null; k = k.getSuperKlass()) {
+                for (Field f : k.getDeclaredFields()) {
+                    if (!f.isStatic() && f.getSlot() == slot) {
                         return f;
-                    }
-                }
-            } else {
-                // Lookup nstance field in current class and superclasses.
-                for (Klass k = holder.getKlass(); k != null; k = k.getSuperKlass()) {
-                    for (Field f : k.getDeclaredFields()) {
-                        if (!f.isStatic() && f.getSlot() == slot) {
-                            return f;
-                        }
                     }
                 }
             }
