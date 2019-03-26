@@ -53,6 +53,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 final class PolyglotContextConfig {
@@ -75,13 +76,14 @@ final class PolyglotContextConfig {
     final Handler logHandler;
     final PolyglotAccess polyglotAccess;
     final ProcessHandler processHandler;
+    final AbstractPolyglotImpl.EnvironmentConfig environmentConfig;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler,
-                    boolean createProcessAllowed, ProcessHandler processHandler) {
+                    boolean createProcessAllowed, ProcessHandler processHandler, AbstractPolyglotImpl.EnvironmentConfig environmentConfig) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -117,6 +119,7 @@ final class PolyglotContextConfig {
             languageOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
         }
         this.processHandler = processHandler;
+        this.environmentConfig = environmentConfig;
     }
 
     boolean isAccessPermitted(PolyglotLanguage from, PolyglotLanguage to) {

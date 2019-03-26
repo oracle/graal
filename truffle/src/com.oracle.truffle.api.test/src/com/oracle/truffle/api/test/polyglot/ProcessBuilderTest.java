@@ -137,20 +137,6 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
         Assert.assertEquals(Arrays.asList("process", "param1", "param2"), command.getCommand());
-
-        TruffleProcessBuilder builder = languageEnv.newProcessBuilder();
-        builder.command().add("process");
-        builder.command().add("param1");
-        builder.command().add("param2");
-        command = testHandler.getAndCleanLastCommand();
-        Assert.assertNotNull(command);
-        Assert.assertEquals(Arrays.asList("process", "param1", "param2"), command.getCommand());
-
-        builder = languageEnv.newProcessBuilder("process", "paramA", "param2");
-        builder.command().set(1, "param1");
-        command = testHandler.getAndCleanLastCommand();
-        Assert.assertNotNull(command);
-        Assert.assertEquals(Arrays.asList("process", "param1", "param2"), command.getCommand());
     }
 
     @Test
@@ -231,7 +217,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         Assert.assertEquals(ProcessHandler.Redirect.PIPE, command.getOutputRedirect());
         Assert.assertEquals(ProcessHandler.Redirect.PIPE, command.getErrorRedirect());
 
-        languageEnv.newProcessBuilder("process").inheritIO().start();
+        languageEnv.newProcessBuilder("process").inheritIO(true).start();
         command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
         Assert.assertFalse(command.isRedirectErrorStream());
@@ -292,20 +278,10 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
 
     private static class MockProcessHandler implements ProcessHandler {
 
-        private final Map<String, String> env;
         private ProcessCommand lastCommand;
-
-        MockProcessHandler(String... envKeyValuePairs) {
-            env = Collections.unmodifiableMap(pairsAsMap(envKeyValuePairs));
-        }
 
         ProcessCommand getAndCleanLastCommand() {
             return lastCommand;
-        }
-
-        @Override
-        public Map<String, String> getEnvironment() {
-            return env;
         }
 
         @Override

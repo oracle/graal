@@ -62,18 +62,6 @@ final class ProcessHandlers {
 
     private static final class DefaultProcessHandler implements ProcessHandler {
 
-        private volatile Map<String, String> cachedEnv;
-
-        @Override
-        public Map<String, String> getEnvironment() {
-            Map<String, String> res = cachedEnv;
-            if (res == null) {
-                res = Collections.unmodifiableMap(new ProcessBuilder("").environment());
-                cachedEnv = res;
-            }
-            return res;
-        }
-
         @Override
         public Process start(ProcessCommand command) throws IOException {
             ProcessBuilder builder = new ProcessBuilder(command.getCommand()).redirectErrorStream(command.isRedirectErrorStream()).redirectInput(
@@ -102,11 +90,6 @@ final class ProcessHandlers {
     }
 
     private static final class DeniedProcessHandler implements ProcessHandler {
-
-        @Override
-        public Map<String, String> getEnvironment() {
-            return Collections.emptyMap();
-        }
 
         @Override
         public Process start(ProcessCommand command) {

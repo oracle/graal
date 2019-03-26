@@ -2133,7 +2133,7 @@ public abstract class TruffleLanguage<C> {
             }
             List<String> cmd = new ArrayList<>(command.length);
             Collections.addAll(cmd, command);
-            return new TruffleProcessBuilder(this.vmObject, cmd);
+            return new TruffleProcessBuilder(vmObject, fileSystem, cmd);
         }
 
         @SuppressWarnings("rawtypes")

@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -68,6 +69,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -421,12 +423,13 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions();
 
+
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                         Map<String, String> options,
-                        Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler);
+                        Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler, EnvironmentConfig envConfig);
 
         public abstract String getImplementationName();
 
@@ -692,4 +695,39 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
 
+    public static final class EnvironmentConfig {
+        private final EnvironmentAccess environmentAccess;
+        private final boolean inheritEnvironment;
+        private final Map<String,String> environment;
+        private volatile Map<String,String> configuredEnvironement;
+
+        public EnvironmentConfig(EnvironmentAccess environmentAcceess, boolean inheritEnvironment, Map<String,String> environment) {
+            assert environmentAcceess != null;
+            this.environmentAccess = environmentAcceess;
+            this.inheritEnvironment = inheritEnvironment;
+            this.environment = environment;
+        }
+
+        public EnvironmentAccess getEnvironmentAccess() {
+            return environmentAccess;
+        }
+
+        public Map<String,String> getEnvironment() {
+            Map<String,String> result = configuredEnvironement;
+            if (result == null) {
+                synchronized (this) {
+                    result = configuredEnvironement;
+                    if (result == null) {
+                        result = new ConcurrentHashMap<>();
+                        if (inheritEnvironment) {
+                            result.putAll(System.getenv());
+                        }
+                        result.putAll(environment);
+                        configuredEnvironement = result;
+                    }
+                }
+            }
+            return result;
+        }
+    }
 }
