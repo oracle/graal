@@ -70,9 +70,9 @@ public final class ObjectKlass extends Klass {
 
     private final Klass hostKlass;
 
-    private final Method[] vtable;
-    private final Method[][] itable;
-    private final Klass[] iKlassTable;
+    @CompilationFinal(dimensions = 1) private final Method[] vtable;
+    @CompilationFinal(dimensions = 2) private final Method[][] itable;
+    @CompilationFinal(dimensions = 1) private final Klass[] iKlassTable;
 
     private int initState = LINKED;
 
@@ -117,14 +117,14 @@ public final class ObjectKlass extends Klass {
         }
         this.declaredFields = fields;
         this.declaredMethods = methods;
-
+        InterfaceTables.CreationResult cr;
         if (this.isInterface()) {
-            InterfaceTables.CreationResult cr = InterfaceTables.create(this, superInterfaces, declaredMethods);
+            cr = InterfaceTables.create(this, superInterfaces, declaredMethods);
             this.itable = cr.getItable();
             this.iKlassTable = cr.getiKlass();
             this.vtable = null;
         } else {
-            InterfaceTables.CreationResult cr = InterfaceTables.create(superKlass, superInterfaces, this);
+            cr = InterfaceTables.create(superKlass, superInterfaces, this);
             this.itable = cr.getItable();
             this.iKlassTable = cr.getiKlass();
             this.vtable = VirtualTable.create(superKlass, declaredMethods, cr.getMirandas());

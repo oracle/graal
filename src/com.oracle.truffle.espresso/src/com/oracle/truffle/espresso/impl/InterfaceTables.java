@@ -71,7 +71,7 @@ class InterfaceTables {
                     // re-fill it.
                     // TODO(garcia) we know the starting index, give it to the constructor, so it
                     // avoids reworking.
-                    tmpTable.set(n_itable, InterfaceTable.inherit(curItable, thisKlass));
+                    tmpTable.set(n_itable, inherit(curItable, thisKlass));
                     break;
                 }
             }
@@ -96,11 +96,11 @@ class InterfaceTables {
     static CreationResult create(Klass interfKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
         ArrayList<Method[]> tmp = new ArrayList<>();
         ArrayList<Klass> tmpKlass = new ArrayList<>();
-        tmp.add(InterfaceTable.create(declaredMethods));
+        tmp.add(createBaseITable(declaredMethods));
         tmpKlass.add(interfKlass);
-        for (int i = 0; i < superInterfaces.length; i++) {
-            tmp.addAll(Arrays.asList(superInterfaces[i].getItable()));
-            tmpKlass.addAll(Arrays.asList(superInterfaces[i].getiKlassTable()));
+        for (ObjectKlass superinterf : superInterfaces) {
+            tmp.addAll(Arrays.asList(superinterf.getItable()));
+            tmpKlass.addAll(Arrays.asList(superinterf.getiKlassTable()));
         }
         return new CreationResult(tmp.toArray(new Method[0][]), tmpKlass.toArray(Klass.EMPTY_ARRAY));
     }
@@ -109,16 +109,12 @@ class InterfaceTables {
         Method[][] superTable = superInterface.getItable();
         Klass[] superInterfKlassTable = superInterface.getiKlassTable();
         for (int i = 0; i < superTable.length; i++) {
-            tmpITable.add(InterfaceTable.inherit(superTable[i], thisKlass, mirandas));
+            tmpITable.add(inherit(superTable[i], thisKlass, mirandas));
             tmpKlassTable.add(superInterfKlassTable[i]);
         }
     }
 
-}
-
-final class InterfaceTable {
-
-    static Method[] create(Method[] declaredMethods) {
+    private static Method[] createBaseITable(Method[] declaredMethods) {
         int i = 0;
         for (Method m : declaredMethods) {
             m.setITableIndex(i++);
@@ -134,7 +130,7 @@ final class InterfaceTable {
      * @param thisKlass The class implementing this interface
      * @return the interface table for thisKlass.
      */
-    static Method[] inherit(Method[] interfTable, Klass thisKlass) {
+    private static Method[] inherit(Method[] interfTable, Klass thisKlass) {
         Method[] res = Arrays.copyOf(interfTable, interfTable.length);
         for (int i = 0; i < res.length; i++) {
             Method im = res[i];
@@ -147,7 +143,7 @@ final class InterfaceTable {
         return res;
     }
 
-    static Method[] inherit(Method[] interfTable, ObjectKlass thisKlass, ArrayList<Method> mirandas) {
+    private static Method[] inherit(Method[] interfTable, ObjectKlass thisKlass, ArrayList<Method> mirandas) {
         Method[] res = Arrays.copyOf(interfTable, interfTable.length);
         for (int i = 0; i < res.length; i++) {
             Method im = res[i];
@@ -175,4 +171,5 @@ final class InterfaceTable {
         }
         return res;
     }
+
 }
