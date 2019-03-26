@@ -24,11 +24,21 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.function.Supplier;
+
 /**
  * Class used to store data used by the compiler in the Engine. Enables "global" compiler state
  * per engine.
  */
 class EngineData {
+
+    static final Supplier<EngineData> engineDataConstructor = new Supplier<EngineData>() {
+        @Override
+        public EngineData get() {
+            return new EngineData();
+        }
+    };
+
     int splitLimit;
     int splitCount;
 }
