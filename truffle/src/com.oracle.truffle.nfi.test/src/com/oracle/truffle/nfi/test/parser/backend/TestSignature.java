@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,47 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test.parser;
+package com.oracle.truffle.nfi.test.parser.backend;
 
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.spi.types.NativeSignature;
-import org.junit.Assert;
-import org.junit.Test;
 
-public class VarargsParseSignatureTest extends ParseSignatureTest {
+public class TestSignature implements TruffleObject {
 
-    private static void testVarargs(String signatureString, int expectedArgCount, int expectedFixedArgCount) {
-        NativeSignature signature = parseSignature(signatureString);
-        Assert.assertEquals("argument count", expectedArgCount, signature.getArgTypes().size());
-        Assert.assertEquals("fixed argument count", expectedFixedArgCount, signature.getFixedArgCount());
-        if (expectedArgCount == expectedFixedArgCount) {
-            Assert.assertFalse(signature.isVarargs());
-        } else {
-            Assert.assertTrue(signature.isVarargs());
-        }
-    }
+    public final NativeSignature signature;
 
-    @Test
-    public void testFixedArgs() {
-        testVarargs("(float, double) : void", 2, 2);
-    }
-
-    @Test
-    public void testNoFixedArgs() {
-        testVarargs("(...float, double) : void", 2, 0);
-    }
-
-    @Test
-    public void testTwoFixedArgs() {
-        testVarargs("(object, pointer, ...float, double) : void", 4, 2);
-    }
-
-    @Test
-    public void testOneVararg() {
-        testVarargs("(string, ...sint32) : void", 2, 1);
-    }
-
-    @Test
-    public void testTwoVarargs() {
-        testVarargs("(string, ...object, uint32) : void", 3, 1);
+    TestSignature(NativeSignature signature) {
+        this.signature = signature;
     }
 }

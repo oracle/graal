@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
-import com.oracle.truffle.nfi.Parser;
 import com.oracle.truffle.nfi.spi.types.NativeSignature;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import java.util.ArrayList;
@@ -68,7 +67,7 @@ public class SimpleParseSignatureTest extends ParseSignatureTest {
     @Parameter public NativeSimpleType type;
 
     protected NativeSignature parse(String format) {
-        return Parser.parseSignature(String.format(format, type, type));
+        return parseSignature(String.format(format, type, type));
     }
 
     @Test

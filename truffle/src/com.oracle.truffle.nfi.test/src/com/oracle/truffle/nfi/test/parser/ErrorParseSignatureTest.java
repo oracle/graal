@@ -40,43 +40,42 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
-import com.oracle.truffle.nfi.Parser;
 import org.junit.Test;
 
-public class ErrorParseSignatureTest {
+public class ErrorParseSignatureTest extends ParseSignatureTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void parseEmpty() {
-        Parser.parseSignature("");
+        parseSignature("");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseUnknownToken() {
-        Parser.parseSignature("..");
+        parseSignature("..");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseMissingParen() {
-        Parser.parseSignature("(sint32 : void");
+        parseSignature("(sint32 : void");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseMissingComma() {
-        Parser.parseSignature("(sint32 float) : void");
+        parseSignature("(sint32 float) : void");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseMissingColon() {
-        Parser.parseSignature("(sint32) void");
+        parseSignature("(sint32) void");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseMissingRetType() {
-        Parser.parseSignature("() : ");
+        parseSignature("() : ");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseMissingVararg() {
-        Parser.parseSignature("(float, ...) : void");
+        parseSignature("(float, ...) : void");
     }
 }

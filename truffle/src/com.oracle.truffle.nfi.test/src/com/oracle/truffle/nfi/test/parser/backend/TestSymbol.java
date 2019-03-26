@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,47 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test.parser;
+package com.oracle.truffle.nfi.test.parser.backend;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.nfi.spi.NativeSymbolLibrary;
 import com.oracle.truffle.nfi.spi.types.NativeSignature;
-import org.junit.Assert;
-import org.junit.Test;
 
-public class VarargsParseSignatureTest extends ParseSignatureTest {
+@ExportLibrary(NativeSymbolLibrary.class)
+class TestSymbol implements TruffleObject {
 
-    private static void testVarargs(String signatureString, int expectedArgCount, int expectedFixedArgCount) {
-        NativeSignature signature = parseSignature(signatureString);
-        Assert.assertEquals("argument count", expectedArgCount, signature.getArgTypes().size());
-        Assert.assertEquals("fixed argument count", expectedFixedArgCount, signature.getFixedArgCount());
-        if (expectedArgCount == expectedFixedArgCount) {
-            Assert.assertFalse(signature.isVarargs());
-        } else {
-            Assert.assertTrue(signature.isVarargs());
-        }
+    final String name;
+
+    TestSymbol(String name) {
+        this.name = name;
     }
 
-    @Test
-    public void testFixedArgs() {
-        testVarargs("(float, double) : void", 2, 2);
+    @ExportMessage
+    boolean isBindable() {
+        return true;
     }
 
-    @Test
-    public void testNoFixedArgs() {
-        testVarargs("(...float, double) : void", 2, 0);
+    @ExportMessage
+    Object prepareSignature(NativeSignature signature) {
+        return new TestSignature(signature);
     }
 
-    @Test
-    public void testTwoFixedArgs() {
-        testVarargs("(object, pointer, ...float, double) : void", 4, 2);
-    }
-
-    @Test
-    public void testOneVararg() {
-        testVarargs("(string, ...sint32) : void", 2, 1);
-    }
-
-    @Test
-    public void testTwoVarargs() {
-        testVarargs("(string, ...object, uint32) : void", 3, 1);
+    @ExportMessage
+    Object call(Object signature, @SuppressWarnings("unused") Object[] args) {
+        // just return the signature, so it can be inspected by the test harness
+        return signature;
     }
 }

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
-import com.oracle.truffle.nfi.Parser;
 import com.oracle.truffle.nfi.spi.types.NativeFunctionTypeMirror;
 import com.oracle.truffle.nfi.spi.types.NativeSignature;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
@@ -62,12 +61,12 @@ public class ClosureParseSignatureTest extends ParseSignatureTest {
     }
 
     private static void testWithClosure(String closureSig, Validator validator) {
-        NativeSignature closureArgSig = Parser.parseSignature(String.format("(%s):void", closureSig));
+        NativeSignature closureArgSig = parseSignature(String.format("(%s):void", closureSig));
         Assert.assertThat("return type", closureArgSig.getRetType(), isSimpleType(NativeSimpleType.VOID));
         Assert.assertEquals("argument count", 1, closureArgSig.getArgTypes().size());
         checkClosureType(closureArgSig.getArgTypes().get(0), validator);
 
-        NativeSignature closureRetSig = Parser.parseSignature(String.format("() : %s", closureSig));
+        NativeSignature closureRetSig = parseSignature(String.format("() : %s", closureSig));
         Assert.assertEquals("argument count", 0, closureRetSig.getArgTypes().size());
         checkClosureType(closureRetSig.getRetType(), validator);
     }
