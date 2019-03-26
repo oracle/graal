@@ -60,12 +60,6 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Field[] declaredFields;
 
-    @CompilationFinal(dimensions = 1)
-    private Field[] fieldTable;
-
-    @CompilationFinal(dimensions = 1)
-    private Field[] staticFieldTable;
-
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
 
@@ -115,8 +109,7 @@ public final class ObjectKlass extends Klass {
         LinkedField[] linkedFields = linkedKlass.getLinkedFields();
         Field[] fields = new Field[linkedFields.length];
         for (int i = 0; i < fields.length; ++i) {
-            Field f = new Field(linkedFields[i], this);
-            fields[i] = f;
+            fields[i] = new Field(linkedFields[i], this);
         }
         this.declaredFields = fields;
 
@@ -373,10 +366,6 @@ public final class ObjectKlass extends Klass {
             }
         }
         return null;
-    }
-
-    final Field[] getFieldTable() {
-        return fieldTable;
     }
 
     final void setMirandas(ArrayList<InterfaceTables.Miranda> mirandas) {
