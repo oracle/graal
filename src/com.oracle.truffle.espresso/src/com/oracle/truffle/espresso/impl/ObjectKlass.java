@@ -60,6 +60,12 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Field[] declaredFields;
 
+    @CompilationFinal(dimensions = 1)
+    private Field[] fieldTable;
+
+    @CompilationFinal(dimensions = 1)
+    private Field[] staticFieldTable;
+
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
 
@@ -106,12 +112,12 @@ public final class ObjectKlass extends Klass {
         // TODO(peterssen): Make writable copy.
         this.pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
 
-        LinkedField[] linkedFields = linkedKlass.getLinkedFields();
-        Field[] fields = new Field[linkedFields.length];
-        for (int i = 0; i < fields.length; ++i) {
-            fields[i] = new Field(linkedFields[i], this);
-        }
-        this.declaredFields = fields;
+        FieldTable.CreationResult fieldCR = FieldTable.create(superKlass, this, linkedKlass);
+
+        this.fieldTable = fieldCR.fieldTable;
+        this.staticFieldTable = fieldCR.staticFieldTable;
+        this.declaredFields = fieldCR.declaredFields;
+
 
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
@@ -329,6 +335,18 @@ public final class ObjectKlass extends Klass {
         return hostKlass;
     }
 
+    @Override
+    public final Field lookupField(int slot) {
+        assert (slot >= 0 && slot < getInstanceFieldSlots());
+        return fieldTable[slot];
+    }
+
+    @Override
+    public final Field lookupStaticField(int slot) {
+        assert (slot >= 0 && slot < getStaticFieldSlots());
+        return staticFieldTable[slot];
+    }
+
     Method[] getVTable() {
         return vtable;
     }
@@ -366,6 +384,10 @@ public final class ObjectKlass extends Klass {
             }
         }
         return null;
+    }
+
+    final Field[] getFieldTable() {
+        return fieldTable;
     }
 
     final void setMirandas(ArrayList<InterfaceTables.Miranda> mirandas) {

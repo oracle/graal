@@ -216,22 +216,10 @@ public final class Target_sun_misc_Unsafe {
         }
         if (holder.isStaticStorage()) {
             // Lookup static field in current class.
-            for (Field f : holder.getKlass().getDeclaredFields()) {
-                if (f.isStatic() && f.getSlot() == slot) {
-                    return f;
-                }
-            }
+            return holder.getKlass().lookupStaticField(slot);
         } else {
-            // Lookup nstance field in current class and superclasses.
-            for (Klass k = holder.getKlass(); k != null; k = k.getSuperKlass()) {
-                for (Field f : k.getDeclaredFields()) {
-                    if (!f.isStatic() && f.getSlot() == slot) {
-                        return f;
-                    }
-                }
-            }
+            return holder.getKlass().lookupField(slot);
         }
-        throw EspressoError.shouldNotReachHere();
     }
 
     @Substitution(hasReceiver = true)

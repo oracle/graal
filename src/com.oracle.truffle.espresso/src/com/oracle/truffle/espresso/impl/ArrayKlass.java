@@ -131,6 +131,16 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
+    public final Field lookupField(int slot) {
+        return getSuperKlass().lookupField(slot);
+    }
+
+    @Override
+    public final Field lookupStaticField(int slot) {
+        return getSuperKlass().lookupField(slot);
+    }
+
+    @Override
     public final @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
         return elementalType.getDefiningClassLoader();
     }
