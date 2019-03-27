@@ -59,7 +59,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
 
-    @Option(help = "Print information for compilation queuing.", category = OptionCategory.INTERNAL)
+    @Option(help = "Print information for compilation queuing.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceCompilationDetails = new OptionKey<>(false);
 
     @Option(help = "Print information for inlining decisions.", category = OptionCategory.EXPERT)
