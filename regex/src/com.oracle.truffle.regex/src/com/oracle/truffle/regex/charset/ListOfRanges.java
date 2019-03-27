@@ -22,34 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.runtime.nodes;
+package com.oracle.truffle.regex.charset;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
+public interface ListOfRanges {
 
-/**
- * Tries to replace invocations of {@link String#equals(Object)} with identity checks by caching
- * parameter {@code a}. Parameter {@code b} is expected to be final!
- */
-@GenerateUncached
-public abstract class StringEqualsNode extends Node {
+    int getLo(int i);
 
-    public abstract boolean execute(String a, String b);
+    int getHi(int i);
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"a == cachedA", "cachedA.equals(b)"}, limit = "4")
-    static boolean cacheIdentity(String a, String b,
-                    @Cached("a") String cachedA) {
-        CompilerAsserts.compilationConstant(b);
-        return true;
-    }
+    int size();
 
-    @Specialization(replaces = "cacheIdentity")
-    static boolean doEquals(String a, String b) {
-        CompilerAsserts.compilationConstant(b);
-        return b.equals(a);
+    default boolean isEmpty() {
+        return size() == 0;
     }
 }

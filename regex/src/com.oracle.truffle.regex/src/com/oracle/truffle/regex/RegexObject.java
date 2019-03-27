@@ -270,20 +270,20 @@ public final class RegexObject extends AbstractConstantKeysObject {
         static Object executeTRegexFixed(CompiledRegexObject receiver, Object input, int fromIndex,
                         @Cached("receiver") CompiledRegexObject cachedReceiver,
                         @Cached("create(cachedReceiver.getCallTarget())") DirectCallNode directCallNode) {
-            return directCallNode.call(new Object[]{input, fromIndex});
+            return directCallNode.call(input, fromIndex);
         }
 
         @Specialization(replaces = "executeTRegexFixed")
         static Object executeTRegexVarying(CompiledRegexObject receiver, Object input, int fromIndex,
                         @Cached IndirectCallNode indirectCallNode) {
-            return indirectCallNode.call(receiver.getCallTarget(), new Object[]{input, fromIndex});
+            return indirectCallNode.call(receiver.getCallTarget(), input, fromIndex);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "receivers.isMemberInvocable(receiver, PROP_EXEC)", limit = "4")
         static Object executeForeign(TruffleObject receiver, Object input, int fromIndex,
                         @CachedLibrary("receiver") InteropLibrary receivers) throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
-            return receivers.invokeMember(receiver, "exec", new Object[]{input, fromIndex});
+            return receivers.invokeMember(receiver, "exec", input, fromIndex);
         }
     }
 }

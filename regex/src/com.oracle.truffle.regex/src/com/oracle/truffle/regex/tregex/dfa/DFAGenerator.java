@@ -576,7 +576,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private AllTransitionsInOneTreeMatcher createAllTransitionsInOneTreeMatcher(DFAStateNodeBuilder state) {
         DFAStateTransitionBuilder[] transitions = state.getTransitions();
-        CharArrayBuffer sortedRangesBuf = compilationBuffer.getRangesArrayBuffer1();
+        CharArrayBuffer sortedRangesBuf = compilationBuffer.getCharRangesBuffer1();
         ShortArrayBuffer rangeTreeSuccessorsBuf = compilationBuffer.getShortArrayBuffer();
         int[] matcherIndices = new int[transitions.length];
         boolean rangesLeft = false;

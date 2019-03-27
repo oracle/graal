@@ -22,13 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.matchers;
+package com.oracle.truffle.regex.charset;
 
-public interface ListOfRanges {
+public interface RangesBuffer extends ListOfRanges {
 
-    int getLo(int i);
-
-    int getHi(int i);
-
-    int size();
+    void addRange(int lo, int hi);
 }

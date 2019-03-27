@@ -39,11 +39,13 @@ import com.oracle.truffle.regex.runtime.nodes.TraceFinderGetResultNode;
 @GenerateUncached
 abstract class RegexResultGetStartNode extends Node {
 
+    private static final int INVALID_RESULT = -1;
+
     abstract int execute(Object receiver, int groupNumber);
 
     @Specialization
     static int doNoMatch(@SuppressWarnings("unused") NoMatchResult receiver, @SuppressWarnings("unused") int groupNumber) {
-        return invalidIndex();
+        return INVALID_RESULT;
     }
 
     @Specialization
@@ -52,7 +54,7 @@ abstract class RegexResultGetStartNode extends Node {
         if (boundsProfile.profile(groupNumber == 0)) {
             return receiver.getStart();
         } else {
-            return invalidIndex();
+            return INVALID_RESULT;
         }
     }
 
@@ -68,7 +70,7 @@ abstract class RegexResultGetStartNode extends Node {
             }
             return receiver.getStart();
         } else {
-            return invalidIndex();
+            return INVALID_RESULT;
         }
     }
 
@@ -93,11 +95,8 @@ abstract class RegexResultGetStartNode extends Node {
         try {
             return array[groupNumber * 2];
         } catch (ArrayIndexOutOfBoundsException e) {
-            return invalidIndex();
+            return INVALID_RESULT;
         }
     }
 
-    private static int invalidIndex() {
-        return -1;
-    }
 }

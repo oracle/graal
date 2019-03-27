@@ -22,11 +22,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.regex.chardata.CodePointRange;
+package com.oracle.truffle.regex.tregex.buffer;
 
-public interface ContainsRange {
+import com.oracle.truffle.regex.charset.RangesBuffer;
 
-    CodePointRange getRange();
+/**
+ * Extension of {@link IntArrayBuffer} that adds convenience functions for arrays of integer ranges
+ * in the form:
+ *
+ * <pre>
+ * [
+ *     inclusive lower bound of range 1, inclusive upper bound of range 1,
+ *     inclusive lower bound of range 2, inclusive upper bound of range 2,
+ *     inclusive lower bound of range 3, inclusive upper bound of range 3,
+ *     ...
+ * ]
+ * </pre>
+ */
+public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
+
+    public IntRangesBuffer() {
+        this(16);
+    }
+
+    public IntRangesBuffer(int initialSize) {
+        super(initialSize);
+    }
+
+    @Override
+    public void addRange(int lo, int hi) {
+        add(lo);
+        add(hi);
+    }
+
+    @Override
+    public int getLo(int i) {
+        return buf[i * 2];
+    }
+
+    @Override
+    public int getHi(int i) {
+        return buf[i * 2 + 1];
+    }
+
+    @Override
+    public int size() {
+        return length() / 2;
+    }
 }

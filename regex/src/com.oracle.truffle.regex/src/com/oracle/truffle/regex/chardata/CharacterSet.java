@@ -33,5 +33,5 @@ public interface CharacterSet {
      * Returns {@code true} if the given code point is contained in this set, {@code false}
      * otherwise.
      */
-    boolean contains(int codepoint);
+    boolean contains(int codePoint);
 }

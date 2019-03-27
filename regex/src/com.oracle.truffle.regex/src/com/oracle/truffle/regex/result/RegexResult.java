@@ -41,9 +41,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
+import com.oracle.truffle.regex.RegexLanguageObject;
 import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.runtime.RegexResultEndArrayObject;
-import com.oracle.truffle.regex.runtime.RegexResultStartArrayObject;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -74,12 +73,10 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
 
     static final String PROP_IS_MATCH = "isMatch";
     static final String PROP_GROUP_COUNT = "groupCount";
-    static final String PROP_START = "start";
-    static final String PROP_END = "end";
     static final String PROP_GET_START = "getStart";
     static final String PROP_GET_END = "getEnd";
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GROUP_COUNT, PROP_START, PROP_END, PROP_GET_START, PROP_GET_END);
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GROUP_COUNT, PROP_GET_START, PROP_GET_END);
 
     private final int groupCount;
 
@@ -89,16 +86,6 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
 
     public final int getGroupCount() {
         return groupCount;
-    }
-
-    public final RegexResultStartArrayObject getStartArrayObject() {
-        // this allocation should get virtualized and optimized away by graal
-        return new RegexResultStartArrayObject(this);
-    }
-
-    public final RegexResultEndArrayObject getEndArrayObject() {
-        // this allocation should get virtualized and optimized away by graal
-        return new RegexResultEndArrayObject(this);
     }
 
     @Override
@@ -113,10 +100,6 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                 return this != NoMatchResult.getInstance();
             case PROP_GROUP_COUNT:
                 return getGroupCount();
-            case PROP_START:
-                return getStartArrayObject();
-            case PROP_END:
-                return getEndArrayObject();
             case PROP_GET_START:
                 return new RegexResultGetStartMethod(this);
             case PROP_GET_END:
@@ -124,6 +107,62 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
             default:
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.create(symbol);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public final class RegexResultGetStartMethod implements RegexLanguageObject {
+
+        private final RegexResult result;
+
+        public RegexResultGetStartMethod(RegexResult result) {
+            this.result = result;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        int execute(Object[] args,
+                        @Cached ToIntNode toIntNode,
+                        @Cached RegexResultGetStartNode getStartNode) throws ArityException, UnsupportedTypeException {
+            if (args.length != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(1, args.length);
+            }
+            return getStartNode.execute(result, toIntNode.execute(args[0]));
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public final class RegexResultGetEndMethod implements RegexLanguageObject {
+
+        private final RegexResult result;
+
+        public RegexResultGetEndMethod(RegexResult result) {
+            this.result = result;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        int execute(Object[] args,
+                        @Cached ToIntNode toIntNode,
+                        @Cached RegexResultGetEndNode getEndNode) throws ArityException, UnsupportedTypeException {
+            if (args.length != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(1, args.length);
+            }
+            return getEndNode.execute(result, toIntNode.execute(args[1]));
         }
     }
 

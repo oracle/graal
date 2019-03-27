@@ -25,7 +25,7 @@
 package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.regex.chardata.Constants;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Random;
