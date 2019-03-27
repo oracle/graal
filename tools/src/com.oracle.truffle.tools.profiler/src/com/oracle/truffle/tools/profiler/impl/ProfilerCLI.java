@@ -44,7 +44,7 @@ import java.util.regex.PatternSyntaxException;
 
 abstract class ProfilerCLI {
 
-    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression", new Object[0],
+    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
                     new Function<String, Object[]>() {
                         @Override
                         public Object[] apply(String filterWildcardExpression) {

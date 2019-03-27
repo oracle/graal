@@ -54,7 +54,6 @@ class MemoryTracerCLI extends ProfilerCLI {
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Format",
-                    Output.LOCATION_HISTOGRAM,
                     new Function<String, Output>() {
                         @Override
                         public Output apply(String s) {

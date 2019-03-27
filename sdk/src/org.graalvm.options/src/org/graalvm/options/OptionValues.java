@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,9 +67,7 @@ public interface OptionValues {
     <T> void set(OptionKey<T> optionKey, T value);
 
     /**
-     * Returns the value of a given option. If no value is set or the key is not described by any
-     * {@link #getDescriptors() descriptors} the {@link OptionType#getDefaultValue() default value}
-     * of the given key is returned.
+     * Returns the value of a given option.
      *
      * @since 1.0
      */
