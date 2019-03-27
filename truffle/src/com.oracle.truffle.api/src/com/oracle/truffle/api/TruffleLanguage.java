@@ -1479,9 +1479,14 @@ public abstract class TruffleLanguage<C> {
          * string identifiers, a list of symbols may be requested with the keys message. Existing
          * identifiers are removable, modifiable, readable and any new identifiers are insertable.
          *
+         * @throws SecurityException if polyglot access is not enabled
+         * @see #isPolyglotAccessAllowed()
          * @since 0.32
          */
         public Object getPolyglotBindings() {
+            if (!isPolyglotAccessAllowed()) {
+                throw new SecurityException("Polyglot bindings are not accessible for this language.");
+            }
             return AccessAPI.engineAccess().getPolyglotBindingsForLanguage(vmObject);
         }
 
@@ -1495,13 +1500,19 @@ public abstract class TruffleLanguage<C> {
          * {@link String} or one of the Java primitive wrappers ( {@link Integer}, {@link Double},
          * {@link Byte}, {@link Boolean}, etc.).
          * <p>
+         * Polyglot symbols can only be imported if the {@link #isPolyglotAccessAllowed() polyglot
+         * access} is allowed.
          *
          * @param symbolName the name of the symbol to search for
          * @return object representing the symbol or <code>null</code> if it does not exist
+         * @throws SecurityException if importing polyglot symbols is not allowed
          * @since 0.8 or earlier
          */
         @TruffleBoundary
         public Object importSymbol(String symbolName) {
+            if (!isPolyglotAccessAllowed()) {
+                throw new SecurityException("Polyglot bindings are not accessible for this language.");
+            }
             return AccessAPI.engineAccess().importSymbol(vmObject, this, symbolName);
         }
 
@@ -1515,14 +1526,21 @@ public abstract class TruffleLanguage<C> {
          * object from the other language) to support interoperability between languages,
          * {@link String} or one of the Java primitive wrappers ( {@link Integer}, {@link Double},
          * {@link Byte}, {@link Boolean}, etc.).
+         * <p>
+         * Polyglot symbols can only be export if the {@link #isPolyglotAccessAllowed() polyglot
+         * access} is allowed.
          *
          * @param symbolName the name with which the symbol should be exported into the polyglot
          *            scope
          * @param value the value to export for
+         * @throws SecurityException if exporting polyglot symbols is not allowed
          * @since 0.27
          */
         @TruffleBoundary
         public void exportSymbol(String symbolName, Object value) {
+            if (!isPolyglotAccessAllowed()) {
+                throw new SecurityException("Polyglot bindings are not accessible for this language.");
+            }
             AccessAPI.engineAccess().exportSymbol(vmObject, symbolName, value);
         }
 
@@ -1740,6 +1758,21 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns <code>true</code> if polyglot access is allowed, else <code>false</code>. Guest
+         * languages should hide or disable all polyglot builtins if this flag is set to
+         * <code>false</code>. Note that if polyglot access is disabled, then the
+         * {@link #getLanguages() available languages list} only shows the current language,
+         * {@link Registration#dependentLanguages() dependent languages} and
+         * {@link Registration#internal() internal languages}.
+         *
+         * @see org.graalvm.polyglot.Context.Builder#allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
+         * @since 1.0
+         */
+        public boolean isPolyglotAccessAllowed() {
+            return AccessAPI.engineAccess().isPolyglotAccessAllowed(vmObject);
+        }
+
+        /**
          * Allows it to be determined if this {@link org.graalvm.polyglot.Context} can execute code
          * written in a language with a given MIME type.
          *
@@ -1863,7 +1896,8 @@ public abstract class TruffleLanguage<C> {
         /**
          * Returns an additional service provided by the given language, specified by type. For
          * services registered by {@link Registration#services()} the service lookup will ensure
-         * that the language is loaded and services are registered.
+         * that the language is loaded and services are registered. The provided langauge and type
+         * must not be <code>null</code>.
          *
          * @param <S> the requested type
          * @param language the language to query
@@ -1878,7 +1912,7 @@ public abstract class TruffleLanguage<C> {
             if (this.getSpi().languageInfo == language) {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
-
+            Objects.requireNonNull(language);
             S result = AccessAPI.engineAccess().lookupService(vmObject, language, this.getSpi().languageInfo, type);
             if (result != null) {
                 return result;

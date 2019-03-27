@@ -115,7 +115,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         }
         for (String dependentLanguage : dependentLanguages) {
             PolyglotLanguage dependentLanguageObj = engine.idToLanguage.get(dependentLanguage);
-            if (dependentLanguageObj != null && dependsOn(dependentLanguageObj)) {
+            if (dependentLanguageObj != null && dependentLanguageObj.dependsOn(otherLanguage)) {
                 return true;
             }
         }

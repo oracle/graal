@@ -68,6 +68,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
@@ -385,10 +386,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
                         HostAccess hostAccess,
-                        boolean allowNativeAccess,
-                        boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
-                        Map<String, String[]> arguments,
-                        String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream);
+                        PolyglotAccess polyglotAccess,
+                        boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
+                        Map<String, String> options,
+                        Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream);
 
         public abstract String getImplementationName();
 

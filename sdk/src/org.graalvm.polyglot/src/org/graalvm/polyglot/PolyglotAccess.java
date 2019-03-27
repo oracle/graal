@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,37 +38,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.builtins;
-
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.SLException;
-import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLNull;
+package org.graalvm.polyglot;
 
 /**
- * Built-in function that goes through to import a symbol from the polyglot bindings.
+ * Represents an access policy for polyglot builtins in the guest languages. Guest languages expose
+ * language builtins that allow access to other languages. Polyglot builtins allow to export and
+ * share symbols in the {@link Context#getPolyglotBindings() polyglot bindings} as well as evaluate
+ * code of other languages.
+ *
+ * @since 1.0
  */
-@NodeInfo(shortName = "import")
-public abstract class SLImportBuiltin extends SLBuiltinNode {
+public final class PolyglotAccess {
 
-    @Specialization
-    public Object importSymbol(String symbol,
-                    @CachedLibrary(limit = "3") InteropLibrary arrays,
-                    @CachedContext(SLLanguage.class) SLContext context) {
-        try {
-            return arrays.readMember(context.getPolyglotBindings(), symbol);
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            return SLNull.SINGLETON;
-        } catch (SecurityException e) {
-            throw new SLException("No polyglot access allowed.", this);
-        }
+    /**
+     * Provides guest languages no access to other languages using polyglot builtins.
+     *
+     * @since 1.0
+     */
+    public static final PolyglotAccess NONE = new PolyglotAccess();
+
+    /**
+     * Provides guest languages full access to other languages using polyglot builtins.
+     *
+     * @since 1.0
+     */
+    public static final PolyglotAccess ALL = new PolyglotAccess();
+
+    PolyglotAccess() {
     }
 
 }

@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Before;
@@ -88,7 +89,7 @@ public class PassItselfBackViaContextTest {
     @Before
     public void prepareSystem() {
         myObj = new MyObj();
-        context = Context.create();
+        context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
         context.getPolyglotBindings().putMember("myObj", myObj);
         context.eval("sl", "function main() {\n" + "  return import(\"myObj\");\n" + "}\n");
         myObjWrapped = context.getBindings("sl").getMember("main").execute();

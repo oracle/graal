@@ -49,6 +49,7 @@ import java.io.IOException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,9 +77,9 @@ public class SLSharedCodeSeparatedEnvTest {
 
         int instances = SLLanguage.counter;
         // @formatter:off
-        e1 = Context.newBuilder("sl").engine(engine).out(os1).build();
+        e1 = Context.newBuilder("sl").engine(engine).out(os1).allowPolyglotAccess(PolyglotAccess.ALL).build();
         e1.getPolyglotBindings().putMember("extra", 1);
-        e2 = Context.newBuilder("sl").engine(engine).out(os2).build();
+        e2 = Context.newBuilder("sl").engine(engine).out(os2).allowPolyglotAccess(PolyglotAccess.ALL).build();
         e2.getPolyglotBindings().putMember("extra", 2);
         e1.initialize("sl");
         e2.initialize("sl");

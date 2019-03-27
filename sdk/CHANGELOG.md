@@ -7,14 +7,11 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 * Added a possibility to set an [encoding in Source builder](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#encoding-java.nio.charset.Charset-)
 * Restricting access (**incompatible change**) to the host language via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.ALL)` to get previous behavior. Configurations that use `allowAllAccess(true)` are not affected by this incompatible change.
 * Deprecated `Context.Builder.hostClassFilter` and added the new method `Context.Builder.allowHostClassLookup` as a replacement. The name was changed for clarity and now also accepts `null` to indicate that no host class lookup is allowed.
+* Restricting polyglot access (**incompatible change**) for guest languages via [PolyglotAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotAccess.html) configurations. Use `Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL)` to get previous behavior. Configurations that use `allowAllAccess(true)` are not affected by this incompatible change.
+* Removed deprecated API class `ProxyPrimitive`.
 
 ## Version 1.0.0 RC14
-* Added [Context.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental options can be passed to a Context.
 * Added [Engine.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental instrument and engine options can be passed.
-* Removed deprecated API class `ProxyPrimitive`.
-* Restricting access (**incompatible change**) to host interop via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.PUBLIC)` to get previous behavior.
-* Restricting access (**incompatible change**) to the host language via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccessPolicy.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.ALL)` to get previous behavior. Configurations that use `allowAllAccess(true)` are not affected by this incompatible change.
-* Deprecated `Context.Builder.hostClassFilter` and added the new method `Context.Builder.allowHostClassLookup` as a replacement. The name was changed change for clarity and now also allows `null` values to indicate that no host class lookup is allowed.
 
 ## Version 1.0.0 RC13
 * [OptionCategory.DEBUG](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionCategory.html) has been renamed to `OptionCategory.INTERNAL` for clarity.
