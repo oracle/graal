@@ -56,6 +56,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.nativeapi.types.CBoolPointer;
@@ -337,6 +338,21 @@ public final class PolyglotNativeAPI {
         return withHandledErrors(() -> {
             Context.Builder contextBuilder = fetchHandle(context_builder);
             contextBuilder.allowNativeAccess(allow_native_access);
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_builder_allow_polyglot_access", documentation = {
+                    "Allows or disallows polyglot access for a <code>poly_context_builder</code>.",
+                    "",
+                    " @param context_builder that is modified.",
+                    " @param allow_polyglot_access bool value that is passed to the builder.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_builder_allow_polyglot_access(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_polyglot_access) {
+        return withHandledErrors(() -> {
+            Context.Builder contextBuilder = fetchHandle(context_builder);
+            contextBuilder.allowPolyglotAccess(allow_polyglot_access ? PolyglotAccess.ALL : PolyglotAccess.NONE);
         });
     }
 
