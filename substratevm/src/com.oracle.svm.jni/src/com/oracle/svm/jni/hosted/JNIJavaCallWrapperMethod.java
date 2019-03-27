@@ -31,6 +31,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.OS;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -339,7 +340,8 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 args.add(Pair.create(value, type));
                 javaIndex += loadKind.getSlotCount();
             }
-        } else if (callVariant == CallVariant.ARRAY) {
+        // Windows CallVariant.VA_LIST is identical to CallVariant.ARRAY
+        } else if ((OS.getCurrent() == OS.WINDOWS && callVariant == CallVariant.VA_LIST) || callVariant == CallVariant.ARRAY) {
             ResolvedJavaType elementType = metaAccess.lookupJavaType(JNIValue.class);
             int elementSize = SizeOf.get(JNIValue.class);
             ValueNode array = kit.loadLocal(javaIndex, elementType.getJavaKind());

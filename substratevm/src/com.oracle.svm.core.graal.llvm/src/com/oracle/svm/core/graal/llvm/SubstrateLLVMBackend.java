@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.graal.llvm.LLVMFeature.Options.IncludeLLVMDebugInfo;
+import static com.oracle.svm.core.graal.llvm.LLVMOptions.Options.IncludeLLVMDebugInfo;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.util.Collections;

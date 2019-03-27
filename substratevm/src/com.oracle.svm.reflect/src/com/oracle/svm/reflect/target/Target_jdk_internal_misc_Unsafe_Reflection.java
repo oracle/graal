@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,5 +51,11 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
                         "Then, implement the method beforeAnalysis(org.graalvm.nativeimage.BeforeAnalysisAccess config). " +
                         "Next, use the config object to register the field for unsafe access by calling config.registerAsUnsafeAccessed(java.lang.reflect.Field) method. " +
                         "Finally, specify the custom feature to the native image building tool using the -H:Features=MyCustomFeature option.");
+    }
+
+
+    @Substitute
+    public long staticFieldOffset(Target_java_lang_reflect_Field field) {
+        return objectFieldOffset(field);
     }
 }
