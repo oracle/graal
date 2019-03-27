@@ -36,6 +36,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
@@ -69,6 +70,8 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
                         .option("engine.TraceCompilation", "true") //
                         .option("engine.TraceCompilationDetails", "true") //
                         .option("engine.Inlining", "false") //
+                        .option("engine.Splitting", "false") //
+                        .option("engine.Mode", "latency")
                         .build();
         context.enter();
         try {
@@ -77,10 +80,20 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
             Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilation));
             Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilationDetails));
             Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Inlining));
+            Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Splitting));
+            Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
         } finally {
             context.leave();
             context.close();
         }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testParseUnknownMode() {
+        Context context = Context.newBuilder() //
+                        .allowExperimentalOptions(true) //
+                        .option("engine.Mode", "anUnknownMode")
+                        .build();
     }
 
     private static void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
