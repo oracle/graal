@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.options.OptionValues;
+
 /**
  * A cache that enables the Runtime options to be read without the lookup. This is intended to only
  * be used on performance critical paths.
@@ -72,21 +74,22 @@ public class RuntimeOptionsCache {
     void reinitialize(OptimizedCallTarget target) {
         // Splitting
         splitting = target.getOptionValue(PolyglotCompilerOptions.Splitting);
-        legacySplitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting);
-        splittingAllowForcedSplits = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
-        splittingDumpDecisions = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions);
-        splittingMaxCalleeSize = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize);
-        splittingMaxPropagationDepth = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
-        splittingTraceEvents = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
-        traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
-        splittingGrowthLimit = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit);
-        splittingMaxNumberOfSplitNodes = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes);
+        final OptionValues optionValues = target.getOptionValues();
+        legacySplitting = SharedTruffleRuntimeOptions.TruffleLegacySplitting.getValue(optionValues);
+        splittingAllowForcedSplits = SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits.getValue(optionValues);
+        splittingDumpDecisions = SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions.getValue(optionValues);
+        splittingMaxCalleeSize = SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize.getValue(optionValues);
+        splittingMaxPropagationDepth = SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth.getValue(optionValues);
+        splittingTraceEvents = SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents.getValue(optionValues);
+        traceSplittingSummary = SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary.getValue(optionValues);
+        splittingGrowthLimit = SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit.getValue(optionValues);
+        splittingMaxNumberOfSplitNodes = SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes.getValue(optionValues);
         // Inlining
         inlining = target.getOptionValue(PolyglotCompilerOptions.Inlining);
         inliningNodeBudget = target.getOptionValue(PolyglotCompilerOptions.InliningNodeBudget);
         inliningRecursionDepth = target.getOptionValue(PolyglotCompilerOptions.InliningRecursionDepth);
         // Mode overrides
-        if (TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY) {
+        if (target.getOptionValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY) {
             splitting = false;
             inliningNodeBudget = inliningNodeBudget / 4;
         }
