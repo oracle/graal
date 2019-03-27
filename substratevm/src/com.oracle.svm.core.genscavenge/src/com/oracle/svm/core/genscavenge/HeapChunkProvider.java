@@ -154,17 +154,18 @@ class HeapChunkProvider {
     /** Should I keep another aligned chunk on the free list? */
     private boolean keepAlignedChunk() {
         final Log trace = Log.noopLog().string("[HeapChunkProvider.keepAlignedChunk:");
-        final UnsignedWord minimumHeapSize = HeapPolicy.getMinimumHeapSize();
+        final UnsignedWord maximumHeapSize = HeapPolicy.getMaximumHeapSize();
         final UnsignedWord heapChunkBytes = HeapImpl.getHeapImpl().getUsedChunkBytes();
         final UnsignedWord unusedChunkBytes = bytesInUnusedAlignedChunks.get();
         final UnsignedWord bytesInUse = heapChunkBytes.add(unusedChunkBytes);
-        /* If I am under the minimum heap size, then I can keep this chunk. */
-        final boolean result = bytesInUse.belowThan(minimumHeapSize);
+        /* If I am under the max heap free ratio, then I can keep this chunk. */
+        final boolean result = bytesInUse.multiply(100).unsignedDivide(maximumHeapSize).aboveThan(100 - HeapPolicy.getMaxHeapFreeRatio());
         trace
-                        .string("  minimumHeapSize: ").unsigned(minimumHeapSize)
+                        .string("  maximumHeapSize: ").unsigned(maximumHeapSize)
                         .string("  heapChunkBytes: ").unsigned(heapChunkBytes)
                         .string("  unusedBytes: ").unsigned(unusedChunkBytes)
                         .string("  bytesInUse: ").unsigned(bytesInUse)
+                        .string("  maxHeapFreeRatio: ").unsigned(HeapPolicy.getMaxHeapFreeRatio())
                         .string("  returns: ").bool(result)
                         .string(" ]").newline();
         return result;

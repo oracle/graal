@@ -53,6 +53,9 @@ public class HeapPolicyOptions {
     @Option(help = "How many bytes is enough to allocate an unaligned chunk for an array?  0 implies (AlignedHeapChunkSize / 8).") //
     public static final HostedOptionKey<Long> LargeArrayThreshold = new HostedOptionKey<>(HeapPolicy.LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE);
 
+    @Option(help = "The maximum percentage of heap free after GC to avoid shrinking") //
+    public static final RuntimeOptionKey<Integer> MaxHeapFreeRatio = new RuntimeOptionKey<>(70);
+
     /* Zapping */
 
     /* - Should chunks be zapped? */

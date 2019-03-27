@@ -318,6 +318,11 @@ public class HeapPolicy {
         }
     }
 
+    @Fold
+    public static int getMaxHeapFreeRatio() {
+        return HeapPolicyOptions.MaxHeapFreeRatio.getValue();
+    }
+
     /* Zapping */
 
     public static boolean getZapProducedHeapChunks() {
