@@ -26,17 +26,14 @@ package org.graalvm.compiler.truffle.runtime.debug;
 
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Inlining;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceInlining;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleFunctionInlining;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningProfile;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 public final class TraceInliningListener extends AbstractGraalTruffleRuntimeListener {
 
