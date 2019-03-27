@@ -53,7 +53,6 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
                         "Finally, specify the custom feature to the native image building tool using the -H:Features=MyCustomFeature option.");
     }
 
-
     @Substitute
     public long staticFieldOffset(Target_java_lang_reflect_Field field) {
         return objectFieldOffset(field);

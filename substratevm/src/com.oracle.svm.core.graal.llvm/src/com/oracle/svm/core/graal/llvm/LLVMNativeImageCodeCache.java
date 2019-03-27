@@ -25,7 +25,6 @@
 package com.oracle.svm.core.graal.llvm;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.graal.llvm.LLVMOptions.Options;
 import static com.oracle.svm.hosted.image.NativeBootImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.FALSE;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.TRUE;
@@ -182,9 +181,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
 
         final FileWriter stackMapDump;
-        if (LLVMOptions.Options.DumpLLVMStackMap.hasBeenSet()) {
+        if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
             try {
-                stackMapDump = new FileWriter(LLVMOptions.Options.DumpLLVMStackMap.getValue());
+                stackMapDump = new FileWriter(LLVMOptions.DumpLLVMStackMap.getValue());
                 stackMapDump.write("Offsets\n=======\n");
                 for (int offset : sortedMethodOffsets) {
                     String methodName = offsetToSymbolMap.get(offset);
@@ -217,7 +216,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             method.setCodeAddressOffset(offset);
 
             StringBuilder patchpointsDump = null;
-            if (LLVMOptions.Options.DumpLLVMStackMap.hasBeenSet()) {
+            if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
                 patchpointsDump = new StringBuilder();
                 patchpointsDump.append(methodSymbolName);
                 patchpointsDump.append(" [");
@@ -238,7 +237,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                         info.forEachStatepointOffset(call.pcOffset, actualPcOffset, (o, b) -> referenceMap.markReferenceAtOffset(o, b, SubstrateOptions.SpawnIsolates.getValue()));
                         call.debugInfo.setReferenceMap(referenceMap);
 
-                        if (LLVMOptions.Options.DumpLLVMStackMap.hasBeenSet()) {
+                        if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
                             patchpointsDump.append("  [");
                             patchpointsDump.append(actualPcOffset);
                             patchpointsDump.append("] -> ");
@@ -266,7 +265,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     int handlerOffset = info.getAllocaOffset(handler.handlerPos);
                     assert handlerOffset >= 0 && handlerOffset < info.getFunctionStackSize(startPatchpointID);
 
-                    if (LLVMOptions.Options.DumpLLVMStackMap.hasBeenSet()) {
+                    if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
                         patchpointsDump.append("  {");
                         patchpointsDump.append(actualPCOffset);
                         patchpointsDump.append("} -> ");
@@ -286,7 +285,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
             newExceptionHandlers.forEach(compilation::recordExceptionHandler);
 
-            if (LLVMOptions.Options.DumpLLVMStackMap.hasBeenSet()) {
+            if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
                 try {
                     stackMapDump.write(patchpointsDump.toString());
                 } catch (IOException e) {

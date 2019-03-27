@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 201, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,11 @@ import org.graalvm.compiler.options.Option;
 import com.oracle.svm.core.option.HostedOptionKey;
 
 public class LLVMOptions {
-    public static class Options {
-        @Option(help = "Include debugging info in the generated image (for LLVM backend).")//
-        public static final HostedOptionKey<Integer> IncludeLLVMDebugInfo = new HostedOptionKey<>(0);
 
-        @Option(help = "Dump contents of the generated stackmap to the specified file")//
-        public static final HostedOptionKey<String> DumpLLVMStackMap = new HostedOptionKey<>(null);
-    }
+    @Option(help = "Include debugging info in the generated image (for LLVM backend).")//
+    public static final HostedOptionKey<Integer> IncludeLLVMDebugInfo = new HostedOptionKey<>(0);
+
+    @Option(help = "Dump contents of the generated stackmap to the specified file")//
+    public static final HostedOptionKey<String> DumpLLVMStackMap = new HostedOptionKey<>(null);
+
 }

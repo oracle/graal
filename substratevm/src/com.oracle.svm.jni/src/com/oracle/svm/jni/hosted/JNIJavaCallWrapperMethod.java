@@ -340,7 +340,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 args.add(Pair.create(value, type));
                 javaIndex += loadKind.getSlotCount();
             }
-        // Windows CallVariant.VA_LIST is identical to CallVariant.ARRAY
+            // Windows CallVariant.VA_LIST is identical to CallVariant.ARRAY
         } else if ((OS.getCurrent() == OS.WINDOWS && callVariant == CallVariant.VA_LIST) || callVariant == CallVariant.ARRAY) {
             ResolvedJavaType elementType = metaAccess.lookupJavaType(JNIValue.class);
             int elementSize = SizeOf.get(JNIValue.class);
