@@ -78,7 +78,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(4);
 
     /*
-     * TODO planned options:
+     * TODO planned options (GR-13444):
      *
     @Option(help = "Enable automatic duplication of compilation profiles (splitting).",
                     category = OptionCategory.EXPERT)
