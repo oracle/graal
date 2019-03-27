@@ -185,15 +185,9 @@ def gate_sulong(tasks):
 def gate_ruby(tasks):
     with Task('Ruby', tasks, tags=[VmGateTasks.ruby]) as t:
         if t:
-            # Debug GR-9912 on Ruby gate runs. If debug_gr_9912 goes away the custom image building below is not required anymore and
-            # test_ruby can be called with the original graalvm ruby-launcher
-            debug_gr_9912 = 16
-            native_image_context, svm = graalvm_svm()
-            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                ruby_bindir = join(mx_vm.graalvm_output(), 'jre', 'languages', 'ruby', 'bin')
-                ruby_image = native_image(['--language:ruby', '-H:Path=' + ruby_bindir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
-                truffleruby_suite = mx.suite('truffleruby')
-                truffleruby_suite.extensions.ruby_testdownstream_aot([ruby_image, 'spec', 'release'])
+            ruby = join(mx_vm.graalvm_output(), 'jre', 'languages', 'ruby', 'bin', 'truffleruby')
+            truffleruby_suite = mx.suite('truffleruby')
+            truffleruby_suite.extensions.ruby_testdownstream_aot([ruby, 'spec', 'release'])
 
 def gate_python(tasks):
     with Task('Python', tasks, tags=[VmGateTasks.python]) as t:
