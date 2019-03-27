@@ -107,13 +107,13 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(4);
 
-    /*
-     * TODO planned options (GR-13444):
-     *
     @Option(help = "Enable automatic duplication of compilation profiles (splitting).",
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Splitting = new OptionKey<>(true);
 
+    /*
+     * TODO planned options (GR-13444):
+     *
     @Option(help = "Enable automatic on-stack-replacement of loops.",
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> OSR = new OptionKey<>(true);
@@ -142,6 +142,7 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(Inlining, SharedTruffleRuntimeOptions.TruffleFunctionInlining);
         POLYGLOT_TO_TRUFFLE.put(InliningNodeBudget, SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
         POLYGLOT_TO_TRUFFLE.put(InliningRecursionDepth, SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining);
+        POLYGLOT_TO_TRUFFLE.put(Splitting, SharedTruffleRuntimeOptions.TruffleSplitting);
     }
 
     static OptionValues getPolyglotValues(RootNode root) {
