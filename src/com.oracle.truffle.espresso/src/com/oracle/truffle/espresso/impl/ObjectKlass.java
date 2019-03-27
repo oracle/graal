@@ -119,14 +119,13 @@ public final class ObjectKlass extends Klass {
         }
 
         this.declaredMethods = methods;
-        InterfaceTables.CreationResult methodCR;
         if (this.isInterface()) {
-            methodCR = InterfaceTables.create(this, superInterfaces, declaredMethods);
+            InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, superInterfaces, declaredMethods);
             this.itable = methodCR.getItable();
             this.iKlassTable = methodCR.getiKlass();
             this.vtable = null;
         } else {
-            methodCR = InterfaceTables.create(superKlass, superInterfaces, this);
+            InterfaceTables.CreationResult methodCR = InterfaceTables.create(superKlass, superInterfaces, this);
             this.itable = methodCR.getItable();
             this.iKlassTable = methodCR.getiKlass();
             this.vtable = VirtualTable.create(superKlass, declaredMethods, this);
@@ -333,12 +332,12 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public final Method lookupMethod(int index) {
+    public final Method vtableLooup(int index) {
         return (index == -1) ? null : vtable[index];
     }
 
     @Override
-    public final Method lookupMethod(Klass interfKlass, int index) {
+    public final Method itableLookup(Klass interfKlass, int index) {
         assert (index >= 0) : "Undeclared interface method";
         int i = 0;
         for (Klass k : iKlassTable) {
@@ -376,19 +375,5 @@ public final class ObjectKlass extends Klass {
             declaredAndMirandaMethods[pos++] = miranda.method;
         }
         this.declaredMethods = declaredAndMirandaMethods;
-    }
-
-    final Method lookupTrueMethod(Symbol<Name> name, Symbol<Symbol.Signature> signature) {
-        ObjectKlass k = this;
-        while (k != null) {
-            for (int i = 0; i < k.trueDeclaredMethods; i++) {
-                Method m = k.declaredMethods[i];
-                if (m.getName() == name && m.getRawSignature() == signature) {
-                    return m;
-                }
-            }
-            k = k.getSuperKlass();
-        }
-        return null;
     }
 }

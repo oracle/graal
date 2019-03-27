@@ -481,9 +481,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return method;
     }
 
-    public abstract Method lookupMethod(int vtableIndex);
+    public abstract Method vtableLooup(int vtableIndex);
 
-    public abstract Method lookupMethod(Klass interfKlass, int itableIndex);
+    public abstract Method itableLookup(Klass interfKlass, int itableIndex);
 
     public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         if (methodName == Name.invoke || methodName == Name.invokeExact) {

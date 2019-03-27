@@ -231,7 +231,7 @@ public final class Target_sun_misc_Unsafe {
                 }
             }
         }
-        throw EspressoError.shouldNotReachHere();
+        throw EspressoError.shouldNotReachHere("Field with slot " + slot + " not found");
     }
 
     @Substitution(hasReceiver = true)
