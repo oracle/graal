@@ -216,9 +216,8 @@ public abstract class RootNode extends ExecutableNode {
      * internal, the implementation should respect that. Can be called on any thread and without a
      * language context.
      * <p>
-     * This method may be invoked on compiled code paths. It should therefore be ready to partially
-     * evaluated or its implementation should be annotated as with {@link TruffleBoundary}. It is
-     * recommended to implement this method such that it returns a compilation final constant.
+     * This method may be invoked on compiled code paths. It is recommended to implement this method
+     * such that it returns a compilation final constant.
      *
      * @since 0.27
      */
