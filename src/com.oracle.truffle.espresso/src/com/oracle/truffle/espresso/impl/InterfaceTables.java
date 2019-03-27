@@ -47,41 +47,26 @@ class InterfaceTables {
         ArrayList<Miranda> mirandas = new ArrayList<>();
         // Hopefully, a class does not re-implements a superklass' interface (though it works, we
         // will have a second itable for that particular interface)
-        // TODO(garcia) Prevent duplicate tables
         for (ObjectKlass interf : superInterfaces) {
             fillSuperInterfaceTables(interf, thisKlass, mirandas, tmpTable, tmpKlass);
         }
         // Adds all the miranda methods to thisKlass' declared methods
         thisKlass.setMirandas(mirandas);
+        fixMirandas(mirandas, tmpTable);
         if (superKlass == null) {
             return new CreationResult(tmpTable.toArray(new Method[0][]), tmpKlass.toArray(Klass.EMPTY_ARRAY));
         }
-
         // Inherit superklass' interfaces
         Method[][] superKlassITable = superKlass.getItable();
         // Check for inherited method override.
+        // At this point, mirandas are in thisKlass' declared methods
         for (int n_itable = 0; n_itable < superKlass.getiKlassTable().length; n_itable++) {
-            Method[] curItable = superKlassITable[n_itable];
-            for (int n_method = 0; n_method < curItable.length; n_method++) {
-                Method im = curItable[n_method];
-                Method override = thisKlass.lookupDeclaredMethod(im.getName(), im.getRawSignature()); // At
-                                                                                                      // this
-                                                                                                      // points,
-                                                                                                      // we
-                                                                                                      // have
-                                                                                                      // mirandas
-                if (override != null) {
-                    // Interface method override detected, make a copy of the inherited table and
-                    // re-fill it.
-                    // TODO(garcia) we know the starting index, give it to the constructor, so it
-                    // avoids reworking.
-                    tmpTable.add(inherit(curItable, thisKlass));
-                    tmpKlass.add(superKlass.getiKlassTable()[n_itable]);
-                    break;
-                }
+            // Prevent duplicate tables
+            if (!isPresent(superKlass.getiKlassTable()[n_itable], tmpKlass)) {
+                Method[] curItable = lookupOverride(superKlassITable[n_itable], thisKlass);
+                tmpTable.add(curItable);
+                tmpKlass.add(superKlass.getiKlassTable()[n_itable]);
             }
-            tmpTable.add(curItable);
-            tmpKlass.add(superKlass.getiKlassTable()[n_itable]);
         }
         return new CreationResult(tmpTable.toArray(new Method[0][]), tmpKlass.toArray(Klass.EMPTY_ARRAY));
     }
@@ -107,6 +92,15 @@ class InterfaceTables {
         return new CreationResult(tmp.toArray(new Method[0][]), tmpKlass.toArray(Klass.EMPTY_ARRAY));
     }
 
+    private static boolean isPresent(Klass interfKlass, ArrayList<Klass> tmpKlass) {
+        for (Klass klass : tmpKlass) {
+            if (interfKlass == klass) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Should be called before copying superInterface.
     private static void fillSuperInterfaceTables(ObjectKlass superInterface, ObjectKlass thisKlass, ArrayList<Miranda> mirandas, ArrayList<Method[]> tmpITable, ArrayList<Klass> tmpKlassTable) {
         Method[][] superTable = superInterface.getItable();
@@ -115,7 +109,6 @@ class InterfaceTables {
             tmpITable.add(inherit(superTable[i], thisKlass, mirandas, i));
             tmpKlassTable.add(superInterfKlassTable[i]);
         }
-        fixMirandas(mirandas, tmpITable);
     }
 
     private static Method[] createBaseITable(Method[] declaredMethods) {
@@ -126,6 +119,19 @@ class InterfaceTables {
         return declaredMethods;
     }
 
+    private static Method[] lookupOverride(Method[] curItable, ObjectKlass thisKlass) {
+        for (int i = 0; i < curItable.length; i++) {
+            Method im = curItable[i];
+            Method override = thisKlass.lookupDeclaredMethod(im.getName(), im.getRawSignature());
+            if (override != null) {
+                // Interface method override detected, make a copy of the inherited table and
+                // re-fill it. Pass along info to avoid duplicate lookups
+                return inherit(curItable, thisKlass, i, override);
+            }
+        }
+        return curItable;
+    }
+
     /**
      * Given a single interface table, produces a new interface table that contains the
      * implementation of the interface by thisKlass
@@ -134,11 +140,13 @@ class InterfaceTables {
      * @param thisKlass The class implementing this interface
      * @return the interface table for thisKlass.
      */
-    private static Method[] inherit(Method[] interfTable, Klass thisKlass) {
+    private static Method[] inherit(Method[] interfTable, Klass thisKlass, int start, Method override) {
         Method[] res = Arrays.copyOf(interfTable, interfTable.length);
-        for (int i = 0; i < res.length; i++) {
+        res[start] = override;
+        override.setITableIndex(start);
+        for (int i = start + 1; i < res.length; i++) {
             Method im = res[i];
-            Method m = thisKlass.lookupMethod(im.getName(), im.getRawSignature());
+            Method m = thisKlass.lookupDeclaredMethod(im.getName(), im.getRawSignature());
             if (m != null) {
                 m.setITableIndex(i);
                 res[i] = m;
@@ -180,8 +188,8 @@ class InterfaceTables {
                     }
                     mirandas.add(mirandaMethod);
                 } else {
-                    res[i] = new Method(mirandaMethod.method); // We already have a default
-                                                               // implementation. Use it.
+                    // We already have seen a default implementation. Use it.
+                    res[i] = new Method(mirandaMethod.method);
                     res[i].setITableIndex(i);
                 }
             }
