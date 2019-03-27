@@ -119,7 +119,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         if (isPolyglot()) {
             builder = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).options(polyglotOptions);
         } else {
-            builder = Context.newBuilder(getDefaultLanguages()).allowPolyglotAccess(PolyglotAccess.ALL).options(polyglotOptions);
+            builder = Context.newBuilder(getDefaultLanguages()).allowPolyglotAccess(PolyglotAccess.NONE).options(polyglotOptions);
         }
         builder.allowAllAccess(true);
 
