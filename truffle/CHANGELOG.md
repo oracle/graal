@@ -48,6 +48,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     - The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files and file URLs.
     - Deprecated usage of NIO `FileTypeDetector` for MIME type detection.
 * TruffleFile's paths from image building time are translated in image execution time into new paths using Context's FileSystem. The absolute paths pointing to files in language homes in image generation time are resolved using image execution time language homes.
+* Added the [TruffleFile.getAttribute](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getAttribute-com.oracle.truffle.api.TruffleFile.AttributeDescriptor-java.nio.file.LinkOption...-) method to read a single file's attribute and [TruffleFile.getAttributes] (https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getAttributes-java.util.Collection-java.nio.file.LinkOption...-) method to read file's attributes as a bulk operation.
 
 ## Version 1.0.0 RC14
 * Removed some deprecated elements:

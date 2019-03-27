@@ -105,6 +105,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.nio.file.attribute.PosixFilePermission;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assume;
 
@@ -1317,6 +1318,262 @@ public class VirtualizedFileSystemTest {
             Assert.assertEquals(cfg.fileSystem.getSeparator(), env.getFileNameSeparator());
         };
         ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testGetAttribute() {
+        Context ctx = cfg.getContext();
+        Path path = cfg.getPath();
+        boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            TruffleFile root = env.getTruffleFile(path.toString());
+            try {
+                TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
+                Assert.assertEquals(file.getLastModifiedTime(), file.getAttribute(TruffleFile.AttributeDescriptor.LAST_MODIFIED_TIME));
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertEquals(file.getLastAccessTime(), file.getAttribute(TruffleFile.AttributeDescriptor.LAST_ACCESS_TIME));
+                Assert.assertEquals(file.getCreationTime(), file.getAttribute(TruffleFile.AttributeDescriptor.CREATION_TIME));
+                Assert.assertEquals(file.isRegularFile(), file.getAttribute(TruffleFile.AttributeDescriptor.IS_REGULAR_FILE));
+                Assert.assertEquals(file.isDirectory(), file.getAttribute(TruffleFile.AttributeDescriptor.IS_DIRECTORY));
+                Assert.assertEquals(file.isSymbolicLink(), file.getAttribute(TruffleFile.AttributeDescriptor.IS_SYMBOLIC_LINK));
+                Assert.assertEquals(!(file.isRegularFile() | file.isDirectory() | file.isSymbolicLink()), file.getAttribute(TruffleFile.AttributeDescriptor.IS_OTHER));
+                Assert.assertEquals(file.size(), file.getAttribute(TruffleFile.AttributeDescriptor.SIZE).longValue());
+                Assert.assertEquals(file.getOwner(), file.getAttribute(TruffleFile.AttributeDescriptor.OWNER));
+                Assert.assertEquals(file.getGroup(), file.getAttribute(TruffleFile.AttributeDescriptor.GROUP));
+                Assert.assertEquals(file.getPosixPermissions(), file.getAttribute(TruffleFile.AttributeDescriptor.POSIX_PERMISSIONS));
+                Assert.assertTrue(file.getAttribute(TruffleFile.AttributeDescriptor.NLINK) >= 1);
+                Assert.assertEquals(file.getOwner().hashCode(), file.getAttribute(TruffleFile.AttributeDescriptor.UID).intValue());
+                Assert.assertEquals(file.getGroup().hashCode(), file.getAttribute(TruffleFile.AttributeDescriptor.GID).intValue());
+                Assert.assertTrue(verifyPermissions(file.getPosixPermissions(), file.getAttribute(TruffleFile.AttributeDescriptor.MODE)));
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            } catch (UnsupportedOperationException e) {
+                // Verify that file system does not support unix attributes
+                try {
+                    cfg.fileSystem.readAttributes(path, "unix:*");
+                    throw e;
+                } catch (UnsupportedOperationException unsupported) {
+                    // Expected
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testGetAttributes() {
+        Context ctx = cfg.getContext();
+        Path path = cfg.getPath();
+        boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            TruffleFile root = env.getTruffleFile(path.toString());
+            TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
+            try {
+                TruffleFile.Attributes attrs = file.getAttributes(Arrays.asList(
+                                TruffleFile.AttributeDescriptor.LAST_MODIFIED_TIME,
+                                TruffleFile.AttributeDescriptor.LAST_ACCESS_TIME,
+                                TruffleFile.AttributeDescriptor.CREATION_TIME,
+                                TruffleFile.AttributeDescriptor.IS_REGULAR_FILE,
+                                TruffleFile.AttributeDescriptor.IS_DIRECTORY,
+                                TruffleFile.AttributeDescriptor.IS_SYMBOLIC_LINK,
+                                TruffleFile.AttributeDescriptor.IS_OTHER,
+                                TruffleFile.AttributeDescriptor.SIZE));
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertNotNull(attrs);
+                Assert.assertEquals(file.getLastModifiedTime(), attrs.get(TruffleFile.AttributeDescriptor.LAST_MODIFIED_TIME));
+                Assert.assertEquals(file.getLastAccessTime(), attrs.get(TruffleFile.AttributeDescriptor.LAST_ACCESS_TIME));
+                Assert.assertEquals(file.getCreationTime(), attrs.get(TruffleFile.AttributeDescriptor.CREATION_TIME));
+                Assert.assertEquals(file.isRegularFile(), attrs.get(TruffleFile.AttributeDescriptor.IS_REGULAR_FILE));
+                Assert.assertEquals(file.isDirectory(), attrs.get(TruffleFile.AttributeDescriptor.IS_DIRECTORY));
+                Assert.assertEquals(file.isSymbolicLink(), attrs.get(TruffleFile.AttributeDescriptor.IS_SYMBOLIC_LINK));
+                Assert.assertEquals(!(file.isRegularFile() | file.isDirectory() | file.isSymbolicLink()), attrs.get(TruffleFile.AttributeDescriptor.IS_OTHER));
+                Assert.assertEquals(file.size(), attrs.get(TruffleFile.AttributeDescriptor.SIZE).longValue());
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            }
+            try {
+                TruffleFile.Attributes attrs = file.getAttributes(Arrays.asList(TruffleFile.AttributeDescriptor.LAST_MODIFIED_TIME,
+                                TruffleFile.AttributeDescriptor.LAST_ACCESS_TIME,
+                                TruffleFile.AttributeDescriptor.CREATION_TIME,
+                                TruffleFile.AttributeDescriptor.IS_REGULAR_FILE,
+                                TruffleFile.AttributeDescriptor.IS_DIRECTORY,
+                                TruffleFile.AttributeDescriptor.IS_SYMBOLIC_LINK,
+                                TruffleFile.AttributeDescriptor.IS_OTHER,
+                                TruffleFile.AttributeDescriptor.SIZE,
+                                TruffleFile.AttributeDescriptor.OWNER,
+                                TruffleFile.AttributeDescriptor.GROUP,
+                                TruffleFile.AttributeDescriptor.POSIX_PERMISSIONS,
+                                TruffleFile.AttributeDescriptor.MODE,
+                                TruffleFile.AttributeDescriptor.INODE,
+                                TruffleFile.AttributeDescriptor.DEV,
+                                TruffleFile.AttributeDescriptor.RDEV,
+                                TruffleFile.AttributeDescriptor.NLINK,
+                                TruffleFile.AttributeDescriptor.UID,
+                                TruffleFile.AttributeDescriptor.GID,
+                                TruffleFile.AttributeDescriptor.LAST_STATUS_CHANGE_TIME));
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertNotNull(attrs);
+                Assert.assertEquals(file.getLastModifiedTime(), attrs.get(TruffleFile.AttributeDescriptor.LAST_MODIFIED_TIME));
+                Assert.assertEquals(file.getLastAccessTime(), attrs.get(TruffleFile.AttributeDescriptor.LAST_ACCESS_TIME));
+                Assert.assertEquals(file.getCreationTime(), attrs.get(TruffleFile.AttributeDescriptor.CREATION_TIME));
+                Assert.assertEquals(file.isRegularFile(), attrs.get(TruffleFile.AttributeDescriptor.IS_REGULAR_FILE));
+                Assert.assertEquals(file.isDirectory(), attrs.get(TruffleFile.AttributeDescriptor.IS_DIRECTORY));
+                Assert.assertEquals(file.isSymbolicLink(), attrs.get(TruffleFile.AttributeDescriptor.IS_SYMBOLIC_LINK));
+                Assert.assertEquals(!(file.isRegularFile() | file.isDirectory() | file.isSymbolicLink()), attrs.get(TruffleFile.AttributeDescriptor.IS_OTHER));
+                Assert.assertEquals(file.size(), attrs.get(TruffleFile.AttributeDescriptor.SIZE).longValue());
+                Assert.assertEquals(file.getOwner(), attrs.get(TruffleFile.AttributeDescriptor.OWNER));
+                Assert.assertEquals(file.getGroup(), attrs.get(TruffleFile.AttributeDescriptor.GROUP));
+                Assert.assertEquals(file.getPosixPermissions(), attrs.get(TruffleFile.AttributeDescriptor.POSIX_PERMISSIONS));
+                Assert.assertTrue(attrs.get(TruffleFile.AttributeDescriptor.NLINK) >= 1);
+                Assert.assertEquals(file.getOwner().hashCode(), attrs.get(TruffleFile.AttributeDescriptor.UID).intValue());
+                Assert.assertEquals(file.getGroup().hashCode(), attrs.get(TruffleFile.AttributeDescriptor.GID).intValue());
+                Assert.assertTrue(verifyPermissions(file.getPosixPermissions(), attrs.get(TruffleFile.AttributeDescriptor.MODE)));
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            } catch (UnsupportedOperationException e) {
+                // Verify that file system does not support unix attributes
+                try {
+                    cfg.fileSystem.readAttributes(path, "unix:*");
+                    throw e;
+                } catch (UnsupportedOperationException unsupported) {
+                    // Expected
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
+            try {
+                TruffleFile.Attributes attrs = file.getAttributes(Arrays.asList(
+                                TruffleFile.AttributeDescriptor.LAST_MODIFIED_TIME,
+                                TruffleFile.AttributeDescriptor.LAST_ACCESS_TIME,
+                                TruffleFile.AttributeDescriptor.SIZE,
+                                TruffleFile.AttributeDescriptor.MODE,
+                                TruffleFile.AttributeDescriptor.INODE,
+                                TruffleFile.AttributeDescriptor.DEV,
+                                TruffleFile.AttributeDescriptor.NLINK,
+                                TruffleFile.AttributeDescriptor.UID,
+                                TruffleFile.AttributeDescriptor.GID,
+                                TruffleFile.AttributeDescriptor.LAST_STATUS_CHANGE_TIME));
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertNotNull(attrs);
+                Assert.assertEquals(file.getLastModifiedTime(), attrs.get(TruffleFile.AttributeDescriptor.LAST_MODIFIED_TIME));
+                Assert.assertEquals(file.getLastAccessTime(), attrs.get(TruffleFile.AttributeDescriptor.LAST_ACCESS_TIME));
+                Assert.assertEquals(file.size(), attrs.get(TruffleFile.AttributeDescriptor.SIZE).longValue());
+                Assert.assertTrue(verifyPermissions(file.getPosixPermissions(), attrs.get(TruffleFile.AttributeDescriptor.MODE)));
+                Assert.assertNotNull(attrs.get(TruffleFile.AttributeDescriptor.INODE));
+                Assert.assertNotNull(attrs.get(TruffleFile.AttributeDescriptor.DEV));
+                Assert.assertTrue(attrs.get(TruffleFile.AttributeDescriptor.NLINK) >= 1);
+                Assert.assertEquals(file.getOwner().hashCode(), attrs.get(TruffleFile.AttributeDescriptor.UID).intValue());
+                Assert.assertEquals(file.getGroup().hashCode(), attrs.get(TruffleFile.AttributeDescriptor.GID).intValue());
+                Assert.assertNotNull(attrs.get(TruffleFile.AttributeDescriptor.LAST_STATUS_CHANGE_TIME));
+                try {
+                    attrs.get(TruffleFile.AttributeDescriptor.CREATION_TIME);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.AttributeDescriptor.IS_REGULAR_FILE);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.AttributeDescriptor.IS_DIRECTORY);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.AttributeDescriptor.IS_SYMBOLIC_LINK);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.AttributeDescriptor.IS_OTHER);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.AttributeDescriptor.POSIX_PERMISSIONS);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.AttributeDescriptor.OWNER);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.AttributeDescriptor.GROUP);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            } catch (UnsupportedOperationException e) {
+                // Verify that file system does not support unix attributes
+                try {
+                    cfg.fileSystem.readAttributes(path, "unix:*");
+                    throw e;
+                } catch (UnsupportedOperationException unsupported) {
+                    // Expected
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    static boolean verifyPermissions(Set<PosixFilePermission> permissions, int mode) {
+        int perms = 0;
+        for (PosixFilePermission perm : permissions) {
+            switch (perm) {
+                case OWNER_READ:
+                    perms |= 4 << 6;
+                    break;
+                case OWNER_WRITE:
+                    perms |= 2 << 6;
+                    break;
+                case OTHERS_EXECUTE:
+                    perms |= 1 << 6;
+                    break;
+                case GROUP_READ:
+                    perms |= 4 << 3;
+                    break;
+                case GROUP_WRITE:
+                    perms |= 2 << 3;
+                    break;
+                case GROUP_EXECUTE:
+                    perms |= 1 << 3;
+                    break;
+                case OTHERS_READ:
+                    perms |= 4;
+                    break;
+                case OTHERS_WRITE:
+                    perms |= 2;
+                    break;
+                case OWNER_EXECUTE:
+                    perms |= 1;
+                    break;
+            }
+        }
+        return (perms & mode) == perms;
     }
 
     public static final class Configuration implements Closeable {
