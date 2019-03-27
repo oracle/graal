@@ -225,14 +225,15 @@ final class TruffleSplittingStrategy {
         });
     }
 
-    static void newTargetCreated(GraalTVMCI tvmci, RootCallTarget target) {
+    static void newTargetCreated(RootCallTarget target) {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplitting)) {
-            final EngineData engineData = tvmci.getEngineData(target.getRootNode());
-            final int newLimit = (int) (engineData.splitLimit + TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit) * callTarget.getUninitializedNodeCount());
-            engineData.splitLimit = Math.min(newLimit, TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes));
+        final EngineData engineData = callTarget.engineData;
+        final RuntimeOptionsCache runtimeOptionsCache = engineData.options;
+        if (runtimeOptionsCache.isSplitting()) {
+            final int newLimit = (int) (engineData.splitLimit +  runtimeOptionsCache.getSplittingGrowthLimit() * callTarget.getUninitializedNodeCount());
+            engineData.splitLimit = Math.min(newLimit, runtimeOptionsCache.getSplittingMaxNumberOfSplitNodes());
         }
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary)) {
+        if (runtimeOptionsCache.isTraceSplittingSummary()) {
             reporter.totalCreatedNodeCount += callTarget.getUninitializedNodeCount();
         }
     }
@@ -250,8 +251,8 @@ final class TruffleSplittingStrategy {
         }
     }
 
-    static void newPolymorphicSpecialize(Node node) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary)) {
+    static void newPolymorphicSpecialize(Node node, RuntimeOptionsCache options) {
+        if (options.isTraceSplittingSummary()) {
             final Map<Class<? extends Node>, Integer> polymorphicNodes = reporter.polymorphicNodes;
             final Class<? extends Node> aClass = node.getClass();
             polymorphicNodes.put(aClass, polymorphicNodes.getOrDefault(aClass, 0) + 1);
@@ -259,10 +260,10 @@ final class TruffleSplittingStrategy {
     }
 
     static void newDirectCallNodeCreated(OptimizedDirectCallNode directCallNode) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting)) {
+        final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
+        if (callTarget.engineData.options.isLegacySplitting()) {
             return;
         }
-        final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
         callTarget.addKnownCallNode(directCallNode);
     }
 

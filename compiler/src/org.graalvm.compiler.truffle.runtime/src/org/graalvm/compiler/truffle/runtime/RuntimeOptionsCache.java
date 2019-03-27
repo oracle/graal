@@ -43,6 +43,8 @@ public class RuntimeOptionsCache {
     private boolean inlining;
     private int inliningMaxCallerSize;
     private int inliningMaximumRecursiveInlining;
+    private double splittingGrowthLimit;
+    private int splittingMaxNumberOfSplitNodes;
 
     public RuntimeOptionsCache() {
         reinitialize();
@@ -58,6 +60,8 @@ public class RuntimeOptionsCache {
         splittingMaxPropagationDepth = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
         splittingTraceEvents = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
         traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
+        splittingGrowthLimit = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit);
+        splittingMaxNumberOfSplitNodes = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes);
         // Inlining
         inlining = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleFunctionInlining);
         inliningMaxCallerSize = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
@@ -106,11 +110,19 @@ public class RuntimeOptionsCache {
         return inlining;
     }
 
-    public int getInliningMaxCallerSize() {
+    int getInliningMaxCallerSize() {
         return inliningMaxCallerSize;
     }
 
-    public int getInliningMaximumRecursiveInlining() {
+    int getInliningMaximumRecursiveInlining() {
         return inliningMaximumRecursiveInlining;
+    }
+
+    double getSplittingGrowthLimit() {
+        return splittingGrowthLimit;
+    }
+
+    int getSplittingMaxNumberOfSplitNodes() {
+        return splittingMaxNumberOfSplitNodes;
     }
 }
