@@ -119,7 +119,7 @@ public class TruffleInliningProfile {
         if (failedReason == null) {
             return null;
         } else {
-            return failedReason.format(callNode.getCallTarget());
+            return failedReason.format(runtimeOptionsCache);
         }
     }
 
