@@ -540,7 +540,7 @@ public abstract class Launcher {
             printOption("--version:graalvm",             "Print GraalVM version information and exit.");
             printOption("--show-version:graalvm",        "Print GraalVM version information and continue execution.");
             printOption("--log.file=<String>",           "Redirect guest languages logging into a given file.");
-            printOption("--log.[logger].level=<String>", "Set language log level. Can be OFF, SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST or ALL.");
+            printOption("--log.[logger].level=<String>", "Set language log level to OFF, SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST or ALL.");
             // @formatter:on
             List<PrintableOption> engineOptions = new ArrayList<>();
             for (OptionDescriptor descriptor : getTempEngine().getOptions()) {
