@@ -566,12 +566,7 @@ public abstract class Launcher {
         Map<Instrument, List<PrintableOption>> instrumentsOptions = new HashMap<>();
         List<Instrument> instruments = sortedInstruments(engine);
         for (Instrument instrument : instruments) {
-            List<PrintableOption> options = new ArrayList<>();
-            for (OptionDescriptor descriptor : instrument.getOptions()) {
-                if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
-                    options.add(asPrintableOption(descriptor));
-                }
-            }
+            List<PrintableOption> options = filterOptions(instrument.getOptions(), optionCategory);
             if (!options.isEmpty()) {
                 instrumentsOptions.put(instrument, options);
             }
@@ -592,12 +587,7 @@ public abstract class Launcher {
         Map<Language, List<PrintableOption>> languagesOptions = new HashMap<>();
         List<Language> languages = sortedLanguages(engine);
         for (Language language : languages) {
-            List<PrintableOption> options = new ArrayList<>();
-            for (OptionDescriptor descriptor : language.getOptions()) {
-                if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
-                    options.add(asPrintableOption(descriptor));
-                }
-            }
+            List<PrintableOption> options = filterOptions(language.getOptions(), optionCategory);
             if (!options.isEmpty()) {
                 languagesOptions.put(language, options);
             }
@@ -612,6 +602,16 @@ public abstract class Launcher {
                 }
             }
         }
+    }
+
+    private static List<PrintableOption> filterOptions(OptionDescriptors descriptors, OptionCategory optionCategory) {
+        List<PrintableOption> options = new ArrayList<>();
+        for (OptionDescriptor descriptor : descriptors) {
+            if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
+                options.add(asPrintableOption(descriptor));
+            }
+        }
+        return options;
     }
 
     @SuppressWarnings("deprecation")
