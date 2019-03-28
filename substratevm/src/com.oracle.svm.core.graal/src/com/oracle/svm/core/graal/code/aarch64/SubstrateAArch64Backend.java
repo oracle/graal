@@ -30,6 +30,7 @@ import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 
 import org.graalvm.compiler.asm.Assembler;
@@ -85,6 +86,7 @@ import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.BreakpointNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -119,6 +121,7 @@ import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
 import com.oracle.svm.core.graal.lir.VerificationMarkerOp;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
@@ -129,6 +132,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -142,6 +146,7 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -186,21 +191,80 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         super(providers);
     }
 
-    /**
-     * A direct call, but without alignment nops for the call instruction. Used for fatal exception
-     * calls.
-     */
     @Opcode("CALL_DIRECT")
     public static class SubstrateAArch64DirectCallOp extends AArch64Call.DirectCallOp {
         public static final LIRInstructionClass<SubstrateAArch64DirectCallOp> TYPE = LIRInstructionClass.create(SubstrateAArch64DirectCallOp.class);
 
-        public SubstrateAArch64DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        private final RuntimeConfiguration runtimeConfiguration;
+        @Use({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchor;
+
+        public SubstrateAArch64DirectCallOp(RuntimeConfiguration runtimeConfiguration, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state,
+                        Value javaFrameAnchor) {
             super(TYPE, callTarget, result, parameters, temps, state);
+            this.runtimeConfiguration = runtimeConfiguration;
+            this.javaFrameAnchor = javaFrameAnchor;
         }
 
         @Override
-        public void emitCode(CompilationResultBuilder tasm, AArch64MacroAssembler masm) {
-            AArch64Call.directCall(tasm, masm, callTarget, null, state);
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            maybeTransitionToNative(crb, masm, runtimeConfiguration, javaFrameAnchor, state);
+            AArch64Call.directCall(crb, masm, callTarget, null, state);
+        }
+    }
+
+    @Opcode("CALL_INDIRECT")
+    public static class SubstrateAArch64IndirectCallOp extends AArch64Call.IndirectCallOp {
+        public static final LIRInstructionClass<SubstrateAArch64IndirectCallOp> TYPE = LIRInstructionClass.create(SubstrateAArch64IndirectCallOp.class);
+        private final RuntimeConfiguration runtimeConfiguration;
+        @Use({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchor;
+
+        public SubstrateAArch64IndirectCallOp(RuntimeConfiguration runtimeConfiguration, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
+                        LIRFrameState state, Value javaFrameAnchor) {
+            super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
+            this.runtimeConfiguration = runtimeConfiguration;
+            this.javaFrameAnchor = javaFrameAnchor;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            maybeTransitionToNative(crb, masm, runtimeConfiguration, javaFrameAnchor, state);
+            super.emitCode(crb, masm);
+        }
+    }
+
+    static void maybeTransitionToNative(CompilationResultBuilder crb, AArch64MacroAssembler masm, RuntimeConfiguration runtimeConfiguration, Value javaFrameAnchor, LIRFrameState state) {
+        if (ValueUtil.isIllegal(javaFrameAnchor)) {
+            /* Not a call that needs to set up a JavaFrameAnchor. */
+            return;
+        }
+
+        Register anchor = ValueUtil.asRegister(javaFrameAnchor);
+
+        /*
+         * We record the instruction to load the current instruction pointer as a Call infopoint, so
+         * that the same metadata is emitted in the machine code as for a normal call instruction.
+         * The adr loads the offset 8 relative to the begin of the adr instruction, which is the
+         * same as for a blr instruction. So the usual AArch64 specific semantics that all the
+         * metadata is registered for the end of the instruction just works.
+         */
+        int startPos = masm.position();
+        try (ScratchRegister scratch = masm.getScratchRegister()) {
+            Register tempRegister = scratch.getRegister();
+            masm.adr(tempRegister, 4); // Read PC + 4
+            crb.recordIndirectCall(startPos, masm.position(), null, state);
+            masm.str(64, tempRegister, AArch64Address.createPairUnscaledImmediateAddress(anchor, runtimeConfiguration.getJavaFrameAnchorLastIPOffset()));
+        }
+
+        masm.str(64, sp, AArch64Address.createPairUnscaledImmediateAddress(anchor, runtimeConfiguration.getJavaFrameAnchorLastSPOffset()));
+
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            /* Change the VMThread status from Java to Native. */
+            try (ScratchRegister scratch = masm.getScratchRegister()) {
+                Register tempRegister = scratch.getRegister();
+                masm.mov(tempRegister, VMThreads.StatusSupport.STATUS_IN_NATIVE);
+                masm.str(64, tempRegister,
+                                AArch64Address.createPairUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
+            }
         }
     }
 
@@ -261,7 +325,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             ResolvedJavaMethod targetMethod = callTarget.getMethod();
-            append(new SubstrateAArch64DirectCallOp(targetMethod, result, arguments, temps, info));
+            append(new SubstrateAArch64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, arguments, temps, info, Value.ILLEGAL));
         }
 
         @Override
@@ -353,7 +417,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
     }
 
-    public static final class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
+    public final class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
         public SubstrateAArch64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AArch64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
@@ -383,7 +447,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            append(new SubstrateAArch64DirectCallOp(targetMethod, result, parameters, temps, callState));
+            append(new SubstrateAArch64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, callState, setupJavaFrameAnchor(callTarget)));
         }
 
         @Override
@@ -393,7 +457,18 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             AllocatableValue targetAddress = targetRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            append(new AArch64Call.IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState));
+            append(new SubstrateAArch64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, targetAddress, callState, setupJavaFrameAnchor(callTarget)));
+        }
+
+        private AllocatableValue setupJavaFrameAnchor(CallTargetNode callTarget) {
+            if (!hasJavaFrameAnchor(callTarget)) {
+                return Value.ILLEGAL;
+            }
+            /* Register allocator cannot handle variables at call sites, need a fixed register. */
+            Register frameAnchorRegister = AArch64.r13;
+            AllocatableValue frameAnchor = frameAnchorRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
+            gen.emitMove(frameAnchor, operand(getJavaFrameAnchor(callTarget)));
+            return frameAnchor;
         }
 
         @Override

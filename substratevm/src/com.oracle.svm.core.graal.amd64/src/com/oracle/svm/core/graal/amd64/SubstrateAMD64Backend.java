@@ -592,14 +592,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget)));
         }
 
-        private boolean hasJavaFrameAnchor(CallTargetNode callTarget) {
-            /*
-             * We are re-using the classInit field of the InvokeNode to store the JavaFrameAnchor,
-             * see CFunctionSnippets.matchCallStructure.
-             */
-            return callTarget.invoke().classInit() != null;
-        }
-
         private AllocatableValue setupJavaFrameAnchor(CallTargetNode callTarget) {
             if (!hasJavaFrameAnchor(callTarget)) {
                 return Value.ILLEGAL;
@@ -608,7 +600,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             /* Register allocator cannot handle variables at call sites, need a fixed register. */
             Register frameAnchorRegister = AMD64.r13;
             AllocatableValue frameAnchor = frameAnchorRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
-            gen.emitMove(frameAnchor, operand(callTarget.invoke().classInit()));
+            gen.emitMove(frameAnchor, operand(getJavaFrameAnchor(callTarget)));
             return frameAnchor;
         }
 

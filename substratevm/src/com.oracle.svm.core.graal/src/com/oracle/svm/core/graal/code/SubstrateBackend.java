@@ -30,6 +30,8 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
@@ -82,6 +84,18 @@ public abstract class SubstrateBackend extends Backend {
     public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         return new RegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo);
+    }
+
+    public static boolean hasJavaFrameAnchor(CallTargetNode callTarget) {
+        return getJavaFrameAnchor(callTarget) != null;
+    }
+
+    /**
+     * We are re-using the classInit field of the InvokeNode to store the JavaFrameAnchor, see
+     * CFunctionSnippets.matchCallStructure.
+     */
+    public static ValueNode getJavaFrameAnchor(CallTargetNode callTarget) {
+        return callTarget.invoke().classInit();
     }
 
     public abstract Phase newAddressLoweringPhase(CodeCacheProvider codeCache);
