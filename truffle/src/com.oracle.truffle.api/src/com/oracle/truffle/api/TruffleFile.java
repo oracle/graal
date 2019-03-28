@@ -109,6 +109,143 @@ import org.graalvm.polyglot.TypeLiteral;
  * @since 1.0
  */
 public final class TruffleFile {
+
+    /**
+     * The file's last modified time. Supported by all filesystems.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<FileTime> LAST_MODIFIED_TIME = new AttributeDescriptor<>(AttributeGroup.BASIC, "lastModifiedTime", FileTime.class);
+
+    /**
+     * The file's last access time. Supported by all filesystems.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<FileTime> LAST_ACCESS_TIME = new AttributeDescriptor<>(AttributeGroup.BASIC, "lastAccessTime", FileTime.class);
+
+    /**
+     * The file's creation time. Supported by all filesystems.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<FileTime> CREATION_TIME = new AttributeDescriptor<>(AttributeGroup.BASIC, "creationTime", FileTime.class);
+
+    /**
+     * Represents the file a regular file. Supported by all filesystems.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Boolean> IS_REGULAR_FILE = new AttributeDescriptor<>(AttributeGroup.BASIC, "isRegularFile", Boolean.class);
+
+    /**
+     * Represents the file a directory. Supported by all filesystems.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Boolean> IS_DIRECTORY = new AttributeDescriptor<>(AttributeGroup.BASIC, "isDirectory", Boolean.class);
+
+    /**
+     * Represents the file a symbolic link. Supported by all filesystems.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Boolean> IS_SYMBOLIC_LINK = new AttributeDescriptor<>(AttributeGroup.BASIC, "isSymbolicLink", Boolean.class);
+
+    /**
+     * Represents the file a special file (device, named pipe). Supported by all filesystems.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Boolean> IS_OTHER = new AttributeDescriptor<>(AttributeGroup.BASIC, "isOther", Boolean.class);
+
+    /**
+     * The file's size in bytes. Supported by all filesystems.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Long> SIZE = new AttributeDescriptor<>(AttributeGroup.BASIC, "size", Long.class);
+
+    /**
+     * The owner of the file. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<UserPrincipal> UNIX_OWNER = new AttributeDescriptor<>(AttributeGroup.POSIX, "owner", UserPrincipal.class);
+
+    /**
+     * The group owner of the file. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<GroupPrincipal> UNIX_GROUP = new AttributeDescriptor<>(AttributeGroup.POSIX, "group", GroupPrincipal.class);
+
+    /**
+     * The file's Posix permissions. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<>(AttributeGroup.POSIX, "permissions",
+                    new TypeLiteral<Set<PosixFilePermission>>() {
+                    });
+
+    /**
+     * The file's mode containing the protection and file type bits. Supported only by UNIX native
+     * filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Integer> UNIX_MODE = new AttributeDescriptor<>(AttributeGroup.UNIX, "mode", Integer.class);
+
+    /**
+     * The file's inode number. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Long> UNIX_INODE = new AttributeDescriptor<>(AttributeGroup.UNIX, "ino", Long.class);
+
+    /**
+     * The id of a device containing the file. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Long> UNIX_DEV = new AttributeDescriptor<>(AttributeGroup.UNIX, "dev", Long.class);
+
+    /**
+     * The id of a device represented by the file. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Long> UNIX_RDEV = new AttributeDescriptor<>(AttributeGroup.UNIX, "rdev", Long.class);
+
+    /**
+     * The number of hard links. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Integer> UNIX_NLINK = new AttributeDescriptor<>(AttributeGroup.UNIX, "nlink", Integer.class);
+
+    /**
+     * The user id of file owner. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Integer> UNIX_UID = new AttributeDescriptor<>(AttributeGroup.UNIX, "uid", Integer.class);
+
+    /**
+     * The group id of file owner. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<Integer> UNIX_GID = new AttributeDescriptor<>(AttributeGroup.UNIX, "gid", Integer.class);
+
+    /**
+     * The file's last status change time. Supported only by UNIX native filesystem.
+     *
+     * @since 1.0
+     */
+    public static final AttributeDescriptor<FileTime> UNIX_CTIME = new AttributeDescriptor<>(AttributeGroup.UNIX, "ctime", FileTime.class);
+
     private static final int MAX_BUFFER_SIZE = Integer.MAX_VALUE - 8;
     private static final int BUFFER_SIZE = 8192;
     private static final boolean LEGACY_FILETYPEDETECTORS_DISABLED = Boolean.getBoolean("graalvm.legacy.filetypedetectors.disabled");
@@ -1536,142 +1673,6 @@ public final class TruffleFile {
      * @since 1.0
      */
     public static final class AttributeDescriptor<T> {
-
-        /**
-         * The file's last modified time. Supported by all filesystems.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<FileTime> LAST_MODIFIED_TIME = new AttributeDescriptor<>(AttributeGroup.BASIC, "lastModifiedTime", FileTime.class);
-
-        /**
-         * The file's last access time. Supported by all filesystems.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<FileTime> LAST_ACCESS_TIME = new AttributeDescriptor<>(AttributeGroup.BASIC, "lastAccessTime", FileTime.class);
-
-        /**
-         * The file's creation time. Supported by all filesystems.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<FileTime> CREATION_TIME = new AttributeDescriptor<>(AttributeGroup.BASIC, "creationTime", FileTime.class);
-
-        /**
-         * Represents the file a regular file. Supported by all filesystems.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Boolean> IS_REGULAR_FILE = new AttributeDescriptor<>(AttributeGroup.BASIC, "isRegularFile", Boolean.class);
-
-        /**
-         * Represents the file a directory. Supported by all filesystems.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Boolean> IS_DIRECTORY = new AttributeDescriptor<>(AttributeGroup.BASIC, "isDirectory", Boolean.class);
-
-        /**
-         * Represents the file a symbolic link. Supported by all filesystems.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Boolean> IS_SYMBOLIC_LINK = new AttributeDescriptor<>(AttributeGroup.BASIC, "isSymbolicLink", Boolean.class);
-
-        /**
-         * Represents the file a special file (device, named pipe). Supported by all filesystems.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Boolean> IS_OTHER = new AttributeDescriptor<>(AttributeGroup.BASIC, "isOther", Boolean.class);
-
-        /**
-         * The file's size in bytes. Supported by all filesystems.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Long> SIZE = new AttributeDescriptor<>(AttributeGroup.BASIC, "size", Long.class);
-
-        /**
-         * The owner of the file. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<UserPrincipal> OWNER = new AttributeDescriptor<>(AttributeGroup.POSIX, "owner", UserPrincipal.class);
-
-        /**
-         * The group owner of the file. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<GroupPrincipal> GROUP = new AttributeDescriptor<>(AttributeGroup.POSIX, "group", GroupPrincipal.class);
-
-        /**
-         * The file's Posix permissions. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Set<PosixFilePermission>> POSIX_PERMISSIONS = new AttributeDescriptor<>(AttributeGroup.POSIX, "permissions",
-                        new TypeLiteral<Set<PosixFilePermission>>() {
-                        });
-
-        /**
-         * The file's mode containing the protection and file type bits. Supported only by UNIX
-         * native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Integer> MODE = new AttributeDescriptor<>(AttributeGroup.UNIX, "mode", Integer.class);
-
-        /**
-         * The file's inode number. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Long> INODE = new AttributeDescriptor<>(AttributeGroup.UNIX, "ino", Long.class);
-
-        /**
-         * The id of a device containing the file. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Long> DEV = new AttributeDescriptor<>(AttributeGroup.UNIX, "dev", Long.class);
-
-        /**
-         * The id of a device represented by the file. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Long> RDEV = new AttributeDescriptor<>(AttributeGroup.UNIX, "rdev", Long.class);
-
-        /**
-         * The number of hard links. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Integer> NLINK = new AttributeDescriptor<>(AttributeGroup.UNIX, "nlink", Integer.class);
-
-        /**
-         * The user id of file owner. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Integer> UID = new AttributeDescriptor<>(AttributeGroup.UNIX, "uid", Integer.class);
-
-        /**
-         * The group id of file owner. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<Integer> GID = new AttributeDescriptor<>(AttributeGroup.UNIX, "gid", Integer.class);
-
-        /**
-         * The file's last status change time. Supported only by UNIX native filesystem.
-         *
-         * @since 1.0
-         */
-        public static final AttributeDescriptor<FileTime> LAST_STATUS_CHANGE_TIME = new AttributeDescriptor<>(AttributeGroup.UNIX, "ctime", FileTime.class);
 
         final AttributeGroup group;
         final String name;
