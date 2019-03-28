@@ -1034,6 +1034,30 @@ public abstract class Launcher {
         }
     }
 
+    private void printJvmHelp() {
+        System.out.println("JVM options:");
+        printOption("--vm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
+        printOption("--vm.D<name>=<value>", "Set a system property");
+        printOption("--vm.esa", "Enable system assertions");
+        printOption("--vm.ea[:<packagename>...|:<classname>]", "Enable assertions with specified granularity");
+        printOption("--vm.agentlib:<libname>[=<options>]", "Load native agent library <libname>");
+        printOption("--vm.agentpath:<pathname>[=<options>]", "Load native agent library by full pathname");
+        printOption("--vm.javaagent:<jarpath>[=<options>]", "Load Java programming language agent");
+        printOption("--vm.Xbootclasspath/a:<...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's boot classpath");
+        printOption("--vm.Xmx<size>", "Set maximum Java heap size");
+        printOption("--vm.Xms<size>", "Set initial Java heap size");
+        printOption("--vm.Xss<size>", "Set java thread stack size");
+    }
+
+    private void printBasicNativeHelp() {
+        printOption("--vm.D<property>=<value>", "Sets a system property");
+        /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
+        printOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
+        printOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
+        printOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
+        printOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
+    }
+
     private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");
 
     class Native {
@@ -1362,21 +1386,6 @@ public abstract class Launcher {
             throw abort("Unknown native option: " + key + ". Use --help:vm to list available options.");
         }
 
-        private void printJvmHelp() {
-            System.out.println("JVM options:");
-            printOption("--vm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
-            printOption("--vm.D<name>=<value>", "Set a system property");
-            printOption("--vm.esa", "Enable system assertions");
-            printOption("--vm.ea[:<packagename>...|:<classname>]", "Enable assertions with specified granularity");
-            printOption("--vm.agentlib:<libname>[=<options>]", "Load native agent library <libname>");
-            printOption("--vm.agentpath:<pathname>[=<options>]", "Load native agent library by full pathname");
-            printOption("--vm.javaagent:<jarpath>[=<options>]", "Load Java programming language agent");
-            printOption("--vm.Xbootclasspath/a:<...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's boot classpath");
-            printOption("--vm.Xmx<size>", "Set maximum Java heap size");
-            printOption("--vm.Xms<size>", "Set initial Java heap size");
-            printOption("--vm.Xss<size>", "Set java thread stack size");
-        }
-
         private void printNativeHelp() {
             System.out.println("Native VM options:");
             SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
@@ -1406,12 +1415,7 @@ public abstract class Launcher {
                 }
             }
             printCompilerOptions();
-            printOption("--vm.D<property>=<value>", "Sets a system property");
-            /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
-            printOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
-            printOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
-            printOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
-            printOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
+            printBasicNativeHelp();
         }
 
         private void printCompilerOptions() {
