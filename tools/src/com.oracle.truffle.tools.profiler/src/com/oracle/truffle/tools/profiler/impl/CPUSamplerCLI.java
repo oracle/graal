@@ -58,7 +58,6 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-                    Output.HISTOGRAM,
                     new Function<String, Output>() {
                         @Override
                         public Output apply(String s) {
@@ -71,7 +70,6 @@ class CPUSamplerCLI extends ProfilerCLI {
                     });
 
     static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
-                    CPUSampler.Mode.EXCLUDE_INLINED_ROOTS,
                     new Function<String, CPUSampler.Mode>() {
                         @Override
                         public CPUSampler.Mode apply(String s) {

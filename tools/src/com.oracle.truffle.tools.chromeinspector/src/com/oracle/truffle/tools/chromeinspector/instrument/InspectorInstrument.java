@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionCategory;
@@ -77,7 +78,7 @@ public final class InspectorInstrument extends TruffleInstrument {
     private Server server;
     private ConnectionWatcher connectionWatcher;
 
-    static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", DEFAULT_ADDRESS, (address) -> {
+    static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", (address) -> {
         if (address.isEmpty() || address.equals("true")) {
             return DEFAULT_ADDRESS;
         } else {
@@ -93,9 +94,9 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
             return new HostAndPort(host, port);
         }
-    }, (address) -> address.verify());
+    }, (Consumer<HostAndPort>) ((address) -> address.verify()));
 
-    static final OptionType<List<URI>> SOURCE_PATH = new OptionType<>("folder" + File.pathSeparator + "file.zip" + File.pathSeparator + "...", Collections.emptyList(), (str) -> {
+    static final OptionType<List<URI>> SOURCE_PATH = new OptionType<>("folder" + File.pathSeparator + "file.zip" + File.pathSeparator + "...", (str) -> {
         if (str.isEmpty()) {
             return Collections.emptyList();
         }

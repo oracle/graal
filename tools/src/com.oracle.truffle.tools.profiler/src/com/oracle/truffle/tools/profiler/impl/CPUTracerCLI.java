@@ -49,7 +49,6 @@ class CPUTracerCLI extends ProfilerCLI {
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-                    Output.HISTOGRAM,
                     new Function<String, Output>() {
                         @Override
                         public Output apply(String s) {
