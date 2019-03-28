@@ -242,7 +242,7 @@ def updategraalinopenjdk(args):
                         with open(dst_file, 'w') as fp:
                             fp.write(contents)
 
-    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check):
+    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check, preserve_indent = False):
         mx.log('Updating ' + filename + '...')
         old_lines = []
         new_lines = []
@@ -258,11 +258,19 @@ def updategraalinopenjdk(args):
                     line = fp.readline()
                 assert line, begin_line + ' not found'
 
+            lines = fp.readlines()
             line_in_def = True
-            for replace in replace_lines:
-                new_lines.append(replace)
 
-            for line in fp.readlines():
+            indent = 0;
+            if preserve_indent:
+                line = lines[0]
+                lstripped_line = line.lstrip()
+                indent = len(line) - len(lstripped_line)
+
+            for replace in replace_lines:
+                new_lines.append(' ' * indent + replace)
+
+            for line in lines:
                 stripped_line = line.strip()
                 if line_in_def:
                     if stripped_line == end_line:
@@ -286,11 +294,11 @@ def updategraalinopenjdk(args):
     CompileJavaModules_gmk = join(jdkrepo, 'make', 'CompileJavaModules.gmk') # pylint: disable=invalid-name
     new_lines = []
     for pkg in sorted(jdk_internal_vm_compiler_EXCLUDES):
-        new_lines.append('    ' + pkg + ' \\\n')
+        new_lines.append(pkg + ' \\\n')
     begin_lines = ['jdk.internal.vm.compiler_EXCLUDES += \\']
     end_line = '#'
     old_line_check = single_column_with_continuation
-    replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check)
+    replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
 
     # Update 'SRC' in the 'Compile graalunit tests' section of make/test/JtregGraalUnit.gmk
     # to include all test packages.
@@ -301,11 +309,11 @@ def updategraalinopenjdk(args):
     jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.virtual.bench')
     jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.micro.benchmarks')
     for pkg in sorted(jdk_internal_vm_compiler_test_SRC):
-        new_lines.append('            $(SRC_DIR)/' + pkg + '/src \\\n')
+        new_lines.append('$(SRC_DIR)/' + pkg + '/src \\\n')
     begin_lines = ['### Compile graalunit tests', 'SRC := \\']
     end_line = ', \\'
     old_line_check = single_column_with_continuation
-    replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check)
+    replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
 
     mx.log('Adding new files to HG...')
     overwritten = ''
