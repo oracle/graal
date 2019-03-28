@@ -498,19 +498,18 @@ public abstract class Launcher {
         return home;
     }
 
-    @SuppressWarnings("fallthrough")
     final boolean runPolyglotAction() {
         OptionCategory helpCategory = helpInternal ? OptionCategory.INTERNAL : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
 
         switch (versionAction) {
-            case PrintAndContinue:
-                printPolyglotVersions();
-                // fall through
-            case None:
-                break;
             case PrintAndExit:
                 printPolyglotVersions();
                 return true;
+            case PrintAndContinue:
+                printPolyglotVersions();
+                break;
+            case None:
+                break;
         }
         boolean printDefaultHelp = help || ((helpExpert || helpInternal) && !helpTools && !helpLanguages);
         if (printDefaultHelp) {
