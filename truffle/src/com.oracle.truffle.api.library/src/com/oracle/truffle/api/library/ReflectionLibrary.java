@@ -516,7 +516,6 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
             }
         }
 
-        @TruffleBoundary
         @Override
         public boolean accepts(Object receiver_) {
             return true;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,26 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.RegexResultEndArrayObject;
 import com.oracle.truffle.regex.runtime.RegexResultStartArrayObject;
+import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
@@ -55,41 +69,22 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * </ol>
  * </li>
  */
+@ExportLibrary(InteropLibrary.class)
 public abstract class RegexResult extends AbstractConstantKeysObject {
 
-    public abstract static class NoMatchResult extends RegexResult {
+    static final String PROP_IS_MATCH = "isMatch";
+    static final String PROP_GROUP_COUNT = "groupCount";
+    static final String PROP_START = "start";
+    static final String PROP_END = "end";
+    static final String PROP_GET_START = "getStart";
+    static final String PROP_GET_END = "getEnd";
 
-        private NoMatchResult(RegexObject regex, Object input, int groupCount) {
-            super(regex, input, groupCount);
-        }
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GROUP_COUNT, PROP_START, PROP_END, PROP_GET_START, PROP_GET_END);
 
-        @Override
-        public String toString() {
-            return "NO_MATCH";
-        }
-    }
-
-    public static final RegexResult NO_MATCH = new NoMatchResult(null, "NULL", 0) {
-    };
-
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("input", "isMatch", "groupCount", "start", "end", "regex");
-
-    private final RegexObject regex;
-    private final Object input;
     private final int groupCount;
 
-    public RegexResult(RegexObject regex, Object input, int groupCount) {
-        this.regex = regex;
-        this.input = input;
+    public RegexResult(int groupCount) {
         this.groupCount = groupCount;
-    }
-
-    public final RegexObject getCompiledRegex() {
-        return regex;
-    }
-
-    public final Object getInput() {
-        return input;
     }
 
     public final int getGroupCount() {
@@ -114,21 +109,123 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     @Override
     public final Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
-            case "input":
-                return getInput();
-            case "isMatch":
-                return this != NO_MATCH;
-            case "groupCount":
+            case PROP_IS_MATCH:
+                return this != NoMatchResult.getInstance();
+            case PROP_GROUP_COUNT:
                 return getGroupCount();
-            case "start":
+            case PROP_START:
                 return getStartArrayObject();
-            case "end":
+            case PROP_END:
                 return getEndArrayObject();
-            case "regex":
-                return getCompiledRegex();
+            case PROP_GET_START:
+                return new RegexResultGetStartMethod(this);
+            case PROP_GET_END:
+                return new RegexResultGetEndMethod(this);
             default:
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.create(symbol);
+        }
+    }
+
+    @ExportMessage
+    boolean isMemberInvocable(String member,
+                    @Cached IsInvocableCacheNode cache,
+                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) {
+        return cache.execute(receiverProfile.profile(this), member);
+    }
+
+    @ExportMessage
+    Object invokeMember(String member, Object[] args,
+                    @Cached ToIntNode toIntNode,
+                    @Cached InvokeCacheNode invokeCache,
+                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
+        if (args.length != 1) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(1, args.length);
+        }
+        return invokeCache.execute(receiverProfile.profile(this), member, toIntNode.execute(args[0]));
+    }
+
+    @GenerateUncached
+    abstract static class IsInvocableCacheNode extends Node {
+
+        abstract boolean execute(RegexResult receiver, String symbol);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "symbol == cachedSymbol", limit = "2")
+        static boolean cacheIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("isInvocable(receiver, cachedSymbol)") boolean result) {
+            return result;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "2", replaces = "cacheIdentity")
+        static boolean cacheEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("isInvocable(receiver, cachedSymbol)") boolean result) {
+            return result;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(replaces = "cacheEquals")
+        static boolean isInvocable(RegexResult receiver, String symbol) {
+            return PROP_GET_START.equals(symbol) || PROP_GET_END.equals(symbol);
+        }
+    }
+
+    @ReportPolymorphism
+    @ImportStatic(RegexResult.class)
+    @GenerateUncached
+    abstract static class InvokeCacheNode extends Node {
+
+        abstract Object execute(RegexResult receiver, String symbol, int groupNumber) throws UnknownIdentifierException;
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2")
+        Object getStartIdentity(RegexResult receiver, String symbol, int groupNumber,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached RegexResultGetStartNode getStartNode) {
+            return getStartNode.execute(receiver, groupNumber);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2", replaces = "getStartIdentity")
+        Object getStartEquals(RegexResult receiver, String symbol, int groupNumber,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached RegexResultGetStartNode getStartNode) {
+            return getStartNode.execute(receiver, groupNumber);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2")
+        Object getEndIdentity(RegexResult receiver, String symbol, int groupNumber,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached RegexResultGetEndNode getEndNode) {
+            return getEndNode.execute(receiver, groupNumber);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2", replaces = "getEndIdentity")
+        Object getEndEquals(RegexResult receiver, String symbol, int groupNumber,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached RegexResultGetEndNode getEndNode) {
+            return getEndNode.execute(receiver, groupNumber);
+        }
+
+        @Specialization(replaces = {"getStartEquals", "getEndEquals"})
+        static Object invokeGeneric(RegexResult receiver, String symbol, int groupNumber,
+                        @Cached RegexResultGetStartNode getStartNode,
+                        @Cached RegexResultGetEndNode getEndNode) throws UnknownIdentifierException {
+            switch (symbol) {
+                case PROP_GET_START:
+                    return getStartNode.execute(receiver, groupNumber);
+                case PROP_GET_END:
+                    return getEndNode.execute(receiver, groupNumber);
+                default:
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownIdentifierException.create(symbol);
+            }
         }
     }
 }

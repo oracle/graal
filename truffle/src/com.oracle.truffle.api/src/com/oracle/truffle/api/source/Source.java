@@ -703,7 +703,7 @@ public abstract class Source {
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @since 1.0
      */
     @Override
@@ -1037,14 +1037,14 @@ public abstract class Source {
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? file.getPath() : usePath;
             useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
-            useEncoding = useEncoding == null ? file.getEncoding() : useEncoding;
-            useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
+                useEncoding = useEncoding == null ? getEncoding(file, useMimeType) : useEncoding;
                 useContent = useContent == CONTENT_UNSET ? read(file, useEncoding) : useContent;
             } else {
                 if (useContent == CONTENT_UNSET) {
                     if (isCharacterBased(language, useMimeType)) {
+                        useEncoding = useEncoding == null ? getEncoding(file, useMimeType) : useEncoding;
                         useContent = read(file, useEncoding);
                     } else {
                         useContent = ByteSequence.create(file.readAllBytes());
@@ -1066,15 +1066,15 @@ public abstract class Source {
             usePath = usePath == null ? url.toExternalForm() : usePath;
             try {
                 TruffleFile truffleFile = SourceAccessor.getTruffleFile(tmpUri, fileSystemContext.get());
-                useEncoding = useEncoding == null ? truffleFile.getEncoding() : useEncoding;
-                useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
                 if (legacy) {
                     useMimeType = useMimeType == null ? SourceAccessor.getMimeType(truffleFile, getValidMimeTypes(language)) : useMimeType;
                     useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
+                    useEncoding = useEncoding == null ? getEncoding(truffleFile, useMimeType) : useEncoding;
                     useContent = useContent == CONTENT_UNSET ? read(truffleFile, useEncoding) : useContent;
                 } else {
                     if (useContent == CONTENT_UNSET) {
                         if (isCharacterBased(language, useMimeType)) {
+                            useEncoding = useEncoding == null ? getEncoding(truffleFile, useMimeType) : useEncoding;
                             useContent = read(truffleFile, useEncoding);
                         } else {
                             useContent = ByteSequence.create(truffleFile.readAllBytes());
@@ -1394,6 +1394,12 @@ public abstract class Source {
         throw (E) ex;
     }
 
+    private static Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
+        Charset encoding = SourceAccessor.getEncoding(file, mimeType);
+        encoding = encoding == null ? StandardCharsets.UTF_8 : encoding;
+        return encoding;
+    }
+
     /**
      * Allows one to specify additional attribute before {@link #build() creating} new
      * {@link Source} instance.
@@ -1591,9 +1597,8 @@ public abstract class Source {
 
         /**
          * Explicitly assigns an encoding used to read the file content. If the encoding is
-         * {@code null} then the {@link TruffleFile#getEncoding() file contained encoding
-         * information} is used. If the file doesn't provide an encoding information the default
-         * {@code UTF-8} encoding is used.
+         * {@code null} then the file contained encoding information is used. If the file doesn't
+         * provide an encoding information the default {@code UTF-8} encoding is used.
          *
          * @param encoding the new file encoding to be used for reading the content
          * @return instance of <code>this</code> builder ready to {@link #build() create new source}

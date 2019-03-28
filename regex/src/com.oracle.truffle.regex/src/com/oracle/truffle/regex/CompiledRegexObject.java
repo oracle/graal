@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,23 +25,14 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
 
 /**
  * {@link CompiledRegexObject}s represent the {@link CallTarget}s produced by regular expression
- * compilers as executable {@link TruffleObject}s. The execute method of these objects has the same
- * signature as the {@link CallTarget}s contained in {@link CompiledRegex}es. They accept the
- * following arguments:
+ * compilers as executable {@link TruffleObject}s. They accept the following arguments:
  * <ol>
  * <li>{@link RegexObject} {@code regexObject}: the {@link RegexObject} to which this
  * {@link CompiledRegexObject} belongs</li>
@@ -61,39 +52,15 @@ import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
  * {@link TruffleObject}s that can be passed around via interop and can come from external RegExp
  * compilers (e.g. see {@link ForeignRegexCompiler}).
  */
-@ExportLibrary(InteropLibrary.class)
 public class CompiledRegexObject implements RegexLanguageObject {
 
-    private final CompiledRegex compiledRegex;
+    private final CallTarget callTarget;
 
-    public CompiledRegexObject(CompiledRegex compiledRegex) {
-        this.compiledRegex = compiledRegex;
+    public CompiledRegexObject(RegexLanguage language, RegexExecRootNode compiledRegex) {
+        callTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, compiledRegex.getFrameDescriptor(), compiledRegex));
     }
 
-    public CompiledRegex getCompiledRegex() {
-        return compiledRegex;
-    }
-
-    @ExportMessage
-    public boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    public static class Execute {
-
-        @Specialization
-        static Object doExecute(CompiledRegexObject receiver, Object[] args,
-                        @Cached ExecuteRegexDispatchNode dispatchNode) throws ArityException, UnsupportedTypeException {
-            if (args.length != 3) {
-                CompilerDirectives.transferToInterpreter();
-                throw ArityException.create(3, args.length);
-            }
-            if (!(args[0] instanceof RegexObject)) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(args);
-            }
-            return dispatchNode.execute(receiver.getCompiledRegex(), (RegexObject) args[0], args[1], args[2]);
-        }
+    public CallTarget getCallTarget() {
+        return callTarget;
     }
 }

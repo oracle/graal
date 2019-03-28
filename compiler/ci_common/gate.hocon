@@ -140,8 +140,7 @@ gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
 
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon} {
   downloads : {
-    JAVA_HOME : ${jdks.oraclejdkSNAPSHOT}
-    EXTRA_JAVA_HOMES : {pathlist :[ ${jdks.labsjdk8} ]}
+    JAVA_HOME : ${jdks.openjdk11}
   }
 }
 

@@ -137,7 +137,24 @@ public interface ProxyObject extends Proxy {
             }
 
             public Object getMemberKeys() {
-                return values.keySet().toArray();
+                return new ProxyArray() {
+                    private final Object[] keys = values.keySet().toArray();
+
+                    public void set(long index, Value value) {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    public long getSize() {
+                        return keys.length;
+                    }
+
+                    public Object get(long index) {
+                        if (index < 0 || index > Integer.MAX_VALUE) {
+                            throw new ArrayIndexOutOfBoundsException();
+                        }
+                        return keys[(int) index];
+                    }
+                };
             }
 
             public Object getMember(String key) {

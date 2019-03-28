@@ -468,11 +468,15 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         if (invoke.callTarget() instanceof MethodCallTargetNode) {
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
             NodeInputList<ValueNode> parameters = callTarget.arguments();
-            ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
-            if (!callTarget.isStatic() && receiver.stamp(NodeView.DEFAULT) instanceof ObjectStamp && !StampTool.isPointerNonNull(receiver)) {
-                ValueNode nonNullReceiver = createNullCheckedValue(receiver, invoke.asNode(), tool);
-                parameters.set(0, nonNullReceiver);
-                receiver = nonNullReceiver;
+            ValueNode receiver = parameters.isEmpty() ? null : parameters.get(0);
+
+            if (!callTarget.isStatic()) {
+                assert receiver != null : "non-static call must have a receiver";
+                if (receiver.stamp(NodeView.DEFAULT) instanceof ObjectStamp && !StampTool.isPointerNonNull(receiver)) {
+                    ValueNode nonNullReceiver = createNullCheckedValue(receiver, invoke.asNode(), tool);
+                    parameters.set(0, nonNullReceiver);
+                    receiver = nonNullReceiver;
+                }
             }
             JavaType[] signature = callTarget.targetMethod().getSignature().toParameterTypes(callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 

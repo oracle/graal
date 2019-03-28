@@ -26,8 +26,8 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
-import com.oracle.svm.core.heap.ReferenceMapDecoder;
-import com.oracle.svm.core.heap.ReferenceMapEncoder;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -106,8 +106,8 @@ public class CodeInfoQueryResult {
 
     /**
      * Returns the encoded reference map information, to be used together with
-     * {@link #getReferenceMapIndex()}. Encoding is handled by {@link ReferenceMapEncoder}, decoding
-     * is handled by {@link ReferenceMapDecoder}.
+     * {@link #getReferenceMapIndex()}. Encoding is handled by {@link CodeReferenceMapEncoder},
+     * decoding is handled by {@link CodeReferenceMapDecoder}.
      */
     public byte[] getReferenceMapEncoding() {
         return referenceMapEncoding;

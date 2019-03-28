@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,14 +56,12 @@ public final class OptionType<T> {
     private final String name;
     private final Function<String, T> stringConverter;
     private final Consumer<T> validator;
-    private final T defaultValue;
 
     /**
-     * Constructs a new option type with name, defaultValue, and function that allows to convert a
-     * string to the option type.
+     * Constructs a new option type with name and function that allows to convert a string to the
+     * option type and validator of the option values.
      *
      * @param name the name of the type.
-     * @param defaultValue the default value to use if no value is given.
      * @param stringConverter a function that converts a string value to the option value. Can throw
      *            {@link IllegalArgumentException} to indicate an invalid string.
      * @param validator used for validating the option value. Throws
@@ -71,41 +69,59 @@ public final class OptionType<T> {
      *
      * @since 1.0
      */
-    public OptionType(String name, T defaultValue, Function<String, T> stringConverter, Consumer<T> validator) {
+    public OptionType(String name, Function<String, T> stringConverter, Consumer<T> validator) {
         Objects.requireNonNull(name);
         Objects.requireNonNull(stringConverter);
         Objects.requireNonNull(validator);
         this.name = name;
         this.stringConverter = stringConverter;
-        this.defaultValue = defaultValue;
         this.validator = validator;
     }
 
     /**
-     * Constructs a new option type with name, defaultValue, and function that allows to convert a
-     * string to the option type.
+     * Constructs a new option type with name and function that allows to convert a string to the
+     * option type.
      *
      * @param name the name of the type.
-     * @param defaultValue the default value to use if no value is given.
      * @param stringConverter a function that converts a string value to the option value. Can throw
      *            {@link IllegalArgumentException} to indicate an invalid string.
      *
      * @since 1.0
      */
-    public OptionType(String name, T defaultValue, Function<String, T> stringConverter) {
-        this(name, defaultValue, stringConverter, new Consumer<T>() {
+    public OptionType(String name, Function<String, T> stringConverter) {
+        this(name, stringConverter, new Consumer<T>() {
             public void accept(T t) {
             }
         });
     }
 
     /**
-     * Returns the default value of this type. Used if no value is available.
-     *
+     * @deprecated Use {@link #OptionType(String, Function, Consumer)}
      * @since 1.0
      */
+    @Deprecated
+    @SuppressWarnings("unused")
+    public OptionType(String name, T defaultValue, Function<String, T> stringConverter, Consumer<T> validator) {
+        this(name, stringConverter, validator);
+    }
+
+    /**
+     * @deprecated Use {@link #OptionType(String, Function)}
+     * @since 1.0
+     */
+    @Deprecated
+    @SuppressWarnings("unused")
+    public OptionType(String name, T defaultValue, Function<String, T> stringConverter) {
+        this(name, stringConverter);
+    }
+
+    /**
+     * @deprecated
+     * @since 1.0
+     */
+    @Deprecated
     public T getDefaultValue() {
-        return defaultValue;
+        return null;
     }
 
     /**
@@ -145,12 +161,12 @@ public final class OptionType<T> {
      */
     @Override
     public String toString() {
-        return "OptionType[name=" + name + ", defaultValue=" + defaultValue + "]";
+        return "OptionType[name=" + name + "]";
     }
 
     private static final Map<Class<?>, OptionType<?>> DEFAULTTYPES = new HashMap<>();
     static {
-        DEFAULTTYPES.put(Boolean.class, new OptionType<>("Boolean", false, new Function<String, Boolean>() {
+        DEFAULTTYPES.put(Boolean.class, new OptionType<>("Boolean", new Function<String, Boolean>() {
             public Boolean apply(String t) {
                 if ("true".equals(t)) {
                     return Boolean.TRUE;
@@ -161,7 +177,7 @@ public final class OptionType<T> {
                 }
             }
         }));
-        DEFAULTTYPES.put(Byte.class, new OptionType<>("Byte", (byte) 0, new Function<String, Byte>() {
+        DEFAULTTYPES.put(Byte.class, new OptionType<>("Byte", new Function<String, Byte>() {
             public Byte apply(String t) {
                 try {
                     return Byte.parseByte(t);
@@ -170,7 +186,7 @@ public final class OptionType<T> {
                 }
             }
         }));
-        DEFAULTTYPES.put(Integer.class, new OptionType<>("Integer", 0, new Function<String, Integer>() {
+        DEFAULTTYPES.put(Integer.class, new OptionType<>("Integer", new Function<String, Integer>() {
             public Integer apply(String t) {
                 try {
                     return Integer.parseInt(t);
@@ -179,7 +195,7 @@ public final class OptionType<T> {
                 }
             }
         }));
-        DEFAULTTYPES.put(Long.class, new OptionType<>("Long", 0L, new Function<String, Long>() {
+        DEFAULTTYPES.put(Long.class, new OptionType<>("Long", new Function<String, Long>() {
             public Long apply(String t) {
                 try {
                     return Long.parseLong(t);
@@ -188,7 +204,7 @@ public final class OptionType<T> {
                 }
             }
         }));
-        DEFAULTTYPES.put(Float.class, new OptionType<>("Float", 0.0f, new Function<String, Float>() {
+        DEFAULTTYPES.put(Float.class, new OptionType<>("Float", new Function<String, Float>() {
             public Float apply(String t) {
                 try {
                     return Float.parseFloat(t);
@@ -197,7 +213,7 @@ public final class OptionType<T> {
                 }
             }
         }));
-        DEFAULTTYPES.put(Double.class, new OptionType<>("Double", 0.0d, new Function<String, Double>() {
+        DEFAULTTYPES.put(Double.class, new OptionType<>("Double", new Function<String, Double>() {
             public Double apply(String t) {
                 try {
                     return Double.parseDouble(t);
@@ -206,7 +222,7 @@ public final class OptionType<T> {
                 }
             }
         }));
-        DEFAULTTYPES.put(String.class, new OptionType<>("String", "0", new Function<String, String>() {
+        DEFAULTTYPES.put(String.class, new OptionType<>("String", new Function<String, String>() {
             public String apply(String t) {
                 return t;
             }

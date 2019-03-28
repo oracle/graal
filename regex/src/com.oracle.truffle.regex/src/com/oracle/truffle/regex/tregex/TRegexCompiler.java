@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex;
 
-/*
- * current status:
- *
- * truffle.regex.tregex can handle quantifiers, character classes, alternations,
- * positive look-aheads, and positive look-behinds of fixed length.
- * Counted repetitions are implemented by transforming them to alternations
- * (e.g. a{2,4} => aa|aaa|aaaa).
- *
- * basic structure of truffle.regex.tregex:
- *
- * tregex parses a regular expression using the custom RegexParser and transforms it to a non-deterministic finite
- * automaton (NFA) using the data structures found in tregex.nfa.
- *
- * The NFA is compiled to a DFA (deterministic finite automaton) during pattern matching. Each DFA stateSet is a
- * set of NFA states, which is stored as a BitSet where each bit corresponds to a slot in the NFA array.
- *
- */
-
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
@@ -50,9 +33,7 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-public final class TRegexCompiler extends RegexCompiler {
+public final class TRegexCompiler implements RegexCompiler {
 
     private final RegexLanguage language;
     private final RegexOptions options;
@@ -72,7 +53,7 @@ public final class TRegexCompiler extends RegexCompiler {
 
     @TruffleBoundary
     @Override
-    public TruffleObject compile(RegexSource source) throws RegexSyntaxException {
+    public CompiledRegexObject compile(RegexSource source) throws RegexSyntaxException {
         return new TRegexCompilationRequest(this, source).compile();
     }
 

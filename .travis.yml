@@ -18,14 +18,14 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.56"
+    - JVMCI_VERSION="jvmci-0.57"
     - JDK8_UPDATE_VERSION="202"
 
 matrix:
   include:
-  - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="compiler"
+  - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="build,test" PRIMARY="substratevm"
+  - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong" LLVM_VERSION="3.8"
     addons:
@@ -51,6 +51,7 @@ matrix:
   - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+  - env: JDK="jdk11" GATE="build" PRIMARY="substratevm"
 
 install:
   - |

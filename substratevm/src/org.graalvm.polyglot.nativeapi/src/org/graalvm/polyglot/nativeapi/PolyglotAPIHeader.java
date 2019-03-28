@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.c.CHeader.Header;
-import com.oracle.svm.core.c.function.GraalIsolateHeader;
 
 public class PolyglotAPIHeader implements Header {
     @Override
@@ -39,14 +38,13 @@ public class PolyglotAPIHeader implements Header {
 
     @Override
     public List<Class<? extends Header>> dependsOn() {
-        return Collections.singletonList(GraalIsolateHeader.class);
+        return Collections.singletonList(PolyglotIsolateHeader.class);
     }
 
     @Override
     public void writePreamble(PrintWriter writer) {
         writer.println("#include <polyglot_types.h>");
-        writer.println("#include <polyglot_isolate.h>");
-        writer.println("/**");
+        writer.println("/*");
         writer.println(" * Polyglot Native API is in experimental phase of development and should not be used in production environments.");
         writer.println(" *");
         writer.println(" * Future versions will introduce modifications to the API in backward incompatible ways. Feel free to use the API");

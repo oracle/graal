@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,7 @@ public class ShortArrayBuffer extends AbstractArrayBuffer {
     }
 
     @Override
-    int getBufferSize() {
+    int getBufferLength() {
         return buf.length;
     }
 
@@ -73,20 +73,20 @@ public class ShortArrayBuffer extends AbstractArrayBuffer {
     }
 
     public void add(short s) {
-        if (size == buf.length) {
-            grow(size * 2);
+        if (length == buf.length) {
+            grow(length * 2);
         }
-        buf[size] = s;
-        size++;
+        buf[length] = s;
+        length++;
     }
 
-    public void addAll(short[] values, int length) {
-        ensureCapacity(size + length);
-        System.arraycopy(values, 0, buf, size, length);
-        size += length;
+    public void addAll(short[] values, int valuesLength) {
+        ensureCapacity(length + valuesLength);
+        System.arraycopy(values, 0, buf, length, valuesLength);
+        length += valuesLength;
     }
 
     public short[] toArray() {
-        return Arrays.copyOf(buf, size);
+        return Arrays.copyOf(buf, length);
     }
 }

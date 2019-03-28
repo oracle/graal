@@ -58,7 +58,6 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-                    Output.HISTOGRAM,
                     new Function<String, Output>() {
                         @Override
                         public Output apply(String s) {
@@ -71,7 +70,6 @@ class CPUSamplerCLI extends ProfilerCLI {
                     });
 
     static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
-                    CPUSampler.Mode.EXCLUDE_INLINED_ROOTS,
                     new Function<String, CPUSampler.Mode>() {
                         @Override
                         public CPUSampler.Mode apply(String s) {
@@ -106,8 +104,11 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(
                     new Object[0], WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>(
+    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>(
                     "");
+
+    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>(
+            "");
 
     @Option(name = "SampleInternal", help = "Capture internal elements (default:false).", category = OptionCategory.INTERNAL) static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
 

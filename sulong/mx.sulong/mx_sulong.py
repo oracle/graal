@@ -630,7 +630,7 @@ def findGCCProgram(gccProgram, optional=False):
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
-    return mx.get_runtime_jvm_args(['SULONG', 'SULONG_LAUNCHER'] + (extra_dists or []))
+    return mx.get_runtime_jvm_args(['SULONG', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
 
 def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""

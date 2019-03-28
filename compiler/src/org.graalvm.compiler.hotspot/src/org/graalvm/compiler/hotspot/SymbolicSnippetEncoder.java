@@ -261,9 +261,9 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
     /**
      * Compiles the snippet and stores the graph.
      */
-    public void registerMethodSubstitution(ResolvedJavaMethod method, ResolvedJavaMethod original) {
+    public void registerMethodSubstitution(ResolvedJavaMethod method, ResolvedJavaMethod original, OptionValues options) {
         assert method.getAnnotation(MethodSubstitution.class) != null : "MethodSubstitution must be annotated with @" + MethodSubstitution.class.getSimpleName();
-        buildGraph(method, original, null, false, false);
+        buildGraph(method, original, null, false, false, options);
         snippetMethods.add(method);
     }
 
@@ -282,18 +282,17 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
             this.originalMethods = originalMethods;
         }
 
-        public StructuredGraph getMethodSubstitutionGraph(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, ReplacementsImpl replacements) {
+        public StructuredGraph getMethodSubstitutionGraph(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, ReplacementsImpl replacements, OptionValues options) {
             Integer startOffset = snippetStartOffsets.get(plugin.toString());
             if (startOffset == null) {
                 throw GraalError.shouldNotReachHere("plugin graph not found: " + plugin);
             }
 
-            return decodeGraph(original, null, startOffset, replacements);
+            return decodeGraph(original, null, startOffset, replacements, options);
         }
 
         @SuppressWarnings("try")
-        private StructuredGraph decodeGraph(ResolvedJavaMethod method, Object[] args, int startOffset, ReplacementsImpl replacements) {
-            OptionValues options = replacements.getOptions();
+        private StructuredGraph decodeGraph(ResolvedJavaMethod method, Object[] args, int startOffset, ReplacementsImpl replacements, OptionValues options) {
             SnippetReflectionProvider snippetReflection = replacements.snippetReflection;
             ParameterPlugin parameterPlugin = null;
             Providers providers = replacements.getProviders();
@@ -303,7 +302,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
 
             EncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, method.getDeclaringClass(),
                             originalMethods.get(methodKey(method)));
-            try (DebugContext debug = replacements.openDebugContext("SVMSnippet_", method)) {
+            try (DebugContext debug = replacements.openDebugContext("SVMSnippet_", method, options)) {
                 StructuredGraph result = new StructuredGraph.Builder(options, debug).method(method).setIsSubstitution(true).build();
                 PEGraphDecoder graphDecoder = new PEGraphDecoder(
                                 providers.getCodeCache().getTarget().arch,
@@ -338,7 +337,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
             }
         }
 
-        StructuredGraph getEncodedSnippet(ResolvedJavaMethod method, ReplacementsImpl replacements, Object[] args) {
+        StructuredGraph getEncodedSnippet(ResolvedJavaMethod method, ReplacementsImpl replacements, Object[] args, OptionValues options) {
             Integer startOffset = null;
             if (snippetStartOffsets != null) {
                 startOffset = snippetStartOffsets.get(methodKey(method));
@@ -353,19 +352,19 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
 
             SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, method.getDeclaringClass(),
                             originalMethods.get(methodKey(method)));
-            return decodeSnippetGraph(encodedGraph, method, replacements, args, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch);
+            return decodeSnippetGraph(encodedGraph, method, replacements, args, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch, options);
         }
 
     }
 
-    private StructuredGraph buildGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean requireInlining, boolean trackNodeSourcePosition) {
+    private StructuredGraph buildGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean requireInlining, boolean trackNodeSourcePosition, OptionValues options) {
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
         Object[] args = null;
         if (receiver != null) {
             args = new Object[method.getSignature().getParameterCount(true)];
             args[0] = receiver;
         }
-        try (DebugContext debug = openDebugContext("Snippet_", method)) {
+        try (DebugContext debug = openDebugContext("Snippet_", method, options)) {
             StructuredGraph graph = replacements.makeGraph(debug, replacements.getDefaultReplacementBytecodeProvider(), method, args, original, trackNodeSourcePosition, null);
 
             // Check if all methods which should be inlined are really inlined.
@@ -382,16 +381,17 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
     }
 
     @SuppressWarnings("try")
-    static StructuredGraph decodeSnippetGraph(SymbolicEncodedGraph encodedGraph, ResolvedJavaMethod method, ReplacementsImpl replacements, Object[] args, Architecture architecture) {
+    static StructuredGraph decodeSnippetGraph(SymbolicEncodedGraph encodedGraph, ResolvedJavaMethod method, ReplacementsImpl replacements, Object[] args, Architecture architecture,
+                    OptionValues options) {
         Providers providers = replacements.getProviders();
         ParameterPlugin parameterPlugin = null;
         if (args != null) {
             parameterPlugin = new ConstantBindingParameterPlugin(args, providers.getMetaAccess(), replacements.snippetReflection);
         }
 
-        try (DebugContext debug = replacements.openDebugContext("SVMSnippet_", method)) {
+        try (DebugContext debug = replacements.openDebugContext("SVMSnippet_", method, options)) {
             // @formatter:off
-            StructuredGraph result = new StructuredGraph.Builder(replacements.getOptions(), debug)
+            StructuredGraph result = new StructuredGraph.Builder(options, debug)
                             .method(method)
                             .trackNodeSourcePosition(encodedGraph.trackNodeSourcePosition())
                             .setIsSubstitution(true)
@@ -437,13 +437,13 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
     }
 
     @SuppressWarnings("try")
-    private boolean verifySnippetEncodeDecode(ResolvedJavaMethod method, ResolvedJavaMethod original, boolean trackNodeSourcePosition, StructuredGraph structuredGraph) {
+    private boolean verifySnippetEncodeDecode(ResolvedJavaMethod method, ResolvedJavaMethod original, boolean trackNodeSourcePosition, StructuredGraph graph) {
         // Verify the encoding and decoding process
-        EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(structuredGraph, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch);
+        EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch);
 
         Architecture arch = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch;
 
-        try (DebugContext debug = replacements.openDebugContext("VerifySnippetEncodeDecode_", method)) {
+        try (DebugContext debug = replacements.openDebugContext("VerifySnippetEncodeDecode_", method, graph.getOptions())) {
             HotSpotProviders originalProvider = (HotSpotProviders) replacements.getProviders();
 
             SnippetReflectionProvider snippetReflection = originalProvider.getSnippetReflection();
@@ -452,18 +452,17 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
             HotSpotProviders newProviders = new HotSpotProviders(originalProvider.getMetaAccess(), originalProvider.getCodeCache(), constantReflection,
                             originalProvider.getConstantFieldProvider(), originalProvider.getForeignCalls(), originalProvider.getLowerer(), null, originalProvider.getSuites(),
                             originalProvider.getRegisters(), snippetReflection, originalProvider.getWordTypes(), originalProvider.getGraphBuilderPlugins());
-            HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(getOptions(), newProviders, snippetReflection,
-                            originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(),
-                            originalProvider.getCodeCache().getTarget());
+            HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders, snippetReflection,
+                            originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(), originalProvider.getCodeCache().getTarget());
             filteringReplacements.setGraphBuilderPlugins(originalProvider.getReplacements().getGraphBuilderPlugins());
-            try (DebugContext.Scope scaope = debug.scope("VerifySnippetEncodeDecode", structuredGraph)) {
+            try (DebugContext.Scope scaope = debug.scope("VerifySnippetEncodeDecode", graph)) {
                 for (int i = 0; i < encodedGraph.getNumObjects(); i++) {
                     filterSnippetObject(encodedGraph.getObject(i));
                 }
                 StructuredGraph snippet = filteringReplacements.makeGraph(debug, filteringReplacements.getDefaultReplacementBytecodeProvider(), method, null, original,
                                 trackNodeSourcePosition, null);
                 SymbolicEncodedGraph symbolicGraph = new SymbolicEncodedGraph(encodedGraph, method.getDeclaringClass(), original != null ? methodKey(original) : null);
-                StructuredGraph decodedSnippet = decodeSnippetGraph(symbolicGraph, method, replacements, null, arch);
+                StructuredGraph decodedSnippet = decodeSnippetGraph(symbolicGraph, method, replacements, null, arch, graph.getOptions());
                 String snippetString = getCanonicalGraphString(snippet, true, false);
                 String decodedSnippetString = getCanonicalGraphString(decodedSnippet, true, false);
                 if (snippetString.equals(decodedSnippetString)) {
@@ -473,7 +472,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
                     debug.log("Snippet decode for %s produces different graph", method);
                     debug.log("%s", compareGraphStrings(snippet, snippetString, decodedSnippet, decodedSnippetString));
                     debug.dump(DebugContext.INFO_LEVEL, snippet, "Snippet graph for %s", method);
-                    debug.dump(DebugContext.INFO_LEVEL, structuredGraph, "Encoded snippet graph for %s", method);
+                    debug.dump(DebugContext.INFO_LEVEL, graph, "Encoded snippet graph for %s", method);
                     debug.dump(DebugContext.INFO_LEVEL, decodedSnippet, "Decoded snippet graph for %s", method);
                 }
             } catch (Throwable t) {
@@ -485,12 +484,14 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
 
     /**
      * If there are new graphs waiting to be encoded, reencode all the graphs and return the result.
+     *
+     * @param options
      */
     @SuppressWarnings("try")
-    synchronized EncodedSnippets maybeEncodeSnippets() {
+    synchronized EncodedSnippets maybeEncodeSnippets(OptionValues options) {
         Map<String, StructuredGraph> graphs = this.preparedSnippetGraphs;
         if (encodedGraphs != graphs.size()) {
-            DebugContext debug = openDebugContext("SnippetEncoder", null);
+            DebugContext debug = openDebugContext("SnippetEncoder", null, options);
             try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
                 encodedGraphs = graphs.size();
                 for (StructuredGraph graph : graphs.values()) {
@@ -505,19 +506,20 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
     }
 
     @Override
-    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
-        if (IS_BUILDING_NATIVE_IMAGE || UseEncodedSnippets.getValue(getOptions())) {
+    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
+        if (IS_BUILDING_NATIVE_IMAGE || UseEncodedSnippets.getValue(options)) {
             assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
             String key = methodKey(method);
             if (!preparedSnippetGraphs.containsKey(key)) {
                 if (original != null) {
                     originalMethods.put(key, methodKey(original));
                 }
-                StructuredGraph snippet = buildGraph(method, original, receiver, true, trackNodeSourcePosition);
+                StructuredGraph snippet = buildGraph(method, original, receiver, true, trackNodeSourcePosition, options);
                 snippetMethods.add(method);
                 preparedSnippetGraphs.put(key, snippet);
             }
         }
+
     }
 
     EncodedSnippets encodeSnippets(DebugContext debug) {
@@ -550,10 +552,12 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
 
     /**
      * Encode any outstanding graphs and return true if any work was done.
+     *
+     * @param options
      */
     @SuppressWarnings("try")
-    public boolean encode() {
-        EncodedSnippets encodedSnippets = maybeEncodeSnippets();
+    public boolean encode(OptionValues options) {
+        EncodedSnippets encodedSnippets = maybeEncodeSnippets(options);
         if (encodedSnippets != null) {
             HotSpotReplacementsImpl.setEncodedSnippets(encodedSnippets);
             return true;
@@ -561,8 +565,8 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
         return false;
     }
 
-    private DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method) {
-        return replacements.openDebugContext(idPrefix, method);
+    private DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options) {
+        return replacements.openDebugContext(idPrefix, method, options);
     }
 
     static class SymbolicEncodedGraph extends EncodedGraph {
@@ -968,8 +972,8 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
             super(replacements, providers);
         }
 
-        HotSpotSnippetReplacementsImpl(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
-            super(options, providers, snippetReflection, bytecodeProvider, target);
+        HotSpotSnippetReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
+            super(providers, snippetReflection, bytecodeProvider, target);
         }
 
         @Override

@@ -460,7 +460,8 @@ public abstract class PartialEvaluator {
         InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(inliningDecision);
 
         HistogramInlineInvokePlugin histogramPlugin = null;
-        if (TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram)) {
+        Boolean printTruffleExpansionHistogram = TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram);
+        if (printTruffleExpansionHistogram) {
             histogramPlugin = new HistogramInlineInvokePlugin(graph);
             inlineInvokePlugins = new InlineInvokePlugin[]{replacements, inlineInvokePlugin, histogramPlugin};
         } else {
@@ -472,7 +473,7 @@ public abstract class PartialEvaluator {
                         sourceLanguagePosition);
         decoder.decode(graph.method(), graph.isSubstitution(), graph.trackNodeSourcePosition());
 
-        if (TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram)) {
+        if (printTruffleExpansionHistogram) {
             histogramPlugin.print(compilable);
         }
     }
@@ -519,7 +520,7 @@ public abstract class PartialEvaluator {
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
             if (methodCallTargetNode.invoke().useForInlining()) {
                 StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(), graph.trackNodeSourcePosition(),
-                                methodCallTargetNode.asNode().getNodeSourcePosition());
+                                methodCallTargetNode.asNode().getNodeSourcePosition(), debug.getOptions());
                 if (inlineGraph != null) {
                     InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
                 }

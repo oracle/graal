@@ -115,6 +115,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
         string_substitutions = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         string_substitutions.register_no_arg('version', _suite.release_version)
+        string_substitutions.register_no_arg('graalvm_os', get_graalvm_os())
 
         _layout_provenance = {}
 
@@ -429,8 +430,16 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
                 self.vm_config_name = config_name.replace('-', '_')
                 vm_config_additional_components = config_additional_components
 
-        name = (self.base_name + (('_' + self.vm_config_name) if self.vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
-        base_dir = name.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
+        if self.vm_config_name:
+            name = self.base_name + '_' + self.vm_config_name
+            base_dir = self.base_name + '_' + self.vm_config_name
+        else:
+            name = self.base_name
+            base_dir = self.base_name + '_unknown'
+        if vm_config_additional_components:
+            name += '_' + '_'.join(vm_config_additional_components)
+        name = name.upper()
+        base_dir = base_dir.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
 
         layout = deepcopy(base_layout)
         super(GraalVmLayoutDistribution, self).__init__(
@@ -1137,6 +1146,9 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
             '-Dorg.graalvm.version={}'.format(version),
             '-Dgraalvm.version={}'.format(version),
         ]
+        graalvm_dist = get_final_graalvm_distribution()
+        if graalvm_dist.vm_config_name:
+            build_args += ['-Dorg.graalvm.config={}'.format(graalvm_dist.vm_config_name.upper())]
         if _debug_images():
             build_args += ['-ea', '-H:-AOTInline', '-H:+UseStackBasePointer']
         if self.svm_support.is_debug_supported():
@@ -1277,7 +1289,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
 
         other_involved_components = []
         if _get_svm_support().is_supported() and _get_launcher_configs(component):
-            other_involved_components += [c for c in registered_graalvm_components() if c.dir_name == 'svm']
+            other_involved_components += [c for c in registered_graalvm_components() if c.short_name in ('svm', 'svmee')]
 
         name = '{}_INSTALLABLE'.format(component.dir_name.upper())
         for launcher_config in _get_launcher_configs(component):
@@ -1310,13 +1322,12 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         support_dir_pattern = '<jdk_base>/jre/languages/{}/'.format(installable.main_component.dir_name)
         other_comp_names = []
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
-            other_comp_names += [c.short_name for c in registered_graalvm_components() if c.dir_name == 'svm']
+            other_comp_names += [c.short_name for c in registered_graalvm_components() if c.short_name in ('svm', 'svmee')]
 
         self.main_comp_dir_name = installable.main_component.dir_name
-        version = _suite.release_version()
 
         name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
-        self.base_dir_name = '{comp_name}-{version}-{os}-{arch}'.format(comp_name=self.main_comp_dir_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
+        self.base_dir_name = installable.string_substitutions.substitute(installable.main_component.standalone_dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
 
@@ -1880,9 +1891,9 @@ mx.add_argument('--no-sources', action='store_true', help='Do not include the ar
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
-register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'tfl', 'libpoly', 'poly', 'vvm'])
-register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'tfl', 'poly', 'vvm'])
-register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svmag', 'svmcf', 'tfl', 'bnative-image', 'bpolyglot'])
+register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
+register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'poly', 'vvm'])
+register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'bnative-image', 'bpolyglot'])
 
 
 def _debug_images():

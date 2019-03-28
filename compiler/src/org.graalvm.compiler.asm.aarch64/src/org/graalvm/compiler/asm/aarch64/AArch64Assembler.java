@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -25,9 +25,15 @@
  */
 package org.graalvm.compiler.asm.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.CPU;
+import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.aarch64.AArch64.cpuRegisters;
+import static jdk.vm.ci.aarch64.AArch64.r0;
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static jdk.vm.ci.aarch64.AArch64.zr;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADD;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADDS;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADDV;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADR;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADRP;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.AND;
@@ -40,9 +46,11 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.BLR;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.BR;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.BRK;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CAS;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CCMP;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CLREX;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CLS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CLZ;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CNT;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CSEL;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CSINC;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CSNEG;
@@ -86,6 +94,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.MADD
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.MOVK;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.MOVN;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.MOVZ;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.MRS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.MSUB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ORN;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ORR;
@@ -105,27 +114,24 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.STXR
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SUB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SUBS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SWP;
-import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.TBZ;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.TBNZ;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.TBZ;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.UBFM;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.UDIV;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.UMOV;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.FP32;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.FP64;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.General32;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.General64;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.floatFromSize;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.generalFromSize;
-import static jdk.vm.ci.aarch64.AArch64.CPU;
-import static jdk.vm.ci.aarch64.AArch64.SIMD;
-import static jdk.vm.ci.aarch64.AArch64.r0;
-import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.aarch64.AArch64.zr;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.simdFromSize;
 
 import java.util.Arrays;
 
 import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -369,15 +375,41 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     /**
+     * Enumeration of all different lane types of SIMD register.
+     *
+     * Byte(B):8b/lane; HalfWord(H):16b/lane; Word(S):32b/lane; DoubleWord(D):64b/lane.
+     */
+    public enum SIMDElementSize {
+        Byte(0, 8),
+        HalfWord(1, 16),
+        Word(2, 32),
+        DoubleWord(3, 64);
+
+        public final int encoding;
+        public final int nbits;
+
+        SIMDElementSize(int encoding, int nbits) {
+            this.encoding = encoding;
+            this.nbits = nbits;
+        }
+    }
+
+    /**
      * Enumeration of all different instruction kinds: General32/64 are the general instructions
      * (integer, branch, etc.), for 32-, respectively 64-bit operands. FP32/64 is the encoding for
-     * the 32/64bit float operations
+     * the 32/64bit float operations. SIMDByte/HalfWord/Word/DoubleWord is the encoding for SIMD
+     * instructions
      */
     protected enum InstructionType {
         General32(0b00 << 30, 32, true),
         General64(0b10 << 30, 64, true),
         FP32(0x00000000, 32, false),
-        FP64(0x00400000, 64, false);
+        FP64(0x00400000, 64, false),
+
+        SIMDByte(0x01, 8, false),
+        SIMDHalfWord(0x02, 16, false),
+        SIMDWord(0x04, 32, false),
+        SIMDDoubleWord(0x08, 64, false);
 
         public final int encoding;
         public final int width;
@@ -399,6 +431,20 @@ public abstract class AArch64Assembler extends Assembler {
             return size == 32 ? FP32 : FP64;
         }
 
+        public static InstructionType simdFromSize(int size) {
+            switch (size) {
+                case 8:
+                    return SIMDByte;
+                case 16:
+                    return SIMDHalfWord;
+                case 32:
+                    return SIMDWord;
+                case 64:
+                    return SIMDDoubleWord;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
     }
 
     private static final int ImmediateOffset = 10;
@@ -436,6 +482,7 @@ public abstract class AArch64Assembler extends Assembler {
     private static final int FpImmOffset = 13;
 
     private static final int FpCmpOp = 0x1E202000;
+    private static final int FpCmpeOp = 0x1E202010;
 
     private static final int PcRelImmHiOffset = 5;
     private static final int PcRelImmLoOffset = 29;
@@ -490,6 +537,10 @@ public abstract class AArch64Assembler extends Assembler {
     private static final int LDADDAcquireOffset = 23;
     private static final int LDADDReleaseOffset = 22;
 
+    private static final int SIMDImm5Offset = 16;
+    private static final int SIMDQBitOffset = 30;
+    private static final int SIMDSizeOffset = 22;
+
     /**
      * Encoding for all instructions.
      */
@@ -531,6 +582,8 @@ public abstract class AArch64Assembler extends Assembler {
         ADDS(ADD.encoding | AddSubSetFlag),
         SUB(0x40000000),
         SUBS(SUB.encoding | AddSubSetFlag),
+
+        CCMP(0x7A400000),
 
         NOT(0x00200000),
         AND(0x00000000),
@@ -606,7 +659,7 @@ public abstract class AArch64Assembler extends Assembler {
         FCSEL(0x1E200C00),
 
         INS(0x4e081c00),
-        UMOV(0x4e083c00),
+        UMOV(0x0e003c00),
 
         CNT(0xe205800),
         USRA(0x6f001400),
@@ -618,7 +671,12 @@ public abstract class AArch64Assembler extends Assembler {
         HINT(0xD503201F),
         DMB(0x000000A0),
 
-        BLR_NATIVE(0xc0000000);
+        MRS(0xD5300000),
+        MSR(0xD5100000),
+
+        BLR_NATIVE(0xc0000000),
+
+        ADDV(0x0e31b800);
 
         public final int encoding;
 
@@ -626,6 +684,29 @@ public abstract class AArch64Assembler extends Assembler {
             this.encoding = encoding;
         }
 
+    }
+
+    public enum SystemRegister {
+        FPCR(0b11, 0b011, 0b0100, 0b0100, 0b000),
+        FPSR(0b11, 0b011, 0b0100, 0b0100, 0b001);
+
+        SystemRegister(int op0, int op1, int crn, int crm, int op2) {
+            this.op0 = op0;
+            this.op1 = op1;
+            this.crn = crn;
+            this.crm = crm;
+            this.op2 = op2;
+        }
+
+        public int encoding() {
+            return op0 << 19 | op1 << 16 | crn << 12 | crm << 8 | op2 << 5;
+        }
+
+        private final int op0;
+        private final int op1;
+        private final int crn;
+        private final int crm;
+        private final int op2;
     }
 
     public enum ShiftType {
@@ -971,8 +1052,10 @@ public abstract class AArch64Assembler extends Assembler {
         int imm = (imm28 & NumUtil.getNbitNumberInt(28)) >> 2;
         int instrEncoding = instr.encoding | UnconditionalBranchImmOp;
         if (pos == -1) {
+            annotatePatchingImmediate(position(), instr, 26, 0, 2);
             emitInt(instrEncoding | imm);
         } else {
+            annotatePatchingImmediate(pos, instr, 26, 0, 2);
             emitInt(instrEncoding | imm, pos);
         }
     }
@@ -1011,6 +1094,7 @@ public abstract class AArch64Assembler extends Assembler {
         assert !reg.equals(zr);
         assert !reg.equals(sp);
         emitInt(instr.encoding | UnconditionalBranchRegOp | rs1(reg));
+
     }
 
     /* Load-Store Single Register (5.3.1) */
@@ -1161,9 +1245,11 @@ public abstract class AArch64Assembler extends Assembler {
         int memop = instr.encoding | transferSizeEncoding | is32Bit | isFloat | rt(reg);
         switch (address.getAddressingMode()) {
             case IMMEDIATE_SCALED:
+                annotatePatchingImmediate(position(), instr, 12, LoadStoreScaledImmOffset, log2TransferSize);
                 emitInt(memop | LoadStoreScaledOp | address.getImmediate() << LoadStoreScaledImmOffset | rs1(address.getBase()));
                 break;
             case IMMEDIATE_UNSCALED:
+                annotatePatchingImmediate(position(), instr, 9, LoadStoreUnscaledImmOffset, 0);
                 emitInt(memop | LoadStoreUnscaledOp | address.getImmediate() << LoadStoreUnscaledImmOffset | rs1(address.getBase()));
                 break;
             case BASE_REGISTER_ONLY:
@@ -1178,12 +1264,15 @@ public abstract class AArch64Assembler extends Assembler {
             case PC_LITERAL:
                 assert log2TransferSize >= 2 : "PC literal loads only works for load/stores of 32-bit and larger";
                 transferSizeEncoding = (log2TransferSize - 2) << LoadStoreTransferSizeOffset;
+                annotatePatchingImmediate(position(), instr, 21, LoadLiteralImmeOffset, 2);
                 emitInt(transferSizeEncoding | isFloat | LoadLiteralOp | rd(reg) | address.getImmediate() << LoadLiteralImmeOffset);
                 break;
             case IMMEDIATE_POST_INDEXED:
+                annotatePatchingImmediate(position(), instr, 9, LoadStoreIndexedImmOffset, 0);
                 emitInt(memop | LoadStorePostIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
                 break;
             case IMMEDIATE_PRE_INDEXED:
+                annotatePatchingImmediate(position(), instr, 9, LoadStoreIndexedImmOffset, 0);
                 emitInt(memop | LoadStorePreIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
                 break;
             default:
@@ -1527,6 +1616,10 @@ public abstract class AArch64Assembler extends Assembler {
 
     private void addSubImmInstruction(Instruction instr, Register dst, Register src, int aimm, InstructionType type) {
         emitInt(type.encoding | instr.encoding | AddSubImmOp | encodeAimm(aimm) | rd(dst) | rs1(src));
+    }
+
+    public void ccmp(int size, Register x, Register y, int aimm, ConditionFlag condition) {
+        emitInt(generalFromSize(size).encoding | CCMP.encoding | rs1(x) | rs2(y) | encodeAimm(aimm) | condition.encoding << ConditionalConditionOffset);
     }
 
     /**
@@ -2414,7 +2507,8 @@ public abstract class AArch64Assembler extends Assembler {
             return false;
         }
         // bits[62] and bits[61] are opposites.
-        return ((bits ^ (bits << 1)) & (1L << 62)) != 0;
+        boolean result = ((bits ^ (bits << 1)) & (1L << 62)) != 0;
+        return result;
     }
 
     private static int getFloatImmediate(float imm) {
@@ -2694,6 +2788,20 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     /**
+     * Signalling compares src1 to src2.
+     *
+     * @param size register size.
+     * @param src1 floating point register. May not be null.
+     * @param src2 floating point register. May not be null.
+     */
+    public void fcmpe(int size, Register src1, Register src2) {
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        InstructionType type = floatFromSize(size);
+        emitInt(type.encoding | FCMP.encoding | FpCmpeOp | rs1(src1) | rs2(src2));
+    }
+
+    /**
      * Conditional compare. NZCV = fcmp(src1, src2) if condition else uimm4.
      *
      * @param size register size.
@@ -2720,6 +2828,18 @@ public abstract class AArch64Assembler extends Assembler {
         assert src.getRegisterCategory().equals(SIMD);
         InstructionType type = floatFromSize(size);
         emitInt(type.encoding | FCMPZERO.encoding | FpCmpOp | rs1(src));
+    }
+
+    /**
+     * Signalling compare register to 0.0 .
+     *
+     * @param size register size.
+     * @param src floating point register. May not be null.
+     */
+    public void fcmpeZero(int size, Register src) {
+        assert src.getRegisterCategory().equals(SIMD);
+        InstructionType type = floatFromSize(size);
+        emitInt(type.encoding | FCMPZERO.encoding | FpCmpeOp | rs1(src));
     }
 
     /* Floating-point Conditional Select (5.7.11) */
@@ -2833,4 +2953,99 @@ public abstract class AArch64Assembler extends Assembler {
         emitInt(DMB.encoding | BarrierOp | barrierKind.encoding << BarrierKindOffset);
     }
 
+    public void mrs(Register dst, SystemRegister systemRegister) {
+        emitInt(MRS.encoding | systemRegister.encoding() | rt(dst));
+    }
+
+    public void msr(SystemRegister systemRegister, Register src) {
+        emitInt(MRS.encoding | systemRegister.encoding() | rt(src));
+    }
+
+    public void annotatePatchingImmediate(int pos, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {
+        if (codePatchingAnnotationConsumer != null) {
+            codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(pos, instruction, operandSizeBits, offsetBits, shift));
+        }
+    }
+
+    void annotatePatchingImmediateNativeAddress(int pos, int operandSizeBits, int numInstrs) {
+        if (codePatchingAnnotationConsumer != null) {
+            codePatchingAnnotationConsumer.accept(new MovSequenceAnnotation(pos, operandSizeBits, numInstrs));
+        }
+    }
+
+    public static class OperandDataAnnotation extends CodeAnnotation {
+
+        /**
+         * The size of the operand, in bytes.
+         */
+        public final int operandSizeBits;
+        public final int offsetBits;
+        public final Instruction instruction;
+        public final int shift;
+
+        OperandDataAnnotation(int instructionPosition, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {
+            super(instructionPosition);
+            this.operandSizeBits = operandSizeBits;
+            this.offsetBits = offsetBits;
+            this.shift = shift;
+            this.instruction = instruction;
+        }
+    }
+
+    public static class MovSequenceAnnotation extends CodeAnnotation {
+
+        /**
+         * The size of the operand, in bytes.
+         */
+        public final int operandSizeBits;
+        public final int numInstrs;
+
+        MovSequenceAnnotation(int instructionPosition, int operandSizeBits, int numInstrs) {
+            super(instructionPosition);
+            this.operandSizeBits = operandSizeBits;
+            this.numInstrs = numInstrs;
+        }
+    }
+
+    /**
+     * dst[0...n] = countBitCountOfEachByte(src[0...n]), n = size/8.
+     *
+     * @param size register size. Has to be 64 or 128.
+     * @param dst SIMD register. Should not be null.
+     * @param src SIMD register. Should not be null.
+     */
+    public void cnt(int size, Register dst, Register src) {
+        assert 64 == size || 128 == size : "Invalid size for cnt";
+        emitInt((size >> 7) << SIMDQBitOffset | CNT.encoding | rd(dst) | rs1(src));
+    }
+
+    /**
+     * dst = src[0] + ....+ src[n].
+     *
+     * @param size register size. Has to be 64 or 128.
+     * @param laneWidth the width that SIMD register is treated as different lanes with.
+     * @param dst SIMD register. Should not be null.
+     * @param src SIMD register. Should not be null.
+     */
+    public void addv(int size, SIMDElementSize laneWidth, Register dst, Register src) {
+        assert 64 == size || 128 == size : "Invalid size for addv";
+        assert SIMDElementSize.DoubleWord != laneWidth : "Invalid lane width for addv";
+        assert 64 != size || SIMDElementSize.Word != laneWidth : "Invalid size and lane combination for addv";
+        emitInt((size >> 7) << SIMDQBitOffset | laneWidth.encoding << SIMDSizeOffset | ADDV.encoding | rd(dst) | rs1(src));
+    }
+
+    /**
+     * dst = src[srcIdx].
+     *
+     * @param size register size. Can be 8, 16, 32 or 64.
+     * @param dst general purpose register. Should not be null or zero-register.
+     * @param srcIdx lane index of source register that dest data is from.
+     * @param src SIMD register. Should not be null.
+     */
+    public void umov(int size, Register dst, int srcIdx, Register src) {
+        assert (srcIdx + 1) * size <= 128 : "Invalid src vectRegister index";
+        InstructionType simdDataType = simdFromSize(size);
+        int imm5 = simdDataType.encoding | srcIdx << Integer.numberOfTrailingZeros(simdDataType.encoding) + 1;
+        emitInt((size >> 6) << SIMDQBitOffset | imm5 << SIMDImm5Offset | UMOV.encoding | rd(dst) | rs1(src));
+    }
 }

@@ -174,14 +174,21 @@ public class StringNFITest extends NFITest {
         }
     }
 
-    private static void testStringCallback(CallTarget target, Object callbackRet, String expected) {
-        TruffleObject strArgCallback = new TestCallback(1, (args) -> {
-            Assert.assertEquals("string argument", expected, args[0]);
-            return 42;
-        });
-        TruffleObject strRetCallback = new TestCallback(0, (args) -> {
-            return callbackRet;
-        });
+    private String expectedArg;
+    private Object callbackRet;
+
+    private final TruffleObject strArgCallback = new TestCallback(1, (args) -> {
+        Assert.assertEquals("string argument", expectedArg, args[0]);
+        return 42;
+    });
+
+    private final TruffleObject strRetCallback = new TestCallback(0, (args) -> {
+        return callbackRet;
+    });
+
+    private void testStringCallback(CallTarget target, Object cbRet, String expected) {
+        expectedArg = expected;
+        callbackRet = cbRet;
 
         Object ret = target.call(strArgCallback, strRetCallback);
 
@@ -204,7 +211,7 @@ public class StringNFITest extends NFITest {
         testStringCallback(target, new BoxedPrimitive("Hello, Native!"), "Hello, Truffle!");
     }
 
-    public static class NativeStringCallbackNode extends NFITestRootNode {
+    public class NativeStringCallbackNode extends NFITestRootNode {
 
         final TruffleObject stringRetConst = lookupAndBind("string_ret_const", "():string");
         final TruffleObject nativeStringCallback = lookupAndBind("native_string_callback", "(():string) : string");
@@ -214,16 +221,8 @@ public class StringNFITest extends NFITest {
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
-            Object string = stringRetConstInterop.execute(stringRetConst);
-            TruffleObject callback = createCallback(string);
-            return nativeStringCallbackInterop.execute(nativeStringCallback, callback);
-        }
-
-        @TruffleBoundary
-        private static TruffleObject createCallback(Object obj) {
-            return new TestCallback(0, (args) -> {
-                return obj;
-            });
+            callbackRet = stringRetConstInterop.execute(stringRetConst);
+            return nativeStringCallbackInterop.execute(nativeStringCallback, strRetCallback);
         }
     }
 

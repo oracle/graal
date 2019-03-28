@@ -146,14 +146,18 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                buffer.putInt8(interop.asByte(arg));
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                try {
-                    buffer.putInt8(interop.asBoolean(arg) ? (byte) 1 : 0);
-                } catch (UnsupportedMessageException ex2) {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isNumber(arg)) {
+                    buffer.putInt8(interop.asByte(arg));
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
+            }
+            exception.enter();
+            try {
+                buffer.putInt8(interop.asBoolean(arg) ? (byte) 1 : 0);
+            } catch (UnsupportedMessageException ex2) {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 
@@ -162,15 +166,19 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                short nr = interop.asShort(arg);
-                buffer.putInt8((byte) nr);
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                try {
-                    buffer.putInt8(interop.asBoolean(arg) ? (byte) 1 : 0);
-                } catch (UnsupportedMessageException ex2) {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isNumber(arg)) {
+                    short nr = interop.asShort(arg);
+                    buffer.putInt8((byte) nr);
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
+            }
+            exception.enter();
+            try {
+                buffer.putInt8(interop.asBoolean(arg) ? (byte) 1 : 0);
+            } catch (UnsupportedMessageException ex2) {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 
@@ -179,14 +187,18 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                buffer.putInt16(interop.asShort(arg));
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                try {
-                    buffer.putInt16(interop.asBoolean(arg) ? (short) 1 : 0);
-                } catch (UnsupportedMessageException ex2) {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isNumber(arg)) {
+                    buffer.putInt16(interop.asShort(arg));
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
+            }
+            exception.enter();
+            try {
+                buffer.putInt16(interop.asBoolean(arg) ? (short) 1 : 0);
+            } catch (UnsupportedMessageException ex2) {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 
@@ -195,15 +207,19 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                int nr = interop.asInt(arg);
-                buffer.putInt16((short) nr);
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                try {
-                    buffer.putInt16(interop.asBoolean(arg) ? (short) 1 : 0);
-                } catch (UnsupportedMessageException ex2) {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isNumber(arg)) {
+                    int nr = interop.asInt(arg);
+                    buffer.putInt16((short) nr);
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
+            }
+            exception.enter();
+            try {
+                buffer.putInt16(interop.asBoolean(arg) ? (short) 1 : 0);
+            } catch (UnsupportedMessageException ex2) {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 
@@ -212,14 +228,18 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                buffer.putInt32(interop.asInt(arg));
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                try {
-                    buffer.putInt32(interop.asBoolean(arg) ? 1 : 0);
-                } catch (UnsupportedMessageException ex2) {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isNumber(arg)) {
+                    buffer.putInt32(interop.asInt(arg));
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
+            }
+            exception.enter();
+            try {
+                buffer.putInt32(interop.asBoolean(arg) ? 1 : 0);
+            } catch (UnsupportedMessageException ex2) {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 
@@ -228,15 +248,19 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                long nr = interop.asLong(arg);
-                buffer.putInt32((int) nr);
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                try {
-                    buffer.putInt32(interop.asBoolean(arg) ? 1 : 0);
-                } catch (UnsupportedMessageException ex2) {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isNumber(arg)) {
+                    long nr = interop.asLong(arg);
+                    buffer.putInt32((int) nr);
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
+            }
+            exception.enter();
+            try {
+                buffer.putInt32(interop.asBoolean(arg) ? 1 : 0);
+            } catch (UnsupportedMessageException ex2) {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 
@@ -246,14 +270,18 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                buffer.putInt64(interop.asLong(arg));
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                try {
-                    buffer.putInt64(interop.asBoolean(arg) ? 1L : 0L);
-                } catch (UnsupportedMessageException ex2) {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isNumber(arg)) {
+                    buffer.putInt64(interop.asLong(arg));
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
+            }
+            exception.enter();
+            try {
+                buffer.putInt64(interop.asBoolean(arg) ? 1L : 0L);
+            } catch (UnsupportedMessageException ex2) {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 
@@ -262,14 +290,18 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                buffer.putFloat(interop.asFloat(arg));
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                try {
-                    buffer.putFloat(interop.asBoolean(arg) ? 1.0f : 0.0f);
-                } catch (UnsupportedMessageException ex2) {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isNumber(arg)) {
+                    buffer.putFloat(interop.asFloat(arg));
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
+            }
+            exception.enter();
+            try {
+                buffer.putFloat(interop.asBoolean(arg) ? 1.0f : 0.0f);
+            } catch (UnsupportedMessageException ex2) {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 
@@ -278,14 +310,18 @@ abstract class SerializeArgumentLibrary extends Library {
                         @Shared("exception") @Cached BranchProfile exception,
                         @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                buffer.putDouble(interop.asDouble(arg));
-            } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                try {
-                    buffer.putDouble(interop.asBoolean(arg) ? 1.0 : 0.0);
-                } catch (UnsupportedMessageException ex2) {
-                    throw UnsupportedTypeException.create(new Object[]{arg});
+                if (interop.isNumber(arg)) {
+                    buffer.putDouble(interop.asDouble(arg));
+                    return;
                 }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
+            }
+            exception.enter();
+            try {
+                buffer.putDouble(interop.asBoolean(arg) ? 1.0 : 0.0);
+            } catch (UnsupportedMessageException ex2) {
+                throw UnsupportedTypeException.create(new Object[]{arg});
             }
         }
 

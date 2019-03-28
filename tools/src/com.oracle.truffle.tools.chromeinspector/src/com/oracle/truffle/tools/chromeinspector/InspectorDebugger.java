@@ -215,45 +215,47 @@ public final class InspectorDebugger extends DebuggerDomain {
         if (script == null) {
             throw new CommandProcessException("Unknown scriptId: " + scriptId);
         }
+        JSONObject json = new JSONObject();
+        JSONArray arr = new JSONArray();
         Source source = script.getSource();
-        int l1 = start.getLine();
-        int c1 = start.getColumn();
-        if (c1 <= 0) {
-            c1 = -1;
-        }
-        int l2;
-        int c2;
-        if (end != null) {
-            if (source.hasCharacters()) {
-                int lc = source.getLineCount();
-                if (end.getLine() > lc) {
-                    l2 = lc;
+        if (source.getLength() > 0) {
+            int l1 = start.getLine();
+            int c1 = start.getColumn();
+            if (c1 <= 0) {
+                c1 = -1;
+            }
+            int l2;
+            int c2;
+            if (end != null) {
+                if (source.hasCharacters()) {
+                    int lc = source.getLineCount();
+                    if (end.getLine() > lc) {
+                        l2 = lc;
+                    } else {
+                        l2 = end.getLine();
+                    }
                 } else {
                     l2 = end.getLine();
                 }
+                c2 = end.getColumn();
+                if (c2 <= 0) {
+                    c2 = -1;
+                }
             } else {
-                l2 = end.getLine();
+                l2 = l1;
+                if (c1 == -1) {
+                    c2 = -1;
+                } else if (source.hasCharacters()) {
+                    c2 = source.getLineLength(l2);
+                } else {
+                    c2 = c1 + 1;
+                }
             }
-            c2 = end.getColumn();
-            if (c2 <= 0) {
-                c2 = -1;
+            SourceSection range = source.createSection(l1, c1, l2, c2);
+            Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, ds, context.getEnv());
+            for (SourceSection ss : locations) {
+                arr.put(new Location(scriptId, ss.getStartLine(), ss.getStartColumn()).toJSON());
             }
-        } else {
-            l2 = l1;
-            if (c1 == -1) {
-                c2 = -1;
-            } else if (source.hasCharacters()) {
-                c2 = source.getLineLength(l2);
-            } else {
-                c2 = c1 + 1;
-            }
-        }
-        SourceSection range = source.createSection(l1, c1, l2, c2);
-        Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, ds, context.getEnv());
-        JSONObject json = new JSONObject();
-        JSONArray arr = new JSONArray();
-        for (SourceSection ss : locations) {
-            arr.put(new Location(scriptId, ss.getStartLine(), ss.getStartColumn()).toJSON());
         }
         json.put("locations", arr);
         return new Params(json);
@@ -545,7 +547,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                         if (value == null) {
                             String errorMessage = getEvalNonInteractiveMessage();
                             ExceptionDetails exceptionDetails = new ExceptionDetails(errorMessage);
-                            json.put("exceptionDetails", exceptionDetails.createJSON(context));
+                            json.put("exceptionDetails", exceptionDetails.createJSON(context, generatePreview));
                             JSONObject err = new JSONObject();
                             err.putOpt("value", errorMessage);
                             err.putOpt("type", "string");
@@ -555,7 +557,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                         value = cf.getFrame().eval(expression);
                     }
                     if (value != null) {
-                        RemoteObject ro = new RemoteObject(value, context.getErr());
+                        RemoteObject ro = new RemoteObject(value, generatePreview, context);
                         context.getRemoteObjectsHandler().register(ro);
                         json.put("result", ro.toJSON());
                     }
@@ -565,10 +567,10 @@ public final class InspectorDebugger extends DebuggerDomain {
                 @Override
                 public JSONObject processException(DebugException dex) {
                     JSONObject json = new JSONObject();
-                    InspectorRuntime.fillExceptionDetails(json, dex, context);
+                    InspectorRuntime.fillExceptionDetails(json, dex, context, generatePreview);
                     DebugValue exceptionObject = dex.getExceptionObject();
                     if (exceptionObject != null) {
-                        RemoteObject ro = context.createAndRegister(exceptionObject);
+                        RemoteObject ro = context.createAndRegister(exceptionObject, generatePreview);
                         json.put("result", ro.toJSON());
                     } else {
                         JSONObject err = new JSONObject();
@@ -1003,7 +1005,7 @@ public final class InspectorDebugger extends DebuggerDomain {
             DebugValue exceptionObject = exception.getExceptionObject();
             JSONObject data;
             if (exceptionObject != null) {
-                RemoteObject remoteObject = context.createAndRegister(exceptionObject);
+                RemoteObject remoteObject = context.createAndRegister(exceptionObject, false);
                 data = remoteObject.toJSON();
             } else {
                 data = new JSONObject();

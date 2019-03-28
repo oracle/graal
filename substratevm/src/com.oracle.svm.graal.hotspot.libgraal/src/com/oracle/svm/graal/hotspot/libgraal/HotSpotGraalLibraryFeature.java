@@ -352,7 +352,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
                         }
                         if (original != null) {
                             debug.log("Method substitution %s %s", method, original);
-                            hotSpotSubstrateReplacements.registerMethodSubstitution(method, original);
+                            hotSpotSubstrateReplacements.registerMethodSubstitution(method, original, debug.getOptions());
                         } else {
                             throw new GraalError("Can't find original for " + method);
                         }
@@ -403,7 +403,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
 
         // Ensure all known snippets and method subsitutions are encoded and rerun the iteration if
         // new encoding is done.
-        if (hotSpotSubstrateReplacements.encode()) {
+        if (hotSpotSubstrateReplacements.encode(accessImpl.getBigBang().getOptions())) {
             access.requireAnalysisIteration();
         }
     }

@@ -81,6 +81,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -125,7 +126,7 @@ public class LanguageSPITest {
         langContext = null;
         Engine engine = Engine.create();
 
-        Context context = Context.create(LanguageSPITestLanguage.ID);
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build();
         assertTrue(context.initialize(LanguageSPITestLanguage.ID));
         assertNotNull(langContext);
         assertEquals(0, langContext.disposeCalled);
@@ -583,7 +584,7 @@ public class LanguageSPITest {
 
     @Test
     public void testParseOtherLanguage() {
-        Context context = Context.newBuilder().build();
+        Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
         eval(context, new Function<Env, Object>() {
             @SuppressWarnings("deprecation")
             public Object apply(Env t) {
@@ -1225,7 +1226,7 @@ public class LanguageSPITest {
             }
 
         });
-        Context c = Context.create();
+        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
         c.initialize(ProxyLanguage.ID);
         assertTrue(c.getPolyglotBindings().getMember("symbol").isHostObject());
         c.close();
@@ -1632,7 +1633,7 @@ public class LanguageSPITest {
             }
         });
 
-        Context c = Context.create();
+        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
         Value languageBindings = c.eval(ProxyLanguage.ID, "");
         Value polyglotBindings = c.getPolyglotBindings();
 
@@ -1670,7 +1671,7 @@ public class LanguageSPITest {
             }
         });
 
-        Context c = Context.create();
+        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
         ExecutorService service = Executors.newFixedThreadPool(20);
 
         Value languageBindings = c.eval(ProxyLanguage.ID, "");
@@ -1736,7 +1737,7 @@ public class LanguageSPITest {
                 return super.toString(context, value);
             }
         });
-        Context c = Context.create();
+        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
         c.eval(ProxyLanguage.ID, "");
 
         assertEquals("Make sure language specific toString was invoked.", "myStringToString", c.getPolyglotBindings().getMember("exportedValue").toString());
@@ -1823,14 +1824,14 @@ public class LanguageSPITest {
     @Test
     public void testLookup() {
         // Not loaded language
-        try (Context context = Context.create()) {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             context.initialize(ProxyLanguage.ID);
             context.enter();
             assertFalse(lookupLanguage(LanguageSPITestLanguageService.class));
             context.leave();
         }
         // Loaded language
-        try (Context context = Context.create()) {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             context.initialize(ProxyLanguage.ID);
             context.initialize(SERVICE_LANGUAGE);
             context.enter();
@@ -1841,7 +1842,7 @@ public class LanguageSPITest {
             }
         }
         // Registered service
-        try (Context context = Context.create()) {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             context.initialize(ProxyLanguage.ID);
             context.enter();
             try {
@@ -1853,7 +1854,7 @@ public class LanguageSPITest {
         }
         // Non registered service
         resetLoadedLanguage(SERVICE_LANGUAGE);
-        try (Context context = Context.create()) {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             context.initialize(ProxyLanguage.ID);
             context.enter();
             try {

@@ -71,6 +71,8 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 @RunWith(TruffleRunner.class)
 public class RegisterPackageNFITest extends NFITest {
 
+    private static final FunctionRegistry REGISTRY = new FunctionRegistry();
+
     @ExportLibrary(InteropLibrary.class)
     static class FunctionRegistry implements TruffleObject {
 
@@ -79,6 +81,11 @@ public class RegisterPackageNFITest extends NFITest {
         @TruffleBoundary
         FunctionRegistry() {
             functions = new HashMap<>();
+        }
+
+        @TruffleBoundary
+        void clear() {
+            functions.clear();
         }
 
         @TruffleBoundary
@@ -128,14 +135,14 @@ public class RegisterPackageNFITest extends NFITest {
         @Child InteropLibrary interop = getInterop(initializePackage);
 
         FunctionRegistry loadPackage() {
-            FunctionRegistry registry = new FunctionRegistry();
+            REGISTRY.clear();
             try {
-                interop.execute(initializePackage, registry);
+                interop.execute(initializePackage, REGISTRY);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(ex);
             }
-            return registry;
+            return REGISTRY;
         }
     }
 

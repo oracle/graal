@@ -570,7 +570,7 @@ public final class Context implements AutoCloseable {
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @since 1.0
      */
     @Override
@@ -584,7 +584,7 @@ public final class Context implements AutoCloseable {
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @since 1.0
      */
     @Override
@@ -755,6 +755,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowHostClassLoading;
         private Boolean allowExperimentalOptions;
         private Boolean allowHostAccess;
+        private PolyglotAccess polylgotAccess;
         private HostAccess hostAccess;
         private FileSystem customFileSystem;
         private MessageTransport messageTransport;
@@ -1015,6 +1016,20 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Allow polyglot access using the provided policy. If {@link #allowAllAccess(boolean) all
+         * access} is <code>true</code> then the default polyglot access policy is
+         * {@link PolyglotAccess#ALL}, otherwise {@link PolyglotAccess#NONE}. The provided access
+         * policy must not be <code>null</code>.
+         *
+         * @since 1.0
+         */
+        public Builder allowPolyglotAccess(PolyglotAccess accessPolicy) {
+            Objects.requireNonNull(accessPolicy);
+            this.polylgotAccess = accessPolicy;
+            return this;
+        }
+
+        /**
          * Sets a class filter that allows to limit the classes that are allowed to be loaded by
          * guest languages. If the filter returns <code>true</code>, then the class is accessible,
          * otherwise it is not accessible and throws a guest language error when accessed. In order
@@ -1241,9 +1256,14 @@ public final class Context implements AutoCloseable {
                 hostAccess = HostAccess.ALL;
             }
             if (hostAccess == null) {
-                // Default to be changed.
-                // hostAccess = this.allowAllAccess ? HostAccess.ALL : HostAccess.EXPLICIT;
-                hostAccess = HostAccess.ALL;
+                hostAccess = this.allowAllAccess ? HostAccess.ALL : HostAccess.EXPLICIT;
+            }
+
+            PolyglotAccess polyglotAccess = this.polylgotAccess;
+            if (polyglotAccess == null) {
+                // TODO make NONE the default if allowAllAccess is false GR-14657
+                // polyglotAccess = this.allowAllAccess ? PolyglotAccess.ALL : PolyglotAccess.NONE;
+                polyglotAccess = PolyglotAccess.ALL;
             }
 
             if (localHostLookupFilter == UNSET_HOST_LOOKUP) {
@@ -1284,18 +1304,18 @@ public final class Context implements AutoCloseable {
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, nativeAccess, createThread, io,
-                                hostClassLoading, experimentalOptions, localHostLookupFilter,
-                                Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages,
-                                customFileSystem, customLogHandler);
+                return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                                io, hostClassLoading, experimentalOptions,
+                                localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
+                                onlyLanguages, customFileSystem, customLogHandler);
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
                 }
-                return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, nativeAccess, createThread, io,
-                                hostClassLoading, experimentalOptions, localHostLookupFilter,
-                                options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages,
-                                customFileSystem, customLogHandler);
+                return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                                io, hostClassLoading, experimentalOptions,
+                                localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
+                                onlyLanguages, customFileSystem, customLogHandler);
             }
         }
 

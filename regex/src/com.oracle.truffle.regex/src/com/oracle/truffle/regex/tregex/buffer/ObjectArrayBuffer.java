@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,7 +62,7 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
     }
 
     @Override
-    int getBufferSize() {
+    int getBufferLength() {
         return buf.length;
     }
 
@@ -76,25 +76,25 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
     }
 
     public void add(Object o) {
-        if (size == buf.length) {
-            grow(size * 2);
+        if (length == buf.length) {
+            grow(length * 2);
         }
-        buf[size] = o;
-        size++;
+        buf[length] = o;
+        length++;
     }
 
     @SuppressWarnings("unchecked")
     public <T> T[] toArray(T[] a) {
-        if (a.length < size) {
-            return (T[]) Arrays.copyOf(buf, size, a.getClass());
+        if (a.length < length) {
+            return (T[]) Arrays.copyOf(buf, length, a.getClass());
         }
-        System.arraycopy(buf, 0, a, 0, size);
+        System.arraycopy(buf, 0, a, 0, length);
         return a;
     }
 
     @Override
     public Iterator<Object> iterator() {
-        return new ObjectBufferIterator(buf, size);
+        return new ObjectBufferIterator(buf, length);
     }
 
     private static final class ObjectBufferIterator implements Iterator<Object> {

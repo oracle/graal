@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,12 +36,12 @@ import java.util.Map;
 
 class UnicodeCharacterPropertyData {
 
-    public static final Map<String, String> PROPERTY_ALIASES = new HashMap<>(150);
-    public static final Map<String, String> GENERAL_CATEGORY_ALIASES = new HashMap<>(120);
-    public static final Map<String, String> SCRIPT_ALIASES = new HashMap<>(444);
+    static final Map<String, String> PROPERTY_ALIASES = new HashMap<>(150);
+    static final Map<String, String> GENERAL_CATEGORY_ALIASES = new HashMap<>(120);
+    static final Map<String, String> SCRIPT_ALIASES = new HashMap<>(444);
     private static final Map<String, int[]> SET_ENCODINGS = new HashMap<>(571);
 
-    public static CodePointSet retrieveProperty(String propertySpec) {
+    static CodePointSet retrieveProperty(String propertySpec) {
         if (!SET_ENCODINGS.containsKey(propertySpec)) {
             throw new IllegalArgumentException("Unsupported Unicode character property escape");
         }

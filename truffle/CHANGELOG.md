@@ -42,12 +42,15 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `Node.lookupContextReference(Class)` and `Node.lookupLanguageReference(Class)` that allows for a more convenient lookup.
 * Deprecated `RootNode.getLanguage(Class)`, the new language references should be used instead.
 * Added `TruffleFile` aware file type detector
-    - Added [TruffleFile.FileTypeDetector SPI](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.FileTypeDetector.html) to detect a file MIME type and a file encoding.
+    - Added [TruffleFile.FileTypeDetector SPI](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.FileTypeDetector.html) to detect a file MIME type and a file encoding. A language registering `FileTypeDetector` has to support all the MIME types recognized by the registered detector.
     - Added [TruffleFile.getMimeType method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getMimeType--) to obtain a `TruffleFile` MIME type.
-    - Added [TruffleFile.getEncoding method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getEncoding--) to obtain a `TruffleFile` encoding.
     - Added a possibility to set an [encoding in SourceBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html#encoding-java.nio.charset.Charset-)
     - The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files and file URLs.
     - Deprecated usage of NIO `FileTypeDetector` for MIME type detection.
+* TruffleFile's paths from image building time are translated in image execution time into new paths using Context's FileSystem. The absolute paths pointing to files in language homes in image generation time are resolved using image execution time language homes.
+* Added [Env.isPolylgotAccessAllowed()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#isPolyglotAccessAllowed--) to check whether polyglot access (e.g. access to polyglot builtins) is allowed.
+* The methods `Env.getPolyglotBindings()` and `Env.importSymbol` and `Env.exportSymbol` now throw a `SecurityException` if polyglot access not allowed.
+* Added `DebugValue.isNull()` to check for null values, `DebugValue.execute()` to be able to execute values and `DebugValue.asString()` to get the String from String values.
 
 ## Version 1.0.0 RC14
 * Removed some deprecated elements:

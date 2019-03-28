@@ -38,7 +38,7 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 
 public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
-    private static final String COMPILATION_THRESHOLD_OPTION = "compiler.CompilationThreshold";
+    private static final String COMPILATION_THRESHOLD_OPTION = "engine.CompilationThreshold";
 
     @Test
     public void testVisibleOptions() {

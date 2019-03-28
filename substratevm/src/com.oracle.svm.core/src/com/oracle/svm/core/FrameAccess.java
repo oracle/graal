@@ -33,6 +33,8 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 public abstract class FrameAccess {
@@ -48,7 +50,12 @@ public abstract class FrameAccess {
 
     @Fold
     public static int returnAddressSize() {
-        return ConfigurationValues.getTarget().arch.getReturnAddressSize();
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        if (arch instanceof AArch64) {
+            return 8;
+        } else {
+            return arch.getReturnAddressSize();
+        }
     }
 
     /**

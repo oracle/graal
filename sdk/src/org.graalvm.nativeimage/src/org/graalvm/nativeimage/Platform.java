@@ -71,6 +71,14 @@ public interface Platform {
     interface AMD64 extends Platform {
     }
 
+    /**
+     * Supported architecture: ARMv8 64-bit.
+     *
+     * @since 1.0
+     */
+    interface AArch64 extends Platform {
+    }
+
     /*
      * The standard operating systems that we support.
      */
@@ -150,6 +158,22 @@ public interface Platform {
          * @since 1.0
          */
         public LINUX_AMD64() {
+        }
+    }
+
+    /**
+     * Supported leaf platform: Linux on AArch64 64-bit.
+     *
+     * @since 1.0
+     */
+    final class LINUX_AArch64 implements LINUX, LINUX_AND_JNI, AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 1.0
+         */
+        public LINUX_AArch64() {
         }
     }
 

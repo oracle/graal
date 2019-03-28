@@ -1180,7 +1180,10 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
         'compiler:GRAAL_REPLACEMENTS_PROCESSOR',
         'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
     ],
-    jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
+    jvmci_jars=[
+        'compiler:GRAAL',
+        'compiler:GRAAL_MANAGEMENT',
+    ],
     graal_compiler='graal',
 ))
 

@@ -44,11 +44,11 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collection;
-
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.util.Set;
 
 final class SourceAccessor extends Accessor {
@@ -79,6 +79,10 @@ final class SourceAccessor extends Accessor {
 
     static String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
         return ACCESSOR.languageSupport().getMimeType(file, validMimeTypes);
+    }
+
+    static Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
+        return ACCESSOR.languageSupport().getEncoding(file, mimeType);
     }
 
     static Object getCurrentFileSystemContext() {

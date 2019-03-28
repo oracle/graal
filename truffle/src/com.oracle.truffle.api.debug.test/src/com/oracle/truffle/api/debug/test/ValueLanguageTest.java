@@ -173,7 +173,8 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 value = value.asInLanguage(lang1);
                 assertEquals("{a={}, j=100, k=200, c={}}", value.as(String.class));
                 assertEquals("L1:Map", value.getMetaObject().as(String.class));
-                assertEquals("L2:Map", value.getMetaObject().asInLanguage(lang2).as(String.class));
+                // The String value of meta object can not be changed by a different language
+                assertEquals("L1:Map", value.getMetaObject().asInLanguage(lang2).as(String.class));
 
                 // Properties are always in the original language:
                 value = frame.getScope().getDeclaredValue("b");
@@ -410,19 +411,19 @@ public class ValueLanguageTest extends AbstractDebugTest {
         @Override
         protected Object findMetaObject(Context context, Object value) {
             if (value instanceof Number) {
-                return "L" + id + ": Number";
+                return "L" + id + ":Number";
             }
             if (value instanceof String) {
-                return "L" + id + ": String";
+                return "L" + id + ":String";
             }
             if (InteropLibrary.getFactory().getUncached().isNull(value)) {
                 return "Null";
             }
             PropertiesMapObject pmo = (PropertiesMapObject) value;
             if (id.equals(pmo.getLanguageId())) {
-                return "Map";
+                return "L" + id + ":Map";
             } else {
-                return "Object";
+                return "L" + id + ":Object";
             }
         }
 

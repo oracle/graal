@@ -382,7 +382,6 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             }
         }
 
-        @TruffleBoundary
         @Override
         public boolean accepts(Object receiver_) {
             return true;

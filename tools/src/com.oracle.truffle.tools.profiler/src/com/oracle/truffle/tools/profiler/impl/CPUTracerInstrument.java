@@ -130,8 +130,9 @@ public class CPUTracerInstrument extends TruffleInstrument {
         final boolean internals = env.getOptions().get(CPUTracerCLI.TRACE_INTERNAL);
         final Object[] filterRootName = env.getOptions().get(CPUTracerCLI.FILTER_ROOT);
         final Object[] filterFile = env.getOptions().get(CPUTracerCLI.FILTER_FILE);
+        final String filterMimeType = env.getOptions().get(CPUTracerCLI.FILTER_MIME_TYPE);
         final String filterLanguage = env.getOptions().get(CPUTracerCLI.FILTER_LANGUAGE);
-        return CPUTracerCLI.buildFilter(roots, statements, calls, internals, filterRootName, filterFile, filterLanguage);
+        return CPUTracerCLI.buildFilter(roots, statements, calls, internals, filterRootName, filterFile, filterMimeType, filterLanguage);
     }
 
     /**

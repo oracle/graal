@@ -118,12 +118,26 @@ suite = {
       "jacoco" : "include",
     },
 
-    "com.oracle.truffle.llvm.runtime" : {
+    "com.oracle.truffle.llvm.nfi" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "jacoco" : "include",
+    },
+
+    "com.oracle.truffle.llvm.runtime" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
         "com.oracle.truffle.llvm.spi",
         "com.oracle.truffle.llvm.instruments",
       ],
@@ -654,13 +668,24 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
-        "truffle:TRUFFLE_NFI",
         "truffle:ANTLR4",
         "SULONG_LIBS",
       ],
       "javaProperties" : {
         "llvm.home": "<path:SULONG_LIBS>",
       },
+      "license" : "BSD-new",
+    },
+
+    "SULONG_NFI" : {
+      "subDir" : "projects",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.nfi",
+      ],
+      "distDependencies" : [
+        "truffle:TRUFFLE_NFI",
+        "SULONG",
+      ],
       "license" : "BSD-new",
     },
 
@@ -721,6 +746,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_TCK",
         "sulong:SULONG",
+        "sulong:SULONG_NFI",
         "SULONG_TEST_NATIVE",
       ],
       "javaProperties" : {

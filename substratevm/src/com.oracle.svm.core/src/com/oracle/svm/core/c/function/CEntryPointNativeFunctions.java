@@ -179,7 +179,7 @@ public final class CEntryPointNativeFunctions {
                     "the current thread.",
                     "Returns 0 on success, or a non-zero value on failure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
-    public static int detachThreads(IsolateThread thread, IsolateThread array, int length) {
+    public static int detachThreads(IsolateThread thread, IsolateThreadPointer array, int length) {
         int result = CEntryPointActions.enter(thread);
         if (result != 0) {
             CEntryPointActions.leave();
@@ -203,7 +203,7 @@ public final class CEntryPointNativeFunctions {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Safe context.")
-    private static boolean detachThreadsInJava(IsolateThread array, int length) {
+    private static boolean detachThreadsInJava(IsolateThreadPointer array, int length) {
         IsolateThread current = CurrentIsolate.getCurrentThread();
         Isolate currentIsolate = getIsolateOf(current);
         boolean containsCurrent = false;

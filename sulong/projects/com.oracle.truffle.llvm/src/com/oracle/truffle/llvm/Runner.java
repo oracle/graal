@@ -115,8 +115,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
-import com.oracle.truffle.nfi.types.Parser;
 
 public final class Runner {
 
@@ -146,7 +144,7 @@ public final class Runner {
         return parse(source, input.bytes, input.library);
     }
 
-    private ParserInput getParserData(Source source) {
+    private static ParserInput getParserData(Source source) {
         ByteSequence bytes;
         ExternalLibrary library;
         if (source.hasBytes()) {
@@ -161,12 +159,6 @@ public final class Runner {
                 case LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE:
                     bytes = ByteSequence.create(decodeBase64(source.getCharacters()));
                     library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
-                    break;
-                case LLVMLanguage.LLVM_SULONG_TYPE:
-                    NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
-                    String filename = descriptor.getFilename();
-                    bytes = read(filename);
-                    library = new ExternalLibrary(Paths.get(filename), false, source.isInternal());
                     break;
                 default:
                     throw new LLVMParserException("Character-based source with unexpected mime type: " + source.getMimeType());
@@ -978,15 +970,6 @@ public final class Runner {
             result[i] = (byte) ch;
         }
         return Base64.getDecoder().decode(result);
-    }
-
-    private ByteSequence read(String filename) {
-        try {
-            TruffleFile truffleFile = context.getEnv().getTruffleFile(filename);
-            return ByteSequence.create(truffleFile.readAllBytes());
-        } catch (IOException | SecurityException | OutOfMemoryError ignore) {
-            return ByteSequence.create(new byte[0]);
-        }
     }
 
     private CallTarget createLibraryCallTarget(String name, List<LLVMParserResult> parserResults, InitializationOrder initializationOrder) {

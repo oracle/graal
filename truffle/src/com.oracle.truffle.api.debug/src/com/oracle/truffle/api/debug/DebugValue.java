@@ -117,6 +117,15 @@ public abstract class DebugValue {
     public abstract <T> T as(Class<T> clazz) throws DebugException;
 
     /**
+     * Returns the {@link String} value if this value represents a string. This method returns
+     * <code>null</code> otherwise.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @since 1.0
+     */
+    public abstract String asString() throws DebugException;
+
+    /**
      * Returns the name of this value as it is referred to from its origin. If this value is
      * originated from the stack it returns the name of the local variable. If the value was
      * returned from another objects then it returns the name of the property or field it is
@@ -184,6 +193,19 @@ public abstract class DebugValue {
      */
     public DebugScope getScope() {
         return null;
+    }
+
+    /**
+     * Test if the value represents 'null'.
+     *
+     * @since 1.0
+     */
+    public final boolean isNull() {
+        if (!isReadable()) {
+            return false;
+        }
+        Object value = get();
+        return INTEROP.isNull(value);
     }
 
     /**
@@ -322,7 +344,7 @@ public abstract class DebugValue {
             try {
                 obj = env.findMetaObject(languageInfo, obj);
                 if (obj != null) {
-                    return new HeapValue(getSession(), languageInfo, null, obj);
+                    return new HeapValue(getSession(), languageInfo, null, obj, true);
                 }
             } catch (ThreadDeath td) {
                 throw td;
@@ -374,6 +396,31 @@ public abstract class DebugValue {
         Object value = get();
         try {
             return INTEROP.isExecutable(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Executes the executable represented by this value.
+     *
+     * @param arguments Arguments passed to the executable
+     * @return the result of the execution
+     * @throws DebugException when guest language code throws an exception
+     * @see #canExecute()
+     * @since 1.0
+     */
+    public final DebugValue execute(DebugValue... arguments) throws DebugException {
+        Object value = get();
+        Object[] args = new Object[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            args[i] = arguments[i].get();
+        }
+        try {
+            Object retValue = INTEROP.execute(value, args);
+            return new HeapValue(getSession(), null, retValue);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
@@ -455,12 +502,16 @@ public abstract class DebugValue {
             try {
                 if (clazz == String.class) {
                     Object val = get();
-                    LanguageInfo languageInfo = resolveLanguage();
                     String stringValue;
-                    if (languageInfo == null) {
-                        stringValue = val.toString();
+                    if (isMeta() && val instanceof String) {
+                        stringValue = (String) val;
                     } else {
-                        stringValue = getDebugger().getEnv().toString(languageInfo, val);
+                        LanguageInfo languageInfo = resolveLanguage();
+                        if (languageInfo == null) {
+                            stringValue = val.toString();
+                        } else {
+                            stringValue = getDebugger().getEnv().toString(languageInfo, val);
+                        }
                     }
                     return clazz.cast(stringValue);
                 } else if (clazz == Number.class || clazz == Boolean.class) {
@@ -472,6 +523,29 @@ public abstract class DebugValue {
                 throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
             }
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public String asString() throws DebugException {
+            if (!isReadable()) {
+                throw new IllegalStateException("Value is not readable");
+            }
+            try {
+                Object val = get();
+                if (INTEROP.isString(val)) {
+                    return INTEROP.asString(val);
+                } else {
+                    return null;
+                }
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            }
+        }
+
+        protected boolean isMeta() {
+            return false;
         }
 
         private <T> T convertToPrimitive(Class<T> clazz) {
@@ -491,6 +565,7 @@ public abstract class DebugValue {
     static class HeapValue extends AbstractDebugValue {
 
         private final String name;
+        private final boolean isMeta;
         private Object value;
 
         HeapValue(DebuggerSession session, String name, Object value) {
@@ -498,9 +573,19 @@ public abstract class DebugValue {
         }
 
         HeapValue(DebuggerSession session, LanguageInfo preferredLanguage, String name, Object value) {
+            this(session, preferredLanguage, name, value, false);
+        }
+
+        HeapValue(DebuggerSession session, LanguageInfo preferredLanguage, String name, Object value, boolean isMeta) {
             super(session, preferredLanguage);
             this.name = name;
+            this.isMeta = isMeta;
             this.value = value;
+        }
+
+        @Override
+        protected boolean isMeta() {
+            return this.isMeta;
         }
 
         @Override
@@ -551,7 +636,7 @@ public abstract class DebugValue {
 
         @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
-            return new HeapValue(session, language, name, value);
+            return new HeapValue(session, language, name, value, isMeta);
         }
 
     }

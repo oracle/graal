@@ -39,6 +39,11 @@ public abstract class ToCharNode extends Node {
     public abstract char execute(Object arg) throws UnsupportedTypeException;
 
     @Specialization
+    static char doByte(byte arg) {
+        return (char) arg;
+    }
+
+    @Specialization
     static char doChar(char arg) {
         return arg;
     }

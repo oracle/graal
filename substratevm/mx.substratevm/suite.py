@@ -153,7 +153,21 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-
+        "com.oracle.svm.core.graal.aarch64": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core.graal",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
         "com.oracle.svm.core.graal.llvm": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -301,6 +315,9 @@ suite = {
                 },
                 "linux": {
                     "amd64" : {
+                        "cflags": ["-g", "-fPIC", "-O2"],
+                    },
+                    "aarch64" : {
                         "cflags": ["-g", "-fPIC", "-O2"],
                     },
                 },
@@ -606,9 +623,6 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "com.oracle.svm.hosted",
             ],
-            "buildDependencies" : [
-                "org.graalvm.polyglot.nativeapi.native",
-            ],
             "checkstyle": "org.graalvm.polyglot.nativeapi",
             "checkstyleVersion" : "8.8",
             "javaCompliance" : "8+",
@@ -619,37 +633,6 @@ suite = {
             ],
             "workingSets" : "SVM",
             "spotbugs": "false",
-        },
-
-        "org.graalvm.polyglot.nativeapi.native" : {
-            "subDir" : "src",
-            "native" : True,
-            "vpath": True,
-            "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
-            "buildEnv": {
-                "ARCH": "<arch>",
-                "OS": "<os>"
-            },
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
-                },
-                "windows": {
-                    "<others>": {
-                        "ignore": "windows is not supported",  # necessary until GR-12705 is resolved
-                    },
-                },
-                "<others>": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
-                    "<others>": {
-                        "ignore": False,
-                    },
-                },
-            },
         },
 
         "com.oracle.svm.graal.hotspot.libgraal" : {
@@ -724,12 +707,15 @@ suite = {
                 "com.oracle.svm.truffle.nfi.windows",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",
                 "com.oracle.svm.core.posix.jdk9",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
+                "com.oracle.svm.jni",
+                "com.oracle.svm.reflect",
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
@@ -785,7 +771,6 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM basic library-support components",
             "dependencies": [
-                "com.oracle.svm.jni",
                 "com.oracle.svm.jline",
                 "com.oracle.svm.junit",
                 "com.oracle.svm.polyglot",
@@ -937,41 +922,6 @@ suite = {
                 "./" : [
                     "extracted-dependency:POLYGLOT_NATIVE_API/*.h",
                 ],
-            },
-        },
-
-        "POLYGLOT_NATIVE_API_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "polyglot.nativeapi support distribution for the GraalVM",
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                         "layout" : {
-                             "./" : [
-                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
-                             ],
-                         },
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                         "layout" : {
-                             "./" : [
-                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
-                             ],
-                         },
-                    },
-                },
-                "windows": {
-                    "amd64" : {
-                         "layout" : {
-                             "./" : [
-                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.obj",
-                             ],
-                         },
-                    },
-                },
             },
         },
 

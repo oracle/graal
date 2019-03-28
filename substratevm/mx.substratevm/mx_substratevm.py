@@ -98,6 +98,7 @@ def add_opens_from_packages(packageNameList):
 graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.runtime',
     'jdk.internal.vm.ci/jdk.vm.ci.code',
+    'jdk.internal.vm.ci/jdk.vm.ci.aarch64',
     'jdk.internal.vm.ci/jdk.vm.ci.amd64',
     'jdk.internal.vm.ci/jdk.vm.ci.meta',
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
@@ -195,8 +196,6 @@ def suite_native_image_root(suite=None):
     if not suite:
         suite = svm_suite()
     root_basename = 'native-image-root-' + str(svm_java_compliance())
-    if llvmDistributions and all([mx.distribution(dist).exists() for dist in llvmDistributions]):
-        root_basename = 'llvm-' + root_basename
     root_dir = join(svmbuild_dir(suite), root_basename)
     rev_file_name = join(root_dir, 'rev')
     rev_value = suite.vc.parent(suite.vc_dir)
@@ -363,15 +362,15 @@ def build_native_image_image():
     native_image_on_jvm(['--tool:native-image', '-H:Path=' + image_dir])
 
 svmDistribution = ['substratevm:SVM']
-llvmDistributions = ['compiler:GRAAL_LLVM', 'substratevm:SVM_LLVM']
+llvmDistributions = ['compiler:GRAAL_LLVM', 'substratevm:SVM_LLVM', "compiler:LLVM_WRAPPER", "compiler:LLVM_PLATFORM_SPECIFIC", "compiler:JAVACPP"]
 graalDistribution = ['compiler:GRAAL']
 librarySupportDistribution = ['substratevm:LIBRARY_SUPPORT']
 
 def layout_native_image_root(native_image_root):
 
     def names_to_dists(dist_names):
-        deps = [mx.dependency(dist_name) for dist_name in dist_names]
-        return [dep for dep in deps if not dep.isDistribution() or dep.exists()]
+        deps = [mx.dependency(dist_name, fatalIfMissing=False) for dist_name in dist_names]
+        return [dep for dep in deps if dep and (not dep.isDistribution() or dep.exists())]
 
     def native_image_layout_dists(subdir, dist_names):
         native_image_layout(names_to_dists(dist_names), subdir, native_image_root)
@@ -514,7 +513,6 @@ GraalTags = Tags([
     'maven',
     'js',
     'build',
-    'test',
     'benchmarktest',
     'truffletck'
 ])
@@ -586,10 +584,9 @@ def svm_gate_body(args, tasks):
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
-                if mx.get_os() != 'windows':#GR-14578
-                    testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
-                    native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--tool:nfi', '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
-                    native_unittest(native_unittest_args)
+                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
+                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--tool:nfi', '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
+                native_unittest(native_unittest_args)
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
@@ -928,6 +925,23 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=suite,
+    name='SubstrateVM LLVM',
+    short_name='svml',
+    dir_name='svm',
+    license_files=[],
+    third_party_license_files=[],
+    builder_jar_distributions=[
+        'substratevm:SVM_LLVM',
+        'compiler:GRAAL_LLVM',
+        'compiler:LLVM_WRAPPER',
+        'compiler:JAVACPP',
+        'compiler:LLVM_PLATFORM_SPECIFIC',
+    ],
+))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+    suite=suite,
     name='SubstrateVM Agent',
     short_name='svmag',
     dir_name='.',
@@ -972,14 +986,12 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     third_party_license_files=[],
     jar_distributions=['substratevm:POLYGLOT_NATIVE_API'],
     support_distributions=[
-        "substratevm:POLYGLOT_NATIVE_API_SUPPORT",
         "substratevm:POLYGLOT_NATIVE_API_HEADERS",
     ],
     polyglot_lib_build_args=[
         "--tool:truffle",
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_HEADERS>",
-        "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>",
         "-H:CStandard=C11",
         "-H:+SpawnIsolates",
     ],
@@ -987,7 +999,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         "substratevm:POLYGLOT_NATIVE_API",
     ],
     polyglot_lib_build_dependencies=[
-        "substratevm:POLYGLOT_NATIVE_API_SUPPORT",
         "substratevm:POLYGLOT_NATIVE_API_HEADERS"
     ],
     has_polyglot_lib_entrypoints=True,

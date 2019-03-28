@@ -215,6 +215,7 @@ public final class InspectServerSession implements MessageEndpoint {
                                 json.optBoolean("silent"),
                                 json.optInt("contextId", -1),
                                 json.optBoolean("returnByValue"),
+                                json.optBoolean("generatePreview"),
                                 json.optBoolean("awaitPromise"));
                 break;
             case "Runtime.runIfWaitingForDebugger":
@@ -224,9 +225,9 @@ public final class InspectServerSession implements MessageEndpoint {
                 json = cmd.getParams().getJSONObject();
                 resultParams = runtime.getProperties(
                                 json.optString("objectId"),
-                                json.optBoolean("ownProperties")
-                // Ignored additional experimental parameters
-                );
+                                json.optBoolean("ownProperties"),
+                                json.optBoolean("accessorPropertiesOnly"),
+                                json.optBoolean("generatePreview"));
                 break;
             case "Runtime.callFunctionOn":
                 json = cmd.getParams().getJSONObject();
@@ -236,7 +237,12 @@ public final class InspectServerSession implements MessageEndpoint {
                                 json.optJSONArray("arguments"),
                                 json.optBoolean("silent"),
                                 json.optBoolean("returnByValue"),
+                                json.optBoolean("generatePreview"),
                                 json.optBoolean("awaitPromise"));
+                break;
+            case "Runtime.setCustomObjectFormatterEnabled":
+                json = cmd.getParams().getJSONObject();
+                runtime.setCustomObjectFormatterEnabled(json.optBoolean("enabled"));
                 break;
             case "Debugger.enable":
                 debugger.enable();

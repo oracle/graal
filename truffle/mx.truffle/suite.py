@@ -128,6 +128,9 @@ suite = {
         "<package-info>", # exports all packages containing package-info.java
         "com.oracle.truffle.api.impl", # exported to the Graal compiler
       ],
+      # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
+      # if warnings as errors is enabled. See GR-14683.
+      "forceJavac" : "true",
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "API,Truffle",
@@ -170,12 +173,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.profiles",
-        "com.oracle.truffle.api.interop",
-        "com.oracle.truffle.api.debug",
-        "com.oracle.truffle.api.utilities",
-        "com.oracle.truffle.object.basic",
-        "com.oracle.truffle.polyglot",
+        "TRUFFLE_API",
+        "TRUFFLE_SL",
         "mx:JUNIT",
       ],
       "imports" : ["jdk.internal.loader"],
@@ -596,9 +595,6 @@ suite = {
           },
         },
         "<others>" : {
-          "aarch64" : {
-            "ignore" : "temporarily disabled",  # necessary until GR-13214 is resolved
-          },
           "<others>" : {
             "ignore" : False,
           },
@@ -806,6 +802,7 @@ suite = {
       "platformDependent" : True,
       "platforms" : [
           "linux-amd64",
+          "linux-aarch64",
           "darwin-amd64",
       ],
       "layout" : {
@@ -972,6 +969,9 @@ suite = {
       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
       "distDependencies" : [
         "TRUFFLE_API",
+        "TRUFFLE_SL",
+        "TRUFFLE_TCK",
+        "sdk:POLYGLOT_TCK",
         "TRUFFLE_DSL_PROCESSOR",
       ],
       "description" : "Instrumentation tests including InstrumentationTestLanguage.",

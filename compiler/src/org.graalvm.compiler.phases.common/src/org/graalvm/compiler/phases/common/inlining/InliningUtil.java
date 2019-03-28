@@ -93,7 +93,6 @@ import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
@@ -1003,14 +1002,6 @@ public class InliningUtil extends ValueMergeUtil {
             }
             return newReceiver;
         }
-    }
-
-    public static boolean canIntrinsify(Replacements replacements, ResolvedJavaMethod target, int invokeBci) {
-        return replacements.hasSubstitution(target, invokeBci);
-    }
-
-    public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
-        return replacements.getSubstitution(target, invokeBci, trackNodeSourcePosition, replaceePosition);
     }
 
     /**

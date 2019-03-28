@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,17 @@ package com.oracle.truffle.regex.chardata;
 public class UnicodeCharacterProperties {
 
     public static CodePointSet getProperty(String propertySpec) {
+        return evaluatePropertySpec(normalizePropertySpec(propertySpec));
+    }
+
+    /**
+     * Returns the set of characters having a given unicode character property.
+     *
+     * @param propertySpec a regexp unicode property specification, like "gc=LC".
+     * @return a {@link CharacterSet} representing the set of unicode characters that have the given
+     *         property.
+     */
+    public static CharacterSet getUnicodeProperty(String propertySpec) {
         return evaluatePropertySpec(normalizePropertySpec(propertySpec));
     }
 
