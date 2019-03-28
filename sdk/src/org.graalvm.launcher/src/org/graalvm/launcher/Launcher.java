@@ -525,9 +525,7 @@ public abstract class Launcher {
             printOption("--help:tools",                  "Print options for all installed tools.");
             printOption("--help:vm",                     "Print options for the host VM.");
             printOption("--help:expert",                 "Print additional options for experts.");
-            if (helpExpert || helpInternal) {
-                printOption("--help:internal",           "Print internal options for debugging language implementations and instruments.");
-            }
+            printOption("--help:internal",               "Print internal options for debugging language implementations and instruments.");
             printOption("--version:graalvm",             "Print GraalVM version information and exit.");
             printOption("--show-version:graalvm",        "Print GraalVM version information and continue execution.");
             printOption("--log.file=<String>",           "Redirect guest languages logging into a given file.");
@@ -774,11 +772,9 @@ public abstract class Launcher {
         options.add("--help:languages");
         options.add("--help:tools");
         options.add("--help:expert");
+        options.add("--help:internal");
         options.add("--version:graalvm");
         options.add("--show-version:graalvm");
-        if (helpExpert || helpInternal) {
-            options.add("--help:internal");
-        }
         addOptions(engine.getOptions(), options);
         for (Language language : engine.getLanguages().values()) {
             addOptions(language.getOptions(), options);
