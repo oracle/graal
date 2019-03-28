@@ -22,28 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
+package org.graalvm.compiler.hotspot;
 
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
-import org.graalvm.libgraal.LibGraal;
-
-import com.oracle.truffle.api.TruffleRuntime;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
- * Access to a {@link TruffleRuntime} that uses libgraal for compilation.
+ * JDK 8 version of {@link HotSpotJVMCIServices}.
  */
-public class LibGraalTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
+public class HotSpotJVMCIServices {
 
-    @Override
-    protected TruffleRuntime createRuntime() {
-        return new LibGraalTruffleRuntime();
+    public static long[] registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+        return runtime.registerNativeMethods(clazz);
     }
 
-    @Override
-    public int getPriority() {
-        if (LibGraal.isAvailable()) {
-            return Integer.MAX_VALUE;
-        }
-        return Integer.MIN_VALUE;
+    public static long translate(HotSpotJVMCIRuntime runtime, Object obj) {
+        return runtime.translate(obj);
+    }
+
+    public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
+        return runtime.unhand(type, handle);
     }
 }

@@ -285,8 +285,9 @@ def ctw(args, extraVMarguments=None):
     exclusions = ','.join([a[len(exclusionPrefix):] for a in vmargs if a.startswith(exclusionPrefix)] + ['sun.awt.X11.*.*'])
     vmargs.append(exclusionPrefix + exclusions)
 
-    if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
-        vmargs.append('-XX:+BootstrapJVMCI')
+    if not _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCINativeLibrary', False):
+        if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
+            vmargs.append('-XX:+BootstrapJVMCI')
 
     mainClassAndArgs = []
     if isJDK8:

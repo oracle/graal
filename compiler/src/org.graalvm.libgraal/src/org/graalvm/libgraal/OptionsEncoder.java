@@ -22,21 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common.hotspot.libgraal;
+package org.graalvm.libgraal;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 public final class OptionsEncoder {
 
     private OptionsEncoder() {
-        throw new IllegalStateException("Instance is not allowed.");
     }
 
     public static boolean isValueSupported(Object value) {
@@ -44,8 +43,16 @@ public final class OptionsEncoder {
             return false;
         }
         Class<?> valueClass = value.getClass();
-        return valueClass == Boolean.class || valueClass == Byte.class || valueClass == Short.class || valueClass == Character.class || valueClass == Integer.class || valueClass == Long.class ||
-                        valueClass == Float.class || valueClass == Double.class || valueClass == String.class || value.getClass().isEnum();
+        return valueClass == Boolean.class ||
+                        valueClass == Byte.class ||
+                        valueClass == Short.class ||
+                        valueClass == Character.class ||
+                        valueClass == Integer.class ||
+                        valueClass == Long.class ||
+                        valueClass == Float.class ||
+                        valueClass == Double.class ||
+                        valueClass == String.class ||
+                        value.getClass().isEnum();
     }
 
     public static byte[] encode(final Map<String, Object> options) {
@@ -99,12 +106,14 @@ public final class OptionsEncoder {
     }
 
     public static Map<String, Object> decode(InputStream input) {
+        Map<String, Object> res = new HashMap<>();
+        decode(input, (key, value) -> res.put(key, value));
+        return res;
+    }
+
+    public static void decode(InputStream input, BiConsumer<String, Object> consumer) {
         try (DataInputStream in = new DataInputStream(input)) {
             final int size = in.readInt();
-            if (size == 0) {
-                return Collections.emptyMap();
-            }
-            final Map<String, Object> res = new HashMap<>(size);
             for (int i = 0; i < size; i++) {
                 final String key = in.readUTF();
                 final Object value;
@@ -140,11 +149,10 @@ public final class OptionsEncoder {
                     default:
                         throw new IllegalArgumentException("Unsupported value type: " + Integer.toHexString(type));
                 }
-                res.put(key, value);
+                consumer.accept(key, value);
             }
-            return res;
         } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
+            throw new IllegalArgumentException(ioe);
         }
     }
 }

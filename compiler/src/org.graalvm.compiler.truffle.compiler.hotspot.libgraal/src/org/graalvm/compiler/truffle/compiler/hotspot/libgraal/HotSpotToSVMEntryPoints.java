@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.AttachThread;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CleanReferences;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContext;
@@ -104,7 +103,6 @@ import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.OptionsEncoder;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugContextImpl;
@@ -118,8 +116,8 @@ import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObjectArray;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
 import org.graalvm.graphio.GraphOutput;
+import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.nativeimage.Isolate;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -137,10 +135,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@value #TRUFFLE_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME} to {@code true}.
  */
 final class HotSpotToSVMEntryPoints {
-
-    @HotSpotToSVM(AttachThread)
-    @CEntryPoint(builtin = CEntryPoint.Builtin.ATTACH_THREAD, name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_attachThread")
-    public static native IsolateThread attachThread(JNIEnv env, JClass hsClazz, Isolate isolate);
 
     @HotSpotToSVM(InitializeRuntime)
     @SuppressWarnings({"unused", "try"})

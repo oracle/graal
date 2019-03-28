@@ -28,6 +28,7 @@
 
 import os
 import shutil
+import re
 from collections import namedtuple
 from argparse import ArgumentParser
 from os.path import join, exists, dirname
@@ -80,8 +81,8 @@ def updategraalinopenjdk(args):
         # JDK module jdk.internal.vm.compiler is composed of sources from:
         GraalJDKModule('jdk.internal.vm.compiler',
             # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
-            #    whose names include "truffle" or "management"
-            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm']),
+            #    or projects whose names include "truffle", "management", "core.llvm" or "libgraal"
+            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm', 'libgraal']),
             # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
         # JDK module jdk.internal.vm.compiler.management is composed of sources from:
@@ -142,6 +143,8 @@ def updategraalinopenjdk(args):
                     with open(filepath, 'w') as fp:
                         fp.write(new_contents)
                         mx.log('  updated ' + filepath)
+
+    java_package_re = re.compile(r"^\s*package\s+(?P<package>[a-zA-Z_][\w\.]*)\s*;$", re.MULTILINE)
 
     copied_source_dirs = []
     jdk_internal_vm_compiler_EXCLUDES = set() # pylint: disable=invalid-name
@@ -210,6 +213,15 @@ def updategraalinopenjdk(args):
                                 contents = contents.replace(old_name, new_name)
                             for old_line, new_line in replacements.iteritems():
                                 contents = contents.replace(old_line, new_line)
+
+                            match = java_package_re.search(contents)
+                            if not match:
+                                mx.abort('Could not find package declaration in {}'.format(src_file))
+                            java_package = match.group('package')
+                            if any(ex in java_package for ex in info.excludes):
+                                mx.log('  excluding ' + filename)
+                                continue
+
                             new_line_count = len(contents.split('\n'))
                             if new_line_count > old_line_count:
                                 mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))

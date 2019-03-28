@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleRuntime.getIsolateThreadId;
+import static org.graalvm.libgraal.LibGraal.getIsolateThread;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
@@ -40,11 +40,11 @@ final class SVMGraphInfo extends SVMObject implements TruffleCompilerListener.Gr
 
     @Override
     public int getNodeCount() {
-        return HotSpotToSVMCalls.getNodeCount(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getNodeCount(getIsolateThread(), handle);
     }
 
     @Override
     public String[] getNodeTypes(boolean simpleNames) {
-        return HotSpotToSVMCalls.getNodeTypes(getIsolateThreadId(), handle, simpleNames);
+        return HotSpotToSVMCalls.getNodeTypes(getIsolateThread(), handle, simpleNames);
     }
 }
