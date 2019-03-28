@@ -966,7 +966,9 @@ public class SnippetTemplate {
                         }
                         retNode.setMemoryMap(null);
                     }
-                    memoryMap.safeDelete();
+                    if (memoryMap != null) {
+                        memoryMap.safeDelete();
+                    }
                 }
                 if (needsAnchor) {
                     snippetCopy.addAfterFixed(snippetCopy.start(), anchor);
