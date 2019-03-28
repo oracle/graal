@@ -31,9 +31,9 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.chardata.CodePointRange;
-import com.oracle.truffle.regex.chardata.CodePointSet;
-import com.oracle.truffle.regex.chardata.Constants;
+import com.oracle.truffle.regex.charset.CodePointRange;
+import com.oracle.truffle.regex.charset.CodePointSetBuilder;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
@@ -271,15 +271,15 @@ public final class RegexParser {
     }
 
     private Term translateUnicodeCharClass(Token.CharacterClass token) {
-        CodePointSet codePointSet = token.getCodePointSet();
+        CodePointSetBuilder codePointSet = token.getCodePointSet();
         SourceSection src = token.getSourceSection();
         Group group = ast.createGroup();
         group.setEnclosedCaptureGroupsLow(groupCount.getCount());
         group.setEnclosedCaptureGroupsHigh(groupCount.getCount());
-        CodePointSet bmpRanges = Constants.BMP_WITHOUT_SURROGATES.createIntersection(codePointSet);
-        CodePointSet astralRanges = Constants.ASTRAL_SYMBOLS.createIntersection(codePointSet);
-        CodePointSet loneLeadSurrogateRanges = Constants.LEAD_SURROGATES.createIntersection(codePointSet);
-        CodePointSet loneTrailSurrogateRanges = Constants.TRAIL_SURROGATES.createIntersection(codePointSet);
+        CodePointSetBuilder bmpRanges = codePointSet.createIntersection(Constants.BMP_WITHOUT_SURROGATES);
+        CodePointSetBuilder astralRanges = codePointSet.createIntersection(Constants.ASTRAL_SYMBOLS);
+        CodePointSetBuilder loneLeadSurrogateRanges = codePointSet.createIntersection(Constants.LEAD_SURROGATES);
+        CodePointSetBuilder loneTrailSurrogateRanges = codePointSet.createIntersection(Constants.TRAIL_SURROGATES);
 
         if (bmpRanges.matchesSomething()) {
             Sequence bmpAlternative = group.addSequence(ast);
@@ -303,15 +303,15 @@ public final class RegexParser {
         if (astralRanges.matchesSomething()) {
             // completeRanges matches surrogate pairs where leading surrogates can be followed by
             // any trailing surrogates
-            CodePointSet completeRanges = CodePointSet.createEmpty();
+            CodePointSetBuilder completeRanges = CodePointSetBuilder.createEmpty();
 
             char curLead = Character.highSurrogate(astralRanges.getRanges().get(0).lo);
-            CodePointSet curTrails = CodePointSet.createEmpty();
+            CodePointSetBuilder curTrails = CodePointSetBuilder.createEmpty();
             for (CodePointRange astralRange : astralRanges.getRanges()) {
                 char startLead = Character.highSurrogate(astralRange.lo);
-                char startTrail = Character.lowSurrogate(astralRange.lo);
+                final char startTrail = Character.lowSurrogate(astralRange.lo);
                 char endLead = Character.highSurrogate(astralRange.hi);
-                char endTrail = Character.lowSurrogate(astralRange.hi);
+                final char endTrail = Character.lowSurrogate(astralRange.hi);
 
                 if (startLead > curLead) {
                     if (curTrails.matchesSomething()) {
@@ -320,7 +320,7 @@ public final class RegexParser {
                         finishedAlternative.add(createCharClass(curTrails, src));
                     }
                     curLead = startLead;
-                    curTrails = CodePointSet.createEmpty();
+                    curTrails = CodePointSetBuilder.createEmpty();
                 }
                 if (startLead == endLead) {
                     curTrails.addRange(new CodePointRange(startTrail, endTrail));
@@ -337,7 +337,7 @@ public final class RegexParser {
                         finishedAlternative.add(createCharClass(curTrails, src));
                     }
                     curLead = endLead;
-                    curTrails = CodePointSet.createEmpty();
+                    curTrails = CodePointSetBuilder.createEmpty();
 
                     if (endTrail != Constants.TRAIL_SURROGATE_RANGE.hi) {
                         curTrails.addRange(new CodePointRange(Constants.TRAIL_SURROGATE_RANGE.lo, endTrail));
@@ -382,7 +382,7 @@ public final class RegexParser {
     }
 
     private void addCharClass(Token.CharacterClass token) {
-        CodePointSet codePointSet = token.getCodePointSet();
+        CodePointSetBuilder codePointSet = token.getCodePointSet();
         if (flags.isUnicode()) {
             if (codePointSet.matchesNothing()) {
                 // We need this branch because a Group with no alternatives is invalid
@@ -395,7 +395,7 @@ public final class RegexParser {
         }
     }
 
-    private CharacterClass createCharClass(CodePointSet codePointSet, SourceSection sourceSection) {
+    private CharacterClass createCharClass(CodePointSetBuilder codePointSet, SourceSection sourceSection) {
         return createCharClass(CharSet.create(codePointSet), sourceSection);
     }
 

@@ -100,7 +100,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
     private final RegexSource source;
     private final TruffleObject flags;
     private final TruffleObject namedCaptureGroups;
-    private TruffleObject compiledRegexObject;
+    private Object compiledRegexObject;
 
     public RegexObject(RegexCompiler compiler, RegexSource source, TruffleObject flags, Map<String, Integer> namedCaptureGroups) {
         this.compiler = compiler;
@@ -121,7 +121,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
         return namedCaptureGroups;
     }
 
-    public TruffleObject getCompiledRegexObject() {
+    public Object getCompiledRegexObject() {
         if (compiledRegexObject == null) {
             compiledRegexObject = compileRegex();
         }
@@ -129,7 +129,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
     }
 
     @TruffleBoundary
-    private TruffleObject compileRegex() {
+    private Object compileRegex() {
         return compiler.compile(source);
     }
 
@@ -241,18 +241,18 @@ public final class RegexObject extends AbstractConstantKeysObject {
     @GenerateUncached
     abstract static class GetCompiledRegexNode extends Node {
 
-        abstract TruffleObject execute(RegexObject receiver);
+        abstract Object execute(RegexObject receiver);
 
         @SuppressWarnings("unused")
         @Specialization(guards = "receiver == cachedReceiver", limit = "4")
-        static TruffleObject executeFixed(RegexObject receiver,
+        static Object executeFixed(RegexObject receiver,
                         @Cached("receiver") RegexObject cachedReceiver,
-                        @Cached("receiver.getCompiledRegexObject()") TruffleObject cachedCompiledRegex) {
+                        @Cached("receiver.getCompiledRegexObject()") Object cachedCompiledRegex) {
             return cachedCompiledRegex;
         }
 
         @Specialization(replaces = "executeFixed")
-        static TruffleObject executeVarying(RegexObject receiver) {
+        static Object executeVarying(RegexObject receiver) {
             return receiver.getCompiledRegexObject();
         }
     }
@@ -262,7 +262,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
     @GenerateUncached
     abstract static class ExecCompiledRegexNode extends Node {
 
-        abstract Object execute(TruffleObject receiver, Object input, int fromIndex)
+        abstract Object execute(Object receiver, Object input, int fromIndex)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException;
 
         @SuppressWarnings("unused")
@@ -270,20 +270,20 @@ public final class RegexObject extends AbstractConstantKeysObject {
         static Object executeTRegexFixed(CompiledRegexObject receiver, Object input, int fromIndex,
                         @Cached("receiver") CompiledRegexObject cachedReceiver,
                         @Cached("create(cachedReceiver.getCallTarget())") DirectCallNode directCallNode) {
-            return directCallNode.call(new Object[]{input, fromIndex});
+            return directCallNode.call(input, fromIndex);
         }
 
         @Specialization(replaces = "executeTRegexFixed")
         static Object executeTRegexVarying(CompiledRegexObject receiver, Object input, int fromIndex,
                         @Cached IndirectCallNode indirectCallNode) {
-            return indirectCallNode.call(receiver.getCallTarget(), new Object[]{input, fromIndex});
+            return indirectCallNode.call(receiver.getCallTarget(), input, fromIndex);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "receivers.isMemberInvocable(receiver, PROP_EXEC)", limit = "4")
         static Object executeForeign(TruffleObject receiver, Object input, int fromIndex,
                         @CachedLibrary("receiver") InteropLibrary receivers) throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
-            return receivers.invokeMember(receiver, "exec", new Object[]{input, fromIndex});
+            return receivers.invokeMember(receiver, "exec", input, fromIndex);
         }
     }
 }

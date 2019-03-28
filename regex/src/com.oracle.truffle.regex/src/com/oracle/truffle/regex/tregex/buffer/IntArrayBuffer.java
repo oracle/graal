@@ -25,48 +25,57 @@
 
 package com.oracle.truffle.regex.tregex.buffer;
 
-import com.oracle.truffle.regex.tregex.matchers.ListOfRanges;
+import java.util.Arrays;
 
 /**
- * Extension of {@link CharArrayBuffer} that adds convenience functions for arrays of character
- * ranges in the form:
+ * This class is designed as a "scratchpad" for generating many char arrays of unknown size. It will
+ * never shrink its internal buffer, so it should be disposed as soon as it is no longer needed.
+ * <p>
+ * Usage Example:
+ * </p>
  *
  * <pre>
- * [
- *     inclusive lower bound of range 1, inclusive upper bound of range 1,
- *     inclusive lower bound of range 2, inclusive upper bound of range 2,
- *     inclusive lower bound of range 3, inclusive upper bound of range 3,
- *     ...
- * ]
+ * IntArrayBuffer buf = new IntArrayBuffer();
+ * List<int[]> results = new ArrayList<>();
+ * for (Object obj : listOfThingsToProcess) {
+ *     for (Object x : obj.thingsThatShouldBecomeInts()) {
+ *         buf.add(someCalculation(x));
+ *     }
+ *     results.add(buf.toArray());
+ *     buf.clear();
+ * }
  * </pre>
  */
-public class RangesArrayBuffer extends CharArrayBuffer implements ListOfRanges {
+public class IntArrayBuffer extends AbstractArrayBuffer {
 
-    public RangesArrayBuffer() {
-        this(16);
-    }
+    protected int[] buf;
 
-    public RangesArrayBuffer(int initialSize) {
-        super(initialSize);
-    }
-
-    public void addRange(int rLo, int rHi) {
-        add((char) rLo);
-        add((char) rHi);
+    public IntArrayBuffer(int initialSize) {
+        buf = new int[initialSize];
     }
 
     @Override
-    public int getLo(int i) {
-        return buf[i * 2];
+    int getBufferLength() {
+        return buf.length;
     }
 
     @Override
-    public int getHi(int i) {
-        return buf[i * 2 + 1];
+    void grow(int newSize) {
+        buf = Arrays.copyOf(buf, newSize);
     }
 
-    @Override
-    public int size() {
-        return length() / 2;
+    public int[] getBuffer() {
+        return buf;
+    }
+
+    public void add(int c) {
+        if (length == buf.length) {
+            grow(length * 2);
+        }
+        buf[length++] = c;
+    }
+
+    public int[] toArray() {
+        return Arrays.copyOf(buf, length);
     }
 }

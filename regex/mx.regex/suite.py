@@ -70,9 +70,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "exports" : [
-        "com.oracle.truffle.regex",
         "com.oracle.truffle.regex.chardata",
-        "com.oracle.truffle.regex.result",
       ],
       "checkstyleVersion" : "8.8",
       "javaCompliance" : "8+",

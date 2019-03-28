@@ -22,26 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.chardata;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+package com.oracle.truffle.regex.charset;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class CodePointSet implements CharacterSet, JsonConvertible {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.chardata.CharacterSet;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+public final class CodePointSetBuilder implements CharacterSet, JsonConvertible {
 
     private List<CodePointRange> ranges;
     private boolean normalized;
     private boolean frozen;
 
-    private CodePointSet(List<CodePointRange> ranges, boolean normalized) {
+    private CodePointSetBuilder(List<CodePointRange> ranges, boolean normalized) {
         this.ranges = ranges;
         this.normalized = normalized;
         this.frozen = false;
@@ -52,30 +52,34 @@ public final class CodePointSet implements CharacterSet, JsonConvertible {
         return Collections.unmodifiableList(ranges);
     }
 
-    public static CodePointSet createEmpty() {
-        return new CodePointSet(new ArrayList<>(), true);
+    public static CodePointSetBuilder createEmpty() {
+        return new CodePointSetBuilder(new ArrayList<>(), true);
     }
 
-    public static CodePointSet create(Collection<CodePointRange> ranges) {
-        List<CodePointRange> list = new ArrayList<>(ranges);
-        return new CodePointSet(list, CodePointRange.rangesAreSortedAndDisjoint(list));
-    }
-
-    public static CodePointSet create(CodePointRange... ranges) {
+    public static CodePointSetBuilder create(CodePointRange... ranges) {
         List<CodePointRange> list = new ArrayList<>();
         Collections.addAll(list, ranges);
-        return new CodePointSet(list, CodePointRange.rangesAreSortedAndDisjoint(list));
+        return new CodePointSetBuilder(list, rangesAreSortedAndDisjoint(list));
     }
 
-    public static CodePointSet create(int... codePoints) {
+    public static CodePointSetBuilder create(int... codePoints) {
         List<CodePointRange> list = new ArrayList<>();
         for (int c : codePoints) {
             list.add(new CodePointRange(c));
         }
-        return new CodePointSet(list, CodePointRange.rangesAreSortedAndDisjoint(list));
+        return new CodePointSetBuilder(list, rangesAreSortedAndDisjoint(list));
     }
 
-    public CodePointSet addRange(CodePointRange range) {
+    public static CodePointSetBuilder create(CodePointSet codePointSet) {
+        List<CodePointRange> list = new ArrayList<>();
+        for (int i = 0; i < codePointSet.size(); i++) {
+            list.add(new CodePointRange(codePointSet.getLo(i), codePointSet.getHi(i)));
+        }
+        assert rangesAreSortedAndDisjoint(list);
+        return new CodePointSetBuilder(list, true);
+    }
+
+    public CodePointSetBuilder addRange(CodePointRange range) {
         if (frozen) {
             throw new UnsupportedOperationException("Object marked as immutable");
         }
@@ -84,7 +88,7 @@ public final class CodePointSet implements CharacterSet, JsonConvertible {
         return this;
     }
 
-    public CodePointSet addSet(CodePointSet other) {
+    public CodePointSetBuilder addSet(CodePointSetBuilder other) {
         if (frozen) {
             throw new UnsupportedOperationException("Object marked as immutable");
         }
@@ -93,11 +97,11 @@ public final class CodePointSet implements CharacterSet, JsonConvertible {
         return this;
     }
 
-    public CodePointSet copy() {
-        return new CodePointSet(new ArrayList<>(ranges), normalized);
+    public CodePointSetBuilder copy() {
+        return new CodePointSetBuilder(new ArrayList<>(ranges), normalized);
     }
 
-    public CodePointSet createInverse() {
+    public CodePointSetBuilder createInverse() {
         normalize();
 
         List<CodePointRange> invRanges = new ArrayList<>();
@@ -117,33 +121,31 @@ public final class CodePointSet implements CharacterSet, JsonConvertible {
         } else if (prev.hi < Constants.MAX_CODEPOINT) {
             invRanges.add(new CodePointRange(prev.hi + 1, Constants.MAX_CODEPOINT));
         }
-        return new CodePointSet(invRanges, true);
+        return new CodePointSetBuilder(invRanges, true);
     }
 
-    public CodePointSet createIntersection(CodePointSet other) {
+    public CodePointSetBuilder createIntersection(CodePointSet o) {
         normalize();
 
-        List<CodePointRange> otherRanges = other.getRanges();
         List<CodePointRange> intersectionRanges = new ArrayList<>();
         for (CodePointRange r : ranges) {
-            int search = Collections.binarySearch(otherRanges, r);
-            if (CodePointRange.binarySearchExactMatch(otherRanges, r, search)) {
+            int search = o.binarySearch(r.lo);
+            if (o.binarySearchExactMatch(search, r.lo, r.hi)) {
                 intersectionRanges.add(r);
                 continue;
             }
-            int firstIntersection = CodePointRange.binarySearchGetFirstIntersecting(otherRanges, r, search);
-            for (int i = firstIntersection; i < otherRanges.size(); i++) {
-                CodePointRange o = otherRanges.get(i);
-                if (o.rightOf(r)) {
+            int firstIntersection = o.binarySearchGetFirstIntersecting(search, r.lo, r.hi);
+            for (int i = firstIntersection; i < o.size(); i++) {
+                if (o.rightOf(i, r.lo, r.hi)) {
                     break;
                 }
-                CodePointRange intersection = r.createIntersection(o);
-                if (intersection != null) {
-                    intersectionRanges.add(intersection);
-                }
+                assert o.intersects(i, r.lo, r.hi);
+                int intersectionLo = Math.max(o.getLo(i), r.lo);
+                int intersectionHi = Math.min(o.getHi(i), r.hi);
+                intersectionRanges.add(new CodePointRange(intersectionLo, intersectionHi));
             }
         }
-        return new CodePointSet(intersectionRanges, true);
+        return new CodePointSetBuilder(intersectionRanges, true);
     }
 
     /**
@@ -181,11 +183,12 @@ public final class CodePointSet implements CharacterSet, JsonConvertible {
 
     /**
      * Makes this CodePointSet immutable. Any calls to {@link #addRange(CodePointRange) addRange} or
-     * {@link #addSet(CodePointSet) addSet} will throw an {@link UnsupportedOperationException}.
+     * {@link #addSet(CodePointSetBuilder) addSet} will throw an
+     * {@link UnsupportedOperationException}.
      *
      * @return this, now immutable
      */
-    public CodePointSet freeze() {
+    public CodePointSetBuilder freeze() {
         frozen = true;
         return this;
     }
@@ -237,28 +240,28 @@ public final class CodePointSet implements CharacterSet, JsonConvertible {
     @TruffleBoundary
     public String toString() {
         normalize();
-        if (equals(Constants.DOT)) {
+        if (equalsCodePointSet(Constants.DOT)) {
             return ".";
         }
-        if (equals(Constants.LINE_TERMINATOR)) {
+        if (equalsCodePointSet(Constants.LINE_TERMINATOR)) {
             return "[\\r\\n]";
         }
-        if (equals(Constants.DIGITS)) {
+        if (equalsCodePointSet(Constants.DIGITS)) {
             return "\\d";
         }
-        if (equals(Constants.NON_DIGITS)) {
+        if (equalsCodePointSet(Constants.NON_DIGITS)) {
             return "\\D";
         }
-        if (equals(Constants.WORD_CHARS)) {
+        if (equalsCodePointSet(Constants.WORD_CHARS)) {
             return "\\w";
         }
-        if (equals(Constants.NON_WORD_CHARS)) {
+        if (equalsCodePointSet(Constants.NON_WORD_CHARS)) {
             return "\\W";
         }
-        if (equals(Constants.WHITE_SPACE)) {
+        if (equalsCodePointSet(Constants.WHITE_SPACE)) {
             return "\\s";
         }
-        if (equals(Constants.NON_WHITE_SPACE)) {
+        if (equalsCodePointSet(Constants.NON_WHITE_SPACE)) {
             return "\\S";
         }
         if (matchesEverything()) {
@@ -270,7 +273,7 @@ public final class CodePointSet implements CharacterSet, JsonConvertible {
         if (matchesSingleChar()) {
             return ranges.get(0).toString();
         }
-        CodePointSet inverse = createInverse();
+        CodePointSetBuilder inverse = createInverse();
         if (inverse.ranges.size() < ranges.size()) {
             return "!" + inverse.toString();
         }
@@ -279,7 +282,30 @@ public final class CodePointSet implements CharacterSet, JsonConvertible {
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof CodePointSet && this.getRanges().equals(((CodePointSet) obj).getRanges());
+        return obj instanceof CodePointSetBuilder && this.getRanges().equals(((CodePointSetBuilder) obj).getRanges());
+    }
+
+    public boolean equalsCodePointSet(CodePointSet o) {
+        if (ranges.size() != o.size()) {
+            return false;
+        }
+        for (int i = 0; i < ranges.size(); i++) {
+            CodePointRange r = ranges.get(i);
+            if (!o.equal(i, r.lo, r.hi)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public CodePointSet toCodePointSet() {
+        normalize();
+        int[] cpsRanges = new int[ranges.size() * 2];
+        for (int i = 0; i < ranges.size(); i++) {
+            cpsRanges[i * 2] = ranges.get(i).lo;
+            cpsRanges[i * 2 + 1] = ranges.get(i).hi;
+        }
+        return CodePointSet.create(cpsRanges);
     }
 
     @Override
@@ -292,5 +318,15 @@ public final class CodePointSet implements CharacterSet, JsonConvertible {
     public JsonValue toJson() {
         normalize();
         return Json.array(ranges);
+    }
+
+    private static boolean rangesAreSortedAndDisjoint(List<CodePointRange> ranges) {
+        for (int i = 1; i < ranges.size(); i++) {
+            if ((ranges.get(i - 1).lo > ranges.get(i).lo) ||
+                            ranges.get(i - 1).intersects(ranges.get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 }
