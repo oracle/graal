@@ -1485,7 +1485,7 @@ public abstract class TruffleLanguage<C> {
          */
         public Object getPolyglotBindings() {
             if (!isPolyglotAccessAllowed()) {
-                throw new SecurityException("Polyglot bindings are not accessible for this language.");
+                throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
             }
             return AccessAPI.engineAccess().getPolyglotBindingsForLanguage(vmObject);
         }
@@ -1511,7 +1511,7 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public Object importSymbol(String symbolName) {
             if (!isPolyglotAccessAllowed()) {
-                throw new SecurityException("Polyglot bindings are not accessible for this language.");
+                throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
             }
             return AccessAPI.engineAccess().importSymbol(vmObject, this, symbolName);
         }
@@ -1539,7 +1539,7 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public void exportSymbol(String symbolName, Object value) {
             if (!isPolyglotAccessAllowed()) {
-                throw new SecurityException("Polyglot bindings are not accessible for this language.");
+                throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
             }
             AccessAPI.engineAccess().exportSymbol(vmObject, symbolName, value);
         }
