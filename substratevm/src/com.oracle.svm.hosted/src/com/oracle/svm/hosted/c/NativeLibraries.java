@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.CContext.Directives;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -240,6 +241,7 @@ public final class NativeLibraries {
                 Constructor<? extends Directives> constructor = compilationUnit.getDeclaredConstructor();
                 constructor.setAccessible(true);
                 CContext.Directives unit = constructor.newInstance();
+                RuntimeClassInitialization.eagerClassInitialization(unit.getClass());
                 result = new NativeCodeContext(unit);
                 compilationUnitToContext.put(compilationUnit, result);
             } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
