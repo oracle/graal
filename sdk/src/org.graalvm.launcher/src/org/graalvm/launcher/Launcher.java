@@ -536,7 +536,7 @@ public abstract class Launcher {
             printOption("--help:tools",                  "Print options for all installed tools.");
             printOption("--help:vm",                     "Print options for the host VM.");
             printOption("--help:expert",                 "Print additional options for experts.");
-            printOption("--help:internal",               "Print internal options for debugging language implementations and instruments.");
+            printOption("--help:internal",               "Print internal options for debugging language implementations and tools.");
             printOption("--version:graalvm",             "Print GraalVM version information and exit.");
             printOption("--show-version:graalvm",        "Print GraalVM version information and continue execution.");
             printOption("--log.file=<String>",           "Redirect guest languages logging into a given file.");
