@@ -45,7 +45,7 @@ for e in "${relative_cp[@]}"; do
     absolute_cp+=("${location}/${e}")
 done
 
-jvm_args=()
+jvm_args=("-Dorg.graalvm.launcher.bash=true")
 launcher_args=()
 
 # Unfortunately, parsing of `--jvm.*` arguments has to be done blind:
