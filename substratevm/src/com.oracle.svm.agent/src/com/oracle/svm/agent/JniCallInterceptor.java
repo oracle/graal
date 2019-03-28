@@ -180,9 +180,9 @@ final class JniCallInterceptor {
         return result;
     }
 
-    public static void onLoad(JniAccessVerifier verifier, TraceWriter writer) {
-        JniCallInterceptor.accessVerifier = verifier;
-        JniCallInterceptor.traceWriter = writer;
+    public static void onLoad(TraceWriter writer, JniAccessVerifier verifier) {
+        accessVerifier = verifier;
+        traceWriter = writer;
     }
 
     public static void onVMStart(JvmtiEnv jvmti) {
@@ -199,15 +199,10 @@ final class JniCallInterceptor {
         check(jvmti.getFunctions().Deallocate().invoke(jvmti, functions));
     }
 
-    public static void onVMInit() {
-        if (accessVerifier != null) {
-            accessVerifier.setInLivePhase(true);
-        }
-    }
-
     public static void onUnload() {
         jvmtiFunctions().SetJNIFunctionTable().invoke(jvmtiEnv(), jniFunctions()); // restore
 
+        accessVerifier = null;
         traceWriter = null;
     }
 

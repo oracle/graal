@@ -34,12 +34,15 @@ import static com.oracle.svm.agent.jvmti.JvmtiEventMode.JVMTI_ENABLE;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -59,7 +62,9 @@ import com.oracle.svm.agent.jvmti.JvmtiInterface;
 import com.oracle.svm.agent.restrict.Configuration;
 import com.oracle.svm.agent.restrict.ConfigurationType;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
-import com.oracle.svm.agent.restrict.ParserJniConfigurationAdapter;
+import com.oracle.svm.agent.restrict.ParserConfigurationAdapter;
+import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
+import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
@@ -75,13 +80,16 @@ public final class Agent {
 
     private static TraceWriter traceWriter;
 
+    private static AccessAdvisor accessAdvisor;
+
     @CEntryPoint(name = "Agent_OnLoad")
     @CEntryPointOptions(prologue = CEntryPointSetup.EnterCreateIsolatePrologue.class, epilogue = AgentIsolate.Epilogue.class)
     public static int onLoad(JNIJavaVM vm, CCharPointer options, @SuppressWarnings("unused") PointerBase reserved) {
         AgentIsolate.setGlobalIsolate(CurrentIsolate.getIsolate());
 
         String outputPath = null;
-        String jniConfigPath = null;
+        List<String> jniConfigPaths = new ArrayList<>();
+        List<String> reflectConfigPaths = new ArrayList<>();
         if (options.isNonNull() && SubstrateUtil.strlen(options).aboveThan(0)) {
             String[] optionTokens = fromCString(options).split(",");
             if (optionTokens.length == 0) {
@@ -92,7 +100,9 @@ public final class Agent {
                 if (token.startsWith("trace-output=")) {
                     outputPath = token.substring("trace-output=".length());
                 } else if (token.startsWith("restrict-jni=")) {
-                    jniConfigPath = token.substring("restrict-jni=".length());
+                    jniConfigPaths.add(token.substring("restrict-jni=".length()));
+                } else if (token.startsWith("restrict-reflect=")) {
+                    reflectConfigPaths.add(token.substring("restrict-reflect=".length()));
                 } else {
                     System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read CONFIGURE.md.");
                     return 1;
@@ -122,23 +132,39 @@ public final class Agent {
         callbacks.setVMStart(onVMStartLiteral.getFunctionPointer());
         callbacks.setThreadEnd(onThreadEndLiteral.getFunctionPointer());
 
+        accessAdvisor = new AccessAdvisor();
         try {
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter);
+            ReflectAccessVerifier verifier = null;
+            if (!reflectConfigPaths.isEmpty()) {
+                Configuration configuration = new Configuration();
+                ParserConfigurationAdapter adapter = new ParserConfigurationAdapter(configuration);
+                ReflectionConfigurationParser<ConfigurationType> parser = new ReflectionConfigurationParser<>(adapter);
+                for (String reflectConfigPath : reflectConfigPaths) {
+                    try (Reader reader = Files.newBufferedReader(Paths.get(reflectConfigPath))) {
+                        parser.parseAndRegister(reader);
+                    }
+                }
+                verifier = new ReflectAccessVerifier(configuration, accessAdvisor);
+            }
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 3;
         }
-
         try {
             JniAccessVerifier verifier = null;
-            if (jniConfigPath != null) {
+            if (!jniConfigPaths.isEmpty()) {
                 Configuration configuration = new Configuration();
-                ParserJniConfigurationAdapter adapter = new ParserJniConfigurationAdapter(configuration);
+                ParserConfigurationAdapter adapter = new ParserConfigurationAdapter(configuration);
                 ReflectionConfigurationParser<ConfigurationType> parser = new ReflectionConfigurationParser<>(adapter);
-                parser.parseAndRegister(Files.newBufferedReader(Paths.get(jniConfigPath)));
-                verifier = new JniAccessVerifier(configuration);
+                for (String jniConfigPath : jniConfigPaths) {
+                    try (Reader reader = Files.newBufferedReader(Paths.get(jniConfigPath))) {
+                        parser.parseAndRegister(reader);
+                    }
+                }
+                verifier = new JniAccessVerifier(configuration, accessAdvisor);
             }
-            JniCallInterceptor.onLoad(verifier, traceWriter);
+            JniCallInterceptor.onLoad(traceWriter, verifier);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 4;
@@ -169,7 +195,7 @@ public final class Agent {
     @CEntryPoint
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     public static void onVMInit(JvmtiEnv jvmti, JNIEnvironment jni, @SuppressWarnings("unused") JNIObjectHandle thread) {
-        JniCallInterceptor.onVMInit();
+        accessAdvisor.setInLivePhase(true);
         BreakpointInterceptor.onVMInit(jvmti, jni);
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("live");
