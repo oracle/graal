@@ -87,20 +87,16 @@ import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.impl.TruffleLocator;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.ServiceLoader;
-import java.util.function.Supplier;
 import org.graalvm.polyglot.TypeLiteral;
 
 /**
@@ -248,7 +244,6 @@ public final class TruffleFile {
 
     private static final int MAX_BUFFER_SIZE = Integer.MAX_VALUE - 8;
     private static final int BUFFER_SIZE = 8192;
-    private static final boolean LEGACY_FILETYPEDETECTORS_DISABLED = Boolean.getBoolean("graalvm.legacy.filetypedetectors.disabled");
 
     private final FileSystemContext fileSystemContext;
     private final Path path;
@@ -1570,39 +1565,11 @@ public final class TruffleFile {
                     return result;
                 }
             }
-            return getMimeTypeLegacy(path.toString(), validMimeTypes);
+            return null;
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
             throw wrapHostException(t);
-        }
-    }
-
-    private static String getMimeTypeLegacy(String path, Set<String> validMimeTypes) throws IOException {
-        if (LEGACY_FILETYPEDETECTORS_DISABLED) {
-            return null;
-        } else {
-            try {
-                Path legacyPath = Paths.get(path);
-                if (!TruffleOptions.AOT) {
-                    Collection<ClassLoader> loaders = TruffleLocator.loaders();
-                    for (ClassLoader l : loaders) {
-                        for (java.nio.file.spi.FileTypeDetector detector : ServiceLoader.load(java.nio.file.spi.FileTypeDetector.class, l)) {
-                            String mimeType = detector.probeContentType(legacyPath);
-                            if (mimeType != null && (validMimeTypes == null || validMimeTypes.contains(mimeType))) {
-                                return mimeType;
-                            }
-                        }
-                    }
-                }
-                String contentType = Files.probeContentType(legacyPath);
-                if (contentType != null && (validMimeTypes == null || validMimeTypes.contains(contentType))) {
-                    return contentType;
-                }
-                return null;
-            } catch (InvalidPathException e) {
-                return null;
-            }
         }
     }
 

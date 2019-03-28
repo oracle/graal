@@ -46,7 +46,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     - Added [TruffleFile.getMimeType method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getMimeType--) to obtain a `TruffleFile` MIME type.
     - Added a possibility to set an [encoding in SourceBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html#encoding-java.nio.charset.Charset-)
     - The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files and file URLs.
-    - Deprecated usage of NIO `FileTypeDetector` for MIME type detection.
+    - Removed usage of NIO `FileTypeDetector` for MIME type detection, language implementations have to migrate to `TruffleFile.FileTypeDetector`.
 * TruffleFile's paths from image building time are translated in image execution time into new paths using Context's FileSystem. The absolute paths pointing to files in language homes in image generation time are resolved using image execution time language homes.
 * Added [Env.isPolylgotAccessAllowed()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#isPolyglotAccessAllowed--) to check whether polyglot access (e.g. access to polyglot builtins) is allowed.
 * The methods `Env.getPolyglotBindings()` and `Env.importSymbol` and `Env.exportSymbol` now throw a `SecurityException` if polyglot access not allowed.
