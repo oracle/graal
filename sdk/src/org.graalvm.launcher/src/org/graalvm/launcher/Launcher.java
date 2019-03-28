@@ -588,19 +588,11 @@ public abstract class Launcher {
         }
     }
 
-    private static void printEngineOptions(Engine engine, OptionCategory helpCategory) {
-        List<PrintableOption> engineOptions = new ArrayList<>();
-        for (OptionDescriptor descriptor : engine.getOptions()) {
-            if (!descriptor.getName().startsWith("engine.") && !descriptor.getName().startsWith("compiler.")) {
-                continue;
-            }
-            if (!descriptor.isDeprecated() && sameCategory(descriptor, helpCategory)) {
-                engineOptions.add(asPrintableOption(descriptor));
-            }
-        }
+    private static void printEngineOptions(Engine engine, OptionCategory optionCategory) {
+        List<PrintableOption> engineOptions = filterOptions(engine.getOptions(), optionCategory);
         if (!engineOptions.isEmpty()) {
             System.out.println();
-            printOptions(engineOptions,  optionsTitle("engine", helpCategory), 2);
+            printOptions(engineOptions, optionsTitle("engine", optionCategory), 2);
         }
     }
 
