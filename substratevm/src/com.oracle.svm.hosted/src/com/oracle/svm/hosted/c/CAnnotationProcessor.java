@@ -26,6 +26,8 @@ package com.oracle.svm.hosted.c;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -50,6 +52,7 @@ import com.oracle.svm.hosted.c.query.SizeAndSignednessVerifier;
  */
 public class CAnnotationProcessor extends CCompilerInvoker {
 
+    static boolean TEXTCACHE = true;
     private final NativeCodeContext codeCtx;
 
     private NativeCodeInfo codeInfo;
@@ -76,20 +79,28 @@ public class CAnnotationProcessor extends CCompilerInvoker {
              */
             writer = new QueryCodeWriter(tempDirectory);
             Path queryFile = writer.write(codeInfo);
-            if (nativeLibs.getErrors().size() > 0) {
+            if (nativeLibs.getErrors().size() > 10000) {
+                System.err.println("STOP PROCESS DUE TO "+nativeLibs.getErrors().size()+" ERRORS");
+
                 return codeInfo;
             }
             assert Files.exists(queryFile);
+            if (TEXTCACHE) {
+                makeQuery(cache, codeInfo.getName()+".txt");
+            } else {
+try {
+    Path binary = compileQueryCode(queryFile);
+    if (nativeLibs.getErrors().size() > 100000) {
+        return codeInfo;
+    }
 
-            Path binary = compileQueryCode(queryFile);
-            if (nativeLibs.getErrors().size() > 0) {
-                return codeInfo;
-            }
-
-            makeQuery(cache, binary.toString());
-            if (nativeLibs.getErrors().size() > 0) {
-                return codeInfo;
-            }
+    makeQuery(cache, binary.toString());
+    if (nativeLibs.getErrors().size() > 100000) {
+        return codeInfo;
+    }
+}catch (Throwable e) {
+    e.printStackTrace();
+}}
         }
         RawStructureLayoutPlanner.plan(nativeLibs, codeInfo);
 
@@ -102,16 +113,26 @@ public class CAnnotationProcessor extends CCompilerInvoker {
         command.add(binaryName);
         Process printingProcess = null;
         try {
-            printingProcess = startCommand(command);
-            InputStream is = printingProcess.getInputStream();
+            InputStream is;
+            if (TEXTCACHE) {
+                File f = new File("/tmp/aarch64/"+binaryName);
+                System.err.println("Look for "+f.getName());
+                is = new FileInputStream(f);
+            } else {
+                printingProcess = startCommand(command);
+                is = printingProcess.getInputStream();
+            }
             List<String> lines = QueryResultParser.parse(nativeLibs, codeInfo, is);
             is.close();
             if (CAnnotationProcessorCache.Options.NewCAPCache.getValue()) {
                 cache.put(codeInfo, lines);
             }
-            printingProcess.waitFor();
+            if (!TEXTCACHE) {
+                printingProcess.waitFor();
+            }
         } catch (IOException ex) {
-            throw shouldNotReachHere(ex);
+            System.err.println("Whoops ioex for "+binaryName);
+      //      throw shouldNotReachHere(ex);
         } catch (InterruptedException e) {
             throw new InterruptImageBuilding();
         } finally {
