@@ -58,17 +58,14 @@ import java.util.Collections;
  *
  * result = regex.exec("xacy", 0)
  * assert(result.isMatch == true)
- * assert(result.input == "xacy")
  * assert(result.groupCount == 3)
- * assert([result.start[0], result.end[0]], [ 1,  3])
- * assert([result.start[1], result.end[1]], [ 1,  2])
- * assert([result.start[2], result.end[2]], [-1, -1])
+ * assertEquals([result.getStart(0), result.getEnd(0)], [ 1,  3])
+ * assertEquals([result.getStart(1), result.getEnd(1)], [ 1,  2])
+ * assertEquals([result.getStart(2), result.getEnd(2)], [-1, -1])
  *
  * result2 = regex.exec("xxx", 0)
  * assert(result2.isMatch == false)
- * assert(result2.input == null)
- * assert(result2.groupCount == 0)
- * assertThrows([result2.start[0], result2.end[0]], IndexOutOfBoundsException)
+ * // result2.groupCount, result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
  */
