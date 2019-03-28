@@ -372,7 +372,7 @@ public final class ObjectKlass extends Klass {
         System.arraycopy(declaredMethods, 0, declaredAndMirandaMethods, 0, declaredMethods.length);
         int pos = declaredMethods.length;
         for (InterfaceTables.Miranda miranda : mirandas) {
-            declaredAndMirandaMethods[pos++] = miranda.method;
+            declaredAndMirandaMethods[pos++] = new Method(miranda.method);
         }
         this.declaredMethods = declaredAndMirandaMethods;
     }

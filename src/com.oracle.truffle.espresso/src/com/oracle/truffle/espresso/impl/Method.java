@@ -151,10 +151,6 @@ public final class Method implements ModifiersProvider, ContextAccess {
         this(declaringKlass, linkedMethod, linkedMethod.getRawSignature());
     }
 
-    Method(ObjectKlass declaringKlass, Method method) {
-        this(declaringKlass, method.linkedMethod, method.getRawSignature());
-    }
-
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature) {
 
         this.declaringKlass = declaringKlass;
