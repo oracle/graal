@@ -157,6 +157,11 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 return new BigInteger(Long.toUnsignedString(result));
             }
         }
+
+        @Override
+        public Object computeAddress(long bitOffset) {
+            return new Pointer(LLVMNativePointer.create(value)).computeAddress(bitOffset);
+        }
     }
 
     static final class IVarBit extends LLDBConstant {
@@ -347,9 +352,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
 
         @Override
         public LLVMDebugValue dereferencePointer(long bitOffset) {
-            if (bitOffset == 0L && LLDBSupport.isNestedManagedPointer(pointer)) {
-                return new Pointer(LLVMPointer.cast(LLVMManagedPointer.cast(pointer).getObject()));
-            } else if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
+            if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
                 return new LLDBMemoryValue(pointer);
             } else {
                 return null;
@@ -399,97 +402,6 @@ abstract class LLDBConstant implements LLVMDebugValue {
             } else {
                 throw new IllegalStateException("Unsupported Pointer: " + pointer);
             }
-        }
-    }
-
-    static final class NestedPointer extends LLDBConstant {
-
-        private final LLVMManagedPointer pointer;
-
-        NestedPointer(LLVMManagedPointer pointer) {
-            assert LLVMManagedPointer.isInstance(pointer.getObject());
-            assert pointer.getOffset() == 0L;
-            this.pointer = pointer;
-        }
-
-        @Override
-        protected LLVMManagedPointer getBaseValue() {
-            return pointer;
-        }
-
-        @Override
-        public boolean canRead(long bitOffset, int bits) {
-            return LLVMDebugTypeConstants.ADDRESS_SIZE - bits - bitOffset >= 0;
-        }
-
-        @Override
-        @TruffleBoundary
-        public String describeValue(long bitOffset, int bitSize) {
-            String value = String.valueOf(new LLDBMemoryValue(pointer).computeAddress(0));
-            if (bitOffset != 0 || bitSize != 0) {
-                value = String.format("%s at offset %s in %s", LLDBSupport.toSizeString(bitSize), LLDBSupport.toSizeString(bitOffset), value);
-            }
-            return value;
-        }
-
-        @Override
-        public Object readBoolean(long bitOffset) {
-            return !pointer.isNull();
-        }
-
-        @Override
-        @TruffleBoundary
-        public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
-            if (canRead(bitOffset, bitSize)) {
-                return describeValue(bitOffset, bitSize);
-            }
-
-            return super.readBigInteger(bitOffset, bitSize, signed);
-        }
-
-        @Override
-        @TruffleBoundary
-        public Object readAddress(long bitOffset) {
-            if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
-                return pointer;
-            } else {
-                return cannotInterpret(LLVMDebugTypeConstants.ADDRESS_NAME, bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE);
-            }
-        }
-
-        @Override
-        public Object computeAddress(long bitOffset) {
-            return new LLDBMemoryValue(pointer).computeAddress(bitOffset);
-        }
-
-        @Override
-        public boolean isAlwaysSafeToDereference(long bitOffset) {
-            return bitOffset == 0L;
-        }
-
-        @Override
-        public LLVMDebugValue dereferencePointer(long bitOffset) {
-            if (bitOffset == 0L) {
-                final LLVMManagedPointer target = LLVMManagedPointer.cast(pointer.getObject());
-                if (LLVMManagedPointer.isInstance(target.getObject()) && target.getOffset() == 0L) {
-                    return new NestedPointer(target);
-                } else {
-                    return new LLDBMemoryValue(target);
-                }
-            } else {
-                return null;
-            }
-        }
-
-        @Override
-        public Object asInteropValue() {
-            return null;
-        }
-
-        @Override
-        @TruffleBoundary
-        public boolean isInteropValue() {
-            return false;
         }
     }
 

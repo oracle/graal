@@ -208,7 +208,9 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         }
 
         final Object target = value.get();
-        if (target instanceof TruffleObject) {
+        if (LLVMPointer.isInstance(target)) {
+            return executeWithTarget(target);
+        } else if (target instanceof TruffleObject) {
             return executeWithTarget(LLVMManagedPointer.create((TruffleObject) target));
         }
 
