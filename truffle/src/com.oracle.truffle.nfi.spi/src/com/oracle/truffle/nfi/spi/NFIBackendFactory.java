@@ -40,9 +40,19 @@
  */
 package com.oracle.truffle.nfi.spi;
 
+/**
+ * Service interface for languages that implement a backend for the Truffle NFI.
+ */
 public interface NFIBackendFactory {
 
+    /**
+     * Provides the backend id. NFI backends can be selected by using the "with &lt;id&gt;" syntax.
+     */
     String getBackendId();
 
+    /**
+     * Create an instance of an {@link NFIBackend}. The NFI backend may keep a reference to the
+     * tools for later use.
+     */
     NFIBackend createBackend(NFIBackendTools tools);
 }

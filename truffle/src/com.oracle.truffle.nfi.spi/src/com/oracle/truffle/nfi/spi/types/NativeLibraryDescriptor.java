@@ -46,8 +46,7 @@ import java.util.List;
 /**
  * Parsed representation of library descriptors of the Truffle NFI.
  *
- * Implementors of a Truffle NFI backend must use this class (returned by
- * {@link Parser#parseLibraryDescriptor(java.lang.CharSequence)}) to interpret their source string.
+ * @see com.oracle.truffle.nfi.spi.NativeBackend#parse
  */
 public final class NativeLibraryDescriptor {
 

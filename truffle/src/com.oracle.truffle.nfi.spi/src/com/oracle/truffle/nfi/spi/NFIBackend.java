@@ -43,7 +43,15 @@ package com.oracle.truffle.nfi.spi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
 
+/**
+ * Implementation interface for Truffle NFI backends.
+ */
 public interface NFIBackend {
 
+    /**
+     * Parse a {@link NativeLibraryDescriptor}. The returned {@link CallTarget} should load the
+     * library specified by the descriptor. The loaded library should expose its symbols as
+     * {@link InteropLibrary#hasMembers members}.
+     */
     CallTarget parse(NativeLibraryDescriptor descriptor);
 }

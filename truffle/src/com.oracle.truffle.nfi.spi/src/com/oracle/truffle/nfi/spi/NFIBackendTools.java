@@ -40,9 +40,31 @@
  */
 package com.oracle.truffle.nfi.spi;
 
+/**
+ * Interface providing helper methods for implementing NFI backends.
+ */
 public abstract class NFIBackendTools {
 
+    /**
+     * Create an object wrapping a native symbol, fulfilling the contract of NFI symbols. Symbols
+     * passed into this method should implement the {@link NativeSymbolLibrary}.
+     *
+     * The returned object has an invocable member "bind" that can be used to bind NFI signatures to
+     * the symbol. It will also forward the {@link InteropLibrary#isPointer},
+     * {@link InteropLibrary#asPointer} and {@link InteropLibrary#toNative} messages to the wrapped
+     * symbol.
+     *
+     * Implementations of {@link NFIBackend} should use this method to create the symbols contained
+     * in a library. It may also be used for returning pointer values that can point to executable
+     * code.
+     */
     public abstract Object createBindableSymbol(Object symbol);
 
+    /**
+     * Create an object wrapping a native symbol that is already bound to a signature.
+     *
+     * The returned object has the same properties as if created with {@link #createBindableSymbol}.
+     * Additionally, it is executable.
+     */
     public abstract Object createBoundSymbol(Object symbol, Object signature);
 }
