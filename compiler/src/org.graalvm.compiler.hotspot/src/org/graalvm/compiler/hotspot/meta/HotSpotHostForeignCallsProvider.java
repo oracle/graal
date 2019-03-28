@@ -400,7 +400,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(GHASH_PROCESS_BLOCKS, c.ghashProcessBlocks, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
         }
         if (c.useBase64Intrinsics()) {
-            registerForeignCall(BASE64_ENCODE_BLOCK, c.base64EncodeBlock, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
+            registerForeignCall(BASE64_ENCODE_BLOCK, c.base64EncodeBlock, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
         }
         if (c.useMulAddIntrinsic()) {
             registerForeignCall(MUL_ADD, c.mulAdd, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.getArrayLocation(JavaKind.Int));
