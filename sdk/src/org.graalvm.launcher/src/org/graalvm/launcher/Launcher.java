@@ -581,7 +581,7 @@ public abstract class Launcher {
         }
         if (!engineOptions.isEmpty()) {
             System.out.println();
-            printOptions(engineOptions, "Engine options:", 2);
+            printOptions(engineOptions,  optionsTitle("engine", helpCategory), 2);
         }
     }
 
@@ -596,7 +596,7 @@ public abstract class Launcher {
         }
         if (!instrumentsOptions.isEmpty()) {
             System.out.println();
-            System.out.println("Tool options:");
+            System.out.println(optionsTitle("tool", optionCategory));
             for (Instrument instrument : instruments) {
                 List<PrintableOption> options = instrumentsOptions.get(instrument);
                 if (options != null) {
@@ -617,7 +617,7 @@ public abstract class Launcher {
         }
         if (!languagesOptions.isEmpty()) {
             System.out.println();
-            System.out.println("Language options:");
+            System.out.println(optionsTitle("language", optionCategory));
             for (Language language : languages) {
                 List<PrintableOption> options = languagesOptions.get(language);
                 if (options != null) {
@@ -625,6 +625,25 @@ public abstract class Launcher {
                 }
             }
         }
+    }
+
+    private static String optionsTitle(String kind, OptionCategory optionCategory) {
+        String category;
+        switch (optionCategory) {
+            case USER:
+                category = "User ";
+                break;
+            case EXPERT:
+                category = "Expert ";
+                break;
+            case INTERNAL:
+                category = "Internal ";
+                break;
+            default:
+                category = "";
+                break;
+        }
+        return category + kind + " options:";
     }
 
     private static List<PrintableOption> filterOptions(OptionDescriptors descriptors, OptionCategory optionCategory) {
