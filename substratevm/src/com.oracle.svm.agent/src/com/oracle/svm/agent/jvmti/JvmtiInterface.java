@@ -180,19 +180,27 @@ public interface JvmtiInterface extends PointerBase {
         JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, JNIFieldId field, CIntPointer modifiersPtr);
     }
 
-    @CField("IsInterface")
-    IsInterfaceFunctionPointer IsInterface();
-
-    interface IsInterfaceFunctionPointer extends CFunctionPointer {
-        @InvokeCFunctionPointer
-        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, CIntPointer isInterfacePtr);
-    }
-
     @CField("GetImplementedInterfaces")
     GetImplementedInterfacesFunctionPointer GetImplementedInterfaces();
 
     interface GetImplementedInterfacesFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, CIntPointer interfaceCountPtr, WordPointer interfacesPtr);
+    }
+
+    @CField("GetFieldName")
+    GetFieldNameFunctionPointer GetFieldName();
+
+    interface GetFieldNameFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, JNIFieldId field, CCharPointerPointer namePtr, CCharPointerPointer signaturePTr, CCharPointerPointer genericPtr);
+    }
+
+    @CField("ForceEarlyReturnObject")
+    ForceEarlyReturnObjectFunctionPointer ForceEarlyReturnObject();
+
+    interface ForceEarlyReturnObjectFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle thread, JNIObjectHandle value);
     }
 }

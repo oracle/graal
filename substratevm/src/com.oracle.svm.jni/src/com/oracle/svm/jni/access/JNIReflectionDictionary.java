@@ -169,7 +169,8 @@ public final class JNIReflectionDictionary {
             if (method == null) {
                 method = findSuperinterfaceMethod(parent, descriptor);
             }
-            if (method != null) {
+            if (method != null && method.isPublic() && !method.isStatic()) {
+                // non-public or static interface methods are not externally visible
                 return method;
             }
         }

@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.agent.jvmti.JvmtiEnv;
 import com.oracle.svm.agent.jvmti.JvmtiError;
@@ -106,7 +107,15 @@ public final class Support {
         public final JNIObjectHandle javaLangSecurityException;
         public final JNIObjectHandle javaLangNoClassDefFoundError;
         public final JNIObjectHandle javaLangNoSuchMethodError;
+        public final JNIObjectHandle javaLangNoSuchMethodException;
         public final JNIObjectHandle javaLangNoSuchFieldError;
+        public final JNIObjectHandle javaLangNoSuchFieldException;
+        public final JNIObjectHandle javaLangClassNotFoundException;
+
+        // HotSpot crashes when looking these up eagerly
+        private JNIObjectHandle javaLangReflectField;
+        private JNIObjectHandle javaLangReflectMethod;
+        private JNIObjectHandle javaLangReflectConstructor;
 
         private JavaHandles(JNIEnvironment env) {
             JNIObjectHandle javaLangClass;
@@ -161,19 +170,86 @@ public final class Support {
                 javaLangNoSuchMethodError = jniFunctions.getNewGlobalRef().invoke(env, h);
                 guarantee(javaLangNoSuchMethodError.notEqual(nullHandle()));
             }
+            try (CCharPointerHolder name = toCString("java/lang/NoSuchMethodException")) {
+                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                guarantee(h.notEqual(nullHandle()));
+                javaLangNoSuchMethodException = jniFunctions.getNewGlobalRef().invoke(env, h);
+                guarantee(javaLangNoSuchMethodException.notEqual(nullHandle()));
+            }
             try (CCharPointerHolder name = toCString("java/lang/NoSuchFieldError")) {
                 JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
                 guarantee(h.notEqual(nullHandle()));
                 javaLangNoSuchFieldError = jniFunctions.getNewGlobalRef().invoke(env, h);
                 guarantee(javaLangNoSuchFieldError.notEqual(nullHandle()));
             }
+            try (CCharPointerHolder name = toCString("java/lang/NoSuchFieldException")) {
+                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                guarantee(h.notEqual(nullHandle()));
+                javaLangNoSuchFieldException = jniFunctions.getNewGlobalRef().invoke(env, h);
+                guarantee(javaLangNoSuchFieldException.notEqual(nullHandle()));
+            }
+            try (CCharPointerHolder name = toCString("java/lang/ClassNotFoundException")) {
+                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                guarantee(h.notEqual(nullHandle()));
+                javaLangClassNotFoundException = jniFunctions.getNewGlobalRef().invoke(env, h);
+                guarantee(javaLangClassNotFoundException.notEqual(nullHandle()));
+            }
+        }
+
+        public JNIObjectHandle getJavaLangReflectField(JNIEnvironment env) {
+            if (javaLangReflectField.equal(nullHandle())) {
+                try (CCharPointerHolder name = toCString("java/lang/reflect/Field")) {
+                    JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                    guarantee(h.notEqual(nullHandle()));
+                    javaLangReflectField = jniFunctions.getNewGlobalRef().invoke(env, h);
+                    guarantee(javaLangReflectField.notEqual(nullHandle()));
+                }
+            }
+            return javaLangReflectField;
+        }
+
+        public JNIObjectHandle getJavaLangReflectMethod(JNIEnvironment env) {
+            if (javaLangReflectMethod.equal(nullHandle())) {
+                try (CCharPointerHolder name = toCString("java/lang/reflect/Method")) {
+                    JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                    guarantee(h.notEqual(nullHandle()));
+                    javaLangReflectMethod = jniFunctions.getNewGlobalRef().invoke(env, h);
+                    guarantee(javaLangReflectMethod.notEqual(nullHandle()));
+                }
+            }
+            return javaLangReflectMethod;
+        }
+
+        public JNIObjectHandle getJavaLangReflectConstructor(JNIEnvironment env) {
+            if (javaLangReflectConstructor.equal(nullHandle())) {
+                try (CCharPointerHolder name = toCString("java/lang/reflect/Constructor")) {
+                    JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                    guarantee(h.notEqual(nullHandle()));
+                    javaLangReflectConstructor = jniFunctions.getNewGlobalRef().invoke(env, h);
+                    guarantee(javaLangReflectConstructor.notEqual(nullHandle()));
+                }
+            }
+            return javaLangReflectConstructor;
         }
 
         public void destroy(JNIEnvironment env) {
             jniFunctions().getDeleteGlobalRef().invoke(env, javaLangSecurityException);
             jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoClassDefFoundError);
             jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchMethodError);
+            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchMethodException);
             jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchFieldError);
+            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchFieldException);
+            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangClassNotFoundException);
+
+            if (javaLangReflectField.notEqual(nullHandle())) {
+                jniFunctions().getDeleteGlobalRef().invoke(env, javaLangReflectField);
+            }
+            if (javaLangReflectMethod.notEqual(nullHandle())) {
+                jniFunctions().getDeleteGlobalRef().invoke(env, javaLangReflectMethod);
+            }
+            if (javaLangReflectConstructor.notEqual(nullHandle())) {
+                jniFunctions().getDeleteGlobalRef().invoke(env, javaLangReflectConstructor);
+            }
         }
     }
 
@@ -281,6 +357,14 @@ public final class Support {
 
     public static void checkJni(int resultCode) {
         guarantee(resultCode == JNIErrors.JNI_OK());
+    }
+
+    public interface WordPredicate<T extends WordBase> {
+        boolean test(T t);
+    }
+
+    public interface WordSupplier<T extends WordBase> {
+        T get();
     }
 
     private Support() {
