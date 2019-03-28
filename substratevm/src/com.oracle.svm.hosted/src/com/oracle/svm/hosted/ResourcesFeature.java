@@ -53,6 +53,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationDirectories;
+import com.oracle.svm.hosted.config.ConfigurationParser;
 import com.oracle.svm.hosted.config.ResourceConfigurationParser;
 
 @AutomaticFeature
@@ -73,9 +74,11 @@ public final class ResourcesFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
         Set<String> allResources = new HashSet<>(Arrays.asList(Options.IncludeResources.getValue()));
         LocalizationSupport localizationSupport = ImageSingletons.lookup(LocalizationSupport.class);
-        ResourceConfigurationParser parser = new ResourceConfigurationParser(((BeforeAnalysisAccessImpl) arg).getImageClassLoader(),
-                        allResources::add, localizationSupport::addBundleToCache);
-        parser.parseAndRegisterConfigurations("resource", Options.ResourceConfigurationFiles, Options.ResourceConfigurationResources, ConfigurationDirectories.FileNames.RESOURCES_NAME);
+
+        ImageClassLoader imageClassLoader = ((BeforeAnalysisAccessImpl) arg).getImageClassLoader();
+        ResourceConfigurationParser parser = new ResourceConfigurationParser(allResources::add, localizationSupport::addBundleToCache);
+        ConfigurationParser.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
+                        Options.ResourceConfigurationFiles, Options.ResourceConfigurationResources, ConfigurationDirectories.FileNames.RESOURCES_NAME);
 
         for (String regExp : allResources) {
             if (regExp.length() == 0) {

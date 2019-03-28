@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.configure.trace;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -35,11 +34,10 @@ import jdk.vm.ci.meta.MetaUtil;
 
 class JniProcessor extends AbstractProcessor {
     private final JniConfiguration configuration = new JniConfiguration();
-    private boolean filter = true;
-    private boolean previousIsGetApplicationClass = false;
+    private final AccessAdvisor advisor;
 
-    public void setFilterEnabled(boolean enabled) {
-        filter = enabled;
+    JniProcessor(AccessAdvisor advisor) {
+        this.advisor = advisor;
     }
 
     public JniConfiguration getConfiguration() {
@@ -54,11 +52,13 @@ class JniProcessor extends AbstractProcessor {
         }
         String function = (String) entry.get("function");
         String clazz = (String) entry.get("class");
+        String declaringClass = (String) entry.get("declaring_class");
         String callerClass = (String) entry.get("caller_class");
         List<?> args = (List<?>) entry.get("args");
-        if (filter && shouldFilter(function, clazz, callerClass, args)) {
+        if (advisor.shouldIgnore(() -> callerClass)) {
             return;
         }
+        String declaringClassOrClazz = (declaringClass != null) ? declaringClass : clazz;
         switch (function) {
             case "DefineClass": {
                 String name = singleElement(args);
@@ -77,48 +77,23 @@ class JniProcessor extends AbstractProcessor {
                 configuration.getOrCreateType(name);
                 break;
             }
-            case "GetMethodID":
-            case "GetStaticMethodID": {
+            case "GetStaticMethodID":
+            case "GetMethodID": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
-                configuration.getOrCreateType(clazz).getMethods().add(new JniMethod(name, signature));
+                if (!advisor.shouldIgnoreJniMethodLookup(() -> clazz, () -> name, () -> signature, () -> callerClass)) {
+                    configuration.getOrCreateType(declaringClassOrClazz).getMethods().add(new JniMethod(name, signature));
+                }
                 break;
             }
             case "GetFieldID":
             case "GetStaticFieldID": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
-                configuration.getOrCreateType(clazz).getFields().add(name);
+                configuration.getOrCreateType(declaringClassOrClazz).getFields().add(name);
                 break;
             }
         }
-    }
-
-    private boolean shouldFilter(String function, String clazz, String callerClass, List<?> args) {
-        if (!isInLivePhase() || (callerClass != null && isInternalClass(callerClass))) {
-            return true;
-        }
-
-        // Heuristic: filter LauncherHelper as well as a lookup of main(String[]) that
-        // immediately follows a lookup of LauncherHelper.getApplicationClass()
-        if ("sun.launcher.LauncherHelper".equals(clazz)) {
-            previousIsGetApplicationClass = function.equals("GetStaticMethodID") &&
-                            args.equals(Arrays.asList("getApplicationClass", "()Ljava/lang/Class;"));
-            return true;
-        }
-        if (previousIsGetApplicationClass) {
-            if (function.equals("GetStaticMethodID") && args.equals(Arrays.asList("main", "([Ljava/lang/String;)V"))) {
-                return true;
-            }
-            previousIsGetApplicationClass = false;
-        }
-
-        /*
-         * NOTE: JVM invocations cannot be reliably filtered with callerClass == null because these
-         * could also be calls in a manually launched thread which is attached to JNI, but is not
-         * executing Java code (yet).
-         */
-        return false;
     }
 }

@@ -22,34 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.trace;
+package com.oracle.svm.hosted.config;
 
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
-public abstract class AbstractProcessor {
-    AbstractProcessor() {
-    }
+public interface ReflectionConfigurationParserDelegate<T> {
+    T resolveType(String typeName);
 
-    abstract void processEntry(Map<String, ?> entry);
+    void registerType(T type);
 
-    void setInLivePhase(@SuppressWarnings("unused") boolean live) {
-    }
+    void registerPublicClasses(T type);
 
-    static void logWarning(String warning) {
-        System.err.println("WARNING: " + warning);
-    }
+    void registerDeclaredClasses(T type);
 
-    @SuppressWarnings("unchecked")
-    static <T> T singleElement(List<?> list) {
-        expectSize(list, 1);
-        return (T) list.get(0);
-    }
+    void registerPublicFields(T type);
 
-    static void expectSize(Collection<?> collection, int size) {
-        if (collection.size() != size) {
-            throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
-        }
-    }
+    void registerDeclaredFields(T type);
+
+    void registerPublicMethods(T type);
+
+    void registerDeclaredMethods(T type);
+
+    void registerPublicConstructors(T type);
+
+    void registerDeclaredConstructors(T type);
+
+    void registerField(T type, String fieldName, boolean allowWrite) throws NoSuchFieldException;
+
+    boolean registerAllMethodsWithName(T type, String methodName);
+
+    void registerMethod(T type, String methodName, List<T> methodParameterTypes) throws NoSuchMethodException;
+
+    void registerConstructor(T type, List<T> methodParameterTypes) throws NoSuchMethodException;
+
+    boolean registerAllConstructors(T type);
+
+    String getTypeName(T type);
+
+    String getSimpleName(T type);
+
 }

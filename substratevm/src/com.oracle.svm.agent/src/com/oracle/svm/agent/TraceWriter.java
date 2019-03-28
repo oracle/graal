@@ -85,12 +85,13 @@ class TraceWriter implements Closeable {
      * @param tracer String identifying the tracing component. Required.
      * @param function The function or method that has been called. Required.
      * @param clazz The class to which {@code function} belongs.
+     * @param declaringClass If the traced call resolves a member of {@code clazz}, this can be
+     *            specified to provide the (super)class which actually declares that member.
      * @param callerClass The class on the call stack which performed the call.
      * @param result The result of the call.
      * @param args Arguments to the call, which may contain arrays (which can further contain
-     *            arrays, at an arbitrary nesting depth)
      */
-    public void traceCall(String tracer, String function, Object clazz, Object callerClass, Object result, Object... args) {
+    public void traceCall(String tracer, String function, Object clazz, Object declaringClass, Object callerClass, Object result, Object... args) {
         try {
             StringWriter strwriter = new StringWriter();
             try (JsonWriter json = new JsonWriter(strwriter)) {
@@ -98,6 +99,9 @@ class TraceWriter implements Closeable {
                 json.append(", ").quote("function").append(':').quote(function);
                 if (clazz != null) {
                     json.append(", ").quote("class").append(':').quote(handleSpecialValue(clazz));
+                }
+                if (declaringClass != null) {
+                    json.append(", ").quote("declaring_class").append(':').quote(handleSpecialValue(declaringClass));
                 }
                 if (callerClass != null) {
                     json.append(", ").quote("caller_class").append(':').quote(handleSpecialValue(callerClass));
