@@ -88,6 +88,33 @@ import org.graalvm.polyglot.io.FileSystem;
 
 final class MemoryFileSystem implements FileSystem {
     private static final byte[] EMPTY = new byte[0];
+    private static final UserPrincipal USER = new UserPrincipal() {
+        @Override
+        public String getName() {
+            return "";
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other == USER;
+        }
+    };
+    private static final GroupPrincipal GROUP = new GroupPrincipal() {
+        @Override
+        public String getName() {
+            return "";
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+    };
 
     private final Map<Long, FileInfo> inodes;
     private final Map<Long, byte[]> blocks;
@@ -656,29 +683,9 @@ final class MemoryFileSystem implements FileSystem {
                 }
                 return result;
             } else if (ATTR_OWNER.equals(key)) {
-                return new UserPrincipal() {
-                    @Override
-                    public String getName() {
-                        return "";
-                    }
-
-                    @Override
-                    public int hashCode() {
-                        return 0;
-                    }
-                };
+                return USER;
             } else if (ATTR_GROUP.equals(key)) {
-                return new GroupPrincipal() {
-                    @Override
-                    public String getName() {
-                        return "";
-                    }
-
-                    @Override
-                    public int hashCode() {
-                        return 0;
-                    }
-                };
+                return GROUP;
             }
             return super.getValue(key);
         }
