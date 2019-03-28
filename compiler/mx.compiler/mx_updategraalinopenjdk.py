@@ -242,7 +242,7 @@ def updategraalinopenjdk(args):
                         with open(dst_file, 'w') as fp:
                             fp.write(contents)
 
-    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check, preserve_indent = False):
+    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check, preserve_indent=False):
         mx.log('Updating ' + filename + '...')
         old_lines = []
         new_lines = []
@@ -261,7 +261,7 @@ def updategraalinopenjdk(args):
             lines = fp.readlines()
             line_in_def = True
 
-            indent = 0;
+            indent = 0
             if preserve_indent:
                 line = lines[0]
                 lstripped_line = line.lstrip()
