@@ -75,15 +75,17 @@ public class RuntimeOptionsCache {
         // Splitting
         splitting = target.getOptionValue(PolyglotCompilerOptions.Splitting);
         final OptionValues optionValues = target.getOptionValues();
-        legacySplitting = SharedTruffleRuntimeOptions.TruffleLegacySplitting.getValue(optionValues);
-        splittingAllowForcedSplits = SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits.getValue(optionValues);
-        splittingDumpDecisions = SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions.getValue(optionValues);
-        splittingMaxCalleeSize = SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize.getValue(optionValues);
-        splittingMaxPropagationDepth = SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth.getValue(optionValues);
-        splittingTraceEvents = SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents.getValue(optionValues);
-        traceSplittingSummary = SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary.getValue(optionValues);
-        splittingGrowthLimit = SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit.getValue(optionValues);
-        splittingMaxNumberOfSplitNodes = SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes.getValue(optionValues);
+        if (optionValues != null) {
+            legacySplitting = SharedTruffleRuntimeOptions.TruffleLegacySplitting.getValue(optionValues);
+            splittingAllowForcedSplits = SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits.getValue(optionValues);
+            splittingDumpDecisions = SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions.getValue(optionValues);
+            splittingMaxCalleeSize = SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize.getValue(optionValues);
+            splittingMaxPropagationDepth = SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth.getValue(optionValues);
+            splittingTraceEvents = SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents.getValue(optionValues);
+            traceSplittingSummary = SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary.getValue(optionValues);
+            splittingGrowthLimit = SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit.getValue(optionValues);
+            splittingMaxNumberOfSplitNodes = SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes.getValue(optionValues);
+        }
         // Inlining
         inlining = target.getOptionValue(PolyglotCompilerOptions.Inlining);
         inliningNodeBudget = target.getOptionValue(PolyglotCompilerOptions.InliningNodeBudget);
