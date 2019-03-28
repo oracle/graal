@@ -244,7 +244,8 @@ builds += [
       [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/truffleruby.git"], "../../truffleruby"]
       [export, "SVM_SUITE="${svm_suite}]
       [export, "NATIVE_IMAGE_TESTING=True"]
-      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,truffleruby", gate, --no-warning-as-error, --tags, "build,ruby"]
+      [export, "EXTRA_IMAGE_BUILDER_ARGUMENTS=-H:GreyToBlackObjectVisitorDiagnosticHistory=16"] # GR-9912
+      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,ruby"]
     ]
     timelimit: "35:00"
     name: gate-vm-native-truffleruby-tip
@@ -254,7 +255,8 @@ builds += [
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [export, "NATIVE_IMAGE_TESTING=True"]
-      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,truffleruby", gate, --no-warning-as-error, --tags, "build,ruby"]
+      [export, "EXTRA_IMAGE_BUILDER_ARGUMENTS=-H:GreyToBlackObjectVisitorDiagnosticHistory=16"] # GR-9912
+      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,ruby"]
     ]
     timelimit: "35:00"
     name: daily-vm-native-truffleruby
