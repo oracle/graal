@@ -562,11 +562,30 @@ public abstract class Launcher {
         }
 
         if (printDefaultHelp || helpLanguages || helpTools || helpVM) {
-            System.out.println("\nSee http://www.graalvm.org for more information.");
+            System.out.println();
+            if (helpLanguages) {
+                printOtherHelpCategories("language", "--help:languages");
+            }
+            if (helpTools) {
+                printOtherHelpCategories("tool", "--help:tools");
+            }
+            System.out.println("See http://www.graalvm.org for more information.");
             return true;
         }
 
         return false;
+    }
+
+    private void printOtherHelpCategories(String kind, String option) {
+        if (helpExpert || helpInternal) {
+            System.out.println("Use '" + option + "' to list user " + kind + " options.");
+        }
+        if (!helpExpert) {
+            System.out.println("Use '" + option + " --help:expert' to list expert " + kind + " options.");
+        }
+        if (!helpInternal) {
+            System.out.println("Use '" + option + " --help:internal' to list internal " + kind + " options.");
+        }
     }
 
     private static void printEngineOptions(Engine engine, OptionCategory helpCategory) {
