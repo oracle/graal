@@ -1487,55 +1487,6 @@ public class SnippetTemplate {
 
             rewireFrameStates(replacee, duplicates);
 
-            if (replacee instanceof DeoptimizingNode) {
-                DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
-
-                FrameState stateBefore = null;
-                FrameState stateDuring = null;
-                FrameState stateAfter = null;
-                if (replaceeDeopt.canDeoptimize()) {
-                    if (replaceeDeopt instanceof DeoptimizingNode.DeoptBefore) {
-                        stateBefore = ((DeoptimizingNode.DeoptBefore) replaceeDeopt).stateBefore();
-                    }
-                    if (replaceeDeopt instanceof DeoptimizingNode.DeoptDuring) {
-                        stateDuring = ((DeoptimizingNode.DeoptDuring) replaceeDeopt).stateDuring();
-                    }
-                    if (replaceeDeopt instanceof DeoptimizingNode.DeoptAfter) {
-                        stateAfter = ((DeoptimizingNode.DeoptAfter) replaceeDeopt).stateAfter();
-                    }
-                }
-
-                for (DeoptimizingNode deoptNode : deoptNodes) {
-                    DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode.asNode());
-                    if (deoptDup.canDeoptimize()) {
-                        if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
-                            ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(stateBefore);
-                        }
-                        if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
-                            DeoptimizingNode.DeoptDuring deoptDupDuring = (DeoptimizingNode.DeoptDuring) deoptDup;
-                            if (stateDuring != null) {
-                                deoptDupDuring.setStateDuring(stateDuring);
-                            } else if (stateAfter != null) {
-                                deoptDupDuring.computeStateDuring(stateAfter);
-                            } else if (stateBefore != null) {
-                                assert !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
-                                deoptDupDuring.setStateDuring(stateBefore);
-                            }
-                        }
-                        if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {
-                            DeoptimizingNode.DeoptAfter deoptDupAfter = (DeoptimizingNode.DeoptAfter) deoptDup;
-                            if (stateAfter != null) {
-                                deoptDupAfter.setStateAfter(stateAfter);
-                            } else {
-                                assert !deoptDupAfter.hasSideEffect() : "can't use stateBefore as stateAfter for state split " + deoptDupAfter;
-                                deoptDupAfter.setStateAfter(stateBefore);
-                            }
-
-                        }
-                    }
-                }
-            }
-
             updateStamps(replacee, duplicates);
 
             rewireMemoryGraph(replacee, duplicates);
@@ -1659,7 +1610,8 @@ public class SnippetTemplate {
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
             replaceeGraph.addAfterFixed(lastFixedNode, firstCFGNodeDuplicate);
 
-            rewireFrameStates(replacee, duplicates);
+            // floating nodes are not state-split not need to re-wire frame states
+            assert !(replacee instanceof StateSplit);
             updateStamps(replacee, duplicates);
 
             rewireMemoryGraph(replacee, duplicates);
@@ -1713,7 +1665,8 @@ public class SnippetTemplate {
             }
             UnmodifiableEconomicMap<Node, Node> duplicates = inlineSnippet(replacee, debug, replaceeGraph, replacements);
 
-            rewireFrameStates(replacee, duplicates);
+            // floating nodes are not state-split not need to re-wire frame states
+            assert !(replacee instanceof StateSplit);
             updateStamps(replacee, duplicates);
 
             rewireMemoryGraph(replacee, duplicates);
@@ -1728,11 +1681,58 @@ public class SnippetTemplate {
     }
 
     protected void rewireFrameStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
-        if (replacee instanceof StateSplit) {
+        if (replacee.graph().getGuardsStage().areFrameStatesAtSideEffects() && replacee instanceof StateSplit) {
             for (StateSplit sideEffectNode : sideEffectNodes) {
                 assert ((StateSplit) replacee).hasSideEffect();
                 Node sideEffectDup = duplicates.get(sideEffectNode.asNode());
                 ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
+            }
+        } else if (replacee.graph().getGuardsStage().areFrameStatesAtDeopts() && replacee instanceof DeoptimizingNode) {
+            DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
+
+            FrameState stateBefore = null;
+            FrameState stateDuring = null;
+            FrameState stateAfter = null;
+            if (replaceeDeopt.canDeoptimize()) {
+                if (replaceeDeopt instanceof DeoptimizingNode.DeoptBefore) {
+                    stateBefore = ((DeoptimizingNode.DeoptBefore) replaceeDeopt).stateBefore();
+                }
+                if (replaceeDeopt instanceof DeoptimizingNode.DeoptDuring) {
+                    stateDuring = ((DeoptimizingNode.DeoptDuring) replaceeDeopt).stateDuring();
+                }
+                if (replaceeDeopt instanceof DeoptimizingNode.DeoptAfter) {
+                    stateAfter = ((DeoptimizingNode.DeoptAfter) replaceeDeopt).stateAfter();
+                }
+            }
+
+            for (DeoptimizingNode deoptNode : deoptNodes) {
+                DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode.asNode());
+                if (deoptDup.canDeoptimize()) {
+                    if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
+                        ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(stateBefore);
+                    }
+                    if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
+                        DeoptimizingNode.DeoptDuring deoptDupDuring = (DeoptimizingNode.DeoptDuring) deoptDup;
+                        if (stateDuring != null) {
+                            deoptDupDuring.setStateDuring(stateDuring);
+                        } else if (stateAfter != null) {
+                            deoptDupDuring.computeStateDuring(stateAfter);
+                        } else if (stateBefore != null) {
+                            assert !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
+                            deoptDupDuring.setStateDuring(stateBefore);
+                        }
+                    }
+                    if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {
+                        DeoptimizingNode.DeoptAfter deoptDupAfter = (DeoptimizingNode.DeoptAfter) deoptDup;
+                        if (stateAfter != null) {
+                            deoptDupAfter.setStateAfter(stateAfter);
+                        } else {
+                            assert !deoptDupAfter.hasSideEffect() : "can't use stateBefore as stateAfter for state split " + deoptDupAfter;
+                            deoptDupAfter.setStateAfter(stateBefore);
+                        }
+
+                    }
+                }
             }
         }
     }
