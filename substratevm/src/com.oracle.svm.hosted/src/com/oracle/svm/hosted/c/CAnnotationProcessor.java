@@ -52,9 +52,7 @@ import com.oracle.svm.hosted.c.query.SizeAndSignednessVerifier;
  */
 public class CAnnotationProcessor extends CCompilerInvoker {
 
-    // if true, use .txt files that are generated asynchronously for a specific target
-    // this should be part of a xcompile setting, where current platform != target platform
-    static boolean TEXTCACHE = System.getProperty("textcache") != null;
+    static boolean TEXTCACHE = true;
     private final NativeCodeContext codeCtx;
 
     private NativeCodeInfo codeInfo;
@@ -81,27 +79,28 @@ public class CAnnotationProcessor extends CCompilerInvoker {
              */
             writer = new QueryCodeWriter(tempDirectory);
             Path queryFile = writer.write(codeInfo);
-            if (nativeLibs.getErrors().size() > 0) {
+            if (nativeLibs.getErrors().size() > 10000) {
+                System.err.println("STOP PROCESS DUE TO "+nativeLibs.getErrors().size()+" ERRORS");
+
                 return codeInfo;
             }
             assert Files.exists(queryFile);
             if (TEXTCACHE) {
                 makeQuery(cache, codeInfo.getName()+".txt");
             } else {
-                try {
-                    Path binary = compileQueryCode(queryFile);
-                    if (nativeLibs.getErrors().size() > 0) {
-                        return codeInfo;
-                    }
+try {
+    Path binary = compileQueryCode(queryFile);
+    if (nativeLibs.getErrors().size() > 100000) {
+        return codeInfo;
+    }
 
-                    makeQuery(cache, binary.toString());
-                    if (nativeLibs.getErrors().size() > 0) {
-                        return codeInfo;
-                    }
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-            }
+    makeQuery(cache, binary.toString());
+    if (nativeLibs.getErrors().size() > 100000) {
+        return codeInfo;
+    }
+}catch (Throwable e) {
+    e.printStackTrace();
+}}
         }
         RawStructureLayoutPlanner.plan(nativeLibs, codeInfo);
 
@@ -117,7 +116,11 @@ public class CAnnotationProcessor extends CCompilerInvoker {
             InputStream is;
             if (TEXTCACHE) {
                 File f = new File("/tmp/aarch64/"+binaryName);
+<<<<<<< HEAD
                 System.err.println("Look for "+f.getAbsolutePath());
+=======
+                System.err.println("Look for "+f.getName());
+>>>>>>> allow to use a CAP cache
                 is = new FileInputStream(f);
             } else {
                 printingProcess = startCommand(command);
