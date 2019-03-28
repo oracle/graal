@@ -833,11 +833,21 @@ public abstract class Launcher {
         options.add("--version:graalvm");
         options.add("--show-version:graalvm");
         addOptions(engine.getOptions(), options);
-        for (Language language : engine.getLanguages().values()) {
-            addOptions(language.getOptions(), options);
-        }
         for (Instrument instrument : engine.getInstruments().values()) {
             addOptions(instrument.getOptions(), options);
+        }
+
+        String languageId = null;
+        if (this instanceof AbstractLanguageLauncher) {
+            languageId = ((AbstractLanguageLauncher) this).getLanguageId();
+        }
+        for (Language language : engine.getLanguages().values()) {
+            if (language.getId().equals(languageId)) {
+                for (OptionDescriptor descriptor : language.getOptions()) {
+                    options.add("--" + descriptor.getName().substring(languageId.length() + 1));
+                }
+            }
+            addOptions(language.getOptions(), options);
         }
         return options;
     }
