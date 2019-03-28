@@ -236,7 +236,7 @@ final class LLDBMemoryValue implements LLVMDebugValue {
         }
 
         if (LLVMManagedPointer.isInstance(pointer)) {
-            return "<managed pointer>" + (bitOffset == 0 ? "" : " + " + LLDBSupport.toSizeString(bitOffset));
+            return "<managed value>" + (bitOffset == 0 ? "" : " + " + LLDBSupport.toSizeString(bitOffset));
         }
 
         if (LLVMNativePointer.isInstance(pointer)) {

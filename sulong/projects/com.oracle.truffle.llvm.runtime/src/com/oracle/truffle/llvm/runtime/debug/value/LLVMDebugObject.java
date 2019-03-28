@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -411,6 +411,8 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
     private static final class Pointer extends LLVMDebugObject {
 
+        private static final String[] SAFE_DEREFERENCE_KEYS = new String[]{"<target>"};
+
         private final LLVMSourcePointerType pointerType;
 
         Pointer(LLVMDebugValue value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
@@ -426,6 +428,9 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @Override
         public String[] getKeysSafe() {
+            if (pointerType != null && !pointerType.isReference() && (value.isAlwaysSafeToDereference(offset) || pointerType.isSafeToDereference())) {
+                return SAFE_DEREFERENCE_KEYS;
+            }
             final LLVMDebugObject target = dereference();
             return target == null ? NO_KEYS : target.getKeys();
         }
@@ -433,7 +438,18 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         @Override
         public Object getMemberSafe(String identifier) {
             final LLVMDebugObject target = dereference();
-            return target == null ? "Cannot dereference pointer!" : target.getMember(identifier);
+            if (target == null) {
+                return "Cannot dereference pointer!";
+
+            } else if (SAFE_DEREFERENCE_KEYS[0].equals(identifier)) {
+                assert pointerType != null;
+                assert !pointerType.isReference();
+                assert value.isAlwaysSafeToDereference(offset) || pointerType.isSafeToDereference();
+                return target;
+
+            } else {
+                return target.getMember(identifier);
+            }
         }
 
         @Override
