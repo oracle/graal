@@ -1343,12 +1343,16 @@ public class LLVMGenerator implements LIRGeneratorTool {
         public Value emitCountLeadingZeros(Value value) {
             LLVMValueRef op = getVal(value);
             LLVMValueRef answer = builder.buildCtlz(op);
+            answer = builder.buildIntegerConvert(answer, 32);
             return new LLVMVariable(answer);
         }
 
         @Override
         public Value emitCountTrailingZeros(Value value) {
-            return null;
+            LLVMValueRef op = getVal(value);
+            LLVMValueRef answer = builder.buildCttz(op);
+            answer = builder.buildIntegerConvert(answer, 32);
+            return new LLVMVariable(answer);
         }
 
         @Override
