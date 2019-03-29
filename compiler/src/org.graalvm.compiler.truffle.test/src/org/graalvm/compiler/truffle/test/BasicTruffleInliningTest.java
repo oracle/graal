@@ -220,7 +220,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     @Test
     @SuppressWarnings("try")
     public void testTruffleFunctionInliningFlag() {
-        Context context = Context.newBuilder().option("engine.Inlining", "false").build();
+        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "false").build();
         context.enter();
         try {
             // @formatter:off

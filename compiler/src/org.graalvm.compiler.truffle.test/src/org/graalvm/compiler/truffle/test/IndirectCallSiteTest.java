@@ -204,7 +204,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testIndirectCallNodeDoesNotDeoptOnTypeChangeWithInlining1() {
-        Context context = Context.newBuilder().option("engine.Inlining", "true").build();
+        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "true").build();
         context.enter();
         try {
             final OptimizedCallTarget toInterpreterOnString = (OptimizedCallTarget) runtime.createCallTarget(new WritesToGlobalState());
