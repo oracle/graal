@@ -205,9 +205,16 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     protected LLVMDebugValue fromGlobalContainer(LLVMGlobalContainer value) {
         if (value.isPointer()) {
             return executeWithTarget(LLVMNativePointer.create(value.getAddress()));
-        } else {
-            return executeWithTarget(value.get());
         }
+
+        final Object target = value.get();
+        if (LLVMPointer.isInstance(target)) {
+            return executeWithTarget(target);
+        } else if (target instanceof TruffleObject) {
+            return executeWithTarget(LLVMManagedPointer.create((TruffleObject) target));
+        }
+
+        return executeWithTarget(new LLVMBoxedPrimitive(value));
     }
 
     @Specialization

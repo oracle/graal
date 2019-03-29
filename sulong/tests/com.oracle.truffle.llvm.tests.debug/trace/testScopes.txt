@@ -57,10 +57,12 @@ BREAK 40 CONTINUE "getNextId"
 BREAK 61 CONTINUE "MyClass"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
-            MEMBER structured "" "<static>"
-                MEMBER int "int" "lastId" "72"
+            MEMBER structured "MyClass" "<target>"
+                MEMBER structured "" "<static>"
+                    MEMBER int "int" "lastId" "72"
+                END_MEMBERS
+                MEMBER int "int" "id" "72"
             END_MEMBERS
-            MEMBER int "int" "id" "72"
         END_MEMBERS
     OPEN_SCOPE "<static>"
         MEMBER int "int" "globalX" "513"
