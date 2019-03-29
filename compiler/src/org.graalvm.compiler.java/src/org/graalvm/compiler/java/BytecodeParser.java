@@ -616,8 +616,8 @@ public class BytecodeParser implements GraphBuilderContext {
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After processPlaceholderFrameStates in %s", parser.method);
         }
 
-        protected void handleReturnMismatch(StructuredGraph graph, FrameState frameState) {
-            throw GraalError.shouldNotReachHere("Unexpected return kind mismatch in " + parser.method + " at FS " + frameState);
+        protected void handleReturnMismatch(StructuredGraph a, FrameState fs) {
+            throw GraalError.shouldNotReachHere("Unexpected return kind mismatch in " + parser.method + " at FS " + fs);
         }
     }
 
@@ -659,15 +659,15 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         @Override
-        protected void handleReturnMismatch(StructuredGraph graph, FrameState frameState) {
+        protected void handleReturnMismatch(StructuredGraph g, FrameState fs) {
             // If the intrinsic returns a non-void value, then any frame
             // state with an empty stack is invalid as it cannot
             // be used to deoptimize to just after the call returns.
             // These invalid frame states are expected to be removed
             // by later compilation stages.
-            FrameState newFrameState = graph.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
-            newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
-            frameState.replaceAndDelete(newFrameState);
+            FrameState newFrameState = g.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
+            newFrameState.setNodeSourcePosition(fs.getNodeSourcePosition());
+            fs.replaceAndDelete(newFrameState);
             sawInvalidFrameState = true;
         }
     }
