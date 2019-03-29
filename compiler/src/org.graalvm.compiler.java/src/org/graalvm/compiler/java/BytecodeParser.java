@@ -492,6 +492,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * {@linkplain BytecodeFrame#isPlaceholderBci(int) placeholder} frames states.
      */
     static class InliningScope implements AutoCloseable {
+        final ResolvedJavaMethod callee;
         FrameState stateBefore;
         final Mark mark;
         final BytecodeParser parser;
@@ -507,6 +508,7 @@ public class BytecodeParser implements GraphBuilderContext {
             assert parser.parent == null;
             assert parser.bci() == 0;
             mark = null;
+            callee = null;
         }
 
         /**
@@ -515,10 +517,12 @@ public class BytecodeParser implements GraphBuilderContext {
          * @param parser the parsing context of the (non-intrinsic) method calling the intrinsic
          * @param args the arguments to the call
          */
-        InliningScope(BytecodeParser parser, JavaKind[] argSlotKinds, ValueNode[] args) {
+        InliningScope(BytecodeParser parser, ResolvedJavaMethod callee, ValueNode[] args) {
+            this.callee = callee;
             assert !parser.parsingIntrinsic();
             this.parser = parser;
             mark = parser.getGraph().getMark();
+            JavaKind[] argSlotKinds = callee.getSignature().toParameterKinds(!callee.isStatic());
             stateBefore = parser.frameState.create(parser.bci(), parser.getNonIntrinsicAncestor(), false, argSlotKinds, args);
         }
 
@@ -578,7 +582,7 @@ public class BytecodeParser implements GraphBuilderContext {
                             if (stateBefore != frameState) {
                                 frameState.replaceAndDelete(stateBefore);
                             }
-                        } else if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+                        } else if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !callee.isSynchronized())) {
                             // This is a frame state for the entry point to an exception
                             // dispatcher in an intrinsic. For example, the invoke denoting
                             // a partial intrinsic exit will have an edge to such a
@@ -589,16 +593,22 @@ public class BytecodeParser implements GraphBuilderContext {
                             // namely the exception object.
                             assert frameState.rethrowException();
                             ValueNode exceptionValue = frameState.stackAt(0);
-                            ExceptionObjectNode exceptionObject = (ExceptionObjectNode) GraphUtil.unproxify(exceptionValue);
                             FrameStateBuilder dispatchState = parser.frameState.copy();
                             dispatchState.clearStack();
                             dispatchState.push(JavaKind.Object, exceptionValue);
                             dispatchState.setRethrowException(true);
-                            FrameState newFrameState = dispatchState.create(parser.bci(), exceptionObject);
-                            frameState.replaceAndDelete(newFrameState);
-                            newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
+                            for (Node usage : frameState.usages()) {
+                                FrameState newFrameState = dispatchState.create(parser.bci(), (StateSplit) usage);
+                                frameState.replaceAndDelete(newFrameState);
+                                newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
+                            }
+                        } else if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                            if (graph.getGuardsStage().allowsFloatingGuards()) {
+                                throw GraalError.shouldNotReachHere("Cannot handle this UNWIND_BCI");
+                            }
+                            // hope that by construction, there are no fixed guard after this unwind and before an other state split
                         } else {
-                            assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI;
+                            assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI : frameState.bci;
                         }
                     }
                 }
@@ -618,8 +628,8 @@ public class BytecodeParser implements GraphBuilderContext {
             super(parser);
         }
 
-        IntrinsicScope(BytecodeParser parser, JavaKind[] argSlotKinds, ValueNode[] args) {
-            super(parser, argSlotKinds, args);
+        IntrinsicScope(BytecodeParser parser, ResolvedJavaMethod callee, ValueNode[] args) {
+            super(parser, callee, args);
         }
 
         @Override
@@ -2472,8 +2482,8 @@ public class BytecodeParser implements GraphBuilderContext {
         FixedWithNextNode calleeBeforeUnwindNode = null;
         ValueNode calleeUnwindValue = null;
 
-        try (InliningScope s = parsingIntrinsic() ? null : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args)
-                        : new InliningScope(this, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args))) {
+        try (InliningScope s = parsingIntrinsic() ? null : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args)
+                        : new InliningScope(this, targetMethod, args))) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
             FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph, graphBuilderConfig.retainLocalVariables());
             if (!targetMethod.isStatic()) {
@@ -3033,6 +3043,8 @@ public class BytecodeParser implements GraphBuilderContext {
             frameState.setRethrowException(false);
             createUnwind();
         } else {
+            frameState.setRethrowException(false);
+            synchronizedEpilogue(BytecodeFrame.AFTER_EXCEPTION_BCI, null, null);
             ValueNode exception = frameState.pop(JavaKind.Object);
             this.unwindValue = exception;
             this.beforeUnwindNode = this.lastInstr;

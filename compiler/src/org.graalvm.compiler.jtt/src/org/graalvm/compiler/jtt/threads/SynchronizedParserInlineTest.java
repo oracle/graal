@@ -48,4 +48,48 @@ public final class SynchronizedParserInlineTest extends JTTTest {
         runTest("test", false);
     }
 
+    public Integer test1(int b) {
+        return foo1(b);
+    }
+
+    @BytecodeParserForceInline
+    public synchronized int foo1(int b) {
+        if (b < 0) {
+            return 7777;
+        } else if (b > 100) {
+            throw new RuntimeException();
+        } else {
+            throw new IllegalArgumentException();
+        }
+    }
+
+    @Test
+    public void run1() {
+        runTest("test1", -1);
+        runTest("test1", 1);
+        runTest("test1", 101);
+    }
+
+    public static Integer test2(int b) {
+        return foo2(b);
+    }
+
+    @BytecodeParserForceInline
+    public static int foo2(int b) {
+        if (b < 0) {
+            return 7777;
+        } else if (b > 100) {
+            throw new RuntimeException();
+        } else {
+            throw new IllegalArgumentException();
+        }
+    }
+
+    @Test
+    public void run2() {
+        runTest("test2", -1);
+        runTest("test2", 1);
+        runTest("test2", 101);
+    }
+
 }
