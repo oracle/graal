@@ -357,7 +357,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_context_builder_allow_create_thread", documentation = {
-                    "Allows or disallows thread creation or a <code>poly_context_builder</code>.",
+                    "Allows or disallows thread creation for a <code>poly_context_builder</code>.",
                     "",
                     " @param context_builder that is modified.",
                     " @param allow_create_thread bool value that is passed to the builder.",
@@ -368,6 +368,21 @@ public final class PolyglotNativeAPI {
         return withHandledErrors(() -> {
             Context.Builder contextBuilder = fetchHandle(context_builder);
             contextBuilder.allowCreateThread(allow_create_thread);
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_builder_allow_experimental_options", documentation = {
+                    "Allows or disallows experimental options for a <code>poly_context_builder</code>.",
+                    "",
+                    " @param context_builder that is modified.",
+                    " @param allow_experimental_options bool value that is passed to the builder.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_builder_allow_experimental_options(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_experimental_options) {
+        return withHandledErrors(() -> {
+            Context.Builder contextBuilder = fetchHandle(context_builder);
+            contextBuilder.allowExperimentalOptions(allow_experimental_options);
         });
     }
 
