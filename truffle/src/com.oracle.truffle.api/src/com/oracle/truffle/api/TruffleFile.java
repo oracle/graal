@@ -1716,6 +1716,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public <T> T getAttribute(AttributeDescriptor<T> attribute, LinkOption... linkOptions) throws IOException {
         try {
             return getAttributeImpl(createAttributeString(attribute.group, Collections.singleton(attribute.name)), attribute.clazz, linkOptions);
@@ -1739,6 +1740,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public Attributes getAttributes(Collection<? extends AttributeDescriptor<?>> attributes, LinkOption... linkOptions) throws IOException {
         if (attributes.isEmpty()) {
             throw new IllegalArgumentException("No descriptors given.");
