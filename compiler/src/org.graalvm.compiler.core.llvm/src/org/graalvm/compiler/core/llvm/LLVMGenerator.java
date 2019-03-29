@@ -1349,7 +1349,10 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
         @Override
         public Value emitCountTrailingZeros(Value value) {
-            return null;
+            LLVMValueRef op = getVal(value);
+            LLVMValueRef answer = builder.buildCttz(op);
+            answer = builder.buildIntegerConvert(answer, 32);
+            return new LLVMVariable(answer);
         }
 
         @Override
