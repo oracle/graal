@@ -71,19 +71,29 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 public final class Method implements ModifiersProvider, ContextAccess {
     public static final Method[] EMPTY_ARRAY = new Method[0];
+    public static final int NB_MH_INTRINSICS = 6;
 
-    @SuppressWarnings("unchecked")
-    @CompilationFinal(dimensions = 1)
-    private static final ConcurrentHashMap<Symbol<Signature>, Method>[] intrinsics = new ConcurrentHashMap[6];
-    {
-        for (int i = 0; i < intrinsics.length; i++) {
+    @CompilationFinal(dimensions = 1) private static ConcurrentHashMap<Symbol<Signature>, Method>[] intrinsics;
+
+    static {
+        __init__();
+    }
+
+    // All this just to have mx not complain about unchecked casts.
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void __init__() {
+        intrinsics = new ConcurrentHashMap[NB_MH_INTRINSICS];
+        for (int i = 0; i < NB_MH_INTRINSICS; i++) {
             intrinsics[i] = new ConcurrentHashMap<>();
         }
     }
 
-//    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicInvokes = new ConcurrentHashMap<>();
-//    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicLinkTo = new ConcurrentHashMap<>();
-//    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicBasic = new ConcurrentHashMap<>();
+    // public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicInvokes = new
+    // ConcurrentHashMap<>();
+    // public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicLinkTo = new
+    // ConcurrentHashMap<>();
+    // public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicBasic = new
+    // ConcurrentHashMap<>();
 
     private final LinkedMethod linkedMethod;
     private final RuntimeConstantPool pool;

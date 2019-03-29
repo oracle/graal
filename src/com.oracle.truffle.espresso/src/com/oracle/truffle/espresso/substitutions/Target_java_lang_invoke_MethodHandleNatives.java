@@ -473,10 +473,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     // Useful thingies... ?
 
-
-
     static final int // for getConstant
-                    GC_COUNT_GWT = 4,
+    GC_COUNT_GWT = 4,
                     GC_LAMBDA_SUPPORT = 5;
 
     // MemberName
