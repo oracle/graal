@@ -1092,7 +1092,7 @@ public abstract class Launcher {
         }
     }
 
-    private void printJvmHelp() {
+    private static void printJvmHelp() {
         System.out.println("JVM options:");
         printOption("--vm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
         printOption("--vm.D<name>=<value>", "Set a system property");
@@ -1107,7 +1107,7 @@ public abstract class Launcher {
         printOption("--vm.Xss<size>", "Set java thread stack size");
     }
 
-    private void printBasicNativeHelp() {
+    private static void printBasicNativeHelp() {
         printOption("--vm.D<property>=<value>", "Sets a system property");
         /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
         printOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
