@@ -1400,6 +1400,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
+        "org.graalvm.compiler.lir.aarch64",
         "LLVM_WRAPPER",
         "LLVM_PLATFORM_SPECIFIC",
       ],
