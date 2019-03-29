@@ -44,13 +44,12 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
     protected static final String PROPERTY_HASH = "hash"; // NOI18N
     private static final String FORMAT_FLAVOUR = "Component.{0}"; // NOI18N
     private static final String FORMAT_SINGLE_VERSION = "Component.{0}_{1}."; // NOI18N
-    private static final String FORMAT_VERSION = "{0}/"; // NOI18N
 
     private final Properties catalogProperties;
     private final String flavourPrefix;
     private final String singleVersionPrefix;
     private final Version graalVersion;
-    
+
     private Map<String, Properties> filteredComponents;
 
     public RemotePropertiesStorage(Feedback fb, ComponentRegistry localReg, Properties catalogProperties, String graalSelector, Version gVersion, URL baseURL) {
@@ -58,14 +57,13 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         this.catalogProperties = catalogProperties;
         flavourPrefix = MessageFormat.format(FORMAT_FLAVOUR, graalSelector);
         graalVersion = gVersion != null ? gVersion : localReg.getGraalVersion();
-        singleVersionPrefix = MessageFormat.format(FORMAT_SINGLE_VERSION, 
-                graalVersion.toString(), graalSelector);
+        singleVersionPrefix = MessageFormat.format(FORMAT_SINGLE_VERSION,
+                        graalVersion.toString(), graalSelector);
     }
-    
+
     /**
-     * Returns properties relevant for a specific component ID. May return properties
-     * for several versions of the component. Return {@code null} if the component
-     * does not exist at all.
+     * Returns properties relevant for a specific component ID. May return properties for several
+     * versions of the component. Return {@code null} if the component does not exist at all.
      * 
      * @param id component ID.
      * @return Properties or {@code null} if component was not found.
@@ -74,34 +72,34 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         splitPropertiesToComponents();
         return filteredComponents.get(id);
     }
-    
+
     private void splitPropertiesToComponents() {
         if (filteredComponents != null) {
             return;
         }
         filteredComponents = new HashMap<>();
-        
+
         // known prefixes. Version will not be parsed again for therse.
         Set<String> knownPrefixes = new HashSet<>();
-        
+
         // already accepted prefixes
         Set<String> acceptedPrefixes = new HashSet<>();
-        
+
         for (String s : catalogProperties.stringPropertyNames()) {
             String cid;
             String pn;
-            
+
             int slashPos = s.indexOf('/');
             int secondSlashPos = s.indexOf('/', slashPos + 1);
             int l;
-            
+
             if (slashPos != -1 && secondSlashPos != -1) {
                 if (!s.startsWith(flavourPrefix)) {
                     continue;
                 }
                 l = secondSlashPos + 1;
                 pn = s.substring(slashPos + 1);
-                
+
                 String pref = s.substring(0, secondSlashPos);
                 if (knownPrefixes.add(pref)) {
                     try {
@@ -112,12 +110,12 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
                     } catch (IllegalArgumentException ex) {
                         feedback.verboseOutput("REMOTE_BadComponentVersion", pn);
                     }
-                } 
+                }
                 if (!acceptedPrefixes.contains(pref)) {
                     // ignore obsolete versions
                     continue;
                 }
-                
+
             } else {
                 if (!s.startsWith(singleVersionPrefix)) {
                     continue;
@@ -131,15 +129,15 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
                 dashPos = s.length();
             }
             cid = s.substring(l, dashPos);
-            
-            filteredComponents.computeIfAbsent(cid, (_cid) -> new Properties()).setProperty(pn, catalogProperties.getProperty(s));
+
+            filteredComponents.computeIfAbsent(cid, (unused) -> new Properties()).setProperty(pn, catalogProperties.getProperty(s));
         }
     }
-    
+
     boolean acceptsVersion(Version vers) {
         return localRegistry.getGraalVersion().compareTo(vers) <= 0;
     }
-    
+
     @Override
     public Set<String> listComponentIDs() throws IOException {
         Set<String> ret = new HashSet<>();
@@ -147,16 +145,19 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         ret.addAll(filteredComponents.keySet());
         return ret;
     }
-    
+
     @Override
     public Set<ComponentInfo> loadComponentMetadata(String id) throws IOException {
         Properties compProps = filterPropertiesForVersions(id);
-        Map<String, ComponentInfo>  infos = new HashMap<>();
+        if (compProps == null) {
+            return null;
+        }
+        Map<String, ComponentInfo> infos = new HashMap<>();
         Set<String> processedPrefixes = new HashSet<>();
-        
+
         for (String s : compProps.stringPropertyNames()) {
             int slashPos = s.indexOf('/');
-            
+
             String vS = s.substring(0, slashPos);
             if (!processedPrefixes.add(vS)) {
                 continue;
@@ -174,10 +175,10 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
             ComponentInfo ci = createVersionedComponent(compProps, id, v);
             infos.put(vS, ci);
         }
-        
+
         return new HashSet<>(infos.values());
     }
-    
+
     private ComponentInfo createVersionedComponent(Properties filtered, String id, Version v) throws IOException {
         String versoPrefix = v.toString() + "/"; // NOI18N
         URL downloadURL;
@@ -197,6 +198,7 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         ComponentInfo info = ldr.createComponentInfo();
         info.setRemoteURL(downloadURL);
         info.setShaDigest(hash);
+        info.setOrigin(baseURL.toString());
         return info;
     }
 

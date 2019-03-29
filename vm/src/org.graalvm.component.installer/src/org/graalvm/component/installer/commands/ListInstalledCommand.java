@@ -75,7 +75,7 @@ public class ListInstalledCommand extends QueryCommandBase {
     }
 
     List<String> findComponentIds() {
-        Collection<String> comps = registry.getComponentIDs();
+        Collection<String> comps = catalog.getComponentIDs();
         List<String> ids = new ArrayList<>(comps.size());
         for (String s : comps) {
             if (filterPattern.matcher(s).find()) {
@@ -102,7 +102,7 @@ public class ListInstalledCommand extends QueryCommandBase {
         }
         return 0;
     }
-    
+
     protected Version.Match getVersionFilter() {
         return input.getLocalRegistry().getGraalVersion().match(Version.Match.Type.GREATER);
     }
@@ -118,7 +118,7 @@ public class ListInstalledCommand extends QueryCommandBase {
         Version.Match versionFilter = getVersionFilter();
         for (String id : ids) {
             try {
-                Collection<ComponentInfo> infos = registry.loadComponents(id, versionFilter, listFiles);
+                Collection<ComponentInfo> infos = catalog.loadComponents(id, versionFilter, listFiles);
                 for (ComponentInfo ci : infos) {
                     addComponent(null, ci);
                 }

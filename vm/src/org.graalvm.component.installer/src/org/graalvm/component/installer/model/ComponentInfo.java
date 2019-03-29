@@ -50,7 +50,7 @@ public final class ComponentInfo {
      * Version of the component.
      */
     private final String versionString;
-    
+
     /**
      * Parsed version of the Component.
      */
@@ -93,13 +93,18 @@ public final class ComponentInfo {
 
     private String postinstMessage;
 
+    /**
+     * Origin of the component.
+     */
+    private String origin;
+
     public ComponentInfo(String id, String name, String versionString) {
         this.id = id;
         this.versionString = versionString;
         this.name = name;
         this.version = Version.fromString(versionString);
     }
-    
+
     public ComponentInfo(String id, String name, Version v) {
         this.id = id;
         this.versionString = v == null ? null : v.toString();
@@ -240,12 +245,12 @@ public final class ComponentInfo {
         }
         return true;
     }
-    
+
     public Version getVersion() {
         return version;
     }
-    
-    private static final Comparator<ComponentInfo>  COMPARATOR_VERSIONS = new Comparator<ComponentInfo>() {
+
+    private static final Comparator<ComponentInfo> COMPARATOR_VERSIONS = new Comparator<ComponentInfo>() {
         @Override
         public int compare(ComponentInfo o1, ComponentInfo o2) {
             if (o1 == null) {
@@ -257,16 +262,25 @@ public final class ComponentInfo {
             } else if (o2 == null) {
                 return 1;
             }
-            
+
             return o1.getVersion().compareTo(o2.getVersion());
         }
     };
-    
+
+    @Override
     public String toString() {
         return getId() + "[" + getVersion().toString() + "]"; // NOI18N
     }
-    
+
     public static Comparator<ComponentInfo> versionComparator() {
         return COMPARATOR_VERSIONS;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
     }
 }

@@ -31,7 +31,7 @@ import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.DependencyException;
-import org.graalvm.component.installer.FailedOperationException;
+import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
@@ -99,7 +99,7 @@ public class CatalogInstallTest extends CommandTestBase {
             }
         });
 
-        exception.expect(FailedOperationException.class);
+        exception.expect(IncompatibleException.class);
         exception.expectMessage("REMOTE_UnsupportedGraalVersion");
 
         setupCatalog(null);

@@ -296,12 +296,12 @@ public class CatalogIterableTest extends CommandTestBase {
     }
 
     @Override
-    public MetadataLoader createLocalFileLoader(ComponentInfo info, Path localFile, boolean verify) throws IOException {
+    public MetadataLoader createLocalFileLoader(ComponentInfo ci, Path localFile, boolean verify) throws IOException {
         return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
     }
 
     @Override
-    public FileDownloader configureDownloader(ComponentInfo info, FileDownloader dn) {
+    public FileDownloader configureDownloader(ComponentInfo ci, FileDownloader dn) {
         return dn;
     }
 }

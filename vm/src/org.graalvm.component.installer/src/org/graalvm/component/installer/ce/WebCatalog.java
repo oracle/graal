@@ -32,15 +32,16 @@ import java.net.MalformedURLException;
 import java.net.NoRouteToHostException;
 import java.net.URL;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.Enumeration;
 import java.util.Map;
 import java.util.Properties;
 import java.util.jar.JarFile;
 import org.graalvm.component.installer.BundleConstants;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
@@ -84,19 +85,36 @@ public class WebCatalog implements SoftwareChannel {
         this.feedback = out.withBundle(WebCatalog.class);
         this.local = in.getLocalRegistry();
     }
-    
+
     @Override
     public ComponentStorage getStorage() {
         if (this.storage != null) {
             return this.storage;
         }
+
+        Map<String, String> graalCaps = local.getGraalCapabilities();
+        Properties props = new Properties();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(graalCaps.get(CommonConstants.CAP_OS_NAME).toLowerCase());
+        sb.append("_");
+        sb.append(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase());
+
+        try {
+            catalogURL = new URL(urlString);
+        } catch (MalformedURLException ex) {
+            throw feedback.failure("REMOTE_InvalidURL", ex, catalogURL, ex.getLocalizedMessage());
+        }
+
+        // create the storage. If the init fails, but process will not terminate, the storage will
+        // serve no components on the next call.
+        storage = new RemotePropertiesStorage(feedback, local, props, sb.toString(), null, catalogURL);
+
         FileDownloader dn;
         try {
             catalogURL = new URL(urlString);
             dn = new FileDownloader(feedback.l10n("REMOTE_CatalogLabel"), catalogURL, feedback);
             dn.download();
-        } catch (MalformedURLException ex) {
-            throw feedback.failure("REMOTE_InvalidURL", ex, catalogURL, ex.getLocalizedMessage());
         } catch (NoRouteToHostException | ConnectException ex) {
             throw feedback.failure("REMOTE_ErrorDownloadCatalogProxy", ex, catalogURL, ex.getLocalizedMessage());
         } catch (FileNotFoundException ex) {
@@ -107,37 +125,29 @@ public class WebCatalog implements SoftwareChannel {
 
         StringBuilder oldGraalPref = new StringBuilder(BundleConstants.GRAAL_COMPONENT_ID);
         oldGraalPref.append('.');
-        
-        Map<String, String> graalCaps = local.getGraalCapabilities();
-        
+
         String graalVersionString = graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION).toLowerCase();
         String normalizedVersion = SystemUtils.normalizeOldVersions(graalVersionString);
-        
+
         StringBuilder graalPref = new StringBuilder(oldGraalPref);
 
         oldGraalPref.append(graalVersionString);
-        graalPref.append(normalizedVersion);
-        
-        StringBuilder sb = new StringBuilder();
-        sb.append(graalCaps.get(CommonConstants.CAP_OS_NAME).toLowerCase());
-        sb.append("_");
-        sb.append(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase());
-        
+
         oldGraalPref.append('_').append(sb);
-        graalPref.append('_').append(sb);
-        
-        Properties props = new Properties();
+        graalPref.append(sb).append('/');
+        graalPref.append(normalizedVersion);
+
         try (FileInputStream fis = new FileInputStream(dn.getLocalFile())) {
             props.load(fis);
         } catch (IllegalArgumentException | IOException ex) {
             throw feedback.failure("REMOTE_CorruptedCatalogFile", ex, catalogURL);
         }
-        
+
         if (props.getProperty(oldGraalPref.toString()) == null &&
-                props.getProperty(graalPref.toString()) == null) {
+                        props.getProperty(graalPref.toString()) == null) {
             boolean graalPrefixFound = false;
             boolean componentFound = false;
-            for (String s : Collections.list((Enumeration<String>) props.propertyNames())) {
+            for (String s : props.stringPropertyNames()) {
                 if (s.startsWith(BundleConstants.GRAAL_COMPONENT_ID)) {
                     graalPrefixFound = true;
                 }
@@ -148,20 +158,21 @@ public class WebCatalog implements SoftwareChannel {
             if (!(graalPrefixFound && componentFound)) {
                 throw feedback.failure("REMOTE_CorruptedCatalogFile", null, catalogURL);
             } else {
-                throw feedback.failure("REMOTE_UnsupportedGraalVersion", null,
-                                graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION),
-                                graalCaps.get(CommonConstants.CAP_OS_NAME),
-                                graalCaps.get(CommonConstants.CAP_OS_ARCH));
+                throw new IncompatibleException(
+                                feedback.l10n("REMOTE_UnsupportedGraalVersion", null,
+                                                graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION),
+                                                graalCaps.get(CommonConstants.CAP_OS_NAME),
+                                                graalCaps.get(CommonConstants.CAP_OS_ARCH)),
+                                null);
             }
         }
-        storage = new RemotePropertiesStorage(feedback, local, props, sb.toString(), null, catalogURL);
         return storage;
     }
-    
+
     @SuppressWarnings("unchecked")
     @Override
-    public ComponentRegistry getRegistry() {
-        return new ComponentRegistry(feedback, getStorage());
+    public ComponentCollection getRegistry() {
+        return new CatalogContents(feedback, getStorage(), local);
     }
 
     @Override
@@ -173,7 +184,7 @@ public class WebCatalog implements SoftwareChannel {
     public FileDownloader configureDownloader(ComponentInfo cInfo, FileDownloader dn) {
         return dn;
     }
-    
+
     public static class WebCatalogFactory implements SoftwareChannel.Factory {
 
         @Override
@@ -190,6 +201,6 @@ public class WebCatalog implements SoftwareChannel {
             }
             return null;
         }
-    
+
     }
 }

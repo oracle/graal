@@ -24,15 +24,18 @@
  */
 package org.graalvm.component.installer.remote;
 
+import java.io.IOException;
 import java.net.ConnectException;
 import java.net.URL;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.MockURLConnection;
 import org.graalvm.component.installer.persist.NetworkTestBase;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 public class RemoteCatalogDownloaderTest extends NetworkTestBase {
@@ -111,5 +114,50 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_ErrorDownloadCatalogProxy");
         d.openCatalog();
+    }
+
+    RemoteCatalogDownloader rcd;
+
+    private void setupJoinedCatalog(String firstPart) throws IOException {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0.0");
+        URL u1 = new URL("test://graalvm.io/catalog1");
+        URL u2 = new URL("test://graalvm.io/catalog2");
+
+        URL clu1 = getClass().getResource(firstPart);
+        URL clu2 = getClass().getResource("catalogMultiPart2");
+
+        Handler.bind(u1.toString(), clu1);
+        Handler.bind(u2.toString(), clu2);
+
+        String list = String.join("|", u1.toString(), u2.toString());
+
+        rcd = new RemoteCatalogDownloader(this, this, list);
+    }
+
+    /**
+     * Checks that if a single catalog does not correspond to graalvm version, other catalogs will
+     * be read.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testSingleNonMatchingCatalogIgnored() throws Exception {
+        setupJoinedCatalog("catalogMultiPart1");
+        ComponentCollection col = rcd.get();
+        assertNotNull(col.findComponent("r"));
+        assertNotNull(col.findComponent("ruby"));
+        assertNull(col.findComponent("python"));
+    }
+
+    /**
+     * Checks that multiple catalogs are merged together.
+     */
+    @Test
+    public void testMultipleCatalogsJoined() throws Exception {
+        setupJoinedCatalog("catalogMultiPart1Mergeable");
+        ComponentCollection col = rcd.get();
+        assertNotNull(col.findComponent("r"));
+        assertNotNull(col.findComponent("ruby"));
+        assertNotNull(col.findComponent("python"));
     }
 }

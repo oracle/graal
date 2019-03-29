@@ -52,10 +52,10 @@ public class ListTest extends CommandTestBase {
 
     private void initRemoteStorage() throws MalformedURLException {
         this.remoteStorage = new RemotePropertiesStorage(
-                this, localRegistry, catalogContents, 
-                "linux_amd64", 
-                Version.fromString("1.0.0-rc3-dev"),
-                new URL("http://go.to/graalvm"));
+                        this, localRegistry, catalogContents,
+                        "linux_amd64",
+                        Version.fromString("1.0.0-rc3-dev"),
+                        new URL("http://go.to/graalvm"));
         this.registry = new ComponentRegistry(this, remoteStorage);
     }
 

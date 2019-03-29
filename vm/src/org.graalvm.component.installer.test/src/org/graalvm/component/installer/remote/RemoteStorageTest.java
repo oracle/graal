@@ -66,7 +66,7 @@ public class RemoteStorageTest extends TestBase {
         storage = new MockStorage();
         localRegistry = new ComponentRegistry(this, storage);
         remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_FLAVOUR,
-                Version.fromString("0.33-dev"), new URL(TEST_BASE_URL));
+                        Version.fromString("0.33-dev"), new URL(TEST_BASE_URL));
         try (InputStream is = getClass().getResourceAsStream("catalog")) {
             catalogProps.load(is);
         }
@@ -88,7 +88,7 @@ public class RemoteStorageTest extends TestBase {
 
         assertEquals(Arrays.asList("r", "ruby"), l);
     }
-    
+
     private ComponentInfo loadLastComponent(String id) throws IOException {
         Set<ComponentInfo> infos = remStorage.loadComponentMetadata(id);
         if (infos == null || infos.isEmpty()) {
@@ -197,7 +197,7 @@ public class RemoteStorageTest extends TestBase {
         assertEquals(3, ids.size());
         assertTrue(ids.contains("python"));
     }
-    
+
     /**
      * Checks that versions prior the graalvm version are not included.
      */
@@ -209,24 +209,24 @@ public class RemoteStorageTest extends TestBase {
         Set<ComponentInfo> rubies = remStorage.loadComponentMetadata("ruby");
         // 1.0.0.0 and 1.0.1.0 versions
         assertEquals(2, rubies.size());
-        
+
         Set<ComponentInfo> rs = remStorage.loadComponentMetadata("r");
         assertEquals(1, rs.size());
-        
+
         Set<ComponentInfo> pythons = remStorage.loadComponentMetadata("python");
         assertEquals(1, pythons.size());
     }
-    
+
     @Test
     public void checkMultipleGraalVMDependencies() throws Exception {
         loadCatalog("catalogMultiVersions");
-        
+
         Set<ComponentInfo> rubies = remStorage.loadComponentMetadata("ruby");
         Set<Version> versions = new HashSet<>();
         for (ComponentInfo ci : rubies) {
             Version compVersion = ci.getVersion();
             assertTrue(versions.add(compVersion));
-            
+
             String gv = ci.getRequiredGraalValues().get(BundleConstants.GRAAL_VERSION);
             assertEquals(gv, compVersion.toString());
         }

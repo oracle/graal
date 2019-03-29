@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
@@ -39,16 +40,17 @@ import org.graalvm.component.installer.persist.AbstractCatalogStorage;
 
 /**
  * The Storage merges storages of individual providers.
+ * 
  * @author sdedic
  */
 class MergeStorage extends AbstractCatalogStorage {
-    private final Map<ComponentInfo, SoftwareChannel>   channelMap = new HashMap<>();
-    private final List<SoftwareChannel>  channels = new ArrayList<>();
-    
-    public MergeStorage(ComponentRegistry localRegistry, Feedback feedback) {
+    private final Map<ComponentInfo, SoftwareChannel> channelMap = new HashMap<>();
+    private final List<SoftwareChannel> channels = new ArrayList<>();
+
+    MergeStorage(ComponentRegistry localRegistry, Feedback feedback) {
         super(localRegistry, feedback, null);
     }
-    
+
     public void addChannel(SoftwareChannel delegate) {
         channels.add(delegate);
     }
@@ -56,12 +58,22 @@ class MergeStorage extends AbstractCatalogStorage {
     @Override
     public Set<String> listComponentIDs() throws IOException {
         Set<String> ids = new HashSet<>();
+        IncompatibleException incEx = null;
+        boolean oneSucceeded = false;
         for (SoftwareChannel del : channels) {
-            ids.addAll(del.getStorage().listComponentIDs());
+            try {
+                ids.addAll(del.getStorage().listComponentIDs());
+                oneSucceeded = true;
+            } catch (IncompatibleException ex) {
+                incEx = ex;
+            }
+        }
+        if (!oneSucceeded && incEx != null) {
+            throw incEx;
         }
         return ids;
     }
-    
+
     List<SoftwareChannel> getChannels() {
         return channels;
     }
@@ -71,6 +83,9 @@ class MergeStorage extends AbstractCatalogStorage {
         Set<ComponentInfo> cis = new HashSet<>();
         for (SoftwareChannel swch : channels) {
             Set<ComponentInfo> newInfos = swch.getStorage().loadComponentMetadata(id);
+            if (newInfos == null) {
+                continue;
+            }
             newInfos.removeAll(cis);
             for (ComponentInfo ci : newInfos) {
                 channelMap.put(ci, swch);
@@ -79,7 +94,7 @@ class MergeStorage extends AbstractCatalogStorage {
         }
         return cis;
     }
-    
+
     public SoftwareChannel getOrigin(ComponentInfo ci) {
         return channelMap.get(ci);
     }

@@ -30,9 +30,10 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ServiceLoader;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.CommandInput;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
-import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -42,10 +43,9 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     private final CommandInput input;
     private final Feedback feedback;
 
-    private ComponentRegistry catalog;
     private Iterable<SoftwareChannel.Factory> factories;
     private final List<String> catLocations;
-    private ComponentRegistry union;
+    private CatalogContents union;
 
     public RemoteCatalogDownloader(CommandInput in, Feedback out, String catLocations) {
         this.input = in;
@@ -55,6 +55,7 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
         factories = ServiceLoader.load(SoftwareChannel.Factory.class);
     }
 
+    // tests only
     public RemoteCatalogDownloader(CommandInput in, Feedback out, URL catalogURL) {
         this(in, out, catalogURL.toString());
     }
@@ -63,15 +64,15 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     void setChannels(Iterable<SoftwareChannel.Factory> chan) {
         this.factories = chan;
     }
-    
+
     private MergeStorage mergedStorage;
-    
+
     private MergeStorage mergeChannels() {
         if (mergedStorage != null) {
             return mergedStorage;
         }
         mergedStorage = new MergeStorage(input.getLocalRegistry(), feedback);
-        
+
         for (String spec : catLocations) {
             SoftwareChannel ch = null;
             for (SoftwareChannel.Factory f : factories) {
@@ -87,19 +88,16 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
         return mergedStorage;
     }
 
-    public ComponentRegistry get() {
-        if (catalog == null) {
-            catalog = openCatalog();
-        }
-        return catalog;
+    public ComponentCollection get() {
+        return openCatalog();
     }
-    
+
     SoftwareChannel delegate(ComponentInfo ci) {
         return mergeChannels().getOrigin(ci);
     }
-    
+
     @SuppressWarnings("unchecked")
-    public ComponentRegistry openCatalog() {
+    public ComponentCollection openCatalog() {
         return getRegistry();
     }
 
@@ -109,9 +107,9 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     }
 
     @Override
-    public ComponentRegistry getRegistry() {
+    public ComponentCollection getRegistry() {
         if (union == null) {
-            union = new ComponentRegistry(feedback, mergeChannels());
+            union = new CatalogContents(feedback, mergeChannels(), input.getLocalRegistry());
             // get errors early
             union.getComponentIDs();
         }

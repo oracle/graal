@@ -244,7 +244,7 @@ public class InfoCommand extends QueryCommandBase {
                 Collections.sort(keys);
                 for (String cap : keys) {
                     feedback.verboseOutput("INFO_ComponentRequirement",
-                                    registry.localizeCapabilityName(cap),
+                                    getRegistry().localizeCapabilityName(cap),
                                     info.getRequiredGraalValues().get(cap));
                 }
             }
@@ -257,8 +257,8 @@ public class InfoCommand extends QueryCommandBase {
                 }
             }
 
-            Verifier vfy = new Verifier(feedback, input.getLocalRegistry(), info).collect(true);
-            if (vfy.validateRequirements().hasErrors()) {
+            Verifier vfy = new Verifier(feedback, input.getLocalRegistry(), catalog).collect(true).validateRequirements(info);
+            if (vfy.hasErrors()) {
                 feedback.message("INFO_ComponentWillNotInstall", shortenComponentId(info));
                 for (DependencyException ex : vfy.getErrors()) {
                     feedback.message("INFO_ComponentDependencyIndent", ex.getLocalizedMessage());

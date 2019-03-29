@@ -200,9 +200,8 @@ public class SystemUtils {
         return comps;
     }
 
-
     private static final Pattern OLD_VERSION_PATTERN = Pattern.compile("([0-9]+\\.[0-9]+\\.[0-9]+)(-([a-z]+)([0-9]+))?");
-    
+
     public static String normalizeOldVersions(String v) {
         if (v == null) {
             return null;
@@ -214,7 +213,7 @@ public class SystemUtils {
         String numbers = m.group(1);
         String rel = m.group(3);
         String relNo = m.group(4);
-        
+
         if (rel == null) {
             return numbers + ".0";
         } else {

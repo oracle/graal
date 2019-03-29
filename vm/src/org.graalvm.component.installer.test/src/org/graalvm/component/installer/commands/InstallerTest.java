@@ -85,7 +85,7 @@ public class InstallerTest extends TestBase {
         componentJarFile = new JarArchive(jf);
 
         loader.loadPaths();
-        installer = new Installer(fb(), componentInfo, registry, componentJarFile);
+        installer = new Installer(fb(), componentInfo, registry, registry, componentJarFile);
         installer.setInstallPath(targetPath);
         installer.setLicenseRelativePath(SystemUtils.fromCommonRelative(loader.getLicensePath()));
     }
@@ -132,17 +132,17 @@ public class InstallerTest extends TestBase {
 
     /**
      * Checks that the component will be uninstalled before installing a new one.
+     * 
+     * Disabled; the uninstall logic is now implemented by InstallCommand and tested by InstallTest.
+     * 
+     * @Test public void testSetReplaceComponents() throws IOException {
+     *       setupComponentInstall("truffleruby2.jar"); ComponentInfo fakeInfo = new
+     *       ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.32");
+     *       storage.installed.add(fakeInfo);
+     * 
+     *       installer.setReplaceComponents(true); installer.validateRequirements();
+     *       installer.install(); }
      */
-    @Test
-    public void testSetReplaceComponents() throws IOException {
-        setupComponentInstall("truffleruby2.jar");
-        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.32");
-        storage.installed.add(fakeInfo);
-
-        installer.setReplaceComponents(true);
-        installer.validateRequirements();
-        installer.install();
-    }
 
     @Test
     public void testFailOnExistingComponent() throws IOException {

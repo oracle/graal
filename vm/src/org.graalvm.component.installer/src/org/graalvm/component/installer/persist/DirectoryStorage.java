@@ -123,8 +123,8 @@ public class DirectoryStorage implements ComponentStorage {
     private final Feedback feedback;
 
     private Properties loaded;
-    
-    private ComponentInfo   graalCore;
+
+    private ComponentInfo graalCore;
 
     private static final String GRAALVM_SOURCE = "source"; // NOI18N
     private static final Pattern SOURCE_REVISION = Pattern.compile("\\b([a-z-._]+):([0-9a-f]+)\\b"); // NOI18N
@@ -151,7 +151,7 @@ public class DirectoryStorage implements ComponentStorage {
             throw feedback.failure("ERROR_ReadingRealeaseFile", ex, graalVersionFile, ex.getMessage());
         }
     }
-    
+
     public Version getGraalVMVersion() {
         String s = SystemUtils.normalizeOldVersions(loadGraalVersionInfo().get(CommonConstants.CAP_GRAALVM_VERSION));
         return Version.fromString(s);
@@ -267,14 +267,14 @@ public class DirectoryStorage implements ComponentStorage {
         }
         return ci;
     }
-    
+
     private ComponentInfo getCoreInfo() {
         if (graalCore != null) {
             return graalCore;
         }
         Version v = getGraalVMVersion();
         ComponentInfo ci = new ComponentInfo(BundleConstants.GRAAL_COMPONENT_ID, feedback.l10n("NAME_GraalCoreComponent"),
-                v.toString());
+                        v.toString());
         graalCore = ci;
         return graalCore;
     }
