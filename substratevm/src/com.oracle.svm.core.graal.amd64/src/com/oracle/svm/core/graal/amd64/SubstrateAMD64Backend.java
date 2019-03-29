@@ -259,14 +259,27 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         Register lastJavaIP = ValueUtil.asRegister(temp);
 
         /*
+         * Record the last Java instruction pointer. Note that this is actually not the return
+         * address of the call, but that is fine. Patching the offset of the lea instruction would
+         * be possible but more complex than just recording the reference map information twice for
+         * different instructions.
+         *
          * We record the instruction to load the current instruction pointer as a Call infopoint, so
          * that the same metadata is emitted in the machine code as for a normal call instruction.
+         * We are already in the code emission from a single LIR instruction. So the register
+         * allocator cannot interfere anymore, the reference map for the two calls is produced from
+         * the same point regarding to register spilling.
+         *
          * The lea loads the offset 0 relative to the end of the lea instruction, which is the same
          * as for a call instruction. So the usual AMD64 specific semantics that all the metadata is
          * registered for the end of the instruction just works.
          */
         int startPos = masm.position();
         masm.leaq(lastJavaIP, new AMD64Address(AMD64.rip));
+        /*
+         * We always record an indirect call, because the direct/indirect flag of the safepoint is
+         * not used (the target method of the recorded call is null anyway).
+         */
         crb.recordIndirectCall(startPos, masm.position(), null, state);
 
         masm.movq(new AMD64Address(anchor, runtimeConfiguration.getJavaFrameAnchorLastIPOffset()), lastJavaIP);

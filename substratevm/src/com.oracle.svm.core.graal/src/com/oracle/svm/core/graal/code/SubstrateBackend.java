@@ -39,6 +39,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
+import com.oracle.svm.core.stack.JavaFrameAnchor;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -91,8 +93,8 @@ public abstract class SubstrateBackend extends Backend {
     }
 
     /**
-     * We are re-using the classInit field of the InvokeNode to store the JavaFrameAnchor, see
-     * CFunctionSnippets.matchCallStructure.
+     * We are re-using the field {InvokeNode#classInit()} to store the {@link JavaFrameAnchor}, see
+     * {@link CFunctionSnippets#matchCallStructure}.
      */
     public static ValueNode getJavaFrameAnchor(CallTargetNode callTarget) {
         return callTarget.invoke().classInit();
