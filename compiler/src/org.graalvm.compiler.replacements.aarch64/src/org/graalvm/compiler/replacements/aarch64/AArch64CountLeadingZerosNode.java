@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements.aarch64;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
@@ -85,6 +86,11 @@ public final class AArch64CountLeadingZerosNode extends UnaryNode implements Ari
 
     @Override
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
-        builder.setResult(this, ((AArch64ArithmeticLIRGeneratorTool) gen).emitCountLeadingZeros(builder.operand(getValue())));
+        ValueNode value = getValue();
+        Value operand = builder.operand(value);
+        AArch64ArithmeticLIRGeneratorTool t = (AArch64ArithmeticLIRGeneratorTool) gen;
+        Value v2 = t.emitCountLeadingZeros(operand);
+        builder.setResult(this, v2);
+    //    builder.setResult(this, ((AArch64ArithmeticLIRGeneratorTool) gen).emitCountLeadingZeros(builder.operand(getValue())));
     }
 }
