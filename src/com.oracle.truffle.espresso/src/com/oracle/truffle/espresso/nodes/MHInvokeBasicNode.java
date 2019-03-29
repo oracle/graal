@@ -44,7 +44,6 @@ public class MHInvokeBasicNode extends EspressoBaseNode {
     public Object invokeNaked(VirtualFrame frame) {
         Meta meta = getMeta();
         StaticObjectImpl mh = (StaticObjectImpl) frame.getArguments()[0];
-
         return node.executeBasic(mh, frame.getArguments(), meta);
     }
 }

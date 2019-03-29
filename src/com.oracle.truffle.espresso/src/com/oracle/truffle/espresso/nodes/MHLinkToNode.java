@@ -29,8 +29,14 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
+
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants._linkToInterface;
+import static com.oracle.truffle.espresso.classfile.Constants._linkToSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants._linkToStatic;
+import static com.oracle.truffle.espresso.classfile.Constants._linkToVirtual;
 
 public class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
@@ -54,29 +60,30 @@ public class MHLinkToNode extends EspressoBaseNode {
         assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
 
         Method target = (Method) memberName.getHiddenField("vmtarget");
-        int refKind = Target_java_lang_invoke_MethodHandleNatives.getRefKind((int) memberName.getField(memberName.getKlass().getMeta().MNflags));
 
-        assert ((refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeStatic && !target.hasReceiver()) ||
-                        (refKind != Target_java_lang_invoke_MethodHandleNatives.REF_invokeStatic && target.hasReceiver()));
-
-        if (target.hasReceiver()) {
+        if (id == _linkToStatic) {
+            // args of the form {arg1, arg2..., memberName}
+            return rebasic(target.invokeDirect(null, unbasic(args, target.getParsedSignature(), 0, argCount - 1)), Signatures.returnType(target.getParsedSignature()));
+        } else {
             assert args.length >= 2;
             // args of the form {receiver, arg1, arg2... , memberName}
             StaticObjectImpl receiver = (StaticObjectImpl) args[0];
             assert receiver.getKlass() instanceof ObjectKlass;
-            if (target.getRefKind() == Target_java_lang_invoke_MethodHandleNatives.REF_invokeSpecial ||
-                            refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeSpecial) {
-                return rebasic(target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2)), Signatures.returnType(target.getParsedSignature()));
-            } else if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual) {
-                target = (receiver.getKlass()).vtableLooup(target.getVTableIndex());
-            } else if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface) {
-                target = (receiver.getKlass()).itableLookup(target.getDeclaringKlass(), target.getITableIndex());
+            switch (id) {
+                case _linkToSpecial:
+                    break;
+                case _linkToVirtual:
+                    if (!(target.getRefKind() == REF_invokeSpecial)) {
+                        target = (receiver.getKlass()).vtableLooup(target.getVTableIndex());
+                    }
+                    break;
+                case _linkToInterface:
+                    target = (receiver.getKlass()).itableLookup(target.getDeclaringKlass(), target.getITableIndex());
+                    break;
+                default:
+                    throw EspressoError.shouldNotReachHere("Unrecognized member name");
             }
-            // Constructors, etc...
             return rebasic(target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2)), Signatures.returnType(target.getParsedSignature()));
-        } else {
-            // args of the form {arg1, arg2... , memberName}
-            return rebasic(target.invokeDirect(null, unbasic(args, target.getParsedSignature(), 0, argCount - 1)), Signatures.returnType(target.getParsedSignature()));
         }
     }
 

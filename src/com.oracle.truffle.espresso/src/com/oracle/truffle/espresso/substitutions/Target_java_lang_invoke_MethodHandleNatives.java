@@ -43,6 +43,25 @@ import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_getField;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_getStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
+import static com.oracle.truffle.espresso.classfile.Constants._firstStaticSigPoly;
+import static com.oracle.truffle.espresso.classfile.Constants._invokeBasic;
+import static com.oracle.truffle.espresso.classfile.Constants._invokeGeneric;
+import static com.oracle.truffle.espresso.classfile.Constants._lastSigPoly;
+import static com.oracle.truffle.espresso.classfile.Constants._linkToInterface;
+import static com.oracle.truffle.espresso.classfile.Constants._linkToSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants._linkToStatic;
+import static com.oracle.truffle.espresso.classfile.Constants._linkToVirtual;
+import static com.oracle.truffle.espresso.classfile.Constants._none;
 import static java.lang.Math.max;
 
 @EspressoSubstitutions
@@ -367,7 +386,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     private static void plantResolvedField(StaticObjectImpl memberName, Field field, int refKind, Field flagField) {
         memberName.setHiddenField("vmtarget", field.getDeclaringKlass());
-        // Remember we are accessing a static field.
         memberName.setHiddenField("vmindex", (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
         memberName.setHiddenField("vmfield", field);
         memberName.setField(flagField, getFieldFlags(refKind, field));
@@ -453,19 +471,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     // End helping methods
 
-    // Useful thingies.
+    // Useful thingies... ?
 
-    public static final int // intrinsics
-                    _none = 0,
-                    _invokeGeneric = 1,
-                    _invokeBasic = 2,
-                    _linkToVirtual = 3,
-                    _linkToStatic = 4,
-                    _linkToSpecial = 5,
-                    _linkToInterface = 6,
 
-                    _firstStaticSigPoly = _linkToVirtual,
-                    _lastSigPoly = _linkToInterface;
 
     static final int // for getConstant
                     GC_COUNT_GWT = 4,
@@ -489,43 +497,5 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     MN_SEARCH_SUPERCLASSES = 0x00100000,
                     MN_SEARCH_INTERFACES = 0x00200000,
                     ALL_KINDS = MN_IS_CONSTRUCTOR | MN_IS_FIELD | MN_IS_METHOD | MN_IS_TYPE;
-
-    /**
-     * Access modifier flags.
-     */
-    static final char ACC_PUBLIC = 0x0001,
-                    ACC_PRIVATE = 0x0002,
-                    ACC_PROTECTED = 0x0004,
-                    ACC_STATIC = 0x0008,
-                    ACC_FINAL = 0x0010,
-                    ACC_SYNCHRONIZED = 0x0020,
-                    ACC_VOLATILE = 0x0040,
-                    ACC_TRANSIENT = 0x0080,
-                    ACC_NATIVE = 0x0100,
-                    ACC_INTERFACE = 0x0200,
-                    ACC_ABSTRACT = 0x0400,
-                    ACC_STRICT = 0x0800,
-                    ACC_SYNTHETIC = 0x1000,
-                    ACC_ANNOTATION = 0x2000,
-                    ACC_ENUM = 0x4000,
-                    // aliases:
-                    ACC_SUPER = ACC_SYNCHRONIZED,
-                    ACC_BRIDGE = ACC_VOLATILE,
-                    ACC_VARARGS = ACC_TRANSIENT;
-
-    /**
-     * Constant pool reference-kind codes, as used by CONSTANT_MethodHandle CP entries.
-     */
-    public static final byte REF_NONE = 0,  // null value
-                    REF_getField = 1,
-                    REF_getStatic = 2,
-                    REF_putField = 3,
-                    REF_putStatic = 4,
-                    REF_invokeVirtual = 5,
-                    REF_invokeStatic = 6,
-                    REF_invokeSpecial = 7,
-                    REF_newInvokeSpecial = 8,
-                    REF_invokeInterface = 9,
-                    REF_LIMIT = 10;
 
 }

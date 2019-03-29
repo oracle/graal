@@ -62,15 +62,28 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
+
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 public final class Method implements ModifiersProvider, ContextAccess {
     public static final Method[] EMPTY_ARRAY = new Method[0];
 
-    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicInvokes = new ConcurrentHashMap<>();
-    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicLinkTo = new ConcurrentHashMap<>();
-    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicBasic = new ConcurrentHashMap<>();
+    @SuppressWarnings("unchecked")
+    @CompilationFinal(dimensions = 1)
+    private static final ConcurrentHashMap<Symbol<Signature>, Method>[] intrinsics = new ConcurrentHashMap[6];
+    {
+        for (int i = 0; i < intrinsics.length; i++) {
+            intrinsics[i] = new ConcurrentHashMap<>();
+        }
+    }
+
+//    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicInvokes = new ConcurrentHashMap<>();
+//    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicLinkTo = new ConcurrentHashMap<>();
+//    public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicBasic = new ConcurrentHashMap<>();
 
     private final LinkedMethod linkedMethod;
     private final RuntimeConstantPool pool;
@@ -176,14 +189,14 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public final void initRefKind() {
         if (isStatic()) {
-            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeStatic;
+            this.refKind = REF_invokeStatic;
         } else if (isPrivate() || isConstructor()) {
-            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeSpecial;
+            this.refKind = REF_invokeSpecial;
         } else if (declaringKlass.isInterface()) {
-            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface;
+            this.refKind = REF_invokeInterface;
         } else {
             assert !declaringKlass.isPrimitive();
-            this.refKind = Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual;
+            this.refKind = REF_invokeVirtual;
         }
     }
 
@@ -499,9 +512,9 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     // Polymorphic signature method 'creation'
 
-    Method findInvokeIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory) {
+    Method findIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory, int id) {
         assert (this.getDeclaringKlass().getType() == Type.MethodHandle);
-        Method method = intrinsicInvokes.get(signature);
+        Method method = intrinsics[id].get(signature);
         if (method != null) {
             return method;
         }
@@ -509,35 +522,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         method = new Method(declaringKlass, linkedMethod, signature);
         EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
         method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        intrinsicInvokes.put(signature, method);
-        return method;
-    }
-
-    Method findInvokeBasicIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory) {
-        assert (this.getDeclaringKlass().getType() == Type.MethodHandle);
-        Method method = intrinsicBasic.get(signature);
-        if (method != null) {
-            return method;
-        }
-        CompilerAsserts.neverPartOfCompilation();
-        method = new Method(declaringKlass, linkedMethod, signature);
-        EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
-        method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        intrinsicBasic.put(signature, method);
-        return method;
-    }
-
-    Method findLinkToIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory) {
-        assert (this.getDeclaringKlass().getType() == Type.MethodHandle);
-        Method method = intrinsicLinkTo.get(signature);
-        if (method != null) {
-            return method;
-        }
-        CompilerAsserts.neverPartOfCompilation();
-        method = new Method(declaringKlass, linkedMethod, signature);
-        EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
-        method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        intrinsicLinkTo.put(signature, method);
+        intrinsics[id].put(signature, method);
         return method;
     }
 
