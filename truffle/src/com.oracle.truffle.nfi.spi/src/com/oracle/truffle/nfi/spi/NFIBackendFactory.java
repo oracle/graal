@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.types;
+package com.oracle.truffle.nfi.spi;
 
-public final class NativeFunctionTypeMirror extends NativeTypeMirror {
+/**
+ * Service interface for languages that implement a backend for the Truffle NFI.
+ */
+public interface NFIBackendFactory {
 
-    private final NativeSignature signature;
+    /**
+     * Provides the backend id. NFI backends can be selected by using the "with &lt;id&gt;" syntax.
+     */
+    String getBackendId();
 
-    NativeFunctionTypeMirror(NativeSignature signature) {
-        super(Kind.FUNCTION);
-        this.signature = signature;
-    }
-
-    public NativeSignature getSignature() {
-        return signature;
-    }
+    /**
+     * Create an instance of an {@link NFIBackend}. The NFI backend may keep a reference to the
+     * tools for later use.
+     */
+    NFIBackend createBackend(NFIBackendTools tools);
 }

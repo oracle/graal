@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,56 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.types;
+package com.oracle.truffle.nfi.spi.types;
 
-import java.util.ArrayList;
-import java.util.List;
+public abstract class NativeTypeMirror {
 
-/**
- * Parsed representation of a Truffle NFI source. To use the Truffle NFI, evaluate a source with the
- * mime-type application/x-native. See {@link Parser} for the syntax of the Truffle NFI source.
- */
-public final class NativeSource {
+    private final Kind kind;
 
-    private final String nfiId;
-    private final String libraryDescriptor;
-
-    private final List<String> preBoundSymbols;
-    private final List<String> preBoundSignatures;
-
-    NativeSource(String nfiId, String libraryDescriptor) {
-        this.nfiId = nfiId;
-        this.libraryDescriptor = libraryDescriptor;
-        this.preBoundSymbols = new ArrayList<>();
-        this.preBoundSignatures = new ArrayList<>();
+    public enum Kind {
+        SIMPLE,
+        ARRAY,
+        FUNCTION,
+        ENV;
     }
 
-    public boolean isDefaultBackend() {
-        return nfiId == null;
+    NativeTypeMirror(Kind kind) {
+        this.kind = kind;
     }
 
-    public String getNFIBackendId() {
-        return nfiId;
-    }
-
-    public String getLibraryDescriptor() {
-        return libraryDescriptor;
-    }
-
-    public int preBoundSymbolsLength() {
-        return preBoundSymbols.size();
-    }
-
-    public String getPreBoundSymbol(int i) {
-        return preBoundSymbols.get(i);
-    }
-
-    public String getPreBoundSignature(int i) {
-        return preBoundSignatures.get(i);
-    }
-
-    void register(String symbol, String signature) {
-        preBoundSymbols.add(symbol);
-        preBoundSignatures.add(signature);
+    public final Kind getKind() {
+        return kind;
     }
 }

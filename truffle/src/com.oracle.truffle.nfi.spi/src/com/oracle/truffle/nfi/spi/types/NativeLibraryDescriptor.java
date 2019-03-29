@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,49 +38,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.impl;
+package com.oracle.truffle.nfi.spi.types;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import java.util.Collections;
+import java.util.List;
 
-@ExportLibrary(InteropLibrary.class)
-final class KeysArray implements TruffleObject {
+/**
+ * Parsed representation of library descriptors of the Truffle NFI.
+ *
+ * @see com.oracle.truffle.nfi.spi.NativeBackend#parse
+ */
+public final class NativeLibraryDescriptor {
 
-    @CompilationFinal(dimensions = 1) private final String[] keys;
+    private final String filename;
+    private final List<String> flags;
 
-    KeysArray(String[] keys) {
-        this.keys = keys;
+    NativeLibraryDescriptor(String filename, List<String> flags) {
+        this.filename = filename;
+        this.flags = flags;
     }
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean hasArrayElements() {
-        return true;
+    /**
+     * Check whether this represents the default library.
+     */
+    public boolean isDefaultLibrary() {
+        return filename == null;
     }
 
-    @ExportMessage
-    long getArraySize() {
-        return keys.length;
+    /**
+     * @return the filename of the library, or {@code null} for the default library
+     */
+    public String getFilename() {
+        return filename;
     }
 
-    @ExportMessage
-    boolean isArrayElementReadable(long idx) {
-        return 0 <= idx && idx < keys.length;
-    }
-
-    @ExportMessage
-    String readArrayElement(long idx,
-                    @Cached BranchProfile exception) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(idx)) {
-            exception.enter();
-            throw InvalidArrayIndexException.create(idx);
+    /**
+     * An optional array of implementation dependent flags. Implementors of the TruffleNFI backends
+     * should ignore unknown flags, and should always provide sensible default behavior if no flags
+     * are specified.
+     *
+     * This can for example be used to specify the {@code RTLD_*} flags on posix compliant systems.
+     */
+    public List<String> getFlags() {
+        if (flags == null) {
+            return null;
+        } else {
+            return Collections.unmodifiableList(flags);
         }
-        return keys[(int) idx];
     }
+
 }

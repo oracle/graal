@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,9 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.types;
+package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.nfi.types.Lexer.Token;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.spi.types.NativeTypeMirror;
+import com.oracle.truffle.nfi.spi.types.NativeSignature;
+import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.Lexer.Token;
+import com.oracle.truffle.nfi.spi.types.TypeFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -86,23 +91,16 @@ import java.util.List;
  * {@link #parseSignature(java.lang.CharSequence)} to parse the signature argument string of the
  * {@code bind} method on native symbols.
  */
-public final class Parser {
+final class Parser extends TypeFactory {
 
-    public static NativeLibraryDescriptor parseLibraryDescriptor(CharSequence source) {
-        Parser parser = new Parser(source);
-        NativeLibraryDescriptor ret = parser.parseLibraryDescriptor();
-        parser.expect(Token.EOF);
-        return ret;
-    }
-
-    public static NativeSignature parseSignature(CharSequence source) {
+    static NativeSignature parseSignature(CharSequence source) {
         Parser parser = new Parser(source);
         NativeSignature ret = parser.parseSignature();
         parser.expect(Token.EOF);
         return ret;
     }
 
-    public static NativeSource parseNFISource(CharSequence source) {
+    static NativeSource parseNFISource(CharSequence source) {
         Parser parser = new Parser(source);
         NativeSource ret = parser.parseNFISource();
         parser.expect(Token.EOF);
@@ -131,10 +129,8 @@ public final class Parser {
             nfiId = lexer.currentValue();
         }
 
-        lexer.mark();
-        parseLibraryDescriptor();
-
-        NativeSource ret = new NativeSource(nfiId, lexer.markedValue());
+        NativeLibraryDescriptor descriptor = parseLibraryDescriptor();
+        NativeSource ret = new NativeSource(nfiId, descriptor);
         if (lexer.next() == Token.OPENBRACE) {
             for (;;) {
                 Token closeOrId = lexer.next();
@@ -167,14 +163,10 @@ public final class Parser {
                 case "load":
                     return parseLoadLibrary();
                 case "default":
-                    return parseDefaultLibrary();
+                    return createDefaultLibrary();
             }
         }
         throw new IllegalArgumentException(String.format("expected 'load' or 'default', but got '%s'", keyword));
-    }
-
-    private static NativeLibraryDescriptor parseDefaultLibrary() {
-        return new NativeLibraryDescriptor(null, null);
     }
 
     private String parseIdentOrString() {
@@ -194,7 +186,7 @@ public final class Parser {
         }
 
         String filename = parseIdentOrString();
-        return new NativeLibraryDescriptor(filename, flags);
+        return createLibraryDescriptor(filename, flags);
     }
 
     private List<String> parseFlags() {
@@ -219,7 +211,7 @@ public final class Parser {
     private NativeTypeMirror parseType() {
         switch (lexer.peek()) {
             case OPENPAREN:
-                return new NativeFunctionTypeMirror(parseSignature());
+                return createFunctionTypeMirror(parseSignature());
             case OPENBRACKET:
                 return parseArrayType();
             case IDENTIFIER:
@@ -260,28 +252,28 @@ public final class Parser {
         NativeTypeMirror retType = parseType();
 
         if (fixedArgCount >= 0) {
-            return NativeSignature.prepareVarargs(retType, fixedArgCount, args);
+            return createVarargsSignature(retType, fixedArgCount, args);
         } else {
-            return NativeSignature.prepare(retType, args);
+            return createSignature(retType, args);
         }
     }
 
-    private NativeArrayTypeMirror parseArrayType() {
+    private NativeTypeMirror parseArrayType() {
         expect(Token.OPENBRACKET);
         NativeTypeMirror elementType = parseSimpleType(false);
         expect(Token.CLOSEBRACKET);
 
-        return new NativeArrayTypeMirror(elementType);
+        return createArrayTypeMirror(elementType);
     }
 
     private NativeTypeMirror parseSimpleType(boolean envAllowed) {
         expect(Token.IDENTIFIER);
         String identifier = lexer.currentValue();
         if (envAllowed && "env".equalsIgnoreCase(identifier)) {
-            return new NativeEnvTypeMirror();
+            return createEnvTypeMirror();
         } else {
             NativeSimpleType simpleType = NativeSimpleType.valueOf(identifier.toUpperCase());
-            return new NativeSimpleTypeMirror(simpleType);
+            return createSimpleTypeMirror(simpleType);
         }
     }
 }

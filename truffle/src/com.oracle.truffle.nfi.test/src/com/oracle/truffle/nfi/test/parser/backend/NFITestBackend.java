@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,53 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.nfi.test.parser.backend;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.spi.NFIBackend;
+import com.oracle.truffle.nfi.spi.NFIBackendFactory;
+import com.oracle.truffle.nfi.spi.NFIBackendTools;
+import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
 
-@TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true)
-public class NFILanguage extends TruffleLanguage<NFIContext> {
+@Registration(id = "test/nfi-backend", name = "NFITestBackend", internal = true, services = NFIBackendFactory.class)
+public class NFITestBackend extends TruffleLanguage<Env> {
 
-    public static final String MIME_TYPE = "application/x-native";
+    NFIBackendTools tools;
+
+    NFIBackend backend = new NFIBackend() {
+
+        @Override
+        public CallTarget parse(NativeLibraryDescriptor descriptor) {
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new TestLibrary(descriptor)));
+        }
+    };
 
     @Override
-    protected NFIContext createContext(Env env) {
-        return new NFIContext(env);
-    }
+    protected Env createContext(Env env) {
+        env.registerService(new NFIBackendFactory() {
 
-    @Override
-    protected boolean patchContext(NFIContext context, Env newEnv) {
-        context.patch(newEnv);
-        return true;
+            @Override
+            public String getBackendId() {
+                return "test";
+            }
+
+            @Override
+            public NFIBackend createBackend(NFIBackendTools t) {
+                tools = t;
+                return backend;
+            }
+        });
+        return env;
     }
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        CharSequence nfiSource = request.getSource().getCharacters();
-        NativeSource source = Parser.parseNFISource(nfiSource);
+        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
 
-        String backendId;
-        if (source.isDefaultBackend()) {
-            backendId = "native";
-        } else {
-            backendId = source.getNFIBackendId();
-        }
-
-        NFIBackend backend = getContextReference().get().getBackend(backendId);
-        CallTarget loadLibrary = backend.parse(source.getLibraryDescriptor());
-        return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, loadLibrary, source));
+            @Override
+            public Object execute(VirtualFrame frame) {
+                throw new UnsupportedOperationException("illegal access to internal language");
+            }
+        });
     }
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof NFILibrary || object instanceof NFISymbol;
-    }
-
-    @Override
-    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-        return true;
+        return false;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,67 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.impl;
+package com.oracle.truffle.nfi.test.parser.backend;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.impl.LibFFIType.Direction;
+import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
-final class LibFFIFunction implements TruffleObject {
+public class TestLibrary implements TruffleObject {
 
-    private static final KeysArray KEYS = new KeysArray(new String[]{"bind"});
+    public final NativeLibraryDescriptor descriptor;
 
-    private final NativePointer symbol;
-    private final LibFFISignature signature;
-
-    LibFFIFunction(NativePointer symbol, LibFFISignature signature) {
-        if (signature.getAllowedCallDirection() == Direction.NATIVE_TO_JAVA_ONLY) {
-            throw new IllegalArgumentException("signature is only valid for native to Java callbacks");
-        }
-        this.symbol = symbol;
-        this.signature = signature;
-    }
-
-    public LibFFISignature getSignature() {
-        return signature;
-    }
-
-    public long getAddress() {
-        return symbol.nativePointer;
-    }
-
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object execute(Object[] args,
-                    @Cached FunctionExecuteNode cachedExecute) throws ArityException, UnsupportedTypeException {
-        return cachedExecute.execute(this, args);
-    }
-
-    @ExportMessage
-    boolean isPointer() {
-        return true;
-    }
-
-    @ExportMessage
-    long asPointer() {
-        return symbol.nativePointer;
-    }
-
-    @ExportMessage
-    LibFFIFunction toNative() {
-        return this;
+    TestLibrary(NativeLibraryDescriptor descriptor) {
+        this.descriptor = descriptor;
     }
 
     @ExportMessage
@@ -108,24 +63,17 @@ final class LibFFIFunction implements TruffleObject {
 
     @ExportMessage
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return KEYS;
+        return null;
     }
 
     @ExportMessage
-    boolean isMemberInvocable(String member) {
-        return "bind".equals(member);
+    boolean isMemberReadable(@SuppressWarnings("unused") String name) {
+        return true;
     }
 
     @ExportMessage
-    Object invokeMember(String method, Object[] args,
-                    @Cached BindSignatureNode bind) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
-        if (!"bind".equals(method)) {
-            throw UnknownIdentifierException.create(method);
-        }
-        if (args.length != 1) {
-            throw ArityException.create(1, args.length);
-        }
-
-        return bind.execute(symbol, args[0]);
+    Object readMember(String name,
+                    @CachedLanguage NFITestBackend backend) {
+        return backend.tools.createBindableSymbol(new TestSymbol(name));
     }
 }
