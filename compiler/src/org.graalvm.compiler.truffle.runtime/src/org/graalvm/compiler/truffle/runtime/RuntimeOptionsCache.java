@@ -30,20 +30,20 @@ package org.graalvm.compiler.truffle.runtime;
  */
 public class RuntimeOptionsCache {
 
-    private boolean legacySplitting;
-    private boolean splitting;
-    private boolean splittingAllowForcedSplits;
-    private boolean splittingDumpDecisions;
-    private boolean splittingTraceEvents;
-    private boolean traceSplittingSummary;
-    private int splittingMaxCalleeSize;
-    private int splittingMaxPropagationDepth;
-    private double splittingGrowthLimit;
-    private int splittingMaxNumberOfSplitNodes;
+    private final boolean legacySplitting;
+    private final boolean splitting;
+    private final boolean splittingAllowForcedSplits;
+    private final boolean splittingDumpDecisions;
+    private final boolean splittingTraceEvents;
+    private final boolean traceSplittingSummary;
+    private final int splittingMaxCalleeSize;
+    private final int splittingMaxPropagationDepth;
+    private final double splittingGrowthLimit;
+    private final int splittingMaxNumberOfSplitNodes;
 
     public RuntimeOptionsCache() {
         // Splitting
-        splitting = TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Splitting);
+        splitting = TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Splitting) && TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY;
         legacySplitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting);
         splittingAllowForcedSplits = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
         splittingDumpDecisions = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions);
@@ -53,10 +53,6 @@ public class RuntimeOptionsCache {
         traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
         splittingGrowthLimit = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit);
         splittingMaxNumberOfSplitNodes = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes);
-        // Mode overrides
-        if (TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY) {
-            splitting = false;
-        }
     }
 
     boolean isSplittingDumpDecisions() {
