@@ -218,7 +218,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
         Source source = script.getSource();
-        if (source.getLength() > 0) {
+        if (source.hasCharacters() && source.getLength() > 0) {
             int l1 = start.getLine();
             int c1 = start.getColumn();
             if (c1 <= 0) {
