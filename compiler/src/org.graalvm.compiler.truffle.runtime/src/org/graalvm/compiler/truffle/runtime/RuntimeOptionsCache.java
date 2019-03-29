@@ -32,7 +32,6 @@ import org.graalvm.options.OptionValues;
  */
 public class RuntimeOptionsCache {
 
-    // Splitting
     private boolean legacySplitting;
     private boolean splitting;
     private boolean splittingAllowForcedSplits;
@@ -41,10 +40,6 @@ public class RuntimeOptionsCache {
     private boolean traceSplittingSummary;
     private int splittingMaxCalleeSize;
     private int splittingMaxPropagationDepth;
-    // Inlining
-    private boolean inlining;
-    private int inliningNodeBudget;
-    private int inliningRecursionDepth;
     private double splittingGrowthLimit;
     private int splittingMaxNumberOfSplitNodes;
 
@@ -60,14 +55,9 @@ public class RuntimeOptionsCache {
         traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
         splittingGrowthLimit = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit);
         splittingMaxNumberOfSplitNodes = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes);
-        // Inlining
-        inlining = TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Inlining);
-        inliningNodeBudget = TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.InliningNodeBudget);
-        inliningRecursionDepth = TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.InliningRecursionDepth);
         // Mode overrides
         if (TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY) {
             splitting = false;
-            inliningNodeBudget = inliningNodeBudget / 4;
         }
     }
 
@@ -86,14 +76,9 @@ public class RuntimeOptionsCache {
             splittingGrowthLimit = SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit.getValue(optionValues);
             splittingMaxNumberOfSplitNodes = SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes.getValue(optionValues);
         }
-        // Inlining
-        inlining = target.getOptionValue(PolyglotCompilerOptions.Inlining);
-        inliningNodeBudget = target.getOptionValue(PolyglotCompilerOptions.InliningNodeBudget);
-        inliningRecursionDepth = target.getOptionValue(PolyglotCompilerOptions.InliningRecursionDepth);
         // Mode overrides
         if (target.getOptionValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY) {
             splitting = false;
-            inliningNodeBudget = inliningNodeBudget / 4;
         }
     }
 
@@ -127,18 +112,6 @@ public class RuntimeOptionsCache {
 
     int getSplittingMaxPropagationDepth() {
         return splittingMaxPropagationDepth;
-    }
-
-    boolean isInlining() {
-        return inlining;
-    }
-
-    int getInliningNodeBudget() {
-        return inliningNodeBudget;
-    }
-
-    int getInliningRecursionDepth() {
-        return inliningRecursionDepth;
     }
 
     double getSplittingGrowthLimit() {

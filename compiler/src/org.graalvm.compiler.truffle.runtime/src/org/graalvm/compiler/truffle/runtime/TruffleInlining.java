@@ -58,23 +58,22 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
     }
 
     public TruffleInlining(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy) {
-        this(createDecisions(sourceTarget, policy, sourceTarget.getCompilerOptions(), sourceTarget.engineData.options));
+        this(createDecisions(sourceTarget, policy, sourceTarget.getCompilerOptions()));
 
     }
 
-    private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options,
-                    RuntimeOptionsCache runtimeOptionsCache) {
-        if (!runtimeOptionsCache.isInlining()) {
+    private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
+        if (!sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining)) {
             return Collections.emptyList();
         }
         int[] visitedNodes = {0};
         int nodeCount = sourceTarget.getNonTrivialNodeCount();
-        List<TruffleInliningDecision> exploredCallSites = exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), nodeCount, policy, visitedNodes, new HashMap<>(), runtimeOptionsCache);
+        List<TruffleInliningDecision> exploredCallSites = exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), nodeCount, policy, visitedNodes, new HashMap<>());
         return decideInlining(exploredCallSites, policy, nodeCount, options);
     }
 
     private static List<TruffleInliningDecision> exploreCallSites(List<OptimizedCallTarget> stack, int callStackNodeCount, TruffleInliningPolicy policy, int[] visitedNodes,
-                    Map<OptimizedCallTarget, TruffleInliningDecision> rejectedDecisionsCache, RuntimeOptionsCache runtimeOptionsCache) {
+                    Map<OptimizedCallTarget, TruffleInliningDecision> rejectedDecisionsCache) {
         List<TruffleInliningDecision> exploredCallSites = new ArrayList<>();
         List<OptimizedCallTarget> toRemoveFromCache = new LinkedList<>();
         OptimizedCallTarget parentTarget = stack.get(stack.size() - 1);
@@ -84,7 +83,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
             TruffleInliningDecision decision = rejectedDecisionsCache.get(currentTarget);
             if (decision == null) {
                 // Cache miss
-                decision = exploreCallSite(stack, callStackNodeCount, policy, callNode, visitedNodes, rejectedDecisionsCache, runtimeOptionsCache);
+                decision = exploreCallSite(stack, callStackNodeCount, policy, callNode, visitedNodes, rejectedDecisionsCache);
                 if (!policy.isAllowed(decision.getProfile(), callStackNodeCount, callNode.getCompilerOptions())) {
                     rejectedDecisionsCache.put(currentTarget, decision);
                     toRemoveFromCache.add(currentTarget);
@@ -93,7 +92,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
                 // Cache hit!
                 TruffleInliningProfile cachedProfile = decision.getProfile();
                 TruffleInliningProfile newProfile = new TruffleInliningProfile(callNode, cachedProfile.getNodeCount(), cachedProfile.getDeepNodeCount(), cachedProfile.getFrequency(),
-                                cachedProfile.getRecursions(), runtimeOptionsCache);
+                                cachedProfile.getRecursions());
                 newProfile.setCached(cachedProfile);
                 TruffleInliningDecision newDecision = new TruffleInliningDecision(decision.getTarget(), newProfile, decision.getCallSites());
                 decision = newDecision;
@@ -122,7 +121,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
     }
 
     private static TruffleInliningDecision exploreCallSite(List<OptimizedCallTarget> callStack, int callStackNodeCount, TruffleInliningPolicy policy, OptimizedDirectCallNode callNode,
-                    int[] visitedNodes, Map<OptimizedCallTarget, TruffleInliningDecision> rejectedDecisionsCache, RuntimeOptionsCache runtimeOptionsCache) {
+                    int[] visitedNodes, Map<OptimizedCallTarget, TruffleInliningDecision> rejectedDecisionsCache) {
 
         OptimizedCallTarget parentTarget = callStack.get(callStack.size() - 2);
         OptimizedCallTarget currentTarget = callStack.get(callStack.size() - 1);
@@ -143,8 +142,8 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
              */
             visitedNodes[0]++;
             final CompilerOptions options = callNode.getCompilerOptions();
-            if (policy.isAllowed(new TruffleInliningProfile(callNode, nodeCount, nodeCount, frequency, recursions, runtimeOptionsCache), callStackNodeCount, options)) {
-                List<TruffleInliningDecision> exploredCallSites = exploreCallSites(callStack, callStackNodeCount + nodeCount, policy, visitedNodes, rejectedDecisionsCache, runtimeOptionsCache);
+            if (policy.isAllowed(new TruffleInliningProfile(callNode, nodeCount, nodeCount, frequency, recursions), callStackNodeCount, options)) {
+                List<TruffleInliningDecision> exploredCallSites = exploreCallSites(callStack, callStackNodeCount + nodeCount, policy, visitedNodes, rejectedDecisionsCache);
                 childCallSites = decideInlining(exploredCallSites, policy, nodeCount, options);
                 for (TruffleInliningDecision childCallSite : childCallSites) {
                     if (childCallSite.shouldInline()) {
@@ -157,7 +156,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
             }
         }
 
-        TruffleInliningProfile profile = new TruffleInliningProfile(callNode, nodeCount, deepNodeCount, frequency, recursions, runtimeOptionsCache);
+        TruffleInliningProfile profile = new TruffleInliningProfile(callNode, nodeCount, deepNodeCount, frequency, recursions);
         profile.setScore(policy.calculateScore(profile));
         return new TruffleInliningDecision(currentTarget, profile, childCallSites);
     }
