@@ -573,7 +573,7 @@ public class NativeImageGenerator {
 
                 bigbang.getUnsupportedFeatures().report(bigbang);
             } catch (UnsupportedFeatureException ufe) {
-                throw UserError.abort(ufe.getMessage());
+                throw FallbackFeature.reportAsFallback(ufe);
             }
 
             recordMethodsWithStackValues();
