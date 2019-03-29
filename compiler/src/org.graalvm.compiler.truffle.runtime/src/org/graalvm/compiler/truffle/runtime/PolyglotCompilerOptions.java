@@ -75,7 +75,7 @@ public final class PolyglotCompilerOptions {
                             try {
                                 return EngineModeEnum.valueOf(s.toUpperCase());
                             } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Mode can be: 'latency' or 'throughput'.");
+                                throw new IllegalArgumentException("Mode can be: 'default', 'latency' or 'throughput'.");
                             }
                         }
                     });

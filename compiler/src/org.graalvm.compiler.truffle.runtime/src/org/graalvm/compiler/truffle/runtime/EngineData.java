@@ -30,9 +30,9 @@ import java.util.function.Supplier;
  * Class used to store data used by the compiler in the Engine. Enables "global" compiler state per
  * engine.
  */
-class EngineData {
+final class EngineData {
 
-    static final Supplier<EngineData> engineDataConstructor = new Supplier<EngineData>() {
+    static final Supplier<EngineData> ENGINE_DATA_SUPPLIER = new Supplier<EngineData>() {
         @Override
         public EngineData get() {
             return new EngineData();
@@ -41,6 +41,6 @@ class EngineData {
 
     int splitLimit;
     int splitCount;
-    RuntimeOptionsCache options = new RuntimeOptionsCache();
-    TruffleSplittingStrategy.SplitStatisticsReporter reporter = new TruffleSplittingStrategy.SplitStatisticsReporter(this);
+    final RuntimeOptionsCache options = new RuntimeOptionsCache();
+    final TruffleSplittingStrategy.SplitStatisticsReporter reporter = new TruffleSplittingStrategy.SplitStatisticsReporter(this);
 }
