@@ -28,20 +28,61 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.svm.core.stack.JavaFrameAnchor;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+
+/**
+ * Represents the prologue that must be executed before a call to a C function, i.e., a function
+ * that requires the setup of a {@link JavaFrameAnchor} and a {@link StatusSupport thread state
+ * transition}.
+ *
+ * It must always be paired with a {@link CFunctionEpilogueNode}. In between the prologue and
+ * epilogue, there must be exactly one {@link InvokeNode} (note that it must not be an invoke that
+ * requires an exception handler, i.e., it must not be an {@link InvokeWithExceptionNode}.
+ *
+ * Part of the prologue/epilogue are emitted by the lowering of these nodes using snippets, see
+ * class CFunctionSnippets. Other parts are emitted in the backend when the call instruction is
+ * emitted.
+ */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class CFunctionPrologueNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single {
+public final class CFunctionPrologueNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single, ControlFlowAnchored {
     public static final NodeClass<CFunctionPrologueNode> TYPE = NodeClass.create(CFunctionPrologueNode.class);
+
+    /**
+     * The marker object prevents value numbering of the node. This means that the marker must be a
+     * unique object per node, even after node cloning (e.g., because of method inlining).
+     * Therefore, {@link #afterClone} properly re-initializes the field to a new marker instance.
+     *
+     * The marker is also used for LIR frame state verification, to ensure we have a proper matching
+     * of prologue and epilogue and no unexpected machine code while the thread is in Native state.
+     */
+    private CFunctionPrologueMarker marker;
 
     public CFunctionPrologueNode() {
         super(TYPE, StampFactory.forVoid());
+        marker = new CFunctionPrologueMarker();
+    }
+
+    @Override
+    protected void afterClone(Node other) {
+        super.afterClone(other);
+        marker = new CFunctionPrologueMarker();
+    }
+
+    public CFunctionPrologueMarker getMarker() {
+        return marker;
     }
 
     @Override

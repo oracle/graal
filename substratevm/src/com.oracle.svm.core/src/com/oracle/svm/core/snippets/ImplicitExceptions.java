@@ -98,7 +98,7 @@ public class ImplicitExceptions {
     }
 
     private static void vmErrorIfImplicitExceptionsAreFatal() {
-        if (implicitExceptionsAreFatal.get() > 0) {
+        if (implicitExceptionsAreFatal.get() > 0 || SnippetRuntime.exceptionsAreFatal()) {
             throw VMError.shouldNotReachHere("Implicit exception thrown in code where such exceptions are fatal errors");
         }
     }

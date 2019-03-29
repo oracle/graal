@@ -73,7 +73,7 @@ public class VMThreadLocalInfo {
     public final JavaKind storageKind;
     public final Class<?> valueClass;
     @UnknownObjectField(types = {String.class}) public String name;
-    @UnknownPrimitiveField public long offset;
+    @UnknownPrimitiveField public int offset;
     @UnknownPrimitiveField public int sizeInBytes;
 
     @Platforms(Platform.HOSTED_ONLY.class)

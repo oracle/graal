@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.thread;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -217,11 +218,11 @@ public class VMThreadSTFeature implements GraalFeature {
         int nextPrimitive = 0;
         for (VMThreadLocalInfo info : sortedThreadLocalInfos) {
             if (info.isObject) {
-                info.offset = layout.getArrayElementOffset(JavaKind.Object, nextObject);
+                info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObject));
                 nextObject += 1;
             } else {
                 assert nextPrimitive % Math.min(8, info.sizeInBytes) == 0 : "alignment mismatch: " + info.sizeInBytes + ", " + nextPrimitive;
-                info.offset = layout.getArrayElementOffset(JavaKind.Byte, nextPrimitive);
+                info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Byte, nextPrimitive));
                 nextPrimitive += info.sizeInBytes;
             }
         }

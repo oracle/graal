@@ -64,6 +64,13 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     }
 
     @Override
+    public void emitVerificationMarker(Object marker) {
+        /*
+         * No-op, for now we do not have any verification of the LLVM IR that requires the markers.
+         */
+    }
+
+    @Override
     public void emitFarReturn(AllocatableValue result, Value sp, Value setjmpBuffer) {
         LLVMValueRef exceptionHolder = builder.getUniqueGlobal("__svm_exception_object", builder.objectType(), true);
         LLVMValueRef exceptionObject = getVal(result);
