@@ -63,11 +63,11 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
         legacySplittingScope.close();
     }
 
-    private final FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
-
     @Test
     @SuppressWarnings("try")
     public void testDefaultStrategyStabilises() {
+
+        FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
         try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
                         fallbackSplitInfo.getSplitLimit() + 1000)) {
             createDummyTargetsToBoostGrowingSplitLimit();
@@ -257,6 +257,7 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     @SuppressWarnings("try")
     public void testMaxLimitForTargetsOutsideEngine() {
+        FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
         final int expectedIncreaseInNodes = 10;
         try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
                         fallbackSplitInfo.getSplitCount() + expectedIncreaseInNodes)) {
@@ -280,6 +281,7 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     @SuppressWarnings("try")
     public void testGrowingLimitForTargetsOutsideEngine() {
+        FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
         final int expectedGrowingSplits = (int) (2 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit));
         final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new DummyRootNode());
         final OptimizedCallTarget outer = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerAndSwapsCallNode(inner));
