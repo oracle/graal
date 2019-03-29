@@ -59,7 +59,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     protected Path targetPath;
 
     protected MockStorage storage;
-    protected ComponentRegistry registry;
+    protected ComponentCollection registry;
     protected ComponentRegistry localRegistry;
 
     protected List<File> files = new ArrayList<>();
@@ -173,7 +173,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     }
 
     @Override
-    public ComponentRegistry getRegistry() {
+    public ComponentCollection getRegistry() {
         return registry;
     }
 
@@ -191,7 +191,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     public void setUp() throws Exception {
         targetPath = folder.newFolder("inst").toPath();
         storage = new MockStorage();
-        localRegistry = registry = new ComponentRegistry(this, storage);
+        registry = localRegistry = new ComponentRegistry(this, storage);
     }
 
     @Override
@@ -199,12 +199,12 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     }
 
     @Override
-    public FileDownloader configureDownloader(ComponentInfo info, FileDownloader dn) {
+    public FileDownloader configureDownloader(ComponentInfo ci, FileDownloader dn) {
         return dn;
     }
 
     @Override
-    public MetadataLoader createLocalFileLoader(ComponentInfo info, Path localFile, boolean verify) throws IOException {
+    public MetadataLoader createLocalFileLoader(ComponentInfo ci, Path localFile, boolean verify) throws IOException {
         return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
     }
 

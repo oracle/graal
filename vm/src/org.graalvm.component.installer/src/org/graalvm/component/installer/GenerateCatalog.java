@@ -42,20 +42,15 @@ import java.security.NoSuchAlgorithmException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.stream.Collectors;
 import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY;
-import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSION;
 import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
@@ -221,19 +216,17 @@ public final class GenerateCatalog {
         // catalogContents.append(MessageFormat.format(
         // "{2}.{0}={1}\n", graalVersionPrefix, label, GRAALVM_CAPABILITY
         // ));
-        
+
         if (env.hasOption("l")) {
             Path listFrom = Paths.get(env.optValue("l"));
-            Collection<Path> paths  = Files.walk(listFrom).collect(Collectors.toList());
             Files.walk(listFrom).filter((p) -> p.toString().endsWith(".jar")).forEach(
-                    (p)-> locations.add(p.toString())
-            );
+                            (p) -> locations.add(p.toString()));
         } else {
             while (env.hasParameter()) {
                 locations.add(env.nextParameter());
             }
         }
-        
+
         /*
          * try (BufferedReader rr = new BufferedReader(new InputStreamReader(System.in))) { String
          * l;
@@ -310,8 +303,7 @@ public final class GenerateCatalog {
         return String.format("%s_%s/%s",
                         os = forceOS != null ? forceOS : m.get(CommonConstants.CAP_OS_NAME),
                         arch = forceArch != null ? forceArch : m.get(CommonConstants.CAP_OS_ARCH),
-                        version
-        );
+                        version);
     }
 
     private void generateReleases() {

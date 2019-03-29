@@ -47,6 +47,7 @@ import java.util.logging.Logger;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
@@ -75,8 +76,8 @@ public class Installer extends AbstractInstaller {
      */
     private final Set<Path> visitedPaths = new HashSet<>();
 
-    public Installer(Feedback feedback, ComponentInfo componentInfo, ComponentRegistry registry, Archive a) {
-        super(feedback, componentInfo, registry, a);
+    public Installer(Feedback feedback, ComponentInfo componentInfo, ComponentRegistry registry, ComponentCollection collection, Archive a) {
+        super(feedback, componentInfo, registry, collection, a);
     }
 
     @Override

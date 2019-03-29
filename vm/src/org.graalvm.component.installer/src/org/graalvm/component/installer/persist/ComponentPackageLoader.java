@@ -45,8 +45,6 @@ import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.Feedback;
@@ -122,7 +120,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         this.infoOnly = only;
         return this;
     }
-    
+
     private HeaderParser parseHeader(String header) throws MetadataException {
         return parseHeader2(header, null);
     }
@@ -194,7 +192,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         }
         nfo.addWorkingDirectories(workDirs);
     }
-    
+
     protected ComponentInfo createBaseComponentInfo() {
         parse(
                         () -> id = parseHeader(BundleConstants.BUNDLE_ID).parseSymbolicName(),

@@ -70,7 +70,7 @@ public interface CommandInput {
     /**
      * @return Registry of available components.
      */
-    ComponentRegistry getRegistry();
+    ComponentCollection getRegistry();
 
     /**
      * @return Registry of local components.

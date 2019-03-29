@@ -72,7 +72,7 @@ public class CommonConstants {
      * display, if the component is not ambiguous.
      */
     public static final String GRAALVM_CORE_PREFIX = "org.graalvm"; // NOI18N
-    
+
     /**
      * Short ID of the GraalVM core component.
      */
@@ -89,4 +89,9 @@ public class CommonConstants {
      */
     public static final String BUILTIN_INSTALLATION_DIR = "/usr/lib/graalvm"; // NOI18N
 
+    /**
+     * Origin of the component. An URL. Used only in directory-based registry of installed
+     * components.
+     */
+    public static final String BUNDLE_ORIGIN_URL = "x-GraalVM-Component-Origin"; // NOI18N
 }

@@ -146,7 +146,7 @@ public class InstallCommand implements InstallerCommand {
             current = p.getSpecification();
             MetadataLoader ldr = validateDownload ? p.createFileLoader() : p.createMetaLoader();
             Installer inst = createInstaller(p, ldr);
-            boolean keep = force || inst.validateRequirements().shouldInstall();
+            boolean keep = force || inst.validateRequirements().shouldInstall(inst.getComponentInfo());
             if (!keep) {
                 // component will be skipped, do not bother with validation
                 feedback.output("INSTALL_ComponentAlreadyInstalled", inst.getComponentInfo().getName(), inst.getComponentInfo().getId());
@@ -386,7 +386,8 @@ public class InstallCommand implements InstallerCommand {
             a = ldr.getArchive();
             a.verifyIntegrity(input);
         }
-        Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry(), a);
+        Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry(),
+                        input.getRegistry(), a);
         inst.setPermissions(ldr.loadPermissions());
         inst.setSymlinks(ldr.loadSymlinks());
         configureInstaller(inst);

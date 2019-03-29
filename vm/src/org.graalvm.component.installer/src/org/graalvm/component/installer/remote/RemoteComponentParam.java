@@ -82,7 +82,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
     public String getDisplayName() {
         return dispName;
     }
-    
+
     protected ComponentInfo getCatalogInfo() {
         return catalogInfo;
     }

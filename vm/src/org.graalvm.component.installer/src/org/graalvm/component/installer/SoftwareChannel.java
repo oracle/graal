@@ -29,7 +29,6 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
 import org.graalvm.component.installer.model.ComponentInfo;
-import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
@@ -56,9 +55,9 @@ public interface SoftwareChannel {
      * 
      * @return registry instance
      */
-    ComponentRegistry getRegistry();
-    
-    ComponentStorage  getStorage();
+    ComponentCollection getRegistry();
+
+    ComponentStorage getStorage();
 
     /**
      * Configures the downloader with specific options. The downloader may be even replaced with a
@@ -79,6 +78,14 @@ public interface SoftwareChannel {
     MetadataLoader createLocalFileLoader(ComponentInfo info, Path localFile, boolean verify) throws IOException;
 
     /**
+     * Checks if the Component can be installed by native tools. In that case, the installer will
+     * refuse to operate and displays an appropriate error message
+     * 
+     * @param info
+     * @return boolean isNativeInstallable(ComponentInfo info);
+     */
+
+    /**
      * Adds options to the set of global options. Global options allow to accept specific options
      * from commandline, which would otherwise cause an error (unknown option).
      * 
@@ -96,11 +103,11 @@ public interface SoftwareChannel {
     default String globalOptionsHelp() {
         return null;
     }
-    
+
     interface Factory {
         /**
-         * True, if the channel is willing to handle the URL. URL is passed as a String so that custom
-         * protocols may be used without registering an URLStreamHandlerFactory.
+         * True, if the channel is willing to handle the URL. URL is passed as a String so that
+         * custom protocols may be used without registering an URLStreamHandlerFactory.
          * 
          * @param urlSpec url string, including the scheme
          * @return true, if the channel is willing to work with the URL

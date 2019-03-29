@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.component.installer.commands;
-
-import java.util.HashMap;
-import java.util.Map;
-import org.graalvm.component.installer.Commands;
-import org.graalvm.component.installer.ComponentCollection;
+package org.graalvm.component.installer;
 
 /**
  *
  * @author sdedic
  */
-public class AvailableCommand extends ListInstalledCommand {
+public class IncompatibleException extends InstallerStopException {
+    private static final long serialVersionUID = 23L;
 
-    @Override
-    public Map<String, String> supportedOptions() {
-        Map<String, String> opts = new HashMap<>(super.supportedOptions());
-        opts.put(Commands.OPTION_ALL, "");
-        opts.put(Commands.LONG_OPTION_ALL, Commands.OPTION_ALL);
-        return opts;
+    public IncompatibleException(String message) {
+        super(message);
     }
 
-    @Override
-    protected ComponentCollection initRegistry() {
-        super.initRegistry();
-        return input.getRegistry();
+    public IncompatibleException(String message, Throwable cause) {
+        super(message, cause);
     }
-
 }

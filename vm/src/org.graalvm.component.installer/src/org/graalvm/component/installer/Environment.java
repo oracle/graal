@@ -55,7 +55,7 @@ public final class Environment implements Feedback, CommandInput {
     private InputStream in = System.in;
     private PrintStream err = System.err;
     private PrintStream out = System.out;
-    private Supplier<ComponentRegistry> registrySupplier;
+    private Supplier<ComponentCollection> registrySupplier;
     private ComponentRegistry localRegistry;
     private boolean stacktraces;
     private Iterable<ComponentParam> fileIterable;
@@ -140,7 +140,7 @@ public final class Environment implements Feedback, CommandInput {
     }
 
     @Override
-    public ComponentRegistry getRegistry() {
+    public ComponentCollection getRegistry() {
         return registrySupplier.get();
     }
 
@@ -156,7 +156,7 @@ public final class Environment implements Feedback, CommandInput {
         }
     }
 
-    public void setComponentRegistry(Supplier<ComponentRegistry> registrySupplier) {
+    public void setComponentRegistry(Supplier<ComponentCollection> registrySupplier) {
         this.registrySupplier = registrySupplier;
     }
 
@@ -352,7 +352,6 @@ public final class Environment implements Feedback, CommandInput {
             public Path getLocalCache(URL location) {
                 return Environment.this.getLocalCache(location);
             }
-
         };
     }
 
@@ -493,5 +492,4 @@ public final class Environment implements Feedback, CommandInput {
     public Path getLocalCache(URL location) {
         return fileMap.get(location);
     }
-
 }

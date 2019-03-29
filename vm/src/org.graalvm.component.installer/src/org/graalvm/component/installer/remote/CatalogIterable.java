@@ -30,13 +30,13 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.ComponentIterable;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.model.ComponentInfo;
-import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
@@ -48,7 +48,7 @@ public class CatalogIterable implements ComponentIterable {
     private final CommandInput input;
     private final Feedback feedback;
     private final SoftwareChannel factory;
-    private ComponentRegistry remoteRegistry;
+    private ComponentCollection remoteRegistry;
     private boolean verifyJars;
 
     public CatalogIterable(CommandInput input, Feedback feedback, SoftwareChannel fact) {
@@ -71,7 +71,7 @@ public class CatalogIterable implements ComponentIterable {
         return new It();
     }
 
-    ComponentRegistry getRegistry() {
+    ComponentCollection getRegistry() {
         if (remoteRegistry == null) {
             remoteRegistry = factory.getRegistry();
         }
@@ -98,11 +98,7 @@ public class CatalogIterable implements ComponentIterable {
             String s = input.nextParameter();
             ComponentInfo info;
             try {
-                if (getRegistry().findComponent(s.toLowerCase()) == null) {
-                    thrownUnknown(s, true);
-                }
-
-                info = getRegistry().loadSingleComponent(s.toLowerCase(), false);
+                info = getRegistry().findComponent(s.toLowerCase());
                 if (info == null) {
                     thrownUnknown(s, true);
                 }

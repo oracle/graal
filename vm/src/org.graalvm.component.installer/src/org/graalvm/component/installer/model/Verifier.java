@@ -28,35 +28,44 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import org.graalvm.component.installer.BundleConstants;
 import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SuppressFBWarnings;
+import org.graalvm.component.installer.SystemUtils;
+import org.graalvm.component.installer.Version;
 
 public class Verifier {
     private final Feedback feedback;
-    private final ComponentRegistry registry;
-    private final ComponentInfo componentInfo;
+    private final ComponentRegistry localRegistry;
+    private final ComponentCollection catalog;
     private boolean replaceComponents;
     private boolean ignoreRequirements;
     private boolean collectErrors;
     private boolean ignoreExisting;
+    private Version.Match versionMatch;
 
     private List<DependencyException> errors = new ArrayList<>();
 
-    public Verifier(Feedback feedback, ComponentRegistry registry, ComponentInfo componentInfo) {
+    public Verifier(Feedback feedback, ComponentRegistry registry, ComponentCollection catalog) {
         this.feedback = feedback.withBundle(ComponentInstaller.class);
-        this.registry = registry;
-        this.componentInfo = componentInfo;
+        this.localRegistry = registry;
+        this.catalog = catalog;
+    }
+
+    public Version.Match getVersionMatch() {
+        return versionMatch;
+    }
+
+    public void setVersionMatch(Version.Match versionMatch) {
+        this.versionMatch = versionMatch;
     }
 
     public boolean hasErrors() {
         return !errors.isEmpty();
-    }
-
-    public ComponentInfo getComponentInfo() {
-        return componentInfo;
     }
 
     public boolean isCollectErrors() {
@@ -107,18 +116,17 @@ public class Verifier {
         }
     }
 
-    public void printRequirements() {
-        ComponentInfo info = getComponentInfo();
+    public void printRequirements(ComponentInfo info) {
         Map<String, String> requiredCaps = info.getRequiredGraalValues();
-        Map<String, String> graalCaps = registry.getGraalCapabilities();
+        Map<String, String> graalCaps = localRegistry.getGraalCapabilities();
 
-        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", registry.shortenComponentId(info), info.getName(), info.getVersionString())) {
+        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", catalog.shortenComponentId(info), info.getName(), info.getVersionString())) {
             List<String> keys = new ArrayList<>(requiredCaps.keySet());
             Collections.sort(keys);
             String none = feedback.l10n("VERIFY_VerboseCapabilityNone");
             for (String s : keys) {
                 String v = graalCaps.get(s);
-                feedback.verboseOutput("VERIFY_VerboseCapability", registry.localizeCapabilityName(s), requiredCaps.get(s), v == null ? none : v);
+                feedback.verboseOutput("VERIFY_VerboseCapability", localRegistry.localizeCapabilityName(s), requiredCaps.get(s), v == null ? none : v);
             }
         }
     }
@@ -127,19 +135,20 @@ public class Verifier {
         return errors;
     }
 
-    public boolean shouldInstall() {
+    public boolean shouldInstall(ComponentInfo componentInfo) {
         if (replaceComponents) {
             return true;
         }
-        ComponentInfo existing = registry.findComponent(componentInfo.getId());
+        ComponentInfo existing = localRegistry.findComponent(componentInfo.getId());
         return existing == null;
     }
 
     @SuppressWarnings("StringEquality")
     @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "intentional comparison of strings using ==")
-    public Verifier validateRequirements() {
+    public Verifier validateRequirements(ComponentInfo componentInfo) {
+        errors.clear();
         // check the component is not in the registry
-        ComponentInfo existing = registry.findComponent(componentInfo.getId());
+        ComponentInfo existing = localRegistry.findComponent(componentInfo.getId());
         if (existing != null) {
             if (ignoreExisting) {
                 return this;
@@ -148,38 +157,46 @@ public class Verifier {
                 addOrThrow(new DependencyException.Conflict(
                                 existing.getId(), componentInfo.getVersionString(), existing.getVersionString(),
                                 feedback.l10n("VERIFY_ComponentExists",
-                                                existing.getName(), registry.shortenComponentId(existing), existing.getVersionString())));
+                                                existing.getName(), catalog.shortenComponentId(existing), existing.getVersionString())));
             }
         }
         if (ignoreRequirements) {
             return this;
         }
-        ComponentInfo info = getComponentInfo();
-        Map<String, String> requiredCaps = info.getRequiredGraalValues();
-        Map<String, String> graalCaps = registry.getGraalCapabilities();
+        Map<String, String> requiredCaps = componentInfo.getRequiredGraalValues();
+        Map<String, String> graalCaps = localRegistry.getGraalCapabilities();
 
-        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", registry.shortenComponentId(info), info.getName(), info.getVersionString())) {
+        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", catalog.shortenComponentId(componentInfo), componentInfo.getName(), componentInfo.getVersionString())) {
             List<String> keys = new ArrayList<>(requiredCaps.keySet());
             Collections.sort(keys);
             String none = feedback.l10n("VERIFY_VerboseCapabilityNone");
             for (String s : keys) {
                 String v = graalCaps.get(s);
-                feedback.verboseOutput("VERIFY_VerboseCapability", registry.localizeCapabilityName(s), requiredCaps.get(s), v == null ? none : v);
+                feedback.verboseOutput("VERIFY_VerboseCapability", localRegistry.localizeCapabilityName(s), requiredCaps.get(s), v == null ? none : v);
             }
         }
 
         for (String s : requiredCaps.keySet()) {
             String reqVal = requiredCaps.get(s);
             String graalVal = graalCaps.get(s);
-            if ((reqVal != graalVal) &&
-                            (reqVal == null || graalVal == null ||
-                                            (reqVal.replace('-', '_').compareToIgnoreCase(graalVal.replace('-', '_')) != 0))) {
+            boolean matches;
+
+            if (BundleConstants.GRAAL_VERSION.equals(reqVal) && versionMatch != null) {
+                Version cv = Version.fromString(
+                                SystemUtils.normalizeOldVersions(reqVal.toLowerCase()));
+                matches = versionMatch.test(cv);
+            } else {
+                matches = !((reqVal != graalVal) &&
+                                (reqVal == null || graalVal == null ||
+                                                (reqVal.replace('-', '_').compareToIgnoreCase(graalVal.replace('-', '_')) != 0)));
+            }
+            if (!matches) {
                 String val = graalVal != null ? graalVal : feedback.l10n("VERIFY_CapabilityMissing");
                 addOrThrow(new DependencyException.Mismatch(
                                 GRAALVM_CAPABILITY,
                                 s, reqVal, graalVal,
                                 feedback.l10n("VERIFY_Dependency_Failed",
-                                                info.getName(), registry.localizeCapabilityName(s), reqVal, val)));
+                                                componentInfo.getName(), localRegistry.localizeCapabilityName(s), reqVal, val)));
             }
         }
         return this;
