@@ -309,8 +309,6 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
     public static class SplitTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = "SplitTestLanguage";
 
-        private final RootCallTarget callTarget = runtime.createCallTarget(new CallsInnerAndSwapsCallNode(runtime.createCallTarget(new DummyRootNode())));
-
         @Override
         protected Env createContext(Env env) {
             return env;

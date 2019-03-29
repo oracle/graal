@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.options.OptionValues;
-
 /**
  * A cache that enables the Runtime options to be read without the lookup. This is intended to only
  * be used on performance critical paths.
