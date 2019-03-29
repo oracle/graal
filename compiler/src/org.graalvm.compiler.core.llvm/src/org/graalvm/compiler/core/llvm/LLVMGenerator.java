@@ -1289,7 +1289,10 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
         @Override
         public Value emitBitCount(Value operand) {
-            throw unimplemented();
+            LLVMValueRef op = getVal(operand);
+            LLVMValueRef answer = builder.buildCtpop(op);
+            answer = builder.buildIntegerConvert(answer, 32);
+            return new LLVMVariable(answer);
         }
 
         @Override
