@@ -32,7 +32,7 @@ import java.util.Arrays;
  */
 class InterfaceTables {
     /**
-     * Pretty much the same as a 3-tuple. Used to wrap the results of ITable creation.
+     * Pretty much the same as a tuple. Used to wrap the results of ITable creation.
      */
     static class CreationResult {
         final Method[][] itable;
@@ -204,7 +204,7 @@ class InterfaceTables {
         for (int i = 0; i < superTable.length; i++) {
             int dupePos = (dupePos(superInterfKlassTable[i], tmpKlassTable));
             if (dupePos == -1) {
-                tmpTables.add(inherit(superTable[i], thisKlass, mirandas, i));
+                tmpTables.add(inherit(superTable[i], thisKlass, mirandas, tmpTables.size()));
                 tmpKlassTable.add(superInterfKlassTable[i]);
             } else {
                 mergeTables(tmpTables.get(dupePos), superTable[i], mirandas, tmpTables, thisKlass);

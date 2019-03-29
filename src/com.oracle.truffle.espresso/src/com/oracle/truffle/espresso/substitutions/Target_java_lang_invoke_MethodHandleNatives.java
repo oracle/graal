@@ -295,7 +295,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     /**
      * Converts a regular signature to a basic one.
-     * 
+     *
      * @param sig Signature to convert
      * @param keepLastArg Whether or not to erase the last parameter.
      * @param signatures known signatures for the context.
@@ -456,7 +456,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     // Useful thingies.
 
     public static final int // intrinsics
-    _none = 0,
+                    _none = 0,
                     _invokeGeneric = 1,
                     _invokeBasic = 2,
                     _linkToVirtual = 3,
@@ -468,7 +468,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     _lastSigPoly = _linkToInterface;
 
     static final int // for getConstant
-    GC_COUNT_GWT = 4,
+                    GC_COUNT_GWT = 4,
                     GC_LAMBDA_SUPPORT = 5;
 
     // MemberName
