@@ -63,7 +63,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
     }
 
     private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
-        if (!sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining)) {
+        if (!sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) || sourceTarget.getOptionValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY) {
             return Collections.emptyList();
         }
         int[] visitedNodes = {0};
