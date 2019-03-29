@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateClassInitializationPlugin implements ClassInitializationPlugin {
 
-    private static final Method ENSURE_INITIALIZED_METHOD;
+    public static final Method ENSURE_INITIALIZED_METHOD;
 
     static {
         try {
@@ -73,7 +73,7 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
 
     @Override
     public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
-        if (needsRuntimeInitialization(type)) {
+        if (needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
             JavaConstant hub = SubstrateObjectConstant.forObject(host.dynamicHub(type));
             ValueNode[] args = {ConstantNode.forConstant(hub, builder.getMetaAccess(), builder.getGraph())};
             builder.handleReplacedInvoke(InvokeKind.Special, builder.getMetaAccess().lookupJavaMethod(ENSURE_INITIALIZED_METHOD), args, false);
@@ -84,7 +84,6 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
             if (classInit != null) {
                 classInit[0] = null;
             }
-
             return true;
         }
         return false;
@@ -94,7 +93,7 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
      * Return true if the type needs to be initialized at run time, i.e., it has not been already
      * initialized during image generation.
      */
-    public static boolean needsRuntimeInitialization(ResolvedJavaType type) {
-        return !type.isInitialized() && !type.isArray();
+    static boolean needsRuntimeInitialization(ResolvedJavaType declaringClass, ResolvedJavaType type) {
+        return !declaringClass.equals(type) && !type.isInitialized() && !type.isArray();
     }
 }

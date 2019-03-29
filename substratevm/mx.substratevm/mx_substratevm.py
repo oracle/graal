@@ -578,6 +578,7 @@ def svm_gate_body(args, tasks):
                 helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
                 cinterfacetutorial([])
                 fallbacktest([])
+                clinittest([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
@@ -1095,6 +1096,45 @@ def fallbacktest(args):
         mx.run([join(build_dir, 'fallbacktest')])
 
     native_image_context_run(build_and_test_fallbackimage, args)
+
+
+@mx.command(suite.name, 'clinittest', 'Runs the ')
+def clinittest(args):
+    def build_and_test_clinittest_image(native_image, args=None):
+        args = [] if args is None else args
+        test_cp = classpath('com.oracle.svm.test')
+        build_dir = join(svmbuild_dir(), 'clinittest')
+
+        # clean / create output directory
+        if exists(build_dir):
+            remove_tree(build_dir)
+        mkpath(build_dir)
+
+        # Build and run the example
+        native_image(
+            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.TestClassInitializationMustBeSafe',
+             '-H:-EagerlyInitializeClasses', '-H:+PrintClassInitialization', '-H:Name=clinittest',
+             '-H:+ReportExceptionStackTraces'] + args)
+        mx.run([join(build_dir, 'clinittest')])
+
+        # Check the reports for initialized classes
+        def check_class_initialization(classes_file_name, marker):
+            classes_file = os.path.join(build_dir, 'reports', classes_file_name)
+            with open(classes_file) as f:
+                wrongly_initialized_classes = [line.strip() for line in f if marker not in line.strip()]
+                if len(wrongly_initialized_classes) > 0:
+                    mx.abort("Only classes with marker " + marker + " must be in file " + classes_file + ". Found:\n" +
+                             str(wrongly_initialized_classes))
+
+        reports = os.listdir(os.path.join(build_dir, 'reports'))
+        delayed_classes = next(report for report in reports if report.startswith('delay_classes'))
+        safe_classes = next(report for report in reports if report.startswith('safe_classes'))
+
+        check_class_initialization(delayed_classes, 'MustBeDelayed')
+        check_class_initialization(safe_classes, 'MustBeSafe')
+
+    native_image_context_run(build_and_test_clinittest_image, args)
+
 
 
 orig_command_build = mx.command_function('build')
