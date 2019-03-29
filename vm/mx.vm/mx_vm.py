@@ -263,6 +263,11 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _component_type_base = '<jdk_base>/lib/'
             elif isinstance(_component, mx_sdk.GraalVmJreComponent):
                 _component_type_base = '<jdk_base>/jre/lib/'
+                # Windows puts DLL's in <jdk_base>/jre/bin
+                if mx.get_os() == 'windows':
+                    _component_jvmlib_base = '<jdk_base>/jre/bin/'
+                else:
+                    _component_jvmlib_base = '<jdk_base>/jre/lib/'
             elif isinstance(_component, mx_sdk.GraalVmComponent):
                 _component_type_base = '<jdk_base>/'
             else:
@@ -321,7 +326,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 if not stage1:
                     if _library_config.jvm_library:
                         assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
-                        _library_dest = _component_base if mx.get_os() == 'darwin' else (_component_base + mx.get_arch() + '/')
+                        _library_dest = _component_jvmlib_base if mx.get_os() != 'linux' else (_component_jvmlib_base + mx.get_arch() + '/')
                     else:
                         _library_dest = _component_base
                     _library_dest += _library_config.destination
