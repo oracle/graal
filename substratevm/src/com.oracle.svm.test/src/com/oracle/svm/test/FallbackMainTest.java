@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.test;
 
+// Checkstyle: stop
+
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.Date;
