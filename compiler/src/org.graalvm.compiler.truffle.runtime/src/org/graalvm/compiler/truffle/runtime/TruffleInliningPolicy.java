@@ -45,23 +45,6 @@ public interface TruffleInliningPolicy {
         String format(OptimizedCallTarget target) {
             return start + target.getOptionValue(option);
         }
-
-        String format(RuntimeOptionsCache cache) {
-            int value = 0;
-            switch (this) {
-                case REASON_RECURSION:
-                    value = cache.getInliningRecursionDepth();
-                    break;
-                case REASON_MAXIMUM_NODE_COUNT:
-                    value = cache.getInliningNodeBudget();
-                    break;
-                case REASON_MAXIMUM_TOTAL_NODE_COUNT:
-                    value = cache.getInliningNodeBudget();
-                    break;
-            }
-            assert value != 0;
-            return start + value;
-        }
     }
 
     boolean isAllowed(TruffleInliningProfile profile, int currentNodeCount, CompilerOptions options);
