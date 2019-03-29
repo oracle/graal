@@ -94,7 +94,7 @@ import org.graalvm.polyglot.PolyglotException;
 
 public abstract class Launcher {
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("org.graalvm.launcher.verbose");
-    private static final boolean BASH_LAUNCHER = Boolean.getBoolean("org.graalvm.launcher.bash");
+    private static final boolean SHELL_SCRIPT_LAUNCHER = Boolean.getBoolean("org.graalvm.launcher.shell");
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
@@ -515,7 +515,7 @@ public abstract class Launcher {
         }
         boolean printDefaultHelp = help || ((helpExpert || helpInternal) && !helpTools && !helpLanguages && !helpVM);
         if (printDefaultHelp) {
-            final VMType defaultVMType = BASH_LAUNCHER ? VMType.JVM : this.getDefaultVMType();
+            final VMType defaultVMType = SHELL_SCRIPT_LAUNCHER ? VMType.JVM : this.getDefaultVMType();
 
             printHelp(helpCategory);
             // @formatter:off
@@ -524,7 +524,7 @@ public abstract class Launcher {
             if (!isStandalone()) {
                 printOption("--polyglot", "Run with all other guest languages accessible.");
             }
-            if (!BASH_LAUNCHER) {
+            if (!SHELL_SCRIPT_LAUNCHER) {
                 printOption("--native", "Run using the native launcher with limited Java access" + (defaultVMType == VMType.Native ? " (default)" : "") + ".");
             }
             if (!isStandalone()) {
