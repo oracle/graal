@@ -40,6 +40,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -487,7 +488,11 @@ public class NativeImage {
                 buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorSystemProperty) + property);
             }
             buildArgs.add(oH + "+" + SubstrateOptions.ParseRuntimeOptions.getName());
-            String classpathString = original.effectiveImageClasspath.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(File.pathSeparator));
+            String classpathString = original.effectiveImageClasspath.stream()
+                            .map(original.effectiveImagePath::relativize)
+                            .map(ImageClassLoader::classpathToString)
+                            .collect(Collectors.joining(File.pathSeparator));
+            buildArgs.add(original.oHPath + original.effectiveImagePath.toString());
             buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorClasspath) + classpathString);
             buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorMainClass) + original.effectiveMainClass);
             buildArgs.add(FallbackExecutor.class.getName());
@@ -829,7 +834,14 @@ public class NativeImage {
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", canonicalizedPathStr);
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
-        consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), canonicalizedPathStr, () -> null, takeLast);
+        String imagePathStr = consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), canonicalizedPathStr, () -> null, takeLast);
+        Path imagePath;
+        try {
+            imagePath = canonicalize(Paths.get(imagePathStr));
+        } catch (NativeImage.NativeImageError | InvalidPathException e) {
+            throw showError("The given " + oHPath + imagePathStr + " argument does not specify a valid path", e);
+        }
+
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
         String mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
         String imageKind = consolidateSingleValueArg(imageBuilderArgs, oHKind);
@@ -928,6 +940,7 @@ public class NativeImage {
 
         effectiveMainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
         effectiveImageName = consolidateSingleValueArg(imageBuilderArgs, oHName);
+        effectiveImagePath = imagePath;
         effectiveImageClasspath = new LinkedHashSet<>(imageClasspath);
         effectiveSystemProperties = customJavaArgs.stream().filter(s -> s.startsWith("-D")).collect(Collectors.toCollection(LinkedHashSet::new));
 
@@ -940,6 +953,7 @@ public class NativeImage {
 
     private String effectiveMainClass;
     private String effectiveImageName;
+    private Path effectiveImagePath;
     private LinkedHashSet<Path> effectiveImageClasspath;
     private LinkedHashSet<String> effectiveSystemProperties;
 
@@ -1025,7 +1039,14 @@ public class NativeImage {
     }
 
     Path canonicalize(Path path) {
+        return canonicalize(path, true);
+    }
+
+    Path canonicalize(Path path, boolean strict) {
         Path absolutePath = path.isAbsolute() ? path : config.getWorkingDirectory().resolve(path);
+        if (!strict) {
+            return absolutePath;
+        }
         boolean hasWildcard = absolutePath.endsWith(ImageClassLoader.cpWildcardSubstitute);
         if (hasWildcard) {
             absolutePath = absolutePath.getParent();
@@ -1113,14 +1134,14 @@ public class NativeImage {
         Path classpathEntry;
         try {
             classpathEntry = canonicalize(classpath);
+            processClasspathNativeImageProperties(classpathEntry);
         } catch (NativeImageError e) {
             if (isVerbose()) {
                 showWarning("Invalid classpath entry: " + classpath);
             }
             /* Allow non-existent classpath entries to comply with `java` command behaviour. */
-            classpathEntry = classpath;
+            classpathEntry = canonicalize(classpath, false);
         }
-        processClasspathNativeImageProperties(classpathEntry);
         customImageClasspath.add(classpathEntry);
     }
 

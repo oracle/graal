@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.core;
 
+import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -60,7 +62,7 @@ public class FallbackExecutor {
 
     public static void main(String[] args) {
         List<String> command = new ArrayList<>();
-        Path javaExecutable = getJavaExecutable();
+        Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
         command.add(javaExecutable.toString());
         String[] properties = Options.FallbackExecutorSystemProperty.getValue();
         if (properties != null) {
@@ -68,24 +70,46 @@ public class FallbackExecutor {
                 command.add(p);
             }
         }
+        String pathPrefix = Paths.get(ProcessProperties.getExecutableName()).getParent().toAbsolutePath().normalize().toString();
+        String relativeClasspath = Options.FallbackExecutorClasspath.getValue();
+        String[] split = SubstrateUtil.split(relativeClasspath, File.pathSeparator);
+        for (int i = 0; i < split.length; i++) {
+            split[i] = pathPrefix + File.separator + split[i];
+        }
+        String absoluteClasspath = String.join(File.pathSeparator, split);
         command.add("-cp");
-        command.add(Options.FallbackExecutorClasspath.getValue());
+        command.add(absoluteClasspath);
         command.add(Options.FallbackExecutorMainClass.getValue());
         command.addAll(Arrays.asList(args));
+        if (System.getenv("FALLBACK_EXECUTOR_VERBOSE") != null) {
+            // Checkstyle: stop
+            System.out.println("Exec: " + String.join(" ", command));
+            // Checkstyle: resume
+        }
         ProcessProperties.exec(javaExecutable, command.toArray(new String[0]));
     }
 
     private static Path getJavaExecutable() {
+        Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
+        Path javaCandidate = Paths.get(".").resolve(binJava);
+        if (Files.isExecutable(javaCandidate)) {
+            return javaCandidate;
+        }
+
         String javaHome = System.getenv("JAVA_HOME");
         if (javaHome == null) {
-            showError("Environment variable JAVA_HOME is not set");
+            showError("No " + binJava + " and no environment variable JAVA_HOME");
         }
-        Path javaHomePath = Paths.get(javaHome);
-        Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
-        if (!Files.isExecutable(javaHomePath.resolve(binJava))) {
-            showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
+        try {
+            javaCandidate = Paths.get(javaHome).resolve(binJava);
+            if (Files.isExecutable(javaCandidate)) {
+                return javaCandidate;
+            }
+        } catch (InvalidPathException e) {
+            /* fallthrough */
         }
-        return javaHomePath.resolve(binJava);
+        showError("No " + binJava + " and invalid JAVA_HOME=" + javaHome);
+        return null;
     }
 
     private static void showError(String s) {
