@@ -858,6 +858,9 @@ public class LLVMIRBuilder {
         return buildIntrinsicOp("cttz", a, constantBoolean(true));
     }
 
+    LLVMValueRef buildCtpop(LLVMValueRef a) {
+        return buildIntrinsicOp("ctpop", a);
+    }
     /* Conversions */
 
     public LLVMValueRef buildBitcast(LLVMValueRef value, LLVMTypeRef type) {
