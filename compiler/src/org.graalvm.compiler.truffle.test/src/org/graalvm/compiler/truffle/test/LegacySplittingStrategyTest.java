@@ -66,9 +66,10 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     @SuppressWarnings("try")
-    @Ignore("Does not work with per engine cache.")
     public void testDefaultStrategyStabilises() {
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes, 1000)) {
+        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes, 1000);
+                        Context c = Context.create()) {
+            c.enter();
             createDummyTargetsToBoostGrowingSplitLimit();
             class InnerRootNode extends SplittableRootNode {
                 OptimizedCallTarget target;
@@ -180,6 +181,7 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
             // OUTSIDE <split> MID
             // MID <split> INNER
             Assert.assertEquals("Not the right number of splits.", baseSplitCount + 13, listener.splitCount);
+            c.leave();
         }
     }
 
