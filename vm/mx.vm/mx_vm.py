@@ -1240,7 +1240,6 @@ Bundle-Symbolic-Name: org.graalvm.{id}
 Bundle-Version: {version}
 Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch}))"
 x-GraalVM-Polyglot-Part: {polyglot}
-x-GraalVM-Working-Directories: {workdir}
 """.format(  # GR-10249: the manifest file must end with a newline
             name=self.component.name,
             id=self.component.dir_name,
@@ -1248,10 +1247,14 @@ x-GraalVM-Working-Directories: {workdir}
             os=get_graalvm_os(),
             arch=mx.get_arch(),
             polyglot=isinstance(self.component, mx_sdk.GraalVmTruffleComponent) and self.component.include_in_polyglot
-                        and (not isinstance(self.component, mx_sdk.GraalVmTool) or self.component.include_by_default),
-            workdir=join('jre', 'languages', self.component.dir_name))
+                        and (not isinstance(self.component, mx_sdk.GraalVmTool) or self.component.include_by_default)
+        )
 
-        if self.component.post_install_msg:
+        if isinstance(self.component, mx_sdk.GraalVmLanguage):
+            _manifest_str += """x-GraalVM-Working-Directories: {workdir}
+""".format(workdir=join('jre', 'languages', self.component.dir_name))
+
+        if getattr(self.component, 'post_install_msg', None):
             _manifest_str += """x-GraalVM-Message-PostInst: {msg}
 """.format(msg=self.component.post_install_msg.replace("\\", "\\\\").replace("\n", "\\n"))
 
@@ -1592,7 +1595,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 register_project(GraalVmLibrary(_suite, GraalVmNativeImage.project_name(library_config), [], None, library_config))
                 needs_stage1 = True
         # The JS components have issues ATM since they share the same directory
-        if isinstance(component, mx_sdk.GraalVmLanguage) and not (_disable_installable(component) or component.dir_name == 'js'):
+        if not _disable_installable(component) and (component.installable or (isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js')):
             installable_component = GraalVmInstallableComponent(component)
             register_distribution(installable_component)
             if has_svm_launcher(component):
