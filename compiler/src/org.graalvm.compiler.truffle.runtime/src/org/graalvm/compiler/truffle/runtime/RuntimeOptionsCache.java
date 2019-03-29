@@ -61,27 +61,6 @@ public class RuntimeOptionsCache {
         }
     }
 
-    void reinitialize(OptimizedCallTarget target) {
-        // Splitting
-        splitting = target.getOptionValue(PolyglotCompilerOptions.Splitting);
-        final OptionValues optionValues = target.getOptionValues();
-        if (optionValues != null) {
-            legacySplitting = SharedTruffleRuntimeOptions.TruffleLegacySplitting.getValue(optionValues);
-            splittingAllowForcedSplits = SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits.getValue(optionValues);
-            splittingDumpDecisions = SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions.getValue(optionValues);
-            splittingMaxCalleeSize = SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize.getValue(optionValues);
-            splittingMaxPropagationDepth = SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth.getValue(optionValues);
-            splittingTraceEvents = SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents.getValue(optionValues);
-            traceSplittingSummary = SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary.getValue(optionValues);
-            splittingGrowthLimit = SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit.getValue(optionValues);
-            splittingMaxNumberOfSplitNodes = SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes.getValue(optionValues);
-        }
-        // Mode overrides
-        if (target.getOptionValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY) {
-            splitting = false;
-        }
-    }
-
     boolean isSplittingDumpDecisions() {
         return splittingDumpDecisions;
     }
