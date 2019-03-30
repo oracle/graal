@@ -117,6 +117,9 @@ public final class Support {
         private JNIObjectHandle javaLangReflectMethod;
         private JNIObjectHandle javaLangReflectConstructor;
 
+        private JNIObjectHandle javaUtilCollections;
+        private JNIMethodId javaUtilCollectionsEmptyEnumeration;
+
         private JavaHandles(JNIEnvironment env) {
             JNIObjectHandle javaLangClass;
             try (CCharPointerHolder name = toCString("java/lang/Class")) {
@@ -232,6 +235,29 @@ public final class Support {
             return javaLangReflectConstructor;
         }
 
+        public JNIObjectHandle getJavaUtilCollections(JNIEnvironment env) {
+            if (javaUtilCollections.equal(nullHandle())) {
+                try (CCharPointerHolder name = toCString("java/util/Collections")) {
+                    JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
+                    guarantee(h.notEqual(nullHandle()));
+                    javaUtilCollections = jniFunctions.getNewGlobalRef().invoke(env, h);
+                    guarantee(javaUtilCollections.notEqual(nullHandle()));
+                }
+            }
+            return javaUtilCollections;
+        }
+
+        public JNIMethodId getJavaUtilCollectionsEmptyEnumeration(JNIEnvironment env) {
+            if (javaUtilCollectionsEmptyEnumeration.isNull()) {
+                JNIObjectHandle collections = getJavaUtilCollections(env);
+                try (CCharPointerHolder name = toCString("emptyEnumeration"); CCharPointerHolder signature = toCString("()Ljava/util/Enumeration;")) {
+                    javaUtilCollectionsEmptyEnumeration = jniFunctions.getGetStaticMethodID().invoke(env, collections, name.get(), signature.get());
+                    guarantee(javaUtilCollectionsEmptyEnumeration.isNonNull());
+                }
+            }
+            return javaUtilCollectionsEmptyEnumeration;
+        }
+
         public void destroy(JNIEnvironment env) {
             jniFunctions().getDeleteGlobalRef().invoke(env, javaLangSecurityException);
             jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoClassDefFoundError);
@@ -249,6 +275,10 @@ public final class Support {
             }
             if (javaLangReflectConstructor.notEqual(nullHandle())) {
                 jniFunctions().getDeleteGlobalRef().invoke(env, javaLangReflectConstructor);
+            }
+
+            if (javaUtilCollections.notEqual(nullHandle())) {
+                jniFunctions().getDeleteGlobalRef().invoke(env, javaUtilCollections);
             }
         }
     }
