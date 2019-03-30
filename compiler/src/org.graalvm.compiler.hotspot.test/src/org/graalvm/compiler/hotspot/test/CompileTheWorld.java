@@ -80,6 +80,7 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.ReflectionOptionDescriptors;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
@@ -136,17 +137,19 @@ public final class CompileTheWorld {
      *            Ignored if null.
      */
     public static EconomicMap<OptionKey<?>, Object> parseOptions(String options) {
+        EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
         if (options != null) {
             EconomicMap<String, String> optionSettings = EconomicMap.create();
             for (String optionSetting : options.split("\\s+|#")) {
                 OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
             }
-            EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
             ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
             OptionsParser.parseOptions(optionSettings, values, loader);
-            return values;
         }
-        return EconomicMap.create();
+        if (!values.containsKey(HighTier.Options.Inline)) {
+            values.put(HighTier.Options.Inline, false);
+        }
+        return values;
     }
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
@@ -986,13 +989,12 @@ public final class CompileTheWorld {
     }
 
     static class Options {
-        // @formatter:off
         public static final OptionKey<Boolean> Help = new OptionKey<>(false);
         public static final OptionKey<String> Classpath = new OptionKey<>(CompileTheWorld.SUN_BOOT_CLASS_PATH);
         public static final OptionKey<Boolean> Verbose = new OptionKey<>(true);
         /**
-         * Ignore Graal classes by default to avoid problems associated with compiling
-         * snippets and method substitutions.
+         * Ignore Graal classes by default to avoid problems associated with compiling snippets and
+         * method substitutions.
          */
         public static final OptionKey<String> LimitModules = new OptionKey<>("~jdk.internal.vm.compiler");
         public static final OptionKey<Integer> Iterations = new OptionKey<>(1);
@@ -1004,6 +1006,7 @@ public final class CompileTheWorld {
         public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(false);
         public static final OptionKey<Integer> Threads = new OptionKey<>(0);
 
+        // @formatter:off
         static final ReflectionOptionDescriptors DESCRIPTORS = new ReflectionOptionDescriptors(Options.class,
                            "Help", "List options and their help messages and then exit.",
                       "Classpath", "Class path denoting methods to compile. Default is to compile boot classes.",
@@ -1015,9 +1018,10 @@ public final class CompileTheWorld {
             "ExcludeMethodFilter", "Exclude methods matching this filter from compilation.",
                         "StartAt", "First class to consider for compilation.",
                          "StopAt", "Last class to consider for compilation.",
-                         "Config", "Option value overrides to use during compile the world. For example, " +
-                                   "to disable inlining and partial escape analysis specify 'PartialEscapeAnalysis=false Inline=false'. " +
-                                   "The format for each option is the same as on the command line just without the '-Dgraal.' prefix.",
+                         "Config", "Option values to use during compile the world compilations. For example, " +
+                                   "to disable partial escape analysis and print compilations specify " +
+                                   "'PartialEscapeAnalysis=false PrintCompilation=true'. " +
+                                   "Unless explicitly enabled with 'Inline=true' here, inlining is disabled.",
                   "MultiThreaded", "Run using multiple threads for compilation.",
                         "Threads", "Number of threads to use for multithreaded execution. Defaults to Runtime.getRuntime().availableProcessors().");
         // @formatter:on
