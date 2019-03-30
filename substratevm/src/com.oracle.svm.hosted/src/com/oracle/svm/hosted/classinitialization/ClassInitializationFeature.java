@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.classinitialization;
 
 import java.lang.reflect.Modifier;
 import java.util.function.Consumer;
@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Feature;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -42,8 +43,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.MethodPointer;
 
@@ -63,11 +63,18 @@ public class ClassInitializationFeature implements Feature {
         @APIOption(name = "rerun-class-initialization-at-runtime") //
         @Option(help = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building", type = OptionType.User)//
         public static final HostedOptionKey<String[]> RerunClassInitialization = new HostedOptionKey<>(null);
+
+        @Option(help = "A comma-separated list of classes (and implicitly all of their superclasses) that are initialized during image building", type = OptionType.User)//
+        public static final HostedOptionKey<String[]> EagerClassInitialization = new HostedOptionKey<>(null);
+
+        @Option(help = "Prints class initialization info for all classes detected by analysis.", type = OptionType.Debug)//
+        public static final HostedOptionKey<Boolean> PrintClassInitialization = new HostedOptionKey<>(false);
     }
 
     public static void processClassInitializationOptions(FeatureImpl.AfterRegistrationAccessImpl access, ClassInitializationSupport initializationSupport) {
         processOption(access, ClassInitializationFeature.Options.DelayClassInitialization, initializationSupport::delayClassInitialization);
         processOption(access, ClassInitializationFeature.Options.RerunClassInitialization, initializationSupport::rerunClassInitialization);
+        processOption(access, ClassInitializationFeature.Options.EagerClassInitialization, initializationSupport::eagerClassInitialization);
     }
 
     private static void processOption(FeatureImpl.AfterRegistrationAccessImpl access, HostedOptionKey<String[]> option, Consumer<Class<?>[]> handler) {
@@ -85,9 +92,9 @@ public class ClassInitializationFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-        ((ClassInitializationSupportImpl) classInitializationSupport).setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
+        classInitializationSupport.setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
         access.registerObjectReplacer(this::checkImageHeapInstance);
     }
 
@@ -104,7 +111,7 @@ public class ClassInitializationFeature implements Feature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
-        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        FeatureImpl.DuringAnalysisAccessImpl access = (FeatureImpl.DuringAnalysisAccessImpl) a;
 
         /*
          * Check early and often during static analysis if any class that must not have been
@@ -126,7 +133,19 @@ public class ClassInitializationFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        ((ClassInitializationSupportImpl) classInitializationSupport).setUnsupportedFeatures(null);
+        classInitializationSupport.setUnsupportedFeatures(null);
+
+        if (Options.PrintClassInitialization.getValue()) {
+            for (ClassInitializationSupport.InitKind kind : ClassInitializationSupport.InitKind.values()) {
+                ReportUtils.report("Classes of type " + kind, "./reports", kind.toString().toLowerCase() + "_classes", "txt",
+                                writer -> classInitializationSupport.classesWithKind(kind)
+                                                .stream()
+                                                .map(Class::getTypeName)
+                                                .sorted()
+                                                .forEach(writer::println));
+
+            }
+        }
     }
 
     @Override

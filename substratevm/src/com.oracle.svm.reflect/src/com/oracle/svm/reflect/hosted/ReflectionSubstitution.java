@@ -40,6 +40,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.annotation.CustomSubstitution;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.reflect.helpers.ReflectionProxy;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
 
@@ -50,6 +51,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitutionType> {
 
     private static final String PROXY_NAME_SEPARATOR = "_";
+
+    private final ClassInitializationSupport classInitializationSupport;
+
     private final Method defineClass;
     private final Method resolveClass;
 
@@ -73,12 +77,13 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         }
     }
 
-    ReflectionSubstitution(MetaAccessProvider metaAccess, ImageClassLoader classLoader) {
+    ReflectionSubstitution(MetaAccessProvider metaAccess, ClassInitializationSupport initializationSupport, ImageClassLoader classLoader) {
         super(metaAccess);
         defineClass = lookupPrivateMethod(ClassLoader.class, "defineClass", String.class, byte[].class, int.class, int.class);
         resolveClass = lookupPrivateMethod(ClassLoader.class, "resolveClass", Class.class);
         reflectionProxy = metaAccess.lookupJavaType(ReflectionProxy.class);
         javaLangReflectProxy = metaAccess.lookupJavaType(java.lang.reflect.Proxy.class);
+        classInitializationSupport = initializationSupport;
         imageClassLoader = classLoader;
     }
 
@@ -145,6 +150,8 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
                 throw VMError.shouldNotReachHere(ex);
             }
         }
+        /* Always initialize proxy classes. */
+        classInitializationSupport.forceInitializeHierarchy(ret);
         return ret;
     }
 

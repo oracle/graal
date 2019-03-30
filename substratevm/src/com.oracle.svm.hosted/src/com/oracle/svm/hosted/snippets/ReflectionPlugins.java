@@ -131,7 +131,9 @@ public class ReflectionPlugins {
          * analyzing the static initializers, then we always intrinsify, so don't need a registry.
          */
         if (hosted && analysis) {
-            ImageSingletons.add(ReflectionPluginRegistry.class, new ReflectionPluginRegistry());
+            if (!ImageSingletons.contains(ReflectionPluginRegistry.class)) {
+                ImageSingletons.add(ReflectionPluginRegistry.class, new ReflectionPluginRegistry());
+            }
         }
 
         registerClassPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, plugins, analysis, hosted);

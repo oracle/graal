@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.junit;
+package com.oracle.svm.hosted;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.function.BooleanSupplier;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
+public class NativeImageUtil {
 
-public final class JUnitFeature implements Feature {
-
-    public static class IsEnabled implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return ImageSingletons.contains(JUnitFeature.class);
+    public static ResolvedJavaMethod toOriginal(ResolvedJavaMethod method) {
+        if (method instanceof HostedMethod) {
+            return ((HostedMethod) method).wrapped.wrapped;
+        } else if (method instanceof AnalysisMethod) {
+            return ((AnalysisMethod) method).wrapped;
+        } else {
+            return method;
         }
     }
 
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(ReflectionFeature.class);
+    public static ResolvedJavaType toOriginal(ResolvedJavaType type) {
+        if (type instanceof HostedType) {
+            return ((HostedType) type).getWrapped().getWrapped();
+        } else if (type instanceof AnalysisType) {
+            return ((AnalysisType) type).getWrapped();
+        } else {
+            return type;
+        }
     }
 
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitialization.eagerClassInitialization(SVMJUnitRunner.class);
-        SVMJUnitRunner svmRunner = new SVMJUnitRunner(access);
-        ImageSingletons.add(SVMJUnitRunner.class, svmRunner);
-    }
 }

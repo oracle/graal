@@ -4560,7 +4560,7 @@ public class BytecodeParser implements GraphBuilderContext {
          */
         if (resolvedField.isSynthetic() && resolvedField.getName().startsWith("$assertionsDisabled")) {
             if (parsingIntrinsic()) {
-                throw new GraalError("Cannot use an assertion within the context of an intrinsic.");
+                throw new GraalError("Cannot use an assertion within the context of an intrinsic: " + resolvedField);
             } else if (graphBuilderConfig.omitAssertions()) {
                 frameState.push(field.getJavaKind(), ConstantNode.forBoolean(true, graph));
                 return;

@@ -22,73 +22,75 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.classinitialization;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
 
-/**
- * This class contains the hosted code to support initialization of select classes at runtime. It
- * handles the registration (implementing the functionality of the
- * {@link RuntimeClassInitialization} API) and prepares the {@link ClassInitializationInfo} objects
- * that are used at runtime to do the initialization.
- */
-public class ClassInitializationSupportImpl implements ClassInitializationSupport {
+public abstract class CommonClassInitializationSupport implements ClassInitializationSupport {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-
-    /**
-     * The initialization kind for a class. The order of the enum values matters, {@link #max}
-     * depends on it.
-     */
-    enum InitKind {
-        /** Class is initialized during image building, so it is already initialized at runtime. */
-        EAGER,
-        /** Class is initialized both at runtime and during image building. */
-        RERUN,
-        /** Class is initialized at runtime and not during image building. */
-        DELAY;
-
-        InitKind max(InitKind other) {
-            return this.ordinal() > other.ordinal() ? this : other;
-        }
-    }
+    static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
      * The initialization kind for all classes seen during image building. Classes are inserted into
-     * this map when 1) they are registered explicitly by the user as {@link InitKind#RERUN} or
-     * {@link InitKind#DELAY}, or 2) the first time the information was queried and used during
-     * image building (fixing the state to {@link InitKind#EAGER}).
+     * this map when 1) they are registered explicitly by the user as
+     * {@link ClassInitializationSupport.InitKind#RERUN} or
+     * {@link ClassInitializationSupport.InitKind#DELAY}, or 2) the first time the information was
+     * queried and used during image building (fixing the state to
+     * {@link ClassInitializationSupport.InitKind#EAGER}).
      */
-    private final Map<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
+    final Map<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
 
     /**
      * Non-null while the static analysis is running to allow reporting of class initialization
      * errors without immediately aborting image building.
      */
     private UnsupportedFeatures unsupportedFeatures;
-    private MetaAccessProvider metaAccess;
+    protected MetaAccessProvider metaAccess;
 
-    public ClassInitializationSupportImpl(MetaAccessProvider metaAccess) {
+    CommonClassInitializationSupport(MetaAccessProvider metaAccess) {
         this.metaAccess = metaAccess;
     }
 
-    void setUnsupportedFeatures(UnsupportedFeatures unsupportedFeatures) {
+    @Override
+    public void setUnsupportedFeatures(UnsupportedFeatures unsupportedFeatures) {
         this.unsupportedFeatures = unsupportedFeatures;
+    }
+
+    /**
+     * Computes the class initialization kind of the provided class, all superclasses, and all
+     * interfaces that the provided class depends on (i.e., interfaces implemented by the provided
+     * class that declare default methods).
+     *
+     * Also defines class initialization based on a policy of the subclass.
+     */
+    abstract InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz, boolean memoize);
+
+    InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz) {
+        return computeInitKindAndMaybeInitializeClass(clazz, true);
+    }
+
+    @Override
+    public Set<Class<?>> classesWithKind(InitKind kind) {
+        return classInitKinds.entrySet().stream()
+                        .filter(e -> e.getValue() == kind)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet());
     }
 
     @Override
@@ -111,97 +113,14 @@ public class ClassInitializationSupportImpl implements ClassInitializationSuppor
         forceInitializeHosted(toAnalysisType(type).getJavaClass());
     }
 
-    @Override
-    public void forceInitializeHosted(Class<?> clazz) {
-        InitKind initKind = computeInitKindAndMaybeInitializeClass(clazz);
-        if (initKind == InitKind.DELAY) {
-            throw UserError.abort("Cannot delay running the class initializer because class must be initialized for internal purposes: " + clazz.getTypeName());
-        }
-    }
-
-    private static AnalysisType toAnalysisType(ResolvedJavaType type) {
-        return type instanceof HostedType ? ((HostedType) type).getWrapped() : (AnalysisType) type;
-    }
-
-    @Override
-    public void checkDelayedInitialization() {
-        /*
-         * We check all registered classes here, regardless if the AnalysisType got actually marked
-         * as used. Class initialization can have side effects on other classes without the class
-         * being used itself, e.g., a class initializer can write a static field in another class.
-         */
-        for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
-            if (entry.getValue() == InitKind.DELAY && !UNSAFE.shouldBeInitialized(entry.getKey())) {
-                throw UserError.abort("Class that is marked for delaying initialization to run time got initialized during image building: " + entry.getKey().getTypeName());
-            }
-        }
-    }
-
-    private InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz) {
-        return computeInitKindAndMaybeInitializeClass(clazz, true);
-    }
-
-    /**
-     * Computes the class initialization kind of the provided class, all superclasses, and all
-     * interfaces that the provided class depends on (i.e., interfaces implemented by the provided
-     * class that declare default methods).
-     *
-     * Also triggers class initialization unless class initialization is delayed to runtime.
-     */
-    private InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz, boolean memoizeEager) {
-        InitKind result = classInitKinds.get(clazz);
-        if (result != null) {
-            return result;
-        }
-
-        result = InitKind.EAGER;
-        if (clazz.getSuperclass() != null) {
-            result = result.max(computeInitKindAndMaybeInitializeClass(clazz.getSuperclass(), memoizeEager));
-        }
-        result = result.max(processInterfaces(clazz, memoizeEager));
-
-        if (result != InitKind.EAGER || memoizeEager) {
-            if (result != InitKind.DELAY) {
-                result = result.max(ensureClassInitialized(clazz));
-            }
-
-            InitKind previous = classInitKinds.put(clazz, result);
-            assert previous == null || previous == result : "Overwriting existing value";
-        }
-        return result;
-    }
-
-    private InitKind processInterfaces(Class<?> clazz, boolean memoizeEager) {
-        InitKind result = InitKind.EAGER;
-        for (Class<?> iface : clazz.getInterfaces()) {
-            if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
-                /*
-                 * An interface that declares default methods is initialized when a class
-                 * implementing it is initialized. So we need to inherit the InitKind from such an
-                 * interface.
-                 */
-                result = result.max(computeInitKindAndMaybeInitializeClass(iface, memoizeEager));
-            } else {
-                /*
-                 * An interface that does not declare default methods is independent from a class
-                 * that implements it, i.e., the interface can still be uninitialized even when the
-                 * class is initialized.
-                 */
-                result = result.max(processInterfaces(iface, memoizeEager));
-            }
-        }
-        return result;
-    }
-
     /**
      * Ensure class is initialized. Report class initialization errors in a user-friendly way if
      * class initialization fails.
      */
-    private InitKind ensureClassInitialized(Class<?> clazz) {
+    InitKind ensureClassInitialized(Class<?> clazz) {
         try {
             UNSAFE.ensureClassInitialized(clazz);
             return InitKind.EAGER;
-
         } catch (Throwable ex) {
             if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue() || NativeImageOptions.AllowIncompleteClasspath.getValue()) {
                 System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
@@ -230,6 +149,10 @@ public class ClassInitializationSupportImpl implements ClassInitializationSuppor
         }
     }
 
+    private static AnalysisType toAnalysisType(ResolvedJavaType type) {
+        return type instanceof HostedType ? ((HostedType) type).getWrapped() : (AnalysisType) type;
+    }
+
     @Override
     public void delayClassInitialization(Class<?>[] classes) {
         for (Class<?> clazz : classes) {
@@ -239,8 +162,12 @@ public class ClassInitializationSupportImpl implements ClassInitializationSuppor
                 throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName());
             }
 
+            if (clazz.isAnnotation()) {
+                throw UserError.abort("Class initialization of annotation classes cannot be delayed to runtime. Culprit: " + clazz.getTypeName());
+            }
+
             /*
-             * Propagate possible existing RERUN registration from a superclass, so that we can
+             * Propagate possible existing DELAY registration from a superclass, so that we can
              * check for user errors below.
              */
             computeInitKindAndMaybeInitializeClass(clazz, false);
@@ -249,7 +176,6 @@ public class ClassInitializationSupportImpl implements ClassInitializationSuppor
 
             if (previousKind == InitKind.EAGER) {
                 throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName());
-
             } else if (previousKind == InitKind.RERUN) {
                 throw UserError.abort("Class is registered both for delaying and rerunning the class initializer: " + clazz.getTypeName());
             }
@@ -285,10 +211,31 @@ public class ClassInitializationSupportImpl implements ClassInitializationSuppor
         }
     }
 
+    @Override
+    public void checkDelayedInitialization() {
+        /*
+         * We check all registered classes here, regardless if the AnalysisType got actually marked
+         * as used. Class initialization can have side effects on other classes without the class
+         * being used itself, e.g., a class initializer can write a static field in another class.
+         */
+        for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
+            if (entry.getValue() == InitKind.DELAY && !UNSAFE.shouldBeInitialized(entry.getKey())) {
+                throw UserError.abort("Class that is marked for delaying initialization to run time got initialized during image building: " + entry.getKey().getTypeName());
+            }
+        }
+    }
+
     private static void checkEagerInitialization(Class<?> clazz) {
         if (clazz.isPrimitive() || clazz.isArray()) {
             throw UserError.abort("Primitive types and array classes are initialized eagerly because initialization is side-effect free. " +
                             "It is not possible (and also not useful) to register them for run time initialization: " + clazz.getTypeName());
+        }
+    }
+
+    @Override
+    public void eagerClassInitialization(Class<?>[] classes) {
+        for (Class<?> clazz : classes) {
+            forceInitializeHierarchy(clazz);
         }
     }
 }

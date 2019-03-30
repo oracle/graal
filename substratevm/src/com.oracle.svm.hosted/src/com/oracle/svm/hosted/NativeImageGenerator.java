@@ -116,6 +116,8 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
+import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -222,6 +224,7 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.SizeOfSupportImpl;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperSubstitutionProcessor;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
@@ -1487,26 +1490,33 @@ public class NativeImageGenerator {
     @SuppressWarnings("try")
     private void processNativeLibraryImports(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
         for (Method method : loader.findAnnotatedMethods(CConstant.class)) {
+            RuntimeClassInitialization.eagerClassInitialization(method.getDeclaringClass());
             nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
         }
         for (Method method : loader.findAnnotatedMethods(CFunction.class)) {
             nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CStruct.class)) {
+            RuntimeClassInitialization.eagerClassInitialization(clazz);
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(RawStructure.class)) {
+            RuntimeClassInitialization.eagerClassInitialization(clazz);
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CPointerTo.class)) {
+            RuntimeClassInitialization.eagerClassInitialization(clazz);
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CEnum.class)) {
+            RuntimeClassInitialization.eagerClassInitialization(clazz);
             ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
             classInitializationSupport.forceInitializeHosted(type);
             nativeLibs.loadJavaType(type);
         }
-
+        for (Class<?> clazz : loader.findAnnotatedClasses(CContext.class)) {
+            RuntimeClassInitialization.eagerClassInitialization(clazz);
+        }
         for (CLibrary library : loader.findAnnotations(CLibrary.class)) {
             nativeLibs.addLibrary(library.value());
         }

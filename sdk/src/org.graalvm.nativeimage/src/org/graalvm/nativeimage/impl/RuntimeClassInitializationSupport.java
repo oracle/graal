@@ -41,6 +41,7 @@
 package org.graalvm.nativeimage.impl;
 
 public interface RuntimeClassInitializationSupport {
+    void eagerClassInitialization(Class<?>[] classes);
 
     void delayClassInitialization(Class<?>[] classes);
 

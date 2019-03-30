@@ -80,6 +80,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -232,10 +233,11 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
         Plugins plugins = new Plugins(new InvocationPlugins());
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
+        plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
         ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), false, false);
 
-        builderPhase = new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins));
+        builderPhase = new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true));
 
         /*
          * Analyzing certain classes leads to false errors. We disable reporting for those classes
@@ -295,14 +297,17 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (hostType.isArray()) {
             return;
         }
-
         /* Detect field offset computation in static initializers. */
         ResolvedJavaMethod clinit = hostType.getClassInitializer();
-        /*
-         * Even if clinit.hasBytecodes() returns true, clinit.getCode() can return null when the
-         * type fails to initialize due to verification issues triggered by missing types.
-         */
-        if (clinit != null && clinit.hasBytecodes() && clinit.getCode() != null) {
+
+        if (clinit != null && clinit.hasBytecodes()) {
+            /* The following directive links the class and makes clinit available. */
+            try {
+                hostType.getDeclaredConstructors();
+            } catch (NoClassDefFoundError t) {
+                /* This code should be non-intrusive so we just ignore. */
+                return;
+            }
             DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
             try (DebugContext.Scope s = debug.scope("Field offset computation", clinit)) {
                 StructuredGraph clinitGraph = getStaticInitializerGraph(clinit, options, debug);
@@ -325,6 +330,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 throw debug.handle(e);
             }
         }
+
     }
 
     /**
@@ -773,7 +779,6 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String substitutedFieldStr = substitutedField.format("%H.%n");
 
             String msg = "Info:" + substitutionKindStr + " substitution automatically registered for " + substitutedFieldStr + ", target element " + target + ".";
-
             System.out.println(msg);
         }
     }

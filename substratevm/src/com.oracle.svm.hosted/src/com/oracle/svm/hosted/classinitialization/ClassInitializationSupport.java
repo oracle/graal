@@ -22,9 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.classinitialization;
+
+import java.util.Set;
 
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -32,6 +36,25 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Interface for the class initialization required by the native-image.
  */
 public interface ClassInitializationSupport extends RuntimeClassInitializationSupport {
+
+    /**
+     * The initialization kind for a class. The order of the enum values matters, {@link #max}
+     * depends on it.
+     */
+    enum InitKind {
+        /** Class is initialized during image building, so it is already initialized at runtime. */
+        EAGER,
+        /** Class is initialized both at runtime and during image building. */
+        RERUN,
+        /** Class is initialized at runtime and not during image building. */
+        DELAY;
+
+        InitKind max(InitKind other) {
+            return this.ordinal() > other.ordinal() ? this : other;
+        }
+    }
+
+    Set<Class<?>> classesWithKind(InitKind kind);
 
     /**
      * Returns true if the provided type should be initialized at runtime.
@@ -62,9 +85,17 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
     void forceInitializeHosted(Class<?> clazz);
 
     /**
+     * Initializes the class during image building, and reports an error if the user requested to
+     * delay initialization to runtime.
+     */
+    void forceInitializeHierarchy(Class<?> clazz);
+
+    /**
      * Check that all registered classes are here, regardless if the AnalysisType got actually
      * marked as used. Class initialization can have side effects on other classes without the class
      * being used itself, e.g., a class initializer can write a static field in another class.
      */
     void checkDelayedInitialization();
+
+    void setUnsupportedFeatures(UnsupportedFeatures o);
 }

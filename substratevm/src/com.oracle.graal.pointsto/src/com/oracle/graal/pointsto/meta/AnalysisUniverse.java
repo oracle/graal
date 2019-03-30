@@ -535,7 +535,7 @@ public class AnalysisUniverse implements Universe {
         return destination;
     }
 
-    private void buildSubTypes() {
+    public void buildSubTypes() {
         Map<AnalysisType, Set<AnalysisType>> allSubTypes = new HashMap<>();
         AnalysisType objectType = null;
         for (AnalysisType type : getTypes()) {
@@ -567,21 +567,26 @@ public class AnalysisUniverse implements Universe {
     private void collectMethodImplementations(BigBang bb) {
         for (AnalysisMethod method : methods.values()) {
 
-            Set<AnalysisMethod> implementations = new HashSet<>();
-            if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
-                if (method.isImplementationInvoked()) {
-                    implementations.add(method);
-                }
-            } else {
-                try {
-                    collectMethodImplementations(method, method.getDeclaringClass(), implementations);
-                } catch (UnsupportedFeatureException ex) {
-                    String message = String.format("Error while collecting implementations of %s : %s%n", method.format("%H.%n(%p)"), ex.getMessage());
-                    bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, null, ex.getCause());
-                }
-            }
+            Set<AnalysisMethod> implementations = getMethodImplementations(bb, method);
             method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
         }
+    }
+
+    public Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method) {
+        Set<AnalysisMethod> implementations = new HashSet<>();
+        if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
+            if (method.isImplementationInvoked()) {
+                implementations.add(method);
+            }
+        } else {
+            try {
+                collectMethodImplementations(method, method.getDeclaringClass(), implementations);
+            } catch (UnsupportedFeatureException ex) {
+                String message = String.format("Error while collecting implementations of %s : %s%n", method.format("%H.%n(%p)"), ex.getMessage());
+                bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, null, ex.getCause());
+            }
+        }
+        return implementations;
     }
 
     private boolean collectMethodImplementations(AnalysisMethod method, AnalysisType holder, Set<AnalysisMethod> implementations) {
