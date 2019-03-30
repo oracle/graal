@@ -66,12 +66,15 @@ import com.oracle.svm.agent.restrict.ParserConfigurationAdapter;
 import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
 import com.oracle.svm.agent.restrict.ProxyConfiguration;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
+import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
+import com.oracle.svm.agent.restrict.ResourceConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.hosted.config.ProxyConfigurationParser;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
+import com.oracle.svm.hosted.config.ResourceConfigurationParser;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
@@ -94,6 +97,7 @@ public final class Agent {
         List<String> jniConfigPaths = new ArrayList<>();
         List<String> reflectConfigPaths = new ArrayList<>();
         List<String> proxyConfigPaths = new ArrayList<>();
+        List<String> resourceConfigPaths = new ArrayList<>();
         if (options.isNonNull() && SubstrateUtil.strlen(options).aboveThan(0)) {
             String[] optionTokens = fromCString(options).split(",");
             if (optionTokens.length == 0) {
@@ -109,6 +113,8 @@ public final class Agent {
                     reflectConfigPaths.add(token.substring("restrict-reflect=".length()));
                 } else if (token.startsWith("restrict-proxy=")) {
                     proxyConfigPaths.add(token.substring("restrict-proxy=".length()));
+                } else if (token.startsWith("restrict-resource")) {
+                    resourceConfigPaths.add(token.substring("restrict-resource=".length()));
                 } else {
                     System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read CONFIGURE.md.");
                     return 1;
@@ -163,7 +169,18 @@ public final class Agent {
                 }
                 proxyVerifier = new ProxyAccessVerifier(proxyConfiguration, accessAdvisor);
             }
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier);
+            ResourceAccessVerifier resourceVerifier = null;
+            if (!resourceConfigPaths.isEmpty()) {
+                ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
+                ResourceConfigurationParser parser = new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration));
+                for (String resourceConfigPath : resourceConfigPaths) {
+                    try (Reader reader = Files.newBufferedReader(Paths.get(resourceConfigPath))) {
+                        parser.parseAndRegister(reader);
+                    }
+                }
+                resourceVerifier = new ResourceAccessVerifier(resourceConfiguration, accessAdvisor);
+            }
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier, resourceVerifier);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 3;
