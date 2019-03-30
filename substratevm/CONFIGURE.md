@@ -12,7 +12,13 @@ In order to make preparing these configuration files easier and more convenient,
 
 During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources or request proxy accesses and writes a trace file with the specified path.
 
-Next, the `native-image-configure` tool can transform the trace file to configuration files for native image builds. This tool itself must first be built with the command `native-image --tool:native-image-configure`. Then, the tool can be used as follows:
+Next, the `native-image-configure` tool can transform the trace file to configuration files for native image builds. This tool itself must first be built with:
+
+```
+native-image --tool:native-image-configure
+```
+
+Then, the tool generates configuration files from the trace file with the following command:
 
 ```
 native-image-configure process-trace --output-dir=/path/to/config-dir/ /path/to/trace-file.json
