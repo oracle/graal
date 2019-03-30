@@ -161,7 +161,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopyWithSlowPathNode;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyWithDelayedLoweringNode;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
@@ -232,6 +232,10 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         }
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, factories, providers, target);
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, factories, providers, target);
+    }
+
+    public ArrayCopySnippets.Templates getArraycopySnippets() {
+        return arraycopySnippets;
     }
 
     public MonitorSnippets.Templates getMonitorSnippets() {
@@ -332,8 +336,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 }
             } else if (n instanceof ArrayCopyNode) {
                 arraycopySnippets.lower((ArrayCopyNode) n, tool);
-            } else if (n instanceof ArrayCopyWithSlowPathNode) {
-                arraycopySnippets.lower((ArrayCopyWithSlowPathNode) n, tool);
+            } else if (n instanceof ArrayCopyWithDelayedLoweringNode) {
+                arraycopySnippets.lower((ArrayCopyWithDelayedLoweringNode) n, tool);
             } else if (n instanceof G1PreWriteBarrier) {
                 writeBarrierSnippets.lower((G1PreWriteBarrier) n, registers, tool);
             } else if (n instanceof G1PostWriteBarrier) {

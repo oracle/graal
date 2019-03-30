@@ -643,7 +643,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp b = (IntegerStamp) stamp2;
 
                             int bits = a.getBits();
-                            assert bits == b.getBits();
+                            assert bits == b.getBits() : String.format("stamp1.bits=%d, stamp2.bits=%d", bits, b.getBits());
 
                             if (a.lowerBound == a.upperBound && b.lowerBound == b.upperBound) {
                                 long value = CodeUtil.convert(a.lowerBound() + b.lowerBound(), a.getBits(), false);
