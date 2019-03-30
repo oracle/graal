@@ -26,13 +26,12 @@ package com.oracle.svm.hosted.config;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
-import com.oracle.svm.hosted.ImageClassLoader;
 
 // Checkstyle: allow reflection
 
@@ -40,12 +39,10 @@ import com.oracle.svm.hosted.ImageClassLoader;
  * Parses JSON describing lists of interfaces and register them in the {@link DynamicProxyRegistry}.
  */
 public final class ProxyConfigurationParser extends ConfigurationParser {
-    private final ImageClassLoader classLoader;
-    private final DynamicProxyRegistry dynamicProxyRegistry;
+    private final Consumer<String[]> interfaceListConsumer;
 
-    public ProxyConfigurationParser(ImageClassLoader classLoader, DynamicProxyRegistry dynamicProxyRegistry) {
-        this.classLoader = classLoader;
-        this.dynamicProxyRegistry = dynamicProxyRegistry;
+    public ProxyConfigurationParser(Consumer<String[]> interfaceListConsumer) {
+        this.interfaceListConsumer = interfaceListConsumer;
     }
 
     @Override
@@ -62,25 +59,17 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
     }
 
     private void parseInterfaceList(List<?> data) {
-        List<Class<?>> interfaces = new ArrayList<>();
-
+        String[] interfaces = new String[data.size()];
+        int i = 0;
         for (Object value : data) {
-            String className = asString(value);
-
-            Class<?> clazz = classLoader.findClassByName(className, false);
-            if (clazz == null) {
-                throw new JSONParserException("Class " + className + " not found");
-            }
-
-            if (!clazz.isInterface()) {
-                throw new JSONParserException("The class \"" + className + "\" is not an interface.");
-            }
-
-            interfaces.add(clazz);
+            interfaces[i] = asString(value);
+            i++;
         }
-
-        /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-        dynamicProxyRegistry.addProxyClass(interfaces.toArray(new Class<?>[0]));
+        try {
+            interfaceListConsumer.accept(interfaces);
+        } catch (Exception e) {
+            throw new JSONParserException(e.toString());
+        }
     }
 
 }

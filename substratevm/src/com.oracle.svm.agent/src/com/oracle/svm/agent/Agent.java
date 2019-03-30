@@ -63,11 +63,14 @@ import com.oracle.svm.agent.restrict.Configuration;
 import com.oracle.svm.agent.restrict.ConfigurationType;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.agent.restrict.ParserConfigurationAdapter;
+import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
+import com.oracle.svm.agent.restrict.ProxyConfiguration;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.hosted.config.ProxyConfigurationParser;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
@@ -90,6 +93,7 @@ public final class Agent {
         String outputPath = null;
         List<String> jniConfigPaths = new ArrayList<>();
         List<String> reflectConfigPaths = new ArrayList<>();
+        List<String> proxyConfigPaths = new ArrayList<>();
         if (options.isNonNull() && SubstrateUtil.strlen(options).aboveThan(0)) {
             String[] optionTokens = fromCString(options).split(",");
             if (optionTokens.length == 0) {
@@ -103,6 +107,8 @@ public final class Agent {
                     jniConfigPaths.add(token.substring("restrict-jni=".length()));
                 } else if (token.startsWith("restrict-reflect=")) {
                     reflectConfigPaths.add(token.substring("restrict-reflect=".length()));
+                } else if (token.startsWith("restrict-proxy=")) {
+                    proxyConfigPaths.add(token.substring("restrict-proxy=".length()));
                 } else {
                     System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read CONFIGURE.md.");
                     return 1;
@@ -146,7 +152,18 @@ public final class Agent {
                 }
                 verifier = new ReflectAccessVerifier(configuration, accessAdvisor);
             }
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier);
+            ProxyAccessVerifier proxyVerifier = null;
+            if (!proxyConfigPaths.isEmpty()) {
+                ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
+                ProxyConfigurationParser parser = new ProxyConfigurationParser(proxyConfiguration::add);
+                for (String proxyConfigPath : proxyConfigPaths) {
+                    try (Reader reader = Files.newBufferedReader(Paths.get(proxyConfigPath))) {
+                        parser.parseAndRegister(reader);
+                    }
+                }
+                proxyVerifier = new ProxyAccessVerifier(proxyConfiguration, accessAdvisor);
+            }
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 3;
