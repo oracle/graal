@@ -233,9 +233,13 @@ public class ITLInspectDebugTest {
                                                  "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":3}," +
                                                  "\"url\":\"" + sourceURI + "\"}]}}\n"));
 
-        tester.sendMessage("{\"id\":4,\"method\":\"Debugger.resume\"}");
+        tester.sendMessage("{\"id\":4,\"method\":\"Runtime.evaluate\",\"params\":{\"expression\":\"THIS\",\"objectGroup\":\"watch-group\",\"includeCommandLineAPI\":false,\"silent\":true,\"contextId\":" + id + "}}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"result\":{},\"id\":4}\n" +
+                        "{\"result\":{\"result\":{\"description\":\"42\",\"type\":\"number\",\"value\":42}},\"id\":4}\n"));
+
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":5}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n"));
         tester.finish();
     }
