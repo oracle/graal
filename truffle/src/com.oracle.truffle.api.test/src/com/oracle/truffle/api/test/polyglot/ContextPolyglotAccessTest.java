@@ -231,7 +231,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             env1.importSymbol("symbol1");
             fail();
         } catch (SecurityException e) {
-            assertEquals("Polyglot bindings are not accessible for this language.", e.getMessage());
+            assertEquals("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.", e.getMessage());
         }
     }
 
@@ -240,7 +240,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             env1.exportSymbol("symbol1", "value");
             fail();
         } catch (SecurityException e) {
-            assertEquals("Polyglot bindings are not accessible for this language.", e.getMessage());
+            assertEquals("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.", e.getMessage());
         }
     }
 
