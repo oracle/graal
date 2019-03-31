@@ -66,7 +66,7 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
 
     @Test
     public void catchControlFlowExceptionFromCall() {
-        Context context = Context.newBuilder().option("engine.Inlining", "true").build();
+        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "true").build();
         context.enter();
         try {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootTestNode(new FrameDescriptor(), "throwControlFlowException", new ThrowControlFlowExceptionTestNode()));
