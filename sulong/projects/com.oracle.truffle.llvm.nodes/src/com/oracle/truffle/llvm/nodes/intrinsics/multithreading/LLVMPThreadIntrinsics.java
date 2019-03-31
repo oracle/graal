@@ -3,8 +3,10 @@ package com.oracle.truffle.llvm.nodes.intrinsics.multithreading;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Random;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -12,10 +14,14 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -29,6 +35,21 @@ public class LLVMPThreadIntrinsics {
 
     public static PrintWriter debugOut = null;
 
+    @CompilerDirectives.TruffleBoundary
+    private static void printDebug(String str) {
+        // create debug output tool
+        if (debugOut == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            try {
+                debugOut = new PrintWriter(new FileWriter("/home/florian/debug out"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        debugOut.println(str);
+        debugOut.flush();
+    }
+
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
@@ -39,19 +60,10 @@ public class LLVMPThreadIntrinsics {
 
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object thread, Object attr, Object startRoutine, Object arg) {
-
+            // create store node
             if (store == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 store = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
-            }
-
-            if (debugOut == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                try {
-                    debugOut = new PrintWriter(new FileWriter("/home/florian/debug out"));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
             }
 
             // pointer to store the thread id
@@ -73,15 +85,15 @@ public class LLVMPThreadIntrinsics {
             // create thread for execution of function
             Thread t = getContextReference().get().getEnv().createThread(() -> {
                 CompilerDirectives.transferToInterpreter();
-                Truffle.getRuntime().createCallTarget(new RunNewThreadNode(getLLVMLanguage())).call(startRoutine, arg);
+                RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(getLLVMLanguage()));
+                callTarget.call(startRoutine, arg);
 
-                debugOut.println("func is done...");
-                debugOut.flush();
+                printDebug("func is done...");
             });
 
             // store cur id in thread var
             store.executeWithTarget(thread, t.getId());
-
+            printDebug("id of thread: " + t.getId());
             // store thread with thread id in context
             getContextReference().get().threadStorage.put(t.getId(), t);
 
@@ -95,16 +107,9 @@ public class LLVMPThreadIntrinsics {
 
             return 0;
         }
-
-        @CompilerDirectives.TruffleBoundary
-        private void printDebug(String str) {
-            debugOut.write(str);
-            debugOut.flush();
-        }
     }
 
     static class MyArgNode extends LLVMExpressionNode {
-
         private FrameSlot slot;
 
         private MyArgNode(FrameSlot slot) {
@@ -118,7 +123,6 @@ public class LLVMPThreadIntrinsics {
     }
 
     private static class RunNewThreadNode extends RootNode {
-
         @Child LLVMExpressionNode callNode = null;
 
         @CompilerDirectives.CompilationFinal
@@ -127,34 +131,39 @@ public class LLVMPThreadIntrinsics {
         @CompilerDirectives.CompilationFinal
         FrameSlot argSlot = null;
 
+        @CompilerDirectives.CompilationFinal
+        FrameSlot spSlot = null;
+
         protected RunNewThreadNode(LLVMLanguage language) {
             super(language);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-
+            LLVMStack stack = new LLVMStack(1000); // how big should it really be?
+            LLVMStack.StackPointer sp = stack.newFrame();
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 functionSlot = frame.getFrameDescriptor().findOrAddFrameSlot("function");
                 argSlot = frame.getFrameDescriptor().findOrAddFrameSlot("arg");
+                spSlot = frame.getFrameDescriptor().findOrAddFrameSlot("sp");
 
                 callNode = getCurrentContext(LLVMLanguage.class).getNodeFactory().createFunctionCall(
                         new MyArgNode(functionSlot),
                         new LLVMExpressionNode[] {
-                                new MyArgNode(argSlot)
+                                new MyArgNode(spSlot), new MyArgNode(argSlot)
                         },
                         new FunctionType(PointerType.VOID, new Type[] {}, false),
                         null
                 );
             }
-
             // copy arguments to frame
             final Object[] arguments = frame.getArguments();
             Object function = arguments[0];
             Object arg = arguments[1];
             frame.setObject(functionSlot, function);
             frame.setObject(argSlot, arg);
+            frame.setObject(spSlot, sp);
 
             callNode.executeGeneric(frame);
             return null;
@@ -168,41 +177,50 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object retval) {
             // LLVMPointer retPtr = (LLVMPointer) retval;
-            debugOut.println("here in exit");
-            debugOut.flush();
+            printDebug("entered exit...");
             getContextReference().get().retValStorage.put(Thread.currentThread().getId(), retval);
-            ((Thread) (getContextReference().get().threadStorage.get(Thread.currentThread().getId()))).interrupt();
+            printDebug(retval.toString());
+            // stop current thread
+            // Thread.currentThread().interrupt();
+            // Thread.currentThread().stop();
             return 0;
         }
-
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadJoin extends LLVMBuiltin {
+
+        @Child LLVMStoreNode storeNode;
+
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object th, Object threadReturn) {
-            /*
-             * long thLong = (long) th; LLVMPointer returnPtr = (LLVMPointer) threadReturn; Object
-             * obj = getContextReference().get().retValStorage.get(thLong); boolean doIt = false;
-             * try { debugOut.println("join try..." + thLong); debugOut.flush(); Thread thread =
-             * (Thread) getContextReference().get().threadStorage.get(thLong); thread.join();
-             * debugOut.println("is joined..."); debugOut.flush(); // store return value in at ptr
-             * Object retVal = getContextReference().get().retValStorage.get(thLong);
-             * debugOut.println("class of retVal: " + retVal.getClass()); debugOut.flush();
-             * 
-             * 
-             * LLVMPointerStoreNode storeNode = LLVMPointerStoreNodeGen.create(null, null);
-             * storeNode.executeWithTarget(returnPtr, retVal); debugOut.println("pointer written..."
-             * ); debugOut.flush();
-             * 
-             * } catch (Exception e) { e.printStackTrace(); debugOut.println("catch exc now...");
-             * debugOut.flush(); } Random r = new Random(System.currentTimeMillis()); doIt =
-             * r.nextBoolean();
-             * 
-             * return doIt ? 35 : 45;
-             */
-            return 105;
+            if (storeNode == null) {
+                // storeNode = LLVMPointerStoreNodeGen.create(null, null);
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                storeNode = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
+            }
+            long thLong = (long) th;
+            try {
+                printDebug("join try");
+                Thread thread = (Thread) getContextReference().get().threadStorage.get(thLong);
+                thread.join();
+                printDebug("is joined");
+                Object retVal = getContextReference().get().retValStorage.get(thLong);
+                printDebug("aus der retValStorage: " + retVal.toString());
+
+                // store return value in at ptr
+
+                storeNode.executeWithTarget(threadReturn, retVal);
+
+                printDebug("pointer written...");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                printDebug("catch exc now...");
+
+            }
+            return 55;
         }
 
     }
