@@ -86,6 +86,7 @@ public class DirectoryStorageTest extends TestBase {
     @Before
     public void setUp() throws Exception {
         graalVMPath = workDir.newFolder("graal").toPath();
+        Files.createDirectory(graalVMPath.resolve("bin"));
         registryPath = workDir.newFolder("registry").toPath();
 
         storage = new DirectoryStorage(this, registryPath, graalVMPath);
@@ -156,6 +157,7 @@ public class DirectoryStorageTest extends TestBase {
         copyDir("list1", registryPath);
         List<String> components = new ArrayList<>(storage.listComponentIDs());
         Collections.sort(components);
+        components.remove(BundleConstants.GRAAL_COMPONENT_ID);
         assertEquals(Arrays.asList("fastr", "fastr-2", "ruby", "sulong"), components);
     }
 
@@ -163,6 +165,7 @@ public class DirectoryStorageTest extends TestBase {
     public void testListComponentsEmpty() throws Exception {
         copyDir("emptylist", registryPath);
         List<String> components = new ArrayList<>(storage.listComponentIDs());
+        components.remove(BundleConstants.GRAAL_COMPONENT_ID);
         assertEquals(Collections.emptyList(), components);
     }
 
@@ -456,5 +459,26 @@ public class DirectoryStorageTest extends TestBase {
         Files.write(p, Arrays.asList("ahoj"));
         assertNotNull(storage.licenseAccepted(info, "cafebabe"));
         assertNull(storage.licenseAccepted(info2, "cafebabe"));
+    }
+    
+    /**
+     * Checks that graalvm.core is present  in the list.
+     */
+    @Test
+    public void testCoreComponentPresent() throws Exception {
+        copyDir("list1", registryPath);
+        assertTrue("Must contain graalvm core", storage.listComponentIDs().contains(BundleConstants.GRAAL_COMPONENT_ID));
+    }
+    
+    @Test
+    public void testKnowsNativeComponent() throws Exception {
+        copyDir("list3", registryPath);
+        Collection<String> ids = storage.listComponentIDs();
+        assertTrue(ids.contains("fastr"));
+        assertTrue(ids.contains("ruby"));
+        Set<ComponentInfo> cis = storage.loadComponentMetadata("ruby");
+        assertEquals(1, cis.size());
+        ComponentInfo ci = cis.iterator().next();
+        assertTrue(ci.isNativeComponent());
     }
 }

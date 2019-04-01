@@ -92,6 +92,8 @@ public final class ComponentInfo {
     private byte[] shaDigest;
 
     private String postinstMessage;
+    
+    private boolean nativeComponent;
 
     /**
      * Origin of the component.
@@ -282,5 +284,13 @@ public final class ComponentInfo {
 
     public void setOrigin(String origin) {
         this.origin = origin;
+    }
+
+    public boolean isNativeComponent() {
+        return nativeComponent;
+    }
+    
+    public void setNativeComponent(boolean nativeComponent) {
+        this.nativeComponent = nativeComponent;
     }
 }

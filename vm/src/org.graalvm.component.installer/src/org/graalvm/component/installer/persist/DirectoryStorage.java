@@ -75,6 +75,11 @@ public class DirectoryStorage implements ComponentStorage {
      * Suffix for the component metadata files, including comma.
      */
     private static final String COMPONENT_FILE_SUFFIX = ".component"; // NOI18N
+    
+    /**
+     * Metadata for natively installed component. 
+     */
+    private static final String NATIVE_COMPONENT_FILE_SUFFIX = ".meta"; // NOI18N
 
     /**
      * Suffix for the filelist metadata files.
@@ -204,15 +209,19 @@ public class DirectoryStorage implements ComponentStorage {
         File[] files = d.listFiles(new FileFilter() {
             @Override
             public boolean accept(File child) {
-                return Files.isRegularFile(child.toPath()) && child.getName().endsWith(COMPONENT_FILE_SUFFIX);
+                if (!Files.isRegularFile(child.toPath())) {
+                    return false;
+                }
+                return child.getName().endsWith(COMPONENT_FILE_SUFFIX) ||
+                        child.getName().endsWith(NATIVE_COMPONENT_FILE_SUFFIX);
             }
         });
         if (files != null) {
             Set<String> result = new HashSet<>();
             for (File f : files) {
                 String s = registryPath.relativize(f.toPath()).toString();
-                int e = s.length() - COMPONENT_FILE_SUFFIX.length();
-                result.add(s.substring(0, e));
+                int lastDot = s.lastIndexOf('.');
+                result.add(s.substring(0, lastDot));
             }
             // GraalVM core is always present
             if (Files.exists(graalHomePath.resolve("bin"))) {
@@ -282,15 +291,21 @@ public class DirectoryStorage implements ComponentStorage {
     @Override
     public Set<ComponentInfo> loadComponentMetadata(String tag) throws IOException {
         Path cmpFile = registryPath.resolve(SystemUtils.fileName(tag + COMPONENT_FILE_SUFFIX));
+        boolean nc = false;
         if (!Files.exists(cmpFile)) {
             if (BundleConstants.GRAAL_COMPONENT_ID.equals(tag)) {
                 return Collections.singleton(getCoreInfo());
             }
-            return null;
+            cmpFile = registryPath.resolve(SystemUtils.fileName(tag + NATIVE_COMPONENT_FILE_SUFFIX));
+            if (!Files.exists(cmpFile)) {
+                return null;
+            }
+            nc = true;
         }
         try (InputStream fileStream = Files.newInputStream(cmpFile)) {
             ComponentInfo info = loadMetadataFrom(fileStream);
             info.setInfoPath(cmpFile.toString());
+            info.setNativeComponent(nc);
             return Collections.singleton(info);
         }
     }
@@ -403,6 +418,9 @@ public class DirectoryStorage implements ComponentStorage {
      */
     @Override
     public void saveComponent(ComponentInfo info) throws IOException {
+        if (info.isNativeComponent()) {
+            return;
+        }
         assert info != null;
         Path cmpFile = registryPath.resolve(SystemUtils.fileName(info.getId() + COMPONENT_FILE_SUFFIX));
         try (OutputStream compFile = Files.newOutputStream(cmpFile, StandardOpenOption.CREATE,

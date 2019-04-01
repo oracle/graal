@@ -43,6 +43,8 @@ public class CommonConstants {
      */
     public static final String TOKEN_GRAALVM_PATH = "graalvm_home"; // NOI18N
 
+    public static final String LANGUAGE_PARENT = "jre/languages"; // NOI18N
+    
     /**
      * Relative path for the component storage.
      */
