@@ -533,7 +533,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @TruffleBoundary
     protected static RuntimeException invalidExecuteArgumentType(PolyglotLanguageContext context, Object receiver, UnsupportedTypeException e) {
-        String originalMessage = e.getMessage() == null ? "" : e.getMessage();
+        String originalMessage = e.getMessage() == null ? "" : e.getMessage() + " ";
         String[] formattedArgs = formatArgs(context, e.getSuppliedValues());
         String message = String.format("Invalid argument when executing %s. %sProvided arguments: %s.",
                         getValueInfo(context, receiver),
