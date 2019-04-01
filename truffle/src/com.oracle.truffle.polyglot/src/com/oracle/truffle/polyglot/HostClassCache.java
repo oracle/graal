@@ -132,7 +132,7 @@ final class HostClassCache {
             list.add(map);
         }
         for (Entry<Class<?>, Object> object : localMappings.entrySet()) {
-            object.setValue(((List<?>) object.getValue()).toArray(new PolyglotTargetMapping[0]));
+            object.setValue(((List<?>) object.getValue()).toArray(EMPTY_BINDINGS));
         }
         return localMappings;
     }
