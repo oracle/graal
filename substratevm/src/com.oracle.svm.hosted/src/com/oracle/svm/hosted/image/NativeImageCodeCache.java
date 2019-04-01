@@ -42,6 +42,7 @@ import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -93,10 +94,17 @@ public abstract class NativeImageCodeCache {
 
     private final Map<JavaConstant, String> constantReasons = new HashMap<>();
 
+    protected final Platform targetPlatform;
+
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
+        this (compilations, imageHeap, ImageSingletons.lookup(Platform.class));
+    }
+
+    public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
         this.compilations = compilations;
         this.imageHeap = imageHeap;
         this.dataSection = new DataSection();
+        this.targetPlatform = targetPlatform;
     }
 
     public abstract int getCodeCacheSize();
