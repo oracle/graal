@@ -461,9 +461,10 @@ public final class HostAccess {
          * throw an {@link IllegalArgumentException} if used.
          * <p>
          * If the converter function or the accepts predicate calls {@link Value#as(Class)}
-         * recursively then custom target mappings are not applied. It is strongly discouraged that
-         * accept predicates or converter cause any side-effects or escape values for permanent
-         * storage.
+         * recursively then custom target mappings are applied. Special care must be taken in order
+         * to not trigger stack overflow errors. It is recommended to use a restricted source type
+         * instead of {@link Value#as(Class)} where possible. It is strongly discouraged that accept
+         * predicates or converter cause any side-effects or escape values for permanent storage.
          * <p>
          *
          * Usage example:
