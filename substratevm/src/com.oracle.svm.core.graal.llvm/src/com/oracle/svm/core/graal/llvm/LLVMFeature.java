@@ -78,8 +78,8 @@ public class LLVMFeature implements Feature, GraalFeature, Snippets {
         });
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
-            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap) {
-                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap);
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform) {
+                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap, platform);
             }
         });
         ImageSingletons.add(SnippetRuntime.ExceptionStackFrameVisitor.class, new SnippetRuntime.ExceptionStackFrameVisitor() {

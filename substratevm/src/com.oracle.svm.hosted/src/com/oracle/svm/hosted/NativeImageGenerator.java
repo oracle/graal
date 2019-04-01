@@ -289,6 +289,8 @@ public class NativeImageGenerator {
     private AbstractBootImage image;
     private AtomicBoolean buildStarted = new AtomicBoolean();
 
+    private Platform targetPlatform;
+
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider) {
         this.loader = loader;
         this.featureHandler = new FeatureHandler();
@@ -303,10 +305,10 @@ public class NativeImageGenerator {
 
     public static Platform defaultPlatform(ClassLoader classLoader) {
         /*
-         * We cannot use a regular hosted option for the platform class: The code that instantiates
-         * the platform class runs before options are parsed, because option parsing depends on the
-         * platform (there can be platform-specific options). So we need to use a regular system
-         * property to specify a platform class explicitly on the command line.
+         * We cannot use a regular hosted option for the targetPlatform class: The code that instantiates
+         * the targetPlatform class runs before options are parsed, because option parsing depends on the
+         * targetPlatform (there can be targetPlatform-specific options). So we need to use a regular system
+         * property to specify a targetPlatform class explicitly on the command line.
          */
         String platformClassName = System.getProperty(Platform.PLATFORM_PROPERTY_NAME);
         if (platformClassName != null) {
@@ -314,7 +316,7 @@ public class NativeImageGenerator {
             try {
                 platformClass = classLoader.loadClass(platformClassName);
             } catch (ClassNotFoundException ex) {
-                throw UserError.abort("Could not find platform class " + platformClassName +
+                throw UserError.abort("Could not find targetPlatform class " + platformClassName +
                                 " that was specified explicitly on the command line using the system property " + Platform.PLATFORM_PROPERTY_NAME);
             }
 
@@ -324,7 +326,7 @@ public class NativeImageGenerator {
                 constructor.setAccessible(true);
                 result = constructor.newInstance();
             } catch (ReflectiveOperationException ex) {
-                throw UserError.abort("Could not instantiated platform class " + platformClassName + ". Ensure the class is not abstract and has a no-argument constructor.");
+                throw UserError.abort("Could not instantiated targetPlatform class " + platformClassName + ". Ensure the class is not abstract and has a no-argument constructor.");
             }
 
             if (!(result instanceof Platform)) {
@@ -365,7 +367,7 @@ public class NativeImageGenerator {
     }
 
     /**
-     * Returns true if the provided platform is included in at least one of the provided platform
+     * Returns true if the provided targetPlatform is included in at least one of the provided targetPlatform
      * groups defined by the annotation. Also returns true if no annotation is provided.
      */
     public static boolean includedIn(Platform platform, Platforms platformsAnnotation) {
@@ -412,7 +414,7 @@ public class NativeImageGenerator {
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers.
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
         } else {
-            throw UserError.abort("Architecture specified by platform is not supported: " + platform.getClass().getTypeName());
+            throw UserError.abort("Architecture specified by targetPlatform is not supported: " + platform.getClass().getTypeName());
         }
     }
 
@@ -601,7 +603,7 @@ public class NativeImageGenerator {
                 /* release memory taken by graphs for the image writing */
                 hUniverse.getMethods().forEach(HostedMethod::clear);
 
-                codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap);
+                codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap, targetPlatform);
                 codeCache.layoutConstants();
                 codeCache.layoutMethods(debug, imageName);
 
@@ -790,9 +792,9 @@ public class NativeImageGenerator {
                     ForkJoinPool analysisExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer ignored1 = new Timer(imageName, "setup").start()) {
-                Platform platform = defaultPlatform(loader.getClassLoader());
-                SubstrateTargetDescription target = createTarget(platform);
-                ImageSingletons.add(Platform.class, platform);
+                this.targetPlatform = defaultPlatform(loader.getClassLoader());
+                SubstrateTargetDescription target = createTarget(targetPlatform);
+                ImageSingletons.add(Platform.class, targetPlatform);
                 ImageSingletons.add(SubstrateTargetDescription.class, target);
 
                 if (javaMainSupport != null) {
@@ -819,7 +821,7 @@ public class NativeImageGenerator {
 
                 AnnotationSubstitutionProcessor annotationSubstitutions = createDeclarativeSubstitutionProcessor(originalMetaAccess, loader, classInitializaitonSupport);
                 CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
-                aUniverse = createAnalysisUniverse(options, platform, target, loader, originalMetaAccess, originalSnippetReflection, annotationSubstitutions, cEnumProcessor,
+                aUniverse = createAnalysisUniverse(options, targetPlatform, target, loader, originalMetaAccess, originalSnippetReflection, annotationSubstitutions, cEnumProcessor,
                                 classInitializaitonSupport, Collections.singletonList(harnessSubstitutions));
 
                 AnalysisMetaAccess aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
