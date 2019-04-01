@@ -56,6 +56,8 @@ import org.graalvm.component.installer.commands.AvailableCommand;
 import org.graalvm.component.installer.commands.InfoCommand;
 import org.graalvm.component.installer.commands.InstallCommand;
 import org.graalvm.component.installer.commands.ListInstalledCommand;
+import org.graalvm.component.installer.commands.PostInstCommand;
+import org.graalvm.component.installer.commands.PreRemoveCommand;
 import org.graalvm.component.installer.commands.RebuildImageCommand;
 import org.graalvm.component.installer.commands.UninstallCommand;
 import org.graalvm.component.installer.persist.DirectoryStorage;
@@ -95,6 +97,10 @@ public final class ComponentInstaller {
         commands.put("available", new AvailableCommand()); // NOI18N
         commands.put("info", new InfoCommand()); // NOI18N
         commands.put("rebuild-images", new RebuildImageCommand()); // NOI18N
+        
+        // commands used internally by system scripts, names intentionally hashed.
+        commands.put("#postinst", new PostInstCommand()); // NOI18N
+        commands.put("#preremove", new PreRemoveCommand()); // NOI18N
 
         globalOptions.put(Commands.OPTION_VERBOSE, "");
         globalOptions.put(Commands.OPTION_DEBUG, "");

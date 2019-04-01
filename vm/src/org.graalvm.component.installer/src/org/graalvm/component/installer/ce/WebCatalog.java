@@ -93,7 +93,6 @@ public class WebCatalog implements SoftwareChannel {
         }
 
         Map<String, String> graalCaps = local.getGraalCapabilities();
-        Properties props = new Properties();
 
         StringBuilder sb = new StringBuilder();
         sb.append(graalCaps.get(CommonConstants.CAP_OS_NAME).toLowerCase());
@@ -106,10 +105,12 @@ public class WebCatalog implements SoftwareChannel {
             throw feedback.failure("REMOTE_InvalidURL", ex, catalogURL, ex.getLocalizedMessage());
         }
 
+        Properties props = new Properties();
         // create the storage. If the init fails, but process will not terminate, the storage will
         // serve no components on the next call.
         storage = new RemotePropertiesStorage(feedback, local, props, sb.toString(), null, catalogURL);
 
+        Properties loadProps = new Properties();
         FileDownloader dn;
         try {
             catalogURL = new URL(urlString);
@@ -138,16 +139,16 @@ public class WebCatalog implements SoftwareChannel {
         graalPref.append(normalizedVersion);
 
         try (FileInputStream fis = new FileInputStream(dn.getLocalFile())) {
-            props.load(fis);
+            loadProps.load(fis);
         } catch (IllegalArgumentException | IOException ex) {
             throw feedback.failure("REMOTE_CorruptedCatalogFile", ex, catalogURL);
         }
 
-        if (props.getProperty(oldGraalPref.toString()) == null &&
-                        props.getProperty(graalPref.toString()) == null) {
+        if (loadProps.getProperty(oldGraalPref.toString()) == null &&
+                        loadProps.getProperty(graalPref.toString()) == null) {
             boolean graalPrefixFound = false;
             boolean componentFound = false;
-            for (String s : props.stringPropertyNames()) {
+            for (String s : loadProps.stringPropertyNames()) {
                 if (s.startsWith(BundleConstants.GRAAL_COMPONENT_ID)) {
                     graalPrefixFound = true;
                 }
@@ -166,6 +167,7 @@ public class WebCatalog implements SoftwareChannel {
                                 null);
             }
         }
+        props.putAll(loadProps);
         return storage;
     }
 

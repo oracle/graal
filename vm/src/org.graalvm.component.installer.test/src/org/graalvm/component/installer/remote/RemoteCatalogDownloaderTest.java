@@ -30,6 +30,7 @@ import java.net.URL;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.FailedOperationException;
+import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.MockURLConnection;
 import org.graalvm.component.installer.persist.NetworkTestBase;
 import org.graalvm.component.installer.persist.test.Handler;
@@ -47,7 +48,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
                         clu);
 
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
-        exception.expect(FailedOperationException.class);
+        exception.expect(IncompatibleException.class);
         exception.expectMessage("REMOTE_UnsupportedGraalVersion");
         d.openCatalog();
     }
