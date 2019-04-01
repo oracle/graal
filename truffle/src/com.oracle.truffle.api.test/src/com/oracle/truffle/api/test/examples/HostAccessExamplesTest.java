@@ -111,9 +111,9 @@ public class HostAccessExamplesTest {
             assertEquals(Integer.valueOf(42), context.asValue("42").as(Integer.class));
             assertEquals(42L, (long) context.asValue("42").as(long.class));
             assertEquals(Long.valueOf(42L), context.asValue("42").as(Long.class));
-            assertEquals(42f, context.asValue("42").as(float.class), 0.001);
+            assertEquals(42f, context.asValue("42").as(float.class), 0.001f);
             assertEquals(Float.valueOf(42f), context.asValue("42").as(Float.class));
-            assertEquals(42d, context.asValue("42").as(double.class), 0.001);
+            assertEquals(42d, context.asValue("42").as(double.class), 0.001d);
             assertEquals(Double.valueOf(42d), context.asValue("42").as(Double.class));
             assertEquals(true, context.asValue("true").as(boolean.class));
             assertEquals(false, context.asValue("false").as(boolean.class));
