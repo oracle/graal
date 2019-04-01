@@ -68,7 +68,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
     @TruffleBoundary
     static Method methodLookup(StaticObject receiver, int vtableIndex) {
         Klass clazz = receiver.getKlass();
-        Method m = clazz.lookupMethod(vtableIndex);
+        Method m = clazz.vtableLooup(vtableIndex);
         // Suprisingly, invokeVirtuals can try to invoke interface methods, even non-default
         // ones.
         // Good thing is, miranda methods are taken care of at vtable creation !

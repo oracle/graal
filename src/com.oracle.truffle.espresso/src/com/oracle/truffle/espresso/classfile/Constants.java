@@ -100,6 +100,39 @@ public final class Constants {
     public static final int FULL_FRAME = 255;
 
     //@formatter:off
+    /* Constants used for handling MethodHandles */
+    public static final int // intrinsics
+            _none = -1,
+            _invokeGeneric = 0,
+            _invokeBasic = 1,
+            _linkToVirtual = 2,
+            _linkToStatic = 3,
+            _linkToSpecial = 4,
+            _linkToInterface = 5,
+
+            _firstStaticSigPoly = _linkToVirtual,
+            _lastSigPoly = _linkToInterface,
+            _firstIntrinsic = _invokeGeneric;
+
+
+
+    /**
+     * Constant pool reference-kind codes, as used by CONSTANT_MethodHandle CP entries.
+     */
+    public static final byte
+            REF_NONE = 0,  // null value
+            REF_getField = 1,
+            REF_getStatic = 2,
+            REF_putField = 3,
+            REF_putStatic = 4,
+            REF_invokeVirtual = 5,
+            REF_invokeStatic = 6,
+            REF_invokeSpecial = 7,
+            REF_newInvokeSpecial = 8,
+            REF_invokeInterface = 9,
+            REF_LIMIT = 10;
+
+
     public static final String[] mnemonics = new String[]{
         /*0:   */"nop",
         /*1:   */"aconst_null",

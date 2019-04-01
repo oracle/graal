@@ -69,7 +69,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
 
     @TruffleBoundary
     static Method methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
-        return receiver.getKlass().lookupMethod(declaringKlass, itableIndex);
+        return receiver.getKlass().itableLookup(declaringKlass, itableIndex);
     }
 
     @Override

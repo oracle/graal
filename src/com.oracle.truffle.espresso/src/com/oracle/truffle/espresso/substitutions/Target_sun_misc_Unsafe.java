@@ -84,9 +84,7 @@ public final class Target_sun_misc_Unsafe {
         StaticObject[] patches = constantPoolPatches == StaticObject.NULL ? null : ((StaticObjectArray) constantPoolPatches).unwrap();
         Klass hostKlass = hostClass.getMirrorKlass();
         ClassfileStream cfs = new ClassfileStream(bytes, null);
-
         ClassfileParser parser = new ClassfileParser(cfs, null, hostKlass, context, patches);
-
         ParserKlass parserKlass = parser.parseClass();
         StaticObject classLoader = hostKlass.getDefiningClassLoader();
         return defineAnonymousKlass(parserKlass, context, classLoader, parser.getThisKlassIndex(), hostKlass).mirror();
@@ -220,6 +218,7 @@ public final class Target_sun_misc_Unsafe {
         } else {
             return holder.getKlass().lookupField(slot);
         }
+
     }
 
     @Substitution(hasReceiver = true)

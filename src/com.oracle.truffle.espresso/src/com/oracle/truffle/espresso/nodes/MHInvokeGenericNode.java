@@ -23,24 +23,26 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.VMTARGET;
+
 public class MHInvokeGenericNode extends EspressoBaseNode {
-    final int argCount;
-    final StaticObjectImpl mname;
-    final StaticObject appendix;
-    final Method target;
+    private final int argCount;
+    private final StaticObject appendix;
+    @Child private DirectCallNode callNode;
 
     public MHInvokeGenericNode(Method method, StaticObjectImpl memberName, StaticObject appendix) {
         super(method);
         this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
-        this.mname = memberName;
         this.appendix = appendix;
-        this.target = (Method) memberName.getHiddenField("vmtarget");
+        Method target = (Method) memberName.getHiddenField(VMTARGET);
+        this.callNode = DirectCallNode.create(target.getCallTarget());
     }
 
     @Override
@@ -50,7 +52,7 @@ public class MHInvokeGenericNode extends EspressoBaseNode {
         args[0] = frame.getArguments()[0];
         copyOfRange(frame.getArguments(), 1, args, 1, argCount);
         args[args.length - 1] = appendix;
-        return target.invokeDirect(null, args);
+        return callNode.call(args);
     }
 
     @ExplodeLoop
