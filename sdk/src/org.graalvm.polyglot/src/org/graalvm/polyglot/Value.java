@@ -749,6 +749,11 @@ public final class Value {
      * <p>
      * The following target types are supported and interpreted in the following order:
      * <ul>
+     * <li>Custom
+     * {@link HostAccess.Builder#targetTypeMapping(Class, java.util.function.Predicate, Function)
+     * target type mappings} specified in the {@link HostAccess} configuration when the context is
+     * constructed. Custom target type mappings may override all the type mappings below. This
+     * allows for customization if one of the below type mappings is not suitable.
      * <li><code>{@link Value}.class</code> is always supported and returns this instance.
      * <li>If the value represents a {@link #isHostObject() host object} then all classes
      * implemented or extended by the host object can be used as target type.
@@ -766,11 +771,6 @@ public final class Value {
      * class literal throws a {@link NullPointerException} if the value represents {@link #isNull()
      * null}.
      * <li>Any Java type in the type hierarchy of a {@link #isHostObject() host object}.
-     * <li>Custom
-     * {@link HostAccess.Builder#targetTypeMapping(Class, java.util.function.Predicate, Function)
-     * target type mappings} specified in the {@link HostAccess} configuration when the context is
-     * constructed. Custom target type mappings may override all the type mappings below. This
-     * allows for customization if one of the below type mappings is not suitable.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
      * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
      * members} or {@link #hasArrayElements() array elements}. The returned map can be safely cast
