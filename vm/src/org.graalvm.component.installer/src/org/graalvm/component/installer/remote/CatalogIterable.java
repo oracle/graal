@@ -26,6 +26,7 @@ package org.graalvm.component.installer.remote;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Iterator;
 import org.graalvm.component.installer.CommandInput;
@@ -36,6 +37,7 @@ import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
@@ -71,9 +73,9 @@ public class CatalogIterable implements ComponentIterable {
         return new It();
     }
 
-    ComponentCollection getRegistry() {
+    ComponentCollection getRegistry() throws IOException {
         if (remoteRegistry == null) {
-            remoteRegistry = factory.getRegistry();
+            remoteRegistry = new CatalogContents(feedback, factory.getStorage(), input.getLocalRegistry());
         }
         return remoteRegistry;
     }
@@ -102,6 +104,8 @@ public class CatalogIterable implements ComponentIterable {
                 if (info == null) {
                     thrownUnknown(s, true);
                 }
+            } catch (IOException ex) {
+                throw new UncheckedIOException(ex);
             } catch (FailedOperationException ex) {
                 thrownUnknown(s, false);
                 throw ex;

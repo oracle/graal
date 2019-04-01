@@ -32,6 +32,8 @@ import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.MockURLConnection;
+import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.persist.NetworkTestBase;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
@@ -40,6 +42,13 @@ import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 public class RemoteCatalogDownloaderTest extends NetworkTestBase {
+    
+    ComponentCollection openCatalog(SoftwareChannel ch) throws IOException {
+        ComponentCollection cc = new CatalogContents(this, ch.getStorage(), getLocalRegistry());
+        cc.getComponentIDs();
+        return cc;
+    }
+    
     @Test
     public void testDownloadCatalogBadGraalVersion() throws Exception {
         URL clu = getClass().getResource("catalog");
@@ -50,7 +59,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
         exception.expect(IncompatibleException.class);
         exception.expectMessage("REMOTE_UnsupportedGraalVersion");
-        d.openCatalog();
+        openCatalog(d);
     }
 
     @Test
@@ -63,7 +72,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_CorruptedCatalogFile");
-        d.openCatalog();
+        openCatalog(d);
     }
 
     private void loadRegistry() throws Exception {
@@ -73,7 +82,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
                         clu);
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
-        registry = d.openCatalog();
+        registry = openCatalog(d);
     }
 
     @Test
@@ -101,7 +110,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_CorruptedCatalogFile");
-        d.openCatalog();
+        openCatalog(d);
     }
 
     @Test
@@ -114,7 +123,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_ErrorDownloadCatalogProxy");
-        d.openCatalog();
+        openCatalog(d);
     }
 
     RemoteCatalogDownloader rcd;
@@ -144,7 +153,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testSingleNonMatchingCatalogIgnored() throws Exception {
         setupJoinedCatalog("catalogMultiPart1");
-        ComponentCollection col = rcd.get();
+        ComponentCollection col = openCatalog(rcd);
         assertNotNull(col.findComponent("r"));
         assertNotNull(col.findComponent("ruby"));
         assertNull(col.findComponent("python"));
@@ -156,7 +165,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testMultipleCatalogsJoined() throws Exception {
         setupJoinedCatalog("catalogMultiPart1Mergeable");
-        ComponentCollection col = rcd.get();
+        ComponentCollection col = openCatalog(rcd);
         assertNotNull(col.findComponent("r"));
         assertNotNull(col.findComponent("ruby"));
         assertNotNull(col.findComponent("python"));

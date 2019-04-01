@@ -43,21 +43,13 @@ import org.graalvm.component.installer.persist.MetadataLoader;
  */
 public interface SoftwareChannel {
     /**
-     * Binds the channel implementation to I/O.
-     * 
-     * @param input input from the commandline
-     * @param output user i/o
-     */
-    void init(CommandInput input, Feedback output);
-
-    /**
      * Loads and provides access to the component registry.
      * 
      * @return registry instance
-     */
     ComponentCollection getRegistry();
+     */
 
-    ComponentStorage getStorage();
+    ComponentStorage getStorage() throws IOException;
 
     /**
      * Configures the downloader with specific options. The downloader may be even replaced with a
@@ -77,7 +69,7 @@ public interface SoftwareChannel {
      */
     MetadataLoader createLocalFileLoader(ComponentInfo info, Path localFile, boolean verify) throws IOException;
 
-    /**
+    /*
      * Checks if the Component can be installed by native tools. In that case, the installer will
      * refuse to operate and displays an appropriate error message
      * 
@@ -85,33 +77,37 @@ public interface SoftwareChannel {
      * @return boolean isNativeInstallable(ComponentInfo info);
      */
 
-    /**
-     * Adds options to the set of global options. Global options allow to accept specific options
-     * from commandline, which would otherwise cause an error (unknown option).
-     * 
-     * @return global options to add.
-     */
-    default Map<String, String> globalOptions() {
-        return Collections.emptyMap();
-    }
-
-    /**
-     * Provides help for the injected global options.
-     * 
-     * @return String to append to the displayed help, or {@code null} for empty message.
-     */
-    default String globalOptionsHelp() {
-        return null;
-    }
-
     interface Factory {
         /**
          * True, if the channel is willing to handle the URL. URL is passed as a String so that
          * custom protocols may be used without registering an URLStreamHandlerFactory.
          * 
          * @param urlSpec url string, including the scheme
+         * @param input input parameters
+         * @param output output interface
          * @return true, if the channel is willing to work with the URL
          */
         SoftwareChannel createChannel(String urlSpec, CommandInput input, Feedback output);
+
+        /**
+         * Adds options to the set of global options. Global options allow to accept specific options
+         * from commandline, which would otherwise cause an error (unknown option).
+         * 
+         * @return global options to add.
+         */
+        default Map<String, String> globalOptions() {
+            return Collections.emptyMap();
+        }
+
+        /**
+         * Provides help for the injected global options.
+         * 
+         * @return String to append to the displayed help, or {@code null} for empty message.
+         */
+        default String globalOptionsHelp() {
+            return null;
+        }
+
+        void init(CommandInput input, Feedback output);
     }
 }

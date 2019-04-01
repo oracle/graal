@@ -88,25 +88,10 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
         return mergedStorage;
     }
 
-    public ComponentCollection get() {
-        return openCatalog();
-    }
-
     SoftwareChannel delegate(ComponentInfo ci) {
         return mergeChannels().getOrigin(ci);
     }
 
-    @SuppressWarnings("unchecked")
-    public ComponentCollection openCatalog() {
-        return getRegistry();
-    }
-
-    @Override
-    public void init(CommandInput ignoreInput, Feedback ignoreOutput) {
-        throw new IllegalStateException();
-    }
-
-    @Override
     public ComponentCollection getRegistry() {
         if (union == null) {
             union = new CatalogContents(feedback, mergeChannels(), input.getLocalRegistry());

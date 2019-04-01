@@ -32,6 +32,7 @@ import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.IncompatibleException;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
@@ -79,7 +80,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(TEST_CATALOG_URL, u);
 
         downloader = new RemoteCatalogDownloader(this, this, new URL(TEST_CATALOG_URL));
-        this.registry = downloader.get();
+        this.registry = new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
     }
 
     /**
@@ -103,9 +104,9 @@ public class CatalogInstallTest extends CommandTestBase {
         exception.expectMessage("REMOTE_UnsupportedGraalVersion");
 
         setupCatalog(null);
+        textParams.add("ruby");
         paramIterable = new CatalogIterable(this, this, downloader);
-        InstallCommand cmd = new InstallCommand();
-        cmd.init(this, withBundle(InstallCommand.class));
+        paramIterable.iterator().next();
     }
 
     /**

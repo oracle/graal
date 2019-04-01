@@ -274,6 +274,11 @@ public class DirectoryStorage implements ComponentStorage {
         if (licType != null) {
             ci.setLicenseType(licType);
         }
+        String postInst = loaded.getProperty(BundleConstants.BUNDLE_MESSAGE_POSTINST);
+        if (postInst != null) {
+            String text = postInst.replace("\\n", "\n").replace("\\\\", "\\"); // NOI18N
+            ci.setPostinstMessage(text);
+        }
         return ci;
     }
 
