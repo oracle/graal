@@ -760,7 +760,7 @@ public final class Value {
      * <li><code>{@link String}.class</code> is supported if the value is a {@link #isString()
      * string}.
      * <li><code>{@link Character}.class</code> is supported if the value is a {@link #isString()
-     * string} of length one.
+     * string} of length one or if a number can be safely be converted to a character.
      * <li><code>{@link Number}.class</code> is supported if the value is a {@link #isNumber()
      * number}. {@link Byte}, {@link Short}, {@link Integer}, {@link Long}, {@link Float} and
      * {@link Double} are allowed if they fit without conversion. If a conversion is necessary then

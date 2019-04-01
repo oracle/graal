@@ -98,7 +98,6 @@ public class HostAccessExamplesTest {
         HostAccess.Builder builder = HostAccess.newBuilder();
         // character coercion
         TargetMappings.enableStringCoercions(builder);
-        TargetMappings.enableCharToIntegerCoercion(builder);
 
         HostAccess config = builder.build();
 

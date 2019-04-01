@@ -11,7 +11,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 * Removed deprecated API class `ProxyPrimitive`.
 * Started adding several options under `--engine` like `--engine.TraceCompilation`, which can also be set on the `Engine`. These options will progressively replace the `-Dgraal.*Truffle*` properties. The list can be seen by passing `--help:expert` to any language launcher.
 * Added new API for target type mappings using the new HostAccess API.
-* (**incompatible change**) Removed default lossy string and character coercions. Previous behavior can be restored using the following [snippets](https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/examples/TargetMappings.java).
+* (**incompatible change**) Removed default lossy string coercions. Previous behavior can be restored using the following [snippets](https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/examples/TargetMappings.java).
 
 ## Version 1.0.0 RC14
 * Added [Engine.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental instrument and engine options can be passed.

@@ -48,7 +48,6 @@ import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.test.examples.TargetMappings;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 public final class CallbackConvertTest extends AbstractPolyglotTest {
@@ -129,7 +128,6 @@ public final class CallbackConvertTest extends AbstractPolyglotTest {
     private void setupWithCharConversion() {
         HostAccess.Builder builder = HostAccess.newBuilder();
         builder.allowPublicAccess(true);
-        TargetMappings.enableCharToIntegerCoercion(builder);
         setupEnv(Context.newBuilder().allowHostAccess(builder.build()).build());
     }
 

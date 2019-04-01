@@ -68,7 +68,7 @@ abstract class ToHostNode extends Node {
 
     /** Custom or lossless conversion to primitive type (incl. unboxing). */
     static final int STRICT = 0;
-    /** Wrapping (Map, List) or array conversion;. */
+    /** Wrapping (Map, List) or array conversion; int to char. */
     static final int LOOSE = 1;
     /** Wrap executable into functional interface proxy. */
     static final int FUNCTION_PROXY = 2;
@@ -150,6 +150,24 @@ abstract class ToHostNode extends Node {
         return value.toString();
     }
 
+    static Object convertLossy(Object value, Class<?> targetType, InteropLibrary interop) {
+        Object convertedValue = convertLossLess(value, targetType, interop);
+        if (convertedValue != null) {
+            return convertedValue;
+        } else if (targetType == char.class || targetType == Character.class) {
+            if (interop.fitsInInt(value)) {
+                try {
+                    int v = interop.asInt(value);
+                    if (v >= 0 && v < 65536) {
+                        return (char) v;
+                    }
+                } catch (UnsupportedMessageException e) {
+                }
+            }
+        }
+        return null;
+    }
+
     private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean primitiveTargetType,
                     PolyglotLanguageContext languageContext, InteropLibrary interop, boolean useCustomTargetTypes, TargetMappingNode targetMapping) {
         if (useCustomTargetTypes) {
@@ -160,7 +178,7 @@ abstract class ToHostNode extends Node {
         }
         Object convertedValue;
         if (primitiveTargetType) {
-            convertedValue = convertLossLess(value, targetType, interop);
+            convertedValue = convertLossy(value, targetType, interop);
             if (convertedValue != null) {
                 return convertedValue;
             }
@@ -207,6 +225,17 @@ abstract class ToHostNode extends Node {
         }
         if (priority <= STRICT) {
             return false;
+        }
+        if (targetType == char.class || targetType == Character.class) {
+            if (interop.fitsInInt(value)) {
+                try {
+                    int v = interop.asInt(value);
+                    if (v >= 0 && v < 65536) {
+                        return true;
+                    }
+                } catch (UnsupportedMessageException e) {
+                }
+            }
         }
         if (targetType == Value.class && languageContext != null) {
             return true;

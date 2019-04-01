@@ -354,8 +354,13 @@ public class ValueAssert {
                     } else {
                         assertFails(() -> value.asString(), ClassCastException.class);
                         assertFails(() -> value.as(String.class), ClassCastException.class);
-                        assertFails(() -> value.as(Character.class), ClassCastException.class);
-                        assertFails(() -> value.as(char.class), ClassCastException.class);
+                        if (value.fitsInInt() && value.asInt() >= 0 && value.asInt() < 65536) {
+                            assertEquals((Character) (char) value.asInt(), value.as(Character.class));
+                            assertEquals((Character) (char) value.asInt(), value.as(char.class));
+                        } else {
+                            assertFails(() -> value.as(Character.class), ClassCastException.class);
+                            assertFails(() -> value.as(char.class), ClassCastException.class);
+                        }
                     }
 
                     break;
