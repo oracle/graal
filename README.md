@@ -32,7 +32,13 @@ images or shared objects.
 * [VM](vm/README.md) includes the components to build a modular GraalVM image.
 
 
+## Reporting Vulnerabilities
+
+Please report security vulnerabilities not via GitHub issues or the public mailing lists, but via the process outlined at [Reporting Vulnerabilities guide](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html).
+
+
 ## Related Repositories
+
 GraalVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and Graal compiler. These are:
 * [Graal JavaScript](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2019 compatible) and Node.js 10.15.2
 * [FastR](https://github.com/oracle/fastr) - R Language 3.5.1
