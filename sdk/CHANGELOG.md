@@ -20,6 +20,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 * Restricting access (**incompatible change**) to the host language via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccessPolicy.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.ALL)` to get previous behavior. Configurations that use `allowAllAccess(true)` are not affected by this incompatible change.
 * Deprecated `Context.Builder.hostClassFilter` and added the new method `Context.Builder.allowHostClassLookup` as a replacement. The name was changed change for clarity and now also allows `null` values to indicate that no host class lookup is allowed.
 * Deprecated `defaultValue` of `OptionType`. Default value of `OptionKey` is sufficient.
+* `--vm.*` should now be used instead of `--native.*` or `--jvm.*` to pass VM options in GraalVM language launchers (the old style of option is still supported but deprecated and will show warnings on stderr). `--native` and `--jvm` should still be used to select the VM mode.
 
 ## Version 1.0.0 RC13
 * [OptionCategory.DEBUG](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionCategory.html) has been renamed to `OptionCategory.INTERNAL` for clarity.
