@@ -1298,7 +1298,7 @@ public class ValueAPITest {
                                         "f'(language: Java, type: Bound Method). Multiple applicable overloads found for method name f " +
                                         "(candidates: [Method[public java.lang.String com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType." +
                                         "f(int,byte)], Method[public java.lang.String com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType." +
-                                        "f(byte,int)]], arguments: [1 (Integer), 2 (Integer)])Provided arguments: " +
+                                        "f(byte,int)]], arguments: [1 (Integer), 2 (Integer)]) Provided arguments: " +
                                         "['1'(language: Java, type: java.lang.Integer), '2'(language: Java, type: java.lang.Integer)].");
     }
 
