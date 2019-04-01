@@ -160,18 +160,14 @@ public final class HostAccess {
         if (values == null) {
             return null;
         }
-        EconomicSet<T> set = EconomicSet.create(equivalence, values.size());
-        set.addAll(values);
-        return set;
+        return EconomicSet.create(equivalence, values);
     }
 
     private static <K, T> EconomicMap<K, T> copyMap(EconomicMap<K, T> values, Equivalence equivalence) {
         if (values == null) {
             return null;
         }
-        EconomicMap<K, T> set = EconomicMap.create(equivalence, values.size());
-        set.putAll(values);
-        return set;
+        return EconomicMap.create(equivalence, values);
     }
 
     /**
