@@ -590,7 +590,7 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("createBinaryProfile()") ConditionProfile branchProfile,
                     @Cached("create()") ToHostNode toHost) {
         Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile);
-        return toHost.execute(result, returnClass, returnType, languageContext);
+        return toHost.execute(result, returnClass, returnType, languageContext, true);
     }
 
     @TruffleBoundary
@@ -677,7 +677,12 @@ final class ObjectProxyHandler implements InvocationHandler, HostWrapper {
         try {
             return invoke.call(languageContext, obj, method, resolvedArguments);
         } catch (UnsupportedOperationException e) {
-            return FunctionProxyHandler.invokeDefault(this, proxy, method, resolvedArguments);
+            try {
+                return FunctionProxyHandler.invokeDefault(this, proxy, method, resolvedArguments);
+            } catch (Exception innerE) {
+                e.addSuppressed(innerE);
+                throw e;
+            }
         }
     }
 

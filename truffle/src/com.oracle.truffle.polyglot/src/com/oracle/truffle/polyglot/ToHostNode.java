@@ -66,7 +66,7 @@ import com.oracle.truffle.api.nodes.Node;
 abstract class ToHostNode extends Node {
     static final int LIMIT = 5;
 
-    /** Subtype or lossless conversion to primitive type (incl. unboxing). */
+    /** Custom or lossless conversion to primitive type (incl. unboxing). */
     static final int STRICT = 0;
     /** Wrapping (Map, List) or array conversion; int to char. */
     static final int LOOSE = 1;
@@ -74,28 +74,38 @@ abstract class ToHostNode extends Node {
     static final int FUNCTION_PROXY = 2;
     /** Wrap object with members into arbitrary interface proxy. */
     static final int OBJECT_PROXY = 3;
-    /** Lossy conversion from primitive to String, or String to primitive. */
-    static final int COERCE = 4;
     /** Host object to interface proxy conversion. */
-    static final int HOST_PROXY = 5;
-    static final int[] PRIORITIES = {STRICT, LOOSE, FUNCTION_PROXY, OBJECT_PROXY, COERCE, HOST_PROXY};
+    static final int HOST_PROXY = 4;
 
-    public abstract Object execute(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext);
+    static final int MAX = HOST_PROXY;
+    static final int[] PRIORITIES = {STRICT, LOOSE, FUNCTION_PROXY, OBJECT_PROXY, HOST_PROXY};
+
+    public abstract Object execute(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext, boolean useTargetMapping);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"targetType == cachedTargetType"}, limit = "LIMIT")
-    protected Object doCached(Object operand, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext,
+    protected Object doCached(Object operand,
+                    Class<?> targetType,
+                    Type genericType,
+                    PolyglotLanguageContext languageContext,
+                    boolean useCustomTargetTypes,
                     @CachedLibrary("operand") InteropLibrary interop,
                     @Cached("targetType") Class<?> cachedTargetType,
-                    @Cached("isPrimitiveTarget(cachedTargetType)") boolean primitiveTarget) {
-        return convertImpl(operand, cachedTargetType, genericType, primitiveTarget, languageContext, interop);
+                    @Cached("isPrimitiveTarget(cachedTargetType)") boolean primitiveTarget,
+                    @Cached TargetMappingNode targetMapping) {
+        return convertImpl(operand, cachedTargetType, genericType, primitiveTarget, languageContext, interop, useCustomTargetTypes, targetMapping);
     }
 
     @Specialization(replaces = "doCached")
     @TruffleBoundary
-    protected static Object doGeneric(Object operand, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext,
+    protected static Object doGeneric(Object operand,
+                    Class<?> targetType, Type genericType,
+                    PolyglotLanguageContext languageContext,
+                    boolean useTargetMapping,
+                    @Cached TargetMappingNode targetMapping,
                     @CachedLibrary(limit = "0") InteropLibrary interop) {
-        return convertImpl(operand, targetType, genericType, isPrimitiveTarget(targetType), languageContext, interop);
+        return convertImpl(operand, targetType, genericType,
+                        isPrimitiveTarget(targetType), languageContext, interop, useTargetMapping, targetMapping);
     }
 
     static Object convertLossLess(Object value, Class<?> requestedType, InteropLibrary interop) {
@@ -135,6 +145,11 @@ abstract class ToHostNode extends Node {
         return null;
     }
 
+    @TruffleBoundary
+    private static String toString(Object value) {
+        return value.toString();
+    }
+
     static Object convertLossy(Object value, Class<?> targetType, InteropLibrary interop) {
         Object convertedValue = convertLossLess(value, targetType, interop);
         if (convertedValue != null) {
@@ -149,33 +164,18 @@ abstract class ToHostNode extends Node {
                 } catch (UnsupportedMessageException e) {
                 }
             }
-        } else if (targetType == String.class && isGuestPrimitive(value, interop)) {
-            try {
-                if (interop.isNumber(value)) {
-                    return toString(convertToNumber(value, interop));
-                } else if (interop.isBoolean(value)) {
-                    return String.valueOf(interop.asBoolean(value));
-                } else if (interop.isString(value)) {
-                    return interop.asString(value);
-                }
-            } catch (UnsupportedMessageException e) {
-            }
-        } else if (isPrimitiveOrBoxedType(targetType) && interop.isString(value)) {
-            assert targetType != char.class && targetType != Character.class;
-            try {
-                return convertToPrimitiveFromString(targetType, interop.asString(value));
-            } catch (UnsupportedMessageException e) {
-            }
         }
         return null;
     }
 
-    @TruffleBoundary
-    private static String toString(Object value) {
-        return value.toString();
-    }
-
-    private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean primitiveTargetType, PolyglotLanguageContext languageContext, InteropLibrary interop) {
+    private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean primitiveTargetType,
+                    PolyglotLanguageContext languageContext, InteropLibrary interop, boolean useCustomTargetTypes, TargetMappingNode targetMapping) {
+        if (useCustomTargetTypes) {
+            Object result = targetMapping.execute(value, targetType, languageContext, interop, false);
+            if (result != TargetMappingNode.NO_RESULT) {
+                return result;
+            }
+        }
         Object convertedValue;
         if (primitiveTargetType) {
             convertedValue = convertLossy(value, targetType, interop);
@@ -186,7 +186,7 @@ abstract class ToHostNode extends Node {
         if (targetType == Value.class && languageContext != null) {
             convertedValue = value instanceof Value ? value : languageContext.asValue(value);
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, languageContext, interop);
+            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, languageContext);
         } else if (targetType.isAssignableFrom(value.getClass())) {
             convertedValue = value;
         } else {
@@ -196,7 +196,7 @@ abstract class ToHostNode extends Node {
         return convertedValue;
     }
 
-    static boolean canConvertToPrimitive(Object value, Class<?> targetType, int priority, InteropLibrary interop) {
+    static boolean canConvertToPrimitive(Object value, Class<?> targetType, InteropLibrary interop) {
         if (HostObject.isJavaInstance(targetType, value)) {
             return true;
         }
@@ -205,6 +205,22 @@ abstract class ToHostNode extends Node {
         }
         Object convertedValue = convertLossLess(value, targetType, interop);
         if (convertedValue != null) {
+            return true;
+        }
+        return false;
+    }
+
+    @SuppressWarnings({"unused"})
+    static boolean canConvert(Object value, Class<?> targetType, Type genericType,
+                    PolyglotLanguageContext languageContext, int priority,
+                    InteropLibrary interop,
+                    TargetMappingNode targetMapping) {
+        if (targetMapping != null) {
+            if (targetMapping.execute(value, targetType, languageContext, interop, true) == Boolean.TRUE) {
+                return true;
+            }
+        }
+        if (canConvertToPrimitive(value, targetType, interop)) {
             return true;
         }
         if (priority <= STRICT) {
@@ -220,48 +236,8 @@ abstract class ToHostNode extends Node {
                 } catch (UnsupportedMessageException e) {
                 }
             }
-        } else if (priority >= COERCE) {
-            if (targetType == String.class && isGuestPrimitive(value, interop)) {
-                return true;
-            } else if (isPrimitiveOrBoxedType(targetType) && interop.isString(value)) {
-                assert targetType != char.class && targetType != Character.class;
-                try {
-                    return convertToPrimitiveFromString(targetType, interop.asString(value)) != null;
-                } catch (UnsupportedMessageException e) {
-                }
-            }
         }
-        return false;
-    }
-
-    private static boolean isGuestPrimitive(Object value, InteropLibrary interop) {
-        if (interop.isNumber(value)) {
-            return true;
-        } else if (interop.isBoolean(value)) {
-            return true;
-        } else if (interop.isString(value)) {
-            return true;
-        }
-        return false;
-    }
-
-    static boolean canConvert(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext, int priority, InteropLibrary interop) {
-        return canConvert(value, targetType, genericType, languageContext != null, priority, interop);
-    }
-
-    static boolean canConvert(Object value, Class<?> targetType, int priority, InteropLibrary interop) {
-        return canConvert(value, targetType, null, true, priority, interop);
-    }
-
-    @SuppressWarnings({"unused"})
-    private static boolean canConvert(Object value, Class<?> targetType, Type genericType, boolean allowValue, int priority, InteropLibrary interop) {
-        if (canConvertToPrimitive(value, targetType, priority, interop)) {
-            return true;
-        }
-        if (priority <= STRICT) {
-            return false;
-        }
-        if (targetType == Value.class && allowValue) {
+        if (targetType == Value.class && languageContext != null) {
             return true;
         } else if (value instanceof TruffleObject) {
             if (interop.isNull(value)) {
@@ -309,17 +285,6 @@ abstract class ToHostNode extends Node {
                         CharSequence.class.isAssignableFrom(clazz);
     }
 
-    private static boolean isPrimitiveOrBoxedType(Class<?> clazz) {
-        return clazz == int.class || clazz == Integer.class ||
-                        clazz == boolean.class || clazz == Boolean.class ||
-                        clazz == byte.class || clazz == Byte.class ||
-                        clazz == short.class || clazz == Short.class ||
-                        clazz == long.class || clazz == Long.class ||
-                        clazz == float.class || clazz == Float.class ||
-                        clazz == double.class || clazz == Double.class ||
-                        clazz == char.class || clazz == Character.class;
-    }
-
     /**
      * See {@link Value#as(Class)} documentation.
      */
@@ -338,11 +303,11 @@ abstract class ToHostNode extends Node {
                 }
                 // fallthrough
             } else if (interop.hasMembers(value)) {
-                return asJavaObject(value, Map.class, null, languageContext, interop);
+                return asJavaObject(value, Map.class, null, languageContext);
             } else if (interop.hasArrayElements(value)) {
-                return asJavaObject(value, List.class, null, languageContext, interop);
+                return asJavaObject(value, List.class, null, languageContext);
             } else if (interop.isExecutable(value) || interop.isInstantiable(value)) {
-                return asJavaObject(value, Function.class, null, languageContext, interop);
+                return asJavaObject(value, Function.class, null, languageContext);
             }
             return languageContext.asValue(value);
         } catch (UnsupportedMessageException e) {
@@ -373,8 +338,9 @@ abstract class ToHostNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Object value, Class<T> targetType, Type genericType, PolyglotLanguageContext languageContext, InteropLibrary interop) {
+    private static <T> T asJavaObject(Object value, Class<T> targetType, Type genericType, PolyglotLanguageContext languageContext) {
         Objects.requireNonNull(value);
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         Object obj;
         if (interop.isNull(value)) {
             if (targetType.isPrimitive()) {
@@ -494,130 +460,6 @@ abstract class ToHostNode extends Node {
             Array.set(array, i, list.get(i));
         }
         return array;
-    }
-
-    @TruffleBoundary
-    private static String convertToString(Object value) {
-        return value.toString();
-    }
-
-    private static Object convertToPrimitiveFromString(Class<?> targetType, String s) {
-        if (targetType == boolean.class || targetType == Boolean.class) {
-            return parseBooleanOrNull(s);
-        } else if (targetType == int.class || targetType == Integer.class) {
-            return parseIntOrNull(s);
-        } else if (targetType == long.class || targetType == Long.class) {
-            return parseLongOrNull(s);
-        } else if (targetType == double.class || targetType == Double.class) {
-            return parseDoubleOrNull(s);
-        } else if (targetType == float.class || targetType == Float.class) {
-            return parseFloatOrNull(s);
-        } else if (targetType == byte.class || targetType == Byte.class) {
-            return parseByteOrNull(s);
-        } else if (targetType == short.class || targetType == Short.class) {
-            return parseShortOrNull(s);
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException(targetType.getName());
-        }
-    }
-
-    @TruffleBoundary
-    private static Object parseBooleanOrNull(String s) {
-        if ("true".equals(s)) {
-            return Boolean.TRUE;
-        } else if ("false".equals(s)) {
-            return Boolean.FALSE;
-        } else {
-            return null;
-        }
-    }
-
-    @TruffleBoundary
-    private static Byte parseByteOrNull(String s) {
-        try {
-            return Byte.parseByte(s);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    @TruffleBoundary
-    private static Short parseShortOrNull(String s) {
-        try {
-            return Short.parseShort(s);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    @TruffleBoundary
-    private static Integer parseIntOrNull(String s) {
-        try {
-            return Integer.parseInt(s);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    @TruffleBoundary
-    private static Long parseLongOrNull(String s) {
-        try {
-            return Long.parseLong(s);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    @TruffleBoundary
-    private static Double parseDoubleOrNull(String s) {
-        try {
-            if (isValidFloatString(s)) {
-                return Double.parseDouble(s);
-            }
-        } catch (NumberFormatException ex) {
-        }
-        return null;
-    }
-
-    @TruffleBoundary
-    private static Float parseFloatOrNull(String s) {
-        try {
-            if (isValidFloatString(s)) {
-                double doubleValue = Double.parseDouble(s);
-                float floatValue = (float) doubleValue;
-                // The value does not fit into float if:
-                // * the float value is zero but the double value is non-zero (too small)
-                // * the float value is infinite but the double value is finite (too large)
-                if ((floatValue != 0.0 || doubleValue == 0.0) && (Float.isFinite(floatValue) || !Double.isFinite(doubleValue))) {
-                    return floatValue;
-                }
-            }
-        } catch (NumberFormatException ex) {
-        }
-        return null;
-    }
-
-    private static boolean isValidFloatString(String s) {
-        if (s.isEmpty()) {
-            return false;
-        }
-        char first = s.charAt(0);
-        char last = s.charAt(s.length() - 1);
-        // Disallow leading or trailing whitespace.
-        if (first <= ' ' || last <= ' ') {
-            return false;
-        }
-        // Disallow float type suffix.
-        switch (last) {
-            case 'D':
-            case 'F':
-            case 'd':
-            case 'f':
-                return false;
-            default:
-                return true;
-        }
     }
 
     static final class TypeAndClass<T> {

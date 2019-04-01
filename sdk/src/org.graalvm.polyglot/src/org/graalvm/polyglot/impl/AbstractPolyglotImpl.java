@@ -60,6 +60,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
@@ -140,6 +141,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract AbstractInstrumentImpl getImpl(Instrument value);
 
         public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
+
+        public abstract List<Object> getTargetMappings(HostAccess access);
 
         public abstract boolean allowsAccess(HostAccess access, AnnotatedElement element);
 
@@ -652,5 +655,7 @@ public abstract class AbstractPolyglotImpl {
     public abstract Collection<Engine> findActiveEngines();
 
     public abstract Value asValue(Object o);
+
+    public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
 
 }

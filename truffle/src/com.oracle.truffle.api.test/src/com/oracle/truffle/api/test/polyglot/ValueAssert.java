@@ -353,24 +353,13 @@ public class ValueAssert {
                         assertNull(value.asString());
                     } else {
                         assertFails(() -> value.asString(), ClassCastException.class);
-
-                        if (value.isBoolean()) {
-                            String expected = String.valueOf(value.asBoolean());
-                            assertEquals(expected, value.as(String.class));
-                        } else if (value.isNumber()) {
-                            String expected = value.as(Number.class).toString();
-                            assertEquals(expected, value.as(String.class));
-                        } else {
-                            assertFails(() -> value.as(String.class), ClassCastException.class);
-                        }
-
-                        if (value.isNumber() && value.fitsInInt() && value.asInt() >= 0 && value.asInt() < 65536) {
-                            char ch = value.as(Character.class);
-                            assertEquals(ch, value.asInt());
-                            ch = value.as(char.class);
-                            assertEquals(ch, value.asInt());
+                        assertFails(() -> value.as(String.class), ClassCastException.class);
+                        if (value.fitsInInt() && value.asInt() >= 0 && value.asInt() < 65536) {
+                            assertEquals((Character) (char) value.asInt(), value.as(Character.class));
+                            assertEquals((Character) (char) value.asInt(), value.as(char.class));
                         } else {
                             assertFails(() -> value.as(Character.class), ClassCastException.class);
+                            assertFails(() -> value.as(char.class), ClassCastException.class);
                         }
                     }
 

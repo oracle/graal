@@ -42,6 +42,11 @@ package com.oracle.truffle.polyglot;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -51,16 +56,85 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class HostClassCache {
 
+    static final PolyglotTargetMapping[] EMPTY_MAPPINGS = new PolyglotTargetMapping[0];
+
     private final APIAccess apiAccess;
     private final HostAccess hostAccess;
     private final boolean arrayAccess;
     private final boolean listAccess;
+    private final Map<Class<?>, Object> targetMappings;
 
     private HostClassCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
         this.hostAccess = conf;
         this.arrayAccess = apiAccess.isArrayAccessible(hostAccess);
         this.listAccess = apiAccess.isListAccessible(hostAccess);
         this.apiAccess = apiAccess;
+        this.targetMappings = groupMappings(apiAccess, conf);
+    }
+
+    boolean hasTargetMappings() {
+        return targetMappings != null;
+    }
+
+    @TruffleBoundary
+    PolyglotTargetMapping[] getMappings(Class<?> targetType) {
+        if (targetMappings != null) {
+            Class<?> lookupType;
+            if (targetType.isPrimitive()) {
+                if (targetType == byte.class) {
+                    lookupType = Byte.class;
+                } else if (targetType == short.class) {
+                    lookupType = Short.class;
+                } else if (targetType == int.class) {
+                    lookupType = Integer.class;
+                } else if (targetType == long.class) {
+                    lookupType = Long.class;
+                } else if (targetType == float.class) {
+                    lookupType = Float.class;
+                } else if (targetType == double.class) {
+                    lookupType = Double.class;
+                } else if (targetType == boolean.class) {
+                    lookupType = Boolean.class;
+                } else if (targetType == char.class) {
+                    lookupType = Character.class;
+                } else if (targetType == void.class) {
+                    lookupType = Void.class;
+                } else {
+                    lookupType = null;
+                }
+            } else {
+                lookupType = targetType;
+            }
+            PolyglotTargetMapping[] mappings = (PolyglotTargetMapping[]) targetMappings.get(lookupType);
+            if (mappings == null) {
+                return EMPTY_MAPPINGS;
+            } else {
+                return mappings;
+            }
+        }
+        return EMPTY_MAPPINGS;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<Class<?>, Object> groupMappings(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
+        List<Object> mappings = apiAccess.getTargetMappings(conf);
+        if (mappings == null) {
+            return null;
+        }
+        Map<Class<?>, Object> localMappings = new HashMap<>();
+        for (Object mapping : mappings) {
+            PolyglotTargetMapping map = (PolyglotTargetMapping) mapping;
+            List<PolyglotTargetMapping> list = (List<PolyglotTargetMapping>) localMappings.get(map.targetType);
+            if (list == null) {
+                list = new ArrayList<>();
+                localMappings.put(map.targetType, list);
+            }
+            list.add(map);
+        }
+        for (Entry<Class<?>, Object> object : localMappings.entrySet()) {
+            object.setValue(((List<?>) object.getValue()).toArray(EMPTY_MAPPINGS));
+        }
+        return localMappings;
     }
 
     public static HostClassCache findOrInitialize(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {

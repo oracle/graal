@@ -63,6 +63,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -607,6 +608,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public List<Object> getTargetMappings(HostAccess access) {
+            return access.getTargetMappings();
+        }
+
+        @Override
         public boolean isArrayAccessible(HostAccess access) {
             return access.allowArrayAccess;
         }
@@ -975,6 +981,11 @@ public final class Engine implements AutoCloseable {
                 throw new UnsupportedOperationException();
             }
 
+        }
+
+        @Override
+        public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue) {
+            return new Object();
         }
 
     }
