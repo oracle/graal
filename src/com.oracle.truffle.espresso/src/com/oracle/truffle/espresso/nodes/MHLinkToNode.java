@@ -37,6 +37,7 @@ import static com.oracle.truffle.espresso.classfile.Constants._linkToInterface;
 import static com.oracle.truffle.espresso.classfile.Constants._linkToSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants._linkToStatic;
 import static com.oracle.truffle.espresso.classfile.Constants._linkToVirtual;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.VMTARGET;
 
 public class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
@@ -59,7 +60,7 @@ public class MHLinkToNode extends EspressoBaseNode {
         StaticObjectImpl memberName = (StaticObjectImpl) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
 
-        Method target = (Method) memberName.getHiddenField("vmtarget");
+        Method target = (Method) memberName.getHiddenField(VMTARGET);
 
         if (id == _linkToStatic) {
             // args of the form {arg1, arg2..., memberName}

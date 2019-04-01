@@ -33,6 +33,8 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.VMTARGET;
+
 public class MHInvokeBasicNode extends EspressoBaseNode {
 
     @Child BasicNode node;
@@ -51,7 +53,7 @@ public class MHInvokeBasicNode extends EspressoBaseNode {
 }
 
 abstract class BasicNode extends Node {
-    final static String vmtarget = "vmtarget";
+    final static String vmtarget = VMTARGET;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 3;
 
@@ -70,12 +72,11 @@ abstract class BasicNode extends Node {
 
     @Specialization(replaces = "directBasic")
     Object normalBasic(StaticObjectImpl methodHandle, Object[] args, Meta meta,
-                       @Cached("create()")IndirectCallNode callNode) {
+                       @Cached("create()") IndirectCallNode callNode) {
         StaticObjectImpl lform = (StaticObjectImpl) methodHandle.getField(meta.form);
         StaticObjectImpl mname = (StaticObjectImpl) lform.getField(meta.vmentry);
-        Method target = (Method) mname.getHiddenField("vmtarget");
+        Method target = (Method) mname.getHiddenField(vmtarget);
         return callNode.call(target.getCallTarget(), args);
-//        return target.invokeDirect(null, args);
     }
 
     static StaticObjectImpl getSOIField(StaticObjectImpl object, Field field) {

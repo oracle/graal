@@ -37,18 +37,14 @@ class EspressoDefaultTags:
     jackpot = 'jackpot'
 
 def _run_espresso(args):
-    vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
 
-    mx.run_java(vm_args
-                + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
+    mx.run_java(mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
                 + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
                 + args)
 
 def _run_espresso_meta(args):
-    vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
 
-    mx.run_java(vm_args
-                + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
+    mx.run_java(mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
                 + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
                 + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
                 + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
@@ -56,14 +52,12 @@ def _run_espresso_meta(args):
 
 
 def _run_espresso_playground(args):
-    vm_args, args = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
     parser = ArgumentParser(prog='mx espresso-playground')
     parser.add_argument('main_class', action='store', help='Unqualified class name to run.')
     parser.add_argument('main_class_args', nargs='*')
     args = parser.parse_args(args)
 
-    return _run_espresso(vm_args
-                         + ['-cp', mx.classpath('ESPRESSO_PLAYGROUND'),
+    return _run_espresso(['-cp', mx.classpath('ESPRESSO_PLAYGROUND'),
                             'com.oracle.truffle.espresso.playground.' + args.main_class]
                          + args.main_class_args)
 
