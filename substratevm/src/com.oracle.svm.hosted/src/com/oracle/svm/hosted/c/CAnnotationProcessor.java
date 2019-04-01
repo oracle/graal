@@ -81,9 +81,7 @@ public class CAnnotationProcessor extends CCompilerInvoker {
              */
             writer = new QueryCodeWriter(tempDirectory);
             Path queryFile = writer.write(codeInfo);
-            if (nativeLibs.getErrors().size() > 10000) {
-                System.err.println("STOP PROCESS DUE TO "+nativeLibs.getErrors().size()+" ERRORS");
-
+            if (nativeLibs.getErrors().size() > 0) {
                 return codeInfo;
             }
             assert Files.exists(queryFile);
