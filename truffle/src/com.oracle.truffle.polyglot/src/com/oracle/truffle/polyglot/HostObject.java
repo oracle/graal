@@ -428,7 +428,7 @@ final class HostObject implements TruffleObject {
             Object obj = receiver.obj;
             Object javaValue;
             try {
-                javaValue = toHostNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext);
+                javaValue = toHostNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext, true);
             } catch (ClassCastException | NullPointerException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
@@ -450,7 +450,7 @@ final class HostObject implements TruffleObject {
             }
             Object javaValue;
             try {
-                javaValue = toHostNode.execute(value, Object.class, null, receiver.languageContext);
+                javaValue = toHostNode.execute(value, Object.class, null, receiver.languageContext, true);
             } catch (ClassCastException | NullPointerException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
@@ -1177,7 +1177,7 @@ final class HostObject implements TruffleObject {
                         @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
             Object value;
             try {
-                value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext);
+                value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext, true);
             } catch (ClassCastException | NullPointerException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.create(new Object[]{rawValue}, e.getMessage());
@@ -1189,7 +1189,7 @@ final class HostObject implements TruffleObject {
         @TruffleBoundary
         static void doUncached(HostFieldDesc field, HostObject object, Object rawValue,
                         @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
-            Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext);
+            Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext, true);
             field.set(object.obj, val);
         }
     }

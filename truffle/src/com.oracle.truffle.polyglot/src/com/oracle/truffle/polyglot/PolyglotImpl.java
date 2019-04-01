@@ -54,6 +54,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -261,6 +263,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     public Path findHome() {
         final HomeFinder homeFinder = HomeFinder.getInstance();
         return homeFinder == null ? null : homeFinder.getHomeFolder();
+    }
+
+    @Override
+    public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue) {
+        return new PolyglotTargetMapping(sourceType, targetType, acceptsValue, convertValue);
     }
 
     @Override

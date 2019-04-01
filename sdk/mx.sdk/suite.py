@@ -98,7 +98,10 @@ suite = {
     "org.graalvm.polyglot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.options"],
+      "dependencies" : [
+        "org.graalvm.options",
+        "org.graalvm.collections",
+      ],
       "uses" : ["org.graalvm.polyglot.impl.AbstractPolyglotImpl"],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java

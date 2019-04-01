@@ -68,6 +68,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
@@ -82,6 +83,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.examples.TargetMappings;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
 /**
@@ -946,6 +948,9 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
     @Test
     public void testStringToPrimitive() {
+        HostAccess hostAccess = TargetMappings.enableStringCoercions(HostAccess.newBuilder().allowPublicAccess(true)).build();
+        setupEnv(Context.newBuilder().allowAllAccess(true).allowHostAccess(hostAccess).build());
+
         Value hierarchy = context.asValue(new PrimitiveHierarchy()).getMember("hierarchy");
 
         assertEquals("int", hierarchy.execute(String.valueOf(Integer.MIN_VALUE)).asString());
