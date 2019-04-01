@@ -141,37 +141,19 @@ final class GraalTVMCI extends TVMCI {
         return super.getOrCreateRuntimeData(rootNode, constructor);
     }
 
-    /**
-     * Class used to store data used by the compiler in the Engine. Enables "global" compiler state
-     * per engine.
-     */
-    static class EngineData {
-        int splitLimit;
-        int splitCount;
-    }
-
-    private static final Supplier<EngineData> engineDataConstructor = new Supplier<EngineData>() {
-        @Override
-        public EngineData get() {
-            return new EngineData();
-        }
-    };
-
     EngineData getEngineData(RootNode rootNode) {
-        return getOrCreateRuntimeData(rootNode, engineDataConstructor);
+        return getOrCreateRuntimeData(rootNode, EngineData.ENGINE_DATA_SUPPLIER);
     }
 
     @Override
     protected void reportPolymorphicSpecialize(Node source) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting)) {
-            return;
-        }
-        TruffleSplittingStrategy.newPolymorphicSpecialize(source);
         final RootNode rootNode = source.getRootNode();
         final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
-        if (callTarget != null) {
-            callTarget.polymorphicSpecialize(source);
+        if (callTarget == null || callTarget.engineData.options.isLegacySplitting()) {
+            return;
         }
+        TruffleSplittingStrategy.newPolymorphicSpecialize(source, callTarget.engineData);
+        callTarget.polymorphicSpecialize(source);
     }
 
     @Override

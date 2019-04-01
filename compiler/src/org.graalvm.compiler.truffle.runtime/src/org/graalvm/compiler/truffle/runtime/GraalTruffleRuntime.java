@@ -642,7 +642,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public RootCallTarget createCallTarget(RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
         final RootCallTarget newCallTarget = createClonedCallTarget(null, rootNode);
-        TruffleSplittingStrategy.newTargetCreated(tvmci, newCallTarget);
+        TruffleSplittingStrategy.newTargetCreated(newCallTarget);
         return newCallTarget;
     }
 

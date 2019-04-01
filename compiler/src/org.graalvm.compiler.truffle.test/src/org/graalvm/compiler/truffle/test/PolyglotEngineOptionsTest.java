@@ -69,7 +69,8 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
                         .option("engine.TraceCompilation", "true") //
                         .option("engine.TraceCompilationDetails", "true") //
                         .option("engine.Inlining", "false") //
-                        .build();
+                        .option("engine.Splitting", "false") //
+                        .option("engine.Mode", "latency").build();
         context.enter();
         try {
             OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
@@ -77,10 +78,19 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
             Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilation));
             Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilationDetails));
             Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Inlining));
+            Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Splitting));
+            Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
         } finally {
             context.leave();
             context.close();
         }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testParseUnknownMode() {
+        Context.newBuilder() //
+                        .allowExperimentalOptions(true) //
+                        .option("engine.Mode", "anUnknownMode").build();
     }
 
     private static void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {

@@ -80,6 +80,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
+    final EngineData engineData;
 
     /** Information about when and how the call target should get compiled. */
     @CompilationFinal protected volatile OptimizedCompilationProfile compilationProfile;
@@ -131,10 +132,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
-        uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
-        RuntimeOptionsCache.reinitialize();
-        knownCallNodes = RuntimeOptionsCache.isLegacySplitting() ? null : new ArrayList<>(1);
-        runtime().getTvmci().setCallTarget(rootNode, this);
+        final GraalTVMCI tvmci = runtime().getTvmci();
+        engineData = tvmci.getEngineData(rootNode);
+        uninitializedNodeCount = tvmci.adoptChildrenAndCount(this.rootNode);
+        knownCallNodes = engineData.options.isLegacySplitting() ? null : new ArrayList<>(1);
+        tvmci.setCallTarget(rootNode, this);
     }
 
     public Assumption getNodeRewritingAssumption() {
@@ -770,9 +772,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     void polymorphicSpecialize(Node source) {
-        assert !RuntimeOptionsCache.isLegacySplitting();
+        assert !engineData.options.isLegacySplitting();
         List<Node> toDump = null;
-        if (RuntimeOptionsCache.isSplittingDumpDecisions()) {
+        if (engineData.options.isSplittingDumpDecisions()) {
             toDump = new ArrayList<>();
             pullOutParentChain(source, toDump);
         }
@@ -787,7 +789,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             numberOfKnownCallNodes = knownCallNodes.size();
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
-        if (depth > RuntimeOptionsCache.getSplittingMaxPropagationDepth() || needsSplit || numberOfKnownCallNodes == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
+        if (depth > engineData.options.getSplittingMaxPropagationDepth() || needsSplit || numberOfKnownCallNodes == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
             logEarlyReturn(depth, numberOfKnownCallNodes);
             return needsSplit;
         }
@@ -796,7 +798,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 final RootNode callerRootNode = onlyCaller.getRootNode();
                 if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
                     final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
-                    if (RuntimeOptionsCache.isSplittingDumpDecisions()) {
+                    if (engineData.options.isSplittingDumpDecisions()) {
                         pullOutParentChain(onlyCaller, toDump);
                     }
                     logPolymorphicEvent(depth, "One caller! Analysing parent.");
@@ -816,7 +818,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void logEarlyReturn(int depth, int numberOfKnownCallNodes) {
-        if (RuntimeOptionsCache.isSplittingTraceEvents()) {
+        if (engineData.options.isSplittingTraceEvents()) {
             logPolymorphicEvent(depth, "Early return: " + needsSplit + " callCount: " + compilationProfile.getCallCount() + ", numberOfKnownCallNodes: " + numberOfKnownCallNodes);
         }
     }
@@ -826,7 +828,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void logPolymorphicEvent(int depth, String message, Object arg) {
-        if (RuntimeOptionsCache.isSplittingTraceEvents()) {
+        if (engineData.options.isSplittingTraceEvents()) {
             final String indent = new String(new char[depth]).replace("\0", "  ");
             final String argString = (arg == null) ? "" : " " + arg;
             log(String.format(SPLIT_LOG_FORMAT, indent + message + argString, this.toString()));
@@ -834,7 +836,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void maybeDump(List<Node> toDump) {
-        if (RuntimeOptionsCache.isSplittingDumpDecisions()) {
+        if (engineData.options.isSplittingDumpDecisions()) {
             final List<OptimizedDirectCallNode> callers = new ArrayList<>();
             synchronized (this) {
                 for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {
