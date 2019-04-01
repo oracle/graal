@@ -37,7 +37,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "6303a46f62c76112e9d70b58222ca25dd1f3e3ad",
+                "version": "4674e25358e1c2d932090d4802673617b5e5afe1",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -61,7 +61,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "16e322ad8decdee6de854916938b4f964ffad96d",
+                "version": "291d948e549c7752976b0d86cea6200b43bb4d57",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -70,7 +70,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "98bc6132b08bf07632b05dea2a232f80aeda7fc3",
+                "version": "e2bb9aa460491297cb06afc28a7e9bc59d553d03",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
