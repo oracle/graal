@@ -100,7 +100,7 @@ abstract class TargetMappingNode extends Node {
     @TruffleBoundary
     static PolyglotTargetMapping[] getMappings(PolyglotLanguageContext context, Class<?> targetType) {
         if (context == null) {
-            return HostClassCache.EMPTY_BINDINGS;
+            return HostClassCache.EMPTY_MAPPINGS;
         }
         return context.getEngine().getHostClassCache().getMappings(targetType);
     }

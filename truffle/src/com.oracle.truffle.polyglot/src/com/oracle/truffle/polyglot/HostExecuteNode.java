@@ -303,7 +303,7 @@ abstract class HostExecuteNode extends Node {
             }
             PolyglotTargetMapping[] mappings = cache.getMappings(targetType);
             if (mappings.length > 0 || otherPossibleMappings != null) {
-                PolyglotTargetMapping[] otherMappings = otherPossibleMappings != null ? otherPossibleMappings.toArray(HostClassCache.EMPTY_BINDINGS) : HostClassCache.EMPTY_BINDINGS;
+                PolyglotTargetMapping[] otherMappings = otherPossibleMappings != null ? otherPossibleMappings.toArray(HostClassCache.EMPTY_MAPPINGS) : HostClassCache.EMPTY_MAPPINGS;
                 argType = new TargetMappingType(argType, mappings, otherMappings);
             }
             cachedArgTypes[i] = argType;
