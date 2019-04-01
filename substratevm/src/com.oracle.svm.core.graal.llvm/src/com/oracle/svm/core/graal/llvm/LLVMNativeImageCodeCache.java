@@ -100,8 +100,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private LLVMStackMapInfo info;
     private HostedMethod firstMethod;
 
-    public LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
-        super(compilations, imageHeap);
+    public LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
+        super(compilations, imageHeap, targetPlatform);
     }
 
     @Override
@@ -433,14 +433,18 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
-    private static void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
+    private void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
             cmd.add("llc");
             cmd.add("-relocation-model=pic");
-
-            /* X86 call frame optimization causes variable sized stack frames */
-            cmd.add("-no-x86-call-frame-opt");
+            if (Platform.AMD64.class.isInstance(targetPlatform)) {
+                /* X86 call frame optimization causes variable sized stack frames */
+                cmd.add("-no-x86-call-frame-opt");
+            }
+            if (Platform.AArch64.class.isInstance(targetPlatform)) {
+                cmd.add("-march=arm64");
+            }
             cmd.add("-O2");
             cmd.add("-filetype=obj");
             cmd.add("-o");
@@ -457,7 +461,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM compilation failed for " + inputPath + ": " + status);
+                System.err.println("Error for "+cmd);
+              //  throw new GraalError("LLVM compilation failed for " + inputPath + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
