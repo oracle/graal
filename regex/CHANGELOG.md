@@ -7,6 +7,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 * Removed properties `regex`, `input`, `start`, and `end` from result objects.
 * Introduced methods `getStart(groupNumber)` and `getEnd(groupNumber)` as a replacement for `start` and `end` in result objects.
 * Regex syntax exceptions are now to be treated as plain `TruffleException`s - languages using TRegex should not introduce any source code dependency on TRegex.
+* Moved `groupCount` property from regex result to compiled regex objects.
 
 ## Version 1.0.0 RC10
 

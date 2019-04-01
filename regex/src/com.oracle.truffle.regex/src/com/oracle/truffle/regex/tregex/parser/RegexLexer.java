@@ -138,7 +138,7 @@ public final class RegexLexer {
         return index >= pattern.length();
     }
 
-    private int numberOfCaptureGroups() throws RegexSyntaxException {
+    public int numberOfCaptureGroups() throws RegexSyntaxException {
         if (!identifiedAllGroups) {
             identifyCaptureGroups();
             identifiedAllGroups = true;
