@@ -40,14 +40,13 @@
  */
 package org.graalvm.polyglot;
 
-
 public final class EnvironmentAccess {
 
     public static EnvironmentAccess NONE = new EnvironmentAccess();
 
-    public static EnvironmentAccess READ_ONLY = new EnvironmentAccess();
+    public static EnvironmentAccess READ = new EnvironmentAccess();
 
-    public static EnvironmentAccess READ_WRITE = new EnvironmentAccess();
+    public static EnvironmentAccess ALL = new EnvironmentAccess();
 
     private EnvironmentAccess() {
     }

@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.io.ProcessHandler.Redirect;
@@ -116,7 +117,6 @@ public class TruffleProcessBuilder {
         return this;
     }
 
-
     public TruffleProcessBuilder inheritIO(boolean enabled) {
         this.inheritIO = enabled;
         return this;
@@ -136,10 +136,18 @@ public class TruffleProcessBuilder {
         if (inheritIO) {
             Arrays.fill(redirects, Redirect.INHERIT);
         }
-        Map<String,String> useEnv = clearEnvironment ?
-                new HashMap<>() :
-                new HashMap<>(TruffleLanguage.AccessAPI.engineAccess().getProcessEnvironment(polylgotLanguageContext));
-        useEnv.putAll(env);
+        EnvironmentAccess envAccess = TruffleLanguage.AccessAPI.engineAccess().getEnvironmentAccess(polylgotLanguageContext);
+        Map<String, String> useEnv;
+        if (envAccess == EnvironmentAccess.ALL) {
+            useEnv = clearEnvironment ? new HashMap<>() : new HashMap<>(TruffleLanguage.AccessAPI.engineAccess().getProcessEnvironment(polylgotLanguageContext));
+            if (env != null) {
+                useEnv.putAll(env);
+            }
+        } else if (env != null || clearEnvironment) {
+            throw new SecurityException("Environment modification is not allowed.");
+        } else {
+            useEnv = new HashMap<>(TruffleLanguage.AccessAPI.engineAccess().getProcessEnvironment(polylgotLanguageContext));
+        }
         String useCwd;
         if (cwd != null) {
             useCwd = cwd.getSPIPath().toString();

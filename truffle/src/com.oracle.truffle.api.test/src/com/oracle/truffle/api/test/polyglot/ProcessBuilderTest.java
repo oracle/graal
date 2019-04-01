@@ -54,6 +54,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -153,48 +154,95 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         languageEnv.newProcessBuilder("process").start();
         command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
-        Assert.assertNull(command.getDirectory());
+        Assert.assertEquals(languageEnv.getCurrentWorkingDirectory().getPath(), command.getDirectory());
     }
 
     @Test
     public void testEnvironment() throws Exception {
-        MockProcessHandler testHandler = new MockProcessHandler("k1", "v1", "k2", "v2");
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).build());
+        Assert.assertEquals(Collections.emptyMap(), envFromContext(EnvironmentAccess.NONE));
+        Assert.assertEquals(pairsAsMap("k1", "v1", "k2", "v2"), envFromContext(EnvironmentAccess.READ));
+        Assert.assertEquals(pairsAsMap("k1", "v1", "k2", "v2"), envFromContext(EnvironmentAccess.ALL));
+
+        try {
+            envExtendedByProcessBuilder(EnvironmentAccess.NONE);
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // Expected
+        }
+        try {
+            envExtendedByProcessBuilder(EnvironmentAccess.READ);
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // Expected
+        }
+        Assert.assertEquals(pairsAsMap("k1", "v1", "k2", "v2", "k3", "v3", "k4", "v4"), envExtendedByProcessBuilder(EnvironmentAccess.ALL));
+
+        try {
+            envOverridenByProcessBuilder(EnvironmentAccess.NONE);
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // Expected
+        }
+        try {
+            envOverridenByProcessBuilder(EnvironmentAccess.READ);
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // Expected
+        }
+        Assert.assertEquals(pairsAsMap("k1", "vA", "k2", "vB"), envOverridenByProcessBuilder(EnvironmentAccess.ALL));
+
+        try {
+            envCleanedByProcessBuilder(EnvironmentAccess.NONE);
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // Expected
+        }
+        try {
+            envCleanedByProcessBuilder(EnvironmentAccess.READ);
+            Assert.fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // Expected
+        }
+        Assert.assertEquals(pairsAsMap("k3", "v3", "k4", "v4"), envCleanedByProcessBuilder(EnvironmentAccess.ALL));
+    }
+
+    private Map<String, String> envFromContext(EnvironmentAccess envAccess) throws IOException {
+        MockProcessHandler testHandler = new MockProcessHandler();
+        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).environment("k1", "v1").environment("k2", "v2").build());
         languageEnv.newProcessBuilder("process").start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
-        Assert.assertNotNull(command);
-        Assert.assertEquals(pairsAsMap("k1", "v1", "k2", "v2"), command.getEnvironment());
+        return command.getEnvironment();
+    }
 
-        languageEnv.newProcessBuilder("process").addToEnvironment(pairsAsMap("k3", "v3", "k4", "v4")).start();
-        command = testHandler.getAndCleanLastCommand();
-        Assert.assertNotNull(command);
-        Assert.assertEquals(pairsAsMap("k1", "v1", "k2", "v2", "k3", "v3", "k4", "v4"), command.getEnvironment());
-
+    private Map<String, String> envExtendedByProcessBuilder(EnvironmentAccess envAccess) throws IOException {
+        MockProcessHandler testHandler = new MockProcessHandler();
+        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).environment("k1", "v1").environment("k2", "v2").build());
         TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
-        Map<String, String> env = builder.environment();
-        env.put("k3", "v3");
-        env.put("k4", "v4");
+        builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));
         builder.start();
-        command = testHandler.getAndCleanLastCommand();
-        Assert.assertNotNull(command);
-        Assert.assertEquals(pairsAsMap("k1", "v1", "k2", "v2", "k3", "v3", "k4", "v4"), command.getEnvironment());
+        ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
+        return command.getEnvironment();
+    }
 
-        builder = languageEnv.newProcessBuilder("process");
-        env = builder.environment();
-        env.put("k1", "vA");
-        env.put("k2", "vB");
+    private Map<String, String> envOverridenByProcessBuilder(EnvironmentAccess envAccess) throws IOException {
+        MockProcessHandler testHandler = new MockProcessHandler();
+        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).environment("k1", "v1").environment("k2", "v2").build());
+        TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
+        builder.environment(pairsAsMap("k1", "vA", "k2", "vB"));
         builder.start();
-        command = testHandler.getAndCleanLastCommand();
-        Assert.assertNotNull(command);
-        Assert.assertEquals(pairsAsMap("k1", "vA", "k2", "vB"), command.getEnvironment());
+        ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
+        return command.getEnvironment();
+    }
 
-        builder = languageEnv.newProcessBuilder("process");
-        env = builder.environment();
-        env.clear();
+    private Map<String, String> envCleanedByProcessBuilder(EnvironmentAccess envAccess) throws IOException {
+        MockProcessHandler testHandler = new MockProcessHandler();
+        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).environment("k1", "v1").environment("k2", "v2").build());
+        TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
+        builder.clearEnvironment(true);
+        builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));
         builder.start();
-        command = testHandler.getAndCleanLastCommand();
-        Assert.assertNotNull(command);
-        Assert.assertEquals(Collections.emptyMap(), command.getEnvironment());
+        ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
+        return command.getEnvironment();
     }
 
     @Test

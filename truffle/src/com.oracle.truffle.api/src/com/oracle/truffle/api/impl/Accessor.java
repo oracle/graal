@@ -88,6 +88,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import java.util.List;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 /**
@@ -376,7 +377,9 @@ public abstract class Accessor {
 
         public abstract boolean isCreateProcessAllowed(Object polylgotLanguageContext);
 
-        public abstract Map<String, String> getProcessEnvironment(Object polylgotLanguageContext);
+        public abstract EnvironmentAccess getEnvironmentAccess(Object polyglotLanguageContext);
+
+        public abstract Map<String, String> getProcessEnvironment(Object polyglotLanguageContext);
 
         public abstract ProcessHandler.ProcessCommand newProcessCommand(Object vmObject, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
                         ProcessHandler.Redirect[] redirects);

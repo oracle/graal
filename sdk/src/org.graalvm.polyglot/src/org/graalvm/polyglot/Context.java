@@ -765,7 +765,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowCreateProcess;
         private ProcessHandler processHandler;
         private EnvironmentAccess environmentAcceess;
-        private Map<String,String> environment;
+        private Map<String, String> environment;
         private boolean allowInheritEnvironment;
 
         Builder(String... onlyLanguages) {
@@ -1261,6 +1261,14 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
+        public Builder environment(Map<String, String> env) {
+            Objects.requireNonNull(env, "Env must be non null.");
+            for (Map.Entry<String, String> e : env.entrySet()) {
+                environment(e.getKey(), e.getValue());
+            }
+            return this;
+        }
+
         public Builder inheritEnvironment(boolean enabled) {
             this.allowInheritEnvironment = enabled;
             return this;
@@ -1318,9 +1326,10 @@ public final class Context implements AutoCloseable {
             boolean createProcess = orAllAccess(allowCreateProcess);
             boolean inheritEnvironment = orAllAccess(allowInheritEnvironment);
             if (environmentAcceess == null) {
-                environmentAcceess = this.allowAllAccess ? EnvironmentAccess.READ_WRITE : EnvironmentAccess.NONE;
+                environmentAcceess = this.allowAllAccess ? EnvironmentAccess.ALL : EnvironmentAccess.NONE;
             }
-            AbstractPolyglotImpl.EnvironmentConfig envConfig = new AbstractPolyglotImpl.EnvironmentConfig(environmentAcceess, inheritEnvironment, environment);
+            AbstractPolyglotImpl.EnvironmentConfig envConfig = new AbstractPolyglotImpl.EnvironmentConfig(environmentAcceess, inheritEnvironment,
+                            environment == null ? Collections.emptyMap() : environment);
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }

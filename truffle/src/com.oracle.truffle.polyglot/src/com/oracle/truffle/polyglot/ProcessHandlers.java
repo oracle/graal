@@ -42,7 +42,6 @@ package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.Map;
 import org.graalvm.polyglot.io.ProcessHandler;
 

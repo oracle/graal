@@ -90,6 +90,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.EnvironmentAccess;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -2127,13 +2128,36 @@ public abstract class TruffleLanguage<C> {
             languageServicesCollector.add(service);
         }
 
+        @TruffleBoundary
         public TruffleProcessBuilder newProcessBuilder(String... command) {
             if (!AccessAPI.engineAccess().isCreateProcessAllowed(vmObject)) {
                 throw new SecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
             }
             List<String> cmd = new ArrayList<>(command.length);
             Collections.addAll(cmd, command);
-            return new TruffleProcessBuilder(vmObject, fileSystem, cmd);
+            return new TruffleProcessBuilder(vmObject, fileSystemContext.fileSystem, cmd);
+        }
+
+        @TruffleBoundary
+        public void setEnvironmentVariable(String key, String value) {
+            Objects.requireNonNull(key, "Key must be non null");
+            Objects.requireNonNull(value, "Value must be non null");
+            EnvironmentAccess envAccess = AccessAPI.engineAccess().getEnvironmentAccess(vmObject);
+            if (envAccess != EnvironmentAccess.ALL) {
+                throw new SecurityException("Env modification is not allowed");
+            }
+            AccessAPI.engineAccess().getProcessEnvironment(vmObject).put(key, value);
+        }
+
+        @TruffleBoundary
+        public String getEnvironmentVariable(String key) {
+            Objects.requireNonNull(key, "Key must be non null");
+            return AccessAPI.engineAccess().getProcessEnvironment(vmObject).get(key);
+        }
+
+        @TruffleBoundary
+        public Map<String, String> getEnvironmentVariables() {
+            return Collections.unmodifiableMap(AccessAPI.engineAccess().getProcessEnvironment(vmObject));
         }
 
         @SuppressWarnings("rawtypes")

@@ -1109,7 +1109,8 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
                     HostAccess access,
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
-                    Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler, org.graalvm.polyglot.impl.AbstractPolyglotImpl.EnvironmentConfig envConfig) {
+                    Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
+                    org.graalvm.polyglot.impl.AbstractPolyglotImpl.EnvironmentConfig envConfig) {
         checkState();
         if (boundEngine && preInitializedContext == null && !contexts.isEmpty()) {
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +

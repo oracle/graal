@@ -55,6 +55,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -423,13 +424,13 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions();
 
-
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                         Map<String, String> options,
-                        Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler, EnvironmentConfig envConfig);
+                        Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
+                        EnvironmentConfig envConfig);
 
         public abstract String getImplementationName();
 
@@ -698,11 +699,12 @@ public abstract class AbstractPolyglotImpl {
     public static final class EnvironmentConfig {
         private final EnvironmentAccess environmentAccess;
         private final boolean inheritEnvironment;
-        private final Map<String,String> environment;
-        private volatile Map<String,String> configuredEnvironement;
+        private final Map<String, String> environment;
+        private volatile Map<String, String> configuredEnvironement;
 
-        public EnvironmentConfig(EnvironmentAccess environmentAcceess, boolean inheritEnvironment, Map<String,String> environment) {
+        public EnvironmentConfig(EnvironmentAccess environmentAcceess, boolean inheritEnvironment, Map<String, String> environment) {
             assert environmentAcceess != null;
+            assert environment != null;
             this.environmentAccess = environmentAcceess;
             this.inheritEnvironment = inheritEnvironment;
             this.environment = environment;
@@ -712,22 +714,32 @@ public abstract class AbstractPolyglotImpl {
             return environmentAccess;
         }
 
-        public Map<String,String> getEnvironment() {
-            Map<String,String> result = configuredEnvironement;
+        public Map<String, String> getEnvironment() {
+            Map<String, String> result = configuredEnvironement;
             if (result == null) {
                 synchronized (this) {
                     result = configuredEnvironement;
                     if (result == null) {
-                        result = new ConcurrentHashMap<>();
-                        if (inheritEnvironment) {
-                            result.putAll(System.getenv());
+                        if (environmentAccess == EnvironmentAccess.NONE) {
+                            result = Collections.emptyMap();
+                        } else if (environmentAccess == EnvironmentAccess.READ) {
+                            result = Collections.unmodifiableMap(createInitialEnv(new HashMap<>()));
+                        } else {
+                            result = createInitialEnv(new ConcurrentHashMap<>());
                         }
-                        result.putAll(environment);
                         configuredEnvironement = result;
                     }
                 }
             }
             return result;
+        }
+
+        private Map<String, String> createInitialEnv(Map<String, String> map) {
+            if (inheritEnvironment) {
+                map.putAll(System.getenv());
+            }
+            map.putAll(environment);
+            return map;
         }
     }
 }

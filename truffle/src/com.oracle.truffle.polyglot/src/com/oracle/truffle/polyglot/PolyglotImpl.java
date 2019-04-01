@@ -67,6 +67,7 @@ import java.util.logging.LogRecord;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -1209,13 +1210,19 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return ((PolyglotContextImpl) contextVMObject).engine.getFileTypeDetectorsSupplier();
         }
 
+        @Override
         public boolean isCreateProcessAllowed(Object polylgotLanguageContext) {
             return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.createProcessAllowed;
         }
 
         @Override
-        public Map<String, String> getProcessEnvironment(Object polylgotLanguageContext) {
-            return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.processHandler.getEnvironment();
+        public EnvironmentAccess getEnvironmentAccess(Object polyglotLanguageContext) {
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.config.environmentConfig.getEnvironmentAccess();
+        }
+
+        @Override
+        public Map<String, String> getProcessEnvironment(Object polyglotLanguageContext) {
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.config.environmentConfig.getEnvironment();
         }
 
         @Override
