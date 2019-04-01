@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -58,18 +60,22 @@ abstract class BasicNode extends Node {
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"methodHandle == cachedHandle", "getBooleanField(lform, meta.isCompiled)"})
     Object directBasic(StaticObjectImpl methodHandle, Object[] args, Meta meta,
-                    @Cached("methodHandle") StaticObjectImpl cachedHandle,
-                    @Cached("getSOIField(methodHandle, meta.form)") StaticObjectImpl lform,
-                    @Cached("getMethodHiddenField(getSOIField(lform, meta.vmentry), vmtarget)") Method target) {
-        return target.invokeDirect(null, args);
+                       @Cached("methodHandle") StaticObjectImpl cachedHandle,
+                       @Cached("getSOIField(methodHandle, meta.form)") StaticObjectImpl lform,
+                       @Cached("getMethodHiddenField(getSOIField(lform, meta.vmentry), vmtarget)") Method target,
+                       @Cached("create(target.getCallTarget())") DirectCallNode callNode) {
+        return callNode.call(args);
+        //return target.invokeDirect(null, args);
     }
 
     @Specialization(replaces = "directBasic")
-    Object normalBasic(StaticObjectImpl methodHandle, Object[] args, Meta meta) {
+    Object normalBasic(StaticObjectImpl methodHandle, Object[] args, Meta meta,
+                       @Cached("create()")IndirectCallNode callNode) {
         StaticObjectImpl lform = (StaticObjectImpl) methodHandle.getField(meta.form);
         StaticObjectImpl mname = (StaticObjectImpl) lform.getField(meta.vmentry);
         Method target = (Method) mname.getHiddenField("vmtarget");
-        return target.invokeDirect(null, args);
+        return callNode.call(target.getCallTarget(), args);
+//        return target.invokeDirect(null, args);
     }
 
     static StaticObjectImpl getSOIField(StaticObjectImpl object, Field field) {
