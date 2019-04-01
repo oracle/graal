@@ -731,7 +731,7 @@ public class NativeImageGenerator {
                 bigbang.getUnsupportedFeatures().report(bigbang);
                 bigbang.checkUserLimitations();
             } catch (UnsupportedFeatureException ufe) {
-                throw UserError.abort(ufe.getMessage(), ufe);
+                throw FallbackFeature.reportAsFallback(ufe);
             }
         } catch (InterruptedException ie) {
             throw new InterruptImageBuilding();
