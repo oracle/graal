@@ -42,10 +42,10 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
@@ -937,6 +937,25 @@ public class HostAccessTest {
         setupEnv(builder);
         assertNull(context.asValue(null).as(Integer.class));
         assertEquals(1, invoked.get());
+    }
+
+    @Test
+    public void testRecursion() {
+        HostAccess.Builder builder = HostAccess.newBuilder();
+        builder.targetTypeMapping(Value.class, Integer.class, (v) -> {
+            return true;
+        }, (v) -> {
+            return v.as(Integer.class);
+        });
+
+        setupEnv(builder);
+        try {
+            assertNull(context.asValue(42).as(Integer.class));
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isHostException());
+            assertTrue(e.asHostException() instanceof StackOverflowError);
+        }
     }
 
     public static class MyClassLoader extends URLClassLoader {
