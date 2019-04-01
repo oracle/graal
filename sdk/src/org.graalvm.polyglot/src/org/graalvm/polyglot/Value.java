@@ -750,7 +750,7 @@ public final class Value {
      * The following target types are supported and interpreted in the following order:
      * <ul>
      * <li>Custom
-     * {@link HostAccess.Builder#targetTypeMapping(Class, java.util.function.Predicate, Function)
+     * {@link HostAccess.Builder#targetTypeMapping(Class, Class, java.util.function.Predicate, Function)
      * target type mappings} specified in the {@link HostAccess} configuration when the context is
      * constructed. Custom target type mappings may override all the type mappings below. This
      * allows for customization if one of the below type mappings is not suitable.
