@@ -79,12 +79,12 @@ public class RegexEngine extends AbstractConstantKeysObject {
         if (flavor != null) {
             RegexFlavorProcessor flavorProcessor = flavor.forRegex(regexSource);
             flavorProcessor.validate();
-            regexObject = new RegexObject(compiler, regexSource, flavorProcessor.getFlags(), flavorProcessor.getNamedCaptureGroups());
+            regexObject = new RegexObject(compiler, regexSource, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(), flavorProcessor.getNamedCaptureGroups());
         } else {
             RegexFlags flags = RegexFlags.parseFlags(regexSource.getFlags());
             RegexParser regexParser = new RegexParser(regexSource, options);
             regexParser.validate();
-            regexObject = new RegexObject(compiler, regexSource, flags, regexParser.getNamedCaptureGroups());
+            regexObject = new RegexObject(compiler, regexSource, flags, regexParser.getNumberOfCaptureGroups(), regexParser.getNamedCaptureGroups());
         }
         if (options.isRegressionTestMode()) {
             // Force the compilation of the RegExp.

@@ -311,6 +311,12 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     @Override
+    public int getNumberOfCaptureGroups() {
+        // include capture group 0
+        return groups + 1;
+    }
+
+    @Override
     public Map<String, Integer> getNamedCaptureGroups() {
         return namedCaptureGroups;
     }

@@ -55,17 +55,17 @@ import java.util.Collections;
  * regex = engine("(a|(b))c", "i")
  * assert(regex.pattern == "(a|(b))c")
  * assert(regex.flags.ignoreCase == true)
+ * assert(regex.groupCount == 3)
  *
  * result = regex.exec("xacy", 0)
  * assert(result.isMatch == true)
- * assert(result.groupCount == 3)
  * assertEquals([result.getStart(0), result.getEnd(0)], [ 1,  3])
  * assertEquals([result.getStart(1), result.getEnd(1)], [ 1,  2])
  * assertEquals([result.getStart(2), result.getEnd(2)], [-1, -1])
  *
  * result2 = regex.exec("xxx", 0)
  * assert(result2.isMatch == false)
- * // result2.groupCount, result2.getStart(...) and result2.getEnd(...) are undefined
+ * // result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
  */

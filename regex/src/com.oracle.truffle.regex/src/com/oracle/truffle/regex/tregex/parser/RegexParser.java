@@ -166,6 +166,11 @@ public final class RegexParser {
     }
 
     @TruffleBoundary
+    public int getNumberOfCaptureGroups() {
+        return lexer.numberOfCaptureGroups();
+    }
+
+    @TruffleBoundary
     public Map<String, Integer> getNamedCaptureGroups() {
         return lexer.getNamedCaptureGroups();
     }

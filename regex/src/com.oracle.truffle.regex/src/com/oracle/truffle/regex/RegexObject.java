@@ -69,6 +69,8 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
  * <li>{@link PythonFlags} if the flavor was {@code PythonStr} or {@code PythonBytes}</li>
  * </ul>
  * </li>
+ * <li>{@code int groupCount}: number of capture groups present in the regular expression, including
+ * group 0.</li>
  * <li>{@link RegexObjectExecMethod} {@code exec}: an executable method that matches the compiled
  * regular expression against a string. The method accepts two parameters:
  * <ol>
@@ -93,19 +95,22 @@ public final class RegexObject extends AbstractConstantKeysObject {
     static final String PROP_EXEC = "exec";
     private static final String PROP_PATTERN = "pattern";
     private static final String PROP_FLAGS = "flags";
+    private static final String PROP_GROUP_COUNT = "groupCount";
     private static final String PROP_GROUPS = "groups";
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_EXEC, PROP_PATTERN, PROP_FLAGS, PROP_GROUPS);
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_EXEC, PROP_PATTERN, PROP_FLAGS, PROP_GROUP_COUNT, PROP_GROUPS);
 
     private final RegexCompiler compiler;
     private final RegexSource source;
     private final TruffleObject flags;
+    private final int numberOfCaptureGroups;
     private final TruffleObject namedCaptureGroups;
     private Object compiledRegexObject;
 
-    public RegexObject(RegexCompiler compiler, RegexSource source, TruffleObject flags, Map<String, Integer> namedCaptureGroups) {
+    public RegexObject(RegexCompiler compiler, RegexSource source, TruffleObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
         this.compiler = compiler;
         this.source = source;
         this.flags = flags;
+        this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.namedCaptureGroups = namedCaptureGroups != null ? new TruffleReadOnlyMap(namedCaptureGroups) : TruffleNull.INSTANCE;
     }
 
@@ -115,6 +120,10 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
     public TruffleObject getFlags() {
         return flags;
+    }
+
+    public int getNumberOfCaptureGroups() {
+        return numberOfCaptureGroups;
     }
 
     public TruffleObject getNamedCaptureGroups() {
@@ -156,6 +165,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
                 return getSource().getPattern();
             case PROP_FLAGS:
                 return getFlags();
+            case PROP_GROUP_COUNT:
+                return getNumberOfCaptureGroups();
             case PROP_GROUPS:
                 return getNamedCaptureGroups();
             default:
