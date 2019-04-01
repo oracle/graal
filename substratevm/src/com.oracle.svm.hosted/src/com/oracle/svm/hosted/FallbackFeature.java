@@ -48,7 +48,7 @@ public class FallbackFeature implements Feature {
 
     static UserError.UserException reportAsFallback(RuntimeException original) {
         if (Options.FallbackThreshold.getValue() == NoFallback) {
-            throw UserError.abort(original.getMessage());
+            throw UserError.abort(original.getMessage(), original);
         }
         throw reportFallback("Abort stand-alone image build. " + original.getMessage());
     }
