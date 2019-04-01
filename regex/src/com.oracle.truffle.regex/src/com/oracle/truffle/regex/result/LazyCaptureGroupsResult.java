@@ -43,16 +43,15 @@ public final class LazyCaptureGroupsResult extends LazyResult implements JsonCon
     public LazyCaptureGroupsResult(Object input,
                     int fromIndex,
                     int end,
-                    int numberOfCaptureGroups,
                     CallTarget findStartCallTarget,
                     CallTarget captureGroupCallTarget) {
-        super(input, fromIndex, end, numberOfCaptureGroups);
+        super(input, fromIndex, end);
         this.findStartCallTarget = findStartCallTarget;
         this.captureGroupCallTarget = captureGroupCallTarget;
     }
 
     public LazyCaptureGroupsResult(Object input, int[] result) {
-        this(input, -1, -1, result.length / 2, null, null);
+        this(input, -1, -1, null, null);
         this.result = result;
     }
 

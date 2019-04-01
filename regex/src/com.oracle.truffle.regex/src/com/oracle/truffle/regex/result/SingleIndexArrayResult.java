@@ -31,7 +31,6 @@ public final class SingleIndexArrayResult extends RegexResult {
     @CompilationFinal(dimensions = 1) private final int[] indices;
 
     public SingleIndexArrayResult(int[] indices) {
-        super(indices.length / 2);
         this.indices = indices;
     }
 

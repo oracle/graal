@@ -253,11 +253,9 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                 } else {
                     if (forwardEntryNode.getExecutor().isAnchored() ||
                                     (flags.isSticky() && forwardEntryNode.getExecutor().getPrefixLength() == 0)) {
-                        return new LazyCaptureGroupsResult(input, fromIndexArg, end,
-                                        captureGroupEntryNode.getExecutor().getNumberOfCaptureGroups(), null, captureGroupCallTarget);
+                        return new LazyCaptureGroupsResult(input, fromIndexArg, end, null, captureGroupCallTarget);
                     }
-                    return new LazyCaptureGroupsResult(input, fromIndexArg, end,
-                                    captureGroupEntryNode.getExecutor().getNumberOfCaptureGroups(), backwardCallTarget, captureGroupCallTarget);
+                    return new LazyCaptureGroupsResult(input, fromIndexArg, end, backwardCallTarget, captureGroupCallTarget);
                 }
             }
         }
@@ -277,8 +275,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                 return preCalculatedResults[0].createFromStart(start);
             }
             if (captureGroupEntryNode != null) {
-                return new LazyCaptureGroupsResult(input, start, inputLength,
-                                captureGroupEntryNode.getExecutor().getNumberOfCaptureGroups(), null, captureGroupCallTarget);
+                return new LazyCaptureGroupsResult(input, start, inputLength, null, captureGroupCallTarget);
             }
             return new SingleResult(start, inputLength);
         }
