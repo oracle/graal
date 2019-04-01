@@ -52,7 +52,9 @@ import com.oracle.svm.hosted.c.query.SizeAndSignednessVerifier;
  */
 public class CAnnotationProcessor extends CCompilerInvoker {
 
-    static boolean TEXTCACHE = true;
+    // if true, use .txt files that are generated asynchronously for a specific target
+    // this should be part of a xcompile setting, where current platform != target platform
+    static boolean TEXTCACHE = System.getProperty("textcache") != null;
     private final NativeCodeContext codeCtx;
 
     private NativeCodeInfo codeInfo;
@@ -88,19 +90,20 @@ public class CAnnotationProcessor extends CCompilerInvoker {
             if (TEXTCACHE) {
                 makeQuery(cache, codeInfo.getName()+".txt");
             } else {
-try {
-    Path binary = compileQueryCode(queryFile);
-    if (nativeLibs.getErrors().size() > 100000) {
-        return codeInfo;
-    }
+                try {
+                    Path binary = compileQueryCode(queryFile);
+                    if (nativeLibs.getErrors().size() > 0) {
+                        return codeInfo;
+                    }
 
-    makeQuery(cache, binary.toString());
-    if (nativeLibs.getErrors().size() > 100000) {
-        return codeInfo;
-    }
-}catch (Throwable e) {
-    e.printStackTrace();
-}}
+                    makeQuery(cache, binary.toString());
+                    if (nativeLibs.getErrors().size() > 0) {
+                        return codeInfo;
+                    }
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
         }
         RawStructureLayoutPlanner.plan(nativeLibs, codeInfo);
 
@@ -116,7 +119,7 @@ try {
             InputStream is;
             if (TEXTCACHE) {
                 File f = new File("/tmp/aarch64/"+binaryName);
-                System.err.println("Look for "+f.getName());
+                System.err.println("Look for "+f.getAbsolutePath());
                 is = new FileInputStream(f);
             } else {
                 printingProcess = startCommand(command);
