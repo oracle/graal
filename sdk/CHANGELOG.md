@@ -12,6 +12,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 * Started adding several options under `--engine` like `--engine.TraceCompilation`, which can also be set on the `Engine`. These options will progressively replace the `-Dgraal.*Truffle*` properties. The list can be seen by passing `--help:expert` to any language launcher.
 
 ## Version 1.0.0 RC14
+* Added [Context.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental options can be passed to a Context.
 * Added [Engine.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental instrument and engine options can be passed.
 * Removed deprecated API class `ProxyPrimitive`.
 * Restricting access (**incompatible change**) to host interop via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.PUBLIC)` to get previous behavior.
