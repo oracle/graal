@@ -818,7 +818,7 @@ abstract class HostExecuteNode extends Node {
 
     }
 
-    static class DirectTypeCheck extends TypeCheckNode {
+    static final class DirectTypeCheck extends TypeCheckNode {
         final Class<?> clazz;
 
         DirectTypeCheck(Class<?> clazz) {
@@ -836,7 +836,7 @@ abstract class HostExecuteNode extends Node {
         }
     }
 
-    static class JavaObjectType extends TypeCheckNode {
+    static final class JavaObjectType extends TypeCheckNode {
         final Class<?> clazz;
 
         JavaObjectType(Class<?> clazz) {
@@ -871,7 +871,7 @@ abstract class HostExecuteNode extends Node {
         }
     }
 
-    static class TargetMappingType extends TypeCheckNode {
+    static final class TargetMappingType extends TypeCheckNode {
 
         @CompilationFinal(dimensions = 1) final PolyglotTargetMapping[] mappings;
         @CompilationFinal(dimensions = 1) final PolyglotTargetMapping[] otherMappings;
@@ -922,21 +922,21 @@ abstract class HostExecuteNode extends Node {
             if (this == obj) {
                 return true;
             }
-            if (!(obj instanceof PrimitiveType)) {
+            if (!(obj instanceof TargetMappingType)) {
                 return false;
             }
             TargetMappingType other = (TargetMappingType) obj;
-            return this.mappings == other.mappings;
+            return Arrays.equals(this.mappings, other.mappings);
         }
 
         @Override
         public int hashCode() {
-            return mappings.hashCode();
+            return Arrays.hashCode(mappings);
         }
 
     }
 
-    static class PrimitiveType extends TypeCheckNode {
+    static final class PrimitiveType extends TypeCheckNode {
         final Class<?> targetType;
         @CompilationFinal(dimensions = 1) final Class<?>[] otherTypes;
 
