@@ -77,7 +77,6 @@ public class WebCatalog implements SoftwareChannel {
         return false;
     }
 
-    @Override
     public void init(CommandInput in, Feedback out) {
         assert this.input == null;
 
@@ -171,12 +170,6 @@ public class WebCatalog implements SoftwareChannel {
         return storage;
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public ComponentCollection getRegistry() {
-        return new CatalogContents(feedback, getStorage(), local);
-    }
-
     @Override
     public MetadataLoader createLocalFileLoader(ComponentInfo cInfo, Path localFile, boolean verify) throws IOException {
         return new JarMetaLoader(new JarFile(localFile.toFile(), verify), feedback);
@@ -188,6 +181,8 @@ public class WebCatalog implements SoftwareChannel {
     }
 
     public static class WebCatalogFactory implements SoftwareChannel.Factory {
+        private CommandInput input;
+        private Feedback feedback;
 
         @Override
         public SoftwareChannel createChannel(String urlSpec, CommandInput input, Feedback fb) {
@@ -204,5 +199,12 @@ public class WebCatalog implements SoftwareChannel {
             return null;
         }
 
+        @Override
+        public void init(CommandInput in, Feedback out) {
+            assert this.input == null;
+
+            this.input = in;
+            this.feedback = out.withBundle(WebCatalog.class);
+        }
     }
 }

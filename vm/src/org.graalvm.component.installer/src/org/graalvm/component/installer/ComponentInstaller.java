@@ -60,6 +60,7 @@ import org.graalvm.component.installer.commands.PostInstCommand;
 import org.graalvm.component.installer.commands.PreRemoveCommand;
 import org.graalvm.component.installer.commands.RebuildImageCommand;
 import org.graalvm.component.installer.commands.UninstallCommand;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 
@@ -99,7 +100,7 @@ public final class ComponentInstaller {
         commands.put("rebuild-images", new RebuildImageCommand()); // NOI18N
         
         // commands used internally by system scripts, names intentionally hashed.
-        commands.put("#postinst", new PostInstCommand()); // NOI18N
+        commands.put("#postinstall", new PostInstCommand()); // NOI18N
         commands.put("#preremove", new PreRemoveCommand()); // NOI18N
 
         globalOptions.put(Commands.OPTION_VERBOSE, "");
@@ -132,11 +133,11 @@ public final class ComponentInstaller {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle"); // NOI18N
 
-    private static void forSoftwareChannels(boolean report, Consumer<SoftwareChannel> callback) {
-        ServiceLoader<SoftwareChannel> channels = ServiceLoader.load(SoftwareChannel.class);
-        for (Iterator<SoftwareChannel> it = channels.iterator(); it.hasNext();) {
+    private static void forSoftwareChannels(boolean report, Consumer<SoftwareChannel.Factory> callback) {
+        ServiceLoader<SoftwareChannel.Factory> channels = ServiceLoader.load(SoftwareChannel.Factory.class);
+        for (Iterator<SoftwareChannel.Factory> it = channels.iterator(); it.hasNext();) {
             try {
-                SoftwareChannel ch = it.next();
+                SoftwareChannel.Factory ch = it.next();
                 callback.accept(ch);
             } catch (ServiceConfigurationError | Exception ex) {
                 if (report) {
@@ -150,6 +151,7 @@ public final class ComponentInstaller {
     static {
         initCommands();
         forSoftwareChannels(true, (ch) -> {
+            ch.init(SIMPLE_ENV, SIMPLE_ENV);
             globalOptions.putAll(ch.globalOptions());
         });
     }
@@ -167,7 +169,6 @@ public final class ComponentInstaller {
         StringBuilder extra = new StringBuilder();
 
         forSoftwareChannels(false, (ch) -> {
-            ch.init(input, output);
             String s = ch.globalOptionsHelp();
             if (s != null) {
                 extra.append(s);
@@ -223,6 +224,10 @@ public final class ComponentInstaller {
             env.setLocalRegistry(new ComponentRegistry(env, new DirectoryStorage(
                             env, storagePath, graalHomePath)));
 
+            forSoftwareChannels(true, (ch) -> {            
+                ch.init(env, env);
+            });
+
             int srcCount = 0;
             if (optValues.containsKey(Commands.OPTION_FILES)) {
                 srcCount++;
@@ -256,7 +261,7 @@ public final class ComponentInstaller {
                                 env,
                                 env,
                                 getCatalogURL(env));
-                env.setComponentRegistry(downloader::get);
+                env.setComponentRegistry(() -> new CatalogContents(env, downloader.getStorage(), env.getLocalRegistry()));
                 env.setFileIterable(new CatalogIterable(env, env, downloader));
             }
             cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));
@@ -306,7 +311,7 @@ public final class ComponentInstaller {
         if (graalHome != null) {
             graalPath = SystemUtils.fromUserString(graalHome);
         } else {
-            URL loc = getClass().getProtectionDomain().getCodeSource().getLocation();
+            URL loc = ComponentInstaller.class.getProtectionDomain().getCodeSource().getLocation();
             try {
                 File f = new File(loc.toURI());
                 if (f != null) {
@@ -317,13 +322,13 @@ public final class ComponentInstaller {
             }
         }
         if (graalPath == null) {
-            throw env.failure("ERROR_NoGraalVMDirectory", null);
+            throw SIMPLE_ENV.failure("ERROR_NoGraalVMDirectory", null);
         }
         if (!Files.isDirectory(graalPath) || !Files.exists(graalPath.resolve(SystemUtils.fileName("release")))) {
-            throw env.failure("ERROR_InvalidGraalVMDirectory", null, graalPath);
+            throw SIMPLE_ENV.failure("ERROR_InvalidGraalVMDirectory", null, graalPath);
         }
         if (!Files.isDirectory(storagePath = graalPath.resolve(SystemUtils.fromCommonString(PATH_COMPONENT_STORAGE)))) {
-            throw env.failure("ERROR_InvalidGraalVMDirectory", null, graalPath);
+            throw SIMPLE_ENV.failure("ERROR_InvalidGraalVMDirectory", null, graalPath);
         }
         graalHomePath = graalPath;
         return graalPath;

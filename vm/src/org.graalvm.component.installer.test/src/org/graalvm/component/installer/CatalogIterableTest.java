@@ -292,10 +292,6 @@ public class CatalogIterableTest extends CommandTestBase {
     }
 
     @Override
-    public void init(CommandInput input, Feedback output) {
-    }
-
-    @Override
     public MetadataLoader createLocalFileLoader(ComponentInfo ci, Path localFile, boolean verify) throws IOException {
         return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
     }

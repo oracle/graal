@@ -195,10 +195,6 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     }
 
     @Override
-    public void init(CommandInput input, Feedback output) {
-    }
-
-    @Override
     public FileDownloader configureDownloader(ComponentInfo ci, FileDownloader dn) {
         return dn;
     }

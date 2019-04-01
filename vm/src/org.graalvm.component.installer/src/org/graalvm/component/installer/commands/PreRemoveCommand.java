@@ -23,7 +23,7 @@ public class PreRemoveCommand implements InstallerCommand {
     
     @Override
     public Map<String, String> supportedOptions() {
-        return Collections.EMPTY_MAP;
+        return Collections.emptyMap();
     }
 
     @Override

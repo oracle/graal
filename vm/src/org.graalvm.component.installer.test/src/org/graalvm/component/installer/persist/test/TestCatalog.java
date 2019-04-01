@@ -35,6 +35,10 @@ import org.graalvm.component.installer.ce.WebCatalog;
  * @author sdedic
  */
 public class TestCatalog implements SoftwareChannel.Factory {
+    
+    @Override
+    public void init(CommandInput input, Feedback output) {
+    }
 
     @Override
     public SoftwareChannel createChannel(String urlSpec, CommandInput input, Feedback fb) {
