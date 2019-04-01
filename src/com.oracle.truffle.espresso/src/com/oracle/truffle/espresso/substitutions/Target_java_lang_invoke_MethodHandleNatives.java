@@ -69,9 +69,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     public static final String VMTARGET = "vmtarget";
     public static final String VMINDEX = "vmindex";
-    public static final String INVOCATION_SIGNATURE = "invocationSignature";
-    public static final String BASIC_SIGNATURE = "basicSignature";
-    public static final String VMFIELD = "vmfield";
 
     /**
      * plants an already resolved target into a memberName
@@ -291,7 +288,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     assert (!isStaticSigPoly(mhMethodId));
                     if (isIntrinsicPolySig(mhMethodId)) {
                         // boolean keepLastArg = isStaticSigPoly(mhMethodId);
-                        // Symbol<Signature> basic = toBasic(signatures.parsed(sig), keepLastArg, signatures);
+                        // Symbol<Signature> basic = toBasic(signatures.parsed(sig), keepLastArg,
+                        // signatures);
                         Method target = meta.invokeBasic;
                         plantInvokeBasic(memberName, target, defKlass, nSymbol, flagField, refKind);
                     } else {
