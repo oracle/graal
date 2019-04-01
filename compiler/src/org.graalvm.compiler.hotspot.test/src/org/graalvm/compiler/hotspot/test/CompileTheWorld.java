@@ -91,7 +91,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotJVMCIServices;
-import org.graalvm.compiler.hotspot.test.CompileTheWorld.LibgraalParams.StackTraceBuffer;
+import org.graalvm.compiler.hotspot.test.CompileTheWorld.LibGraalParams.StackTraceBuffer;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -212,7 +212,7 @@ public final class CompileTheWorld {
      * Manages native memory buffers for passing arguments into libgraal and receiving return
      * values. The native memory buffers are freed when this object is {@linkplain #close() closed}.
      */
-    static class LibgraalParams implements AutoCloseable {
+    static class LibGraalParams implements AutoCloseable {
 
         static {
             registerNativeMethods(HotSpotJVMCIRuntime.runtime(), CompileTheWorld.class);
@@ -307,7 +307,7 @@ public final class CompileTheWorld {
             }
         };
 
-        LibgraalParams(OptionValues options) {
+        LibGraalParams(OptionValues options) {
             this.options = new OptionsBuffer(options);
         }
 
@@ -386,7 +386,7 @@ public final class CompileTheWorld {
      */
     @SuppressWarnings("try")
     public void compile() throws Throwable {
-        try (LibgraalParams libgraal = LibGraal.isAvailable() ? new LibgraalParams(compilerOptions) : null) {
+        try (LibGraalParams libgraal = LibGraal.isAvailable() ? new LibGraalParams(compilerOptions) : null) {
             if (SUN_BOOT_CLASS_PATH.equals(inputClassPath)) {
                 String bcpEntry = null;
                 if (Java8OrEarlier) {
@@ -415,7 +415,7 @@ public final class CompileTheWorld {
         if (!LibGraal.isAvailable()) {
             return null;
         }
-        return new LibgraalParams(compilerOptions);
+        return new LibGraalParams(compilerOptions);
     }
 
     public void println() {
@@ -649,7 +649,7 @@ public final class CompileTheWorld {
      * @throws IOException
      */
     @SuppressWarnings("try")
-    private void compile(String classPath, LibgraalParams libgraal) throws IOException {
+    private void compile(String classPath, LibGraalParams libgraal) throws IOException {
         final String[] entries = classPath.split(File.pathSeparator);
         long start = System.currentTimeMillis();
         Map<Thread, StackTraceElement[]> initialThreads = Thread.getAllStackTraces();
@@ -865,7 +865,7 @@ public final class CompileTheWorld {
     }
 
     @SuppressWarnings("try")
-    private void compileMethod(HotSpotResolvedJavaMethod method, LibgraalParams libgraal) throws InterruptedException, ExecutionException {
+    private void compileMethod(HotSpotResolvedJavaMethod method, LibGraalParams libgraal) throws InterruptedException, ExecutionException {
         if (methodFilters != null && !MethodFilter.matches(methodFilters, method)) {
             return;
         }
@@ -899,7 +899,7 @@ public final class CompileTheWorld {
     /**
      * Compiles a method and gathers some statistics.
      */
-    private void compileMethod(HotSpotResolvedJavaMethod method, int counter, LibgraalParams libgraal) {
+    private void compileMethod(HotSpotResolvedJavaMethod method, int counter, LibGraalParams libgraal) {
         try {
             long start = System.currentTimeMillis();
             long allocatedAtStart = getCurrentThreadAllocatedBytes();

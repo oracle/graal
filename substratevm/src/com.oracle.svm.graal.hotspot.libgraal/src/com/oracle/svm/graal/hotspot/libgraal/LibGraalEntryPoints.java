@@ -63,7 +63,7 @@ import sun.misc.Unsafe;
  * Entry points in libgraal corresponding to native methods in {@link LibGraal} and
  * {@code CompileTheWorld}.
  */
-public final class LibgraalEntryPoints {
+public final class LibGraalEntryPoints {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
