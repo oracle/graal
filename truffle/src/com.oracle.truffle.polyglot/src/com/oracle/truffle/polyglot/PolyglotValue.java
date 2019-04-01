@@ -564,7 +564,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @TruffleBoundary
     protected static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
-        String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %s argument(s) but got %s.",
+        String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %d argument(s) but got %d.",
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
         throw new PolyglotIllegalArgumentException(message);
     }
@@ -572,7 +572,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @TruffleBoundary
     protected static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
-        String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %s argument(s) but got %s.",
+        String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %d argument(s) but got %d.",
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
         throw new PolyglotIllegalArgumentException(message);
     }
@@ -580,7 +580,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @TruffleBoundary
     protected static RuntimeException invalidInvokeArity(PolyglotLanguageContext context, Object receiver, String member, Object[] arguments, int expected, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
-        String message = String.format("Invalid argument count when invoking '%s' on %s with arguments %s. Expected %s argument(s) but got %s.",
+        String message = String.format("Invalid argument count when invoking '%s' on %s with arguments %s. Expected %d argument(s) but got %d.",
                         member,
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
         throw new PolyglotIllegalArgumentException(message);
