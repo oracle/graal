@@ -248,4 +248,16 @@ public final class CodePointSet extends SortedListOfRanges implements JsonConver
     public JsonValue toJson() {
         return Json.array(ranges);
     }
+
+    @TruffleBoundary
+    public String dumpRaw() {
+        StringBuilder sb = new StringBuilder(size() * 20);
+        for (int i = 0; i < size(); i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(String.format("0x%06x, 0x%06x", getLo(i), getHi(i)));
+        }
+        return sb.toString();
+    }
 }
