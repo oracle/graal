@@ -273,7 +273,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return new java.security.ProtectionDomain(null, perms);
     });
 
-    private static final LazyFinalReference<Target_java_lang_Module> singleModulReference = new LazyFinalReference<>(Target_java_lang_Module::new);
+    public static final LazyFinalReference<Target_java_lang_Module> singleModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 
     /**
      * Final fields in subsituted classes are treated as implicitly RecomputeFieldValue even when
@@ -1203,7 +1203,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class)
     public Target_java_lang_Module getModule() {
-        return singleModulReference.get();
+        return singleModuleReference.get();
     }
 
     @Substitute //
