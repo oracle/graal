@@ -152,6 +152,11 @@ class InterfaceTables {
         } else if (m2.getDeclaringKlass().isAssignableFrom(m1.getDeclaringKlass())) {
             return m1;
         } else {
+            // Java specs:
+            // Can *declare* ambiguous default method (in bytecodes only, javac wouldn't compile
+            // it). (5.4.3.3.)
+            //
+            // But if you try to *use* them, specs dictate to fail. (6.5.invoke{virtual,interface})
             Method m = new Method(m2);
             m.setPoisonPill();
             return m;
