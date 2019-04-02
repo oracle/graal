@@ -162,9 +162,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> form = StaticSymbols.putName("form");
         public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
         public static final Symbol<Name> target = StaticSymbols.putName("target");
-        public static final Symbol<Name> arity = StaticSymbols.putName("arity");
         public static final Symbol<Name> isCompiled = StaticSymbols.putName("isCompiled");
-        public static final Symbol<Name> interpretWithArguments = StaticSymbols.putName("interpretWithArguments");
+        public static final Symbol<Name> compileToBytecode = StaticSymbols.putName("compileToBytecode");
 
         public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
         public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");
@@ -328,6 +327,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> _int = StaticSymbols.putSignature(Type._int);
         public static final Symbol<Signature> _void = StaticSymbols.putSignature(Type._void);
+
         public static final Symbol<Signature> Object = StaticSymbols.putSignature(Type.Object);
         public static final Symbol<Signature> String = StaticSymbols.putSignature(Type.String);
         public static final Symbol<Signature> ClassLoader = StaticSymbols.putSignature(Type.ClassLoader);
@@ -362,6 +362,8 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> MethodType_cons = StaticSymbols.putSignature(Type.MethodType, Type.Class, Type.Class_array);
         public static final Symbol<Signature> fromMethodDescriptorString_signature = StaticSymbols.putSignature(Type.MethodType, Type.String, Type.ClassLoader);
+
+        public static final Symbol<Signature> compileToBytecode = StaticSymbols.putSignature(Type.MemberName);
 
         public static final Symbol<Signature> linkMethod_signature = StaticSymbols.putSignature(Type.MemberName, Type.Class, Type._int, Type.Class, Type.String, Type.Object, Type.Object_array);
         public static final Symbol<Signature> linkMethodHandleConstant_signature = StaticSymbols.putSignature(Type.MethodHandle, Type.Class, Type._int, Type.Class, Type.String, Type.Object);
