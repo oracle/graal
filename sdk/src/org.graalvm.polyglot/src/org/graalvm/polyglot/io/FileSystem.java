@@ -196,7 +196,9 @@ public interface FileSystem {
      *            attributes from given view are read.
      * @param options the options determining how the symbolic links should be handled
      * @return the {@link Map} containing the file attributes. The map's keys are attribute names,
-     *         map's values are the attribute values
+     *         map's values are the attribute values. The map may contain a subset of required
+     *         attributes in case when the {@code FileSystem} does not support some of the required
+     *         attributes.
      * @throws UnsupportedOperationException if the attribute view is not supported. At least the
      *             {@code "basic"} attribute view has to be supported by the file system.
      * @throws IllegalArgumentException is the {@code attribute-list} is empty or contains an
