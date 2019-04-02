@@ -48,11 +48,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.io.ProcessHandler.Redirect;
 
+/**
+ * A builder used to create an external subprocess. The {@ TruffleProcessBuilder} instance allows to
+ * set subprocess attributes. The {@link #start()} method creates a new {@link Process} instance
+ * with those attributes. The {@link #start()} method can be invoked repeatedly from the same
+ * instance to create new subprocesses with the same attributes.
+ *
+ * @since 1.0
+ */
 public class TruffleProcessBuilder {
 
     private final Object polylgotLanguageContext;
@@ -75,12 +84,26 @@ public class TruffleProcessBuilder {
         this.redirects = new Redirect[]{Redirect.PIPE, Redirect.PIPE, Redirect.PIPE};
     }
 
+    /**
+     * Sets the executable and arguments.
+     *
+     * @param command the list containing the executable and its arguments
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
     public TruffleProcessBuilder command(List<String> command) {
         Objects.requireNonNull(command, "Command must be non null.");
         this.cmd = new ArrayList<>(command);
         return this;
     }
 
+    /**
+     * Sets the executable and arguments.
+     *
+     * @param command the string array containing the executable and its arguments
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
     public TruffleProcessBuilder command(String... command) {
         Objects.requireNonNull(command, "Command must be non null.");
         this.cmd = new ArrayList<>(command.length);
@@ -88,51 +111,176 @@ public class TruffleProcessBuilder {
         return this;
     }
 
+    /**
+     * Sets this process current working directory. The {@code currentWorkingDirectory} may be
+     * {@code null}, in this case the subprocess current working directory is set to
+     * {@link TruffleLanguage.Env#getCurrentWorkingDirectory() file system current working
+     * directory}.
+     *
+     * @param currentWorkingDirectory the new current working directory
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
     public TruffleProcessBuilder directory(TruffleFile currentWorkingDirectory) {
-        Objects.requireNonNull(currentWorkingDirectory, "CurrentWorkingDirectory must be non null.");
         this.cwd = currentWorkingDirectory;
         return this;
     }
 
+    /**
+     * If {@code true} the standard error output is merged into standard output.
+     *
+     * @param enabled enables merging of standard error output into standard output
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
     public TruffleProcessBuilder redirectErrorStream(boolean enabled) {
         this.redirectErrorStream = enabled;
         return this;
     }
 
-    public TruffleProcessBuilder redirectInput(Redirect destination) {
-        Objects.requireNonNull(destination, "Destination must be non null.");
-        redirects[0] = destination;
+    /**
+     * Sets the standard input source. Process started by the {@link #start()} method obtain its
+     * standard input from this source.
+     * <p>
+     * If the source is {@link Redirect#PIPE PIPE}, the default value, then the standard input of a
+     * subprocess can be written to using the output stream returned by
+     * {@link Process#getOutputStream()}. If the source is set to {@link Redirect#INHERIT INHERIT},
+     * then the {@link Process#getOutputStream()} returns a closed output stream.
+     *
+     * @param source the new standard input source
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
+    public TruffleProcessBuilder redirectInput(Redirect source) {
+        Objects.requireNonNull(source, "Source must be non null.");
+        redirects[0] = source;
         return this;
     }
 
+    /**
+     * Sets the standard output destination. Process started by the {@link #start()} method send its
+     * standard output to this destination.
+     * <p>
+     * If the destination is {@link Redirect#PIPE PIPE}, the default value, then the standard output
+     * of a subprocess can be read using the input stream returned by
+     * {@link Process#getInputStream()}. If the destination is set to is set to
+     * {@link Redirect#INHERIT INHERIT}, then {@link Process#getInputStream()} returns a closed
+     * input stream.
+     *
+     * @param destination the new standard output destination
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
     public TruffleProcessBuilder redirectOutput(Redirect destination) {
         Objects.requireNonNull(destination, "Destination must be non null.");
         redirects[1] = destination;
         return this;
     }
 
+    /**
+     * Sets the standard error output destination. Process started by the {@link #start()} method
+     * send its error output to this destination.
+     * <p>
+     * If the destination is {@link Redirect#PIPE PIPE}, the default value, then the standard error
+     * of a subprocess can be read using the input stream returned by
+     * {@link Process#getErrorStream()}. If the destination is set to is set to
+     * {@link Redirect#INHERIT INHERIT}, then {@link Process#getErrorStream()} returns a closed
+     * input stream.
+     *
+     * @param destination the new error output destination
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
     public TruffleProcessBuilder redirectError(Redirect destination) {
         Objects.requireNonNull(destination, "Destination must be non null.");
         redirects[2] = destination;
         return this;
     }
 
+    /**
+     * If {@code true} the subprocess standard input, output and error output are the same as those
+     * of the current Java process.
+     *
+     * @param enabled enables standard I/O inheritance
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
     public TruffleProcessBuilder inheritIO(boolean enabled) {
         this.inheritIO = enabled;
         return this;
     }
 
-    public TruffleProcessBuilder clearEnvironment(boolean enabled) {
-        this.clearEnvironment = enabled;
+    /**
+     * If {@code true} the environment variables are not inherited by the subprocess.
+     *
+     * @param clear disables inheritance of environment variables
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
+    public TruffleProcessBuilder clearEnvironment(boolean clear) {
+        this.clearEnvironment = clear;
         return this;
     }
 
+    /**
+     * Sets the subprocess environment variable.
+     *
+     * @param name the variable name
+     * @param value the value
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
+    public TruffleProcessBuilder environment(String name, String value) {
+        Objects.requireNonNull(name, "Name must be non null.");
+        Objects.requireNonNull(value, "Value must be non null.");
+        if (this.env == null) {
+            this.env = new HashMap<>();
+        }
+        this.env.put(name, value);
+        return this;
+    }
+
+    /**
+     * Shortcut for setting multiple {@link #environment(String, String) environment variables}
+     * using a map. All values of the provided map must be non-null.
+     *
+     * @param environment environment variables
+     * @see #environment(String, String) To set a single environment variable.
+     * @return this {@link TruffleProcessBuilder builder}
+     * @since 1.0
+     */
     public TruffleProcessBuilder environment(Map<String, String> environment) {
-        this.env = environment;
+        for (Map.Entry<String, String> e : environment.entrySet()) {
+            environment(e.getKey(), e.getValue());
+        }
         return this;
     }
 
+    /**
+     * Starts a new subprocess using the attributes of this builder. The new process invokes the
+     * command with arguments given by {@link #command()}, in a working directory given by
+     * {@link #directory()}, with a process environment inherited from {@link Context} and possibly
+     * extended by {@link #environment(java.lang.String, java.lang.String)}.
+     *
+     * @return a new {@link Process} instance
+     * @throws NullPointerException if an element of the command list is null
+     * @throws IndexOutOfBoundsException if the command is an empty list
+     * @throws SecurityException when either the process creation is not allowed or the environment
+     *             was modified by this builder but environment modification is not allowed.
+     * @throws IOException if the process fails to execute
+     * @since 1.0
+     */
     public Process start() throws IOException {
+        List<String> useCmd = new ArrayList<>();
+        for (String item : cmd) {
+            if (item == null) {
+                throw new NullPointerException("Command contains null.");
+            }
+            useCmd.add(item);
+        }
+        if (useCmd.isEmpty()) {
+            throw new IndexOutOfBoundsException("Command is empty");
+        }
         if (inheritIO) {
             Arrays.fill(redirects, Redirect.INHERIT);
         }
@@ -156,7 +304,7 @@ public class TruffleProcessBuilder {
         }
         ProcessHandler.ProcessCommand processCommand = TruffleLanguage.AccessAPI.engineAccess().newProcessCommand(
                         polylgotLanguageContext,
-                        cmd,
+                        useCmd,
                         useCwd,
                         useEnv,
                         redirectErrorStream,

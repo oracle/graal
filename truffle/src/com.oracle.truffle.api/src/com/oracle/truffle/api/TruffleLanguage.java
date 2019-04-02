@@ -2128,6 +2128,13 @@ public abstract class TruffleLanguage<C> {
             languageServicesCollector.add(service);
         }
 
+        /**
+         * Creates a new process builder with the specified operating program and arguments.
+         *
+         * @param command the executable and its arguments
+         * @throws SecurityException when process creation is not allowed
+         * @since 1.0
+         */
         @TruffleBoundary
         public TruffleProcessBuilder newProcessBuilder(String... command) {
             if (!AccessAPI.engineAccess().isCreateProcessAllowed(vmObject)) {
@@ -2138,25 +2145,50 @@ public abstract class TruffleLanguage<C> {
             return new TruffleProcessBuilder(vmObject, fileSystemContext.fileSystem, cmd);
         }
 
+        /**
+         * Sets the value of the specified variable. If the environment variable is already set it's
+         * value is updated. When the {@code Context} is configured with
+         * {@link EnvironmentAccess#NONE} or {@link EnvironmentAccess#READ} this method always
+         * throws a {@link SecurityException}.
+         *
+         * @param name the name of the environment variable
+         * @param value the value of the environment variable
+         * @throws {@link SecurityException} when environment modification is denied
+         */
         @TruffleBoundary
-        public void setEnvironmentVariable(String key, String value) {
-            Objects.requireNonNull(key, "Key must be non null");
+        public void setEnvironment(String name, String value) {
+            Objects.requireNonNull(name, "Name must be non null");
             Objects.requireNonNull(value, "Value must be non null");
             EnvironmentAccess envAccess = AccessAPI.engineAccess().getEnvironmentAccess(vmObject);
             if (envAccess != EnvironmentAccess.ALL) {
                 throw new SecurityException("Env modification is not allowed");
             }
-            AccessAPI.engineAccess().getProcessEnvironment(vmObject).put(key, value);
+            AccessAPI.engineAccess().getProcessEnvironment(vmObject).put(name, value);
         }
 
+        /**
+         * Returns the value of the specified environment variable. When the {@code Context} is
+         * configured with {@link EnvironmentAccess#NONE} it always returns {@code null}.
+         *
+         * @param name the name of the environment variable
+         * @return the string value of the variable, or {@code null} if the variable is not defined
+         * @since 1.0
+         */
         @TruffleBoundary
-        public String getEnvironmentVariable(String key) {
+        public String getEnvironment(String key) {
             Objects.requireNonNull(key, "Key must be non null");
             return AccessAPI.engineAccess().getProcessEnvironment(vmObject).get(key);
         }
 
+        /**
+         * Returns an unmodifiable map of the process environment. When the {@code Context} is
+         * configured with {@link EnvironmentAccess#NONE} it returns an empty map.
+         *
+         * @return the process environment as a map of variable names to values
+         * @since 1.0
+         */
         @TruffleBoundary
-        public Map<String, String> getEnvironmentVariables() {
+        public Map<String, String> getEnvironment() {
             return Collections.unmodifiableMap(AccessAPI.engineAccess().getProcessEnvironment(vmObject));
         }
 

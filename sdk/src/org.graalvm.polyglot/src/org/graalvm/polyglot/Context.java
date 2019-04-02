@@ -1234,33 +1234,75 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
+        /**
+         * If <code>true</code>, allows guest language to execute external processes. Default is
+         * <code>false</code>. If {@link #allowAllAccess(boolean) all access} is set to
+         * <code>true</code>, then process creation is enabled if not denied explicitly.
+         *
+         * @param enabled {@code true} to enable external process creation
+         * @return the {@link Builder}
+         * @since 1.0
+         */
         public Builder allowCreateProcess(boolean enabled) {
             this.allowCreateProcess = enabled;
             return this;
         }
 
+        /**
+         * Installs a {@link ProcessHandler} responsible for external process creation.
+         *
+         * @param handler the handler to be installed
+         * @return the {@link Builder}
+         * @since 1.0
+         */
         public Builder processHandler(ProcessHandler handler) {
             Objects.requireNonNull(handler, "Handler must be non null.");
             this.processHandler = handler;
             return this;
         }
 
+        /**
+         * Allow environment access using the provided policy. If {@link #allowAllAccess(boolean)
+         * all access} is {@code true} then the default environment access policy is
+         * {@link EnvironmentAccess#ALL}, otherwise {@link EnvironmentAccess#NONE}. The provided
+         * access policy must not be {@code null}.
+         *
+         * @param accessPolicy the {@link EnvironmentAccess environment access policy}
+         * @return the {@link Builder}
+         * @since 1.0
+         */
         public Builder allowEnvironmentAccess(EnvironmentAccess accessPolicy) {
             Objects.requireNonNull(accessPolicy, "AccessPolicy must be non null.");
             this.environmentAcceess = accessPolicy;
             return this;
         }
 
-        public Builder environment(String key, String value) {
-            Objects.requireNonNull(key, "Key must be non null.");
+        /**
+         * Sets an environment variable.
+         *
+         * @param name the variable name
+         * @param value the value
+         * @return the {@link Builder}
+         * @since 1.0
+         */
+        public Builder environment(String name, String value) {
+            Objects.requireNonNull(name, "Name must be non null.");
             Objects.requireNonNull(value, "Value must be non null.");
             if (this.environment == null) {
                 this.environment = new HashMap<>();
             }
-            this.environment.put(key, value);
+            this.environment.put(name, value);
             return this;
         }
 
+        /**
+         * Shortcut for setting multiple {@link #environment(String, String) environment variables}
+         * using a map. All values of the provided map must be non-null.
+         *
+         * @param env environment variables
+         * @see #environment(String, String) To set a single environment variable.
+         * @since 1.0
+         */
         public Builder environment(Map<String, String> env) {
             Objects.requireNonNull(env, "Env must be non null.");
             for (Map.Entry<String, String> e : env.entrySet()) {
@@ -1269,6 +1311,14 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
+        /**
+         * Shortcut for setting multiple {@link #environment(String, String) environment variables}
+         * using a map. All values of the provided map must be non-null.
+         *
+         * @param env environment variables
+         * @see #environment(String, String) To set a single environment variable.
+         * @since 1.0
+         */
         public Builder inheritEnvironment(boolean enabled) {
             this.allowInheritEnvironment = enabled;
             return this;

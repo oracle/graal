@@ -52,10 +52,29 @@ import java.util.Objects;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
+/**
+ * Service-provider for Truffle process builder. This interface allows embedder to intercept
+ * subprocess creation done by guest languages.
+ *
+ * @since 1.0
+ */
 public interface ProcessHandler {
 
+    /**
+     * A request to start a new subprocess with given attributes.
+     *
+     * @param command the subprocess attributes
+     * @return the new subprocess
+     * @throws SecurityException if the process creation was forbidden by this handler
+     * @throws IOException if the process fails to execute
+     * @since 1.0
+     */
     Process start(ProcessCommand command) throws IOException;
 
+    /**
+     * Subprocess attributes passed to
+     * {@link #start(org.graalvm.polyglot.io.ProcessHandler.ProcessCommand) start} method.
+     */
     final class ProcessCommand {
         private List<String> cmd;
         private String cwd;
@@ -74,30 +93,72 @@ public interface ProcessHandler {
             this.redirects = Arrays.copyOf(redirects, redirects.length);
         }
 
+        /**
+         * Returns the subprocess executable and arguments.
+         *
+         * @return the list containing the executable and its arguments
+         * @since 1.0
+         */
         public List<String> getCommand() {
             return cmd;
         }
 
+        /**
+         * Returns the subprocess working directory.
+         *
+         * @return the working directory
+         * @since 1.0
+         */
         public String getDirectory() {
             return cwd;
         }
 
+        /**
+         * Returns the subprocess environment.
+         *
+         * @return the environment
+         * @since 1.0
+         */
         public Map<String, String> getEnvironment() {
             return environment;
         }
 
+        /**
+         * Return whether the standard error output should be merged into standard output.
+         *
+         * @return if {@code true} the standard error output is merged into standard output
+         * @since 1.0
+         */
         public boolean isRedirectErrorStream() {
             return redirectErrorStream;
         }
 
+        /**
+         * Returns the standard input source.
+         *
+         * @return the standard input source
+         * @since 1.0
+         */
         public Redirect getInputRedirect() {
             return redirects[0];
         }
 
+        /**
+         * Returns the standard output destination.
+         *
+         * @return the standard output destination
+         * @since 1.0
+         */
         public Redirect getOutputRedirect() {
             return redirects[1];
         }
 
+        /**
+         * Returns the standard error output destination.
+         *
+         * @return the standard error output destination
+         * @since 1.0
+         */
         public Redirect getErrorRedirect() {
             return redirects[2];
         }
@@ -121,9 +182,25 @@ public interface ProcessHandler {
         }
     }
 
+    /**
+     * Represents a source of subprocess input or a destination of subprocess output.
+     *
+     * @since 1.0
+     */
     final class Redirect {
 
+        /**
+         * The current Java process creates a pipe to communicate with a subprocess.
+         *
+         * @since 1.0
+         */
         public static final Redirect PIPE = new Redirect(Type.PIPE);
+
+        /**
+         * The subprocess inherits input or output from the current Java process.
+         *
+         * @since 1.0
+         */
         public static final Redirect INHERIT = new Redirect(Type.INHERIT);
 
         private final Type type;
@@ -133,20 +210,31 @@ public interface ProcessHandler {
             this.type = type;
         }
 
-        public Type type() {
-            return type;
-        }
-
+        /**
+         * {@inheritDoc}
+         *
+         * @since 1.0
+         */
         @Override
         public String toString() {
             return type.toString();
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 1.0
+         */
         @Override
         public int hashCode() {
             return type.hashCode();
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 1.0
+         */
         @Override
         public boolean equals(Object obj) {
             if (obj == this) {
@@ -158,7 +246,7 @@ public interface ProcessHandler {
             return type.equals(((Redirect) obj).type);
         }
 
-        public enum Type {
+        private enum Type {
             PIPE,
             INHERIT
         }

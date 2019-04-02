@@ -40,12 +40,39 @@
  */
 package org.graalvm.polyglot;
 
+/**
+ * Represents an access policy for process environment in the guest languages.
+ *
+ * @since 1.0
+ */
 public final class EnvironmentAccess {
 
+    /**
+     * Provides guest languages no access to process environment. No environment variables are
+     * visible for reading. The environment modification fails with {@link SecurityException}.
+     *
+     * @since 1.0
+     */
     public static EnvironmentAccess NONE = new EnvironmentAccess();
 
+    /**
+     * Provides guest languages read access to process environment. The
+     * {@link Context.Builder#environment(java.lang.String, java.lang.String) context} configured
+     * environment variables are visible for reading. The environment modification fails with
+     * {@link SecurityException}.
+     *
+     * @since 1.0
+     */
     public static EnvironmentAccess READ = new EnvironmentAccess();
 
+    /**
+     * Provides guest languages full access to process environment. The
+     * {@link Context.Builder#environment(java.lang.String, java.lang.String) context} configured
+     * environment variables are visible for reading. Gest language can add, override environment
+     * variables.
+     *
+     * @since 1.0
+     */
     public static EnvironmentAccess ALL = new EnvironmentAccess();
 
     private EnvironmentAccess() {
