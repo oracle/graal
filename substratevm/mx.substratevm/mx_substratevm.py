@@ -359,7 +359,7 @@ def build_native_image_image():
     mx.log('Building native-image executable ' + image_path)
     image_dir = dirname(image_path)
     mkpath(image_dir)
-    native_image_on_jvm(['--tool:native-image', '-H:Path=' + image_dir])
+    native_image_on_jvm(['--no-fallback', '--tool:native-image', '-H:Path=' + image_dir])
 
 svmDistribution = ['substratevm:SVM']
 llvmDistributions = ['compiler:GRAAL_LLVM', 'substratevm:SVM_LLVM', "compiler:LLVM_WRAPPER", "compiler:LLVM_PLATFORM_SPECIFIC", "compiler:JAVACPP"]
