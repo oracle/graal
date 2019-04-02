@@ -130,8 +130,8 @@ final class DebugSourcesResolver {
             return null;
         }
         String name = uri.getPath() != null ? uri.getPath() : uri.getSchemeSpecificPart();
-        try {
-            return Source.newBuilder(source.getLanguage(), new InputStreamReader(connection.getInputStream()), name).uri(uri).cached(false).interactive(source.isInteractive()).internal(
+        try (InputStreamReader inputStreamReader = new InputStreamReader(connection.getInputStream())) {
+            return Source.newBuilder(source.getLanguage(), inputStreamReader, name).uri(uri).cached(false).interactive(source.isInteractive()).internal(
                             source.isInternal()).mimeType(source.getMimeType()).build();
         } catch (IOException ex) {
             return null;
