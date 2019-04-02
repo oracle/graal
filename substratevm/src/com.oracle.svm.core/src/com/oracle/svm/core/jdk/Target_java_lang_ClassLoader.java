@@ -39,6 +39,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -214,6 +215,12 @@ public final class Target_java_lang_ClassLoader {
     @TargetElement(onlyWith = JDK9OrLater.class) //
     private native Package toPackage(String name, Target_java_lang_NamedPackage p, Target_java_lang_Module m);
 
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @SuppressWarnings({"unused"})
+    public Target_java_lang_Module getUnnamedModule() {
+        return DynamicHub.singleModuleReference.get();
+    }
 }
 
 @TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK9OrLater.class) //
