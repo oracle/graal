@@ -211,4 +211,20 @@ public class MetaUtil {
                 throw EspressoError.shouldNotReachHere("Invalid field type " + kind);
         }
     }
+
+    public static int defaultWordFieldValue(JavaKind kind) {
+        switch (kind) {
+            case Char:
+                return (char) 0;
+            case Short:
+                return (short) 0;
+            case Int:
+                return 0;
+            case Byte:
+                return (byte) 0;
+            default:
+                CompilerAsserts.neverPartOfCompilation();
+                throw EspressoError.shouldNotReachHere("Invalid field type " + kind);
+        }
+    }
 }

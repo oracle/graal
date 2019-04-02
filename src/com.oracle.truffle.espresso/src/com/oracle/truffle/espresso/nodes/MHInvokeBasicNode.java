@@ -87,6 +87,6 @@ abstract class BasicNode extends Node {
     }
 
     static boolean getBooleanField(StaticObjectImpl object, Field field) {
-        return (boolean) object.getField(field);
+        return object.getWordField(field) != 0;
     }
 }

@@ -503,4 +503,8 @@ public enum JavaKind {
         return buf.append('}').toString();
     }
 
+
+    public boolean isSubWord() {
+        return isStackInt;
+    }
 }

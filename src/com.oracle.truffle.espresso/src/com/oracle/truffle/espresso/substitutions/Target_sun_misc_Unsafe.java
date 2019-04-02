@@ -416,7 +416,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getBooleanVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (boolean) ((StaticObjectImpl) holder).getFieldVolatile(f);
+        return ((StaticObjectImpl) holder).getWordFieldVolatile(f) != 0;
     }
 
     @Substitution(hasReceiver = true)
@@ -425,7 +425,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getByteVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (byte) ((StaticObjectImpl) holder).getFieldVolatile(f);
+        return (byte) ((StaticObjectImpl) holder).getWordFieldVolatile(f);
     }
 
     @Substitution(hasReceiver = true)
@@ -434,7 +434,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getShortVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (short) ((StaticObjectImpl) holder).getFieldVolatile(f);
+        return (short) ((StaticObjectImpl) holder).getWordFieldVolatile(f);
     }
 
     @Substitution(hasReceiver = true)
@@ -443,7 +443,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getCharVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (char) ((StaticObjectImpl) holder).getFieldVolatile(f);
+        return (char) ((StaticObjectImpl) holder).getWordFieldVolatile(f);
     }
 
     @Substitution(hasReceiver = true)
@@ -461,7 +461,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getIntVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (int) ((StaticObjectImpl) holder).getFieldVolatile(f);
+        return ((StaticObjectImpl) holder).getWordFieldVolatile(f);
     }
 
     @Substitution(hasReceiver = true)

@@ -75,6 +75,7 @@ public final class PrimitiveKlass extends Klass {
         return null;
     }
 
+    @Override
     public Method itableLookup(Klass interfKlass, int itableIndex) {
         return null;
     }

@@ -95,7 +95,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         } else if (targetKlass.getType() == Type.Field) {
             // Actual planting
             Field field = Field.getReflectiveFieldRoot(ref);
-            int refkind = getRefKind((int) self.getField(meta.MNflags));
+            int refkind = getRefKind(self.getWordField(meta.MNflags));
             plantResolvedField(self, field, refkind, meta.MNflags);
             // Finish the job
             StaticObjectImpl guestField = (StaticObjectImpl) ref;
@@ -253,7 +253,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         StaticObject type = (StaticObject) meta.getSignature.invokeDirect(self);
 
         Field flagField = meta.MNflags;
-        int flags = (int) memberName.getField(flagField);
+        int flags = memberName.getWordField(flagField);
         int refKind = getRefKind(flags);
         if (defKlass == null) {
             return StaticObject.NULL;
@@ -295,7 +295,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 } else if (refKind == REF_invokeVirtual || refKind == REF_invokeSpecial) {
                     plantMethodMemberName(memberName, sig, defKlass, nSymbol, flagField, refKind);
                 }
-                flags = (int) memberName.getField(flagField);
+                flags = memberName.getWordField(flagField);
                 refKind = (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
                 memberName.setHiddenField(VMINDEX, (refKind == REF_invokeInterface || refKind == REF_invokeVirtual) ? 1_000_000L : -1_000_000L);
                 break;
@@ -354,7 +354,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         assert (name == Name.invokeBasic);
         assert (defKlass.getType() == target.getContext().getMeta().MethodHandle.getType() && target.getName() == target.getContext().getMeta().invokeBasic.getName());
         memberName.setHiddenField(VMTARGET, target);
-        memberName.setField(flagField, getMethodFlags(target, refKind));
+        memberName.setWordField(flagField, getMethodFlags(target, refKind));
     }
 
     private static void plantMethodMemberName(StaticObjectImpl memberName, Symbol<Signature> sig, Klass defKlass, Symbol<Name> name, Field flagField, int refKind) {
@@ -367,7 +367,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     private static void plantResolvedMethod(StaticObjectImpl memberName, Method target, int refKind, Field flagField) {
         memberName.setHiddenField(VMTARGET, target);
-        memberName.setField(flagField, getMethodFlags(target, refKind));
+        memberName.setWordField(flagField, getMethodFlags(target, refKind));
 
     }
 
@@ -382,7 +382,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantResolvedField(StaticObjectImpl memberName, Field field, int refKind, Field flagField) {
         memberName.setHiddenField(VMTARGET, field.getDeclaringKlass());
         memberName.setHiddenField(VMINDEX, (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
-        memberName.setField(flagField, getFieldFlags(refKind, field));
+        memberName.setWordField(flagField, getFieldFlags(refKind, field));
     }
 
     private static int getMethodFlags(Method target, int refKind) {
