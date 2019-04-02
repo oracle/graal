@@ -46,7 +46,6 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
-
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
@@ -63,16 +62,16 @@ import jdk.vm.ci.meta.JavaKind;
 @Platforms(Platform.WINDOWS.class)
 final class WindowsVMLockFeature implements Feature {
 
-    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, VMMutex>(VMMutex.class) {
+    private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, WindowsVMMutex>(VMMutex.class) {
         @Override
-        protected VMMutex createReplacement(VMMutex source) {
+        protected WindowsVMMutex createReplacement(VMMutex source) {
             return new WindowsVMMutex();
         }
     };
 
-    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<VMCondition, VMCondition>(VMCondition.class) {
+    private final ClassInstanceReplacer<VMCondition, WindowsVMCondition> conditionReplacer = new ClassInstanceReplacer<VMCondition, WindowsVMCondition>(VMCondition.class) {
         @Override
-        protected VMCondition createReplacement(VMCondition source) {
+        protected WindowsVMCondition createReplacement(VMCondition source) {
             return new WindowsVMCondition((WindowsVMMutex) mutexReplacer.apply(source.getMutex()));
         }
     };
@@ -118,11 +117,11 @@ final class WindowsVMLockFeature implements Feature {
 public final class WindowsVMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = WindowsVMMutex[].class)//
-    protected WindowsVMMutex[] mutexes;
+    WindowsVMMutex[] mutexes;
 
     /** All conditions, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = WindowsVMCondition[].class)//
-    protected WindowsVMCondition[] conditions;
+    WindowsVMCondition[] conditions;
 
     /**
      * Raw memory for the Condition Variable structures. Since we know that native image objects are
@@ -131,7 +130,7 @@ public final class WindowsVMLockSupport {
      * {@link WindowsVMCondition#structOffset}.
      */
     @UnknownObjectField(types = byte[].class)//
-    protected byte[] syncStructs;
+    byte[] syncStructs;
 
     /**
      * Must be called once early during startup, before any mutex or condition is used.
@@ -147,7 +146,7 @@ public final class WindowsVMLockSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
-    protected static void checkResult(int result, String functionName) {
+    static void checkResult(int result, String functionName) {
         if (result == 0) {
             /*
              * Functions are called very early and late during our execution, so there is not much
@@ -155,7 +154,7 @@ public final class WindowsVMLockSupport {
              */
             VMThreads.StatusSupport.setStatusIgnoreSafepoints();
             int lastError = WinBase.GetLastError();
-            Log.log().string(functionName).string(" returned ").signed(result).string(" GetLastError returned: 0x").hex(lastError).newline();
+            Log.log().string(functionName).string(" failed with error ").hex(lastError).newline();
             ImageSingletons.lookup(LogHandler.class).fatalError();
         }
     }
@@ -163,14 +162,14 @@ public final class WindowsVMLockSupport {
 
 final class WindowsVMMutex extends VMMutex {
 
-    protected UnsignedWord structOffset;
+    UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected WindowsVMMutex() {
+    WindowsVMMutex() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    protected Process.PCRITICAL_SECTION getStructPointer() {
+    Process.PCRITICAL_SECTION getStructPointer() {
         return (Process.PCRITICAL_SECTION) Word.objectToUntrackedPointer(ImageSingletons.lookup(WindowsVMLockSupport.class).syncStructs).add(structOffset);
     }
 
@@ -205,15 +204,15 @@ final class WindowsVMMutex extends VMMutex {
 
 final class WindowsVMCondition extends VMCondition {
 
-    protected UnsignedWord structOffset;
+    UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected WindowsVMCondition(WindowsVMMutex mutex) {
+    WindowsVMCondition(WindowsVMMutex mutex) {
         super(mutex);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    protected Process.PCONDITION_VARIABLE getStructPointer() {
+    Process.PCONDITION_VARIABLE getStructPointer() {
         return (Process.PCONDITION_VARIABLE) Word.objectToUntrackedPointer(ImageSingletons.lookup(WindowsVMLockSupport.class).syncStructs).add(structOffset);
     }
 
@@ -231,49 +230,45 @@ final class WindowsVMCondition extends VMCondition {
 
     @Override
     public long block(long waitNanos) {
+        assert waitNanos >= 0;
         long startTimeInNanos = System.nanoTime();
-        long endTimeInNanos;
-        int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
+        long endTimeInNanos = startTimeInNanos + waitNanos;
 
+        int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
         final int timedwaitResult = Process.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
 
         /* If the timed wait timed out, then I am done blocking. */
-        if (timedwaitResult != 0 && WinBase.GetLastError() == WinBase.ERROR_TIMEOUT()) {
+        if (timedwaitResult == 0 && WinBase.GetLastError() == WinBase.ERROR_TIMEOUT()) {
             return 0L;
         }
 
         /* Check for other errors from the timed wait. */
         WindowsVMLockSupport.checkResult(timedwaitResult, "SleepConditionVariableCS");
 
-        endTimeInNanos = System.nanoTime();
-        if (endTimeInNanos < startTimeInNanos)
-            return 1;
-
-        return (endTimeInNanos - startTimeInNanos);
+        /* Return the remaining waiting time. */
+        return endTimeInNanos - System.nanoTime();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public long blockNoTransition(long waitNanos) {
+        assert waitNanos >= 0;
         long startTimeInNanos = System.nanoTime();
-        long endTimeInNanos;
-        int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
+        long endTimeInNanos = startTimeInNanos + waitNanos;
 
+        int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
         final int timedwaitResult = Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
 
         /* If the timed wait timed out, then I am done blocking. */
-        if (timedwaitResult != 0 && WinBase.GetLastError() == WinBase.ERROR_TIMEOUT()) {
+        if (timedwaitResult == 0 && WinBase.GetLastError() == WinBase.ERROR_TIMEOUT()) {
             return 0L;
         }
 
         /* Check for other errors from the timed wait. */
         WindowsVMLockSupport.checkResult(timedwaitResult, "SleepConditionVariableCSNoTrans");
 
-        endTimeInNanos = System.nanoTime();
-        if (endTimeInNanos < startTimeInNanos)
-            return 1;
-
-        return (endTimeInNanos - startTimeInNanos);
+        /* Return the remaining waiting time. */
+        return endTimeInNanos - System.nanoTime();
     }
 
     @Override
