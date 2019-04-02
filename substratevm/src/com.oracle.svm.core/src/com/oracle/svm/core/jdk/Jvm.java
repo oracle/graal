@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 //Checkstyle: stop
 
@@ -39,7 +40,7 @@ import org.graalvm.nativeimage.c.function.CLibrary;
  * (jvm.lib or libjvm.a).
  *
  */
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class, Platform.WINDOWS.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
 @CLibrary("jvm")
 public class Jvm {
 

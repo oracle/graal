@@ -25,7 +25,7 @@
 package com.oracle.svm.core.windows;
 
 import com.oracle.svm.core.windows.headers.FileAPI;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;

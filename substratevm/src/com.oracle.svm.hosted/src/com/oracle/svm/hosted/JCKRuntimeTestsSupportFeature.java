@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;

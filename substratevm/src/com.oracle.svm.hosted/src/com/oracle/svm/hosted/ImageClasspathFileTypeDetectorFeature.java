@@ -28,7 +28,7 @@ import java.lang.reflect.Modifier;
 import java.nio.file.spi.FileTypeDetector;
 
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.FileTypeDetectorSupport;

@@ -24,9 +24,8 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -36,8 +35,9 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Paths;
 import com.oracle.svm.core.posix.headers.Utsname;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
-@Platforms({Platform.LINUX_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class})
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
@@ -55,7 +55,7 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
     }
 }
 
-@Platforms({Platform.LINUX_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class})
 @AutomaticFeature
 class LinuxSystemPropertiesFeature implements Feature {
     @Override

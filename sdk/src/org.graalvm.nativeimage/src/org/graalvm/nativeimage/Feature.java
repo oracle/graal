@@ -75,9 +75,11 @@ import java.util.function.Predicate;
  * (unless the feature dependencies are cyclic).
  * </ul>
  *
+ * @deprecated Replaced by {@link org.graalvm.nativeimage.hosted.Feature}.
  * @since 1.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
+@Deprecated
 public interface Feature {
 
     /**

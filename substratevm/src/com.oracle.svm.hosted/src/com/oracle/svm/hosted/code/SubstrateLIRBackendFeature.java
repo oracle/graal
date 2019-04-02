@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.code;
 
 import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;

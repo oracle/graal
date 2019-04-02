@@ -43,9 +43,9 @@ import java.util.function.Predicate;
 
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;

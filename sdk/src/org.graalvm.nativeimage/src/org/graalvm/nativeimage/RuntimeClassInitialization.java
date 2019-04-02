@@ -70,9 +70,11 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
  * initialized, which violates the class initialization specification.</li>
  * <ul>
  *
+ * @deprecated Replaced by {@link org.graalvm.nativeimage.hosted.RuntimeClassInitialization}.
  * @since 1.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
+@Deprecated
 public final class RuntimeClassInitialization {
 
     /**

@@ -27,10 +27,10 @@ package com.oracle.svm.core.posix.linux;
 import java.io.FileInputStream;
 import java.io.IOException;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -42,7 +42,7 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.UnsignedUtils;
 
-@Platforms(Platform.LINUX_AND_JNI.class)
+@Platforms(InternalPlatform.LINUX_AND_JNI.class)
 class LinuxPhysicalMemory extends PhysicalMemory {
 
     static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {

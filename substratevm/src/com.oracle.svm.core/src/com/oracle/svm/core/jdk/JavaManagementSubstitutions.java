@@ -50,7 +50,7 @@ import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 

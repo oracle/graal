@@ -27,9 +27,9 @@ package com.oracle.svm.hosted.javafx;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.hosted.FeatureImpl;
 

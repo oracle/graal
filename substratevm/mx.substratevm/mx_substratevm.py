@@ -805,7 +805,7 @@ def _helloworld(native_image, javac_command, path, args):
         fp.flush()
     mx.run(javac_command + [hello_file])
 
-    native_image(["-H:Path=" + path, '-cp', path, 'HelloWorld'] + args)
+    native_image(["-H:Path=" + path, '-H:+VerifyNamingConventions', '-cp', path, 'HelloWorld'] + args)
 
     expected_output = [output + os.linesep]
     actual_output = []
