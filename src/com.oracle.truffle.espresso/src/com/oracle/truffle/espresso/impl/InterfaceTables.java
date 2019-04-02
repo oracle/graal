@@ -121,7 +121,7 @@ class InterfaceTables {
             if (checkDefaultConflict(m1, m2)) {
                 // No need to proxy method, same ITable index.
                 Method result = resolveMaximallySpecific(m1, m2);
-                if (result == m2) {
+                if (result != m1) {
                     currentTable[i] = result;
                     lookupAndSetFixMirandas(m2, mirandas);
                 }
@@ -147,7 +147,28 @@ class InterfaceTables {
     }
 
     private static Method resolveMaximallySpecific(Method m1, Method m2) {
-        return (m1.getDeclaringKlass().isAssignableFrom(m2.getDeclaringKlass())) ? m2 : m1;
+        switch (checkMaximallySpecific(m1, m2)) {
+            case 1:
+                return m1;
+            case 2:
+                return m2;
+            case 0:
+                Method m = new Method(m2);
+                m.setPoisonPill();
+                return m;
+            default:
+                return m1;
+        }
+    }
+
+    private static int checkMaximallySpecific(Method m1, Method m2) {
+        if (m1.getDeclaringKlass().isAssignableFrom(m2.getDeclaringKlass())) {
+            return 2;
+        } else if (m2.getDeclaringKlass().isAssignableFrom(m1.getDeclaringKlass())) {
+            return 1;
+        } else {
+            return 0;
+        }
     }
 
     /**
@@ -235,9 +256,9 @@ class InterfaceTables {
                 Method override = thisKlass.getDeclaredMethods()[overridePos];
                 if (checkDefaultConflict(override, im)) {
                     Method result = resolveMaximallySpecific(override, im);
-                    if (result == im) {
-                        lookupAndSetFixMirandas(im, mirandas);
-                        thisKlass.getDeclaredMethods()[overridePos] = im;
+                    if (result != override) {
+                        lookupAndSetFixMirandas(result, mirandas);
+                        thisKlass.getDeclaredMethods()[overridePos] = result;
                     } else {
                         return inherit(curItable, thisKlass, i, new Method(override), mirandas);
                     }
@@ -294,9 +315,9 @@ class InterfaceTables {
                 Method m = thisKlass.getDeclaredMethods()[overridePos];
                 if (checkDefaultConflict(m, im)) {
                     Method result = resolveMaximallySpecific(m, im);
-                    if (result == im) {
-                        lookupAndSetFixMirandas(im, mirandas);
-                        thisKlass.getDeclaredMethods()[overridePos] = im;
+                    if (result != m) {
+                        lookupAndSetFixMirandas(result, mirandas);
+                        thisKlass.getDeclaredMethods()[overridePos] = result;
                     } else {
                         Method proxy = new Method(m);
                         proxy.setITableIndex(i);
@@ -361,8 +382,8 @@ class InterfaceTables {
                     // We already have seen a default implementation. Check for default conflict.
                     if (checkDefaultConflict(mirandaMethod.method, im)) {
                         Method result = resolveMaximallySpecific(mirandaMethod.method, im);
-                        if (result == im) {
-                            mirandaMethod.method = new Method(im);
+                        if (result != mirandaMethod.method) {
+                            mirandaMethod.method = new Method(result);
                             mirandaMethod.setFix(true);
                         }
                     } else {

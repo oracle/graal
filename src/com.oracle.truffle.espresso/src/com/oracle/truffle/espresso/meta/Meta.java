@@ -231,6 +231,7 @@ public final class Meta implements ContextAccess {
         LambdaForm = knownKlass(Type.LambdaForm);
         vmentry = LambdaForm.lookupDeclaredField(Name.vmentry, Type.MemberName);
         isCompiled = LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
+        compileToBytecode = LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.compileToBytecode);
 
         MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
         linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
@@ -409,6 +410,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass LambdaForm;
     public final Field vmentry;
     public final Field isCompiled;
+    public final Method compileToBytecode;
 
     public final ObjectKlass MethodHandleNatives;
     public final Method linkMethod;

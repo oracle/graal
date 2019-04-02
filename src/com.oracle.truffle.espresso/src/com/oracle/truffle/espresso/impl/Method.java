@@ -23,11 +23,9 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -59,6 +57,7 @@ import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.Intrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
@@ -71,29 +70,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 public final class Method implements ModifiersProvider, ContextAccess {
     public static final Method[] EMPTY_ARRAY = new Method[0];
-    public static final int NB_MH_INTRINSICS = 6;
-
-    @CompilationFinal(dimensions = 1) private static ConcurrentHashMap<Symbol<Signature>, Method>[] intrinsics;
-
-    static {
-        __init__();
-    }
-
-    // All this just to have mx not complain about unchecked casts.
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void __init__() {
-        intrinsics = new ConcurrentHashMap[NB_MH_INTRINSICS];
-        for (int i = 0; i < NB_MH_INTRINSICS; i++) {
-            intrinsics[i] = new ConcurrentHashMap<>();
-        }
-    }
-
-    // public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicInvokes = new
-    // ConcurrentHashMap<>();
-    // public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicLinkTo = new
-    // ConcurrentHashMap<>();
-    // public static final ConcurrentHashMap<Symbol<Signature>, Method> intrinsicBasic = new
-    // ConcurrentHashMap<>();
 
     private final LinkedMethod linkedMethod;
     private final RuntimeConstantPool pool;
@@ -122,6 +98,9 @@ public final class Method implements ModifiersProvider, ContextAccess {
     private ObjectKlass[] checkedExceptions;
 
     private final Method proxy;
+
+    // Multiple maximally-specific interface methods. Fail on call.
+    @CompilationFinal private boolean poisonPill = false;
 
     // can have a different constant pool than it's declaring class
     public ConstantPool getConstantPool() {
@@ -275,6 +254,9 @@ public final class Method implements ModifiersProvider, ContextAccess {
     public CallTarget getCallTarget() {
         // TODO(peterssen): Make lazy call target thread-safe.
         if (callTarget == null) {
+            if (poisonPill) {
+                getMeta().throwExWithMessage(IncompatibleClassChangeError.class, "Conflicting default methods: " + this.getName());
+            }
             if (proxy != null) {
                 this.callTarget = proxy.getCallTarget();
                 return callTarget;
@@ -522,18 +504,8 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     // Polymorphic signature method 'creation'
 
-    Method findIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory, int id) {
-        assert (this.getDeclaringKlass().getType() == Type.MethodHandle);
-        Method method = intrinsics[id].get(signature);
-        if (method != null) {
-            return method;
-        }
-        CompilerAsserts.neverPartOfCompilation();
-        method = new Method(declaringKlass, linkedMethod, signature);
-        EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
-        method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        intrinsics[id].put(signature, method);
-        return method;
+    final Method findIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory, Intrinsics.PolySigIntrinsics id) {
+        return getContext().getIntrinsics().findIntrinsic(this, signature, baseNodeFactory, id);
     }
 
     final void setVTableIndex(int i) {
@@ -560,5 +532,17 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public final boolean isVirtualCall() {
         return !isStatic() && !isConstructor() && !isPrivate() && !getDeclaringKlass().isInterface();
+    }
+
+    public static Method createIntrinsic(Method m, Symbol<Signature> rawSignature, Function<Method, EspressoBaseNode> baseNodeFactory) {
+        assert (m.declaringKlass == m.getMeta().MethodHandle);
+        Method method = new Method(m.declaringKlass, m.linkedMethod, rawSignature);
+        EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
+        method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        return method;
+    }
+
+    public void setPoisonPill() {
+        this.poisonPill = true;
     }
 }
