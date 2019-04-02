@@ -99,6 +99,9 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     private final Method proxy;
 
+    // Multiple maximally-specific interface methods. Fail on call.
+    @CompilationFinal private boolean poisonPill = false;
+
     // can have a different constant pool than it's declaring class
     public ConstantPool getConstantPool() {
         return pool;
@@ -251,6 +254,9 @@ public final class Method implements ModifiersProvider, ContextAccess {
     public CallTarget getCallTarget() {
         // TODO(peterssen): Make lazy call target thread-safe.
         if (callTarget == null) {
+            if (poisonPill) {
+                getMeta().throwExWithMessage(IncompatibleClassChangeError.class, "Conflicting default methods: " + this.getName());
+            }
             if (proxy != null) {
                 this.callTarget = proxy.getCallTarget();
                 return callTarget;
@@ -534,5 +540,9 @@ public final class Method implements ModifiersProvider, ContextAccess {
         EspressoRootNode rootNode = new EspressoRootNode(method, baseNodeFactory.apply(method));
         method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         return method;
+    }
+
+    public void setPoisonPill() {
+        this.poisonPill = true;
     }
 }
