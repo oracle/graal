@@ -147,27 +147,14 @@ class InterfaceTables {
     }
 
     private static Method resolveMaximallySpecific(Method m1, Method m2) {
-        switch (checkMaximallySpecific(m1, m2)) {
-            case 1:
-                return m1;
-            case 2:
-                return m2;
-            case 0:
-                Method m = new Method(m2);
-                m.setPoisonPill();
-                return m;
-            default:
-                return m1;
-        }
-    }
-
-    private static int checkMaximallySpecific(Method m1, Method m2) {
         if (m1.getDeclaringKlass().isAssignableFrom(m2.getDeclaringKlass())) {
-            return 2;
+            return m2;
         } else if (m2.getDeclaringKlass().isAssignableFrom(m1.getDeclaringKlass())) {
-            return 1;
+            return m1;
         } else {
-            return 0;
+            Method m = new Method(m2);
+            m.setPoisonPill();
+            return m;
         }
     }
 

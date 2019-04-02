@@ -61,7 +61,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public Method vtableLooup(int vtableIndex) {
+    public Method vtableLookup(int vtableIndex) {
         return null;
     }
 

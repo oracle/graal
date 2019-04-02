@@ -49,7 +49,7 @@ import com.oracle.truffle.espresso.nodes.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.nodes.MHLinkToNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.Intrinsics;
+import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -59,12 +59,12 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
-import static com.oracle.truffle.espresso.runtime.Intrinsics.PolySigIntrinsics.InvokeBasic;
-import static com.oracle.truffle.espresso.runtime.Intrinsics.PolySigIntrinsics.InvokeGeneric;
-import static com.oracle.truffle.espresso.runtime.Intrinsics.PolySigIntrinsics.LinkToInterface;
-import static com.oracle.truffle.espresso.runtime.Intrinsics.PolySigIntrinsics.LinkToSpecial;
-import static com.oracle.truffle.espresso.runtime.Intrinsics.PolySigIntrinsics.LinkToStatic;
-import static com.oracle.truffle.espresso.runtime.Intrinsics.PolySigIntrinsics.LinkToVirtual;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
 public abstract class Klass implements ModifiersProvider, ContextAccess {
@@ -487,7 +487,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return method;
     }
 
-    public abstract Method vtableLooup(int vtableIndex);
+    public abstract Method vtableLookup(int vtableIndex);
 
     public abstract Method itableLookup(Klass interfKlass, int itableIndex);
 
@@ -514,7 +514,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    private Method findMethodHandleIntrinsic(@SuppressWarnings("unused") Symbol<Name> methodName, Symbol<Signature> signature, Intrinsics.PolySigIntrinsics id) {
+    private Method findMethodHandleIntrinsic(@SuppressWarnings("unused") Symbol<Name> methodName, Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
         if (id == InvokeGeneric) {
             return getMeta().invoke.findIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
                 // TODO(garcia) Create a whole new Node to handle MH invokes.
@@ -556,7 +556,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         }
     }
 
-    private static Method findLinkToIntrinsic(Method m, Symbol<Signature> signature, Intrinsics.PolySigIntrinsics id) {
+    private static Method findLinkToIntrinsic(Method m, Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
         return m.findIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
             @Override
             public EspressoBaseNode apply(Method method) {

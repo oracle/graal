@@ -57,7 +57,7 @@ import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.Intrinsics;
+import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
@@ -504,8 +504,8 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     // Polymorphic signature method 'creation'
 
-    final Method findIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory, Intrinsics.PolySigIntrinsics id) {
-        return getContext().getIntrinsics().findIntrinsic(this, signature, baseNodeFactory, id);
+    final Method findIntrinsic(Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory, MethodHandleIntrinsics.PolySigIntrinsics id) {
+        return getContext().getMethodHandleIntrinsics().findIntrinsic(this, signature, baseNodeFactory, id);
     }
 
     final void setVTableIndex(int i) {

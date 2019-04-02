@@ -91,8 +91,8 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public final Method vtableLooup(int vtableIndex) {
-        return getSuperKlass().vtableLooup(vtableIndex);
+    public final Method vtableLookup(int vtableIndex) {
+        return getSuperKlass().vtableLookup(vtableIndex);
     }
 
     @Override
