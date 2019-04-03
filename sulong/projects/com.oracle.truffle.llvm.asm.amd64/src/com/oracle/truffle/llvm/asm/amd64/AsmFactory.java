@@ -480,7 +480,7 @@ class AsmFactory {
                 // TODO: implement properly
                 break;
             case "mfence":
-            case "lfance":
+            case "lfence":
             case "sfence":
                 statements.add(LLVMFenceNodeGen.create());
                 break;
