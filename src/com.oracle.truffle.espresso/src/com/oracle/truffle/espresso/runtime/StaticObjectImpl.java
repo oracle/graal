@@ -32,7 +32,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 
@@ -95,9 +94,7 @@ public class StaticObjectImpl extends StaticObject {
         if (isStatic) {
             for (Field f : klass.getDeclaredFields()) {
                 if (f.isStatic()) {
-                    if (f.getKind() == JavaKind.Boolean) {
-                        wordFields[f.getFieldIndex()] = ((boolean)MetaUtil.defaultFieldValue(f.getKind())) ? 1 : 0;
-                    } else if (f.getKind().isSubWord()) {
+                    if (f.getKind().isSubWord()) {
                         wordFields[f.getFieldIndex()] = MetaUtil.defaultWordFieldValue(f.getKind());
                     } else {
                         fields[f.getFieldIndex()] = MetaUtil.defaultFieldValue(f.getKind());
@@ -109,9 +106,7 @@ public class StaticObjectImpl extends StaticObject {
             for (ObjectKlass curKlass = klass; curKlass != null; curKlass = curKlass.getSuperKlass()) {
                 for (Field f : curKlass.getDeclaredFields()) {
                     if (!f.isStatic()) {
-                        if (f.getKind() == JavaKind.Boolean) {
-                            wordFields[f.getFieldIndex()] = ((boolean)MetaUtil.defaultFieldValue(f.getKind())) ? 1 : 0;
-                        } else if (f.getKind().isSubWord()) {
+                        if (f.getKind().isSubWord()) {
                             wordFields[f.getFieldIndex()] = MetaUtil.defaultWordFieldValue(f.getKind());
                         } else {
                             fields[f.getFieldIndex()] = MetaUtil.defaultFieldValue(f.getKind());

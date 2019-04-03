@@ -192,14 +192,15 @@ public class MetaUtil {
                 return 0f;
             case Double:
                 return 0.0;
+            case Long:
+                return 0L;
+            // The subwords stay here, if this method is needed later.
             case Char:
                 return (char) 0;
             case Short:
                 return (short) 0;
             case Int:
                 return 0;
-            case Long:
-                return 0L;
             case Byte:
                 return (byte) 0;
             case Boolean:
@@ -222,9 +223,11 @@ public class MetaUtil {
                 return 0;
             case Byte:
                 return (byte) 0;
+            case Boolean:
+                return 0;
             default:
                 CompilerAsserts.neverPartOfCompilation();
-                throw EspressoError.shouldNotReachHere("Invalid field type " + kind);
+                throw EspressoError.shouldNotReachHere("Invalid Word field type " + kind);
         }
     }
 }

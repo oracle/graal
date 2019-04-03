@@ -500,10 +500,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         initArguments(frame);
 
-        if (this.toString().contains("getGenericSignature")) {
-            int dood = 1;
-        }
-
         loop: while (true) {
             int curOpcode;
             bcCount.inc();
@@ -1083,7 +1079,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                         case ATHROW:
                             CompilerDirectives.transferToInterpreter();
                             if (DEBUG_GENERAL) {
-                                System.err.println("Throwing at " + curBCI + " in " + getMethod());
+                                reportThrow(curBCI, getMethod());
                             }
                             throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
 
@@ -1131,9 +1127,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                         throw e;
                     }
                     if (DEBUG_GENERAL) {
-                        System.err.println("Internal error (caught in invocation): " + this +
-                                        "\nBCI:" + curBCI);
-                        e.printStackTrace();
+                        reportVMError(e, curBCI, this);
                     }
                     CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwEx(VirtualMachineError.class);
@@ -1217,6 +1211,18 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             }
         }
         return newTop;
+    }
+
+    @TruffleBoundary
+    static private void reportThrow(int curBCI, Method method) {
+        System.err.println("Throwing at " + curBCI + " in " + method);
+    }
+
+    @TruffleBoundary
+    static private void reportVMError(RuntimeException e, int curBCI, BytecodeNode thisNode) {
+        System.err.println("Internal error (caught in invocation): " + thisNode +
+                        "\n\tBCI:" + curBCI);
+        e.printStackTrace();
     }
 
     private JavaKind peekKind(VirtualFrame frame, int slot) {

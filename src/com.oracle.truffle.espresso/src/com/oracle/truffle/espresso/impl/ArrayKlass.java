@@ -137,7 +137,7 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public final Field lookupStaticField(int slot) {
-        return getSuperKlass().lookupField(slot);
+        return getSuperKlass().lookupStaticField(slot);
     }
 
     @Override

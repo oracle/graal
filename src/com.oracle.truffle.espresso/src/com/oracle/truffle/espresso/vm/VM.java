@@ -871,10 +871,10 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         Method method = Method.getHostReflectiveMethodRoot(guestReflectionMethod);
         MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Name.MethodParameters);
-        assert methodParameters != null;
+        //assert methodParameters != null;
 
         if (methodParameters == null) {
-            return new StaticObjectArray(getMeta().Parameter, new Parameter[0]);
+            return StaticObject.NULL;
         }
         // Verify first.
         int cpLength = method.getConstantPool().length();
@@ -917,6 +917,12 @@ public final class VM extends NativeEnv implements ContextAccess {
                 return instance;
             }
         });
+    }
+
+    @VmImpl
+    @JniImpl
+    public static void JVM_ResolveClass(@Host(Class.class) StaticObject cls) {
+        ((StaticObjectClass)cls).getMirrorKlass().safeInitialize();
     }
 
     @VmImpl
