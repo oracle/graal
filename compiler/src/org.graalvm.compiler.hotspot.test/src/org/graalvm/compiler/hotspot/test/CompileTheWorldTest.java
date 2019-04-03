@@ -52,6 +52,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
         OptionValues harnessOptions = new OptionValues(OptionValues.newOptionMap());
         int startAt = 1;
         int stopAt = 5;
+        int maxClasses = Integer.MAX_VALUE;
         String methodFilters = null;
         String excludeMethodFilters = null;
         boolean verbose = false;
@@ -60,6 +61,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
                         CompileTheWorld.SUN_BOOT_CLASS_PATH,
                         startAt,
                         stopAt,
+                        maxClasses,
                         methodFilters,
                         excludeMethodFilters,
                         verbose,
