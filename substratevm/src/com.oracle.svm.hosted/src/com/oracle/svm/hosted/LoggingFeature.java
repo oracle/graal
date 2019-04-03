@@ -41,6 +41,9 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 public class LoggingFeature implements Feature {
 
     public static class Options {
+        @Option(help = "Enable the feature that provides support for logging.")//
+        public static final HostedOptionKey<Boolean> EnableLoggingFeature = new HostedOptionKey<>(true);
+
         @Option(help = "When enabled, logging feature details are printed.", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceLoggingFeature = new HostedOptionKey<>(false);
     }
@@ -48,6 +51,11 @@ public class LoggingFeature implements Feature {
     private final boolean trace = LoggingFeature.Options.TraceLoggingFeature.getValue();
 
     private boolean reflectionConfigured = false;
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return LoggingFeature.Options.EnableLoggingFeature.getValue();
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
