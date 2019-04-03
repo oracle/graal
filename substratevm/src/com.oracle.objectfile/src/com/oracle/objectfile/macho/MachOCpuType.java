@@ -29,7 +29,9 @@ package com.oracle.objectfile.macho;
  */
 public enum MachOCpuType {
     X86_64,
-    POWERPC64;
+    POWERPC64,
+    ARM,
+    ARM64;
 
     public static MachOCpuType from(int c) {
         switch (c) {
@@ -37,6 +39,10 @@ public enum MachOCpuType {
                 return X86_64;
             case 0x01000012:
                 return POWERPC64;
+            case 0x0000000C:
+                return ARM;
+            case 0x0100000C:
+                return ARM64;
         }
         throw new IllegalStateException("unknown CPU type");
     }
@@ -47,6 +53,10 @@ public enum MachOCpuType {
                 return 0x01000007;
             case POWERPC64:
                 return 0x01000012;
+            case ARM:
+                return 0x0000000C;
+            case ARM64:
+                return 0x0100000C;
         }
         throw new IllegalStateException("should not reach here");
     }

@@ -401,7 +401,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         return outputPath;
     }
 
-    private static void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
+    private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
             cmd.add("opt");
@@ -409,9 +409,11 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
              * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
              * not supported for statepoints.
              */
-            cmd.add("-mem2reg");
-            cmd.add("-rewrite-statepoints-for-gc");
-            cmd.add("-always-inline");
+            if (Platform.AMD64.class.isInstance(targetPlatform)) {
+                cmd.add("-mem2reg");
+                cmd.add("-rewrite-statepoints-for-gc");
+                cmd.add("-always-inline");
+            }
             cmd.add("-o");
             cmd.add(outputPath);
             cmd.add(inputPath);
