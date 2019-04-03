@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-public final class Intrinsics implements ContextAccess {
+public final class MethodHandleIntrinsics implements ContextAccess {
     public enum PolySigIntrinsics {
         None(0),
         InvokeGeneric(1),
@@ -61,7 +61,7 @@ public final class Intrinsics implements ContextAccess {
     private ConcurrentHashMap<Symbol<Symbol.Signature>, Method> linkToSpecialIntrinsics;
     private ConcurrentHashMap<Symbol<Symbol.Signature>, Method> linkToInterfaceIntrinsics;
 
-    Intrinsics(EspressoContext context) {
+    MethodHandleIntrinsics(EspressoContext context) {
         this.context = context;
         invokeGenericIntrinsics = new ConcurrentHashMap<>();
         invokeBasicIntrinsics = new ConcurrentHashMap<>();

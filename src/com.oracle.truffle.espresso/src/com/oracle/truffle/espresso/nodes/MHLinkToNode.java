@@ -30,17 +30,17 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.Intrinsics;
+import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.VMTARGET;
 
 public abstract class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
-    final Intrinsics.PolySigIntrinsics id;
+    final MethodHandleIntrinsics.PolySigIntrinsics id;
     @Child IndirectCallNode callNode;
 
-    MHLinkToNode(Method method, Intrinsics.PolySigIntrinsics id) {
+    MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
         this.id = id;
         this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
@@ -84,7 +84,7 @@ public abstract class MHLinkToNode extends EspressoBaseNode {
         }
     }
 
-    public static MHLinkToNode create(Method method, Intrinsics.PolySigIntrinsics id) {
+    public static MHLinkToNode create(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         switch (id) {
             case LinkToVirtual:
                 return new LinkToVirtualNode(method);

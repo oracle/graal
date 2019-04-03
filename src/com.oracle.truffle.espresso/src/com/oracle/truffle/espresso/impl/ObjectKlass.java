@@ -376,7 +376,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public final Method vtableLooup(int index) {
+    public final Method vtableLookup(int index) {
         return (index == -1) ? null : vtable[index];
     }
 

@@ -58,7 +58,7 @@ public final class EspressoContext {
     private final StringTable strings;
     private final ClassRegistries registries;
     private final Substitutions substitutions;
-    private final Intrinsics intrinsics;
+    private final MethodHandleIntrinsics methodHandleIntrinsics;
 
     // TODO(peterssen): Map host threads to guest threads, should not be public.
     public final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
@@ -82,7 +82,7 @@ public final class EspressoContext {
         this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
-        this.intrinsics = new Intrinsics(this);
+        this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
     }
 
     public ClassRegistries getRegistries() {
@@ -282,7 +282,7 @@ public final class EspressoContext {
         return getLanguage().getNames();
     }
 
-    public final Intrinsics getIntrinsics() {
-        return intrinsics;
+    public final MethodHandleIntrinsics getMethodHandleIntrinsics() {
+        return methodHandleIntrinsics;
     }
 }
