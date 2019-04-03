@@ -1,7 +1,7 @@
 # VM suite
 
 The VM suite allows you to build custom GraalVM distributions, as well as installable components.
-It defines a base GraalVM distribution that contains the JVMCI-enabled JDK, the Graal SDK, Truffle, and the GraalVM component installer.
+It defines a base GraalVM distribution that contains the JVMCI-enabled JDK, the GraalVM SDK, Truffle, and the GraalVM component installer.
 More components are added by dynamically importing additional suites.
 This can be done either by:
 1. running `mx --dynamicimports <suite...> build`

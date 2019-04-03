@@ -100,7 +100,7 @@ public final class ImageClassLoader {
         ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
         classpathFiltered.addAll(Arrays.asList(classpathAll));
 
-        /* If the Graal SDK is on the boot class path, and it contains annotated types. */
+        /* If the GraalVM SDK is on the boot class path, and it contains annotated types. */
         final String sunBootClassPath = System.getProperty("sun.boot.class.path");
         if (sunBootClassPath != null) {
             for (String s : sunBootClassPath.split(File.pathSeparator)) {

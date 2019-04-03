@@ -163,8 +163,8 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                             String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
                             if (isInNativeImage(className)) {
                                 /*
-                                 * Native image requires non-graalsdk classes to be present in the
-                                 * classpath.
+                                 * Native image requires non-GraalVM SDK classes to be present in
+                                 * the classpath.
                                  */
                                 continue;
                             }

@@ -40,11 +40,11 @@
  */
 /*
  @ApiInfo(
- group="Graal SDK"
+ group="GraalVM SDK"
  )
  */
 /**
- * The Graal SDK proxy interfaces allow to mimic guest language objects, arrays, executables,
+ * The GraalVM SDK proxy interfaces allow to mimic guest language objects, arrays, executables,
  * primitives and native objects in Graal languages. Every Graal language will treat instances of
  * proxies like an object of that particular language. Multiple proxy interfaces can be implemented
  * at the same time. For example, it is useful to provide proxy values that are objects with members
