@@ -2678,6 +2678,9 @@ public class BytecodeParser implements GraphBuilderContext {
             append(new FinalFieldBarrierNode(entryBCI == INVOCATION_ENTRY_BCI ? originalReceiver : null));
         }
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
+        if (method.isSynchronized()) {
+            finishPrepare(lastInstr, BytecodeFrame.AFTER_BCI, frameState);
+        }
     }
 
     protected MonitorEnterNode createMonitorEnterNode(ValueNode x, MonitorIdNode monitorId) {
@@ -3079,8 +3082,8 @@ public class BytecodeParser implements GraphBuilderContext {
             throw bailout("unbalanced monitors: too few exits exiting frame");
         }
         assert !frameState.rethrowException();
+        finishPrepare(lastInstr, block.deoptBci, frameState);
         if (parent == null) {
-            finishPrepare(lastInstr, block.deoptBci, frameState);
             createUnwind();
         } else {
             this.unwindValue = frameState.pop(JavaKind.Object);
@@ -3119,7 +3122,6 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
                 genMonitorExit(methodSynchronizedObject, currentReturnValue, bci);
                 assert !frameState.rethrowException();
-                finishPrepare(lastInstr, bci, frameState);
             }
             if (frameState.lockDepth(false) != 0) {
                 throw bailout("unbalanced monitors: too few exits exiting frame");
