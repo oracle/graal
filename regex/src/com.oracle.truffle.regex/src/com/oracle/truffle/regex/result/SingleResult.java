@@ -30,7 +30,6 @@ public final class SingleResult extends RegexResult {
     private final int end;
 
     public SingleResult(int start, int end) {
-        super(1);
         this.start = start;
         this.end = end;
     }

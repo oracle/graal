@@ -24,11 +24,7 @@
  */
 package com.oracle.truffle.regex.charset;
 
-import org.graalvm.collections.EconomicMap;
-
 public class UnicodeProperties {
-
-    private static final EconomicMap<String, CodePointSet> CATEGORY_UNIONS = EconomicMap.create(8);
 
     public static CodePointSet getProperty(String propertySpec) {
         return evaluatePropertySpec(normalizePropertySpec(propertySpec));
@@ -39,45 +35,11 @@ public class UnicodeProperties {
      *            abbreviated properties and property values)
      */
     private static CodePointSet evaluatePropertySpec(String propertySpec) {
-        switch (propertySpec) {
-            // The following aggregate general categories are defined in Unicode Standard Annex 44,
-            // Section 5.7.1. (http://www.unicode.org/reports/tr44/#GC_Values_Table).
-            case "gc=LC":
-                return getUnionOfCategories("gc=LC", "Lu", "Ll", "Lt");
-            case "gc=L":
-                return getUnionOfCategories("gc=L", "Lu", "Ll", "Lt", "Lm", "Lo");
-            case "gc=M":
-                return getUnionOfCategories("gc=M", "Mn", "Mc", "Me");
-            case "gc=N":
-                return getUnionOfCategories("gc=N", "Nd", "Nl", "No");
-            case "gc=P":
-                return getUnionOfCategories("gc=P", "Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po");
-            case "gc=S":
-                return getUnionOfCategories("gc=S", "Sm", "Sc", "Sk", "So");
-            case "gc=Z":
-                return getUnionOfCategories("gc=Z", "Zs", "Zl", "Zp");
-            case "gc=C":
-                return getUnionOfCategories("gc=C", "Cc", "Cf", "Cs", "Co", "Cn");
+        CodePointSet generalCategory = UnicodeGeneralCategories.getGeneralCategory(propertySpec);
+        if (generalCategory != null) {
+            return generalCategory;
         }
         return UnicodePropertyData.retrieveProperty(propertySpec);
-    }
-
-    private static CodePointSet getUnionOfCategories(String name, String... unionNames) {
-        if (!CATEGORY_UNIONS.containsKey(name)) {
-            CATEGORY_UNIONS.put(name, unionOfGeneralCategories(unionNames));
-        }
-        return CATEGORY_UNIONS.get(name);
-    }
-
-    /**
-     * @param generalCategoryNames *Abbreviated* names of general categories
-     */
-    private static CodePointSet unionOfGeneralCategories(String... generalCategoryNames) {
-        CodePointSet set = CodePointSet.getEmpty();
-        for (String generalCategoryName : generalCategoryNames) {
-            set = set.union(evaluatePropertySpec("gc=" + generalCategoryName));
-        }
-        return set;
     }
 
     private static String normalizePropertySpec(String propertySpec) {
