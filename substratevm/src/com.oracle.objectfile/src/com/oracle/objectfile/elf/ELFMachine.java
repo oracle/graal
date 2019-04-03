@@ -206,7 +206,7 @@ public enum ELFMachine/* implements Integral */ {
     }
 
     public static ELFMachine getSystemNativeValue() {
-        if (System.getProperty("os.arch").equals("aarch64")) {
+        if ((System.getProperty("arm") != null) || System.getProperty("os.arch").equals("aarch64")) {
             return AArch64;
         } else {
             return X86_64;
