@@ -41,11 +41,11 @@
 
 /*
  @ApiInfo(
- group="Graal SDK"
+ group="GraalVM SDK"
  )
  */
 /**
- * The Graal-SDK polyglot API allows to embed Graal languages in Java applications.
+ * The GraalVM SDK polyglot API allows to embed Graal languages in Java applications.
  * <p>
  * To get started quickly create a new {@link org.graalvm.polyglot.Context} using
  * {@link org.graalvm.polyglot.Context#create(String...)} and then evaluate guest language code

@@ -40,11 +40,11 @@
  */
 /*
  @ApiInfo(
- group="Graal SDK"
+ group="GraalVM SDK"
  )
  */
 /**
- * The Graal-SDK options package contains reusable collection classes for options.
+ * The GraalVM SDK options package contains reusable collection classes for options.
  *
  * @see org.graalvm.options.OptionDescriptor
  * @see org.graalvm.options.OptionValues

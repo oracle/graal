@@ -105,7 +105,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 
 /*
- * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
+ * This class is exported to the GraalVM SDK. Keep that in mind when changing its class or package name.
  */
 /**
  * Internal service implementation of the polyglot API.
