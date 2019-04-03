@@ -68,9 +68,9 @@ public final class MachOObjectFile extends ObjectFile {
     private static final ByteOrder nativeOrder = ByteOrder.nativeOrder();
     private static final ByteOrder oppositeOrder = (nativeOrder == ByteOrder.BIG_ENDIAN) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
 
-    MachOCpuType cpuType = MachOCpuType.X86_64; // FIXME: smarter defaults
+    final MachOCpuType cpuType ;//= MachOCpuType.ARM64;//.X86_64; // FIXME: smarter defaults
 
-    int cpuSubType = 3; // FIXME: what does this mean? + smarter defaults?
+    final int cpuSubType;// = 0;//3; // FIXME: what does this mean? + smarter defaults?
 
     private final MachOHeader header;
 
@@ -81,6 +81,13 @@ public final class MachOObjectFile extends ObjectFile {
      * Create an empty Mach-O object file.
      */
     public MachOObjectFile() {
+        if (System.getProperty("arm")!= null) {
+            cpuType = MachOCpuType.ARM64;
+            cpuSubType = 0;
+        } else {
+            cpuType = MachOCpuType.X86_64;
+            cpuSubType = 3;
+        }
         header = new MachOHeader("MachOHeader");
         setByteOrder(ByteOrder.nativeOrder());
 
@@ -1920,6 +1927,7 @@ public final class MachOObjectFile extends ObjectFile {
 
             int maxVaddr = (maxVaddrDecision == null) ? 0 : ((int) maxVaddrDecision.getValue() + maxVaddrDecision.getElement().getMemSize(alreadyDecided));
             int vmSize = ObjectFile.nextIntegerMultiple(maxVaddr - minVaddr, getPageSize());
+            System.err.println("VMSIZE = "+vmSize);
 
             @SuppressWarnings("unused")
             Element firstSectionByVaddr = (minVaddrDecisions == null) ? null : minVaddrDecisions.get(0).getElement();
@@ -1984,6 +1992,7 @@ public final class MachOObjectFile extends ObjectFile {
                 minimumFileSize = Math.max(minimumFileSize, effectiveFileOffset + effectiveFileSize);
             }
             db.write8Byte(effectiveFileSize);
+            System.err.println("Wrote: vmsize = "+effectiveVmSize+" and efs = "+effectiveFileSize);
             db.write4Byte((int) ObjectFile.flagSetAsLong(maxprot));
             db.write4Byte((int) ObjectFile.flagSetAsLong(initprot));
             int sectionCountPos = db.pos();
@@ -2269,14 +2278,14 @@ public final class MachOObjectFile extends ObjectFile {
         this.flags.clear();
         this.flags.addAll(flags);
     }
-
-    public void setCpuType(MachOCpuType cpuType) {
-        this.cpuType = cpuType;
-    }
-
-    public void setCpuSubtype(int cpuSubType) {
-        this.cpuSubType = cpuSubType;
-    }
+//
+//    public void setCpuType(MachOCpuType cpuType) {
+//        this.cpuType = cpuType;
+//    }
+//
+//    public void setCpuSubtype(int cpuSubType) {
+//        this.cpuSubType = cpuSubType;
+//    }
 
     protected LinkEditSegment64Command getOrCreateLinkEditSegment() {
         // create a __LINKEDIT segment and appropriate symtabs
