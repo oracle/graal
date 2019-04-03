@@ -1678,9 +1678,13 @@ public final class TruffleFile {
      */
     public static final class Attributes {
 
+        private final Set<AttributeDescriptor<?>> queriedAttributes;
         private final Map<String, Object> delegate;
 
-        Attributes(Map<String, Object> delegate) {
+        Attributes(Set<AttributeDescriptor<?>> queriedAttributes, Map<String, Object> delegate) {
+            assert queriedAttributes != null;
+            assert delegate != null;
+            this.queriedAttributes = queriedAttributes;
             this.delegate = delegate;
         }
 
@@ -1688,18 +1692,19 @@ public final class TruffleFile {
          * Returns the attribute value.
          *
          * @param descriptor the attribute to obtain value for
-         * @return the attribute value
-         * @throws IllegalArgumentException if the view does not contain a value for given attribute
+         * @return the attribute value, may return {@code null} if the filesystem doesn't support
+         *         the attribute.
+         * @throws IllegalArgumentException if the view was not created for the given attribute
          * @since 1.0
          */
         public <T> T get(AttributeDescriptor<T> descriptor) {
             Object value = delegate.get(descriptor.name);
             if (value != null) {
                 return descriptor.clazz.cast(value);
-            } else if (delegate.containsKey(descriptor.name)) {
+            } else if (queriedAttributes.contains(descriptor)) {
                 return null;
             } else {
-                throw new IllegalArgumentException("Attributes don't contain " + descriptor.toString());
+                throw new IllegalArgumentException("The attribute: " + descriptor.toString() + " was not queried.");
             }
         }
     }
@@ -1742,20 +1747,21 @@ public final class TruffleFile {
      */
     @TruffleBoundary
     public Attributes getAttributes(Collection<? extends AttributeDescriptor<?>> attributes, LinkOption... linkOptions) throws IOException {
-        if (attributes.isEmpty()) {
+        Set<AttributeDescriptor<?>> useAttributes = new HashSet<>(attributes);
+        if (useAttributes.isEmpty()) {
             throw new IllegalArgumentException("No descriptors given.");
         }
         try {
             AttributeGroup group = null;
             List<String> attributeNames = new ArrayList<>();
-            for (AttributeDescriptor<?> descriptor : attributes) {
+            for (AttributeDescriptor<?> descriptor : useAttributes) {
                 if (group == null || !group.contains(descriptor.group)) {
                     group = descriptor.group;
                 }
                 attributeNames.add(descriptor.name);
             }
             Map<String, Object> map = fileSystemContext.fileSystem.readAttributes(normalizedPath, createAttributeString(group, attributeNames), linkOptions);
-            return new Attributes(map);
+            return new Attributes(useAttributes, map);
         } catch (IOException | UnsupportedOperationException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
