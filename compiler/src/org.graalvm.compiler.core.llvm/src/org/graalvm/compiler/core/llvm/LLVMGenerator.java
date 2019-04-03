@@ -948,7 +948,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
     @Override
     public void emitPause() {
-        throw unimplemented();
+      //  throw unimplemented();
     }
 
     @Override
