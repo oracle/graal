@@ -579,14 +579,6 @@ CLSS public abstract interface static !annotation org.graalvm.nativeimage.c.func
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
 intf java.lang.annotation.Annotation
 
-CLSS public final org.graalvm.nativeimage.c.function.CEntryPointContext
- anno 0 java.lang.Deprecated()
-meth public static org.graalvm.nativeimage.Isolate getCurrentIsolate()
- anno 0 java.lang.Deprecated()
-meth public static org.graalvm.nativeimage.IsolateThread getCurrentIsolateThread()
- anno 0 java.lang.Deprecated()
-supr java.lang.Object
-
 CLSS public final org.graalvm.nativeimage.c.function.CEntryPointLiteral<%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer>
 meth public !varargs static <%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer> org.graalvm.nativeimage.c.function.CEntryPointLiteral<{%%0}> create(java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
 meth public {org.graalvm.nativeimage.c.function.CEntryPointLiteral%0} getFunctionPointer()
