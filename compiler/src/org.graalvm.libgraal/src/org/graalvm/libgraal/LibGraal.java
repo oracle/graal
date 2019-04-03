@@ -24,118 +24,126 @@
  */
 package org.graalvm.libgraal;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.services.Services;
 
 /**
- * Access to the libgraal isolate.
+ * Access to libgraal, a shared library containing an AOT compiled version of Graal produced by SVM.
+ * The libgraal library is only available if:
+ * <ul>
+ * <li>the current runtime is libgraal, or</li>
+ * <li>the HotSpot {@code UseJVMCINativeLibrary} flag is true and the current runtime includes the
+ * relevant JVMCI API additions for accessing libgraal.</li>
+ * </ul>
  *
- * All usage of the methods in this class must be guarded by {@link #isAvailable()}.
+ * The {@link #isAvailable()} method is provided to test these conditions. It must be used to guard
+ * usage of all other methods in this class.
  */
 public class LibGraal {
+
+    private static InternalError shouldNotReachHere() {
+        throw new InternalError("JDK specific overlay missing");
+    }
 
     /**
      * Determines if libgraal is available.
      */
     public static boolean isAvailable() {
-        return libgraalIsolate != 0L;
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Determines if the current runtime is libgraal.
+     */
+    public static boolean isCurrentRuntime() {
+        throw shouldNotReachHere();
     }
 
     /**
      * Gets the libgraal isolate.
      *
+     * This cannot be called from {@linkplain #isCurrentRuntime() within} libgraal.
+     *
      * @returns a value that can be used for the {@link IsolateContext} argument of a {@code native}
-     *          method bound to a {@link CEntryPoint} function in libgraal
-     * @throws UnsatisfiedLinkError if libgraal is not {@linkplain #isAvailable() available}
+     *          method {@link #registerNativeMethods linked} to a {@link CEntryPoint} function in
+     *          libgraal
+     * @throws IllegalStateException if libgraal is {@linkplain #isAvailable() unavailable} or
+     *             {@link #isCurrentRuntime()} returns true
      */
     public static long getIsolate() {
-        if (initializationError != null) {
-            throw initializationError;
-        }
-        return libgraalIsolate;
+        throw shouldNotReachHere();
     }
 
     /**
      * Gets a libgraal isolate thread associated with the current thread. This method attaches the
      * current thread to an isolate thread first if necessary.
      *
+     * This cannot be called from {@linkplain #isCurrentRuntime() within} libgraal.
+     *
      * @returns a value that can be used for the {@link IsolateThreadContext} argument of a
-     *          {@code native} method bound to a {@link CEntryPoint} function in libgraal
-     * @throws UnsatisfiedLinkError if libgraal is not {@linkplain #isAvailable() available}
+     *          {@code native} method {@link #registerNativeMethods linked} to a {@link CEntryPoint}
+     *          function in libgraal
+     * @throws IllegalStateException if libgraal is {@linkplain #isAvailable() unavailable} or
+     *             {@link #isCurrentRuntime()} returns true
      */
     public static long getIsolateThread() {
-        return CURRENT_ISOLATE_THREAD.get();
-    }
-
-    private static final ThreadLocal<Long> CURRENT_ISOLATE_THREAD = new ThreadLocal<Long>() {
-        @Override
-        protected Long initialValue() {
-            if (initializationError != null) {
-                throw initializationError;
-            }
-            return attachThread(libgraalIsolate);
-        }
-    };
-
-    private static final long libgraalIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
-    private static LinkageError initializationError;
-
-    private static long initializeLibgraal() {
-        try {
-            // Initialize JVMCI to ensure JVMCI opens its packages to
-            // Graal otherwise the call to HotSpotJVMCIRuntime.runtime()
-            // below will fail on JDK9+.
-            Services.initializeJVMCI();
-
-            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-
-            // Use reflection so this code can be compiled on JDKs with missing
-            // or incompatible signature of registerNativeMethods.
-            Method method = runtime.getClass().getDeclaredMethod("registerNativeMethods", Class.class);
-            if (method.getReturnType() == long[].class) {
-                try {
-                    long[] nativeInterface = (long[]) method.invoke(runtime, LibGraal.class);
-                    return nativeInterface[1];
-                } catch (InvocationTargetException e) {
-                    Throwable targetException = e.getTargetException();
-                    if (targetException instanceof UnsatisfiedLinkError) {
-                        initializationError = (LinkageError) targetException;
-                        return 0L;
-                    }
-                    if (targetException instanceof Error) {
-                        throw (Error) targetException;
-                    }
-                    if (targetException instanceof RuntimeException) {
-                        throw (RuntimeException) targetException;
-                    }
-                    throw new InternalError(targetException);
-                }
-            } else {
-                // The signature of HotSpotJVMCIRuntime.registerNativeMethods changed
-                // to support libgraal. JDKs that don't have full JVMCI support for
-                // libgraal will have the old signature.
-                initializationError = new NoSuchMethodError("long[] " + HotSpotJVMCIRuntime.class.getName() + ".registerNativeMethods(Class)");
-                return 0L;
-            }
-        } catch (UnsatisfiedLinkError e) {
-            initializationError = e;
-            return 0L;
-        } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException e) {
-            throw new InternalError(e);
-        }
+        throw shouldNotReachHere();
     }
 
     /**
-     * Attaches the current thread to a thread in {@code isolate}.
+     * Links each native method in {@code clazz} to a {@link CEntryPoint} in libgraal.
      *
-     * @param isolate
+     * This cannot be called from {@linkplain #isCurrentRuntime() within} libgraal.
+     *
+     * @return an array of 4 longs where the first value is the {@code JavaVM*} value representing
+     *         the libgraal Java VM, and the remaining values are the first 3 pointers in the
+     *         Invocation API function table (i.e., {@code JNIInvokeInterface})
+     *
+     * @throws NullPointerException if {@code clazz == null}
+     * @throws UnsupportedOperationException if libgraal is not enabled (i.e.
+     *             {@code -XX:-UseJVMCINativeLibrary})
+     * @throws IllegalArgumentException if{@code clazz} is {@link Class#isPrimitive()}
+     * @throws IllegalStateException if libgraal is {@linkplain #isAvailable() unavailable} or
+     *             {@link #isCurrentRuntime()} returns true
+     * @throws UnsatisfiedLinkError if there's a problem linking a native method in {@code clazz}
+     *             (no matching JNI symbol or the native method is already linked to a different
+     *             address)
      */
-    private static native long attachThread(long isolate);
+    @SuppressWarnings("unused")
+    public static long[] registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Creates or retrieves an object in the peer runtime that mirrors {@code obj}.
+     *
+     * This mechanism can be used to pass and return values between the HotSpot and libgraal
+     * runtimes. In the receiving runtime, the value can be converted back to an object with
+     * {@link #unhand}.
+     *
+     * @param obj an object for which an equivalent instance in the peer runtime is requested
+     * @return a JNI global reference to the mirror of {@code obj} in the peer runtime
+     * @throws IllegalArgumentException if {@code obj} is not of a translatable type
+     */
+    @SuppressWarnings("unused")
+    public static long translate(HotSpotJVMCIRuntime runtime, Object obj) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Dereferences and returns the object referred to by the JNI global reference {@code handle}.
+     * The global reference is deleted prior to returning. Any further use of {@code handle} is
+     * invalid.
+     *
+     * @param handle a JNI global reference to an object in the current runtime
+     * @return the object referred to by {@code handle}
+     * @throws ClassCastException if the returned object cannot be cast to {@code type}
+     */
+    @SuppressWarnings("unused")
+    public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
+        throw shouldNotReachHere();
+    }
 }

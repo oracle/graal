@@ -30,7 +30,6 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutA
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.core.test.ReflectionOptionDescriptors.extractEntries;
 import static org.graalvm.compiler.debug.MemUseTrackerKey.getCurrentThreadAllocatedBytes;
-import static org.graalvm.compiler.hotspot.HotSpotJVMCIServices.registerNativeMethods;
 import static org.graalvm.compiler.hotspot.test.CompileTheWorld.Options.DESCRIPTORS;
 import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 import static sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
@@ -90,7 +89,6 @@ import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.HotSpotJVMCIServices;
 import org.graalvm.compiler.hotspot.test.CompileTheWorld.LibGraalParams.StackTraceBuffer;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
@@ -215,7 +213,7 @@ public final class CompileTheWorld {
     static class LibGraalParams implements AutoCloseable {
 
         static {
-            registerNativeMethods(HotSpotJVMCIRuntime.runtime(), CompileTheWorld.class);
+            LibGraal.registerNativeMethods(HotSpotJVMCIRuntime.runtime(), CompileTheWorld.class);
         }
 
         /**
@@ -909,7 +907,7 @@ public final class CompileTheWorld {
             HotSpotInstalledCode installedCode;
             if (libgraal != null) {
                 HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-                long methodHandle = HotSpotJVMCIServices.translate(runtime, method);
+                long methodHandle = LibGraal.translate(runtime, method);
                 long isolateThread = LibGraal.getIsolateThread();
 
                 StackTraceBuffer stackTraceBuffer = libgraal.getStackTraceBuffer();
@@ -925,7 +923,7 @@ public final class CompileTheWorld {
                                 stackTraceBufferAddress,
                                 stackTraceBuffer.size);
 
-                installedCode = HotSpotJVMCIServices.unhand(runtime, HotSpotInstalledCode.class, installedCodeHandle);
+                installedCode = LibGraal.unhand(runtime, HotSpotInstalledCode.class, installedCodeHandle);
                 if (installedCode == null) {
                     int length = UNSAFE.getInt(stackTraceBufferAddress);
                     byte[] data = new byte[length];

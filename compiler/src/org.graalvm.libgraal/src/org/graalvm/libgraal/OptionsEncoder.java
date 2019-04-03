@@ -24,20 +24,25 @@
  */
 package org.graalvm.libgraal;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiConsumer;
 
+/**
+ * Facilities for encoding/decoding a set of options to/from a byte array.
+ */
 public final class OptionsEncoder {
 
     private OptionsEncoder() {
     }
 
+    /**
+     * Determines if {@code value} is supported by {@link #encode(Map)}.
+     */
     public static boolean isValueSupported(Object value) {
         if (value == null) {
             return false;
@@ -55,6 +60,12 @@ public final class OptionsEncoder {
                         value.getClass().isEnum();
     }
 
+    /**
+     * Encodes {@code options} into a byte array.
+     *
+     * @throws IllegalArgumentException if any value in {@code options} is not
+     *             {@linkplain #isValueSupported(Object) supported}
+     */
     public static byte[] encode(final Map<String, Object> options) {
         try (ByteArrayOutputStream baout = new ByteArrayOutputStream()) {
             try (DataOutputStream out = new DataOutputStream(baout)) {
@@ -101,18 +112,18 @@ public final class OptionsEncoder {
             }
             return baout.toByteArray();
         } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
+            throw new IllegalArgumentException(ioe);
         }
     }
 
-    public static Map<String, Object> decode(InputStream input) {
+    /**
+     * Decodes {@code input} into a name/value map.
+     *
+     * @throws IllegalArgumentException if {@code input} cannot be decoded
+     */
+    public static Map<String, Object> decode(byte[] input) {
         Map<String, Object> res = new HashMap<>();
-        decode(input, (key, value) -> res.put(key, value));
-        return res;
-    }
-
-    public static void decode(InputStream input, BiConsumer<String, Object> consumer) {
-        try (DataInputStream in = new DataInputStream(input)) {
+        try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(input))) {
             final int size = in.readInt();
             for (int i = 0; i < size; i++) {
                 final String key = in.readUTF();
@@ -149,10 +160,11 @@ public final class OptionsEncoder {
                     default:
                         throw new IllegalArgumentException("Unsupported value type: " + Integer.toHexString(type));
                 }
-                consumer.accept(key, value);
+                res.put(key, value);
             }
         } catch (IOException ioe) {
             throw new IllegalArgumentException(ioe);
         }
+        return res;
     }
 }

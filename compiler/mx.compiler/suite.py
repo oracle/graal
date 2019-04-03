@@ -404,6 +404,42 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.libgraal.jdk8" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "sdk:GRAAL_SDK",
+          "JVMCI_HOTSPOT",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.libgraal.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "sdk:GRAAL_SDK",
+          "JVMCI_HOTSPOT",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11..12",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.libgraal.jdk13" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "sdk:GRAAL_SDK",
+          "JVMCI_HOTSPOT",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "13+",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.util" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -2078,6 +2114,9 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.libgraal",
+        "org.graalvm.libgraal.jdk8",
+        "org.graalvm.libgraal.jdk11",
+        "org.graalvm.libgraal.jdk13",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
@@ -2140,6 +2179,9 @@ suite = {
     "GRAAL_TRUFFLE_RUNTIME_HOTSPOT" : {
       "subDir" : "src",
       "dependencies" : [
+        "org.graalvm.libgraal.jdk8",
+        "org.graalvm.libgraal.jdk11",
+        "org.graalvm.libgraal.jdk13",
         "org.graalvm.compiler.truffle.runtime.hotspot.jdk8",
         "org.graalvm.compiler.truffle.runtime.hotspot.jdk9",
         "org.graalvm.compiler.truffle.runtime.hotspot.java",
@@ -2254,6 +2296,9 @@ suite = {
         "GRAAL_TRUFFLE_COMPILER_HOTSPOT",
       ],
       "dependencies" : [
+        "org.graalvm.libgraal.jdk8",
+        "org.graalvm.libgraal.jdk11",
+        "org.graalvm.libgraal.jdk13",
         "org.graalvm.compiler.serviceprovider.jdk8",
         "org.graalvm.compiler.serviceprovider.jdk9",
         "org.graalvm.compiler.options",

@@ -72,7 +72,6 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.cre
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.SVMToHotSpotUtil.getJNIClass;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
@@ -116,6 +115,7 @@ import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObjectArray;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
 import org.graalvm.graphio.GraphOutput;
+import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -142,7 +142,7 @@ final class HotSpotToSVMEntryPoints {
     public static long initializeRuntime(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId,
                     JObject truffleRuntime, long classLoaderDelegateId) {
         try (HotSpotToSVMScope s = new HotSpotToSVMScope(InitializeRuntime, env)) {
-            ResolvedJavaType classLoaderDelegate = runtime().unhand(ResolvedJavaType.class, classLoaderDelegateId);
+            ResolvedJavaType classLoaderDelegate = LibGraal.unhand(runtime(), ResolvedJavaType.class, classLoaderDelegateId);
             HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, HotSpotGraalOptionValues.defaultOptions());
             TruffleCompilerRuntimeInstance.initialize(hsTruffleRuntime);
             long truffleRuntimeHandle = SVMObjectHandles.create(hsTruffleRuntime);
@@ -382,30 +382,13 @@ final class HotSpotToSVMEntryPoints {
         int len = GetArrayLength(env, hsOptions);
         CCharPointer optionsCPointer = GetByteArrayElements(env, hsOptions, WordFactory.nullPointer());
         try {
-            options = OptionsEncoder.decode(new CCharPointerInputStream(optionsCPointer, len));
+            byte[] optionsBuffer = new byte[len];
+            CTypeConversion.asByteBuffer(optionsCPointer, len).put(optionsBuffer);
+            options = OptionsEncoder.decode(optionsBuffer);
         } finally {
             ReleaseByteArrayElements(env, hsOptions, optionsCPointer, JArray.MODE_RELEASE);
         }
         return options;
-    }
-
-    private static final class CCharPointerInputStream extends InputStream {
-        private CCharPointer data;
-        private int len;
-        private int pos;
-
-        CCharPointerInputStream(CCharPointer data, int len) {
-            this.data = data;
-            this.len = len;
-        }
-
-        @Override
-        public int read() throws IOException {
-            if (pos >= len) {
-                return -1;
-            }
-            return data.read(pos++);
-        }
     }
 
     @HotSpotToSVM(GetSuppliedString)

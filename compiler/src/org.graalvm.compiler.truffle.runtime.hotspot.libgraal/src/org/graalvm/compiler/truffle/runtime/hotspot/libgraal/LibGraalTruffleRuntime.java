@@ -26,11 +26,11 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static org.graalvm.libgraal.LibGraal.getIsolateThread;
 
-import java.io.ByteArrayInputStream;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
+import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
@@ -51,7 +51,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         runtime.registerNativeMethods(HotSpotToSVMCalls.class);
         MetaAccessProvider metaAccess = runtime.getHostJVMCIBackend().getMetaAccess();
         HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(getClass());
-        long classLoaderDelegate = runtime.translate(type);
+        long classLoaderDelegate = LibGraal.translate(runtime, type);
         handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), this, classLoaderDelegate);
     }
 
@@ -68,7 +68,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     protected Map<String, Object> createInitialOptions() {
         byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle);
-        return OptionsEncoder.decode(new ByteArrayInputStream(serializedOptions));
+        return OptionsEncoder.decode(serializedOptions);
     }
 
     @Override

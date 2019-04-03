@@ -27,7 +27,6 @@ package com.oracle.svm.graal.hotspot.libgraal;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -36,7 +35,6 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
-import org.graalvm.compiler.hotspot.HotSpotJVMCIServices;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -81,7 +79,7 @@ public final class LibGraalEntryPoints {
             if (actualHash != hash) {
                 throw new IllegalArgumentException(actualHash + " != " + hash);
             }
-            Map<String, Object> srcMap = OptionsEncoder.decode(new ByteArrayInputStream(buffer));
+            Map<String, Object> srcMap = OptionsEncoder.decode(buffer);
             final EconomicMap<OptionKey<?>, Object> dstMap = OptionValues.newOptionMap();
             final Iterable<OptionDescriptors> loader = OptionsParser.getOptionsLoader();
             for (Map.Entry<String, Object> e : srcMap.entrySet()) {
@@ -140,7 +138,7 @@ public final class LibGraalEntryPoints {
                     int stackTraceCapacity) {
         try {
             HotSpotJVMCIRuntime runtime = runtime();
-            HotSpotResolvedJavaMethod method = HotSpotJVMCIServices.unhand(runtime, HotSpotResolvedJavaMethod.class, methodHandle);
+            HotSpotResolvedJavaMethod method = LibGraal.unhand(runtime, HotSpotResolvedJavaMethod.class, methodHandle);
 
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
@@ -149,7 +147,7 @@ public final class LibGraalEntryPoints {
             CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault, options);
             task.runCompilation();
             HotSpotInstalledCode installedCode = task.getInstalledCode();
-            return HotSpotJVMCIServices.translate(runtime, installedCode);
+            return LibGraal.translate(runtime, installedCode);
         } catch (Throwable t) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             t.printStackTrace(new PrintStream(baos));

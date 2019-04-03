@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot;
+package org.graalvm.libgraal;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
- * JDK 8 version of {@link HotSpotJVMCIServices}.
+ * JDK11+ version of {@code LibGraal}.
  */
-public class HotSpotJVMCIServices {
+public class LibGraal {
 
+    private static IllegalStateException unavailable() {
+        throw new IllegalStateException("libgraal is not available");
+    }
+
+    public static boolean isAvailable() {
+        return false;
+    }
+
+    public static long getIsolate() {
+        throw unavailable();
+    }
+
+    public static long getIsolateThread() {
+        throw unavailable();
+    }
+
+    @SuppressWarnings("unused")
     public static long[] registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
-        return runtime.registerNativeMethods(clazz);
+        throw unavailable();
     }
 
+    @SuppressWarnings("unused")
     public static long translate(HotSpotJVMCIRuntime runtime, Object obj) {
-        return runtime.translate(obj);
+        throw unavailable();
     }
 
+    @SuppressWarnings("unused")
     public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
-        return runtime.unhand(type, handle);
+        throw unavailable();
     }
 }
