@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -55,8 +56,23 @@ public final class Field implements ModifiersProvider {
     @CompilerDirectives.CompilationFinal
     private int fieldIndex = -1;
 
+    @CompilerDirectives.CompilationFinal
+    private String genericSignature = null;
+
     public Symbol<Type> getType() {
         return type;
+    }
+
+    public String getGenericSignature() {
+        if (genericSignature == null) {
+            SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
+            if (attr == null) {
+                genericSignature = getType().toString();
+            } else {
+                genericSignature = holder.getConstantPool().utf8At(attr.getSignatureIndex()).toString();
+            }
+        }
+        return genericSignature;
     }
 
     public Field(LinkedField linkedField, ObjectKlass holder) {

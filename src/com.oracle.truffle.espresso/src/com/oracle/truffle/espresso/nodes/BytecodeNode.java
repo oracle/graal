@@ -295,7 +295,7 @@ import com.oracle.truffle.object.DebugCounter;
  */
 public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
-    public static final boolean DEBUG_GENERAL = false;
+    public static final boolean DEBUG_GENERAL = true;
 
     public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
 
@@ -499,6 +499,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         int top = 0;
 
         initArguments(frame);
+
+        if (this.toString().contains("getGenericSignature")) {
+            int dood = 1;
+        }
 
         loop: while (true) {
             int curOpcode;

@@ -873,6 +873,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Name.MethodParameters);
         assert methodParameters != null;
 
+        if (methodParameters == null) {
+            return new StaticObjectArray(getMeta().Parameter, new Parameter[0]);
+        }
         // Verify first.
         int cpLength = method.getConstantPool().length();
         for (MethodParametersAttribute.Entry entry : methodParameters.getEntries()) {

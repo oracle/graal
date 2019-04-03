@@ -174,7 +174,7 @@ public final class Target_java_lang_Class {
                                                         // Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET,
                                                         // // Still doesn't make lambda accessors
                                                         // work...
-                                /* signature */ meta.toGuestString(f.getType()),
+                                /* signature */ meta.toGuestString(f.getGenericSignature()),
                                 // FIXME(peterssen): Fill annotations bytes.
                                 /* annotations */ runtimeVisibleAnnotations);
                 instance.setHiddenField(HIDDEN_FIELD_KEY, f);
