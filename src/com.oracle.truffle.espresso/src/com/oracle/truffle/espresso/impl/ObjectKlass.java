@@ -63,11 +63,17 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
 
+    @CompilationFinal int trueDeclaredMethods;
+
     private final InnerClassesAttribute innerClasses;
 
     private final Attribute runtimeVisibleAnnotations;
 
     private final Klass hostKlass;
+
+    @CompilationFinal(dimensions = 1) private final Method[] vtable;
+    @CompilationFinal(dimensions = 2) private final Method[][] itable;
+    @CompilationFinal(dimensions = 1) private final Klass[] iKlassTable;
 
     private int initState = LINKED;
 
@@ -104,14 +110,26 @@ public final class ObjectKlass extends Klass {
         for (int i = 0; i < fields.length; ++i) {
             fields[i] = new Field(linkedFields[i], this);
         }
+        this.declaredFields = fields;
 
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
         for (int i = 0; i < methods.length; ++i) {
             methods[i] = new Method(this, linkedMethods[i]);
         }
-        this.declaredFields = fields;
+
         this.declaredMethods = methods;
+        if (this.isInterface()) {
+            InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, superInterfaces, declaredMethods);
+            this.itable = methodCR.getItable();
+            this.iKlassTable = methodCR.getiKlass();
+            this.vtable = null;
+        } else {
+            InterfaceTables.CreationResult methodCR = InterfaceTables.create(superKlass, superInterfaces, this);
+            this.itable = methodCR.getItable();
+            this.iKlassTable = methodCR.getiKlass();
+            this.vtable = VirtualTable.create(superKlass, declaredMethods, this);
+        }
     }
 
     @Override
@@ -307,5 +325,56 @@ public final class ObjectKlass extends Klass {
     @Override
     public Klass getHostClass() {
         return hostKlass;
+    }
+
+    Method[] getVTable() {
+        return vtable;
+    }
+
+    @Override
+    public final Method vtableLookup(int index) {
+        return (index == -1) ? null : vtable[index];
+    }
+
+    @Override
+    public final Method itableLookup(Klass interfKlass, int index) {
+        assert (index >= 0) : "Undeclared interface method";
+        int i = 0;
+        for (Klass k : iKlassTable) {
+            if (k == interfKlass) {
+                return itable[i][index];
+            }
+            i++;
+        }
+        return null;
+    }
+
+    final Method[][] getItable() {
+        return itable;
+    }
+
+    final Klass[] getiKlassTable() {
+        return iKlassTable;
+    }
+
+    final Method lookupVirtualMethod(Symbol<Name> name, Symbol<Symbol.Signature> signature) {
+        for (Method m : vtable) {
+            if (m.getName() == name && m.getRawSignature() == signature) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    final void setMirandas(ArrayList<InterfaceTables.Miranda> mirandas) {
+        this.trueDeclaredMethods = declaredMethods.length;
+        Method[] declaredAndMirandaMethods = new Method[declaredMethods.length + mirandas.size()];
+        System.arraycopy(declaredMethods, 0, declaredAndMirandaMethods, 0, declaredMethods.length);
+        int pos = declaredMethods.length;
+        for (InterfaceTables.Miranda miranda : mirandas) {
+            miranda.setDeclaredMethodPos(pos);
+            declaredAndMirandaMethods[pos++] = new Method(miranda.method);
+        }
+        this.declaredMethods = declaredAndMirandaMethods;
     }
 }

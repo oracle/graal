@@ -31,13 +31,13 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 public abstract class InvokeVirtualNode extends QuickNode {
 
     final Method resolutionSeed;
+    final int vtableIndex;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -47,7 +47,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
     Object callVirtualDirect(StaticObjectImpl receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
-                    @Cached("methodLookup(resolutionSeed, receiver)") Method resolvedMethod,
+                    @Cached("methodLookup(receiver, vtableIndex)") Method resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
         return directCallNode.call(args);
     }
@@ -55,29 +55,23 @@ public abstract class InvokeVirtualNode extends QuickNode {
     @Specialization(replaces = "callVirtualDirect")
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
-        // Brute virtual method resolution, walk the whole klass hierarchy.
-        // TODO(peterssen): Implement itable-based lookup.
-        Method targetMethod = methodLookup(resolutionSeed, receiver);
-        return indirectCallNode.call(targetMethod.getCallTarget(), arguments);
+        // vtable lookup.
+        return indirectCallNode.call(methodLookup(receiver, vtableIndex).getCallTarget(), arguments);
     }
 
     InvokeVirtualNode(Method resolutionSeed) {
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
+        this.vtableIndex = resolutionSeed.getVTableIndex();
     }
 
     @TruffleBoundary
-    static Method methodLookup(Method resolutionSeed, StaticObject receiver) {
-        // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
+    static Method methodLookup(StaticObject receiver, int vtableIndex) {
         Klass clazz = receiver.getKlass();
-        Method m = clazz.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
-
-        while (m == null && clazz != null) {
-            // FIXME(peterssen): Out-of-spec lookup for default (interface) method.
-            m = lookupDefaultInterfaceMethod((ObjectKlass) clazz, resolutionSeed.getName(), resolutionSeed.getRawSignature());
-            clazz = clazz.getSuperKlass();
-        }
-
+        Method m = clazz.vtableLookup(vtableIndex);
+        // Suprisingly, invokeVirtuals can try to invoke interface methods, even non-default
+        // ones.
+        // Good thing is, miranda methods are taken care of at vtable creation !
         return m;
     }
 

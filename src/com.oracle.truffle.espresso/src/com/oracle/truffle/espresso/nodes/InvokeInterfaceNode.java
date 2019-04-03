@@ -31,13 +31,14 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 public abstract class InvokeInterfaceNode extends QuickNode {
 
     final Method resolutionSeed;
+    final int itableIndex;
+    final Klass declaringKlass;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -47,7 +48,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
     Object callVirtualDirect(StaticObjectImpl receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
-                    @Cached("methodLookup(resolutionSeed, receiver)") Method resolvedMethod,
+                    @Cached("methodLookup(receiver, itableIndex, declaringKlass)") Method resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
         return directCallNode.call(args);
     }
@@ -55,30 +56,20 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     @Specialization(replaces = "callVirtualDirect")
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
-        // Brute virtual method resolution, walk the whole klass hierarchy.
-        // TODO(peterssen): Implement itable-based lookup.
-        Method targetMethod = methodLookup(resolutionSeed, receiver);
-        return indirectCallNode.call(targetMethod.getCallTarget(), arguments);
+        // itable Lookup
+        return indirectCallNode.call(methodLookup(receiver, itableIndex, declaringKlass).getCallTarget(), arguments);
     }
 
     InvokeInterfaceNode(Method resolutionSeed) {
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
+        this.itableIndex = resolutionSeed.getITableIndex();
+        this.declaringKlass = resolutionSeed.getDeclaringKlass();
     }
 
     @TruffleBoundary
-    static Method methodLookup(Method resolutionSeed, StaticObject receiver) {
-        // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
-        Klass clazz = receiver.getKlass();
-        Method m = clazz.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
-
-        while (m == null && clazz != null) {
-            // FIXME(peterssen): Out-of-spec lookup for default (interface) method.
-            m = lookupDefaultInterfaceMethod((ObjectKlass) clazz, resolutionSeed.getName(), resolutionSeed.getRawSignature());
-            clazz = clazz.getSuperKlass();
-        }
-
-        return m;
+    static Method methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
+        return receiver.getKlass().itableLookup(declaringKlass, itableIndex);
     }
 
     @Override

@@ -24,21 +24,27 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
-public class MHLinkToNode extends EspressoBaseNode {
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.VMTARGET;
+
+public abstract class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
-    final int id;
+    final MethodHandleIntrinsics.PolySigIntrinsics id;
+    @Child IndirectCallNode callNode;
 
-    public MHLinkToNode(Method method, int id) {
+    MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
         this.id = id;
         this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
+        this.callNode = IndirectCallNode.create();
     }
 
     @Override
@@ -47,53 +53,24 @@ public class MHLinkToNode extends EspressoBaseNode {
         return linkTo(frame.getArguments());
     }
 
-    private Object linkTo(Object[] args) {
-        assert args.length >= 1;
-        StaticObjectImpl memberName = (StaticObjectImpl) args[args.length - 1];
-        assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
-
-        Method target = (Method) memberName.getHiddenField("vmtarget");
-        int refKind = Target_java_lang_invoke_MethodHandleNatives.getRefKind((int) memberName.getField(memberName.getKlass().getMeta().MNflags));
-        assert ((refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeStatic && !target.hasReceiver()) ||
-                        (refKind != Target_java_lang_invoke_MethodHandleNatives.REF_invokeStatic && target.hasReceiver()));
-        if (target.hasReceiver()) {
-            assert args.length >= 2;
-            // args of the form {receiver, arg1, arg2... , memberName}
-            StaticObjectImpl receiver = (StaticObjectImpl) args[0];
-            if (refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeVirtual || refKind == Target_java_lang_invoke_MethodHandleNatives.REF_invokeInterface) {
-                target = receiver.getKlass().lookupMethod(target.getName(), target.getRawSignature());
-            }
-            return rebasic(target.invokeDirect(receiver, unbasic(args, target.getParsedSignature(), 1, argCount - 2)), Signatures.returnType(target.getParsedSignature()));
-        } else {
-            // args of the form {arg1, arg2... , memberName}
-            return rebasic(target.invokeDirect(null, unbasic(args, target.getParsedSignature(), 0, argCount - 1)), Signatures.returnType(target.getParsedSignature()));
-        }
-    }
+    protected abstract Object linkTo(Object[] args);
 
     @ExplodeLoop
-    private static Object[] unbasic(Object[] args, Symbol<Type>[] targetSig, int from, int length) {
+    static Object[] unbasic(Object[] args, Symbol<Type>[] targetSig, int from, int length, boolean inclReceiver) {
         Object[] res = new Object[length];
-        for (int i = 0; i < length; i++) {
-            Symbol<Type> t = Signatures.parameterType(targetSig, i);
-            if (t == Type._boolean) {
-                res[i] = ((int) args[i + from] != 0);
-            } else if (t == Type._short) { // Unbox to cast.
-                int value = (int) args[i + from];
-                res[i] = (short) value;
-            } else if (t == Type._byte) {
-                int value = (int) args[i + from];
-                res[i] = (byte) value;
-            } else if (t == Type._char) {
-                int value = (int) args[i + from];
-                res[i] = (char) value;
-            } else {
-                res[i] = args[i + from];
-            }
+        int start = 0;
+        if (inclReceiver) {
+            res[start++] = args[from];
+        }
+        for (int i = start; i < length; i++) {
+            Symbol<Type> t = Signatures.parameterType(targetSig, i - start);
+            res[i] = InvokeDynamicCallSiteNode.unbasic(args[i + from], t);
         }
         return res;
     }
 
-    private static Object rebasic(Object result, Symbol<Type> rtype) {
+    // Tranform sub-words to int
+    static Object rebasic(Object result, Symbol<Type> rtype) {
         if (rtype == Type._boolean) {
             return ((boolean) result) ? 1 : 0;
         } else if (rtype == Type._short) { // Unbox to cast.
@@ -105,5 +82,27 @@ public class MHLinkToNode extends EspressoBaseNode {
         } else {
             return result;
         }
+    }
+
+    public static MHLinkToNode create(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
+        switch (id) {
+            case LinkToVirtual:
+                return new LinkToVirtualNode(method);
+            case LinkToStatic:
+                return new LinkToStaticNode(method);
+            case LinkToSpecial:
+                return new LinkToSpecialNode(method);
+            case LinkToInterface:
+                return new LinkToInterfaceNode(method);
+            default:
+                throw EspressoError.shouldNotReachHere("unrecognized linkTo intrinsic: " + id);
+        }
+    }
+
+    static Method getTarget(Object[] args) {
+        assert args.length >= 1;
+        StaticObjectImpl memberName = (StaticObjectImpl) args[args.length - 1];
+        assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
+        return (Method) memberName.getHiddenField(VMTARGET);
     }
 }

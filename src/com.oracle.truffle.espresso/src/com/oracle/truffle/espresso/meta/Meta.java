@@ -202,8 +202,6 @@ public final class Meta implements ContextAccess {
         MethodType = knownKlass(Type.MethodType);
         toMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
         fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
-        // MethodType_cons = MethodType.lookupDeclaredMethod(Name.MethodType,
-        // Signature.MethodType_cons);
 
         MemberName = knownKlass(Type.MemberName);
         getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
@@ -227,17 +225,13 @@ public final class Meta implements ContextAccess {
         MethodHandles = knownKlass(Type.MethodHandles);
         lookup = MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
 
-        DirectMethodHandle = knownKlass(Type.DirectMethodHandle);
-        DMHmember = DirectMethodHandle.lookupDeclaredField(Name.member, Type.MemberName);
-
         CallSite = knownKlass(Type.CallSite);
         CStarget = CallSite.lookupDeclaredField(Name.target, Type.MethodHandle);
 
         LambdaForm = knownKlass(Type.LambdaForm);
-        interpretWithArguments = LambdaForm.lookupDeclaredMethod(Name.interpretWithArguments, Signature.Object_ObjectArray);
         vmentry = LambdaForm.lookupDeclaredField(Name.vmentry, Type.MemberName);
-        arity = LambdaForm.lookupDeclaredField(Name.arity, Type._int);
         isCompiled = LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
+        compileToBytecode = LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.compileToBytecode);
 
         MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
         linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
@@ -410,17 +404,13 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass MethodHandles;
     public final Method lookup;
 
-    public final ObjectKlass DirectMethodHandle;
-    public final Field DMHmember;
-
     public final ObjectKlass CallSite;
     public final Field CStarget;
 
     public final ObjectKlass LambdaForm;
-    public final Method interpretWithArguments;
     public final Field vmentry;
-    public final Field arity;
     public final Field isCompiled;
+    public final Method compileToBytecode;
 
     public final ObjectKlass MethodHandleNatives;
     public final Method linkMethod;

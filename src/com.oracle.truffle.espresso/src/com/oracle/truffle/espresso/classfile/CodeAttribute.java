@@ -73,4 +73,8 @@ public final class CodeAttribute extends Attribute {
     public ExceptionHandler[] getExceptionHandlers() {
         return exceptionHandlerEntries;
     }
+
+    public final CodeAttribute dupe() {
+        return new CodeAttribute(getName(), maxStack, maxLocals, code.clone(), exceptionHandlerEntries, attributes);
+    }
 }
