@@ -66,44 +66,21 @@ public class LLVMPThreadIntrinsics {
                 store = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
             }
 
-            // pointer to store the thread id
-            LLVMPointer threadPtr = (LLVMPointer) thread; // is native
-
-            // arguments are all pointers
-            LLVMNativePointer attrPtr = (LLVMNativePointer) attr;
-            LLVMManagedPointer functionPtr = (LLVMManagedPointer) startRoutine;
-            LLVMNativePointer argPtr = (LLVMNativePointer) arg;
-
-            // print arg types of function
-            Type[] typeArr = ((LLVMFunctionDescriptor) functionPtr.getObject()).asFunction().getType().getArgumentTypes();
-            for (Type t : typeArr) {
-                printDebug("type: " + t.toString() + "\n");
-            }
-
-            // void pointer arg is type i8*...
-
             // create thread for execution of function
             Thread t = getContextReference().get().getEnv().createThread(() -> {
                 CompilerDirectives.transferToInterpreter();
                 RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(getLLVMLanguage()));
                 callTarget.call(startRoutine, arg);
-
-                printDebug("func is done...");
             });
 
             // store cur id in thread var
             store.executeWithTarget(thread, t.getId());
-            printDebug("id of thread: " + t.getId());
+
             // store thread with thread id in context
             getContextReference().get().threadStorage.put(t.getId(), t);
 
             // start thread
             t.start();
-
-            // interesting stuff maybe
-            // getContextReference().get().getHandleForManagedObject():
-            // getContextReference().get().getThreadingStack();
-            // getContextReference().get().registerThread();
 
             return 0;
         }
@@ -176,13 +153,9 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadExit extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object retval) {
-            // LLVMPointer retPtr = (LLVMPointer) retval;
-            printDebug("entered exit...");
             getContextReference().get().retValStorage.put(Thread.currentThread().getId(), retval);
-            printDebug(retval.toString());
-            // stop current thread
-            // Thread.currentThread().interrupt();
-            // Thread.currentThread().stop();
+            // stop this thread, does not work yet
+            Thread.currentThread().interrupt();
             return 0;
         }
     }
@@ -196,33 +169,27 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object th, Object threadReturn) {
             if (storeNode == null) {
-                // storeNode = LLVMPointerStoreNodeGen.create(null, null);
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 storeNode = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
             }
             long thLong = (long) th;
             try {
-                printDebug("join try");
+                // join thread
                 Thread thread = (Thread) getContextReference().get().threadStorage.get(thLong);
                 thread.join();
-                printDebug("is joined");
+
+                // get return value
                 Object retVal = getContextReference().get().retValStorage.get(thLong);
-                printDebug("aus der retValStorage: " + retVal.toString());
 
                 // store return value in at ptr
-
-                storeNode.executeWithTarget(threadReturn, retVal);
-
-                printDebug("pointer written...");
-
+                LLVMPointer thReturnPtr = (LLVMPointer) threadReturn;
+                if (!thReturnPtr.isNull())
+                    storeNode.executeWithTarget(threadReturn, retVal);
             } catch (Exception e) {
                 e.printStackTrace();
-                printDebug("catch exc now...");
-
             }
-            return 55;
+            return 0;
         }
-
     }
 
     public abstract static class LLVMPThreadMyTest extends LLVMBuiltin {

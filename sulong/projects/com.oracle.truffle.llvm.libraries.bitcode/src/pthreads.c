@@ -32,7 +32,7 @@
 #include <pthread.h>
 
 #include "unsupported.h"
-
+// deleted create, join, exit, mutex_lock, mutex_unlock
 int pthread_attr_destroy(pthread_attr_t *attr) {
   ERR_UNSUPPORTED(pthread_attr_destroy);
 }
@@ -155,17 +155,11 @@ int pthread_mutex_getprioceiling(const pthread_mutex_t *restrict mutex, int *res
 int pthread_mutex_init(pthread_mutex_t *restrict mutex, const pthread_mutexattr_t *restrict attr) {
   ERR_UNSUPPORTED(pthread_mutex_init);
 }
-int pthread_mutex_lock(pthread_mutex_t *mutex) {
-  ERR_UNSUPPORTED(pthread_mutex_lock);
-}
 int pthread_mutex_setprioceiling(pthread_mutex_t *restrict mutex, int prioceiling, int *restrict old_ceiling) {
   ERR_UNSUPPORTED(pthread_mutex_setprioceiling);
 }
 int pthread_mutex_trylock(pthread_mutex_t *mutex) {
   ERR_UNSUPPORTED(pthread_mutex_trylock);
-}
-int pthread_mutex_unlock(pthread_mutex_t *mutex) {
-  ERR_UNSUPPORTED(pthread_mutex_unlock);
 }
 int pthread_mutexattr_destroy(pthread_mutexattr_t *attr) {
   ERR_UNSUPPORTED(pthread_mutexattr_destroy);
