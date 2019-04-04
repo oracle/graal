@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,17 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.runtime.nodes.ExpectStringNode;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.regex.runtime.nodes.ToStringNode;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
 
 /**
@@ -70,6 +71,7 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  * with the same interop semantics as {@link RegexCompiler}</li>
  * </ol>
  */
+@ExportLibrary(InteropLibrary.class)
 public class RegexEngineBuilder implements RegexLanguageObject {
 
     private final RegexLanguage language;
@@ -82,56 +84,40 @@ public class RegexEngineBuilder implements RegexLanguageObject {
         return object instanceof RegexEngineBuilder;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return RegexEngineBuilderMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    public boolean isExecutable() {
+        return true;
     }
 
-    @MessageResolution(receiverType = RegexEngineBuilder.class)
-    static class RegexEngineBuilderMessageResolution {
-
-        @Resolve(message = "EXECUTE")
-        abstract static class RegexEngineBuilderExecuteNode extends Node {
-
-            @Child private Node isExecutableNode = Message.IS_EXECUTABLE.createNode();
-            @Child private ExpectStringNode expectOptionsNode = ExpectStringNode.create();
-
-            public Object access(RegexEngineBuilder receiver, Object[] args) {
-                if (args.length > 2) {
-                    throw ArityException.raise(2, args.length);
-                }
-                RegexOptions options = RegexOptions.DEFAULT;
-                if (args.length >= 1) {
-                    options = RegexOptions.parse(expectOptionsNode.execute(args[0]));
-                }
-                TruffleObject fallbackCompiler = null;
-                if (args.length >= 2) {
-                    if (!(args[1] instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject) args[1]))) {
-                        throw UnsupportedTypeException.raise(args);
-                    }
-                    fallbackCompiler = (TruffleObject) args[1];
-                }
-                return createRegexEngine(receiver.language, options, fallbackCompiler);
-            }
-
-            @TruffleBoundary
-            private static RegexEngine createRegexEngine(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
-                if (fallbackCompiler != null) {
-                    return new CachingRegexEngine(new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler),
-                                    options);
-                } else {
-                    return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options);
-                }
-            }
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Cached ToStringNode expectOptionsNode,
+                    @CachedLibrary(limit = "1") InteropLibrary fallbackCompilers) throws ArityException, UnsupportedTypeException {
+        if (args.length > 2) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(2, args.length);
         }
-
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class RegexEngineBuilderIsExecutableNode extends Node {
-
-            @SuppressWarnings("unused")
-            public boolean access(RegexEngineBuilder receiver) {
-                return true;
+        RegexOptions options = RegexOptions.DEFAULT;
+        if (args.length >= 1) {
+            options = RegexOptions.parse(expectOptionsNode.execute(args[0]));
+        }
+        TruffleObject fallbackCompiler = null;
+        if (args.length >= 2) {
+            if (!(fallbackCompilers.isExecutable(args[1]))) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.create(args);
             }
+            fallbackCompiler = (TruffleObject) args[1];
+        }
+        return createRegexEngine(language, options, fallbackCompiler);
+    }
+
+    @TruffleBoundary
+    private static RegexEngine createRegexEngine(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
+        if (fallbackCompiler != null) {
+            return new CachingRegexEngine(new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler), options);
+        } else {
+            return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options);
         }
     }
 }

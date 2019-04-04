@@ -48,6 +48,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
@@ -68,7 +69,7 @@ public class PolyglotEngineWithJavaScript {
 
     @Before
     public void initEngine() {
-        context = Context.newBuilder().build();
+        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
     }
 
     @After

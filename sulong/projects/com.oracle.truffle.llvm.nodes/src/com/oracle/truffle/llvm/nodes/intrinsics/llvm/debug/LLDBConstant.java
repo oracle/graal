@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,8 +33,11 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -153,6 +156,11 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 result >>>= Long.SIZE - bitSize;
                 return new BigInteger(Long.toUnsignedString(result));
             }
+        }
+
+        @Override
+        public Object computeAddress(long bitOffset) {
+            return new Pointer(LLVMNativePointer.create(value)).computeAddress(bitOffset);
         }
     }
 
@@ -319,7 +327,27 @@ abstract class LLDBConstant implements LLVMDebugValue {
 
         @Override
         public boolean isAlwaysSafeToDereference(long bitOffset) {
-            return LLDBSupport.pointsToObjectAccess(pointer);
+            if (LLDBSupport.isNestedManagedPointer(pointer) || LLDBSupport.pointsToObjectAccess(pointer)) {
+                return true;
+            }
+
+            if (pointer.isNull()) {
+                return false;
+            }
+
+            if (LLVMManagedPointer.isInstance(pointer)) {
+                final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(pointer);
+
+                // this is somewhat lazy, but saves us from actually handling these cases
+                if (bitOffset != 0L || managedPointer.getOffset() != 0L) {
+                    return false;
+                }
+
+                final TruffleObject target = managedPointer.getObject();
+                return LLVMManagedPointer.isInstance(target);
+            }
+
+            return bitOffset == 0L && pointer.getExportType() != null;
         }
 
         @Override
@@ -337,7 +365,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 TruffleObject foreign = null;
 
                 if (LLVMNativePointer.isInstance(pointer)) {
-                    foreign = LLDBSupport.getContext().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
+                    foreign = LLVMLanguage.getLLVMContextReference().get().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
 
                 } else if (LLVMManagedPointer.isInstance(pointer)) {
                     foreign = LLVMManagedPointer.cast(pointer).getObject();
@@ -353,10 +381,24 @@ abstract class LLDBConstant implements LLVMDebugValue {
         @Override
         @TruffleBoundary
         public boolean isInteropValue() {
-            if (LLVMNativePointer.isInstance(pointer)) {
-                return LLDBSupport.getContext().isHandle(LLVMNativePointer.cast(pointer));
+            if (pointer.isNull()) {
+                return false;
+
+            } else if (LLVMNativePointer.isInstance(pointer)) {
+                return LLVMLanguage.getLLVMContextReference().get().isHandle(LLVMNativePointer.cast(pointer));
+
             } else if (LLVMManagedPointer.isInstance(pointer)) {
-                return !LLDBSupport.pointsToObjectAccess(pointer);
+                final TruffleObject target = LLVMManagedPointer.cast(pointer).getObject();
+
+                if (LLVMPointer.isInstance(target)) {
+                    return false;
+
+                } else if (LLDBSupport.pointsToObjectAccess(pointer)) {
+                    return false;
+
+                } else {
+                    return !(target instanceof LLVMBoxedPrimitive);
+                }
             } else {
                 throw new IllegalStateException("Unsupported Pointer: " + pointer);
             }

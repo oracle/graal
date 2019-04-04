@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,9 +120,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.services.Services;
 
 /**
- * Implementation of the Truffle runtime when running on top of Graal.
+ * Implementation of the Truffle runtime when running on top of Graal. There is only one per VM.
  */
 public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
@@ -535,7 +536,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 } else {
                     skipFrames--;
                 }
-            } else if (frame.isMethod(methods.callNodeMethod)) {
+            } else if (frame.isMethod(methods.callDirectMethod) || frame.isMethod(methods.callIndirectMethod) || frame.isMethod(methods.callInlinedMethod) ||
+                            frame.isMethod(methods.callInliningForcedMethod)) {
                 callNodeFrame = frame;
             }
             return null;
@@ -640,7 +642,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public RootCallTarget createCallTarget(RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
         final RootCallTarget newCallTarget = createClonedCallTarget(null, rootNode);
-        TruffleSplittingStrategy.newTargetCreated(tvmci, newCallTarget);
+        TruffleSplittingStrategy.newTargetCreated(newCallTarget);
         return newCallTarget;
     }
 
@@ -870,7 +872,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected static LayoutFactory selectObjectLayoutFactory(Iterable<Iterable<LayoutFactory>> availableLayoutFactories) {
-        String layoutFactoryImplName = System.getProperty("truffle.object.LayoutFactory");
+        String layoutFactoryImplName = Services.getSavedProperties().get("truffle.object.LayoutFactory");
         LayoutFactory bestLayoutFactory = null;
         for (Iterable<LayoutFactory> currentLayoutFactories : availableLayoutFactories) {
             for (LayoutFactory currentLayoutFactory : currentLayoutFactories) {
@@ -898,7 +900,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     private static int getJavaSpecificationVersion() {
-        String value = System.getProperty("java.specification.version");
+        String value = Services.getSavedProperties().get("java.specification.version");
         if (value.startsWith("1.")) {
             value = value.substring(2);
         }
@@ -906,16 +908,22 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected static final class CallMethods {
-        public final ResolvedJavaMethod callNodeMethod;
+        public final ResolvedJavaMethod callDirectMethod;
+        public final ResolvedJavaMethod callInlinedMethod;
+        public final ResolvedJavaMethod callInliningForcedMethod;
+        public final ResolvedJavaMethod callIndirectMethod;
         public final ResolvedJavaMethod callTargetMethod;
         public final ResolvedJavaMethod callOSRMethod;
         public final ResolvedJavaMethod[] anyFrameMethod;
 
         private CallMethods(MetaAccessProvider metaAccess) {
-            this.callNodeMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_NODE_METHOD);
+            this.callDirectMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_DIRECT);
+            this.callIndirectMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INDIRECT);
+            this.callInlinedMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED);
+            this.callInliningForcedMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED_FORCED);
             this.callTargetMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_TARGET_METHOD);
             this.callOSRMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_OSR_METHOD);
-            this.anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod, callTargetMethod, callOSRMethod};
+            this.anyFrameMethod = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, callTargetMethod, callOSRMethod, callInliningForcedMethod};
         }
 
         public static CallMethods lookup(MetaAccessProvider metaAccess) {

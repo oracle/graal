@@ -6,12 +6,6 @@ CLSS public abstract interface java.io.Serializable
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception
 
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
-
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
 cons public init()
@@ -125,6 +119,7 @@ CLSS public final org.graalvm.polyglot.Context$Builder
 meth public org.graalvm.polyglot.Context build()
 meth public org.graalvm.polyglot.Context$Builder allowAllAccess(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowCreateThread(boolean)
+meth public org.graalvm.polyglot.Context$Builder allowExperimentalOptions(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowHostAccess(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowHostClassLoading(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowIO(boolean)
@@ -135,12 +130,14 @@ meth public org.graalvm.polyglot.Context$Builder err(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
 meth public org.graalvm.polyglot.Context$Builder hostClassFilter(java.util.function.Predicate<java.lang.String>)
 meth public org.graalvm.polyglot.Context$Builder in(java.io.InputStream)
+meth public org.graalvm.polyglot.Context$Builder logHandler(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder logHandler(java.util.logging.Handler)
 meth public org.graalvm.polyglot.Context$Builder option(java.lang.String,java.lang.String)
 meth public org.graalvm.polyglot.Context$Builder options(java.util.Map<java.lang.String,java.lang.String>)
 meth public org.graalvm.polyglot.Context$Builder out(java.io.OutputStream)
+meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateThread,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,arguments,customFileSystem,customLogHandler,err,hostClassFilter,in,onlyLanguages,options,out,sharedEngine
+hfds allowAllAccess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,arguments,customFileSystem,customLogHandler,err,hostClassFilter,in,messageTransport,onlyLanguages,options,out,sharedEngine
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -150,6 +147,7 @@ meth public java.lang.String getVersion()
 meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Instrument> getInstruments()
 meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Language> getLanguages()
 meth public org.graalvm.options.OptionDescriptors getOptions()
+meth public static java.nio.file.Path findHome()
 meth public static org.graalvm.polyglot.Engine create()
 meth public static org.graalvm.polyglot.Engine$Builder newBuilder()
 meth public void close()
@@ -161,15 +159,18 @@ hcls APIAccessImpl,ImplHolder,PolyglotInvalid
 CLSS public final org.graalvm.polyglot.Engine$Builder
  outer org.graalvm.polyglot.Engine
 meth public org.graalvm.polyglot.Engine build()
+meth public org.graalvm.polyglot.Engine$Builder allowExperimentalOptions(boolean)
 meth public org.graalvm.polyglot.Engine$Builder err(java.io.OutputStream)
 meth public org.graalvm.polyglot.Engine$Builder in(java.io.InputStream)
+meth public org.graalvm.polyglot.Engine$Builder logHandler(java.io.OutputStream)
 meth public org.graalvm.polyglot.Engine$Builder logHandler(java.util.logging.Handler)
 meth public org.graalvm.polyglot.Engine$Builder option(java.lang.String,java.lang.String)
 meth public org.graalvm.polyglot.Engine$Builder options(java.util.Map<java.lang.String,java.lang.String>)
 meth public org.graalvm.polyglot.Engine$Builder out(java.io.OutputStream)
+meth public org.graalvm.polyglot.Engine$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Engine$Builder useSystemProperties(boolean)
 supr java.lang.Object
-hfds boundEngine,customLogHandler,err,in,options,out,useSystemProperties
+hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTransport,options,out,useSystemProperties
 
 CLSS public final org.graalvm.polyglot.Instrument
 meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
@@ -182,10 +183,12 @@ hfds impl
 
 CLSS public final org.graalvm.polyglot.Language
 meth public boolean isInteractive()
+meth public java.lang.String getDefaultMimeType()
 meth public java.lang.String getId()
 meth public java.lang.String getImplementationName()
 meth public java.lang.String getName()
 meth public java.lang.String getVersion()
+meth public java.util.Set<java.lang.String> getMimeTypes()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 supr java.lang.Object
 hfds impl
@@ -231,6 +234,8 @@ hfds impl
 CLSS public final org.graalvm.polyglot.Source
 innr public Builder
 meth public boolean equals(java.lang.Object)
+meth public boolean hasBytes()
+meth public boolean hasCharacters()
 meth public boolean isInteractive()
 meth public boolean isInternal()
 meth public int getColumnNumber(int)
@@ -241,22 +246,29 @@ meth public int getLineNumber(int)
 meth public int getLineStartOffset(int)
 meth public int hashCode()
 meth public java.io.InputStream getInputStream()
+ anno 0 java.lang.Deprecated()
 meth public java.io.Reader getReader()
 meth public java.lang.CharSequence getCharacters()
 meth public java.lang.CharSequence getCharacters(int)
 meth public java.lang.String getLanguage()
+meth public java.lang.String getMimeType()
 meth public java.lang.String getName()
 meth public java.lang.String getPath()
 meth public java.lang.String toString()
 meth public java.net.URI getURI()
 meth public java.net.URL getURL()
+meth public org.graalvm.polyglot.io.ByteSequence getBytes()
 meth public static java.lang.String findLanguage(java.io.File) throws java.io.IOException
 meth public static java.lang.String findLanguage(java.lang.String)
+meth public static java.lang.String findLanguage(java.net.URL) throws java.io.IOException
+meth public static java.lang.String findMimeType(java.io.File) throws java.io.IOException
+meth public static java.lang.String findMimeType(java.net.URL) throws java.io.IOException
 meth public static org.graalvm.polyglot.Source create(java.lang.String,java.lang.CharSequence)
 meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.String,java.io.File)
 meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.String,java.io.Reader,java.lang.String)
 meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.String,java.lang.CharSequence,java.lang.String)
 meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.String,java.net.URL)
+meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.String,org.graalvm.polyglot.io.ByteSequence,java.lang.String)
 supr java.lang.Object
 hfds EMPTY,IMPL,impl,language
 
@@ -267,15 +279,21 @@ meth public org.graalvm.polyglot.Source buildLiteral()
 meth public org.graalvm.polyglot.Source$Builder cached(boolean)
 meth public org.graalvm.polyglot.Source$Builder content(java.lang.CharSequence)
 meth public org.graalvm.polyglot.Source$Builder content(java.lang.String)
+meth public org.graalvm.polyglot.Source$Builder content(org.graalvm.polyglot.io.ByteSequence)
+meth public org.graalvm.polyglot.Source$Builder encoding(java.nio.charset.Charset)
 meth public org.graalvm.polyglot.Source$Builder interactive(boolean)
 meth public org.graalvm.polyglot.Source$Builder internal(boolean)
+meth public org.graalvm.polyglot.Source$Builder mimeType(java.lang.String)
 meth public org.graalvm.polyglot.Source$Builder name(java.lang.String)
 meth public org.graalvm.polyglot.Source$Builder uri(java.net.URI)
 supr java.lang.Object
-hfds cached,content,interactive,internal,language,name,origin,uri
+hfds cached,content,fileEncoding,interactive,internal,language,mimeType,name,origin,uri
 
 CLSS public final org.graalvm.polyglot.SourceSection
 meth public boolean equals(java.lang.Object)
+meth public boolean hasCharIndex()
+meth public boolean hasColumns()
+meth public boolean hasLines()
 meth public boolean isAvailable()
 meth public int getCharEndIndex()
 meth public int getCharIndex()
@@ -305,6 +323,7 @@ hfds rawType,type
 
 CLSS public final org.graalvm.polyglot.Value
 meth public !varargs org.graalvm.polyglot.Value execute(java.lang.Object[])
+meth public !varargs org.graalvm.polyglot.Value invokeMember(java.lang.String,java.lang.Object[])
 meth public !varargs org.graalvm.polyglot.Value newInstance(java.lang.Object[])
 meth public !varargs void executeVoid(java.lang.Object[])
 meth public <%0 extends java.lang.Object> {%%0} as(java.lang.Class<{%%0}>)
@@ -314,6 +333,7 @@ meth public <%0 extends org.graalvm.polyglot.proxy.Proxy> {%%0} asProxyObject()
 meth public boolean asBoolean()
 meth public boolean canExecute()
 meth public boolean canInstantiate()
+meth public boolean canInvokeMember(java.lang.String)
 meth public boolean fitsInByte()
 meth public boolean fitsInDouble()
 meth public boolean fitsInFloat()
@@ -353,6 +373,14 @@ meth public void setArrayElement(long,java.lang.Object)
 supr java.lang.Object
 hfds impl,receiver
 
+CLSS public abstract interface org.graalvm.polyglot.io.ByteSequence
+meth public abstract byte byteAt(int)
+meth public abstract int length()
+meth public byte[] toByteArray()
+meth public java.util.stream.IntStream bytes()
+meth public org.graalvm.polyglot.io.ByteSequence subSequence(int,int)
+meth public static org.graalvm.polyglot.io.ByteSequence create(byte[])
+
 CLSS public abstract interface org.graalvm.polyglot.io.FileSystem
 meth public !varargs void copy(java.nio.file.Path,java.nio.file.Path,java.nio.file.CopyOption[]) throws java.io.IOException
 meth public !varargs void createSymbolicLink(java.nio.file.Path,java.nio.file.Path,java.nio.file.attribute.FileAttribute<?>[]) throws java.io.IOException
@@ -368,8 +396,29 @@ meth public abstract java.nio.file.Path parsePath(java.lang.String)
 meth public abstract java.nio.file.Path parsePath(java.net.URI)
 meth public abstract java.nio.file.Path toAbsolutePath(java.nio.file.Path)
 meth public abstract void delete(java.nio.file.Path) throws java.io.IOException
+meth public java.lang.String getMimeType(java.nio.file.Path)
+meth public java.lang.String getSeparator()
+meth public java.nio.charset.Charset getEncoding(java.nio.file.Path)
 meth public java.nio.file.Path readSymbolicLink(java.nio.file.Path) throws java.io.IOException
 meth public void createLink(java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
+meth public void setCurrentWorkingDirectory(java.nio.file.Path)
+
+CLSS public abstract interface org.graalvm.polyglot.io.MessageEndpoint
+meth public abstract void sendBinary(java.nio.ByteBuffer) throws java.io.IOException
+meth public abstract void sendClose() throws java.io.IOException
+meth public abstract void sendPing(java.nio.ByteBuffer) throws java.io.IOException
+meth public abstract void sendPong(java.nio.ByteBuffer) throws java.io.IOException
+meth public abstract void sendText(java.lang.String) throws java.io.IOException
+
+CLSS public abstract interface org.graalvm.polyglot.io.MessageTransport
+innr public final static VetoException
+meth public abstract org.graalvm.polyglot.io.MessageEndpoint open(java.net.URI,org.graalvm.polyglot.io.MessageEndpoint) throws java.io.IOException,org.graalvm.polyglot.io.MessageTransport$VetoException
+
+CLSS public final static org.graalvm.polyglot.io.MessageTransport$VetoException
+ outer org.graalvm.polyglot.io.MessageTransport
+cons public init(java.lang.String)
+supr java.lang.Exception
+hfds serialVersionUID
 
 CLSS abstract interface org.graalvm.polyglot.io.package-info
 
@@ -448,12 +497,6 @@ meth public abstract java.lang.Object getMemberKeys()
 meth public abstract void putMember(java.lang.String,org.graalvm.polyglot.Value)
 meth public boolean removeMember(java.lang.String)
 meth public static org.graalvm.polyglot.proxy.ProxyObject fromMap(java.util.Map<java.lang.String,java.lang.Object>)
-
-CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyPrimitive
- anno 0 java.lang.Deprecated()
- anno 0 java.lang.FunctionalInterface()
-intf org.graalvm.polyglot.proxy.Proxy
-meth public abstract java.lang.Object asPrimitive()
 
 CLSS abstract interface org.graalvm.polyglot.proxy.package-info
 

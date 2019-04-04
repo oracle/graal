@@ -31,6 +31,7 @@ import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -72,14 +73,14 @@ public class ValueToHostClassCastExceptionDeoptTest {
      * Tests an issue that arose when (with immediate compiling) an interop value (a java method) is
      * converted to anything via the "as" methods (asNativePointer in this case). The issue use to
      * manifest with repeated compilations caused by an exception being thrown (from
-     * InteropAccessNode} during specialisation, causing the state to constantly be 0.
+     * InteropAccessNode} during specialization, causing the state to constantly be 0.
      */
     @Test
     public void test() {
         final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
         final CompilationCountingListener listener = new CompilationCountingListener();
         runtime.addListener(listener);
-        final Value toString = Context.create().asValue(String.class).getMember("toString");
+        final Value toString = Context.newBuilder().allowHostAccess(HostAccess.ALL).build().asValue(String.class).getMember("toString");
         for (int i = 0; i < 10; i++) {
             try {
                 toString.asNativePointer();

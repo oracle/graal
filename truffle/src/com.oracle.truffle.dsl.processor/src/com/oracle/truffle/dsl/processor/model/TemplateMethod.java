@@ -83,11 +83,8 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         this.method = method;
         this.markerAnnotation = markerAnnotation;
         this.returnType = returnType;
-        this.parameters = new ArrayList<>();
+        this.parameters = new ArrayList<>(parameters);
         for (Parameter param : parameters) {
-            Parameter newParam = new Parameter(param);
-            this.parameters.add(newParam);
-            newParam.setMethod(this);
             parameterCache.put(param.getLocalName(), param);
         }
         if (returnType != null) {
@@ -103,13 +100,11 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     public void removeParameter(Parameter p) {
         this.parameters.remove(p);
         this.parameterCache.remove(p.getLocalName());
-        p.setMethod(this);
     }
 
     public void addParameter(int index, Parameter p) {
         this.parameters.add(index, p);
         this.parameterCache.put(p.getLocalName(), p);
-        p.setMethod(this);
     }
 
     public String createReferenceName() {
@@ -177,7 +172,6 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             parameters.set(index, newParameter);
         }
         parameterCache.put(newParameter.getLocalName(), newParameter);
-        newParameter.setMethod(this);
     }
 
     public Iterable<Parameter> getDynamicParameters() {
@@ -318,8 +312,8 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         }
         if (compare == 0) {
             // if still no difference sort by enclosing type name
-            TypeElement enclosingType1 = ElementUtils.findNearestEnclosingType(getMethod());
-            TypeElement enclosingType2 = ElementUtils.findNearestEnclosingType(o.getMethod());
+            TypeElement enclosingType1 = ElementUtils.findNearestEnclosingType(getMethod()).orElseThrow(AssertionError::new);
+            TypeElement enclosingType2 = ElementUtils.findNearestEnclosingType(o.getMethod()).orElseThrow(AssertionError::new);
             compare = enclosingType1.getQualifiedName().toString().compareTo(enclosingType2.getQualifiedName().toString());
         }
         return compare;

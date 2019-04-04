@@ -41,13 +41,12 @@
 package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = ValidTruffleObject0.class)
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject0.class)
+@SuppressWarnings("deprecation")
 public class ValidTruffleObject0MR {
-    @Resolve(message = "com.oracle.truffle.api.dsl.test.interop.MyMessage")
+    @com.oracle.truffle.api.interop.Resolve(message = "com.oracle.truffle.api.dsl.test.interop.MyMessage")
     public abstract static class AcceptMyMessage extends Node {
         @SuppressWarnings("unused")
         public Object access(VirtualFrame frame, ValidTruffleObject0 object, int a, double b, Object c) {

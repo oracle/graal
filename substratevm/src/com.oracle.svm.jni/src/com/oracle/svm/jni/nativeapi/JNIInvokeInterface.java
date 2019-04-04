@@ -31,6 +31,8 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetEnvFunctionPointer;
+
 @CContext(JNIHeaderDirectives.class)
 @CStruct(value = "JNIInvokeInterface_", addStructKeyword = true)
 public interface JNIInvokeInterface extends PointerBase {
@@ -60,7 +62,7 @@ public interface JNIInvokeInterface extends PointerBase {
     void setGetEnv(CFunctionPointer p);
 
     @CField("GetEnv")
-    <T extends CFunctionPointer> T getGetEnv();
+    GetEnvFunctionPointer getGetEnv();
 
     @CField("DestroyJavaVM")
     void setDestroyJavaVM(CFunctionPointer p);

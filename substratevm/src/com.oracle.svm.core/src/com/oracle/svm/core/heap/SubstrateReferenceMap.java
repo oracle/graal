@@ -36,7 +36,6 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.ReferenceMapEncoder.OffsetIterator;
 
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.StackSlot;
@@ -149,8 +148,8 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
     }
 
     @Override
-    public OffsetIterator getOffsets() {
-        return new OffsetIterator() {
+    public ReferenceMapEncoder.OffsetIterator getOffsets() {
+        return new ReferenceMapEncoder.OffsetIterator() {
             private int nextIndex = input.nextSetBit(0);
 
             @Override

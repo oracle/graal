@@ -9,6 +9,12 @@ meth public abstract void close() throws java.lang.Exception
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
 meth public abstract int compareTo({java.lang.Comparable%0})
 
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+
 CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
 cons protected init(java.lang.String,int)
 intf java.io.Serializable
@@ -25,6 +31,15 @@ meth public java.lang.String toString()
 meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
 supr java.lang.Object
 hfds name,ordinal
+
+CLSS public java.lang.Exception
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Throwable
+hfds serialVersionUID
 
 CLSS public abstract interface !annotation java.lang.FunctionalInterface
  anno 0 java.lang.annotation.Documented()
@@ -45,6 +60,39 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public java.lang.RuntimeException
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Exception
+hfds serialVersionUID
+
+CLSS public java.lang.Throwable
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+intf java.io.Serializable
+meth public final java.lang.Throwable[] getSuppressed()
+meth public final void addSuppressed(java.lang.Throwable)
+meth public java.lang.StackTraceElement[] getStackTrace()
+meth public java.lang.String getLocalizedMessage()
+meth public java.lang.String getMessage()
+meth public java.lang.String toString()
+meth public java.lang.Throwable fillInStackTrace()
+meth public java.lang.Throwable getCause()
+meth public java.lang.Throwable initCause(java.lang.Throwable)
+meth public void printStackTrace()
+meth public void printStackTrace(java.io.PrintStream)
+meth public void printStackTrace(java.io.PrintWriter)
+meth public void setStackTrace(java.lang.StackTraceElement[])
+supr java.lang.Object
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation
 meth public abstract boolean equals(java.lang.Object)
@@ -71,6 +119,11 @@ CLSS public abstract interface !annotation java.lang.annotation.Target
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.annotation.ElementType[] value()
+
+CLSS public final org.graalvm.nativeimage.CurrentIsolate
+meth public static org.graalvm.nativeimage.Isolate getIsolate()
+meth public static org.graalvm.nativeimage.IsolateThread getCurrentThread()
+supr java.lang.Object
 
 CLSS public abstract interface org.graalvm.nativeimage.Feature
 innr public abstract interface static AfterAnalysisAccess
@@ -196,6 +249,39 @@ intf org.graalvm.word.PointerBase
 CLSS public abstract interface org.graalvm.nativeimage.IsolateThread
 intf org.graalvm.word.PointerBase
 
+CLSS public final org.graalvm.nativeimage.Isolates
+innr public final static CreateIsolateParameters
+innr public final static IsolateException
+meth public static org.graalvm.nativeimage.Isolate getIsolate(org.graalvm.nativeimage.IsolateThread)
+meth public static org.graalvm.nativeimage.IsolateThread attachCurrentThread(org.graalvm.nativeimage.Isolate)
+meth public static org.graalvm.nativeimage.IsolateThread createIsolate(org.graalvm.nativeimage.Isolates$CreateIsolateParameters)
+meth public static org.graalvm.nativeimage.IsolateThread getCurrentThread(org.graalvm.nativeimage.Isolate)
+meth public static void detachThread(org.graalvm.nativeimage.IsolateThread)
+meth public static void tearDownIsolate(org.graalvm.nativeimage.IsolateThread)
+supr java.lang.Object
+
+CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameters
+ outer org.graalvm.nativeimage.Isolates
+innr public final static Builder
+meth public org.graalvm.word.UnsignedWord getReservedAddressSpaceSize()
+meth public static org.graalvm.nativeimage.Isolates$CreateIsolateParameters getDefault()
+supr java.lang.Object
+hfds DEFAULT,reservedAddressSpaceSize
+
+CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder
+ outer org.graalvm.nativeimage.Isolates$CreateIsolateParameters
+cons public init()
+meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters build()
+meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder reservedAddressSpaceSize(org.graalvm.word.UnsignedWord)
+supr java.lang.Object
+hfds reservedAddressSpaceSize
+
+CLSS public final static org.graalvm.nativeimage.Isolates$IsolateException
+ outer org.graalvm.nativeimage.Isolates
+cons public init(java.lang.String)
+supr java.lang.RuntimeException
+hfds serialVersionUID
+
 CLSS public abstract interface org.graalvm.nativeimage.LogHandler
 meth public abstract void fatalError()
 meth public abstract void flush()
@@ -223,12 +309,18 @@ CLSS public abstract interface org.graalvm.nativeimage.Platform
 fld public final static java.lang.String PLATFORM_PROPERTY_NAME = "svm.platform"
 innr public abstract interface static AMD64
 innr public abstract interface static DARWIN
+innr public abstract interface static DARWIN_AND_JNI
+innr public abstract interface static DARWIN_JNI
 innr public abstract interface static LINUX
+innr public abstract interface static LINUX_AND_JNI
+innr public abstract interface static LINUX_JNI
 innr public abstract interface static WINDOWS
-innr public final static DARWIN_AMD64
 innr public final static HOSTED_ONLY
-innr public final static LINUX_AMD64
-innr public final static WINDOWS_AMD64
+innr public static DARWIN_AMD64
+innr public static DARWIN_JNI_AMD64
+innr public static LINUX_AMD64
+innr public static LINUX_JNI_AMD64
+innr public static WINDOWS_AMD64
 meth public static boolean includedIn(java.lang.Class<? extends org.graalvm.nativeimage.Platform>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$AMD64
@@ -239,11 +331,28 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
 
-CLSS public final static org.graalvm.nativeimage.Platform$DARWIN_AMD64
+CLSS public static org.graalvm.nativeimage.Platform$DARWIN_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$DARWIN
+intf org.graalvm.nativeimage.Platform$DARWIN_AND_JNI
+supr java.lang.Object
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN_AND_JNI
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN_JNI
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform
+
+CLSS public static org.graalvm.nativeimage.Platform$DARWIN_JNI_AMD64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AMD64
+intf org.graalvm.nativeimage.Platform$DARWIN_AND_JNI
+intf org.graalvm.nativeimage.Platform$DARWIN_JNI
 supr java.lang.Object
 
 CLSS public final static org.graalvm.nativeimage.Platform$HOSTED_ONLY
@@ -255,18 +364,35 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
 
-CLSS public final static org.graalvm.nativeimage.Platform$LINUX_AMD64
+CLSS public static org.graalvm.nativeimage.Platform$LINUX_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$LINUX
+intf org.graalvm.nativeimage.Platform$LINUX_AND_JNI
+supr java.lang.Object
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX_AND_JNI
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX_JNI
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform
+
+CLSS public static org.graalvm.nativeimage.Platform$LINUX_JNI_AMD64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AMD64
+intf org.graalvm.nativeimage.Platform$LINUX_AND_JNI
+intf org.graalvm.nativeimage.Platform$LINUX_JNI
 supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
 
-CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
+CLSS public static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
@@ -279,13 +405,42 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.Platforms
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.Class<? extends org.graalvm.nativeimage.Platform>[] value()
 
+CLSS public final org.graalvm.nativeimage.ProcessProperties
+meth public static boolean destroy(long)
+meth public static boolean destroyForcibly(long)
+meth public static boolean isAlive(long)
+meth public static int waitForProcessExit(long)
+meth public static java.lang.String getExecutableName()
+meth public static java.lang.String getObjectFile(java.lang.String)
+meth public static java.lang.String getObjectFile(org.graalvm.nativeimage.c.function.CEntryPointLiteral<?>)
+meth public static java.lang.String setLocale(java.lang.String,java.lang.String)
+meth public static long getProcessID()
+meth public static long getProcessID(java.lang.Process)
+supr java.lang.Object
+
+CLSS public final org.graalvm.nativeimage.RuntimeClassInitialization
+meth public !varargs static void delayClassInitialization(java.lang.Class<?>[])
+meth public !varargs static void rerunClassInitialization(java.lang.Class<?>[])
+supr java.lang.Object
+
 CLSS public final org.graalvm.nativeimage.RuntimeOptions
+innr public final static !enum OptionClass
 meth public static <%0 extends java.lang.Object> {%%0} get(java.lang.String)
 meth public static org.graalvm.options.OptionDescriptors getOptions()
+meth public static org.graalvm.options.OptionDescriptors getOptions(java.util.EnumSet<org.graalvm.nativeimage.RuntimeOptions$OptionClass>)
 meth public static void set(java.lang.String,java.lang.Object)
 supr java.lang.Object
 
+CLSS public final static !enum org.graalvm.nativeimage.RuntimeOptions$OptionClass
+ outer org.graalvm.nativeimage.RuntimeOptions
+fld public final static org.graalvm.nativeimage.RuntimeOptions$OptionClass Compiler
+fld public final static org.graalvm.nativeimage.RuntimeOptions$OptionClass VM
+meth public static org.graalvm.nativeimage.RuntimeOptions$OptionClass valueOf(java.lang.String)
+meth public static org.graalvm.nativeimage.RuntimeOptions$OptionClass[] values()
+supr java.lang.Enum<org.graalvm.nativeimage.RuntimeOptions$OptionClass>
+
 CLSS public final org.graalvm.nativeimage.RuntimeReflection
+meth public !varargs static void register(boolean,java.lang.reflect.Field[])
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Executable[])
 meth public !varargs static void register(java.lang.reflect.Field[])
@@ -321,6 +476,11 @@ meth public static <%0 extends org.graalvm.word.PointerBase> {%%0} malloc(int)
 meth public static <%0 extends org.graalvm.word.PointerBase> {%%0} malloc(org.graalvm.word.UnsignedWord)
 meth public static <%0 extends org.graalvm.word.PointerBase> {%%0} realloc({%%0},org.graalvm.word.UnsignedWord)
 meth public static void free(org.graalvm.word.PointerBase)
+supr java.lang.Object
+
+CLSS public final org.graalvm.nativeimage.VMRuntime
+meth public static void initialize()
+meth public static void shutdown()
 supr java.lang.Object
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.CContext
@@ -394,9 +554,9 @@ CLSS public final static !enum org.graalvm.nativeimage.c.function.CEntryPoint$Bu
  outer org.graalvm.nativeimage.c.function.CEntryPoint
 fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin ATTACH_THREAD
 fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin CREATE_ISOLATE
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin GET_ISOLATE
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin GET_CURRENT_THREAD
 fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin DETACH_THREAD
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin GET_CURRENT_THREAD
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin GET_ISOLATE
 fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin NO_BUILTIN
 fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin TEAR_DOWN_ISOLATE
 meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin valueOf(java.lang.String)
@@ -418,11 +578,6 @@ CLSS public abstract interface static !annotation org.graalvm.nativeimage.c.func
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
 intf java.lang.annotation.Annotation
-
-CLSS public final org.graalvm.nativeimage.CurrentIsolate
-meth public static org.graalvm.nativeimage.Isolate getIsolate()
-meth public static org.graalvm.nativeimage.IsolateThread getCurrentThread()
-supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.c.function.CEntryPointLiteral<%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer>
 meth public !varargs static <%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer> org.graalvm.nativeimage.c.function.CEntryPointLiteral<{%%0}> create(java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
@@ -469,6 +624,7 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.In
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CFunction$Transition transition()
 
 CLSS public abstract interface org.graalvm.nativeimage.c.function.RelocatedPointer
 intf org.graalvm.word.ComparableWord
@@ -651,6 +807,7 @@ meth public static byte toCBoolean(boolean)
 meth public static java.lang.String toJavaString(org.graalvm.nativeimage.c.type.CCharPointer)
 meth public static java.lang.String toJavaString(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
 meth public static java.lang.String toJavaString(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord,java.nio.charset.Charset)
+meth public static java.nio.ByteBuffer asByteBuffer(org.graalvm.word.PointerBase,int)
 meth public static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerHolder toCString(java.lang.CharSequence)
 meth public static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerPointerHolder toCStrings(java.lang.CharSequence[])
 meth public static org.graalvm.word.UnsignedWord toCString(java.lang.CharSequence,java.nio.charset.Charset,org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)

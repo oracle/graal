@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,10 +34,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -45,6 +42,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.test.interop.values.StructObject;
 import com.oracle.truffle.tck.TruffleRunner;
@@ -53,7 +51,7 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 @RunWith(TruffleRunner.class)
 public class SlowPathCallTest extends InteropTestBase {
 
-    private static TruffleObject[] function;
+    private static Object[] function;
     private static TruffleObject testLibrary;
 
     @BeforeClass
@@ -63,32 +61,31 @@ public class SlowPathCallTest extends InteropTestBase {
 
     public class TestSlow extends RootNode {
 
-        @Child private Node execute;
-
         public TestSlow() {
             super(null);
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached(testLibrary);
             try {
-                function = new TruffleObject[]{
-                                (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, "get_a"),
-                                (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, "get_b"),
-                                (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, "get_c"),
-                                (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, "get_d"),
-                                (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, "get_e")
+                function = new Object[]{
+                                interop.readMember(testLibrary, "get_a"),
+                                interop.readMember(testLibrary, "get_b"),
+                                interop.readMember(testLibrary, "get_c"),
+                                interop.readMember(testLibrary, "get_d"),
+                                interop.readMember(testLibrary, "get_e")
                 };
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }
-            execute = Message.EXECUTE.createNode();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             try {
-                Object a = ForeignAccess.sendExecute(execute, function[0], frame.getArguments());
-                Object b = ForeignAccess.sendExecute(execute, function[1], frame.getArguments());
-                Object c = ForeignAccess.sendExecute(execute, function[2], frame.getArguments());
-                Object d = ForeignAccess.sendExecute(execute, function[3], frame.getArguments());
-                Object e = ForeignAccess.sendExecute(execute, function[4], frame.getArguments());
+                Object a = interop.execute(function[0], frame.getArguments());
+                Object b = interop.execute(function[1], frame.getArguments());
+                Object c = interop.execute(function[2], frame.getArguments());
+                Object d = interop.execute(function[3], frame.getArguments());
+                Object e = interop.execute(function[4], frame.getArguments());
                 assertResult(a, b, c, d, e);
             } catch (InteropException ex) {
                 throw new AssertionError(ex);

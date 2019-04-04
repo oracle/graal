@@ -31,6 +31,8 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 public final class OptionValuesImpl implements OptionValues {
     private static final Object NULL = new Object();
     private final OptionDescriptors descriptors;
@@ -68,12 +70,14 @@ public final class OptionValuesImpl implements OptionValues {
     }
 
     @Override
+    @TruffleBoundary
     public <T> void set(OptionKey<T> optionKey, T value) {
         values.put(optionKey, maskNull(value));
     }
 
     @Override
     @SuppressWarnings("unchecked")
+    @TruffleBoundary
     public <T> T get(OptionKey<T> optionKey) {
         Object value = values.get(optionKey);
         if (value == null) {
@@ -83,6 +87,7 @@ public final class OptionValuesImpl implements OptionValues {
     }
 
     @Override
+    @TruffleBoundary
     public boolean hasBeenSet(OptionKey<?> optionKey) {
         return values.containsKey(optionKey);
     }

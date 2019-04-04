@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
-import com.oracle.truffle.nfi.types.NativeFunctionTypeMirror;
-import com.oracle.truffle.nfi.types.NativeSignature;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
-import com.oracle.truffle.nfi.types.NativeTypeMirror;
-import com.oracle.truffle.nfi.types.NativeTypeMirror.Kind;
-import com.oracle.truffle.nfi.types.Parser;
+import com.oracle.truffle.nfi.spi.types.NativeFunctionTypeMirror;
+import com.oracle.truffle.nfi.spi.types.NativeSignature;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.spi.types.NativeTypeMirror;
+import com.oracle.truffle.nfi.spi.types.NativeTypeMirror.Kind;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -62,12 +61,12 @@ public class ClosureParseSignatureTest extends ParseSignatureTest {
     }
 
     private static void testWithClosure(String closureSig, Validator validator) {
-        NativeSignature closureArgSig = Parser.parseSignature(String.format("(%s):void", closureSig));
+        NativeSignature closureArgSig = parseSignature(String.format("(%s):void", closureSig));
         Assert.assertThat("return type", closureArgSig.getRetType(), isSimpleType(NativeSimpleType.VOID));
         Assert.assertEquals("argument count", 1, closureArgSig.getArgTypes().size());
         checkClosureType(closureArgSig.getArgTypes().get(0), validator);
 
-        NativeSignature closureRetSig = Parser.parseSignature(String.format("() : %s", closureSig));
+        NativeSignature closureRetSig = parseSignature(String.format("() : %s", closureSig));
         Assert.assertEquals("argument count", 0, closureRetSig.getArgTypes().size());
         checkClosureType(closureRetSig.getRetType(), validator);
     }

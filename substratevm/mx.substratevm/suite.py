@@ -1,8 +1,8 @@
 suite = {
     "mxversion": "5.210.5",
     "name": "substratevm",
-    "version" : "1.0.0-rc14",
-    "release" : True,
+    "version" : "1.0.0-rc15",
+    "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
     "developer" : {
@@ -92,7 +92,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix"
-                ],
+            ],
             "imports" : [
                 "jdk.internal.misc",
                 "jdk.internal.perf",
@@ -153,7 +153,21 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-
+        "com.oracle.svm.core.graal.aarch64": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core.graal",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
         "com.oracle.svm.core.graal.llvm": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -303,6 +317,9 @@ suite = {
                     "amd64" : {
                         "cflags": ["-g", "-fPIC", "-O2"],
                     },
+                    "aarch64" : {
+                        "cflags": ["-g", "-fPIC", "-O2"],
+                    },
                 },
                 "<others>": {
                     "<others>": {
@@ -325,30 +342,6 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "ignore": "only windows is supported",
-                    },
-                },
-            },
-        },
-
-        "com.oracle.svm.native.agent": {
-            "subDir": "src",
-            "native": "shared_lib",
-            "use_jdk_headers": True,
-            "results" : ["<library:native-image-agent>"],
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-std=c99", "-Wall", "-Werror"],
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-std=c99", "-Wall", "-Werror"],
-                    },
-                },
-                "<others>": {
-                    "<others>": {
-                        "ignore": "not supported",
                     },
                 },
             },
@@ -522,7 +515,21 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.truffle",
                 "truffle:TRUFFLE_NFI",
-                "com.oracle.svm.core.posix", # Posix dependency is temporary, see GR-11751
+            ],
+            "checkstyle": "com.oracle.svm.truffle",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
+        "com.oracle.svm.truffle.nfi.posix": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.core.posix",
             ],
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "8+",
@@ -533,12 +540,39 @@ suite = {
             "os_arch": {
                 "windows": {
                     "<others>": {
-                        "ignore": "windows is not supported",  # necessary until GR-11751 is resolved
+                        "ignore": "posix only project",
                     },
                 },
                 "<others>": {
                     "<others>": {
                         "ignore": False,
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.truffle.nfi.windows": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.core.windows",
+            ],
+            "checkstyle": "com.oracle.svm.truffle",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only windows is supported",
                     },
                 },
             },
@@ -589,9 +623,6 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "com.oracle.svm.hosted",
             ],
-            "buildDependencies" : [
-                "org.graalvm.polyglot.nativeapi.native",
-            ],
             "checkstyle": "org.graalvm.polyglot.nativeapi",
             "checkstyleVersion" : "8.8",
             "javaCompliance" : "8+",
@@ -602,37 +633,6 @@ suite = {
             ],
             "workingSets" : "SVM",
             "spotbugs": "false",
-        },
-
-        "org.graalvm.polyglot.nativeapi.native" : {
-            "subDir" : "src",
-            "native" : True,
-            "vpath": True,
-            "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
-            "buildEnv": {
-                "ARCH": "<arch>",
-                "OS": "<os>"
-            },
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
-                },
-                "windows": {
-                    "<others>": {
-                        "ignore": "windows is not supported",  # necessary until GR-12705 is resolved
-                    },
-                },
-                "<others>": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
-                    "<others>": {
-                        "ignore": False,
-                    },
-                },
-            },
         },
 
         "com.oracle.svm.graal.hotspot.libgraal" : {
@@ -668,6 +668,27 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
+
+        "com.oracle.svm.agent": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "com.oracle.svm.jni",
+                "com.oracle.svm.configure",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
     },
 
     "distributions": {
@@ -682,14 +703,19 @@ suite = {
                 "com.oracle.svm.truffle",  # necessary until Truffle is fully supported on Windows (GR-7941)
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.truffle.nfi.posix",
+                "com.oracle.svm.truffle.nfi.windows",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",
                 "com.oracle.svm.core.posix.jdk9",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
+                "com.oracle.svm.jni",
+                "com.oracle.svm.reflect",
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
@@ -745,7 +771,6 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM basic library-support components",
             "dependencies": [
-                "com.oracle.svm.jni",
                 "com.oracle.svm.jline",
                 "com.oracle.svm.junit",
                 "com.oracle.svm.polyglot",
@@ -826,6 +851,20 @@ suite = {
             ],
         },
 
+        "SVM_AGENT": {
+            "description" : "SubstrateVM native-image-agent library",
+            "dependencies": [
+                "com.oracle.svm.agent",
+            ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+            ],
+            "overlaps" : [
+                "SVM_CONFIGURE",
+            ],
+            # vm: included as binary, tool descriptor intentionally not copied
+        },
+
         "SVM_CONFIGURE": {
             "subDir": "src",
             "description" : "SubstrateVM native-image configuration tool",
@@ -853,15 +892,15 @@ suite = {
         },
 
         "SVM_TESTS" : {
-          "relpath" : True,
-          "dependencies" : [
-            "com.oracle.svm.test",
-          ],
-          "distDependencies": [
-            "mx:JUNIT_TOOL",
-            "sdk:GRAAL_SDK",
-          ],
-          "testDistribution" : True,
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.svm.test",
+            ],
+            "distDependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+            ],
+            "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {
@@ -886,41 +925,6 @@ suite = {
             },
         },
 
-        "POLYGLOT_NATIVE_API_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "polyglot.nativeapi support distribution for the GraalVM",
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                         "layout" : {
-                             "./" : [
-                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
-                             ],
-                         },
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                         "layout" : {
-                             "./" : [
-                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
-                             ],
-                         },
-                    },
-                },
-                "windows": {
-                    "amd64" : {
-                         "layout" : {
-                             "./" : [
-                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.obj",
-                             ],
-                         },
-                    },
-                },
-            },
-        },
-
         "SVM_GRAALVM_SUPPORT" : {
             "native" : True,
             "platformDependent" : True,
@@ -929,28 +933,6 @@ suite = {
                 "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
-            },
-        },
-
-        "SVM_GRAALVM_AGENT_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "SubstrateVM JVM agent support distribution for the GraalVM",
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                         "layout" : {
-                             "<arch>/<lib:native-image-agent>" : ["dependency:substratevm:com.oracle.svm.native.agent/<lib:agent>"],
-                         },
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                         "layout" : {
-                             "<arch>/<lib:native-image-agent>" : ["dependency:substratevm:com.oracle.svm.native.agent/<lib:agent>"],
-                         },
-                    },
-                },
             },
         },
 

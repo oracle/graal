@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,17 +29,16 @@
  */
 package com.oracle.truffle.llvm.test.interop.values;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import java.util.Map;
 
-@MessageResolution(receiverType = StructObject.class)
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class StructObject implements TruffleObject {
 
     final Map<String, Object> properties;
@@ -52,72 +51,49 @@ public final class StructObject implements TruffleObject {
         return properties.get(name);
     }
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof StructObject;
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
     }
 
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
+    @ExportMessage(name = "isMemberReadable")
+    @ExportMessage(name = "isMemberModifiable")
+    @ExportMessage(name = "isMemberRemovable")
+    @TruffleBoundary
+    boolean hasMember(String name) {
+        return properties.containsKey(name);
+    }
 
-        @CompilerDirectives.TruffleBoundary
-        Object access(StructObject obj, String name) {
-            Object value = obj.properties.get(name);
-            if (value == null) {
-                throw UnknownIdentifierException.raise(name);
-            }
-            return value;
+    @ExportMessage
+    boolean isMemberInsertable(String name) {
+        return !hasMember(name);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object readMember(String name) throws UnknownIdentifierException {
+        Object value = properties.get(name);
+        if (value == null) {
+            throw UnknownIdentifierException.create(name);
         }
+        return value;
     }
 
-    @Resolve(message = "WRITE")
-    abstract static class WriteNode extends Node {
-
-        @CompilerDirectives.TruffleBoundary
-        Object access(StructObject obj, String name, Object value) {
-            if (!obj.properties.containsKey(name)) {
-                throw UnknownIdentifierException.raise(name);
-            }
-            obj.properties.put(name, value);
-            return value;
-        }
+    @ExportMessage
+    @TruffleBoundary
+    void writeMember(String name, Object value) {
+        properties.put(name, value);
     }
 
-    @Resolve(message = "REMOVE")
-    abstract static class RemoveNode extends Node {
-
-        @CompilerDirectives.TruffleBoundary
-        boolean access(StructObject obj, String name) {
-            if (!obj.properties.containsKey(name)) {
-                throw UnknownIdentifierException.raise(name);
-            }
-            obj.properties.remove(name);
-            return true;
-        }
+    @ExportMessage
+    @TruffleBoundary
+    void removeMember(String name) {
+        properties.remove(name);
     }
 
-    @Resolve(message = "KEYS")
-    abstract static class KeysNode extends Node {
-
-        @CompilerDirectives.TruffleBoundary
-        TruffleObject access(StructObject obj) {
-            return new ArrayObject(obj.properties.keySet().toArray());
-        }
-    }
-
-    @Resolve(message = "KEY_INFO")
-    abstract static class KeyInfoNode extends Node {
-
-        @CompilerDirectives.TruffleBoundary
-        int access(StructObject obj, String name) {
-            if (!obj.properties.containsKey(name)) {
-                return KeyInfo.NONE;
-            }
-            return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
-        }
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return StructObjectForeign.ACCESS;
+    @ExportMessage
+    @TruffleBoundary
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return new ArrayObject(properties.keySet().toArray());
     }
 }

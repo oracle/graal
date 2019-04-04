@@ -38,6 +38,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
+import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -63,7 +64,6 @@ public final class InspectorExecutionContext {
     private final boolean inspectInitialization;
     private final List<URI> sourceRoots;
     private final TruffleLogger log;
-    private final ThreadLocal<Boolean> logging = new ThreadLocal<>();
 
     private volatile DebuggerSuspendedInfo suspendedInfo;
     private volatile SuspendedThreadExecutor suspendThreadExecutor;
@@ -74,6 +74,7 @@ public final class InspectorExecutionContext {
     private volatile String lastMimeType = "text/javascript";   // Default JS
     private volatile String lastLanguage = "js";
     private boolean synchronous = false;
+    private boolean customObjectFormatterEnabled = false;
 
     public InspectorExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, List<URI> sourceRoots, PrintWriter err) {
         this.name = name;
@@ -107,43 +108,20 @@ public final class InspectorExecutionContext {
 
     public void logMessage(String prefix, Object message) {
         if (log.isLoggable(Level.FINE)) {
-            setLogging(true);
-            try {
-                log.fine("CONTEXT " + id + " " + prefix + message);
-            } finally {
-                setLogging(false);
-            }
+            log.fine("CONTEXT " + id + " " + prefix + message);
         }
     }
 
     public void logException(Throwable ex) {
         if (log.isLoggable(Level.FINE)) {
-            doLogException("CONTEXT " + id, ex);
+            log.log(Level.FINE, "CONTEXT " + id, ex);
         }
     }
 
     public void logException(String prefix, Throwable ex) {
         if (log.isLoggable(Level.FINE)) {
-            doLogException("CONTEXT " + id + " " + prefix, ex);
+            log.log(Level.FINE, "CONTEXT " + id + " " + prefix, ex);
         }
-    }
-
-    private void doLogException(String message, Throwable ex) {
-        setLogging(true);
-        try {
-            log.log(Level.FINE, message, ex);
-        } finally {
-            setLogging(false);
-        }
-    }
-
-    boolean isLogging() {
-        Boolean is = logging.get();
-        return is != null && is;
-    }
-
-    private void setLogging(boolean is) {
-        logging.set(is);
     }
 
     Iterable<URI> getSourcePath() {
@@ -208,15 +186,15 @@ public final class InspectorExecutionContext {
         }
     }
 
-    synchronized RemoteObjectsHandler getRemoteObjectsHandler() {
+    public synchronized RemoteObjectsHandler getRemoteObjectsHandler() {
         if (roh == null) {
-            roh = new RemoteObjectsHandler(err);
+            roh = new RemoteObjectsHandler(this);
         }
         return roh;
     }
 
-    public RemoteObject createAndRegister(DebugValue value) {
-        RemoteObject ro = new RemoteObject(value, getErr());
+    public RemoteObject createAndRegister(DebugValue value, boolean generatePreview) {
+        RemoteObject ro = new RemoteObject(value, generatePreview, this);
         if (ro.getId() != null) {
             getRemoteObjectsHandler().register(ro);
         }
@@ -313,6 +291,16 @@ public final class InspectorExecutionContext {
     }
 
     /**
+     * Returns the current debugger session if debugging is on.
+     *
+     * @return the current debugger session, or <code>null</code>.
+     */
+    public DebuggerSession getDebuggerSession() {
+        ScriptsHandler handler = this.sch;
+        return (handler != null) ? handler.getDebuggerSession() : null;
+    }
+
+    /**
      * For test purposes only. Do not call from production code.
      */
     public static void resetIDs() {
@@ -335,6 +323,14 @@ public final class InspectorExecutionContext {
 
     public boolean isSynchronous() {
         return synchronous;
+    }
+
+    void setCustomObjectFormatterEnabled(boolean enabled) {
+        this.customObjectFormatterEnabled = enabled;
+    }
+
+    public boolean isCustomObjectFormatterEnabled() {
+        return this.customObjectFormatterEnabled;
     }
 
     public interface Listener {

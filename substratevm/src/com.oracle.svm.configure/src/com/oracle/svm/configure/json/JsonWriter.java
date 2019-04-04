@@ -39,7 +39,11 @@ public class JsonWriter implements AutoCloseable {
     private int indentation = 0;
 
     public JsonWriter(Path path, OpenOption... options) throws IOException {
-        this.writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, options);
+        this(Files.newBufferedWriter(path, StandardCharsets.UTF_8, options));
+    }
+
+    public JsonWriter(Writer writer) {
+        this.writer = writer;
     }
 
     public JsonWriter append(char c) throws IOException {
@@ -52,15 +56,33 @@ public class JsonWriter implements AutoCloseable {
         return this;
     }
 
+    public JsonWriter quote(Object o) throws IOException {
+        if (o == null) {
+            return append("null");
+        } else if (Boolean.TRUE.equals(o)) {
+            return append("true");
+        } else if (Boolean.FALSE.equals(o)) {
+            return append("false");
+        }
+        return quote(o.toString());
+    }
+
     public JsonWriter quote(String s) throws IOException {
+        if (s == null) {
+            return append("null");
+        }
         StringBuilder sb = new StringBuilder(2 + s.length() + 8 /* room for escaping */);
         sb.append('"');
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             if (c == '"' || c == '\\') {
                 sb.append('\\');
+                sb.append(c);
+            } else if (c < 0x001F) {
+                sb.append(String.format("\\u%04x", (int) c));
+            } else {
+                sb.append(c);
             }
-            sb.append(c);
         }
         sb.append('"');
         writer.write(sb.toString());
@@ -82,6 +104,10 @@ public class JsonWriter implements AutoCloseable {
         assert indentation > 0;
         indentation--;
         return this;
+    }
+
+    public void flush() throws IOException {
+        writer.flush();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,18 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class ToI64 extends ForeignToLLVM {
-
-    @Child private ForeignToLLVM toI64;
 
     @Specialization
     protected long fromInt(int value) {
@@ -83,35 +85,38 @@ public abstract class ToI64 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected Object fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
-        return recursiveConvert(boxed.getValue());
-    }
-
-    @Specialization(guards = "notLLVM(obj)")
-    protected Object fromTruffleObject(TruffleObject obj) {
-        return recursiveConvert(fromForeign(obj));
-    }
-
-    @Specialization
-    protected Object fromPointer(LLVMPointer boxed) {
-        return fromTruffleObject(boxed);
-    }
-
-    @Specialization
     protected long fromString(String value) {
         return getSingleStringCharacter(value);
     }
 
-    private long recursiveConvert(Object o) {
-        if (toI64 == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toI64 = insert(getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64));
+    @Specialization
+    protected long fromPointer(LLVMPointer boxed,
+                    @Cached LLVMToNativeNode toNative) {
+        return toNative.executeWithTarget(boxed).asNative();
+    }
+
+    @Specialization(limit = "5", guards = {"notLLVM(obj)", "interop.isNumber(obj)"})
+    protected long fromForeign(Object obj,
+                    @CachedLibrary("obj") InteropLibrary interop,
+                    @Cached BranchProfile exception) {
+        try {
+            return interop.asLong(obj);
+        } catch (UnsupportedMessageException ex) {
+            exception.enter();
+            throw new LLVMPolyglotException(this, "Polyglot number can't be converted to long.");
         }
-        return (long) toI64.executeWithTarget(o);
+    }
+
+    @Specialization(limit = "5", guards = {"notLLVM(obj)", "!interop.isNumber(obj)"})
+    @SuppressWarnings("unused")
+    protected long fromForeignPointer(Object obj,
+                    @CachedLibrary("obj") InteropLibrary interop,
+                    @CachedLibrary("obj") LLVMNativeLibrary nativeLib) {
+        return nativeLib.toNativePointer(obj).asNative();
     }
 
     @TruffleBoundary
-    static long slowPathPrimitiveConvert(LLVMMemory memory, ForeignToLLVM thiz, Object value) {
+    static long slowPathPrimitiveConvert(ForeignToLLVM thiz, Object value) throws UnsupportedTypeException {
         if (value instanceof Number) {
             return ((Number) value).longValue();
         } else if (value instanceof Boolean) {
@@ -120,12 +125,12 @@ public abstract class ToI64 extends ForeignToLLVM {
             return (char) value;
         } else if (value instanceof String) {
             return thiz.getSingleStringCharacter((String) value);
-        } else if (value instanceof LLVMBoxedPrimitive) {
-            return slowPathPrimitiveConvert(memory, thiz, ((LLVMBoxedPrimitive) value).getValue());
-        } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
-            return slowPathPrimitiveConvert(memory, thiz, thiz.fromForeign((TruffleObject) value));
         } else {
-            throw UnsupportedTypeException.raise(new Object[]{value});
+            try {
+                return InteropLibrary.getFactory().getUncached().asLong(value);
+            } catch (UnsupportedMessageException ex) {
+                throw UnsupportedTypeException.create(new Object[]{value});
+            }
         }
     }
 }

@@ -44,7 +44,7 @@ import java.util.regex.PatternSyntaxException;
 
 abstract class ProfilerCLI {
 
-    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression", new Object[0],
+    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
                     new Function<String, Object[]>() {
                         @Override
                         public Object[] apply(String filterWildcardExpression) {
@@ -77,16 +77,17 @@ abstract class ProfilerCLI {
                     });
 
     static SourceSectionFilter buildFilter(boolean roots, boolean statements, boolean calls, boolean internals,
-                    Object[] filterRootName, Object[] filterFile, String filterLanguage) {
+                    Object[] filterRootName, Object[] filterFile, String filterMimeType, String filterLanguage) {
         SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
-        if (!internals || filterFile != null || filterLanguage != null) {
+        if (!internals || filterFile != null || filterMimeType != null || filterLanguage != null) {
             builder.sourceIs(new SourceSectionFilter.SourcePredicate() {
                 @Override
                 public boolean test(Source source) {
                     boolean internal = (internals || !source.isInternal());
                     boolean file = testWildcardExpressions(source.getPath(), filterFile);
-                    boolean mimeType = filterLanguage.equals("") || filterLanguage.equals(source.getMimeType());
-                    return internal && file && mimeType;
+                    boolean mimeType = filterMimeType.equals("") || filterMimeType.equals(source.getMimeType());
+                    final boolean languageId = filterLanguage.equals("") || filterMimeType.equals(source.getLanguage());
+                    return internal && file && mimeType && languageId;
                 }
             });
         }

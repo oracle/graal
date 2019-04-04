@@ -75,6 +75,12 @@ public final class RelocatableBuffer {
         return result;
     }
 
+    public RelocatableBuffer.Info addRelocation(int key, ObjectFile.RelocationKind relocationKind, int relocationSize, Long explicitAddend, Object targetObject) {
+        final RelocatableBuffer.Info info = infoFactory(relocationKind, relocationSize, explicitAddend, targetObject);
+        final RelocatableBuffer.Info result = putInfo(key, info);
+        return result;
+    }
+
     public int mapSize() {
         return getMap().size();
     }
@@ -249,5 +255,10 @@ public final class RelocatableBuffer {
          * code (text section) or constants (rodata section) relocation.
          */
         private final Object targetObject;
+
+        @Override
+        public String toString() {
+            return "RelocatableBuffer.Info(targetObject=" + targetObject + " relocationSize=" + relocationSize + " relocationKind=" + relocationKind + " explicitAddend=" + explicitAddend + ")";
+        }
     }
 }

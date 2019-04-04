@@ -55,6 +55,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.ClassLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
@@ -71,6 +72,10 @@ public class DSLExpressionGenerator implements DSLExpressionVisitor {
     DSLExpressionGenerator(CodeTree root, Map<Variable, CodeTree> bindings) {
         this.bindings = bindings;
         this.root = root;
+    }
+
+    public void visitClassLiteral(ClassLiteral classLiteral) {
+        push(CodeTreeBuilder.createBuilder().typeLiteral(classLiteral.getLiteral()).build());
     }
 
     public void visitBinary(Binary binary) {
@@ -171,7 +176,12 @@ public class DSLExpressionGenerator implements DSLExpressionVisitor {
     }
 
     private static CodeTree staticReference(VariableElement var) {
-        return CodeTreeBuilder.createBuilder().staticReference(var.getEnclosingElement().asType(), var.getSimpleName().toString()).build();
+        Element enclosing = var.getEnclosingElement();
+        if (enclosing == null) {
+            return CodeTreeBuilder.singleString(var.getSimpleName().toString());
+        } else {
+            return CodeTreeBuilder.createBuilder().staticReference(enclosing.asType(), var.getSimpleName().toString()).build();
+        }
     }
 
     private void push(CodeTree tree) {

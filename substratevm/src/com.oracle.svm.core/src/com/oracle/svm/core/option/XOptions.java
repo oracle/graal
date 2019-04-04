@@ -146,7 +146,7 @@ public class XOptions {
     }
 
     /** Parse the "-X" options out of a String[], returning the ones that are not "-X" options. */
-    public String[] parse(String[] args) {
+    public String[] parse(String[] args, boolean exitOnError) {
         int newIdx = 0;
         for (int oldIdx = 0; oldIdx < args.length; oldIdx += 1) {
             final String arg = args[oldIdx];
@@ -155,8 +155,12 @@ public class XOptions {
                 try {
                     parsed |= parseWithNameAndPrefix(xFlag, arg);
                 } catch (NumberFormatException nfe) {
-                    Log.logStream().println("error: Wrong value for option '" + arg + "' is not a valid number.");
-                    System.exit(1);
+                    if (exitOnError) {
+                        Log.logStream().println("error: Wrong value for option '" + arg + "' is not a valid number.");
+                        System.exit(1);
+                    } else {
+                        throw new IllegalArgumentException("Illegal value for option '" + arg + "'", nfe);
+                    }
                 }
             }
             if (!parsed) {

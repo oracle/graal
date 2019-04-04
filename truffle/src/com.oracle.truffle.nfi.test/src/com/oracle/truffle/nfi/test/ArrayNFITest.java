@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,12 +58,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
@@ -101,13 +99,16 @@ public class ArrayNFITest extends NFITest {
         private final TruffleObject store;
         private final TruffleObject sum;
 
-        @Child Node executeStore = Message.EXECUTE.createNode();
-        @Child Node executeSum = Message.EXECUTE.createNode();
+        @Child InteropLibrary storeInterop;
+        @Child InteropLibrary sumInterop;
 
         public CreateAndSumArray() {
             this.finalJavaType = javaType;
             this.store = lookupAndBind("store_" + nativeType, String.format("([%s], uint32, %s) : void", nativeType, nativeType));
             this.sum = lookupAndBind("sum_" + nativeType, String.format("([%s], uint32) : %s", nativeType, nativeType));
+
+            this.storeInterop = getInterop(this.store);
+            this.sumInterop = getInterop(this.sum);
         }
 
         @TruffleBoundary
@@ -142,10 +143,10 @@ public class ArrayNFITest extends NFITest {
 
             try {
                 for (int i = 0; i < arrayLength; i++) {
-                    ForeignAccess.sendExecute(executeStore, store, wrappedArray, i, i + 1);
+                    storeInterop.execute(store, wrappedArray, i, i + 1);
                 }
                 verifyArray(array);
-                return ForeignAccess.sendExecute(executeSum, sum, wrappedArray, arrayLength);
+                return sumInterop.execute(sum, wrappedArray, arrayLength);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(ex);

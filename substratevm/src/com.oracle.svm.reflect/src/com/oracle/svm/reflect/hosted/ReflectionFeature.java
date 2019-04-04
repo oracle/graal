@@ -39,6 +39,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationDirectories;
+import com.oracle.svm.hosted.config.ConfigurationParser;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -63,15 +64,16 @@ public final class ReflectionFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
-        ReflectionSubstitution subst = new ReflectionSubstitution(access.getMetaAccess().getWrapped(), access.getImageClassLoader());
+        ReflectionSubstitution subst = new ReflectionSubstitution(access.getMetaAccess().getWrapped(), access.getHostVM().getClassInitializationSupport(), access.getImageClassLoader());
         access.registerSubstitutionProcessor(subst);
         ImageSingletons.add(ReflectionSubstitution.class, subst);
 
         reflectionData = new ReflectionDataBuilder();
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
 
-        ReflectionConfigurationParser parser = new ReflectionConfigurationParser(reflectionData, access.getImageClassLoader());
-        parser.parseAndRegisterConfigurations("reflection", Options.ReflectionConfigurationFiles, Options.ReflectionConfigurationResources, ConfigurationDirectories.FileNames.REFLECTION_NAME);
+        ReflectionConfigurationParser<Class<?>> parser = ReflectionConfigurationParser.create(reflectionData, access.getImageClassLoader());
+        ConfigurationParser.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
+                        Options.ReflectionConfigurationFiles, Options.ReflectionConfigurationResources, ConfigurationDirectories.FileNames.REFLECTION_NAME);
 
         loader = access.getImageClassLoader();
         annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();

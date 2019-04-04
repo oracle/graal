@@ -35,7 +35,9 @@ import org.graalvm.polyglot.io.MessageEndpoint;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONException;
 import com.oracle.truffle.tools.utils.json.JSONObject;
-
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.tools.chromeinspector.InspectorDebugger;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.InspectorProfiler;
@@ -163,7 +165,11 @@ public final class InspectServerSession implements MessageEndpoint {
         if (result != null) {
             JSONMessageListener jsonListener = jsonMessageListener;
             if (jsonListener != null) {
-                jsonListener.onMessage(result);
+                try {
+                    jsonListener.onMessage(result);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    context.logException(e);
+                }
             }
         }
         postProcessor.run();
@@ -209,6 +215,7 @@ public final class InspectServerSession implements MessageEndpoint {
                                 json.optBoolean("silent"),
                                 json.optInt("contextId", -1),
                                 json.optBoolean("returnByValue"),
+                                json.optBoolean("generatePreview"),
                                 json.optBoolean("awaitPromise"));
                 break;
             case "Runtime.runIfWaitingForDebugger":
@@ -218,9 +225,9 @@ public final class InspectServerSession implements MessageEndpoint {
                 json = cmd.getParams().getJSONObject();
                 resultParams = runtime.getProperties(
                                 json.optString("objectId"),
-                                json.optBoolean("ownProperties")
-                // Ignored additional experimental parameters
-                );
+                                json.optBoolean("ownProperties"),
+                                json.optBoolean("accessorPropertiesOnly"),
+                                json.optBoolean("generatePreview"));
                 break;
             case "Runtime.callFunctionOn":
                 json = cmd.getParams().getJSONObject();
@@ -230,7 +237,12 @@ public final class InspectServerSession implements MessageEndpoint {
                                 json.optJSONArray("arguments"),
                                 json.optBoolean("silent"),
                                 json.optBoolean("returnByValue"),
+                                json.optBoolean("generatePreview"),
                                 json.optBoolean("awaitPromise"));
+                break;
+            case "Runtime.setCustomObjectFormatterEnabled":
+                json = cmd.getParams().getJSONObject();
+                runtime.setCustomObjectFormatterEnabled(json.optBoolean("enabled"));
                 break;
             case "Debugger.enable":
                 debugger.enable();
@@ -411,7 +423,11 @@ public final class InspectServerSession implements MessageEndpoint {
             }
             JSONMessageListener jsonListener = jsonMessageListener;
             if (jsonListener != null) {
-                jsonListener.onMessage(event.toJSON());
+                try {
+                    jsonListener.onMessage(event.toJSON());
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    context.logException(e);
+                }
             }
         }
 
@@ -508,7 +524,11 @@ public final class InspectServerSession implements MessageEndpoint {
                     }
                     JSONMessageListener jsonListener = jsonMessageListener;
                     if (jsonListener != null) {
-                        jsonListener.onMessage(result);
+                        try {
+                            jsonListener.onMessage(result);
+                        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                            context.logException(e);
+                        }
                     }
                 }
                 postProcessor.run();

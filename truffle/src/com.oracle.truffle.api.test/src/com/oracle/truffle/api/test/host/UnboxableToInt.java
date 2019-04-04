@@ -40,16 +40,16 @@
  */
 package com.oracle.truffle.api.test.host;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = UnboxableToInt.class)
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 final class UnboxableToInt implements TruffleObject {
-
-    private final int value;
 
     UnboxableToInt(int value) {
         this.value = value;
@@ -59,27 +59,71 @@ final class UnboxableToInt implements TruffleObject {
         return value;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return UnboxableToIntForeign.ACCESS;
+    final int value;
+
+    @ExportMessage
+    public boolean isNumber() {
+        return true;
     }
 
-    static boolean isInstance(TruffleObject obj) {
-        return obj instanceof UnboxableToInt;
+    @ExportMessage
+    boolean fitsInByte(@CachedLibrary("this.value") InteropLibrary delegate) {
+        return delegate.fitsInByte(value);
     }
 
-    @Resolve(message = "UNBOX")
-    abstract static class UnboxINode extends Node {
-        Object access(UnboxableToInt obj) {
-            return obj.getValue();
-        }
+    @ExportMessage
+    boolean fitsInShort(@CachedLibrary("this.value") InteropLibrary delegate) {
+        return delegate.fitsInShort(value);
     }
 
-    @Resolve(message = "IS_BOXED")
-    abstract static class IsBoxedINode extends Node {
-        @SuppressWarnings("unused")
-        Object access(UnboxableToInt obj) {
-            return true;
-        }
+    @ExportMessage
+    boolean fitsInInt(@CachedLibrary("this.value") InteropLibrary delegate) {
+        return delegate.fitsInInt(value);
     }
+
+    @ExportMessage
+    boolean fitsInLong(@CachedLibrary("this.value") InteropLibrary delegate) {
+        return delegate.fitsInLong(value);
+    }
+
+    @ExportMessage
+    boolean fitsInFloat(@CachedLibrary("this.value") InteropLibrary delegate) {
+        return delegate.fitsInFloat(value);
+    }
+
+    @ExportMessage
+    boolean fitsInDouble(@CachedLibrary("this.value") InteropLibrary delegate) {
+        return delegate.fitsInDouble(value);
+    }
+
+    @ExportMessage
+    byte asByte(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+        return delegate.asByte(value);
+    }
+
+    @ExportMessage
+    short asShort(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+        return delegate.asShort(value);
+    }
+
+    @ExportMessage
+    int asInt(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+        return delegate.asInt(value);
+    }
+
+    @ExportMessage
+    long asLong(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+        return delegate.asLong(value);
+    }
+
+    @ExportMessage
+    float asFloat(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+        return delegate.asFloat(value);
+    }
+
+    @ExportMessage
+    double asDouble(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+        return delegate.asDouble(value);
+    }
+
 }

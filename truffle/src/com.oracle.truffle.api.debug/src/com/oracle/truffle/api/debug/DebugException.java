@@ -152,11 +152,15 @@ public final class DebugException extends RuntimeException {
     @Override
     public StackTraceElement[] getStackTrace() {
         if (javaLikeStackTrace == null) {
-            List<DebugStackTraceElement> debugStack = getDebugStackTrace();
-            int size = debugStack.size();
-            javaLikeStackTrace = new StackTraceElement[size];
-            for (int i = 0; i < size; i++) {
-                javaLikeStackTrace[i] = debugStack.get(i).toTraceElement();
+            if (isInternalError()) {
+                return super.getStackTrace();
+            } else {
+                List<DebugStackTraceElement> debugStack = getDebugStackTrace();
+                int size = debugStack.size();
+                javaLikeStackTrace = new StackTraceElement[size];
+                for (int i = 0; i < size; i++) {
+                    javaLikeStackTrace[i] = debugStack.get(i).toTraceElement();
+                }
             }
         }
         return javaLikeStackTrace.clone();
@@ -232,7 +236,13 @@ public final class DebugException extends RuntimeException {
      * @since 1.0
      */
     public boolean isInternalError() {
-        return exception != null && (!(exception instanceof TruffleException) || ((TruffleException) exception).isInternalError());
+        if (exception != null && (!(exception instanceof TruffleException) || ((TruffleException) exception).isInternalError())) {
+            if (exception instanceof DebugException) {
+                return ((DebugException) exception).isInternalError();
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -291,7 +301,7 @@ public final class DebugException extends RuntimeException {
             synchronized (this) {
                 if (!isCatchNodeComputed) {
                     if (exception instanceof TruffleException) {
-                        catchLocation = BreakpointExceptionFilter.getCatchNode(session.getDebugger(), throwLocation, exception);
+                        catchLocation = BreakpointExceptionFilter.getCatchNode(throwLocation, exception);
                         if (catchLocation != null) {
                             catchLocation.setSuspendedEvent(suspendedEvent);
                             catchLocation = catchLocation.cloneFor(session);

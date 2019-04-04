@@ -26,7 +26,8 @@ package com.oracle.svm.core.jdk8;
 
 import java.io.IOException;
 
-import com.oracle.svm.core.UnsafeAccess;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
@@ -64,7 +65,7 @@ final class Util_sun_text_normalizer_UBiDiProps_JDK8 {
     static final UBiDiProps singleton;
 
     static {
-        UnsafeAccess.UNSAFE.ensureClassInitialized(sun.text.normalizer.NormalizerImpl.class);
+        GraalUnsafeAccess.getUnsafe().ensureClassInitialized(sun.text.normalizer.NormalizerImpl.class);
 
         try {
             singleton = UBiDiProps.getSingleton();

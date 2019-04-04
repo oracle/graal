@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,18 +29,16 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen.BoxedGetStringSizeNodeGen;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -52,8 +50,8 @@ public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
 
     @Specialization
     long getForeignStringSize(LLVMManagedPointer object,
-                    @Cached("create()") LLVMAsForeignNode asForeign,
-                    @Cached("create()") BoxedGetStringSize getSize) {
+                    @Cached LLVMAsForeignNode asForeign,
+                    @Cached BoxedGetStringSize getSize) {
         return getSize.execute(asForeign.execute(object));
     }
 
@@ -62,36 +60,27 @@ public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
         return str.length();
     }
 
-    abstract static class BoxedGetStringSize extends LLVMNode {
+    @Fallback
+    @SuppressWarnings("unused")
+    public long fallback(Object value) {
+        throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
+    }
 
-        @Child Node isBoxed = Message.IS_BOXED.createNode();
-        @Child Node unbox = Message.UNBOX.createNode();
+    abstract static class BoxedGetStringSize extends LLVMNode {
 
         abstract long execute(TruffleObject object);
 
-        boolean checkBoxed(TruffleObject object) {
-            return ForeignAccess.sendIsBoxed(isBoxed, object);
-        }
-
-        @Specialization(guards = "checkBoxed(object)")
-        long doBoxed(TruffleObject object) {
+        @Specialization(limit = "3")
+        long doBoxed(TruffleObject object,
+                        @CachedLibrary("object") InteropLibrary interop,
+                        @Cached BranchProfile exception) {
             try {
-                String unboxed = (String) ForeignAccess.sendUnbox(unbox, object);
+                String unboxed = interop.asString(object);
                 return unboxed.length();
             } catch (UnsupportedMessageException ex) {
-                throw ex.raise();
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Polyglot value is not a string.");
             }
-        }
-
-        @Fallback
-        @TruffleBoundary
-        @SuppressWarnings("unused")
-        long doFail(TruffleObject object) {
-            throw new LLVMPolyglotException(this, "Polyglot value is not a string.");
-        }
-
-        public static BoxedGetStringSize create() {
-            return BoxedGetStringSizeNodeGen.create();
         }
     }
 }

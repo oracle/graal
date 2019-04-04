@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,10 +32,12 @@ package com.oracle.truffle.llvm.nodes.intrinsics.sulong;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 
 public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
@@ -43,15 +45,14 @@ public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
     @Child private IndirectCallNode callNode = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
-    protected Object doOp() {
-        runDestructorFunctions();
+    protected Object doOp(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        runDestructorFunctions(ctx);
         return null;
     }
 
     @TruffleBoundary
-    private void runDestructorFunctions() {
+    private void runDestructorFunctions(LLVMContext context) {
         // is only executed once per context so it will be executed in the interpreter only
-        LLVMContext context = getContextReference().get();
         // execute destructors in the reverse order in which the constructors were executed
         RootCallTarget[] targets = context.getDestructorFunctions();
         for (int i = targets.length - 1; i >= 0; i--) {

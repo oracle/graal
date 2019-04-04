@@ -41,18 +41,39 @@
 package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = ManagedTestObject.class)
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ManagedTestObject.class)
+@SuppressWarnings("deprecation")
 public class ManagedTestObjectMR {
 
-    @Resolve(message = "TO_NATIVE")
+    @com.oracle.truffle.api.interop.Resolve(message = "TO_NATIVE")
     public abstract static class AcceptToNative extends Node {
         @SuppressWarnings("unused")
         public Object access(VirtualFrame frame, ManagedTestObject object) {
-            return new NativeTestObject(object);
+            object.toNativeCalled = true;
+            return object;
+        }
+    }
+
+    @com.oracle.truffle.api.interop.Resolve(message = "IS_POINTER")
+    public abstract static class AcceptIsPointer extends Node {
+        @SuppressWarnings("unused")
+        public Object access(VirtualFrame frame, ManagedTestObject object) {
+            return object.toNativeCalled;
+        }
+    }
+
+    @com.oracle.truffle.api.interop.Resolve(message = "AS_POINTER")
+    public abstract static class AcceptAsPointer extends Node {
+        @SuppressWarnings("unused")
+        public Object access(VirtualFrame frame, ManagedTestObject object) {
+            if (object.toNativeCalled) {
+                return (long) object.hashCode();
+            } else {
+                throw UnsupportedMessageException.raise(com.oracle.truffle.api.interop.Message.AS_POINTER);
+            }
         }
     }
 }

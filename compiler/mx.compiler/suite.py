@@ -1,11 +1,11 @@
 suite = {
-  "mxversion" : "5.213.6",
+  "mxversion" : "5.214.9",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc14",
-  "release" : True,
+  "version" : "1.0.0-rc15",
+  "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
     "name" : "Truffle and Graal developers",
@@ -178,35 +178,6 @@ suite = {
       },
       "dependencies": ["JAXB_API_2.1", "ACTIVATION_1.1.1"]
     },
-    # /SPECJBB2015
-
-    "LLVM_PLATFORM": {
-      "sha1" : "503402aa0cf80fd95ede043c0011152c2b4556fd",
-      "dependencies" : ["LLVM_WRAPPER"],
-      "os_arch": {
-        "linux": {
-          "amd64": {
-            "dependencies" : ["LLVM_PLATFORM_SPECIFIC"],
-          },
-        },
-        "darwin": {
-          "amd64": {
-            "dependencies" : ["LLVM_PLATFORM_SPECIFIC"],
-          },
-        },
-        "windows": {
-          "amd64": {
-            "dependencies" : ["LLVM_PLATFORM_SPECIFIC"],
-          },
-        },
-      },
-      "maven" : {
-        "groupId" : "org.bytedeco.javacpp-presets",
-        "artifactId" : "llvm-platform",
-        "version" : "6.0.1-1.4.2",
-      },
-      "license" : "GPLv2-CPE"
-    },
     "LLVM_WRAPPER": {
       "sha1" : "a990b2dba1c706f5c43c56fedfe70bad9a695852",
       "sourceSha1" : "decbd95d46092fa9afaf2523b5b23d07ad7ad6bc",
@@ -240,6 +211,9 @@ suite = {
               "classifier": "linux-x86_64"
             },
           },
+          "<others>": {
+            "optional": True,
+          },
         },
         "darwin": {
           "amd64": {
@@ -265,8 +239,7 @@ suite = {
         },
         "<others>": {
           "<others>": {
-            "path": "",
-            "optional": True
+            "optional": True,
           }
         }
       },
@@ -419,6 +392,62 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.libgraal" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "sdk:GRAAL_SDK",
+          "JVMCI_HOTSPOT",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8+",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.libgraal.jdk8" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "sdk:GRAAL_SDK",
+          "JVMCI_HOTSPOT",
+      ],
+      "checkPackagePrefix" : "false",
+      "overlayTarget" : "org.graalvm.libgraal",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.libgraal.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "org.graalvm.libgraal",
+          "sdk:GRAAL_SDK",
+          "JVMCI_HOTSPOT",
+      ],
+      "multiReleaseJarVersion" : "11",
+      "checkPackagePrefix" : "false",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11..12",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.libgraal.jdk13" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "org.graalvm.libgraal",
+          "sdk:GRAAL_SDK",
+          "JVMCI_HOTSPOT",
+      ],
+      "multiReleaseJarVersion" : "13",
+      "checkPackagePrefix" : "false",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "13+",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.util" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -524,19 +553,12 @@ suite = {
     "org.graalvm.compiler.hotspot.jdk8" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "dependencies": [
+        "org.graalvm.compiler.hotspot",
+      ],
       "overlayTarget" : "org.graalvm.compiler.hotspot",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8",
-      "workingSets" : "Graal,HotSpot",
-    },
-
-    "org.graalvm.compiler.hotspot.jdk9" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies": ["org.graalvm.compiler.hotspot"],
-      "multiReleaseJarVersion" : "9",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "9+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -557,6 +579,16 @@ suite = {
       "multiReleaseJarVersion" : "12",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "12+",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk13" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies": ["org.graalvm.compiler.hotspot"],
+      "multiReleaseJarVersion" : "13",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "13+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -646,6 +678,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.libgraal",
         "org.graalvm.compiler.replacements.test",
         "org.graalvm.compiler.hotspot",
       ],
@@ -1367,7 +1400,8 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
-        "LLVM_PLATFORM",
+        "LLVM_WRAPPER",
+        "LLVM_PLATFORM_SPECIFIC",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -1757,6 +1791,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.libgraal",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
       ],
@@ -1772,6 +1807,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.libgraal",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
       ],
@@ -1825,6 +1861,7 @@ suite = {
       "checkPackagePrefix" : "false",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8",
+      "overlayTarget" : "org.graalvm.compiler.truffle.runtime.hotspot",
       "workingSets" : "Graal,Truffle",
     },
 
@@ -1935,7 +1972,10 @@ suite = {
 
     "GRAAL_SERVICEPROVIDER" : {
       "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.serviceprovider"],
+      "dependencies" : [
+        "org.graalvm.compiler.serviceprovider.jdk8",
+        "org.graalvm.compiler.serviceprovider.jdk9",
+      ],
       "distDependencies" : [
         "JVMCI_SERVICES"
       ],
@@ -2000,10 +2040,14 @@ suite = {
         "org.graalvm.compiler.hotspot.aarch64",
         "org.graalvm.compiler.hotspot.amd64",
         "org.graalvm.compiler.hotspot.sparc",
-        "org.graalvm.compiler.hotspot",
+        "org.graalvm.compiler.hotspot.jdk8",
+        "org.graalvm.compiler.hotspot.jdk11",
+        "org.graalvm.compiler.hotspot.jdk12",
+        "org.graalvm.compiler.hotspot.jdk13",
       ],
       "distDependencies" : [
         "JVMCI_HOTSPOT",
+        "GRAAL_LIBGRAAL",
         "GRAAL_COMPILER",
         "GRAAL_RUNTIME",
       ],
@@ -2077,6 +2121,21 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_LIBGRAAL" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.libgraal",
+        "org.graalvm.libgraal.jdk8",
+        "org.graalvm.libgraal.jdk11",
+        "org.graalvm.libgraal.jdk13",
+      ],
+      "distDependencies" : [
+        "sdk:GRAAL_SDK",
+        "JVMCI_HOTSPOT",
+      ],
+      "maven": False,
+    },
+
     "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL" : {
       "subDir" : "src",
       "dependencies" : [
@@ -2102,7 +2161,7 @@ suite = {
     "GRAAL_TRUFFLE_RUNTIME" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.compiler.truffle.runtime.serviceprovider",
+        "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk8",
         "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk9",
         "org.graalvm.compiler.truffle.runtime",
       ],
@@ -2131,12 +2190,16 @@ suite = {
     "GRAAL_TRUFFLE_RUNTIME_HOTSPOT" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.compiler.truffle.runtime.hotspot",
+        "org.graalvm.libgraal.jdk8",
+        "org.graalvm.libgraal.jdk11",
+        "org.graalvm.libgraal.jdk13",
+        "org.graalvm.compiler.truffle.runtime.hotspot.jdk8",
+        "org.graalvm.compiler.truffle.runtime.hotspot.jdk9",
         "org.graalvm.compiler.truffle.runtime.hotspot.java",
         "org.graalvm.compiler.truffle.runtime.hotspot.libgraal",
       ],
       "distDependencies" : [
-        "GRAAL_HOTSPOT",
+        "GRAAL_LIBGRAAL",
         "GRAAL_TRUFFLE_COMMON",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL",
@@ -2234,6 +2297,7 @@ suite = {
         "GRAAL_COMPILER",
         "GRAAL_RUNTIME",
         "GRAAL_HOTSPOT",
+        "GRAAL_LIBGRAAL",
         "GRAAL_SERVICEPROVIDER",
         "GRAAL_TRUFFLE_COMMON",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT",
@@ -2244,6 +2308,9 @@ suite = {
         "GRAAL_TRUFFLE_COMPILER_HOTSPOT",
       ],
       "dependencies" : [
+        "org.graalvm.libgraal.jdk8",
+        "org.graalvm.libgraal.jdk11",
+        "org.graalvm.libgraal.jdk13",
         "org.graalvm.compiler.serviceprovider.jdk8",
         "org.graalvm.compiler.serviceprovider.jdk9",
         "org.graalvm.compiler.options",
@@ -2267,9 +2334,9 @@ suite = {
         "org.graalvm.compiler.hotspot.sparc",
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.hotspot.jdk8",
-        "org.graalvm.compiler.hotspot.jdk9",
         "org.graalvm.compiler.hotspot.jdk11",
         "org.graalvm.compiler.hotspot.jdk12",
+        "org.graalvm.compiler.hotspot.jdk13",
         "org.graalvm.compiler.lir.aarch64.jdk11",
         "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk8",
@@ -2377,7 +2444,10 @@ suite = {
       "dependencies" : ["org.graalvm.compiler.core.llvm"],
       "distDependencies" : [
         "GRAAL",
-        "LLVM_PLATFORM",
+      ],
+      "exclude": [
+        "LLVM_WRAPPER",
+        "LLVM_PLATFORM_SPECIFIC",
       ],
       "maven" : False,
     }

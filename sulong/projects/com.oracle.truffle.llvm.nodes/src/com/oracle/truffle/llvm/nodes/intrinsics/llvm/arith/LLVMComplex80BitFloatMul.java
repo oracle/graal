@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,16 +30,19 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
-public final class LLVMComplex80BitFloatMul extends LLVMExpressionNode {
+public abstract class LLVMComplex80BitFloatMul extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode aNode;
     @Child private LLVMExpressionNode bNode;
@@ -49,8 +52,6 @@ public final class LLVMComplex80BitFloatMul extends LLVMExpressionNode {
 
     @Child private LLVM80BitFloatStoreNode store;
 
-    private final int sizeInBytes;
-
     public LLVMComplex80BitFloatMul(LLVMExpressionNode alloc, LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
         this.alloc = alloc;
         this.aNode = a;
@@ -59,11 +60,15 @@ public final class LLVMComplex80BitFloatMul extends LLVMExpressionNode {
         this.dNode = d;
 
         this.store = LLVM80BitFloatStoreNodeGen.create(null, null);
-        this.sizeInBytes = getContextReference().get().getDataSpecConverter().getSize(PrimitiveType.X86_FP80);
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    int getSizeInBytes() {
+        return lookupContextReference(LLVMLanguage.class).get().getDataSpecConverter().getSize(PrimitiveType.X86_FP80);
+    }
+
+    @Specialization
+    public Object doMul(VirtualFrame frame,
+                    @Cached("getSizeInBytes()") int sizeInBytes) {
         try {
             LLVM80BitFloat longDoubleA = aNode.executeLLVM80BitFloat(frame);
             LLVM80BitFloat longDoubleB = bNode.executeLLVM80BitFloat(frame);

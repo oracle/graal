@@ -167,7 +167,8 @@ final class NativeImageServer extends NativeImage {
             return exitCode;
         }
 
-        void sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<String> imageArgs) {
+        int sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<String> imageArgs) {
+            int[] requestStatus = {1};
             withLockDirFileChannel(serverDir, lockFileChannel -> {
                 boolean abortedOnce = false;
                 boolean finished = false;
@@ -213,20 +214,18 @@ final class NativeImageServer extends NativeImage {
                             throw showError("Could not read/write into build-request log file", e);
                         }
                         // Checkstyle: stop
-                        int requestStatus = sendRequest(
+                        requestStatus[0] = sendRequest(
                                         byteStreamToByteConsumer(System.out),
                                         byteStreamToByteConsumer(System.err),
                                         ServerCommand.BUILD_IMAGE,
                                         command.toArray(new String[command.size()]));
                         // Checkstyle: resume
-                        if (requestStatus != NativeImageBuildClient.EXIT_SUCCESS) {
-                            throw showError("Processing image build request failed");
-                        }
                     } catch (IOException e) {
                         throw showError("Error while trying to lock ServerDir " + serverDir, e);
                     }
                 }
             });
+            return requestStatus[0];
         }
 
         boolean isAlive() {
@@ -732,7 +731,7 @@ final class NativeImageServer extends NativeImage {
     }
 
     @Override
-    protected void buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
         if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {
             AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
@@ -745,15 +744,15 @@ final class NativeImageServer extends NativeImage {
                 /* Send image build job to server */
                 showMessage("Build on " + server);
                 building = server;
-                server.sendBuildRequest(imagecp, imageArgs);
+                int status = server.sendBuildRequest(imagecp, imageArgs);
                 if (!server.isAlive()) {
                     /* If server does not respond after image-build -> cleanup */
                     cleanupServers(false, false, true);
                 }
-                return;
+                return status;
             }
         }
-        super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp);
+        return super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp);
     }
 
     private static String imageServerUID(List<String> vmArgs, List<Collection<Path>> builderPaths) {

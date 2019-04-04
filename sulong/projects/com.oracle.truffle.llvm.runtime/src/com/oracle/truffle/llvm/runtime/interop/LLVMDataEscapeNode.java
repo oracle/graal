@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,12 @@
 package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
  * Values that escape Sulong and flow to other languages must be primitive or TruffleObject. This
  * node ensures that.
  */
+@GenerateUncached
 public abstract class LLVMDataEscapeNode extends LLVMNode {
 
     public static LLVMDataEscapeNode create() {
@@ -66,112 +67,112 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     public abstract Object executeWithType(Object escapingValue, LLVMInteropType.Structured type);
 
     @Specialization
-    protected boolean escapingPrimitive(boolean escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static boolean escapingPrimitive(boolean escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
-    protected byte escapingPrimitive(byte escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static byte escapingPrimitive(byte escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
-    protected short escapingPrimitive(short escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static short escapingPrimitive(short escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
-    protected char escapingPrimitive(char escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static char escapingPrimitive(char escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
-    protected int escapingPrimitive(int escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static int escapingPrimitive(int escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
-    protected long escapingPrimitive(long escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static long escapingPrimitive(long escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
-    protected float escapingPrimitive(float escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static float escapingPrimitive(float escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
-    protected double escapingPrimitive(double escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static double escapingPrimitive(double escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
-    protected String escapingString(String escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static String escapingString(String escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
-    protected Object escapingBoxed(LLVMBoxedPrimitive escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static Object escapingBoxed(LLVMBoxedPrimitive escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue.getValue();
     }
 
     @Specialization
-    protected TruffleObject escapingType(LLVMInteropType escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static TruffleObject escapingType(LLVMInteropType escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected TruffleObject escapingVector(LLVMI8Vector vector, LLVMInteropType.Structured type) {
+    static TruffleObject escapingVector(LLVMI8Vector vector, LLVMInteropType.Structured type) {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected TruffleObject escapingVector(LLVMI64Vector vecto, LLVMInteropType.Structured typer) {
+    static TruffleObject escapingVector(LLVMI64Vector vecto, LLVMInteropType.Structured typer) {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected TruffleObject escapingVector(LLVMI32Vector vecto, LLVMInteropType.Structured typer) {
+    static TruffleObject escapingVector(LLVMI32Vector vecto, LLVMInteropType.Structured typer) {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected TruffleObject escapingVector(LLVMI1Vector vector, LLVMInteropType.Structured type) {
+    static TruffleObject escapingVector(LLVMI1Vector vector, LLVMInteropType.Structured type) {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected TruffleObject escapingVector(LLVMI16Vector vecto, LLVMInteropType.Structured typer) {
+    static TruffleObject escapingVector(LLVMI16Vector vecto, LLVMInteropType.Structured typer) {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected TruffleObject escapingVector(LLVMFloatVector vecto, LLVMInteropType.Structured typer) {
+    static TruffleObject escapingVector(LLVMFloatVector vecto, LLVMInteropType.Structured typer) {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected TruffleObject escapingVector(LLVMDoubleVector vecto, LLVMInteropType.Structured typer) {
+    static TruffleObject escapingVector(LLVMDoubleVector vecto, LLVMInteropType.Structured typer) {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected TruffleObject escapingVarbit(LLVMIVarBit vecto, LLVMInteropType.Structured typer) {
+    static TruffleObject escapingVarbit(LLVMIVarBit vecto, LLVMInteropType.Structured typer) {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Exporting VarBit is not yet supported!");
     }
@@ -186,28 +187,28 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     }
 
     @Specialization(guards = "isForeign(address)")
-    TruffleObject escapingForeign(LLVMManagedPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static TruffleObject escapingForeign(LLVMManagedPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         LLVMTypedForeignObject typedForeign = (LLVMTypedForeignObject) address.getObject();
         return typedForeign.getForeign();
     }
 
     @Specialization(guards = {"!isForeign(address)", "type != null"})
-    TruffleObject escapingPointerOverrideType(LLVMPointer address, LLVMInteropType.Structured type) {
+    static TruffleObject escapingPointerOverrideType(LLVMPointer address, LLVMInteropType.Structured type) {
         return address.export(type);
     }
 
     @Specialization(guards = {"!isForeign(address)", "type == null"})
-    TruffleObject escapingPointer(LLVMPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    static TruffleObject escapingPointer(LLVMPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return address;
     }
 
     @Specialization
-    protected LLVMVirtualAllocationAddressTruffleObject escapingJavaByteArray(LLVMVirtualAllocationAddress address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return new LLVMVirtualAllocationAddressTruffleObject(address.copy());
+    protected static TruffleObject escapingJavaByteArray(LLVMVirtualAllocationAddress address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        return address.copy();
     }
 
     @Specialization(guards = "escapingValue == null")
-    protected LLVMNativePointer escapingNull(@SuppressWarnings("unused") Object escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected static LLVMNativePointer escapingNull(@SuppressWarnings("unused") Object escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return LLVMNativePointer.createNull();
     }
 }

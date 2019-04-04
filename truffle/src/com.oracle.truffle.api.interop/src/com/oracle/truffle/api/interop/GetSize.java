@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class GetSize extends UnaryMessage {
     public static final int HASH = 423432;
     static final Message INSTANCE = new GetSize();

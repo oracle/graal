@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class Invoke extends UnaryMessage {
     public static final int HASH = 423429;
     static final Message INSTANCE = new Invoke();

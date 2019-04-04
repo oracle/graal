@@ -73,7 +73,6 @@ import com.oracle.truffle.api.instrumentation.AllocationListener;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -584,23 +583,26 @@ public class AllocationReporterTest {
         });
         context.eval(source);
         context.enter();
-        AllocationReporter reporter = ProxyLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
-        AtomicInteger listenerCalls = new AtomicInteger(0);
-        AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
-        assertEquals(0, listenerCalls.get());
-        assertFalse(reporter.isActive());
-        allocation.setEnabled(true);
-        assertEquals(1, listenerCalls.get());
-        activatedListener.unregister();
-        listenerCalls.set(0);
+        try {
+            AllocationReporter reporter = AllocationReporterLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
+            AtomicInteger listenerCalls = new AtomicInteger(0);
+            AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
+            assertEquals(0, listenerCalls.get());
+            assertFalse(reporter.isActive());
+            allocation.setEnabled(true);
+            assertEquals(1, listenerCalls.get());
+            activatedListener.unregister();
+            listenerCalls.set(0);
 
-        AllocationDeactivatedListener deactivatedListener = AllocationDeactivatedListener.register(listenerCalls, reporter);
-        assertEquals(0, listenerCalls.get());
-        assertTrue(reporter.isActive());
-        allocation.setEnabled(false);
-        assertEquals(1, listenerCalls.get());
-        deactivatedListener.unregister();
-        context.leave();
+            AllocationDeactivatedListener deactivatedListener = AllocationDeactivatedListener.register(listenerCalls, reporter);
+            assertEquals(0, listenerCalls.get());
+            assertTrue(reporter.isActive());
+            allocation.setEnabled(false);
+            assertEquals(1, listenerCalls.get());
+            deactivatedListener.unregister();
+        } finally {
+            context.leave();
+        }
     }
 
     /**
@@ -859,12 +861,6 @@ public class AllocationReporterTest {
                     default:
                         return new TruffleObject() {
                             @Override
-                            public ForeignAccess getForeignAccess() {
-                                // For tests only
-                                return null;
-                            }
-
-                            @Override
                             public String toString() {
                                 return "NewObject";
                             }
@@ -873,25 +869,26 @@ public class AllocationReporterTest {
             }
 
         }
+
+        public static LanguageContext getCurrentContext() {
+            return getCurrentContext(AllocationReporterLanguage.class);
+        }
     }
 
     private static class BigNumber implements TruffleObject {
 
         private BigInteger integer;
 
+        @TruffleBoundary
         BigNumber(String value) {
             this.integer = new BigInteger(value);
         }
 
+        @TruffleBoundary
         long getSize() {
             return integer.bitCount() / 8;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            // For test only
-            return null;
-        }
     }
 
     private static final class AllocationInfo {

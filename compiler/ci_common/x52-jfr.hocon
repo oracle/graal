@@ -6,7 +6,7 @@ bench-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
 }
 
 bench-scala-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
@@ -17,10 +17,10 @@ bench-scala-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notification
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
 }
 
-bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${large-heap} ${jfr-bench-notifications} {
+bench-specjvm2008-Single-jfr: ${bench-common} ${large-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "specjvm2008"
   }
@@ -32,7 +32,10 @@ bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${large-heap} ${jfr-bench-not
   setup: ${bench-specjvm2008.setup} ${JFR.setup}
   teardown: [
     [rm, "-r", "${SPECJVM2008}/results"]
-  ] ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  ] ${JFR.teardown}
+  downloads: {
+    SPECJVM2008: { name: specjvm2008, version: "1.01" }
+  }
   timelimit: "3:30:00"
 }
 
@@ -44,9 +47,9 @@ bench-specjbb2015-jfr: ${bench-common} ${large-heap} ${jfr-bench-notifications} 
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
   downloads: {
-    SPECJBB2015: { name: specjbb2015, version: "1.00" }
+    SPECJBB2015: { name: specjbb2015, version: "1.02" }
   }
   timelimit: "3:00:00"
 }
@@ -59,7 +62,7 @@ bench-renaissance-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications
     ${bench-jvmci.mx-renaissance} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
   downloads: {
     RENAISSANCE: { name: renaissance, version: "0.1" }
   }
@@ -74,7 +77,7 @@ bench-spark-sql-perf-jfr: ${bench-common} ${default-heap} ${jfr-bench-notificati
     ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
   downloads: {
     SPARK_SQL_PERF: { name: spark-sql-perf, version: "0.1" }
   }

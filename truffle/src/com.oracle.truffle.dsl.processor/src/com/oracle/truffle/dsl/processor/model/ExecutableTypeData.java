@@ -189,7 +189,7 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
     }
 
     public boolean hasUnexpectedValue(ProcessorContext context) {
-        return method == null ? false : ElementUtils.canThrowType(method.getThrownTypes(), context.getType(UnexpectedResultException.class));
+        return method == null ? false : ElementUtils.canThrowTypeExact(method.getThrownTypes(), context.getType(UnexpectedResultException.class));
     }
 
     public boolean isFinal() {

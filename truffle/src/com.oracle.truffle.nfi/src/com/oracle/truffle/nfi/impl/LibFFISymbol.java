@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,9 @@ final class LibFFISymbol extends NativePointer {
 
     protected final LibFFILibrary library;
 
-    static LibFFISymbol create(LibFFILibrary library, long address) {
+    static Object create(NFILanguageImpl language, LibFFILibrary library, long address) {
         assert address != 0;
-        return new LibFFISymbol(library, address);
+        return language.getTools().createBindableSymbol(new LibFFISymbol(library, address));
     }
 
     private LibFFISymbol(LibFFILibrary library, long address) {

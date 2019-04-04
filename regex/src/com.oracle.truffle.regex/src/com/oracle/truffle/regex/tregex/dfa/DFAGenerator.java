@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
@@ -45,7 +46,6 @@ import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -371,7 +371,7 @@ public final class DFAGenerator implements JsonConvertible {
         return createTransitionBuilder(null, transitionSet);
     }
 
-    private DFAStateTransitionBuilder createTransitionBuilder(MatcherBuilder matcherBuilder, NFATransitionSet transitionSet) {
+    private DFAStateTransitionBuilder createTransitionBuilder(CharSet matcherBuilder, NFATransitionSet transitionSet) {
         if (trackCaptureGroups) {
             return new DFACaptureGroupTransitionBuilder(matcherBuilder, transitionSet, this);
         } else {
@@ -485,12 +485,12 @@ public final class DFAGenerator implements JsonConvertible {
         DFAAbstractStateNode[] ret = new DFAAbstractStateNode[stateMap.values().size() + 1];
         for (DFAStateNodeBuilder s : stateMap.values()) {
             CharMatcher[] matchers = (s.getTransitions().length > 0) ? new CharMatcher[s.getTransitions().length] : CharMatcher.EMPTY;
-            MatcherBuilder acc = MatcherBuilder.createEmpty();
+            CharSet acc = CharSet.getEmpty();
             int nCheckingTransitions = matchers.length;
             int nRanges = 0;
             int estimatedTransitionsCost = 0;
             for (int i = 0; i < matchers.length; i++) {
-                MatcherBuilder matcherBuilder = s.getTransitions()[i].getMatcherBuilder();
+                CharSet matcherBuilder = s.getTransitions()[i].getMatcherBuilder();
                 nRanges += matcherBuilder.size();
                 acc = acc.union(matcherBuilder, compilationBuffer);
                 if (i == matchers.length - 1 && (acc.matchesEverything() || (pruneUnambiguousPaths && !s.isFinalStateSuccessor()))) {
@@ -536,7 +536,7 @@ public final class DFAGenerator implements JsonConvertible {
                 successors[i] = s.getTransitions()[i].getTarget().getId();
                 if (successors[i] == s.getId()) {
                     loopToSelf = (short) i;
-                    MatcherBuilder loopMB = s.getTransitions()[i].getMatcherBuilder();
+                    CharSet loopMB = s.getTransitions()[i].getMatcherBuilder();
                     if (acc.matchesEverything() && !loopMB.matchesEverything() && loopMB.inverseCharCount() <= 4) {
                         indexOfChars = loopMB.inverseToCharArray();
                     }
@@ -576,7 +576,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private AllTransitionsInOneTreeMatcher createAllTransitionsInOneTreeMatcher(DFAStateNodeBuilder state) {
         DFAStateTransitionBuilder[] transitions = state.getTransitions();
-        CharArrayBuffer sortedRangesBuf = compilationBuffer.getRangesArrayBuffer1();
+        CharArrayBuffer sortedRangesBuf = compilationBuffer.getCharRangesBuffer1();
         ShortArrayBuffer rangeTreeSuccessorsBuf = compilationBuffer.getShortArrayBuffer();
         int[] matcherIndices = new int[transitions.length];
         boolean rangesLeft = false;
@@ -589,7 +589,7 @@ public final class DFAGenerator implements JsonConvertible {
             int minLo = Integer.MAX_VALUE;
             int minMb = -1;
             for (int i = 0; i < transitions.length; i++) {
-                MatcherBuilder mb = transitions[i].getMatcherBuilder();
+                CharSet mb = transitions[i].getMatcherBuilder();
                 if (matcherIndices[i] < mb.size() && mb.getLo(matcherIndices[i]) < minLo) {
                     minLo = mb.getLo(matcherIndices[i]);
                     minMb = i;

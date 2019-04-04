@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleCompilation;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceCompilation;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceCompilationDetails;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -38,8 +38,6 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
@@ -58,21 +56,19 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilation) || TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails)) {
-            runtime.addListener(new TraceCompilationListener(runtime));
-        }
+        runtime.addListener(new TraceCompilationListener(runtime));
     }
 
     @Override
     public void onCompilationQueued(OptimizedCallTarget target) {
-        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilationDetails)) {
+        if (target.getOptionValue(TraceCompilationDetails)) {
             runtime.logEvent(0, "opt queued", target.toString(), target.getDebugProperties(null));
         }
     }
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilationDetails)) {
+        if (target.getOptionValue(TraceCompilationDetails)) {
             Map<String, Object> properties = new LinkedHashMap<>();
             addSourceInfo(properties, source);
             properties.put("Reason", reason);
@@ -82,34 +78,47 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        if (!isPermanentFailure(bailout, permanentBailout)) {
-            onCompilationDequeued(target, null, "Non permanent bailout: " + reason);
+        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+            if (!isPermanentFailure(bailout, permanentBailout)) {
+                onCompilationDequeued(target, null, "Non permanent bailout: " + reason);
+            }
+            currentCompilation.set(null);
         }
-        currentCompilation.set(null);
     }
 
     @Override
     public void onCompilationStarted(OptimizedCallTarget target) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails)) {
+        if (target.getOptionValue(TraceCompilationDetails)) {
             runtime.logEvent(0, "opt start", target.toString(), target.getDebugProperties(null));
         }
-        currentCompilation.set(new Times());
+
+        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+            currentCompilation.set(new Times());
+        }
     }
 
     @Override
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-        runtime.logEvent(0, "opt deopt", target.toString(), target.getDebugProperties(null));
+        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+            runtime.logEvent(0, "opt deopt", target.toString(), target.getDebugProperties(null));
+        }
     }
 
     @Override
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
-        final Times current = currentCompilation.get();
-        current.timePartialEvaluationFinished = System.nanoTime();
-        current.nodeCountPartialEval = graph.getNodeCount();
+        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+            final Times current = currentCompilation.get();
+            current.timePartialEvaluationFinished = System.nanoTime();
+            current.nodeCountPartialEval = graph.getNodeCount();
+        }
     }
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+        if (!target.getOptionValue(TraceCompilation) && !target.getOptionValue(TraceCompilationDetails)) {
+            return;
+        }
+
         long timeCompilationFinished = System.nanoTime();
         int nodeCountLowered = graph.getNodeCount();
         Times compilation = currentCompilation.get();
@@ -157,10 +166,12 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
-        Map<String, Object> properties = new LinkedHashMap<>();
-        addSourceInfo(properties, source);
-        properties.put("Reason", reason);
-        runtime.logEvent(0, "opt invalidated", target.toString(), properties);
+        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+            Map<String, Object> properties = new LinkedHashMap<>();
+            addSourceInfo(properties, source);
+            properties.put("Reason", reason);
+            runtime.logEvent(0, "opt invalidated", target.toString(), properties);
+        }
     }
 
     private static void addSourceInfo(Map<String, Object> properties, Object source) {

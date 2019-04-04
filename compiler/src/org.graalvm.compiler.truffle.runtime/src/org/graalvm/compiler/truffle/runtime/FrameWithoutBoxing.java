@@ -63,6 +63,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private static final long[] EMPTY_LONG_ARRAY = {};
     private static final byte[] EMPTY_BYTE_ARRAY = {};
 
+    private static final Unsafe UNSAFE = initUnsafe();
+
     static {
         assert OBJECT_TAG == FrameSlotKind.Object.tag;
         assert ILLEGAL_TAG == FrameSlotKind.Illegal.tag;
@@ -72,6 +74,22 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         assert FLOAT_TAG == FrameSlotKind.Float.tag;
         assert BOOLEAN_TAG == FrameSlotKind.Boolean.tag;
         assert BYTE_TAG == FrameSlotKind.Byte.tag;
+    }
+
+    private static Unsafe initUnsafe() {
+        try {
+            // Fast path when we are trusted.
+            return Unsafe.getUnsafe();
+        } catch (SecurityException se) {
+            // Slow path when we are not trusted.
+            try {
+                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                return (Unsafe) theUnsafe.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe", e);
+            }
+        }
     }
 
     public FrameWithoutBoxing(FrameDescriptor descriptor, Object[] arguments) {
@@ -470,21 +488,5 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @SuppressWarnings("deprecation")
     private static int getFrameSlotIndex(FrameSlot slot) {
         return slot.getIndex();
-    }
-
-    private static final Unsafe UNSAFE = getUnsafe();
-
-    private static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
     }
 }

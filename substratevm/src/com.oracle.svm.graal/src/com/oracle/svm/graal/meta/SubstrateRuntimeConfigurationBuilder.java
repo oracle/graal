@@ -38,10 +38,11 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 
@@ -55,9 +56,9 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
     private final ClassInitializationSupport classInitializationSupport;
 
     public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
-                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
+                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider, NativeLibraries nativeLibraries,
                     ClassInitializationSupport classInitializationSupport) {
-        super(options, hostVM, metaAccess, backendProvider);
+        super(options, hostVM, metaAccess, backendProvider, nativeLibraries);
         this.aUniverse = aUniverse;
         this.originalReflectionProvider = originalReflectionProvider;
         this.classInitializationSupport = classInitializationSupport;
@@ -76,6 +77,6 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
     @Override
     protected Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new SubstrateReplacements(options, p, snippetReflection, bytecodeProvider, ConfigurationValues.getTarget(), new SubstrateGraphMakerFactory(wordTypes));
+        return new SubstrateReplacements(p, snippetReflection, bytecodeProvider, ConfigurationValues.getTarget(), new SubstrateGraphMakerFactory(wordTypes));
     }
 }

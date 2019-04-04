@@ -24,60 +24,46 @@
  */
 package com.oracle.svm.hosted.config;
 
-import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
-
 import java.io.IOException;
 import java.io.Reader;
-import java.lang.reflect.Executable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.ImageClassLoader;
 
-import jdk.vm.ci.meta.MetaUtil;
-
 // Checkstyle: allow reflection
 
 /**
- * Parses JSON describing classes, methods and fields and registers them with a
- * {@link ReflectionRegistry}.
+ * Parses JSON describing classes, methods and fields and delegates their registration to a
+ * {@link ReflectionConfigurationParserDelegate}.
  */
-public final class ReflectionConfigurationParser extends ConfigurationParser {
+public final class ReflectionConfigurationParser<T> extends ConfigurationParser {
     private static final String CONSTRUCTOR_NAME = "<init>";
 
-    private final ReflectionRegistry registry;
+    public static ReflectionConfigurationParser<Class<?>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
+        return new ReflectionConfigurationParser<>(new ReflectionRegistryAdapter(registry, imageClassLoader));
+    }
 
-    public ReflectionConfigurationParser(ReflectionRegistry registry, ImageClassLoader classLoader) {
-        super(classLoader);
-        this.registry = registry;
+    private final ReflectionConfigurationParserDelegate<T> delegate;
+
+    public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
+        this.delegate = delegate;
     }
 
     @Override
-    protected void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String[]> option) {
+    public void parseAndRegister(Reader reader) throws IOException {
         try {
             JSONParser parser = new JSONParser(reader);
             Object json = parser.parse();
             parseClassArray(asList(json, "first level of document must be an array of class descriptors"));
         } catch (NoClassDefFoundError e) {
             throw e;
-        } catch (IOException | JSONParserException e) {
-            String errorMessage = e.getMessage();
-            if (errorMessage == null || errorMessage.isEmpty()) {
-                errorMessage = e.toString();
-            }
-            throw UserError.abort("Error parsing " + featureName + " configuration in " + location + ":\n" + errorMessage +
-                            "\nVerify that the configuration matches the schema described in the " +
-                            SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
         }
     }
 
@@ -94,12 +80,11 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
         }
         String className = asString(classObject, "name");
 
-        Class<?> clazz = classLoader.findClassByName(className, false);
+        T clazz = delegate.resolveType(className);
         if (clazz == null) {
             throw new JSONParserException("Class " + className + " not found");
         }
-
-        registry.register(clazz);
+        delegate.registerType(clazz);
 
         for (Map.Entry<String, Object> entry : data.entrySet()) {
             String name = entry.getKey();
@@ -109,35 +94,35 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
                     /* Already handled. */
                 } else if (name.equals("allDeclaredConstructors")) {
                     if (asBoolean(value, "allDeclaredConstructors")) {
-                        registry.register(clazz.getDeclaredConstructors());
+                        delegate.registerDeclaredConstructors(clazz);
                     }
                 } else if (name.equals("allPublicConstructors")) {
                     if (asBoolean(value, "allPublicConstructors")) {
-                        registry.register(clazz.getConstructors());
+                        delegate.registerPublicConstructors(clazz);
                     }
                 } else if (name.equals("allDeclaredMethods")) {
                     if (asBoolean(value, "allDeclaredMethods")) {
-                        registry.register(clazz.getDeclaredMethods());
+                        delegate.registerDeclaredMethods(clazz);
                     }
                 } else if (name.equals("allPublicMethods")) {
                     if (asBoolean(value, "allPublicMethods")) {
-                        registry.register(clazz.getMethods());
+                        delegate.registerPublicMethods(clazz);
                     }
                 } else if (name.equals("allDeclaredFields")) {
                     if (asBoolean(value, "allDeclaredFields")) {
-                        registry.register(false, clazz.getDeclaredFields());
+                        delegate.registerDeclaredFields(clazz);
                     }
                 } else if (name.equals("allPublicFields")) {
                     if (asBoolean(value, "allPublicFields")) {
-                        registry.register(false, clazz.getFields());
+                        delegate.registerPublicFields(clazz);
                     }
                 } else if (name.equals("allDeclaredClasses")) {
                     if (asBoolean(value, "allDeclaredClasses")) {
-                        registry.register(clazz.getDeclaredClasses());
+                        delegate.registerDeclaredClasses(clazz);
                     }
                 } else if (name.equals("allPublicClasses")) {
                     if (asBoolean(value, "allPublicClasses")) {
-                        registry.register(clazz.getClasses());
+                        delegate.registerPublicClasses(clazz);
                     }
                 } else if (name.equals("methods")) {
                     parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
@@ -146,21 +131,21 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
                 } else {
                     throw new JSONParserException("Unknown attribute '" + name +
                                     "' (supported attributes: allDeclaredConstructors, allPublicConstructors, allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields) in defintion of class " +
-                                    clazz.getTypeName());
+                                    delegate.getTypeName(clazz));
                 }
             } catch (NoClassDefFoundError e) {
-                showWarning("Could not register " + clazz.getTypeName() + ": " + name + " for reflection. Reason: " + formatError(e) + ".");
+                showWarning("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection. Reason: " + formatError(e) + ".");
             }
         }
     }
 
-    private void parseFields(List<Object> fields, Class<?> clazz) {
+    private void parseFields(List<Object> fields, T clazz) {
         for (Object field : fields) {
             parseField(asMap(field, "Elements of 'fields' array must be field descriptor objects"), clazz);
         }
     }
 
-    private void parseField(Map<String, Object> data, Class<?> clazz) {
+    private void parseField(Map<String, Object> data, T clazz) {
         String fieldName = null;
         boolean allowWrite = false;
         for (Map.Entry<String, Object> entry : data.entrySet()) {
@@ -170,32 +155,32 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
             } else if (propertyName.equals("allowWrite")) {
                 allowWrite = asBoolean(entry.getValue(), "allowWrite");
             } else {
-                throw new JSONParserException("Unknown attribute '" + propertyName + "' (supported attributes: 'name') in definition of field for class '" + clazz.getTypeName() + "'");
+                throw new JSONParserException("Unknown attribute '" + propertyName + "' (supported attributes: 'name') in definition of field for class '" + delegate.getTypeName(clazz) + "'");
             }
         }
 
         if (fieldName == null) {
-            throw new JSONParserException("Missing attribute 'name' in definition of field for class " + clazz.getTypeName());
+            throw new JSONParserException("Missing attribute 'name' in definition of field for class " + delegate.getTypeName(clazz));
         }
 
         try {
-            registry.register(allowWrite, clazz.getDeclaredField(fieldName));
+            delegate.registerField(clazz, fieldName, allowWrite);
         } catch (NoSuchFieldException e) {
-            throw new JSONParserException("Field " + clazz.getTypeName() + "." + fieldName + " not found");
+            throw new JSONParserException("Field " + delegate.getTypeName(clazz) + "." + fieldName + " not found");
         } catch (NoClassDefFoundError e) {
-            showWarning("Could not register field " + clazz.getTypeName() + "." + fieldName + " for reflection. Reason: " + formatError(e) + ".");
+            showWarning("Could not register field " + delegate.getTypeName(clazz) + "." + fieldName + " for reflection. Reason: " + formatError(e) + ".");
         }
     }
 
-    private void parseMethods(List<Object> methods, Class<?> clazz) {
+    private void parseMethods(List<Object> methods, T clazz) {
         for (Object method : methods) {
             parseMethod(asMap(method, "Elements of 'methods' array must be method descriptor objects"), clazz);
         }
     }
 
-    private void parseMethod(Map<String, Object> data, Class<?> clazz) {
+    private void parseMethod(Map<String, Object> data, T clazz) {
         String methodName = null;
-        Class<?>[] methodParameterTypes = null;
+        List<T> methodParameterTypes = null;
         for (Map.Entry<String, Object> entry : data.entrySet()) {
             String propertyName = entry.getKey();
             if (propertyName.equals("name")) {
@@ -204,19 +189,22 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
                 methodParameterTypes = parseTypes(asList(entry.getValue(), "Attribute 'parameterTypes' must be a list of type names"));
             } else {
                 throw new JSONParserException(
-                                "Unknown attribute '" + propertyName + "' (supported attributes: 'name', 'parameterTypes') in definition of method for class '" + clazz.getTypeName() + "'");
+                                "Unknown attribute '" + propertyName + "' (supported attributes: 'name', 'parameterTypes') in definition of method for class '" + delegate.getTypeName(clazz) + "'");
             }
         }
 
         if (methodName == null) {
-            throw new JSONParserException("Missing attribute 'name' in definition of method for class '" + clazz.getTypeName() + "'");
+            throw new JSONParserException("Missing attribute 'name' in definition of method for class '" + delegate.getTypeName(clazz) + "'");
         }
 
         boolean isConstructor = CONSTRUCTOR_NAME.equals(methodName);
         if (methodParameterTypes != null) {
             try {
-                Executable method = isConstructor ? clazz.getDeclaredConstructor(methodParameterTypes) : clazz.getDeclaredMethod(methodName, methodParameterTypes);
-                registry.register(method);
+                if (isConstructor) {
+                    delegate.registerConstructor(clazz, methodParameterTypes);
+                } else {
+                    delegate.registerMethod(clazz, methodName, methodParameterTypes);
+                }
             } catch (NoSuchMethodException e) {
                 throw new JSONParserException("Method " + formatMethod(clazz, methodName, methodParameterTypes) + " not found");
             } catch (NoClassDefFoundError e) {
@@ -224,47 +212,41 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
             }
         } else {
             try {
-                boolean found = false;
-                Executable[] methods = isConstructor ? clazz.getDeclaredConstructors() : clazz.getDeclaredMethods();
-                for (Executable method : methods) {
-                    if (isConstructor || method.getName().equals(methodName)) {
-                        registry.register(method);
-                        found = true;
-                    }
+                boolean found;
+                if (isConstructor) {
+                    found = delegate.registerAllConstructors(clazz);
+                } else {
+                    found = delegate.registerAllMethodsWithName(clazz, methodName);
                 }
                 if (!found) {
-                    throw new JSONParserException("Method " + clazz.getTypeName() + "." + methodName + " not found");
+                    throw new JSONParserException("Method " + delegate.getTypeName(clazz) + "." + methodName + " not found");
                 }
             } catch (NoClassDefFoundError e) {
-                showWarning("Could not register method " + clazz.getTypeName() + "." + methodName + " for reflection. Reason: " + formatError(e) + ".");
+                showWarning("Could not register method " + delegate.getTypeName(clazz) + "." + methodName + " for reflection. Reason: " + formatError(e) + ".");
             }
         }
     }
 
-    private Class<?>[] parseTypes(List<Object> types) {
-        List<Class<?>> result = new ArrayList<>();
+    private List<T> parseTypes(List<Object> types) {
+        List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            if (typeName.indexOf('[') != -1) {
-                /* accept "int[][]", "java.lang.String[]" */
-                typeName = MetaUtil.internalNameToJava(MetaUtil.toInternalName(typeName), true, true);
-            }
-            Class<?> clazz = classLoader.findClassByName(typeName, false);
+            T clazz = delegate.resolveType(typeName);
             if (clazz == null) {
                 throw new JSONParserException("Class " + typeName + " not found");
             }
             result.add(clazz);
         }
-        return result.toArray(new Class<?>[result.size()]);
+        return result;
     }
 
     private static String formatError(Error e) {
         return e.getClass().getTypeName() + ": " + e.getMessage();
     }
 
-    private static String formatMethod(Class<?> clazz, String methodName, Class<?>[] paramTypes) {
-        String parameterTypeNames = Stream.of(paramTypes).map(Class::getSimpleName).collect(Collectors.joining(", "));
-        return clazz.getTypeName() + "." + methodName + "(" + parameterTypeNames + ")";
+    private String formatMethod(T clazz, String methodName, List<T> paramTypes) {
+        String parameterTypeNames = paramTypes.stream().map(delegate::getSimpleName).collect(Collectors.joining(", "));
+        return delegate.getTypeName(clazz) + "." + methodName + "(" + parameterTypeNames + ")";
     }
 
     private static void showWarning(String message) {

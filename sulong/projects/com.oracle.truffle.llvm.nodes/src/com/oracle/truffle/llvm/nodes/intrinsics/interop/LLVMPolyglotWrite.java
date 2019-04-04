@@ -35,13 +35,14 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
@@ -51,58 +52,39 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public final class LLVMPolyglotWrite {
 
-    private static void doWrite(Node foreignWrite, TruffleObject value, String name, Object v) throws IllegalAccessError {
-        try {
-            ForeignAccess.sendWrite(foreignWrite, value, name, v);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignWrite, "Can not write member '%s' to polyglot value.", name);
-        } catch (UnknownIdentifierException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignWrite, "Member '%s' does not exist.", e.getUnknownIdentifier());
-        } catch (UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignWrite, "Unsupported type writing member '%s'.", name);
-        }
-    }
-
-    private static void doWriteIdx(Node foreignWrite, TruffleObject value, int id, Object v) {
-        try {
-            ForeignAccess.sendWrite(foreignWrite, value, id, v);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignWrite, "Can not write to index %d of polyglot value.", id);
-        } catch (UnknownIdentifierException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignWrite, "Index %d does not exist.", id);
-        } catch (UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignWrite, "Unsupported type writing index %d.", id);
-        }
-    }
-
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPolyglotPutMember extends LLVMIntrinsic {
 
-        @Child private Node foreignWrite = Message.WRITE.createNode();
-        @Child protected LLVMDataEscapeNode prepareValueForEscape;
-        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
-
         public LLVMPolyglotPutMember(int argCount) {
             if (argCount != 3) {
                 throw new LLVMPolyglotException(this, "polyglot_put_member must be called with exactly 3 arguments.");
             }
-            this.prepareValueForEscape = LLVMDataEscapeNode.create();
         }
 
         @Specialization
-        protected Object doIntrinsic(LLVMManagedPointer value, Object id, Object v,
-                        @Cached("createReadString()") LLVMReadStringNode readStr) {
-            TruffleObject foreign = asForeign.execute(value);
-            doWrite(foreignWrite, foreign, readStr.executeWithTarget(id), prepareValueForEscape.executeWithTarget(v));
-            return null;
+        protected void doIntrinsic(LLVMManagedPointer target, Object id, Object value,
+                        @Cached LLVMAsForeignNode asForeign,
+                        @CachedLibrary(limit = "3") InteropLibrary foreignWrite,
+                        @Cached LLVMDataEscapeNode prepareValueForEscape,
+                        @Cached("createReadString()") LLVMReadStringNode readStr,
+                        @Cached BranchProfile exception) {
+            TruffleObject foreign = asForeign.execute(target);
+            String name = readStr.executeWithTarget(id);
+            Object escapedValue = prepareValueForEscape.executeWithTarget(value);
+            try {
+                foreignWrite.writeMember(foreign, name, escapedValue);
+            } catch (UnsupportedMessageException e) {
+                exception.enter();
+                throw new LLVMPolyglotException(foreignWrite, "Can not write member '%s' to polyglot value.", name);
+            } catch (UnknownIdentifierException e) {
+                exception.enter();
+                throw new LLVMPolyglotException(foreignWrite, "Member '%s' does not exist.", e.getUnknownIdentifier());
+            } catch (UnsupportedTypeException e) {
+                exception.enter();
+                throw new LLVMPolyglotException(foreignWrite, "Unsupported type writing member '%s'.", name);
+            }
         }
 
         @Fallback
@@ -118,21 +100,31 @@ public final class LLVMPolyglotWrite {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPolyglotSetArrayElement extends LLVMIntrinsic {
 
-        @Child private Node foreignWrite = Message.WRITE.createNode();
-        @Child protected LLVMDataEscapeNode prepareValueForEscape;
-        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
-
         public LLVMPolyglotSetArrayElement(int argCount) {
             if (argCount != 3) {
                 throw new LLVMPolyglotException(this, "polyglot_set_array_element must be called with exactly 3 arguments.");
             }
-            this.prepareValueForEscape = LLVMDataEscapeNode.create();
         }
 
         @Specialization
-        protected Object doIntrinsic(LLVMManagedPointer value, int id, Object v) {
-            TruffleObject foreign = asForeign.execute(value);
-            doWriteIdx(foreignWrite, foreign, id, prepareValueForEscape.executeWithTarget(v));
+        protected Object doIntrinsic(LLVMManagedPointer target, int id, Object value,
+                        @Cached LLVMAsForeignNode asForeign,
+                        @CachedLibrary(limit = "3") InteropLibrary foreignWrite,
+                        @Cached LLVMDataEscapeNode prepareValueForEscape) {
+            TruffleObject foreign = asForeign.execute(target);
+            Object escapedValue = prepareValueForEscape.executeWithTarget(value);
+            try {
+                foreignWrite.writeArrayElement(foreign, id, escapedValue);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(foreignWrite, "Can not write to index %d of polyglot value.", id);
+            } catch (InvalidArrayIndexException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(foreignWrite, "Index %d does not exist.", id);
+            } catch (UnsupportedTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(foreignWrite, "Unsupported type writing index %d.", id);
+            }
             return null;
         }
 

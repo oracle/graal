@@ -36,6 +36,7 @@ import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -63,13 +64,12 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
         legacySplittingScope.close();
     }
 
-    private final FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
-
     @Test
     @SuppressWarnings("try")
     public void testDefaultStrategyStabilises() {
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
-                        fallbackSplitInfo.getSplitLimit() + 1000)) {
+        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes, 1000);
+                        Context c = Context.create()) {
+            c.enter();
             createDummyTargetsToBoostGrowingSplitLimit();
             class InnerRootNode extends SplittableRootNode {
                 OptimizedCallTarget target;
@@ -181,6 +181,7 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
             // OUTSIDE <split> MID
             // MID <split> INNER
             Assert.assertEquals("Not the right number of splits.", baseSplitCount + 13, listener.splitCount);
+            c.leave();
         }
     }
 
@@ -255,8 +256,10 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
     }
 
     @Test
+    @Ignore("Does not work with per engine cache.")
     @SuppressWarnings("try")
     public void testMaxLimitForTargetsOutsideEngine() {
+        FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
         final int expectedIncreaseInNodes = 10;
         try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
                         fallbackSplitInfo.getSplitCount() + expectedIncreaseInNodes)) {
@@ -279,7 +282,9 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     @SuppressWarnings("try")
+    @Ignore("Does not work with per engine cache.")
     public void testGrowingLimitForTargetsOutsideEngine() {
+        FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
         final int expectedGrowingSplits = (int) (2 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit));
         final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new DummyRootNode());
         final OptimizedCallTarget outer = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerAndSwapsCallNode(inner));
@@ -306,8 +311,6 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
     public static class SplitTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = "SplitTestLanguage";
 
-        private final RootCallTarget callTarget = runtime.createCallTarget(new CallsInnerAndSwapsCallNode(runtime.createCallTarget(new DummyRootNode())));
-
         @Override
         protected Env createContext(Env env) {
             return env;
@@ -321,7 +324,7 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             if (request.getSource().getCharacters().equals("exec")) {
-                return callTarget;
+                return runtime.createCallTarget(new CallsInnerAndSwapsCallNode(runtime.createCallTarget(new DummyRootNode())));
             } else if (request.getSource().getCharacters().toString().startsWith("new")) {
                 return runtime.createCallTarget(new DummyRootNode());
             } else {
@@ -336,57 +339,61 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
         final int expectedSplittingIncrease = DUMMYROOTNODECOUNT * 2;
         try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
                         expectedSplittingIncrease)) {
-            Context c = Context.create();
-            for (int i = 0; i < 100; i++) {
-                eval(c, "exec");
+            try (Context c = Context.create()) {
+                for (int i = 0; i < 100; i++) {
+                    eval(c, "exec");
+                }
+                Assert.assertEquals("Wrong number of splits: ", expectedSplittingIncrease, listener.splitCount * DUMMYROOTNODECOUNT);
             }
-            Assert.assertEquals("Wrong number of splits: ", expectedSplittingIncrease, listener.splitCount * DUMMYROOTNODECOUNT);
         }
     }
 
     @Test
     public void testGrowingSplitLimitInContext() {
-        Context c = Context.create();
-        // Eval a lot to fill out budget
-        useUpTheBudget(c);
-        final int baseSplitCount = listener.splitCount;
-        for (int i = 0; i < 10; i++) {
-            eval(c, "exec");
-        }
-        Assert.assertEquals("Split count growing without new call targets", baseSplitCount, listener.splitCount);
+        try (Context c = Context.create()) {
+            // Eval a lot to fill out budget
+            useUpTheBudget(c);
+            final int baseSplitCount = listener.splitCount;
+            for (int i = 0; i < 10; i++) {
+                eval(c, "exec");
+            }
+            Assert.assertEquals("Split count growing without new call targets", baseSplitCount, listener.splitCount);
 
-        eval(c, "new");
-        for (int i = 0; i < 10; i++) {
-            eval(c, "exec");
-        }
-        Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit)),
-                        listener.splitCount);
+            eval(c, "new");
+            for (int i = 0; i < 10; i++) {
+                eval(c, "exec");
+            }
+            Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit)),
+                            listener.splitCount);
 
-        eval(c, "new2");
-        for (int i = 0; i < 10; i++) {
-            eval(c, "exec");
+            eval(c, "new2");
+            for (int i = 0; i < 10; i++) {
+                eval(c, "exec");
+            }
+            Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + 2 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit)),
+                            listener.splitCount);
+
         }
-        Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + 2 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit)),
-                        listener.splitCount);
     }
 
     @Test
     public void testSplitLimitIsContextSpecific() {
-        Context c1 = Context.create();
-        Context c2 = Context.create();
-        // Use up the c1 budget
-        useUpTheBudget(c1);
-        final int c1BaseSplitCount = listener.splitCount;
-        // Try to split some more in c1
-        for (int i = 0; i < 10; i++) {
-            eval(c1, "exec");
+        try (Context c1 = Context.create();
+                        Context c2 = Context.create()) {
+            // Use up the c1 budget
+            useUpTheBudget(c1);
+            final int c1BaseSplitCount = listener.splitCount;
+            // Try to split some more in c1
+            for (int i = 0; i < 10; i++) {
+                eval(c1, "exec");
+            }
+            Assert.assertEquals("Splitting over budget!", c1BaseSplitCount, listener.splitCount);
+            // Try to split in c2
+            for (int i = 0; i < 10; i++) {
+                eval(c2, "exec");
+            }
+            Assert.assertTrue("No splitting in different context", c1BaseSplitCount < listener.splitCount);
         }
-        Assert.assertEquals("Splitting over budget!", c1BaseSplitCount, listener.splitCount);
-        // Try to split in c2
-        for (int i = 0; i < 10; i++) {
-            eval(c2, "exec");
-        }
-        Assert.assertTrue("No splitting in different context", c1BaseSplitCount < listener.splitCount);
     }
 
     private static void useUpTheBudget(Context context) {

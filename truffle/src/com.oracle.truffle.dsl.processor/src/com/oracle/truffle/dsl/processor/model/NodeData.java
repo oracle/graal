@@ -43,8 +43,11 @@ package com.oracle.truffle.dsl.processor.model;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.lang.model.element.ExecutableElement;
@@ -80,6 +83,11 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private boolean reflectable;
 
     private boolean reportPolymorphism;
+    private boolean isUncachable;
+    private boolean isNodeBound;
+    private boolean generateUncached;
+    private Set<String> allowedCheckedExceptions;
+    private Map<CacheExpression, String> sharedCaches = Collections.emptyMap();
 
     public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory) {
         super(context, type, null);
@@ -93,8 +101,50 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.generateFactory = generateFactory;
     }
 
+    public Map<CacheExpression, String> getSharedCaches() {
+        return sharedCaches;
+    }
+
+    public void setSharedCaches(Map<CacheExpression, String> sharedCaches) {
+        this.sharedCaches = sharedCaches;
+    }
+
     public NodeData(ProcessorContext context, TypeElement type) {
         this(context, type, null, false);
+    }
+
+    public void setNodeBound(boolean isNodeBound) {
+        this.isNodeBound = isNodeBound;
+    }
+
+    /**
+     * Returns true if the node instance is bound by any DSL element.
+     */
+    public boolean isNodeBound() {
+        return isNodeBound;
+    }
+
+    public void setUncachable(boolean uncached) {
+        this.isUncachable = uncached;
+    }
+
+    public void setGenerateUncached(boolean generateUncached) {
+        this.generateUncached = generateUncached;
+    }
+
+    /**
+     * Returns true if the generation of an uncached version was requested.
+     */
+    public boolean isGenerateUncached() {
+        return generateUncached;
+    }
+
+    /**
+     * Returns true if the node is uncachable. It is uncachable if it does not require any state to
+     * be implemented. For example inline caches are uncachable.
+     */
+    public boolean isUncachable() {
+        return isUncachable;
     }
 
     public boolean isGenerateFactory() {
@@ -388,15 +438,20 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public boolean needsRewrites(ProcessorContext context) {
-        boolean needsRewrites = false;
-
+        int count = 0;
         for (SpecializationData specialization : getSpecializations()) {
-            if (specialization.hasRewrite(context)) {
-                needsRewrites = true;
-                break;
+            if (specialization.getMethod() == null) {
+                continue;
             }
+            if (count == 1) {
+                return true;
+            }
+            if (specialization.needsRewrite(context)) {
+                return true;
+            }
+            count++;
         }
-        return needsRewrites || getSpecializations().size() > 1;
+        return false;
     }
 
     public SpecializationData getPolymorphicSpecialization() {
@@ -426,7 +481,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return null;
     }
 
-    @Override
     public TypeSystemData getTypeSystem() {
         return typeSystem;
     }
@@ -453,12 +507,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         dumpProperty(builder, indent, "casts", getCasts());
         dumpProperty(builder, indent, "messages", collectMessages());
         if (getEnclosingNodes().size() > 0) {
-            builder.append(String.format("\n%s  children = [", indent));
+            builder.append(String.format("%n%s  children = [", indent));
             for (NodeData node : getEnclosingNodes()) {
-                builder.append("\n");
+                builder.append("%n");
                 builder.append(node.dump(level + 1));
             }
-            builder.append(String.format("\n%s  ]", indent));
+            builder.append(String.format("%n%s  ]", indent));
         }
         builder.append(String.format("%s}", indent));
         return builder.toString();
@@ -468,11 +522,11 @@ public class NodeData extends Template implements Comparable<NodeData> {
         if (value instanceof List) {
             List<?> list = (List<?>) value;
             if (!list.isEmpty()) {
-                b.append(String.format("\n%s  %s = %s", indent, propertyName, dumpList(indent, (List<?>) value)));
+                b.append(String.format("%n%s  %s = %s", indent, propertyName, dumpList(indent, (List<?>) value)));
             }
         } else {
             if (value != null) {
-                b.append(String.format("\n%s  %s = %s", indent, propertyName, value));
+                b.append(String.format("%n%s  %s = %s", indent, propertyName, value));
             }
         }
     }
@@ -491,12 +545,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         StringBuilder b = new StringBuilder();
         b.append("[");
         for (Object object : array) {
-            b.append("\n        ");
+            b.append("%n        ");
             b.append(indent);
             b.append(object);
             b.append(", ");
         }
-        b.append("\n    ").append(indent).append("]");
+        b.append("%n    ").append(indent).append("]");
         return b.toString();
     }
 
@@ -511,6 +565,15 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public List<NodeChildData> getChildren() {
         return children;
+    }
+
+    public Collection<SpecializationData> computeUncachedSpecializations(List<SpecializationData> s) {
+        Set<SpecializationData> uncached = new LinkedHashSet<>(s);
+        // remove all replacable specializations
+        for (SpecializationData specialization : s) {
+            uncached.removeAll(specialization.getReplaces());
+        }
+        return uncached;
     }
 
     public List<SpecializationData> getSpecializations() {
@@ -606,4 +669,19 @@ public class NodeData extends Template implements Comparable<NodeData> {
     public boolean isReportPolymorphism() {
         return reportPolymorphism;
     }
+
+    public void setAllowedCheckedExceptions(Set<String> checkedExceptions) {
+        this.allowedCheckedExceptions = checkedExceptions;
+    }
+
+    public Set<String> getAllowedCheckedExceptions() {
+        return allowedCheckedExceptions;
+    }
+
+    private final Set<TypeMirror> libraryTypes = new LinkedHashSet<>();
+
+    public Set<TypeMirror> getLibraryTypes() {
+        return libraryTypes;
+    }
+
 }

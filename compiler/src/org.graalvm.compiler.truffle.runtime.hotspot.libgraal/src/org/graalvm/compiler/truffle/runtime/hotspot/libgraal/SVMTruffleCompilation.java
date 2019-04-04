@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleRuntime.getIsolateThreadId;
+import static org.graalvm.libgraal.LibGraal.getIsolateThread;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
@@ -44,7 +44,7 @@ final class SVMTruffleCompilation extends SVMObject implements TruffleCompilatio
     public CompilableTruffleAST getCompilable() {
         CompilableTruffleAST compilable = cachedCompilableTruffleAST;
         if (compilable == null) {
-            compilable = HotSpotToSVMCalls.getTruffleCompilationTruffleAST(getIsolateThreadId(), handle);
+            compilable = HotSpotToSVMCalls.getTruffleCompilationTruffleAST(getIsolateThread(), handle);
             cachedCompilableTruffleAST = compilable;
         }
         return compilable;
@@ -55,14 +55,14 @@ final class SVMTruffleCompilation extends SVMObject implements TruffleCompilatio
         try {
             owner.closeCompilation(this);
         } finally {
-            HotSpotToSVMCalls.closeCompilation(getIsolateThreadId(), handle);
+            HotSpotToSVMCalls.closeCompilation(getIsolateThread(), handle);
         }
     }
 
     String getId() {
         String id = cachedId;
         if (id == null) {
-            id = HotSpotToSVMCalls.getTruffleCompilationId(getIsolateThreadId(), handle);
+            id = HotSpotToSVMCalls.getTruffleCompilationId(getIsolateThread(), handle);
             cachedId = id;
         }
         return id;

@@ -39,6 +39,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -50,7 +51,6 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
@@ -81,18 +81,15 @@ import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.word.WordOperationPlugin;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.vm.ci.meta.Constant;
@@ -218,7 +215,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 if (argType != null) {
                     // TODO For trustInterfaces = false, we cannot be more specific here
                     // (i.e. we cannot use TypeReference.createExactTrusted here)
-                    TypeReference typeref = TypeReference.createWithoutAssumptions(toOriginal(argType));
+                    TypeReference typeref = TypeReference.createWithoutAssumptions(NativeImageUtil.toOriginal(argType));
                     argStamp = StampTool.isPointerNonNull(argStamp) ? StampFactory.objectNonNull(typeref) : StampFactory.object(typeref);
                 }
                 return new ParameterNode(index, StampPair.createSingle(argStamp));
@@ -303,11 +300,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         graphBuilderPlugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getSnippetDefault(graphBuilderPlugins);
-        GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(originalProviders.getMetaAccess(), originalProviders.getStampProvider(), originalProviders.getConstantReflection(),
-                        originalProviders.getConstantFieldProvider(), graphBuilderConfig, OptimisticOptimizations.NONE, null);
+        GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(originalProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
 
         DebugContext debug = b.getDebug();
-        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug).method(toOriginal(methodHandleMethod)).build();
+        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug).method(NativeImageUtil.toOriginal(methodHandleMethod)).build();
         try (DebugContext.Scope s = debug.scope("IntrinsifyMethodHandles", graph)) {
             graphBuilder.apply(graph);
 
@@ -468,22 +464,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             result = hUniverse.lookup(result);
         }
         return result;
-    }
-
-    private static ResolvedJavaMethod toOriginal(ResolvedJavaMethod method) {
-        if (method instanceof HostedMethod) {
-            return ((HostedMethod) method).wrapped.wrapped;
-        } else {
-            return ((AnalysisMethod) method).wrapped;
-        }
-    }
-
-    private static ResolvedJavaType toOriginal(ResolvedJavaType type) {
-        if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrapped();
-        } else {
-            return ((AnalysisType) type).getWrapped();
-        }
     }
 
     private JavaConstant lookup(JavaConstant constant) {

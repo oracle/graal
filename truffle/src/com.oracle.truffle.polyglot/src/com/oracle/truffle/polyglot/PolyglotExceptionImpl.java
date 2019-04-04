@@ -60,7 +60,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
-import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleException;
@@ -92,6 +91,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
     private final int exitStatus;
     private final Value guestObject;
     private final String message;
+    private Object fileSystemContext;
 
     // Exception coming from a language
     PolyglotExceptionImpl(PolyglotLanguageContext languageContext, Throwable original) {
@@ -342,8 +342,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         return guestObject;
     }
 
-    FileSystem getFileSystem() {
-        return context == null ? null : context.config.fileSystem;
+    Object getFileSystemContext() {
+        if (fileSystemContext != null) {
+            return fileSystemContext;
+        }
+        if (context == null) {
+            return null;
+        }
+        return VMAccessor.LANGUAGE.createFileSystemContext(context.config.fileSystem, context.engine.getFileTypeDetectorsSupplier());
     }
 
     /**
@@ -446,7 +452,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             }
             if (VMAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
                 this.hostStack = VMAccessor.LANGUAGE.getInternalStackTraceElements(cause);
-            } else if (cause.getStackTrace().length == 0) {
+            } else if (cause.getStackTrace() == null || cause.getStackTrace().length == 0) {
                 this.hostStack = impl.exception.getStackTrace();
             } else {
                 this.hostStack = cause.getStackTrace();
@@ -602,8 +608,18 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                     return element.getMethodName().equals("invokeHandle");
                 case "com.oracle.truffle.polyglot.HostMethodDesc$SingleMethod$MethodReflectImpl":
                     return element.getMethodName().equals("reflectInvoke");
-                case "com.oracle.truffle.polyglot.PolyglotProxy$ProxyExecuteNode":
-                    return element.getMethodName().equals("executeProxy");
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ExecuteNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$InstantiateNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$AsPointerNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ArrayGetNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ArraySetNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ArrayRemoveNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ArraySizeNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$GetMemberKeysNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$PutMemberNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$RemoveMemberNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$HasMemberNode":
+                    return element.getMethodName().equals("executeImpl");
                 default:
                     return false;
             }

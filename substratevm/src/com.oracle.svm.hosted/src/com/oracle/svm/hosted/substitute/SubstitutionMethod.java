@@ -110,6 +110,14 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
     }
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        if (annotated instanceof GraphProvider) {
+            return ((GraphProvider) annotated).allowRuntimeCompilation();
+        }
+        return true;
+    }
+
+    @Override
     public byte[] getCode() {
         return annotated.getCode();
     }

@@ -37,7 +37,7 @@ public class AnnotationSubstitutionType extends CustomSubstitutionType<Annotatio
     public AnnotationSubstitutionType(MetaAccessProvider metaAccess, ResolvedJavaType original) {
         super(original);
 
-        assert original.getSuperclass() == metaAccess.lookupJavaType(Proxy.class);
+        assert original.getSuperclass().equals(metaAccess.lookupJavaType(Proxy.class));
         assert metaAccess.lookupJavaType(Annotation.class).isAssignableFrom(original);
 
         ResolvedJavaType annotationInterfaceType = AnnotationSupport.findAnnotationInterfaceType(original);

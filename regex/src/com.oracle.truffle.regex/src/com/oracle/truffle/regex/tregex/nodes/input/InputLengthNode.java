@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,14 @@
 package com.oracle.truffle.regex.tregex.nodes.input;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.util.ForeignAccessUtil;
 
-@ImportStatic(ForeignAccessUtil.class)
+@GenerateUncached
 public abstract class InputLengthNode extends Node {
 
     public static InputLengthNode create() {
@@ -45,21 +42,24 @@ public abstract class InputLengthNode extends Node {
     public abstract int execute(Object input);
 
     @Specialization
-    public int getLength(String input) {
+    static int getLength(String input) {
         return input.length();
     }
 
-    @Specialization
-    public int getLength(TruffleObject input, @Cached("createGetSizeMessageNode()") Node readNode) {
+    @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
+    static int doBoxedCharArray(Object input,
+                    @CachedLibrary("input") InteropLibrary inputs) {
         try {
-            Object length = ForeignAccess.sendGetSize(readNode, input);
-            if (length instanceof Number && ((Number) length).longValue() <= Integer.MAX_VALUE) {
-                return ((Number) length).intValue();
+            long length = inputs.getArraySize(input);
+            if (length > Integer.MAX_VALUE) {
+                CompilerDirectives.transferToInterpreter();
+                // should never be reached
+                throw new RuntimeException("should not reach here");
             }
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{length});
+            return (int) length;
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
+            // should never be reached
             throw new RuntimeException(e);
         }
     }

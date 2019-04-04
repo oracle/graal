@@ -46,7 +46,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.Token;
 
@@ -54,18 +53,13 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
-import com.oracle.truffle.sl.nodes.access.SLReadPropertyNode;
-import com.oracle.truffle.sl.nodes.access.SLReadPropertyNodeGen;
-import com.oracle.truffle.sl.nodes.access.SLWritePropertyNode;
-import com.oracle.truffle.sl.nodes.access.SLWritePropertyNodeGen;
-import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
@@ -79,6 +73,7 @@ import com.oracle.truffle.sl.nodes.expression.SLBigIntegerLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLDivNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLEqualNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLInvokeNode;
 import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLLessThanNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLLogicalAndNode;
@@ -87,14 +82,18 @@ import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNode;
 import com.oracle.truffle.sl.nodes.expression.SLLongLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLMulNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLParenExpressionNode;
+import com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode;
+import com.oracle.truffle.sl.nodes.expression.SLReadPropertyNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNodeGen;
-import com.oracle.truffle.sl.nodes.expression.SLUnboxNodeGen;
+import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
+import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNodeGen;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNodeGen;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNodeGen;
+import com.oracle.truffle.sl.nodes.util.SLUnboxNodeGen;
 
 /**
  * Helper class used by the SL {@link Parser} to create nodes. The code is factored out of the
@@ -347,18 +346,8 @@ public class SLNodeFactory {
         if (leftNode == null || rightNode == null) {
             return null;
         }
-        final SLExpressionNode leftUnboxed;
-        if (leftNode instanceof SLBinaryNode) {  // SLBinaryNode never returns boxed value
-            leftUnboxed = leftNode;
-        } else {
-            leftUnboxed = SLUnboxNodeGen.create(leftNode);
-        }
-        final SLExpressionNode rightUnboxed;
-        if (rightNode instanceof SLBinaryNode) {  // SLBinaryNode never returns boxed value
-            rightUnboxed = rightNode;
-        } else {
-            rightUnboxed = SLUnboxNodeGen.create(rightNode);
-        }
+        final SLExpressionNode leftUnboxed = SLUnboxNodeGen.create(leftNode);
+        final SLExpressionNode rightUnboxed = SLUnboxNodeGen.create(rightNode);
 
         final SLExpressionNode result;
         switch (opToken.getText()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -51,7 +52,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class LLVMPanic extends LLVMIntrinsic {
 
     protected PanicLocType createPanicLocation() {
-        DataLayout dataSpecConverter = getContextReference().get().getDataSpecConverter();
+        DataLayout dataSpecConverter = lookupContextReference(LLVMLanguage.class).get().getDataSpecConverter();
         return PanicLocType.create(dataSpecConverter);
     }
 

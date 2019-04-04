@@ -51,13 +51,15 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.test.VarargsNFITestFactory.FormatNodeGen;
 import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.nfi.test.interop.NullObject;
 import com.oracle.truffle.tck.TruffleRunner;
@@ -66,12 +68,18 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 @RunWith(TruffleRunner.class)
 public class VarargsNFITest extends NFITest {
 
-    private static class FormatNode extends Node {
+    abstract static class FormatNode extends Node {
 
-        @Child Node bind = Message.INVOKE.createNode();
-        @Child Node execute = Message.EXECUTE.createNode();
+        protected final String execute(TruffleObject formatString, Object... args) {
+            return executeImpl(formatString, args);
+        }
 
-        private String execute(TruffleObject formatString, Object... args) {
+        protected abstract String executeImpl(TruffleObject formatString, Object[] args);
+
+        @Specialization(limit = "3")
+        String doFormat(TruffleObject formatString, Object[] args,
+                        @CachedLibrary("formatString") InteropLibrary interop,
+                        @CachedLibrary(limit = "1") InteropLibrary num) {
             assert args[0] == null && args[1] == null;
             byte[] buffer = new byte[128];
             args[0] = runWithPolyglot.getTruffleTestEnv().asGuestValue(buffer);
@@ -79,7 +87,7 @@ public class VarargsNFITest extends NFITest {
 
             int size;
             try {
-                size = (Integer) ForeignAccess.sendExecute(execute, formatString, args);
+                size = num.asInt(interop.execute(formatString, args));
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
@@ -100,7 +108,7 @@ public class VarargsNFITest extends NFITest {
     public static class SimpleFormatRoot extends NFITestRootNode {
 
         private final TruffleObject formatString;
-        @Child FormatNode printf = new FormatNode();
+        @Child FormatNode printf = FormatNodeGen.create();
 
         public SimpleFormatRoot() {
             this.formatString = lookupAndBind("format_string", "([sint8], uint64, string, ...double) : sint32");
@@ -137,7 +145,7 @@ public class VarargsNFITest extends NFITest {
 
     private static class MultiFormatRoot extends NFITestRootNode {
 
-        @Child FormatNode printf = new FormatNode();
+        @Child FormatNode printf = FormatNodeGen.create();
 
         @CompilationFinal(dimensions = 1) final FormatSpec[] specs;
 

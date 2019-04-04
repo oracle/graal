@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,11 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.chardata.CodePointRange;
-import com.oracle.truffle.regex.chardata.CodePointSet;
-import com.oracle.truffle.regex.chardata.Constants;
-import com.oracle.truffle.regex.chardata.UnicodeCharacterProperties;
+import com.oracle.truffle.regex.charset.CodePointRange;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetBuilder;
+import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.math.BigInteger;
@@ -45,8 +46,8 @@ public final class RegexLexer {
     private static final CompilationFinalBitSet SYNTAX_CHARS = CompilationFinalBitSet.valueOf(
                     '^', '$', '/', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
 
-    private static final CodePointSet ID_START = UnicodeCharacterProperties.getProperty("ID_Start");
-    private static final CodePointSet ID_CONTINUE = UnicodeCharacterProperties.getProperty("ID_Continue");
+    private static final CodePointSet ID_START = UnicodeProperties.getProperty("ID_Start");
+    private static final CodePointSet ID_CONTINUE = UnicodeProperties.getProperty("ID_Continue");
 
     private final RegexSource source;
     private final String pattern;
@@ -137,7 +138,7 @@ public final class RegexLexer {
         return index >= pattern.length();
     }
 
-    private int numberOfCaptureGroups() throws RegexSyntaxException {
+    public int numberOfCaptureGroups() throws RegexSyntaxException {
         if (!identifiedAllGroups) {
             identifyCaptureGroups();
             identifiedAllGroups = true;
@@ -213,12 +214,12 @@ public final class RegexLexer {
         index = restoreIndex;
     }
 
-    private Token charClass(CodePointSet codePointSet) {
+    private Token charClass(CodePointSetBuilder codePointSet) {
         return charClass(codePointSet, false);
     }
 
-    private Token charClass(CodePointSet codePointSet, boolean invert) {
-        CodePointSet processedSet = codePointSet;
+    private Token charClass(CodePointSetBuilder codePointSet, boolean invert) {
+        CodePointSetBuilder processedSet = codePointSet;
         CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
         processedSet = flags.isIgnoreCase() ? CaseFoldTable.applyCaseFold(processedSet, caseFolding) : processedSet;
         processedSet = invert ? processedSet.createInverse() : processedSet;
@@ -231,7 +232,7 @@ public final class RegexLexer {
         final char c = consumeChar();
         switch (c) {
             case '.':
-                return charClass(flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT);
+                return charClass(CodePointSetBuilder.create(flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT));
             case '^':
                 return Token.create(Token.Kind.caret);
             case '$':
@@ -249,7 +250,7 @@ public final class RegexLexer {
                     // Neverthelesss, in Unicode mode, we should still be strict.
                     throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_BRACE);
                 }
-                return charClass(CodePointSet.create(c));
+                return charClass(CodePointSetBuilder.create(c));
             case '|':
                 return Token.create(Token.Kind.alternation);
             case '(':
@@ -262,14 +263,14 @@ public final class RegexLexer {
                 if (flags.isUnicode()) {
                     throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_BRACKET);
                 }
-                return charClass(CodePointSet.create(c));
+                return charClass(CodePointSetBuilder.create(c));
             case '\\':
                 return parseEscape();
             default:
                 if (flags.isUnicode() && Character.isHighSurrogate(c)) {
-                    return charClass(CodePointSet.create(finishSurrogatePair(c)));
+                    return charClass(CodePointSetBuilder.create(finishSurrogatePair(c)));
                 }
-                return charClass(CodePointSet.create(c));
+                return charClass(CodePointSetBuilder.create(c));
         }
     }
 
@@ -309,7 +310,7 @@ public final class RegexLexer {
                     }
                     throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
                 } else {
-                    return charClass(CodePointSet.create(c));
+                    return charClass(CodePointSetBuilder.create(c));
                 }
             case 'b':
                 return Token.create(Token.Kind.wordBoundary);
@@ -322,11 +323,11 @@ public final class RegexLexer {
                 // the case-folding step in the `charClass` method and call `Token::createCharClass`
                 // directly.
                 if (isPredefCharClass(c)) {
-                    return Token.createCharClass(parsePredefCharClass(c));
+                    return Token.createCharClass(CodePointSetBuilder.create(parsePredefCharClass(c)));
                 } else if (flags.isUnicode() && (c == 'p' || c == 'P')) {
                     return charClass(parseUnicodeCharacterProperty(c == 'P'));
                 } else {
-                    return charClass(CodePointSet.create(parseEscapeChar(c, false)));
+                    return charClass(CodePointSetBuilder.create(parseEscapeChar(c, false)));
                 }
         }
     }
@@ -449,12 +450,12 @@ public final class RegexLexer {
             throw syntaxError(ErrorMessages.INCOMPLETE_QUANTIFIER);
         }
         index = resetIndex;
-        return charClass(CodePointSet.create('{'));
+        return charClass(CodePointSetBuilder.create('{'));
     }
 
     private Token parseCharClass() throws RegexSyntaxException {
         final boolean invert = consumingLookahead("^");
-        CodePointSet curCharClass = CodePointSet.createEmpty();
+        CodePointSetBuilder curCharClass = CodePointSetBuilder.createEmpty();
         while (!atEnd()) {
             final char c = consumeChar();
             if (c == ']') {
@@ -465,7 +466,7 @@ public final class RegexLexer {
         throw syntaxError(ErrorMessages.UNMATCHED_LEFT_BRACKET);
     }
 
-    private CodePointSet parseCharClassAtom(char c) throws RegexSyntaxException {
+    private CodePointSetBuilder parseCharClassAtom(char c) throws RegexSyntaxException {
         if (c == '\\') {
             if (atEnd()) {
                 throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
@@ -473,23 +474,23 @@ public final class RegexLexer {
             if (isEscapeCharClass(curChar())) {
                 return parseEscapeCharClass(consumeChar());
             } else {
-                return CodePointSet.create(parseEscapeChar(consumeChar(), true));
+                return CodePointSetBuilder.create(parseEscapeChar(consumeChar(), true));
             }
         } else if (flags.isUnicode() && Character.isHighSurrogate(c)) {
-            return CodePointSet.create(finishSurrogatePair(c));
+            return CodePointSetBuilder.create(finishSurrogatePair(c));
         } else {
-            return CodePointSet.create(c);
+            return CodePointSetBuilder.create(c);
         }
     }
 
-    private void parseCharClassRange(char c, CodePointSet curCharClass) throws RegexSyntaxException {
-        CodePointSet firstAtom = parseCharClassAtom(c);
+    private void parseCharClassRange(char c, CodePointSetBuilder curCharClass) throws RegexSyntaxException {
+        CodePointSetBuilder firstAtom = parseCharClassAtom(c);
         if (consumingLookahead("-")) {
             if (atEnd() || lookahead("]")) {
                 curCharClass.addSet(firstAtom);
                 curCharClass.addRange(new CodePointRange((int) '-'));
             } else {
-                CodePointSet secondAtom = parseCharClassAtom(consumeChar());
+                CodePointSetBuilder secondAtom = parseCharClassAtom(consumeChar());
                 // Runtime Semantics: CharacterRangeOrUnion(firstAtom, secondAtom)
                 if (!firstAtom.matchesSingleChar() || !secondAtom.matchesSingleChar()) {
                     if (flags.isUnicode()) {
@@ -514,9 +515,9 @@ public final class RegexLexer {
         }
     }
 
-    private CodePointSet parseEscapeCharClass(char c) throws RegexSyntaxException {
+    private CodePointSetBuilder parseEscapeCharClass(char c) throws RegexSyntaxException {
         if (isPredefCharClass(c)) {
-            return parsePredefCharClass(c);
+            return CodePointSetBuilder.create(parsePredefCharClass(c));
         } else if (flags.isUnicode() && (c == 'p' || c == 'P')) {
             return parseUnicodeCharacterProperty(c == 'P');
         } else {
@@ -561,7 +562,7 @@ public final class RegexLexer {
         }
     }
 
-    private CodePointSet parseUnicodeCharacterProperty(boolean invert) throws RegexSyntaxException {
+    private CodePointSetBuilder parseUnicodeCharacterProperty(boolean invert) throws RegexSyntaxException {
         if (!consumingLookahead("{")) {
             throw syntaxError(ErrorMessages.INVALID_UNICODE_PROPERTY);
         }
@@ -573,7 +574,7 @@ public final class RegexLexer {
             throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_UNICODE_PROPERTY);
         }
         try {
-            CodePointSet propertySet = UnicodeCharacterProperties.getProperty(propSpecBuilder.toString());
+            CodePointSetBuilder propertySet = CodePointSetBuilder.create(UnicodeProperties.getProperty(propSpecBuilder.toString()));
             return invert ? propertySet.createInverse() : propertySet;
         } catch (IllegalArgumentException e) {
             throw syntaxError(e.getMessage());

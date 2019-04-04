@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,13 +38,6 @@ public final class RegexRootNode extends RootNode {
 
     public RegexRootNode(RegexLanguage language, FrameDescriptor frameDescriptor, RegexBodyNode body) {
         super(language, frameDescriptor);
-        this.body = body;
-    }
-
-    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
-
-    public RegexRootNode(RegexLanguage language, RegexBodyNode body) {
-        super(language, SHARED_EMPTY_FRAMEDESCRIPTOR);
         this.body = body;
     }
 

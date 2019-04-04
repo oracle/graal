@@ -43,17 +43,14 @@ package com.oracle.truffle.api.dsl.test.interop;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObject15MRFactory.NodeThatCausesUnsupportedSpecializationExceptionNodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject15.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject15.class)
 public class ValidTruffleObject15MR {
 
-    @Resolve(message = "WRITE")
+    @com.oracle.truffle.api.interop.Resolve(message = "WRITE")
     public abstract static class WriteNode15 extends Node {
 
         @Child private NodeThatCausesUnsupportedSpecializationException err = NodeThatCausesUnsupportedSpecializationExceptionNodeGen.create();
@@ -75,7 +72,7 @@ public class ValidTruffleObject15MR {
 
     }
 
-    @CanResolve
+    @com.oracle.truffle.api.interop.CanResolve
     public abstract static class LanguageCheck15 extends Node {
 
         protected boolean test(VirtualFrame frame, TruffleObject receiver) {

@@ -43,7 +43,7 @@ import com.oracle.truffle.nfi.NFILanguage;
  */
 public final class TruffleNFIFeature implements Feature {
 
-    static class IsEnabled implements BooleanSupplier {
+    public static class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             return ImageSingletons.contains(TruffleNFIFeature.class);
@@ -57,7 +57,6 @@ public final class TruffleNFIFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(TruffleNFISupport.class, new TruffleNFISupport());
         access.registerObjectReplacer(new NativeObjectReplacer(access));
     }
 }

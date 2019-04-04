@@ -30,18 +30,18 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -50,39 +50,11 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
 
-    private static Object doRead(TruffleObject value, String name, Node foreignRead, ForeignToLLVM toLLVM) {
-        try {
-            Object rawValue = ForeignAccess.sendRead(foreignRead, value, name);
-            return toLLVM.executeWithTarget(rawValue);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignRead, "Can not read member '%s' of polyglot value.", name);
-        } catch (UnknownIdentifierException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignRead, "Member '%s' does not exist.", e.getUnknownIdentifier());
-        }
-    }
-
-    private static Object doReadIdx(TruffleObject value, int id, Node foreignRead, ForeignToLLVM toLLVM) {
-        try {
-            Object rawValue = ForeignAccess.sendRead(foreignRead, value, id);
-            return toLLVM.executeWithTarget(rawValue);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignRead, "Can not read from index %d of polyglot value.", id);
-        } catch (UnknownIdentifierException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(foreignRead, "Index %d does not exist.", id);
-        }
-    }
-
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPolyglotGetMember extends LLVMPolyglotRead {
 
-        @Child protected Node foreignRead = Message.READ.createNode();
         @Child protected ForeignToLLVM toLLVM;
-        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
         public LLVMPolyglotGetMember(ForeignToLLVM toLLVM) {
             this.toLLVM = toLLVM;
@@ -90,13 +62,25 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
 
         @Specialization
         protected Object uncached(LLVMManagedPointer value, Object id,
-                        @Cached("createReadString()") LLVMReadStringNode readStr) {
+                        @Cached LLVMAsForeignNode asForeign,
+                        @Cached("createReadString()") LLVMReadStringNode readStr,
+                        @CachedLibrary(limit = "3") InteropLibrary foreignRead,
+                        @Cached BranchProfile exception) {
             TruffleObject foreign = asForeign.execute(value);
-            return doRead(foreign, readStr.executeWithTarget(id), foreignRead, toLLVM);
+            String name = readStr.executeWithTarget(id);
+            try {
+                Object rawValue = foreignRead.readMember(foreign, name);
+                return toLLVM.executeWithTarget(rawValue);
+            } catch (UnsupportedMessageException e) {
+                exception.enter();
+                throw new LLVMPolyglotException(foreignRead, "Can not read member '%s' of polyglot value.", name);
+            } catch (UnknownIdentifierException e) {
+                exception.enter();
+                throw new LLVMPolyglotException(foreignRead, "Member '%s' does not exist.", e.getUnknownIdentifier());
+            }
         }
 
         @Fallback
-        @TruffleBoundary
         @SuppressWarnings("unused")
         public Object fallback(Object value, Object id) {
             throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
@@ -107,18 +91,28 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPolyglotGetArrayElement extends LLVMPolyglotRead {
 
-        @Child protected Node foreignRead = Message.READ.createNode();
         @Child protected ForeignToLLVM toLLVM;
-        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
         public LLVMPolyglotGetArrayElement(ForeignToLLVM toLLVM) {
             this.toLLVM = toLLVM;
         }
 
         @Specialization
-        protected Object doIntrinsic(LLVMManagedPointer value, int id) {
+        protected Object doIntrinsic(LLVMManagedPointer value, int id,
+                        @Cached LLVMAsForeignNode asForeign,
+                        @CachedLibrary(limit = "3") InteropLibrary foreignRead,
+                        @Cached BranchProfile exception) {
             TruffleObject foreign = asForeign.execute(value);
-            return doReadIdx(foreign, id, foreignRead, toLLVM);
+            try {
+                Object rawValue = foreignRead.readArrayElement(foreign, id);
+                return toLLVM.executeWithTarget(rawValue);
+            } catch (UnsupportedMessageException e) {
+                exception.enter();
+                throw new LLVMPolyglotException(foreignRead, "Can not read from index %d of polyglot value.", id);
+            } catch (InvalidArrayIndexException e) {
+                exception.enter();
+                throw new LLVMPolyglotException(foreignRead, "Index %d does not exist.", id);
+            }
         }
 
         @Fallback

@@ -51,14 +51,15 @@ import java.util.function.Supplier;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 
 public class OverloadedTest extends ProxyLanguageEnvTest {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     public static final class Data {
         public int x;
 
@@ -129,59 +130,57 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     }
 
     @Test
-    public void readAndWriteField() {
+    public void readAndWriteField() throws InteropException {
         data.x = 11;
-        assertEquals(11, HostInteropTest.message(Message.READ, obj, "x"));
+        assertEquals(11, INTEROP.readMember(obj, "x"));
 
-        HostInteropTest.message(Message.WRITE, obj, "x", 12);
+        INTEROP.writeMember(obj, "x", 12);
         assertEquals(12, data.x);
 
-        HostInteropTest.message(Message.WRITE, obj, "x", new UnboxableToInt(13));
+        INTEROP.writeMember(obj, "x", new UnboxableToInt(13));
         assertEquals(13, data.x);
     }
 
     @Test
-    public void callGetterAndSetter() {
+    public void callGetterAndSetter() throws InteropException {
         data.x = 11;
-        assertEquals(22.0, HostInteropTest.message(Message.INVOKE, obj, "x"));
+        assertEquals(22.0, INTEROP.invokeMember(obj, "x"));
 
-        HostInteropTest.message(Message.INVOKE, obj, "x", 10);
+        INTEROP.invokeMember(obj, "x", 10);
         assertEquals(20, data.x);
 
-        HostInteropTest.message(Message.INVOKE, obj, "x", new UnboxableToInt(21));
+        INTEROP.invokeMember(obj, "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
     }
 
     @Test
     public void testOverloadingTruffleObjectArg() throws InteropException {
-        Node n = Message.INVOKE.createNode();
-        ForeignAccess.sendInvoke(n, obj, "x", new UnboxableToInt(21));
+        INTEROP.invokeMember(obj, "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
-        ForeignAccess.sendInvoke(n, obj, "x", env.asBoxedGuestValue(10));
+        INTEROP.invokeMember(obj, "x", env.asBoxedGuestValue(10));
         assertEquals(20, data.x);
-        ForeignAccess.sendInvoke(n, obj, "x", 10);
+        INTEROP.invokeMember(obj, "x", 10);
         assertEquals(20, data.x);
     }
 
     @Test
     public void testOverloadingNumber() throws InteropException {
-        Node n = Message.INVOKE.createNode();
         Num num = new Num();
         TruffleObject numobj = asTruffleObject(num);
-        ForeignAccess.sendInvoke(n, numobj, "x", new UnboxableToInt(21));
+        INTEROP.invokeMember(numobj, "x", new UnboxableToInt(21));
         assertEquals("int", num.parameter);
-        ForeignAccess.sendInvoke(n, numobj, "x", asTruffleObject(new AtomicInteger(22)));
+        INTEROP.invokeMember(numobj, "x", asTruffleObject(new AtomicInteger(22)));
         assertEquals("Number", num.parameter);
-        ForeignAccess.sendInvoke(n, numobj, "x", asTruffleObject(BigInteger.TEN));
+        INTEROP.invokeMember(numobj, "x", asTruffleObject(BigInteger.TEN));
         assertEquals("BigInteger", num.parameter);
     }
 
     @Test
     public void testVarArgs() throws InteropException {
         TruffleObject stringClass = asTruffleHostSymbol(String.class);
-        assertEquals("bla", ForeignAccess.sendInvoke(Message.INVOKE.createNode(), stringClass, "format", "bla"));
-        assertEquals("42", ForeignAccess.sendInvoke(Message.INVOKE.createNode(), stringClass, "format", "%d", 42));
-        assertEquals("1337", ForeignAccess.sendInvoke(Message.INVOKE.createNode(), stringClass, "format", "%d%d", 13, 37));
+        assertEquals("bla", INTEROP.invokeMember(stringClass, "format", "bla"));
+        assertEquals("42", INTEROP.invokeMember(stringClass, "format", "%d", 42));
+        assertEquals("1337", INTEROP.invokeMember(stringClass, "format", "%d%d", 13, 37));
     }
 
     public interface Identity<T> {
@@ -205,57 +204,54 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     @Test
     public void testGenericReturnTypeBridgeMethod() throws InteropException {
         TruffleObject thing = asTruffleObject(new ActualRealThingWithIdentity());
-        assertEquals(42, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), thing, "getId"));
+        assertEquals(42, INTEROP.invokeMember(thing, "getId"));
     }
 
     @Test
     public void testWidening() throws InteropException {
-        Node n = Message.INVOKE.createNode();
         Num num = new Num();
         TruffleObject numobj = asTruffleObject(num);
-        ForeignAccess.sendInvoke(n, numobj, "d", (byte) 42);
+        INTEROP.invokeMember(numobj, "d", (byte) 42);
         assertEquals("int", num.parameter);
-        ForeignAccess.sendInvoke(n, numobj, "d", (short) 42);
+        INTEROP.invokeMember(numobj, "d", (short) 42);
         assertEquals("int", num.parameter);
-        ForeignAccess.sendInvoke(n, numobj, "d", 42);
-        assertEquals("int", num.parameter);
-
-        ForeignAccess.sendInvoke(n, numobj, "d", 42.1f);
-        assertEquals("double", num.parameter);
-        ForeignAccess.sendInvoke(n, numobj, "d", 42.1d);
-        assertEquals("double", num.parameter);
-        ForeignAccess.sendInvoke(n, numobj, "d", 0x8000_0000L);
-        assertEquals("double", num.parameter);
-
-        ForeignAccess.sendInvoke(n, numobj, "d", 42L);
+        INTEROP.invokeMember(numobj, "d", 42);
         assertEquals("int", num.parameter);
 
-        ForeignAccess.sendInvoke(n, numobj, "f", 42L);
+        INTEROP.invokeMember(numobj, "d", 42.1f);
+        assertEquals("double", num.parameter);
+        INTEROP.invokeMember(numobj, "d", 42.1d);
+        assertEquals("double", num.parameter);
+        INTEROP.invokeMember(numobj, "d", 0x8000_0000L);
+        assertEquals("double", num.parameter);
+
+        INTEROP.invokeMember(numobj, "d", 42L);
+        assertEquals("int", num.parameter);
+
+        INTEROP.invokeMember(numobj, "f", 42L);
         assertEquals("int", num.parameter);
     }
 
     @Test
     public void testNarrowing() throws InteropException {
-        Node n = Message.INVOKE.createNode();
         Num num = new Num();
         TruffleObject numobj = asTruffleObject(num);
-        ForeignAccess.sendInvoke(n, numobj, "f", 42.5f);
+        INTEROP.invokeMember(numobj, "f", 42.5f);
         assertEquals("float", num.parameter);
-        ForeignAccess.sendInvoke(n, numobj, "f", 42.5d);
+        INTEROP.invokeMember(numobj, "f", 42.5d);
         assertEquals("float", num.parameter);
     }
 
     @Test
     public void testPrimitive() throws InteropException {
-        Node n = Message.INVOKE.createNode();
         TruffleObject sample = asTruffleObject(new Sample());
         for (int i = 0; i < 2; i++) {
-            assertEquals("int,boolean", ForeignAccess.sendInvoke(n, sample, "m1", 42, true));
-            assertEquals("double,String", ForeignAccess.sendInvoke(n, sample, "m1", 42, "asdf"));
+            assertEquals("int,boolean", INTEROP.invokeMember(sample, "m1", 42, true));
+            assertEquals("double,String", INTEROP.invokeMember(sample, "m1", 42, "asdf"));
         }
         for (int i = 0; i < 2; i++) {
-            assertEquals("int,boolean", ForeignAccess.sendInvoke(n, sample, "m1", 42, true));
-            assertEquals("double,Object", ForeignAccess.sendInvoke(n, sample, "m1", 4.2, true));
+            assertEquals("int,boolean", INTEROP.invokeMember(sample, "m1", 42, true));
+            assertEquals("double,Object", INTEROP.invokeMember(sample, "m1", 4.2, true));
         }
     }
 
@@ -280,35 +276,32 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
     @Test
     public void testClassVsInterface() throws InteropException {
-        Node n = Message.INVOKE.createNode();
         TruffleObject pool = asTruffleObject(new Pool());
         TruffleObject concrete = asTruffleObject(new Concrete());
         TruffleObject handler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
-        assertEquals(Concrete.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare1", "select", concrete, handler));
-        assertEquals(Concrete.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare2", "select", handler, concrete));
+        assertEquals(Concrete.class.getName(), INTEROP.invokeMember(pool, "prepare1", "select", concrete, handler));
+        assertEquals(Concrete.class.getName(), INTEROP.invokeMember(pool, "prepare2", "select", handler, concrete));
     }
 
     @Test
     public void testClassVsInterface2() throws InteropException {
-        Node n = Message.INVOKE.createNode();
         TruffleObject pool = asTruffleObject(new Pool());
         TruffleObject thandler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
         TruffleObject chandler = asTruffleObject(new CHander());
-        assertEquals(CHander.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare3", "select", chandler, thandler));
+        assertEquals(CHander.class.getName(), INTEROP.invokeMember(pool, "prepare3", "select", chandler, thandler));
         TruffleObject proxied = new AsCollectionsTest.MapBasedTO(Collections.singletonMap("handle", new FunctionalInterfaceTest.TestExecutable()));
-        assertEquals(IHandler.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare3", "select", proxied, thandler));
+        assertEquals(IHandler.class.getName(), INTEROP.invokeMember(pool, "prepare3", "select", proxied, thandler));
     }
 
     @Test
     public void testClassVsInterface3() throws InteropException {
-        Node n = Message.INVOKE.createNode();
         TruffleObject pool = asTruffleObject(new Pool());
         TruffleObject thandler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
         TruffleObject chandler = asTruffleObject(new CHander());
         TruffleObject concrete = asTruffleObject(new Concrete());
-        assertEquals(IHandler.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare4", "select", chandler, 42));
-        assertEquals(IHandler.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare4", "select", thandler, 42));
-        assertEquals(Concrete.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare4", "select", concrete, 42));
+        assertEquals(IHandler.class.getName(), INTEROP.invokeMember(pool, "prepare4", "select", chandler, 42));
+        assertEquals(IHandler.class.getName(), INTEROP.invokeMember(pool, "prepare4", "select", thandler, 42));
+        assertEquals(Concrete.class.getName(), INTEROP.invokeMember(pool, "prepare4", "select", concrete, 42));
     }
 
     @FunctionalInterface
@@ -366,23 +359,22 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         }
 
         @SuppressWarnings("unused")
-        public String prepare4(String query, Concrete arg1, String arg2) {
+        public String prepare4(String query, Concrete arg1, int arg2) {
             return Concrete.class.getName();
         }
     }
 
     @Test
     public void testFunctionalVsNonFunctionalInterface() throws InteropException {
-        Node n = Message.INVOKE.createNode();
         TruffleObject receiver = asTruffleObject(new PreferSAM());
         TruffleObject executable = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
-        assertEquals("SAM", ForeignAccess.sendInvoke(n, receiver, "overloaded1", executable));
-        assertEquals("SAM", ForeignAccess.sendInvoke(n, receiver, "overloaded2", executable));
+        assertEquals("SAM", INTEROP.invokeMember(receiver, "overloaded1", executable));
+        assertEquals("SAM", INTEROP.invokeMember(receiver, "overloaded2", executable));
 
         // ambiguous (we do not take the object's members into consideration)
         TruffleObject keysObject = asTruffleObject(new HostInteropTest.HasKeysObject(true));
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(n, receiver, "overloaded1", keysObject), UnsupportedTypeException.class);
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(n, receiver, "overloaded2", keysObject), UnsupportedTypeException.class);
+        assertThrowsExceptionWithCause(() -> INTEROP.invokeMember(receiver, "overloaded1", keysObject), UnsupportedTypeException.class);
+        assertThrowsExceptionWithCause(() -> INTEROP.invokeMember(receiver, "overloaded2", keysObject), UnsupportedTypeException.class);
     }
 
     public interface TwoMethods {

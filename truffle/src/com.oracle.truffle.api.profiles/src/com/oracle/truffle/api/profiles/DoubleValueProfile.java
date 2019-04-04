@@ -57,9 +57,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class SampleNode extends Node {
- * 
+ *
  *     final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
- * 
+ *
  *     double execute(double input) {
  *         double profiledValue = profile.profile(input);
  *         // compiler may know now more about profiledValue
@@ -97,6 +97,15 @@ public abstract class DoubleValueProfile extends Profile {
         } else {
             return Disabled.INSTANCE;
         }
+    }
+
+    /**
+     * Returns the uncached version of the profile. The uncached version of a profile does nothing.
+     *
+     * @since 1.0
+     */
+    public static DoubleValueProfile getUncached() {
+        return Disabled.INSTANCE;
     }
 
     static final class Enabled extends DoubleValueProfile {

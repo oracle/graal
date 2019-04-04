@@ -149,7 +149,7 @@ class GraalVmComponent(object):
                  dir_name=None, launcher_configs=None, library_configs=None, provided_executables=None,
                  polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False,
-                 boot_jars=None, priority=None):
+                 boot_jars=None, priority=None, installable=False):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -169,6 +169,7 @@ class GraalVmComponent(object):
         :type builder_jar_distributions: list[str]
         :type support_distributions: list[str]
         :type priority: int
+        :type installable: bool
         """
         self.suite = suite
         self.name = name
@@ -189,6 +190,7 @@ class GraalVmComponent(object):
         """ priority with a higher value means higher priority """
         self.launcher_configs = launcher_configs or []
         self.library_configs = library_configs or []
+        self.installable = installable
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
@@ -213,21 +215,25 @@ class GraalVmTruffleComponent(GraalVmComponent):
                  library_configs=None, provided_executables=None, polyglot_lib_build_args=None,
                  polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False, boot_jars=None, include_in_polyglot=True, priority=None,
-                 post_install_msg=None):
+                 installable=False, post_install_msg=None, standalone_dir_name=None):
         """
-        :param truffle_jars list[str]: JAR distributions that should be on the classpath for the language implementation.
-        :param bool include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images.
+        :param truffle_jars: JAR distributions that should be on the classpath for the language implementation.
+        :param include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images.
         :param post_install_msg: Post-installation message to be printed
+        :type truffle_jars: list[str]
+        :type include_in_polyglot: bool
         :type post_install_msg: str
+        :type standalone_dir_name: str
         """
         super(GraalVmTruffleComponent, self).__init__(suite, name, short_name, license_files, third_party_license_files,
                                                       truffle_jars, builder_jar_distributions, support_distributions,
                                                       dir_name, launcher_configs, library_configs, provided_executables,
                                                       polyglot_lib_build_args, polyglot_lib_jar_dependencies,
                                                       polyglot_lib_build_dependencies, has_polyglot_lib_entrypoints,
-                                                      boot_jars, priority)
+                                                      boot_jars, priority, installable)
         self.include_in_polyglot = include_in_polyglot
         self.post_install_msg = post_install_msg
+        self.standalone_dir_name = standalone_dir_name or '{}-<version>-<graalvm_os>-<arch>'.format(self.dir_name)
         assert isinstance(self.include_in_polyglot, bool)
 
 
@@ -241,7 +247,7 @@ class GraalVmTool(GraalVmTruffleComponent):
                  library_configs=None, provided_executables=None, polyglot_lib_build_args=None,
                  polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False, boot_jars=None, include_in_polyglot=True, include_by_default=False,
-                 priority=None):
+                 priority=None, installable=False):
         super(GraalVmTool, self).__init__(suite,
                                           name,
                                           short_name,
@@ -260,7 +266,8 @@ class GraalVmTool(GraalVmTruffleComponent):
                                           has_polyglot_lib_entrypoints,
                                           boot_jars,
                                           include_in_polyglot,
-                                          priority)
+                                          priority,
+                                          installable)
         self.include_by_default = include_by_default
 
 
@@ -278,7 +285,7 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
                  graal_compiler=None, dir_name=None, launcher_configs=None, library_configs=None,
                  provided_executables=None, polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None,
                  polyglot_lib_build_dependencies=None, has_polyglot_lib_entrypoints=False, boot_jars=None,
-                 priority=None):
+                 priority=None, installable=False):
         """
         :type jvmci_jars: list[str]
         :type graal_compiler: str
@@ -300,7 +307,8 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
                                                     polyglot_lib_build_dependencies,
                                                     has_polyglot_lib_entrypoints,
                                                     boot_jars,
-                                                    priority)
+                                                    priority,
+                                                    installable)
 
         self.graal_compiler = graal_compiler
         self.jvmci_jars = jvmci_jars or []

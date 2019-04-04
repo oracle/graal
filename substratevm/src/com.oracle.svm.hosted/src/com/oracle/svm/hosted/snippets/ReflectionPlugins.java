@@ -29,6 +29,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -44,37 +45,78 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ReflectionPlugins {
 
+    static final class CallSiteDescriptor {
+        ResolvedJavaMethod method;
+        int bci;
+
+        private CallSiteDescriptor(ResolvedJavaMethod method, int bci) {
+            Objects.requireNonNull(method);
+            this.method = method;
+            this.bci = bci;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof CallSiteDescriptor) {
+                CallSiteDescriptor other = (CallSiteDescriptor) obj;
+                return other.bci == this.bci && other.method.equals(this.method);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return method.hashCode() ^ bci;
+        }
+    }
+
     static class ReflectionPluginRegistry {
+
         /**
          * Contains all the classes, methods, fields intrinsified by this plugin during analysis.
          * Only these elements will be intrinsified during compilation. We cannot intrinsify an
          * element during compilation if it was not intrinsified during analysis since it can lead
          * to compiling code that was not seen during analysis.
          */
-        ConcurrentHashMap<Object, Boolean> analysisElements = new ConcurrentHashMap<>();
+        ConcurrentHashMap<CallSiteDescriptor, Object> analysisElements = new ConcurrentHashMap<>();
 
-        public void add(Object element) {
-            analysisElements.put(element, Boolean.TRUE);
+        public void add(ResolvedJavaMethod method, int bci, Object element) {
+            add(new CallSiteDescriptor(method, bci), element);
         }
 
-        public boolean contains(Object element) {
-            return analysisElements.containsKey(element);
+        public void add(CallSiteDescriptor location, Object element) {
+            Object previous = analysisElements.put(location, element);
+            /*
+             * New elements can only be added when the reflection plugins are executed during the
+             * analysis. If an intrinsified element was already registered that's an error.
+             */
+            VMError.guarantee(previous == null, "Detected previously intrinsified reflectively accessed element. ");
         }
 
+        public <T> T get(ResolvedJavaMethod method, int bci) {
+            return get(new CallSiteDescriptor(method, bci));
+        }
+
+        @SuppressWarnings("unchecked")
+        public <T> T get(CallSiteDescriptor location) {
+            return (T) analysisElements.get(location);
+        }
     }
 
     static class Options {
@@ -89,7 +131,9 @@ public class ReflectionPlugins {
          * analyzing the static initializers, then we always intrinsify, so don't need a registry.
          */
         if (hosted && analysis) {
-            ImageSingletons.add(ReflectionPluginRegistry.class, new ReflectionPluginRegistry());
+            if (!ImageSingletons.contains(ReflectionPluginRegistry.class)) {
+                ImageSingletons.add(ReflectionPluginRegistry.class, new ReflectionPluginRegistry());
+            }
         }
 
         registerClassPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, plugins, analysis, hosted);
@@ -162,12 +206,14 @@ public class ReflectionPlugins {
             String className = snippetReflection.asObject(String.class, name.asJavaConstant());
             Class<?> clazz = imageClassLoader.findClassByName(className, false);
             if (clazz == null) {
-                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwClassNotFoundExceptionMethod)) {
+                Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwClassNotFoundExceptionMethod);
+                if (intrinsic == null) {
                     return false;
                 }
                 throwClassNotFoundException(b, targetMethod, className);
             } else {
-                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), clazz)) {
+                Class<?> intrinsic = getIntrinsic(analysis, hosted, b, clazz);
+                if (intrinsic == null) {
                     return false;
                 }
                 JavaConstant hub = b.getConstantReflection().asJavaClass(b.getMetaAccess().lookupJavaType(clazz));
@@ -187,12 +233,14 @@ public class ReflectionPlugins {
             String target = clazz.getTypeName() + "." + fieldName;
             try {
                 Field field = declared ? clazz.getDeclaredField(fieldName) : clazz.getField(fieldName);
-                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), field)) {
+                Field intrinsic = getIntrinsic(analysis, hosted, b, field);
+                if (intrinsic == null) {
                     return false;
                 }
-                pushConstant(b, targetMethod, snippetReflection.forObject(field), target);
+                pushConstant(b, targetMethod, snippetReflection.forObject(intrinsic), target);
             } catch (NoSuchFieldException e) {
-                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoSuchFieldExceptionMethod)) {
+                Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwNoSuchFieldExceptionMethod);
+                if (intrinsic == null) {
                     return false;
                 }
                 throwNoSuchFieldException(b, targetMethod, target);
@@ -201,7 +249,8 @@ public class ReflectionPlugins {
                  * If the declaring class of the field references missing classes a
                  * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
                  */
-                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoClassDefFoundErrorMethod)) {
+                Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwNoClassDefFoundErrorMethod);
+                if (intrinsic == null) {
                     return false;
                 }
                 throwNoClassDefFoundError(b, targetMethod, e.getMessage());
@@ -224,12 +273,14 @@ public class ReflectionPlugins {
                 String target = clazz.getTypeName() + "." + methodName + "(" + Stream.of(paramTypes).map(Class::getTypeName).collect(Collectors.joining(", ")) + ")";
                 try {
                     Method method = declared ? clazz.getDeclaredMethod(methodName, paramTypes) : clazz.getMethod(methodName, paramTypes);
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), method)) {
+                    Method intrinsic = getIntrinsic(analysis, hosted, b, method);
+                    if (intrinsic == null) {
                         return false;
                     }
-                    pushConstant(b, targetMethod, snippetReflection.forObject(method), target);
+                    pushConstant(b, targetMethod, snippetReflection.forObject(intrinsic), target);
                 } catch (NoSuchMethodException e) {
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoSuchMethodExceptionMethod)) {
+                    Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwNoSuchMethodExceptionMethod);
+                    if (intrinsic == null) {
                         return false;
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
@@ -238,7 +289,8 @@ public class ReflectionPlugins {
                      * If the declaring class of the method references missing classes a
                      * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
                      */
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoClassDefFoundErrorMethod)) {
+                    Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwNoClassDefFoundErrorMethod);
+                    if (intrinsic == null) {
                         return false;
                     }
                     throwNoClassDefFoundError(b, targetMethod, e.getMessage());
@@ -263,12 +315,14 @@ public class ReflectionPlugins {
                 String target = clazz.getTypeName() + ".<init>(" + Stream.of(paramTypes).map(Class::getTypeName).collect(Collectors.joining(", ")) + ")";
                 try {
                     Constructor<?> constructor = declared ? clazz.getDeclaredConstructor(paramTypes) : clazz.getConstructor(paramTypes);
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), constructor)) {
+                    Constructor<?> intrinsic = getIntrinsic(analysis, hosted, b, constructor);
+                    if (intrinsic == null) {
                         return false;
                     }
-                    pushConstant(b, targetMethod, snippetReflection.forObject(constructor), target);
+                    pushConstant(b, targetMethod, snippetReflection.forObject(intrinsic), target);
                 } catch (NoSuchMethodException e) {
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoSuchMethodExceptionMethod)) {
+                    Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwNoSuchMethodExceptionMethod);
+                    if (intrinsic == null) {
                         return false;
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
@@ -277,7 +331,8 @@ public class ReflectionPlugins {
                      * If the declaring class of the constructor references missing classes a
                      * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
                      */
-                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), ExceptionSynthesizer.throwNoClassDefFoundErrorMethod)) {
+                    Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwNoClassDefFoundErrorMethod);
+                    if (intrinsic == null) {
                         return false;
                     }
                     throwNoClassDefFoundError(b, targetMethod, e.getMessage());
@@ -289,30 +344,49 @@ public class ReflectionPlugins {
         return false;
     }
 
-    /** Check if the element should be intrinsified. */
-    private static boolean shouldNotIntrinsify(boolean analysis, boolean hosted, MetaAccessProvider metaAccess, Object element) {
+    /**
+     * This method checks if the element should be intrinsified and returns the cached intrinsic
+     * element if found. Caching intrinsic elements during analysis and reusing the same element
+     * during compilation is important! For each call to Class.getMethod/Class.getField the JDK
+     * returns a copy of the original object. Many of the reflection metadata fields are lazily
+     * initialized, therefore the copy is partial. During analysis we use the
+     * ReflectionMetadataFeature::replacer to ensure that the reflection metadata is eagerly
+     * initialized. Therefore, we want to intrinsify the same, eagerly initialized object during
+     * compilation, not a lossy copy of it.
+     */
+    private static <T> T getIntrinsic(boolean analysis, boolean hosted, GraphBuilderContext context, T element) {
         if (!hosted) {
             /* We are analyzing the static initializers and should always intrinsify. */
-            return false;
+            return element;
         }
         if (analysis) {
             if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
                 AnnotatedElement annotated = null;
                 if (element instanceof Executable) {
-                    annotated = metaAccess.lookupJavaMethod((Executable) element);
+                    annotated = context.getMetaAccess().lookupJavaMethod((Executable) element);
                 } else if (element instanceof Field) {
-                    annotated = metaAccess.lookupJavaField((Field) element);
+                    annotated = context.getMetaAccess().lookupJavaField((Field) element);
                 }
                 if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
-                    return true; /* Fail during the reflective lookup at runtime. */
+                    /* Should not intrinsify. Will fail during the reflective lookup at runtime. */
+                    return null;
                 }
             }
-            /* We are during analysis, we should intrinsify and mark the objects as intrinsified. */
-            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(element);
-            return false;
+            /* We are during analysis, we should intrinsify and cache the intrinsified object. */
+            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(toAnalysisMethod(context.getMethod()), context.bci(), element);
+            return element;
         }
         /* We are during compilation, we only intrinsify if intrinsified during analysis. */
-        return !ImageSingletons.lookup(ReflectionPluginRegistry.class).contains(element);
+        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(toAnalysisMethod(context.getMethod()), context.bci());
+    }
+
+    private static ResolvedJavaMethod toAnalysisMethod(ResolvedJavaMethod method) {
+        if (method instanceof HostedMethod) {
+            return ((HostedMethod) method).wrapped;
+        } else {
+            VMError.guarantee(method instanceof AnalysisMethod);
+            return method;
+        }
     }
 
     private static void pushConstant(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, JavaConstant constant, String targetElement) {

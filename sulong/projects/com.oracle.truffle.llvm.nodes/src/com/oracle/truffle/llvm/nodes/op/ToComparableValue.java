@@ -33,36 +33,44 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.nodes.op.ToComparableValueNodeGen.ManagedToComparableValueNodeGen;
-import com.oracle.truffle.llvm.nodes.op.ToComparableValueNodeGen.NativeToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public abstract class ToComparableValue extends LLVMNode {
+
     public abstract long executeWithTarget(Object obj);
 
-    @Specialization(guards = "lib.guard(obj)")
-    protected long doNativeCached(Object obj,
-                    @Cached("createCached(obj)") LLVMObjectNativeLibrary lib,
-                    @Cached("createToComparable()") NativeToComparableValue toComparable) {
-        return doNative(obj, lib, toComparable);
+    @Specialization(guards = "lib.isPointer(obj)", limit = "3", rewriteOn = UnsupportedMessageException.class)
+    protected long doPointer(Object obj,
+                    @CachedLibrary("obj") LLVMNativeLibrary lib) throws UnsupportedMessageException {
+        return lib.asPointer(obj);
     }
 
-    @Specialization(replaces = "doNativeCached", guards = "lib.guard(obj)")
-    protected long doNative(Object obj,
-                    @Cached("createGeneric()") LLVMObjectNativeLibrary lib,
-                    @Cached("createToComparable()") NativeToComparableValue toComparable) {
-        return toComparable.executeWithTarget(obj, lib);
+    @Specialization(guards = "lib.isPointer(obj)", limit = "3")
+    protected long doPointerException(Object obj,
+                    @CachedLibrary("obj") LLVMNativeLibrary lib,
+                    @Cached("createUseOffset()") ManagedToComparableValue toComparable) {
+        try {
+            return lib.asPointer(obj);
+        } catch (UnsupportedMessageException ex) {
+            return doManaged(obj, lib, toComparable);
+        }
     }
 
-    protected static NativeToComparableValue createToComparable() {
-        return NativeToComparableValueNodeGen.create();
+    @Specialization(guards = "!lib.isPointer(obj)", limit = "3")
+    @SuppressWarnings("unused")
+    protected long doManaged(Object obj,
+                    @CachedLibrary("obj") LLVMNativeLibrary lib,
+                    @Cached("createUseOffset()") ManagedToComparableValue toComparable) {
+        return toComparable.executeWithTarget(obj);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -124,27 +132,6 @@ public abstract class ToComparableValue extends LLVMNode {
 
         protected ForeignToLLVM createForeignToI64() {
             return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
-        }
-    }
-
-    protected abstract static class NativeToComparableValue extends LLVMNode {
-
-        protected abstract long executeWithTarget(Object obj, LLVMObjectNativeLibrary lib);
-
-        @Specialization(guards = "lib.isPointer(obj)")
-        protected long doPointer(Object obj, LLVMObjectNativeLibrary lib) {
-            try {
-                return lib.asPointer(obj);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
-        }
-
-        @Specialization(guards = "!lib.isPointer(obj)")
-        @SuppressWarnings("unused")
-        protected long doManaged(Object obj, LLVMObjectNativeLibrary lib,
-                        @Cached("createUseOffset()") ManagedToComparableValue toComparable) {
-            return toComparable.executeWithTarget(obj);
         }
     }
 }

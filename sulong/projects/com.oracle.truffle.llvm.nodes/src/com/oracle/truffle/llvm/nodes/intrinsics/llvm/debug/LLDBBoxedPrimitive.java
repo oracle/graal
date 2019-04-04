@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 
@@ -43,7 +45,7 @@ final class LLDBBoxedPrimitive implements LLVMDebugValue {
     }
 
     private LLVMDebugValue unbox() {
-        final LLVMDebugValue.Builder builder = LLDBSupport.getNodeFactory().createDebugValueBuilder();
+        final LLVMDebugValue.Builder builder = LLVMLanguage.getLLDBSupport().createDebugValueBuilder();
         return builder.build(boxedValue.getValue());
     }
 

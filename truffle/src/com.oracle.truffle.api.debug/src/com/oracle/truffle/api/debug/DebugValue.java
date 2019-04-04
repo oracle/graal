@@ -42,14 +42,9 @@ package com.oracle.truffle.api.debug;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.SourceSection;
@@ -68,6 +63,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * @since 0.17
  */
 public abstract class DebugValue {
+
+    static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     final LanguageInfo preferredLanguage;
 
@@ -118,6 +115,15 @@ public abstract class DebugValue {
      * @since 0.17
      */
     public abstract <T> T as(Class<T> clazz) throws DebugException;
+
+    /**
+     * Returns the {@link String} value if this value represents a string. This method returns
+     * <code>null</code> otherwise.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @since 1.0
+     */
+    public abstract String asString() throws DebugException;
 
     /**
      * Returns the name of this value as it is referred to from its origin. If this value is
@@ -190,6 +196,19 @@ public abstract class DebugValue {
     }
 
     /**
+     * Test if the value represents 'null'.
+     *
+     * @since 1.0
+     */
+    public final boolean isNull() {
+        if (!isReadable()) {
+            return false;
+        }
+        Object value = get();
+        return INTEROP.isNull(value);
+    }
+
+    /**
      * Provides properties representing an internal structure of this value. The returned collection
      * is not thread-safe. If the value is not {@link #isReadable() readable} then an
      * {@link IllegalStateException} is thrown.
@@ -215,15 +234,16 @@ public abstract class DebugValue {
     }
 
     static ValuePropertiesCollection getProperties(Object value, DebuggerSession session, LanguageInfo language, DebugScope scope) {
-        ValuePropertiesCollection properties = null;
-        if (value instanceof TruffleObject) {
-            TruffleObject object = (TruffleObject) value;
-            Map<Object, Object> map = ObjectStructures.asMap(session.getDebugger().getMessageNodes(), object);
-            if (map != null) {
-                properties = new ValuePropertiesCollection(session, language, object, map, map.entrySet(), scope);
+        if (INTEROP.hasMembers(value)) {
+            Object keys;
+            try {
+                keys = INTEROP.getMembers(value, true);
+            } catch (UnsupportedMessageException e) {
+                return null;
             }
+            return new ValuePropertiesCollection(session, language, value, keys, scope);
         }
-        return properties;
+        return null;
     }
 
     /**
@@ -240,15 +260,12 @@ public abstract class DebugValue {
             throw new IllegalStateException("Value is not readable");
         }
         Object value = get();
-        if (value instanceof TruffleObject) {
-            TruffleObject object = (TruffleObject) value;
+        if (value != null) {
             try {
-                int keyInfo = ForeignAccess.sendKeyInfo(getDebugger().getMessageNodes().keyInfo, object, name);
-                if (!KeyInfo.isExisting(keyInfo)) {
+                if (!INTEROP.isMemberExisting(value, name)) {
                     return null;
                 } else {
-                    Map.Entry<Object, Object> entry = new ObjectStructures.TruffleEntry(getDebugger().getMessageNodes(), object, name);
-                    return new DebugValue.PropertyValue(getSession(), resolveLanguage(), keyInfo, entry, null);
+                    return new DebugValue.ObjectMemberValue(getSession(), resolveLanguage(), null, value, name);
                 }
             } catch (ThreadDeath td) {
                 throw td;
@@ -270,13 +287,7 @@ public abstract class DebugValue {
         if (!isReadable()) {
             return false;
         }
-        Object value = get();
-        if (value instanceof TruffleObject) {
-            TruffleObject to = (TruffleObject) value;
-            return ObjectStructures.isArray(getDebugger().getMessageNodes(), to);
-        } else {
-            return false;
-        }
+        return INTEROP.hasArrayElements(get());
     }
 
     /**
@@ -292,16 +303,11 @@ public abstract class DebugValue {
         if (!isReadable()) {
             return null;
         }
-        List<DebugValue> arrayList = null;
         Object value = get();
-        if (value instanceof TruffleObject) {
-            TruffleObject to = (TruffleObject) value;
-            List<Object> array = ObjectStructures.asList(getDebugger().getMessageNodes(), to);
-            if (array != null) {
-                arrayList = new ValueInteropList(getSession(), resolveLanguage(), array);
-            }
+        if (INTEROP.hasArrayElements(value)) {
+            return new ValueInteropList(getSession(), resolveLanguage(), value);
         }
-        return arrayList;
+        return null;
     }
 
     final LanguageInfo resolveLanguage() {
@@ -338,7 +344,7 @@ public abstract class DebugValue {
             try {
                 obj = env.findMetaObject(languageInfo, obj);
                 if (obj != null) {
-                    return new HeapValue(getSession(), languageInfo, null, obj);
+                    return new HeapValue(getSession(), languageInfo, null, obj, true);
                 }
             } catch (ThreadDeath td) {
                 throw td;
@@ -388,17 +394,37 @@ public abstract class DebugValue {
      */
     public final boolean canExecute() throws DebugException {
         Object value = get();
-        if (value instanceof TruffleObject) {
-            TruffleObject to = (TruffleObject) value;
-            try {
-                return ObjectStructures.canExecute(getDebugger().getMessageNodes(), to);
-            } catch (ThreadDeath td) {
-                throw td;
-            } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
-            }
-        } else {
-            return false;
+        try {
+            return INTEROP.isExecutable(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Executes the executable represented by this value.
+     *
+     * @param arguments Arguments passed to the executable
+     * @return the result of the execution
+     * @throws DebugException when guest language code throws an exception
+     * @see #canExecute()
+     * @since 1.0
+     */
+    public final DebugValue execute(DebugValue... arguments) throws DebugException {
+        Object value = get();
+        Object[] args = new Object[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            args[i] = arguments[i].get();
+        }
+        try {
+            Object retValue = INTEROP.execute(value, args);
+            return new HeapValue(getSession(), null, retValue);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -459,38 +485,33 @@ public abstract class DebugValue {
         return "DebugValue(name=" + getName() + ", value = " + as(String.class) + ")";
     }
 
-    static class HeapValue extends DebugValue {
+    abstract static class AbstractDebugValue extends DebugValue {
 
-        // identifies the debugger and engine
-        private final DebuggerSession session;
-        private final String name;
-        private Object value;
+        final DebuggerSession session;
 
-        HeapValue(DebuggerSession session, String name, Object value) {
-            this(session, null, name, value);
-        }
-
-        HeapValue(DebuggerSession session, LanguageInfo preferredLanguage, String name, Object value) {
+        AbstractDebugValue(DebuggerSession session, LanguageInfo preferredLanguage) {
             super(preferredLanguage);
             this.session = session;
-            this.name = name;
-            this.value = value;
         }
 
         @Override
-        public <T> T as(Class<T> clazz) throws DebugException {
+        public final <T> T as(Class<T> clazz) throws DebugException {
             if (!isReadable()) {
                 throw new IllegalStateException("Value is not readable");
             }
             try {
                 if (clazz == String.class) {
                     Object val = get();
-                    LanguageInfo languageInfo = resolveLanguage();
                     String stringValue;
-                    if (languageInfo == null) {
-                        stringValue = val.toString();
+                    if (isMeta() && val instanceof String) {
+                        stringValue = (String) val;
                     } else {
-                        stringValue = getDebugger().getEnv().toString(languageInfo, val);
+                        LanguageInfo languageInfo = resolveLanguage();
+                        if (languageInfo == null) {
+                            stringValue = val.toString();
+                        } else {
+                            stringValue = getDebugger().getEnv().toString(languageInfo, val);
+                        }
                     }
                     return clazz.cast(stringValue);
                 } else if (clazz == Number.class || clazz == Boolean.class) {
@@ -504,25 +525,67 @@ public abstract class DebugValue {
             throw new UnsupportedOperationException();
         }
 
+        @Override
+        public String asString() throws DebugException {
+            if (!isReadable()) {
+                throw new IllegalStateException("Value is not readable");
+            }
+            try {
+                Object val = get();
+                if (INTEROP.isString(val)) {
+                    return INTEROP.asString(val);
+                } else {
+                    return null;
+                }
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            }
+        }
+
+        protected boolean isMeta() {
+            return false;
+        }
+
         private <T> T convertToPrimitive(Class<T> clazz) {
             Object val = get();
             if (clazz.isInstance(val)) {
                 return clazz.cast(val);
             }
-            if (val instanceof TruffleObject) {
-                TruffleObject receiver = (TruffleObject) val;
-                if (ForeignAccess.sendIsBoxed(getDebugger().msgNodes.isBoxed, receiver)) {
-                    try {
-                        Object unboxed = ForeignAccess.sendUnbox(getDebugger().msgNodes.unbox, receiver);
-                        if (clazz.isInstance(unboxed)) {
-                            return clazz.cast(unboxed);
-                        }
-                    } catch (UnsupportedMessageException e) {
-                        throw new AssertionError("isBoxed returned true but unbox threw unsupported error.");
-                    }
-                }
-            }
-            return null;
+            return clazz.cast(Debugger.ACCESSOR.engineSupport().convertPrimitive(val, clazz));
+        }
+
+        @Override
+        final DebuggerSession getSession() {
+            return session;
+        }
+    }
+
+    static class HeapValue extends AbstractDebugValue {
+
+        private final String name;
+        private final boolean isMeta;
+        private Object value;
+
+        HeapValue(DebuggerSession session, String name, Object value) {
+            this(session, null, name, value);
+        }
+
+        HeapValue(DebuggerSession session, LanguageInfo preferredLanguage, String name, Object value) {
+            this(session, preferredLanguage, name, value, false);
+        }
+
+        HeapValue(DebuggerSession session, LanguageInfo preferredLanguage, String name, Object value, boolean isMeta) {
+            super(session, preferredLanguage);
+            this.name = name;
+            this.isMeta = isMeta;
+            this.value = value;
+        }
+
+        @Override
+        protected boolean isMeta() {
+            return this.isMeta;
         }
 
         @Override
@@ -573,30 +636,21 @@ public abstract class DebugValue {
 
         @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
-            return new HeapValue(session, language, name, value);
-        }
-
-        @Override
-        DebuggerSession getSession() {
-            return session;
+            return new HeapValue(session, language, name, value, isMeta);
         }
 
     }
 
-    static final class PropertyValue extends HeapValue {
+    static final class ObjectPropertyValue extends AbstractDebugValue {
 
-        private final int keyInfo;
-        private final Map.Entry<Object, Object> property;
+        private final Object object;
+        private final String member;
         private final DebugScope scope;
 
-        PropertyValue(DebuggerSession session, LanguageInfo language, TruffleObject object, Map.Entry<Object, Object> property, DebugScope scope) {
-            this(session, language, ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), object, property.getKey()), property, scope);
-        }
-
-        PropertyValue(DebuggerSession session, LanguageInfo preferredLanguage, int keyInfo, Map.Entry<Object, Object> property, DebugScope scope) {
-            super(session, preferredLanguage, (property.getKey() instanceof String) ? (String) property.getKey() : null, null);
-            this.keyInfo = keyInfo;
-            this.property = property;
+        ObjectPropertyValue(DebuggerSession session, LanguageInfo preferredLanguage, DebugScope scope, Object array, String member) {
+            super(session, preferredLanguage);
+            this.object = array;
+            this.member = member;
             this.scope = scope;
         }
 
@@ -604,7 +658,7 @@ public abstract class DebugValue {
         Object get() {
             checkValid();
             try {
-                return property.getValue();
+                return INTEROP.readMember(object, member);
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
@@ -614,50 +668,37 @@ public abstract class DebugValue {
 
         @Override
         public String getName() {
-            String name = super.getName();
-            if (name != null) {
-                return name;
-            }
-            checkValid();
-            Object propertyKey = property.getKey();
-            // non-String property key
-            LanguageInfo languageInfo = resolveLanguage();
-            if (languageInfo != null) {
-                name = getDebugger().getEnv().toString(languageInfo, propertyKey);
-            } else {
-                name = Objects.toString(propertyKey);
-            }
-            return name;
+            return String.valueOf(member);
         }
 
         @Override
         public boolean isReadable() {
             checkValid();
-            return KeyInfo.isReadable(keyInfo);
+            return INTEROP.isMemberReadable(object, member);
         }
 
         @Override
         public boolean isWritable() {
             checkValid();
-            return KeyInfo.isWritable(keyInfo);
+            return INTEROP.isMemberWritable(object, member);
         }
 
         @Override
         public boolean hasReadSideEffects() {
             checkValid();
-            return KeyInfo.hasReadSideEffects(keyInfo);
+            return INTEROP.hasMemberReadSideEffects(object, member);
         }
 
         @Override
         public boolean hasWriteSideEffects() {
             checkValid();
-            return KeyInfo.hasWriteSideEffects(keyInfo);
+            return INTEROP.hasMemberWriteSideEffects(object, member);
         }
 
         @Override
         public boolean isInternal() {
             checkValid();
-            return KeyInfo.isInternal(keyInfo);
+            return INTEROP.isMemberInternal(object, member);
         }
 
         @Override
@@ -670,7 +711,7 @@ public abstract class DebugValue {
         public void set(DebugValue value) {
             checkValid();
             try {
-                property.setValue(value.get());
+                INTEROP.writeMember(object, member, value.get());
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
@@ -683,7 +724,7 @@ public abstract class DebugValue {
             checkValid();
             checkPrimitive(primitiveValue);
             try {
-                property.setValue(primitiveValue);
+                INTEROP.writeMember(object, member, primitiveValue);
             } catch (Throwable ex) {
                 throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
             }
@@ -691,7 +732,7 @@ public abstract class DebugValue {
 
         @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
-            return new PropertyValue(getSession(), language, keyInfo, property, scope);
+            return new ObjectPropertyValue(session, language, scope, object, member);
         }
 
         private void checkValid() {
@@ -701,22 +742,16 @@ public abstract class DebugValue {
         }
     }
 
-    static final class PropertyNamedValue extends HeapValue {
+    static final class ObjectMemberValue extends AbstractDebugValue {
 
-        private final int keyInfo;
-        private final Map<Object, Object> map;
+        private final Object object;
+        private final String member;
         private final DebugScope scope;
 
-        PropertyNamedValue(DebuggerSession session, LanguageInfo language, TruffleObject object,
-                        Map<Object, Object> map, String name, DebugScope scope) {
-            this(session, language, ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), object, name), map, name, scope);
-        }
-
-        private PropertyNamedValue(DebuggerSession session, LanguageInfo preferredLanguage,
-                        int keyInfo, Map<Object, Object> map, String name, DebugScope scope) {
-            super(session, preferredLanguage, name, null);
-            this.keyInfo = keyInfo;
-            this.map = map;
+        ObjectMemberValue(DebuggerSession session, LanguageInfo preferredLanguage, DebugScope scope, Object object, String member) {
+            super(session, preferredLanguage);
+            this.object = object;
+            this.member = member;
             this.scope = scope;
         }
 
@@ -724,12 +759,47 @@ public abstract class DebugValue {
         Object get() {
             checkValid();
             try {
-                return map.get(getName());
+                return INTEROP.readMember(object, member);
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
                 throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
             }
+        }
+
+        @Override
+        public String getName() {
+            return String.valueOf(member);
+        }
+
+        @Override
+        public boolean isReadable() {
+            checkValid();
+            return INTEROP.isMemberReadable(object, member);
+        }
+
+        @Override
+        public boolean isWritable() {
+            checkValid();
+            return INTEROP.isMemberWritable(object, member);
+        }
+
+        @Override
+        public boolean hasReadSideEffects() {
+            checkValid();
+            return INTEROP.hasMemberReadSideEffects(object, member);
+        }
+
+        @Override
+        public boolean hasWriteSideEffects() {
+            checkValid();
+            return INTEROP.hasMemberWriteSideEffects(object, member);
+        }
+
+        @Override
+        public boolean isInternal() {
+            checkValid();
+            return INTEROP.isMemberInternal(object, member);
         }
 
         @Override
@@ -739,40 +809,10 @@ public abstract class DebugValue {
         }
 
         @Override
-        public boolean isReadable() {
-            checkValid();
-            return KeyInfo.isReadable(keyInfo);
-        }
-
-        @Override
-        public boolean isWritable() {
-            checkValid();
-            return KeyInfo.isWritable(keyInfo);
-        }
-
-        @Override
-        public boolean hasReadSideEffects() {
-            checkValid();
-            return KeyInfo.hasReadSideEffects(keyInfo);
-        }
-
-        @Override
-        public boolean hasWriteSideEffects() {
-            checkValid();
-            return KeyInfo.hasWriteSideEffects(keyInfo);
-        }
-
-        @Override
-        public boolean isInternal() {
-            checkValid();
-            return KeyInfo.isInternal(keyInfo);
-        }
-
-        @Override
         public void set(DebugValue value) {
             checkValid();
             try {
-                map.put(getName(), value.get());
+                INTEROP.writeMember(object, member, value.get());
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
@@ -785,7 +825,7 @@ public abstract class DebugValue {
             checkValid();
             checkPrimitive(primitiveValue);
             try {
-                map.put(getName(), primitiveValue);
+                INTEROP.writeMember(object, member, primitiveValue);
             } catch (Throwable ex) {
                 throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
             }
@@ -793,7 +833,7 @@ public abstract class DebugValue {
 
         @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
-            return new PropertyNamedValue(getSession(), language, keyInfo, map, getName(), scope);
+            return new ObjectMemberValue(session, language, scope, object, member);
         }
 
         private void checkValid() {
@@ -801,7 +841,107 @@ public abstract class DebugValue {
                 scope.verifyValidState();
             }
         }
+    }
 
+    static final class ArrayElementValue extends AbstractDebugValue {
+
+        private final Object array;
+        private final long index;
+        private final DebugScope scope;
+
+        ArrayElementValue(DebuggerSession session, LanguageInfo preferredLanguage, DebugScope scope, Object array, long index) {
+            super(session, preferredLanguage);
+            this.array = array;
+            this.index = index;
+            this.scope = scope;
+        }
+
+        @Override
+        Object get() {
+            checkValid();
+            try {
+                return INTEROP.readArrayElement(array, index);
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            }
+        }
+
+        @Override
+        public String getName() {
+            return String.valueOf(index);
+        }
+
+        @Override
+        public boolean isReadable() {
+            checkValid();
+            return INTEROP.isArrayElementReadable(array, index);
+        }
+
+        @Override
+        public boolean isWritable() {
+            checkValid();
+            return INTEROP.isArrayElementWritable(array, index);
+        }
+
+        @Override
+        public boolean hasReadSideEffects() {
+            checkValid();
+            return false;
+        }
+
+        @Override
+        public boolean hasWriteSideEffects() {
+            checkValid();
+            return false;
+        }
+
+        @Override
+        public boolean isInternal() {
+            checkValid();
+            return false;
+        }
+
+        @Override
+        public DebugScope getScope() {
+            checkValid();
+            return scope;
+        }
+
+        @Override
+        public void set(DebugValue value) {
+            checkValid();
+            try {
+                INTEROP.writeArrayElement(array, index, value.get());
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            }
+        }
+
+        @Override
+        public void set(Object primitiveValue) {
+            checkValid();
+            checkPrimitive(primitiveValue);
+            try {
+                INTEROP.writeArrayElement(array, index, primitiveValue);
+            } catch (Throwable ex) {
+                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            }
+        }
+
+        @Override
+        DebugValue createAsInLanguage(LanguageInfo language) {
+            return new ArrayElementValue(session, language, scope, array, index);
+        }
+
+        private void checkValid() {
+            if (scope != null) {
+                scope.verifyValidState();
+            }
+        }
     }
 
     private static void checkPrimitive(Object value) {

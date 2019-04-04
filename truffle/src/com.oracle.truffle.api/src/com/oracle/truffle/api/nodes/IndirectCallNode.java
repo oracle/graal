@@ -55,6 +55,8 @@ import com.oracle.truffle.api.Truffle;
  */
 public abstract class IndirectCallNode extends Node {
 
+    static final ThreadLocal<Object> CURRENT_CALL_NODE = Node.ACCESSOR.createFastThreadLocal();
+
     /**
      * Constructor for implementation subclasses.
      *
@@ -76,6 +78,19 @@ public abstract class IndirectCallNode extends Node {
     /** @since 0.8 or earlier */
     public static IndirectCallNode create() {
         return Truffle.getRuntime().createIndirectCallNode();
+    }
+
+    private static final IndirectCallNode UNCACHED = Node.ACCESSOR.createUncachedIndirectCall();
+
+    /**
+     * Returns an uncached version of an indirect call node. Uncached versions of an indirect call
+     * node use the {@link NodeUtil#getCurrentEncapsulatingNode() current encapsulating node} as
+     * source location.
+     *
+     * @since 1.0
+     */
+    public static IndirectCallNode getUncached() {
+        return UNCACHED;
     }
 
 }

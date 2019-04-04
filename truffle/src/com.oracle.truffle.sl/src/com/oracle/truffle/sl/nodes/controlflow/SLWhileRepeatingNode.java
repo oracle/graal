@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
-import com.oracle.truffle.sl.nodes.expression.SLUnboxNodeGen;
+import com.oracle.truffle.sl.nodes.util.SLUnboxNodeGen;
 
 /**
  * The loop body of a {@link SLWhileNode while loop}. A Truffle framework {@link LoopNode} between

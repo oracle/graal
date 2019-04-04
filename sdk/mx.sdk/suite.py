@@ -41,8 +41,8 @@
 suite = {
   "mxversion" : "5.210.2",
   "name" : "sdk",
-  "version" : "1.0.0-rc14",
-  "release" : True,
+  "version" : "1.0.0-rc15",
+  "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
   "groupId" : "org.graalvm.sdk",
@@ -98,7 +98,10 @@ suite = {
     "org.graalvm.polyglot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.options"],
+      "dependencies" : [
+        "org.graalvm.options",
+        "org.graalvm.collections",
+      ],
       "uses" : ["org.graalvm.polyglot.impl.AbstractPolyglotImpl"],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java

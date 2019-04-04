@@ -384,8 +384,7 @@ public class SpecializationFallthroughTest {
     @NodeChildren({@NodeChild("a")})
     static class FallthroughExceptionType2 extends ValueNode {
 
-        @ExpectError("A checked exception 'java.lang.Throwable' is thrown but is not specified using the rewriteOn property. " +
-                        "Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.")
+        @ExpectError("Specialization guard method or cache initializer declares an undeclared checked exception [java.lang.Throwable]. Only checked exceptions are allowed that were declared in the execute signature. Allowed exceptions are: [].")
         @Specialization
         int do4(int a) throws Throwable {
             return a;

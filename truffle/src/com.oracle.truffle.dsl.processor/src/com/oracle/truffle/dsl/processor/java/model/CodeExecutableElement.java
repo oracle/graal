@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -72,6 +71,7 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
     private String body;
     private AnnotationValue defaultValue;
     private boolean varArgs;
+    private CodeTree docTree;
 
     public CodeExecutableElement(TypeMirror returnType, String name) {
         super(ElementUtils.modifiers());
@@ -83,6 +83,7 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
         super(modifiers);
         this.returnType = returnType;
         this.name = CodeNames.of(name);
+
         for (CodeVariableElement codeParameter : parameters) {
             addParameter(codeParameter);
         }
@@ -153,6 +154,13 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
         return createBuilder().tree(tree);
     }
 
+    public CodeTreeBuilder createDocBuilder() {
+        CodeTreeBuilder builder = new CodeTreeBuilder(null);
+        builder.setEnclosingElement(this);
+        this.docTree = builder.getTree();
+        return builder;
+    }
+
     public CodeTreeBuilder createBuilder() {
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
         builder.setEnclosingElement(this);
@@ -170,6 +178,14 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
         this.bodyTree = builder.getTree();
         this.body = null;
         return builder;
+    }
+
+    public CodeTree getDocTree() {
+        return docTree;
+    }
+
+    public void setDocTree(CodeTree docTree) {
+        this.docTree = docTree;
     }
 
     public void setBodyTree(CodeTree body) {
@@ -226,13 +242,25 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
         return v.visitExecutable(this, p);
     }
 
-    public static CodeExecutableElement clone(@SuppressWarnings("unused") ProcessingEnvironment env, ExecutableElement method) {
+    public static CodeExecutableElement cloneNoAnnotations(ExecutableElement executable) {
+        CodeExecutableElement clone = CodeExecutableElement.clone(executable);
+        clone.getAnnotationMirrors().clear();
+        for (VariableElement var : clone.getParameters()) {
+            ((CodeVariableElement) var).getAnnotationMirrors().clear();
+        }
+        return clone;
+    }
+
+    public static CodeExecutableElement clone(ExecutableElement method) {
         CodeExecutableElement copy = new CodeExecutableElement(method.getReturnType(), method.getSimpleName().toString());
         for (TypeMirror thrownType : method.getThrownTypes()) {
             copy.addThrownType(thrownType);
         }
         copy.setDefaultValue(method.getDefaultValue());
 
+        for (TypeParameterElement parameter : method.getTypeParameters()) {
+            copy.getTypeParameters().add(parameter);
+        }
         for (AnnotationMirror mirror : method.getAnnotationMirrors()) {
             copy.addAnnotationMirror(mirror);
         }
@@ -244,10 +272,19 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
         }
         copy.getModifiers().addAll(method.getModifiers());
         copy.setVarArgs(method.isVarArgs());
+        if (method instanceof CodeExecutableElement) {
+            copy.setBodyTree(((CodeExecutableElement) method).getBodyTree());
+        }
         return copy;
     }
 
     public TypeMirror getReceiverType() {
         throw new UnsupportedOperationException();
+    }
+
+    public void renameArguments(String... args) {
+        for (int i = 0; i < args.length && i < getParameters().size(); i++) {
+            ((CodeVariableElement) getParameters().get(i)).setName(args[i]);
+        }
     }
 }

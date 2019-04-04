@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,11 +32,10 @@ package com.oracle.truffle.llvm.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public final class LLVMNativeFunctions {
@@ -61,17 +60,18 @@ public final class LLVMNativeFunctions {
     protected abstract static class HeapFunctionNode extends LLVMNode {
 
         private final TruffleObject function;
-        @Child private Node nativeExecute;
+        @Child private InteropLibrary nativeExecute;
 
         protected HeapFunctionNode(TruffleObject function) {
             this.function = function;
-            this.nativeExecute = Message.EXECUTE.createNode();
+            this.nativeExecute = InteropLibrary.getFactory().create(function);
         }
 
         protected Object execute(Object... args) {
             try {
-                return ForeignAccess.sendExecute(nativeExecute, function, args);
+                return nativeExecute.execute(function, args);
             } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
             }
         }

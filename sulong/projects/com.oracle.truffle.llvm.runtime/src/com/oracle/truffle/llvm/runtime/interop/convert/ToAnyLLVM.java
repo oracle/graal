@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -107,7 +107,7 @@ public abstract class ToAnyLLVM extends ForeignToLLVM {
     }
 
     @TruffleBoundary
-    static Object slowPathPrimitiveConvert(Object value) {
+    static Object slowPathPrimitiveConvert(Object value) throws UnsupportedTypeException {
         if (value instanceof Number) {
             return value;
         } else if (value instanceof Boolean) {
@@ -122,11 +122,11 @@ public abstract class ToAnyLLVM extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMInternalTruffleObject) {
             return LLVMManagedPointer.create((LLVMInternalTruffleObject) value);
-        } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
+        } else if (value instanceof TruffleObject && notLLVM(value)) {
             LLVMTypedForeignObject typed = LLVMTypedForeignObject.createUnknown((TruffleObject) value);
             return LLVMManagedPointer.create(typed);
         } else {
-            throw UnsupportedTypeException.raise(new Object[]{value});
+            throw UnsupportedTypeException.create(new Object[]{value});
         }
     }
 }

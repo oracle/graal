@@ -55,6 +55,10 @@ public final class ScriptsHandler implements LoadSourceListener {
         this.debuggerSession = debuggerSession;
     }
 
+    DebuggerSession getDebuggerSession() {
+        return this.debuggerSession;
+    }
+
     public int getScriptId(Source source) {
         synchronized (sourceIDs) {
             Integer id = sourceIDs.get(source);

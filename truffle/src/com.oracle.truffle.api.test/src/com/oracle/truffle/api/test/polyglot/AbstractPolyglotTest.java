@@ -150,7 +150,12 @@ public abstract class AbstractPolyglotTest {
      */
     @SuppressWarnings("unchecked")
     protected final <T extends Node> Supplier<T> adoptNode(T node) {
-        TestRootNode root = new TestRootNode(this.language, node);
+        return adoptNode(this.language, node);
+    }
+
+    @SuppressWarnings({"unchecked", "static-method"})
+    protected final <T extends Node> Supplier<T> adoptNode(TruffleLanguage<?> lang, T node) {
+        TestRootNode root = new TestRootNode(lang, node);
         CallTarget target = Truffle.getRuntime().createCallTarget(root);
         // execute it to trigger instrumentations
         target.call();

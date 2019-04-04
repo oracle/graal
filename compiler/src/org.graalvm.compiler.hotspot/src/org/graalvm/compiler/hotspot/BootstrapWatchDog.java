@@ -39,6 +39,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.services.Services;
 
 /**
  * A watch dog that monitors the duration and compilation rate during a
@@ -108,7 +109,7 @@ final class BootstrapWatchDog extends Thread {
     /**
      * Set to true to debug the watch dog.
      */
-    private static final boolean DEBUG = Boolean.getBoolean("debug.graal.BootstrapWatchDog");
+    private static final boolean DEBUG = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.BootstrapWatchDog"));
 
     /**
      * Seconds to delay before starting to measure the compilation rate.
@@ -177,6 +178,10 @@ final class BootstrapWatchDog extends Thread {
                                 StackTraceElement[] stackTraceNow = t.getStackTrace();
                                 TTY.printf("Printing stack trace for current compilation of %s lasting more than %d seconds:%n%s",
                                                 fmt(request1.getMethod()), EPOCH, fmt(stackTraceNow));
+
+                                // Fortify: Null Dereference false positive
+                                assert stacksAtTimeout != null;
+
                                 if (Arrays.equals(stacksAtTimeout.get(t), stackTraceNow)) {
                                     TTY.printf("\t** Identical stack trace %d seconds ago, implying a hung compilation **%n",
                                                     EPOCH);

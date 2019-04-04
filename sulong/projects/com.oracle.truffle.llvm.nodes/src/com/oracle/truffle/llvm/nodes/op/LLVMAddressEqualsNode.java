@@ -32,14 +32,13 @@ package com.oracle.truffle.llvm.nodes.op;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressEqualsNodeGen.LLVMManagedEqualsNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressEqualsNodeGen.LLVMNativeEqualsNodeGen;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNode.LLVMPointToSameObjectNode;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -48,23 +47,33 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
-    @Specialization(guards = {"libA.guard(a)", "libB.guard(b)"})
-    protected boolean doCached(Object a, Object b,
-                    @Cached("createCached(a)") LLVMObjectNativeLibrary libA,
-                    @Cached("createCached(b)") LLVMObjectNativeLibrary libB,
-                    @Cached("createEquals()") LLVMNativeEqualsNode equals) {
-        return equals.execute(a, libA, b, libB);
+    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3", rewriteOn = UnsupportedMessageException.class)
+    protected boolean doPointerPointer(Object a, Object b,
+                    @CachedLibrary("a") LLVMNativeLibrary libA,
+                    @CachedLibrary("b") LLVMNativeLibrary libB) throws UnsupportedMessageException {
+        return libA.asPointer(a) == libB.asPointer(b);
     }
 
-    @Specialization(replaces = "doCached", guards = {"lib.guard(a)", "lib.guard(b)"})
-    protected boolean doGeneric(Object a, Object b,
-                    @Cached("createGeneric()") LLVMObjectNativeLibrary lib,
-                    @Cached("createEquals()") LLVMNativeEqualsNode equals) {
-        return equals.execute(a, lib, b, lib);
+    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3")
+    protected boolean doPointerPointerException(Object a, Object b,
+                    @CachedLibrary("a") LLVMNativeLibrary libA,
+                    @CachedLibrary("b") LLVMNativeLibrary libB,
+                    @Cached LLVMManagedEqualsNode managedEquals) {
+        try {
+            return doPointerPointer(a, b, libA, libB);
+        } catch (UnsupportedMessageException ex) {
+            // even though both say isPointer == true, one of them threw an exception in asPointer
+            // this is the same as if one of the objects has isPointer == false
+            return doOther(a, b, libA, libB, managedEquals);
+        }
     }
 
-    static LLVMNativeEqualsNode createEquals() {
-        return LLVMNativeEqualsNodeGen.create();
+    @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)", limit = "3")
+    protected boolean doOther(Object a, Object b,
+                    @SuppressWarnings("unused") @CachedLibrary("a") LLVMNativeLibrary libA,
+                    @SuppressWarnings("unused") @CachedLibrary("b") LLVMNativeLibrary libB,
+                    @Cached LLVMManagedEqualsNode managedEquals) {
+        return managedEquals.execute(a, b);
     }
 
     abstract static class LLVMManagedEqualsNode extends LLVMNode {
@@ -72,7 +81,7 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
         @Specialization
         protected boolean doForeign(LLVMManagedPointer a, LLVMManagedPointer b,
-                        @Cached("create()") LLVMPointToSameObjectNode pointToSameObject) {
+                        @Cached LLVMPointToSameObjectNode pointToSameObject) {
             return pointToSameObject.execute(a, b) && a.getOffset() == b.getOffset();
         }
 
@@ -98,33 +107,6 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
         protected boolean isNative(LLVMPointer p) {
             return LLVMNativePointer.isInstance(p);
-        }
-
-        public static LLVMManagedEqualsNode create() {
-            return LLVMManagedEqualsNodeGen.create();
-        }
-    }
-
-    abstract static class LLVMNativeEqualsNode extends LLVMNode {
-
-        abstract boolean execute(Object a, LLVMObjectNativeLibrary libA,
-                        Object b, LLVMObjectNativeLibrary libB);
-
-        @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"})
-        protected boolean doPointerPointer(Object a, LLVMObjectNativeLibrary libA,
-                        Object b, LLVMObjectNativeLibrary libB) {
-            try {
-                return libA.asPointer(a) == libB.asPointer(b);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
-        }
-
-        @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)")
-        protected boolean doOther(Object a, @SuppressWarnings("unused") LLVMObjectNativeLibrary libA,
-                        Object b, @SuppressWarnings("unused") LLVMObjectNativeLibrary libB,
-                        @Cached("create()") LLVMManagedEqualsNode managedEquals) {
-            return managedEquals.execute(a, b);
         }
     }
 }

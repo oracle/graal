@@ -57,7 +57,6 @@ import org.graalvm.polyglot.PolyglotException;
  * @see ProxyObject to mimic objects with members
  * @see ProxyExecutable to mimic objects that can be executed
  * @see ProxyNativeObject to mimic native objects
- * @see ProxyPrimitive to mimic lazy primitive values
  *
  * @since 1.0
  */

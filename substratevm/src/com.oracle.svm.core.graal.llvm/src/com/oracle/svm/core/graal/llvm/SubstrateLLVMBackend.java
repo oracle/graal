@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.graal.llvm.LLVMFeature.Options.IncludeLLVMDebugInfo;
+import static com.oracle.svm.core.graal.llvm.LLVMOptions.IncludeLLVMDebugInfo;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.util.Collections;
@@ -45,6 +45,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -64,8 +65,8 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
     }
 
     @Override
-    public AddressLoweringPhase.AddressLowering newAddressLowering(CodeCacheProvider codeCache) {
-        return new LLVMAddressLowering();
+    public Phase newAddressLoweringPhase(CodeCacheProvider codeCache) {
+        return new AddressLoweringPhase(new LLVMAddressLowering());
     }
 
     @Override

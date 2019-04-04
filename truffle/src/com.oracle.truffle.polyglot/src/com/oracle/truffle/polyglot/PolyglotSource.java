@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.TruffleFile;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,8 +55,11 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.source.Source.SourceBuilder;
+import java.nio.charset.Charset;
 
 class PolyglotSource extends AbstractSourceImpl {
+
+    private volatile Object defaultFileSystemContext;
 
     protected PolyglotSource(AbstractPolyglotImpl engineImpl) {
         super(engineImpl);
@@ -203,13 +207,14 @@ class PolyglotSource extends AbstractSourceImpl {
     @Override
     public String findMimeType(File file) throws IOException {
         Objects.requireNonNull(file);
-        return VMAccessor.SOURCE.findMimeType(file);
+        TruffleFile truffleFile = VMAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        return truffleFile.getMimeType();
     }
 
     @Override
     public String findMimeType(URL url) throws IOException {
         Objects.requireNonNull(url);
-        return VMAccessor.SOURCE.findMimeType(url);
+        return VMAccessor.SOURCE.findMimeType(url, getDefaultFileSystemContext());
     }
 
     @Override
@@ -251,7 +256,8 @@ class PolyglotSource extends AbstractSourceImpl {
     }
 
     @Override
-    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException {
+    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                    throws IOException {
         assert language != null;
         SourceBuilder builder;
         if (origin instanceof File) {
@@ -267,6 +273,7 @@ class PolyglotSource extends AbstractSourceImpl {
         } else {
             throw new AssertionError();
         }
+        VMAccessor.SOURCE.setFileSystemContext(builder, getDefaultFileSystemContext());
 
         if (content instanceof CharSequence) {
             builder.content((CharSequence) content);
@@ -280,6 +287,7 @@ class PolyglotSource extends AbstractSourceImpl {
         builder.interactive(interactive);
         builder.mimeType(mimeType);
         builder.cached(cached);
+        builder.encoding(encoding);
 
         try {
             com.oracle.truffle.api.source.Source truffleSource = builder.build();
@@ -293,6 +301,21 @@ class PolyglotSource extends AbstractSourceImpl {
         } catch (Exception e) {
             throw new AssertionError(e);
         }
+    }
+
+    private Object getDefaultFileSystemContext() {
+        Object res = defaultFileSystemContext;
+        if (res == null) {
+            synchronized (this) {
+                res = defaultFileSystemContext;
+                if (res == null) {
+                    ClassLoader loader = engineImpl.getAPIAccess().useContextClassLoader() ? Thread.currentThread().getContextClassLoader() : null;
+                    res = VMAccessor.LANGUAGE.createFileSystemContext(FileSystems.newDefaultFileSystem(), FileSystems.newFileTypeDetectorsSupplier(LanguageCache.languages(loader).values()));
+                    defaultFileSystemContext = res;
+                }
+            }
+        }
+        return res;
     }
 
 }

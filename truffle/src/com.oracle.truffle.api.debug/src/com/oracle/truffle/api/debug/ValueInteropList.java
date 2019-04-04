@@ -41,11 +41,9 @@
 package com.oracle.truffle.api.debug;
 
 import java.util.AbstractList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
-import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
 /**
@@ -54,11 +52,13 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  */
 final class ValueInteropList extends AbstractList<DebugValue> {
 
+    static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     private final DebuggerSession session;
     private final LanguageInfo language;
-    private final List<Object> list;
+    private final Object list;
 
-    ValueInteropList(DebuggerSession session, LanguageInfo language, List<Object> list) {
+    ValueInteropList(DebuggerSession session, LanguageInfo language, Object list) {
         this.session = session;
         this.language = language;
         this.list = list;
@@ -66,52 +66,31 @@ final class ValueInteropList extends AbstractList<DebugValue> {
 
     @Override
     public DebugValue get(int index) {
-        AtomicReference<Object> objRef;
-        try {
-            objRef = new AtomicReference<>(list.get(index));
-        } catch (ThreadDeath td) {
-            throw td;
-        } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
-        }
-        String name = Integer.toString(index);
-        Map.Entry<Object, Object> elementEntry = new Map.Entry<Object, Object>() {
-            @Override
-            public String getKey() {
-                return name;
-            }
-
-            @Override
-            public Object getValue() {
-                return objRef.get();
-            }
-
-            @Override
-            public Object setValue(Object value) {
-                list.set(index, value);
-                return objRef.getAndSet(value);
-            }
-        };
-        DebugValue dv = new DebugValue.PropertyValue(session, language, KeyInfo.READABLE | KeyInfo.MODIFIABLE, elementEntry, null);
-        return dv;
+        return new DebugValue.ArrayElementValue(session, language, null, list, index);
     }
 
     @Override
-    public DebugValue set(int index, DebugValue value) {
-        DebugValue old = get(index);
-        try {
-            list.set(index, value.get());
-        } catch (ThreadDeath td) {
-            throw td;
-        } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+    public DebugValue set(int index, DebugValue newValue) {
+        Object oldValue = null;
+        DebugValue currentValue = get(index);
+        if (INTEROP.isArrayElementReadable(list, index)) {
+            oldValue = currentValue.get();
         }
-        return old;
+        currentValue.set(newValue);
+        if (oldValue != null) {
+            return new DebugValue.HeapValue(session, String.valueOf(index), oldValue);
+        } else {
+            return null;
+        }
     }
 
     @Override
     public int size() {
-        return list.size();
+        try {
+            return (int) INTEROP.getArraySize(list);
+        } catch (UnsupportedMessageException e) {
+            return 0;
+        }
     }
 
 }

@@ -247,6 +247,11 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     }
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        return wrapped.allowRuntimeCompilation();
+    }
+
+    @Override
     public byte[] getCode() {
         return wrapped.getCode();
     }

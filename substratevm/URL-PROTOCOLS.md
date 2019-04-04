@@ -5,7 +5,7 @@ On Substrate VM URL protocols can be divided in three classes:
 
 ### Supported and enabled by default
 These are protocols that are enabled by default and added to every built image.
-Currently `file` is the only supported URL protocol enabled by default.
+Currently `file` and `resource` are the only supported URL protocols enabled by default.
 
 ### Supported and disabled by default
 These are protocols that are supported but are not enabled by default when building an image.

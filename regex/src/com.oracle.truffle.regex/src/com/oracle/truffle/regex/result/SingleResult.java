@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,12 @@
  */
 package com.oracle.truffle.regex.result;
 
-import com.oracle.truffle.regex.RegexObject;
-
 public final class SingleResult extends RegexResult {
 
     private final int start;
     private final int end;
 
-    public SingleResult(RegexObject regex, Object input, int start, int end) {
-        super(regex, input, 1);
+    public SingleResult(int start, int end) {
         this.start = start;
         this.end = end;
     }

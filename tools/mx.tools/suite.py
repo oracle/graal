@@ -4,8 +4,8 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "1.0.0-rc14",
-    "release" : True,
+    "version" : "1.0.0-rc15",
+    "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
       "name" : "Truffle and Graal developers",
@@ -157,6 +157,12 @@ suite = {
                     "amd64" : {
                         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655-macosx-x86_64.tar.gz"],
                         "sha1" : "48da5fcf73bd85b257dbeb3ca033fd96e5ec2278",
+                    }
+                },
+                "windows" : {
+                    "amd64" : {
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655-windows-amd64.tar.gz"],
+                        "sha1" : "ddaec648e701a88bb673ac3a1a96d2453d91eaee",
                     }
                 },
             }

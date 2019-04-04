@@ -40,13 +40,15 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 final class HostFunction implements TruffleObject {
 
     final HostMethodDesc method;
@@ -67,9 +69,15 @@ final class HostFunction implements TruffleObject {
         return obj instanceof HostFunction;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return HostFunctionMRForeign.ACCESS;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] args, @Cached HostExecuteNode execute) throws UnsupportedTypeException, ArityException {
+        return execute.execute(method, obj, args, languageContext);
     }
 
     @Override
@@ -93,33 +101,4 @@ final class HostFunction implements TruffleObject {
         String typeName = obj.getClass().getTypeName();
         return typeName + "." + method.getName();
     }
-
-}
-
-@MessageResolution(receiverType = HostFunction.class)
-class HostFunctionMR {
-
-    @Resolve(message = "EXECUTE")
-    abstract static class ExecuteNode extends Node {
-
-        @Child private HostExecuteNode doExecute;
-
-        public Object access(HostFunction function, Object[] args) {
-            if (doExecute == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                doExecute = insert(HostExecuteNode.create());
-            }
-            return doExecute.execute(function.method, function.obj, args, function.languageContext);
-        }
-    }
-
-    @Resolve(message = "IS_EXECUTABLE")
-    abstract static class IsExecutableNode extends Node {
-
-        public Object access(@SuppressWarnings("unused") HostFunction receiver) {
-            return Boolean.TRUE;
-        }
-
-    }
-
 }

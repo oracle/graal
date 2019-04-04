@@ -40,15 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.api.interop.ForeignAccess.sendGetSize;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendHasKeys;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendHasSize;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendKeyInfo;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendKeys;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendRead;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendRemove;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendWrite;
-
 import java.lang.reflect.Type;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
@@ -62,29 +53,37 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
+import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.ContainsKeyNodeGen;
+import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.EntrySetNodeGen;
+import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.GetNodeGen;
+import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.PutNodeGen;
+import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.RemoveBooleanNodeGen;
+import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.RemoveNodeGen;
 
 class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
     final PolyglotLanguageContext languageContext;
-    final TruffleObject guestObject;
+    final Object guestObject;
     final Cache cache;
 
-    PolyglotMap(PolyglotLanguageContext languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+    PolyglotMap(PolyglotLanguageContext languageContext, Object obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
         this.guestObject = obj;
         this.languageContext = languageContext;
         this.cache = Cache.lookup(languageContext, obj.getClass(), keyClass, valueClass, valueType);
     }
 
-    static <K, V> Map<K, V> create(PolyglotLanguageContext languageContext, TruffleObject foreignObject, boolean implementsFunction, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+    static <K, V> Map<K, V> create(PolyglotLanguageContext languageContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Class<V> valueClass, Type valueType) {
         if (implementsFunction) {
             return new PolyglotMapAndFunction<>(languageContext, foreignObject, keyClass, valueClass, valueType);
         } else {
@@ -127,13 +126,17 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
     @SuppressWarnings("unchecked")
     @Override
     public V put(K key, V value) {
-        return (V) cache.put.call(languageContext, guestObject, key, value);
+        V prev = get(key);
+        cache.put.call(languageContext, guestObject, key, value);
+        return prev;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public V remove(Object key) {
-        return (V) cache.remove.call(languageContext, guestObject, key);
+        V prev = get(key);
+        cache.remove.call(languageContext, guestObject, key);
+        return prev;
     }
 
     @Override
@@ -149,6 +152,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
     @Override
     public boolean equals(Object o) {
         return HostWrapper.equals(this, o);
+    }
+
+    @TruffleBoundary
+    private static int intValue(Object key) {
+        return ((Number) key).intValue();
     }
 
     private final class LazyEntries extends AbstractSet<Entry<K, V>> {
@@ -364,24 +372,24 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             this.valueType = valueType;
             this.memberKey = keyClass == Object.class || keyClass == String.class || keyClass == CharSequence.class;
             this.numberKey = keyClass == Object.class || keyClass == Number.class || keyClass == Integer.class || keyClass == Long.class || keyClass == Short.class || keyClass == Byte.class;
-            this.get = initializeCall(new Get(this));
-            this.containsKey = initializeCall(new ContainsKey(this));
-            this.entrySet = initializeCall(new EntrySet(this));
-            this.put = initializeCall(new Put(this));
-            this.remove = initializeCall(new Remove(this));
-            this.removeBoolean = initializeCall(new RemoveBoolean(this));
+            this.get = initializeCall(GetNodeGen.create(this));
+            this.containsKey = initializeCall(ContainsKeyNodeGen.create(this));
+            this.entrySet = initializeCall(EntrySetNodeGen.create(this));
+            this.put = initializeCall(PutNodeGen.create(this));
+            this.remove = initializeCall(RemoveNodeGen.create(this));
+            this.removeBoolean = initializeCall(RemoveBooleanNodeGen.create(this));
             this.apply = initializeCall(new Apply(this));
         }
 
         private static CallTarget initializeCall(PolyglotMapNode node) {
-            return HostRootNode.createTarget(node);
+            return HostToGuestRootNode.createTarget(node);
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
             Key cacheKey = new Key(receiverClass, keyClass, valueType);
-            Cache cache = HostRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
+            Cache cache = HostToGuestRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
+                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.keyClass == keyClass;
@@ -421,12 +429,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
         }
 
-        private abstract static class PolyglotMapNode extends HostRootNode<TruffleObject> {
+        abstract static class PolyglotMapNode extends HostToGuestRootNode {
+
+            static final int LIMIT = 5;
 
             final Cache cache;
-            @Child protected Node hasSize = Message.HAS_SIZE.createNode();
-            @Child protected Node hasKeys = Message.HAS_KEYS.createNode();
-            private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
 
             PolyglotMapNode(Cache cache) {
                 this.cache = cache;
@@ -443,37 +450,37 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 return "PolyglotMap<" + cache.receiverClass + ", " + cache.keyClass + ", " + cache.valueType + ">." + getOperationName();
             }
 
-            protected final boolean isValidKey(TruffleObject receiver, Object key) {
-                if (cache.keyClass.isInstance(key)) {
-                    if (cache.memberKey && condition.profile(sendHasKeys(hasKeys, receiver))) {
-                        if (key instanceof String) {
-                            return true;
-                        }
-                    } else if (cache.numberKey && key instanceof Number && sendHasSize(hasSize, receiver)) {
-                        return true;
-                    }
-                }
-                return false;
+            protected final boolean isObjectKey(Object key) {
+                return cache.memberKey && cache.keyClass.isInstance(key) && key instanceof String;
+            }
+
+            protected final boolean isArrayKey(Object key) {
+                return cache.numberKey && cache.keyClass.isInstance(key) && key instanceof Number;
             }
 
             protected abstract String getOperationName();
 
         }
 
-        private class ContainsKey extends PolyglotMapNode {
+        abstract static class ContainsKeyNode extends PolyglotMapNode {
 
-            @Child private Node keyInfo = Message.KEY_INFO.createNode();
-            @Child private Node getSize = Message.GET_SIZE.createNode();
-
-            ContainsKey(Cache cache) {
+            ContainsKeyNode(Cache cache) {
                 super(cache);
             }
 
-            @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            @Specialization(limit = "LIMIT")
+            @SuppressWarnings("unused")
+            protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary interop) {
                 Object key = args[ARGUMENT_OFFSET];
-                if (isValidKey(receiver, key)) {
-                    return KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key));
+                if (cache.memberKey && interop.hasMembers(receiver)) {
+                    if (isObjectKey(key)) {
+                        return interop.isMemberReadable(receiver, ((String) key));
+                    }
+                } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
+                    if (isArrayKey(key)) {
+                        return interop.isArrayElementReadable(receiver, intValue(key));
+                    }
                 }
                 return false;
             }
@@ -485,41 +492,41 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
         }
 
-        private static class EntrySet extends PolyglotMapNode {
-
-            @Child private Node getSize = Message.GET_SIZE.createNode();
-            @Child private Node keysNode = Message.KEYS.createNode();
+        @SuppressWarnings("unused")
+        abstract static class EntrySet extends PolyglotMapNode {
 
             EntrySet(Cache cache) {
                 super(cache);
             }
 
-            @Override
+            @Specialization(limit = "LIMIT")
             @SuppressWarnings("unchecked")
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary interop,
+                            @Cached ToHostNode toHost) {
                 List<?> keys = null;
                 int keysSize = 0;
-                int elemSize = 0;
+                long elemSize = 0;
                 PolyglotMap<Object, Object> originalMap = (PolyglotMap<Object, Object>) args[ARGUMENT_OFFSET];
 
-                if (cache.memberKey && sendHasKeys(hasKeys, receiver)) {
-                    TruffleObject truffleKeys;
+                if (cache.memberKey && interop.hasMembers(receiver)) {
+                    Object truffleKeys;
                     try {
-                        truffleKeys = sendKeys(keysNode, receiver);
+                        truffleKeys = interop.getMembers(receiver);
                     } catch (UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreter();
                         return Collections.emptySet();
                     }
                     keys = PolyglotList.create(languageContext, truffleKeys, false, String.class, null);
                     keysSize = keys.size();
-                } else if (cache.numberKey && sendHasSize(hasSize, receiver)) {
+                } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                     try {
-                        elemSize = ((Number) sendGetSize(getSize, receiver)).intValue();
+                        elemSize = interop.getArraySize(receiver);
                     } catch (UnsupportedMessageException e) {
                         elemSize = 0;
                     }
                 }
-                return originalMap.new LazyEntries(keys, keysSize, elemSize);
+                return originalMap.new LazyEntries(keys, keysSize, (int) elemSize);
             }
 
             @Override
@@ -529,14 +536,9 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
         }
 
-        private static class Get extends PolyglotMapNode {
+        abstract static class GetNode extends PolyglotMapNode {
 
-            @Child private Node keyInfo = Message.KEY_INFO.createNode();
-            @Child private Node getSize = Message.GET_SIZE.createNode();
-            @Child private Node read = Message.READ.createNode();
-            @Child private ToHostNode toHost = ToHostNode.create();
-
-            Get(Cache cache) {
+            GetNode(Cache cache) {
                 super(cache);
             }
 
@@ -545,36 +547,40 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 return "get";
             }
 
-            @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            @Specialization(limit = "LIMIT")
+            @SuppressWarnings("unused")
+            protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary interop,
+                            @Cached ToHostNode toHost) {
                 Object key = args[ARGUMENT_OFFSET];
-                Object result = null;
-                if (isValidKey(receiver, key) && KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key))) {
-                    try {
-                        result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
-                    } catch (ClassCastException | NullPointerException e) {
-                        // expected exceptions from casting to the host value.
-                        throw e;
-                    } catch (UnknownIdentifierException e) {
-                        return null;
-                    } catch (UnsupportedMessageException e) {
-                        // be robust for misbehaving languages
+                Object result;
+                try {
+                    if (cache.memberKey && interop.hasMembers(receiver)) {
+                        if (isObjectKey(key)) {
+                            result = interop.readMember(receiver, ((String) key));
+                        } else {
+                            return null;
+                        }
+                    } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
+                        if (isArrayKey(key)) {
+                            result = interop.readArrayElement(receiver, intValue(key));
+                        } else {
+                            return null;
+                        }
+                    } else {
                         return null;
                     }
+                    return toHost.execute(result, cache.valueClass, cache.valueType, languageContext, true);
+                } catch (ClassCastException | NullPointerException e) {
+                    // expected exceptions from casting to the host value.
+                    throw e;
+                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnsupportedMessageException e) {
+                    return null;
                 }
-                return result;
             }
-
         }
 
-        private static class Put extends PolyglotMapNode {
-
-            @Child private Node keyInfo = Message.KEY_INFO.createNode();
-            @Child private Node getSize = Message.GET_SIZE.createNode();
-            @Child private Node read = Message.READ.createNode();
-            @Child private Node write = Message.WRITE.createNode();
-            @Child private ToHostNode toHost = ToHostNode.create();
-            private final ToGuestValueNode toGuest = ToGuestValueNode.create();
+        abstract static class Put extends PolyglotMapNode {
 
             Put(Cache cache) {
                 super(cache);
@@ -585,56 +591,47 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 return "put";
             }
 
-            @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            @Specialization(limit = "LIMIT")
+            @SuppressWarnings("unused")
+            protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary interop,
+                            @Cached ToGuestValueNode toGuest) {
                 Object key = args[ARGUMENT_OFFSET];
-                Object result = null;
-
-                if (isValidKey(receiver, key)) {
-                    Object value = args[ARGUMENT_OFFSET + 1];
-                    int info = sendKeyInfo(keyInfo, receiver, key);
-                    if (!KeyInfo.isExisting(info) || (KeyInfo.isWritable(info) && KeyInfo.isReadable(info))) {
-                        if (KeyInfo.isExisting(info)) {
-                            try {
-                                result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
-                            } catch (UnknownIdentifierException e) {
-                            } catch (UnsupportedMessageException e) {
-                            }
+                Object guestValue = toGuest.execute(languageContext, args[ARGUMENT_OFFSET + 1]);
+                try {
+                    if (cache.memberKey && interop.hasMembers(receiver)) {
+                        if (isObjectKey(key)) {
+                            interop.writeMember(receiver, ((String) key), guestValue);
+                            return null;
                         }
-                        Object guestValue = toGuest.apply(languageContext, value);
-                        try {
-                            sendWrite(write, receiver, key, guestValue);
-                        } catch (UnknownIdentifierException e) {
-                            CompilerDirectives.transferToInterpreter();
-                            throw HostInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);
-                        } catch (UnsupportedMessageException e) {
-                            CompilerDirectives.transferToInterpreter();
-                            throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
-                        } catch (UnsupportedTypeException e) {
-                            CompilerDirectives.transferToInterpreter();
-                            throw HostInteropErrors.invalidMapValue(languageContext, receiver, cache.keyClass, cache.valueType, key, guestValue);
+                    } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
+                        if (isArrayKey(key)) {
+                            interop.writeArrayElement(receiver, intValue(key), guestValue);
+                            return null;
                         }
-                        return cache.valueClass.cast(result);
                     }
-                }
-                CompilerDirectives.transferToInterpreter();
-                if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
-                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
-                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
+                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
+                    } else {
+                        throw HostInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);
+                    }
+                } catch (UnknownIdentifierException | InvalidArrayIndexException e) {
+                    CompilerDirectives.transferToInterpreter();
                     throw HostInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
+                } catch (UnsupportedTypeException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw HostInteropErrors.invalidMapValue(languageContext, receiver, cache.keyClass, cache.valueType, key, guestValue);
                 }
             }
-
         }
 
-        private static class Remove extends PolyglotMapNode {
+        abstract static class RemoveNode extends PolyglotMapNode {
 
-            @Child private Node keyInfo = Message.KEY_INFO.createNode();
-            @Child private Node read = Message.READ.createNode();
-            @Child private Node remove = Message.REMOVE.createNode();
-            @Child private ToHostNode toHost = ToHostNode.create();
-
-            Remove(Cache cache) {
+            RemoveNode(Cache cache) {
                 super(cache);
             }
 
@@ -643,49 +640,41 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 return "remove";
             }
 
-            @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            @Specialization(limit = "LIMIT")
+            @SuppressWarnings("unused")
+            protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary interop) {
                 Object key = args[ARGUMENT_OFFSET];
-                Object result = null;
-
-                if (isValidKey(receiver, key)) {
-                    int info = sendKeyInfo(keyInfo, receiver, key);
-                    if (KeyInfo.isReadable(info)) {
-                        try {
-                            result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
-                        } catch (UnknownIdentifierException e) {
-                        } catch (UnsupportedMessageException e) {
-                        }
-                    }
-                    try {
-                        boolean success = sendRemove(remove, receiver, key);
-                        if (!success) {
+                try {
+                    if (cache.memberKey && interop.hasMembers(receiver)) {
+                        if (isObjectKey(key)) {
+                            interop.removeMember(receiver, ((String) key));
                             return null;
                         }
-                    } catch (UnknownIdentifierException e) {
-                        return null;
-                    } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                    } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
+                        if (isArrayKey(key)) {
+                            interop.removeArrayElement(receiver, intValue(key));
+                            return null;
+                        }
                     }
-                    return cache.valueClass.cast(result);
-                }
-                CompilerDirectives.transferToInterpreter();
-                if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
-                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
-                } else {
+
+                    CompilerDirectives.transferToInterpreter();
+                    if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
+                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                    } else {
+                        return null;
+                    }
+                } catch (UnknownIdentifierException | InvalidArrayIndexException e) {
                     return null;
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
                 }
             }
 
         }
 
-        private static class RemoveBoolean extends PolyglotMapNode {
-
-            @Child private Node keyInfo = Message.KEY_INFO.createNode();
-            @Child private Node read = Message.READ.createNode();
-            @Child private Node remove = Message.REMOVE.createNode();
-            @Child private ToHostNode toHost = ToHostNode.create();
+        abstract static class RemoveBoolean extends PolyglotMapNode {
 
             RemoveBoolean(Cache cache) {
                 super(cache);
@@ -696,48 +685,58 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 return "remove";
             }
 
-            @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            @Specialization(limit = "LIMIT")
+            @SuppressWarnings("unused")
+            protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary interop) {
                 Object key = args[ARGUMENT_OFFSET];
-
-                if (isValidKey(receiver, key)) {
-                    if (args.length > ARGUMENT_OFFSET + 1) {
-                        Object value = args[ARGUMENT_OFFSET + 1];
-                        Object result = null;
-                        int info = sendKeyInfo(keyInfo, receiver, key);
-                        if (KeyInfo.isReadable(info)) {
-                            try {
-                                result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
-                            } catch (UnknownIdentifierException e) {
-                            } catch (UnsupportedMessageException e) {
+                Object expectedValue = args[ARGUMENT_OFFSET + 1];
+                try {
+                    if (cache.memberKey && interop.hasMembers(receiver)) {
+                        if (isObjectKey(key)) {
+                            String member = (String) key;
+                            Object readValue = interop.readMember(receiver, member);
+                            if (!equalsBoundary(expectedValue, readValue)) {
+                                return false;
                             }
+                            interop.removeMember(receiver, ((String) key));
+                            return true;
                         }
-                        if (!Objects.equals(value, result)) {
-                            return false;
+                    } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
+                        if (isArrayKey(key)) {
+                            int index = intValue(key);
+                            Object readValue = interop.readArrayElement(receiver, index);
+                            if (!equalsBoundary(expectedValue, readValue)) {
+                                return false;
+                            }
+                            interop.removeArrayElement(receiver, index);
+                            return true;
                         }
                     }
-                    try {
-                        return sendRemove(remove, receiver, key);
-                    } catch (UnknownIdentifierException e) {
-                        return false;
-                    } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreter();
+                    if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
                         throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                    } else {
+                        return false;
                     }
-                }
-                CompilerDirectives.transferToInterpreter();
-                if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
-                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
-                } else {
+                } catch (UnknownIdentifierException | InvalidArrayIndexException e) {
                     return false;
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
                 }
+            }
+
+            @TruffleBoundary
+            private static boolean equalsBoundary(Object expectedValue, Object readValue) {
+                return Objects.equals(expectedValue, readValue);
             }
 
         }
 
         private static class Apply extends PolyglotMapNode {
 
-            @Child private PolyglotExecuteNode apply = new PolyglotExecuteNode();
+            @Child private PolyglotExecuteNode apply = PolyglotExecuteNodeGen.create();
 
             Apply(Cache cache) {
                 super(cache);
@@ -749,8 +748,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
-                return apply.execute(languageContext, function, args[ARGUMENT_OFFSET], Object.class, Object.class);
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
+                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET], Object.class, Object.class);
             }
         }
 

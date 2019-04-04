@@ -24,11 +24,15 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.function.Function;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 
@@ -38,7 +42,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * Compiler options that can be configured per {@link Engine engine} instance.
  */
-@Option.Group("compiler")
+@Option.Group("engine")
 public final class PolyglotCompilerOptions {
 
     // @formatter:off
@@ -55,45 +59,62 @@ public final class PolyglotCompilerOptions {
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
 
-    /*
-     * TODO planned options:
-     *
-    @Option(help = "Enable automatic inlining of guest language roots.",
-                    category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> InliningEnabled = new OptionKey<>(true);
+    @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
+    public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
 
-    @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.",
+    public enum EngineModeEnum {
+        DEFAULT,
+        THROUGHPUT,
+        LATENCY
+    }
+
+    static final OptionType<EngineModeEnum> ENGINE_MODE_TYPE = new OptionType<>("EngineMode",
+                    new Function<String, EngineModeEnum>() {
+                        @Override
+                        public EngineModeEnum apply(String s) {
+                            try {
+                                return EngineModeEnum.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("Mode can be: 'default', 'latency' or 'throughput'.");
+                            }
+                        }
+                    });
+
+    @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.",
                     category = OptionCategory.EXPERT)
+    public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
+
+    @Option(help = "Print information for compilation queuing.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> TraceCompilationDetails = new OptionKey<>(false);
+
+    @Option(help = "Print information for inlining decisions.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
+
+    @Option(help = "Print information for splitting decisions.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
+
+    @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
+
+    @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
 
-    @Option(help = "Maximum depth for recursive inlining.",
-                    category = OptionCategory.EXPERT)
+    @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(4);
 
     @Option(help = "Enable automatic duplication of compilation profiles (splitting).",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> SplittingEnabled = new OptionKey<>(true);
+    public static final OptionKey<Boolean> Splitting = new OptionKey<>(true);
 
+    /*
+     * TODO planned options (GR-13444):
+     *
     @Option(help = "Enable automatic on-stack-replacement of loops.",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> OSREnabled = new OptionKey<>(true);
-
-    // DEBUG OPTIONS
-
-    @Option(help = "Trace compilation decisions to the standard output.",
-                    category = OptionCategory.DEBUG)
-    public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
-
-    @Option(help = "Trace inlining decisions to the standard output.",
-                    category = OptionCategory.DEBUG)
-    public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
-
-    @Option(help = "Trace splitting decisions to the standard output.",
-                    category = OptionCategory.DEBUG)
-    public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
+    public static final OptionKey<Boolean> OSR = new OptionKey<>(true);
 
     @Option(help = "Trace deoptimization of compilation units.",
-                    category = OptionCategory.DEBUG)
+                    category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceDeoptimization = new OptionKey<>(false);
     */
 
@@ -107,6 +128,16 @@ public final class PolyglotCompilerOptions {
     private static void initializePolyglotToGraalMapping() {
         POLYGLOT_TO_TRUFFLE.put(CompilationThreshold, SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         POLYGLOT_TO_TRUFFLE.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
+
+        POLYGLOT_TO_TRUFFLE.put(TraceCompilation, SharedTruffleRuntimeOptions.TraceTruffleCompilation);
+        POLYGLOT_TO_TRUFFLE.put(TraceCompilationDetails, SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails);
+        POLYGLOT_TO_TRUFFLE.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
+        POLYGLOT_TO_TRUFFLE.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);
+
+        POLYGLOT_TO_TRUFFLE.put(Inlining, SharedTruffleRuntimeOptions.TruffleFunctionInlining);
+        POLYGLOT_TO_TRUFFLE.put(InliningNodeBudget, SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
+        POLYGLOT_TO_TRUFFLE.put(InliningRecursionDepth, SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining);
+        POLYGLOT_TO_TRUFFLE.put(Splitting, SharedTruffleRuntimeOptions.TruffleSplitting);
     }
 
     static OptionValues getPolyglotValues(RootNode root) {

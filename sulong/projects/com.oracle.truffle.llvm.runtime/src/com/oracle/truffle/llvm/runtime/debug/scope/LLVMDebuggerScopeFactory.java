@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 import java.util.ArrayList;
 
@@ -109,7 +110,7 @@ public final class LLVMDebuggerScopeFactory {
         final NodeFactory wrapperFactory = context.getNodeFactory();
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMGlobal global : irScope) {
-            final TruffleObject value = wrapperFactory.toGenericDebuggerValue(global.getPointeeType(), global.getTarget());
+            final TruffleObject value = wrapperFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), global.getTarget());
             entries.add(global.getName(), value);
         }
         return entries;
@@ -278,7 +279,7 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    private Object getVariables(Frame frame) {
+    private LLVMDebuggerScopeEntries getVariables(Frame frame) {
         if (symbols.isEmpty()) {
             return LLVMDebuggerScopeEntries.EMPTY_SCOPE;
         }
@@ -319,7 +320,30 @@ public final class LLVMDebuggerScopeFactory {
         return vars;
     }
 
+    private static final String DEFAULT_RECEIVER_NAME = "this";
+    private static final String DEFAULT_RECEIVER = "<none>";
+
     private Scope toScope(Frame frame) {
-        return Scope.newBuilder(name, getVariables(frame)).node(node).build();
+        final LLVMDebuggerScopeEntries variables = getVariables(frame);
+        final Scope.Builder scopeBuilder = Scope.newBuilder(name, variables);
+
+        // while the Truffle API allows any name for the receiver, the chrome inspector protocol
+        // requires "this" as member of the local scope. the current chrome inspector implementation
+        // will thus always show such a member, defaulting to "null" if the receiver is not
+        // explicitly set or has a different name. we make sure it has a value that does not confuse
+        // the user.
+        if (variables.contains(DEFAULT_RECEIVER_NAME)) {
+            scopeBuilder.receiver(DEFAULT_RECEIVER_NAME, variables.getElementForDebugger(DEFAULT_RECEIVER_NAME));
+
+            // the receiver should not be a scope member too, otherwise the debugger would display
+            // it twice
+            variables.removeElement(DEFAULT_RECEIVER_NAME);
+        } else {
+            scopeBuilder.receiver(DEFAULT_RECEIVER_NAME, DEFAULT_RECEIVER);
+        }
+
+        scopeBuilder.node(node);
+
+        return scopeBuilder.build();
     }
 }

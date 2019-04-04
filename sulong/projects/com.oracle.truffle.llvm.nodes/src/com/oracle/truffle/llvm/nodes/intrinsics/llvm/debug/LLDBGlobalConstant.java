@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -162,7 +164,7 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
         if (isInNative(global)) {
             return new LLDBMemoryValue(LLVMNativePointer.cast(global.getTarget()));
         } else {
-            return LLDBSupport.getNodeFactory().createDebugValueBuilder().build(global.getTarget());
+            return LLVMLanguage.getLLDBSupport().createDebugValueBuilder().build(global.getTarget());
         }
     }
 

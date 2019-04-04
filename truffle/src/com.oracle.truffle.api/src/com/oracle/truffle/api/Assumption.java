@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -102,4 +104,36 @@ public interface Assumption {
      * @since 0.8 or earlier
      */
     String getName();
+
+    /**
+     * Checks whether an assumption is not <code>null</code> and valid.
+     *
+     * @since 1.0
+     */
+    static boolean isValidAssumption(Assumption assumption) {
+        return assumption != null && assumption.isValid();
+    }
+
+    /**
+     * Checks whether all assumptions in an array are not <code>null</code> and valid. Returns
+     * <code>false</code> if the assumptions array itself is <code>null</code>. This method is
+     * designed for compilation. Note that the provided assumptions array must be a compilation
+     * final array with {@link CompilationFinal#dimensions() dimensions} set to one.
+     *
+     * @since 1.0
+     */
+    @ExplodeLoop
+    static boolean isValidAssumption(Assumption[] assumptions) {
+        CompilerDirectives.isPartialEvaluationConstant(assumptions);
+        if (assumptions == null) {
+            return false;
+        }
+        for (Assumption assumption : assumptions) {
+            if (!isValidAssumption(assumption)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }

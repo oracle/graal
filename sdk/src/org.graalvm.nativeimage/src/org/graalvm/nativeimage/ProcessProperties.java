@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage;
 
+import java.nio.file.Path;
+
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 
@@ -145,6 +147,16 @@ public final class ProcessProperties {
      */
     public static String setLocale(String category, String locale) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).setLocale(category, locale);
+    }
+
+    /**
+     * Replaces the current process image with the process image specified by the given path invoked
+     * with the given args. This method does not return if the call is successful.
+     *
+     * @since 1.0
+     */
+    public static void exec(Path executable, String... args) {
+        ImageSingletons.lookup(ProcessPropertiesSupport.class).exec(executable, args);
     }
 
     private ProcessProperties() {

@@ -239,15 +239,9 @@ public final class DebugContext implements AutoCloseable {
             this.unscopedTimers = parseUnscopedMetricSpec(Timers.getValue(options), "".equals(timeValue), true);
             this.unscopedMemUseTrackers = parseUnscopedMetricSpec(MemUseTrackers.getValue(options), "".equals(trackMemUseValue), true);
 
-            if (unscopedTimers != null || timeValue != null) {
-                if (!GraalServices.isCurrentThreadCpuTimeSupported()) {
-                    throw new IllegalArgumentException("Time and Timers options require VM support for querying CPU time");
-                }
-            }
-
             if (unscopedMemUseTrackers != null || trackMemUseValue != null) {
                 if (!GraalServices.isThreadAllocatedMemorySupported()) {
-                    throw new IllegalArgumentException("MemUseTrackers and TrackMemUse options require VM support for querying thread allocated memory");
+                    TTY.println("WARNING: Missing VM support for MemUseTrackers and TrackMemUse options so all reported memory usage will be 0");
                 }
             }
 
@@ -317,9 +311,19 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Shared object used to represent a disabled debug context.
+     * Singleton used to represent a disabled debug context.
      */
-    public static final DebugContext DISABLED = new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, new Immutable(), NO_CONFIG_CUSTOMIZERS);
+    private static final DebugContext DISABLED = new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, new Immutable(), NO_CONFIG_CUSTOMIZERS);
+
+    /**
+     * Create a DebugContext with debugging disabled.
+     */
+    public static DebugContext disabled(OptionValues options) {
+        if (options == null || options.getMap().isEmpty()) {
+            return DISABLED;
+        }
+        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, Immutable.create(options), NO_CONFIG_CUSTOMIZERS);
+    }
 
     /**
      * Gets the debug context for the current thread. This should only be used when there is no

@@ -39,10 +39,10 @@ class ReflectionProcessor extends AbstractProcessor {
     private final ReflectionConfiguration configuration = new ReflectionConfiguration();
     private final ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
     private final ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
-    private boolean filter = true;
+    private final AccessAdvisor advisor;
 
-    public void setFilterEnabled(boolean enabled) {
-        filter = enabled;
+    ReflectionProcessor(AccessAdvisor advisor) {
+        this.advisor = advisor;
     }
 
     public ReflectionConfiguration getConfiguration() {
@@ -65,7 +65,6 @@ class ReflectionProcessor extends AbstractProcessor {
             return;
         }
         String function = (String) entry.get("function");
-        String clazz = (String) entry.get("class");
         List<?> args = (List<?>) entry.get("args");
         switch (function) {
             // These are called via java.lang.Class or via the class loader hierarchy, so we would
@@ -82,10 +81,12 @@ class ReflectionProcessor extends AbstractProcessor {
                 resourceConfiguration.addLocationIndependent(singleElement(args));
                 return;
         }
+        String clazz = (String) entry.get("class");
         String callerClass = (String) entry.get("caller_class");
-        if (filter && (!isInLivePhase() || isInternalClass(callerClass))) {
+        if (advisor.shouldIgnore(() -> callerClass)) {
             return;
         }
+        String declaringClass = (String) entry.get("declaring_class");
         boolean declared = false;
         switch (function) {
             case "forName": {
@@ -116,13 +117,17 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "getDeclaredField":
-                declared = true; // fall through
+                declared = true;
+                clazz = (declaringClass != null) ? declaringClass : clazz;
+                // fall through
             case "getField": {
                 getMemberSet(clazz, declared).getFields().add(singleElement(args));
                 break;
             }
             case "getDeclaredMethod":
-                declared = true; // fall through
+                declared = true;
+                clazz = (declaringClass != null) ? declaringClass : clazz;
+                // fall through
             case "getMethod": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);

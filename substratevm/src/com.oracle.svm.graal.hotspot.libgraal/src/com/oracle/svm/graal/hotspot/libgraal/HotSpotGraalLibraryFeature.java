@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -51,11 +52,15 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -77,6 +82,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -88,6 +94,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess.JNIRuntimeAccessibilitySupport;
 import com.oracle.svm.jni.hosted.JNIFeature;
 
+import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.JavaType;
@@ -349,7 +356,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
                         }
                         if (original != null) {
                             debug.log("Method substitution %s %s", method, original);
-                            hotSpotSubstrateReplacements.registerMethodSubstitution(method, original);
+                            hotSpotSubstrateReplacements.registerMethodSubstitution(method, original, debug.getOptions());
                         } else {
                             throw new GraalError("Can't find original for " + method);
                         }
@@ -400,7 +407,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
 
         // Ensure all known snippets and method subsitutions are encoded and rerun the iteration if
         // new encoding is done.
-        if (hotSpotSubstrateReplacements.encode()) {
+        if (hotSpotSubstrateReplacements.encode(accessImpl.getBigBang().getOptions())) {
             access.requireAnalysisIteration();
         }
     }
@@ -489,12 +496,58 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
+
     @Substitute
     private static OptionValues initializeOptions() {
-        return RuntimeOptionValues.singleton();
+        // Sanity check
+        if (!XOptions.getXmn().getPrefix().equals("-X")) {
+            throw new InternalError("Expected " + XOptions.getXmn().getPrefixAndName() + " to start with -X");
+        }
+
+        // Parse "graal." options.
+        RuntimeOptionValues options = RuntimeOptionValues.singleton();
+        options.update(HotSpotGraalOptionValues.parseOptions());
+
+        // Parse "libgraal." options. This include the XOptions as well
+        // as normal Graal options that are specified with the "libgraal."
+        // prefix so as to be parsed only in libgraal and not by JavaGraal.
+        // A motivating use case for this is CompileTheWorld + libgraal
+        // where one may want to see GC stats with the VerboseGC option.
+        // Since CompileTheWorld also initializes JavaGraal, specifying this
+        // option with -Dgraal.VerboseGC would cause the VM to exit with an
+        // unknown option error. Specifying it as -Dlibgraal.VerboseGC=true
+        // avoids the error and provides the desired behavior.
+        Map<String, String> savedProps = jdk.vm.ci.services.Services.getSavedProperties();
+        EconomicMap<String, String> optionSettings = EconomicMap.create();
+        for (Map.Entry<String, String> e : savedProps.entrySet()) {
+            String name = e.getKey();
+            if (name.startsWith("libgraal.")) {
+                if (name.startsWith("libgraal.X")) {
+                    String[] xarg = {"-" + name.substring("libgraal.".length()) + e.getValue()};
+                    String[] unknown = XOptions.singleton().parse(xarg, false);
+                    if (unknown.length == 0) {
+                        continue;
+                    }
+                } else {
+                    String value = e.getValue();
+                    optionSettings.put(name.substring("libgraal.".length()), value);
+                }
+            }
+        }
+        if (!optionSettings.isEmpty()) {
+            EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
+            Iterable<OptionDescriptors> loader = OptionsParser.getOptionsLoader();
+            OptionsParser.parseOptions(optionSettings, values, loader);
+            options.update(values);
+        }
+        return options;
     }
 }
 
+/**
+ * This field resetting must be done via substitutions instead of {@link NativeImageReinitialize} as
+ * the fields must only be reset in a libgraal image.
+ */
 @TargetClass(className = "org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeInstance {
     // Checkstyle: stop

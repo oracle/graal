@@ -188,9 +188,7 @@ public class MethodTypeFlowBuilder {
                 InvocationPlugin plugin = bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
                 if (plugin != null && !plugin.inlineOnly()) {
                     Bytecode code = new ResolvedJavaMethodBytecode(method);
-                    graph = new SubstrateIntrinsicGraphBuilder(options, debug, bb.getProviders().getMetaAccess(), bb.getProviders().getConstantReflection(),
-                                    bb.getProviders().getConstantFieldProvider(),
-                                    bb.getProviders().getStampProvider(), code).buildGraph(plugin);
+                    graph = new SubstrateIntrinsicGraphBuilder(options, debug, bb.getProviders(), code).buildGraph(plugin);
                 }
             }
             if (graph == null) {

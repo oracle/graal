@@ -111,6 +111,23 @@ public final class RuntimeClassInitialization {
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunClassInitialization(classes);
     }
 
+    /**
+     * Registers the provided classes as eagerly initialized during image-build time.
+     * <p>
+     * All static initializers of {@code classes} will be executed during image-build time and
+     * static fields that are assigned values will be available at runtime. {@code static final}
+     * fields will be considered as constant.
+     * <p>
+     * It is up to the user to ensure that this behavior makes sense and does not lead to wrong
+     * application behavior.
+     *
+     *
+     * @since 1.0
+     */
+    public static void eagerClassInitialization(Class<?>... classes) {
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).eagerClassInitialization(classes);
+    }
+
     private RuntimeClassInitialization() {
     }
 }

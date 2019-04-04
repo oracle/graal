@@ -31,11 +31,13 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
+@GenerateUncached
 public abstract class LLVMGetStackNode extends LLVMNode {
 
     public static LLVMGetStackNode create() {
@@ -62,7 +64,7 @@ public abstract class LLVMGetStackNode extends LLVMNode {
 
     @SuppressWarnings("unused")
     @Specialization(replaces = "cached")
-    protected LLVMStack generic(LLVMThreadingStack stack, Thread currentThread) {
+    static LLVMStack generic(LLVMThreadingStack stack, Thread currentThread) {
         return stack.getStack();
     }
 }

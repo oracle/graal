@@ -42,15 +42,16 @@ package com.oracle.truffle.tck.impl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.ExportMessage.Ignore;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
@@ -85,7 +86,8 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         return false;
     }
 
-    private static final class MultiplyNode extends RootNode implements TruffleObject, ForeignAccess.Factory {
+    @ExportLibrary(InteropLibrary.class)
+    static final class MultiplyNode extends RootNode implements TruffleObject {
         private final Source code;
 
         MultiplyNode(TckLanguage language, Source toParse) {
@@ -94,8 +96,9 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         }
 
         @Override
+        @Ignore
         public Object execute(VirtualFrame frame) {
-            Env env = getLanguage(TckLanguage.class).getContextReference().get();
+            Env env = lookupContextReference(TckLanguage.class).get();
             Object[] arguments = frame.getArguments();
             return parseAndEval(env, arguments);
         }
@@ -114,25 +117,15 @@ public final class TckLanguage extends TruffleLanguage<Env> {
             return call.call(6, 7);
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return ForeignAccess.create(this);
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
 
-        @Override
-        public boolean canHandle(TruffleObject obj) {
-            return obj instanceof MultiplyNode;
-        }
-
-        @Override
-        public CallTarget accessMessage(Message tree) {
-            if (tree == Message.IS_EXECUTABLE) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(Boolean.TRUE));
-            } else if (Message.EXECUTE.equals(tree)) {
-                return Truffle.getRuntime().createCallTarget(this);
-            } else {
-                throw UnsupportedMessageException.raise(tree);
-            }
+        @ExportMessage
+        Object execute(Object[] arguments) {
+            return execute(Truffle.getRuntime().createVirtualFrame(arguments, getFrameDescriptor()));
         }
 
     }

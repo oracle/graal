@@ -44,7 +44,12 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 import sun.misc.Unsafe;
 
@@ -55,6 +60,7 @@ import sun.misc.Unsafe;
  * @since 0.8 or earlier
  */
 @SuppressWarnings("deprecation")
+@ExportLibrary(DynamicDispatchLibrary.class)
 public abstract class DynamicObject implements TruffleObject {
 
     private Shape shape;
@@ -84,6 +90,19 @@ public abstract class DynamicObject implements TruffleObject {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Incompatible shape");
         }
+    }
+
+    @ExportMessage
+    final boolean accepts(
+                    @Shared("objectType") @Cached(value = "this.getShape().getObjectType()", allowUncached = true) ObjectType objectType) {
+        return objectType == getShape().getObjectType();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final Class<?> dispatch(
+                    @Shared("objectType") @Cached(value = "this.getShape().getObjectType()", allowUncached = true) ObjectType objectType) {
+        return objectType.dispatch();
     }
 
     /**

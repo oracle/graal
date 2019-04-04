@@ -71,17 +71,22 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
@@ -94,8 +99,9 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
+import java.util.function.Supplier;
 
-class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     /**
      * Context index for the host language.
@@ -121,6 +127,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     InputStream in;                 // effectively final
 
     final Map<String, PolyglotLanguage> idToLanguage;
+    final Map<String, PolyglotLanguage> classToLanguage;
     final Map<String, Language> idToPublicLanguage;
     final Map<String, LanguageInfo> idToInternalLanguageInfo;
 
@@ -129,11 +136,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     final Map<String, InstrumentInfo> idToInternalInstrumentInfo;
 
     final OptionDescriptors engineOptions;
-    final OptionDescriptors compilerOptions;
-    final OptionDescriptors allEngineOptions;
-
     final OptionValuesImpl engineOptionValues;
-    final OptionValuesImpl compilerOptionValues;
+
     ClassLoader contextClassLoader;     // effectively final
     boolean boundEngine;    // effectively final
     Handler logHandler;     // effectively final
@@ -143,7 +147,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private PolyglotContextImpl preInitializedContext;
 
     PolyglotLanguage hostLanguage;
-    final Assumption singleContext = Truffle.getRuntime().createAssumption();
+    final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per engine.");
+    final Assumption noInnerContexts = Truffle.getRuntime().createAssumption("No inner contexts.");
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
@@ -152,7 +157,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     // Data used by the runtime to enable "global" state per Engine
     volatile Object runtimeData;
     Map<String, Level> logLevels;    // effectively final
+    private HostClassCache hostClassCache; // effectively final
     private volatile Object engineLoggers;
+    private volatile Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine,
@@ -181,6 +188,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         this.idToInstrument = Collections.unmodifiableMap(initializeInstruments(instrumentInfos));
         this.idToInternalInstrumentInfo = Collections.unmodifiableMap(instrumentInfos);
 
+        this.classToLanguage = new HashMap<>();
+        for (PolyglotLanguage language : idToLanguage.values()) {
+            classToLanguage.put(language.cache.getClassName(), language);
+        }
+
         for (String id : idToLanguage.keySet()) {
             if (idToInstrument.containsKey(id)) {
                 throw failDuplicateId(id,
@@ -189,11 +201,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
 
-        this.engineOptions = new PolyglotEngineOptionsOptionDescriptors();
-        this.compilerOptions = VMAccessor.SPI.getCompilerOptions();
-        this.allEngineOptions = OptionDescriptors.createUnion(engineOptions, compilerOptions);
-        this.engineOptionValues = new OptionValuesImpl(this, this.engineOptions);
-        this.compilerOptionValues = new OptionValuesImpl(this, this.compilerOptions);
+        OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
+        OptionDescriptors compilerOptionDescriptors = VMAccessor.SPI.getCompilerOptions();
+        this.engineOptions = OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
+        this.engineOptionValues = new OptionValuesImpl(this, engineOptions);
 
         Map<String, Language> publicLanguages = new LinkedHashMap<>();
         for (String key : this.idToLanguage.keySet()) {
@@ -214,15 +225,13 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         idToPublicInstrument = Collections.unmodifiableMap(publicInstruments);
 
         Map<String, String> originalEngineOptions = new HashMap<>();
-        Map<String, String> originalCompilerOptions = new HashMap<>();
         logLevels = new HashMap<>();
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
-        parseOptions(options, useSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, logLevels);
+        parseOptions(options, useSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logLevels);
 
         this.engineOptionValues.putAll(originalEngineOptions, allowExperimentalOptions);
-        this.compilerOptionValues.putAll(originalCompilerOptions, allowExperimentalOptions);
 
         for (PolyglotLanguage language : languagesOptions.keySet()) {
             language.getOptionValues().putAll(languagesOptions.get(language), allowExperimentalOptions);
@@ -261,15 +270,13 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 
         Map<String, String> originalEngineOptions = new HashMap<>();
-        Map<String, String> originalCompilerOptions = new HashMap<>();
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
         assert this.logLevels.isEmpty();
-        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, logLevels);
+        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logLevels);
 
         this.engineOptionValues.putAll(originalEngineOptions, newAllowExperimentalOptions);
-        this.compilerOptionValues.putAll(originalCompilerOptions, newAllowExperimentalOptions);
 
         for (PolyglotLanguage language : languagesOptions.keySet()) {
             language.getOptionValues().putAll(languagesOptions.get(language), newAllowExperimentalOptions);
@@ -321,7 +328,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     private void parseOptions(Map<String, String> options, boolean useSystemProperties,
-                    Map<String, String> originalEngineOptions, Map<String, String> originalCompilerOptions,
+                    Map<String, String> originalEngineOptions,
                     Map<PolyglotLanguage, Map<String, String>> languagesOptions, Map<PolyglotInstrument, Map<String, String>> instrumentsOptions,
                     Map<String, Level> logOptions) {
         final Map<String, String> optionsWithSystemProperties;
@@ -372,10 +379,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 continue;
             }
 
-            if (group.equals(PolyglotImpl.OPTION_GROUP_COMPILER)) {
-                originalCompilerOptions.put(key, value);
-                continue;
-            }
             if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
                 logOptions.put(parseLoggerName(key), Level.parse(value));
                 continue;
@@ -385,13 +388,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     /**
-     * Find if there is an "engine option" (covers engine, compiler and instruments options) present
-     * among the given options.
+     * Find if there is an "engine option" (covers engine and instruments options) present among the
+     * given options.
      */
     boolean isEngineGroup(String group) {
-        return idToPublicInstrument.containsKey(group) ||
-                        group.equals(PolyglotImpl.OPTION_GROUP_ENGINE) ||
-                        group.equals(PolyglotImpl.OPTION_GROUP_COMPILER);
+        return idToPublicInstrument.containsKey(group) || group.equals(PolyglotImpl.OPTION_GROUP_ENGINE);
     }
 
     static String parseOptionGroup(String key) {
@@ -598,7 +599,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                                         duplicateId, className1, className2));
     }
 
-    final void checkState() {
+    void checkState() {
         if (closed) {
             throw new IllegalStateException("Engine is already closed.");
         }
@@ -722,6 +723,26 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         ensureClosed(cancelIfExecuting, false);
     }
 
+    @TruffleBoundary
+    <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(Class<T> languageClass, boolean fail) {
+        PolyglotLanguage foundLanguage = classToLanguage.get(languageClass.getName());
+        if (foundLanguage == null && fail) {
+            Set<String> languageNames = classToLanguage.keySet();
+            throw new IllegalArgumentException("Cannot find language " + languageClass + " among " + languageNames);
+        }
+        return foundLanguage;
+    }
+
+    <T extends TruffleLanguage<?>> PolyglotLanguageInstance getCurrentLanguageInstance(Class<T> languageClass) {
+        PolyglotLanguage foundLanguage = getLanguage(languageClass, true);
+        PolyglotLanguageContext context = foundLanguage.getCurrentLanguageContext();
+        if (!context.isCreated()) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(String.format("A context for language %s was not yet created.", languageClass.getName()));
+        }
+        return context.getLanguageInstance();
+    }
+
     synchronized void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure) {
         if (!closed) {
             workContextReferenceQueue();
@@ -802,9 +823,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             // don't commit to the close if still running as this might cause races in the executing
             // context.
             if (!stillRunning) {
-                Object engineLoggers = getEngineLoggers();
-                if (engineLoggers != null) {
-                    LANGUAGE.closeEngineLoggers(engineLoggers);
+                Object loggers = getEngineLoggers();
+                if (loggers != null) {
+                    LANGUAGE.closeEngineLoggers(loggers);
                 }
                 if (logHandler != null) {
                     logHandler.close();
@@ -844,7 +865,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @Override
     public OptionDescriptors getOptions() {
         checkState();
-        return allEngineOptions;
+        return engineOptions;
     }
 
     @Override
@@ -867,7 +888,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 if (allOptions == null) {
                     List<OptionDescriptors> allDescriptors = new ArrayList<>();
                     allDescriptors.add(engineOptions);
-                    allDescriptors.add(compilerOptions);
                     for (PolyglotLanguage language : idToLanguage.values()) {
                         allDescriptors.add(language.getOptions());
                     }
@@ -905,6 +925,27 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
      */
     static void resetPreInitializedEngine() {
         ENGINES.clear();
+    }
+
+    void initializeHostAccess(HostAccess policy) {
+        assert Thread.holdsLock(this);
+        assert policy != null;
+        HostClassCache cache = HostClassCache.findOrInitialize(getAPIAccess(), policy);
+        if (this.hostClassCache != null && this.hostClassCache != cache) {
+            throw new IllegalStateException("Found different host access configuration for a context with a shared engine. " +
+                            "The host access configuration must be the same for all contexts of an engine. " +
+                            "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
+        } else {
+            this.hostClassCache = cache;
+        }
+    }
+
+    HostClassCache getHostClassCache() {
+        return hostClassCache;
+    }
+
+    HostClassDesc findHostClassDesc(Class<?> clazz) {
+        return hostClassCache.forClass(clazz);
     }
 
     private static final class PolyglotShutDownHook implements Runnable {
@@ -1055,15 +1096,18 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     @Override
     @SuppressWarnings({"all"})
-    public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostAccess,
-                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
-                    boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
-                    String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream) {
+    public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
+                    HostAccess access,
+                    PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
+                    boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
+                    Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream) {
         checkState();
         if (boundEngine && preInitializedContext == null && !contexts.isEmpty()) {
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
                             "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
         }
+
+        initializeHostAccess(access);
 
         Set<String> allowedLanguages;
         if (onlyLanguages.length == 0) {
@@ -1092,12 +1136,15 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         Handler useHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
         useHandler = useHandler != null ? useHandler : logHandler;
-        useHandler = useHandler != null ? useHandler : PolyglotLogHandler.createStreamHandler(useErr, false, true);
+        useHandler = useHandler != null ? useHandler
+                        : PolyglotLogHandler.createStreamHandler(
+                                        configErr == null ? INSTRUMENT.getOut(this.err) : configErr,
+                                        false, true);
 
         final InputStream useIn = configIn == null ? this.in : configIn;
 
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
-                        allowHostAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
+                        allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
                         allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, useHandler);
 
         PolyglotContextImpl context = loadPreinitializedContext(config);
@@ -1121,7 +1168,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         preInitializedContext = null;
         if (context != null) {
             FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
-            preInitFs.patchDelegate(config.fileSystem);
+            preInitFs.onLoadPreinitializedContext(config.fileSystem);
             FileSystem oldFileSystem = config.fileSystem;
             config.fileSystem = preInitFs;
 
@@ -1164,4 +1211,21 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return engineLoggers;
     }
 
+    Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier() {
+        Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> res = fileTypeDetectorsSupplier;
+        if (res == null) {
+            synchronized (this) {
+                res = fileTypeDetectorsSupplier;
+                if (res == null) {
+                    Collection<LanguageCache> languageCaches = new ArrayList<>(idToLanguage.size());
+                    for (PolyglotLanguage language : idToLanguage.values()) {
+                        languageCaches.add(language.cache);
+                    }
+                    res = FileSystems.newFileTypeDetectorsSupplier(languageCaches);
+                    fileTypeDetectorsSupplier = res;
+                }
+            }
+        }
+        return res;
+    }
 }

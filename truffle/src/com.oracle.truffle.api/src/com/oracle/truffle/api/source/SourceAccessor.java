@@ -44,11 +44,12 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collection;
-
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
-import java.nio.file.Path;
+import java.net.URI;
+import java.nio.charset.Charset;
+import java.util.Set;
 
 final class SourceAccessor extends Accessor {
 
@@ -76,8 +77,24 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.loaders();
     }
 
-    static Path getPath(TruffleFile file) {
-        return ACCESSOR.languageSupport().getPath(file);
+    static String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
+        return ACCESSOR.languageSupport().getMimeType(file, validMimeTypes);
+    }
+
+    static Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
+        return ACCESSOR.languageSupport().getEncoding(file, mimeType);
+    }
+
+    static Object getCurrentFileSystemContext() {
+        return ACCESSOR.languageSupport().getCurrentFileSystemContext();
+    }
+
+    static TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
+        return ACCESSOR.languageSupport().getTruffleFile(uri, fileSystemContext);
+    }
+
+    static TruffleFile getTruffleFile(String path, Object fileSystemContext) {
+        return ACCESSOR.languageSupport().getTruffleFile(path, fileSystemContext);
     }
 
     static final class SourceSupportImpl extends Accessor.SourceSupport {
@@ -103,13 +120,8 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public String findMimeType(File file) throws IOException {
-            return Source.findMimeType(file.toPath(), null);
-        }
-
-        @Override
-        public String findMimeType(URL url) throws IOException {
-            return Source.findMimeType(url);
+        public String findMimeType(URL url, Object fileSystemContext) throws IOException {
+            return Source.findMimeType(url, url.openConnection(), null, fileSystemContext);
         }
 
         @Override
@@ -122,5 +134,9 @@ final class SourceAccessor extends Accessor {
             return source.isLegacy();
         }
 
+        @Override
+        public void setFileSystemContext(SourceBuilder builder, Object fileSystemContext) {
+            builder.embedderFileSystemContext(fileSystemContext);
+        }
     }
 }

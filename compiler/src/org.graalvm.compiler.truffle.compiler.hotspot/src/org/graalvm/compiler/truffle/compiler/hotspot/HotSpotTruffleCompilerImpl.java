@@ -79,6 +79,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
@@ -90,11 +91,9 @@ import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 
 public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implements HotSpotTruffleCompiler {
 
@@ -217,7 +216,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             OptionValues options = getOptions();
             try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
                             ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.DEFAULT_LOG_STREAM)
-                            : DebugContext.DISABLED;
+                            : DebugContext.disabled(options);
                             Activation a = debug.activate();
                             DebugContext.Scope d = debug.scope("InstallingTruffleStub")) {
                 CompilationResult compResult = compileTruffleCallBoundaryMethod(method, compilationId, debug);
@@ -270,13 +269,11 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         OptionValues options = TruffleCompilerOptions.getOptions();
         StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
 
-        MetaAccessProvider metaAccess = lastTierProviders.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins());
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) lastTierProviders.getCodeCache();
         boolean infoPoints = codeCache.shouldDebugNonSafepoints();
         GraphBuilderConfiguration newConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true).withNodeSourcePosition(infoPoints);
-        new GraphBuilderPhase.Instance(metaAccess, lastTierProviders.getStampProvider(), lastTierProviders.getConstantReflection(), lastTierProviders.getConstantFieldProvider(), newConfig,
-                        OptimisticOptimizations.ALL, null).apply(graph);
+        new GraphBuilderPhase.Instance(lastTierProviders, newConfig, OptimisticOptimizations.ALL, null).apply(graph);
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, backend.getSuites());
         CompilationResultBuilderFactory factory = getTruffleCallBoundaryInstrumentationFactory(backend.getTarget().arch.getName());
         return compileGraph(graph, javaMethod, lastTierProviders, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), newSuites, lastTierLirSuites,

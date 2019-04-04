@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,13 +54,15 @@ public final class LazyFunctionParser {
 
     public void parse(DebugInfoFunctionProcessor diProcessor, Source bitcodeSource, LLVMParserRuntime runtime) {
         if (!isParsed) {
-            parser.setupScope();
-            scanner.scanBlock(parser);
-            diProcessor.process(parser.getFunction(), parser.getScope(), bitcodeSource, runtime.getContext());
-            if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
-                llSource.applySourceLocations(parser.getFunction(), runtime);
+            synchronized (parser.getScope()) {
+                parser.setupScope();
+                scanner.scanBlock(parser);
+                diProcessor.process(parser.getFunction(), parser.getScope(), bitcodeSource, runtime.getContext());
+                if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
+                    llSource.applySourceLocations(parser.getFunction(), runtime);
+                }
+                isParsed = true;
             }
-            isParsed = true;
         }
     }
 }

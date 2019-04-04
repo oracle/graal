@@ -221,7 +221,7 @@ public abstract class ObjectFile {
     }
 
     public static ObjectFile getNativeObjectFile() {
-        return getNativeObjectFile(false);
+        return getNativeObjectFile(true);
     }
 
     public static ObjectFile createRuntimeDebugInfo() {
@@ -262,7 +262,21 @@ public abstract class ObjectFile {
             public boolean usesSymbolValue() {
                 return false;
             }
-        };
+        },
+        AARCH64_R_MOVW_UABS_G0,
+        AARCH64_R_MOVW_UABS_G0_NC,
+        AARCH64_R_MOVW_UABS_G1,
+        AARCH64_R_MOVW_UABS_G1_NC,
+        AARCH64_R_MOVW_UABS_G2,
+        AARCH64_R_MOVW_UABS_G2_NC,
+        AARCH64_R_MOVW_UABS_G3,
+        AARCH64_R_AARCH64_ADR_PREL_PG_HI21,
+        AARCH64_R_AARCH64_ADD_ABS_LO12_NC,
+        AARCH64_R_LD_PREL_LO19,
+        AARCH64_R_GOT_LD_PREL19,
+        AARCH64_R_AARCH64_LDST64_ABS_LO12_NC,
+        AARCH64_R_AARCH64_LDST8_ABS_LO12_NC,
+        AARCH64_R_AARCH64_LDST128_ABS_LO12_NC;
 
         /**
          * Generally, relocation records come with symbols whose value is used to compute the

@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
 import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.getOffset;
 import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.getTag;
+import static com.oracle.svm.truffle.nfi.TruffleNFISupport.NativeErrnoContext;
+
 import com.oracle.svm.truffle.nfi.libffi.LibFFI;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_type;
@@ -41,7 +42,6 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -93,6 +93,7 @@ final class NativeSignature {
             return ret;
         }
 
+        @SuppressWarnings("try")
         static void execute(NativeTruffleContext ctx, ffi_cif cif, PointerBase ret, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs,
                         LocalNativeScope scope) {
             int nargs = cif.nargs();
@@ -135,12 +136,8 @@ final class NativeSignature {
                     }
                 }
 
-                CIntPointer errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
-                Errno.set_errno(errnoMirror.read());
-                try {
+                try (NativeErrnoContext mirror = new NativeErrnoContext()) {
                     LibFFI.ffi_call(cif, WordFactory.pointer(functionPointer), ret, argPtrs);
-                } finally {
-                    errnoMirror.write(Errno.errno());
                 }
             } finally {
                 UnmanagedMemory.free(argPtrs);

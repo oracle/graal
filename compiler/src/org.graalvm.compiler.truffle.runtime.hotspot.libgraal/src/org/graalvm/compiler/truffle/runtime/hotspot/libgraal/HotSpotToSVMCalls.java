@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.AttachThread;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CleanReferences;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContext;
@@ -76,11 +75,8 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
  */
 final class HotSpotToSVMCalls {
 
-    @HotSpotToSVM(AttachThread)
-    static native long attachThread(long isolate);
-
     @HotSpotToSVM(InitializeRuntime)
-    static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, long classLoaderDelegateId, byte[] properties);
+    static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, long classLoaderDelegateId);
 
     @HotSpotToSVM(GetCompilerConfigurationFactoryName)
     static native String getCompilerConfigurationFactoryName(long isolateThreadId);

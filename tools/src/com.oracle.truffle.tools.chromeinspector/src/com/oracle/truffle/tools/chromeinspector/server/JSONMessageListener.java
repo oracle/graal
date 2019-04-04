@@ -24,9 +24,12 @@
  */
 package com.oracle.truffle.tools.chromeinspector.server;
 
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public interface JSONMessageListener {
 
-    void onMessage(JSONObject message);
+    void onMessage(JSONObject message) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
 }

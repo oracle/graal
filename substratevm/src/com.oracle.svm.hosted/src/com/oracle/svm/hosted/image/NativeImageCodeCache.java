@@ -265,7 +265,7 @@ public abstract class NativeImageCodeCache {
      * Constant? It appears so, but I'm not sure. -srk
      */
 
-    public abstract void patchMethods(RelocatableBuffer relocs, ObjectFile objectFile);
+    public abstract void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile);
 
     public abstract void writeCode(RelocatableBuffer buffer);
 

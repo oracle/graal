@@ -184,6 +184,11 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     }
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        return false;
+    }
+
+    @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         if (entryPointData.getBuiltin() != CEntryPointData.DEFAULT_BUILTIN) {
             return buildBuiltinGraph(debug, method, providers);
@@ -325,7 +330,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                 ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) parameterTypes[i]);
                 if (typeInfo instanceof EnumInfo) {
                     UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumLookupInfo.class::isInstance),
-                                    "Enum class " + parameterTypes[i].toJavaName() + " needs a method that is annotated with @" + CEnumLookup.class +
+                                    "Enum class " + parameterTypes[i].toJavaName() + " needs a method that is annotated with @" + CEnumLookup.class.getSimpleName() +
                                                     " because it is used as a parameter of an entry point method: " + targetMethod.format("%H.%n(%p)"));
 
                     if (parameterEnumInfos == null) {
@@ -534,7 +539,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) returnType);
         if (typeInfo instanceof EnumInfo) {
             UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumValueInfo.class::isInstance), "Enum class " +
-                            returnType.toJavaName() + " needs a method that is annotated with @" + CEnumValue.class +
+                            returnType.toJavaName() + " needs a method that is annotated with @" + CEnumValue.class.getSimpleName() +
                             " because it is used as the return type of an entry point method: " + targetMethod.format("%H.%n(%p)"));
 
             IsNullNode isNull = kit.unique(new IsNullNode(returnValue));

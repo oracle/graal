@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleRuntime.getIsolateThreadId;
+import static org.graalvm.libgraal.LibGraal.getIsolateThread;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
@@ -94,7 +94,7 @@ class SVMObject {
         }
 
         void clean() {
-            HotSpotToSVMCalls.releaseHandle(getIsolateThreadId(), handle);
+            HotSpotToSVMCalls.releaseHandle(getIsolateThread(), handle);
         }
     }
 

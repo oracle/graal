@@ -33,7 +33,9 @@ import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 
@@ -91,6 +93,7 @@ import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.BreakpointNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -101,6 +104,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.Feature;
@@ -125,6 +129,8 @@ import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
+import com.oracle.svm.core.graal.lir.VerificationMarkerOp;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
@@ -134,6 +140,7 @@ import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -146,6 +153,8 @@ import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -189,21 +198,96 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         super(providers);
     }
 
-    /**
-     * A direct call, but without alignment nops for the call instruction. Used for fatal exception
-     * calls.
-     */
     @Opcode("CALL_DIRECT")
     public static class SubstrateAMD64DirectCallOp extends AMD64Call.DirectCallOp {
         public static final LIRInstructionClass<SubstrateAMD64DirectCallOp> TYPE = LIRInstructionClass.create(SubstrateAMD64DirectCallOp.class);
 
-        public SubstrateAMD64DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        private final RuntimeConfiguration runtimeConfiguration;
+        @Use({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchor;
+        @Temp({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchorTemp;
+
+        public SubstrateAMD64DirectCallOp(RuntimeConfiguration runtimeConfiguration, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state,
+                        Value javaFrameAnchor, Value javaFrameAnchorTemp) {
             super(TYPE, callTarget, result, parameters, temps, state);
+            this.runtimeConfiguration = runtimeConfiguration;
+            this.javaFrameAnchor = javaFrameAnchor;
+            this.javaFrameAnchorTemp = javaFrameAnchorTemp;
+
+            assert differentRegisters(parameters, temps, javaFrameAnchor, javaFrameAnchorTemp);
         }
 
         @Override
-        public void emitCode(CompilationResultBuilder tasm, AMD64MacroAssembler masm) {
-            AMD64Call.directCall(tasm, masm, callTarget, null, false, state);
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            maybeTransitionToNative(crb, masm, runtimeConfiguration, javaFrameAnchor, javaFrameAnchorTemp, state);
+            AMD64Call.directCall(crb, masm, callTarget, null, false, state);
+        }
+    }
+
+    @Opcode("CALL_INDIRECT")
+    public static class SubstrateAMD64IndirectCallOp extends AMD64Call.IndirectCallOp {
+        public static final LIRInstructionClass<SubstrateAMD64IndirectCallOp> TYPE = LIRInstructionClass.create(SubstrateAMD64IndirectCallOp.class);
+
+        private final RuntimeConfiguration runtimeConfiguration;
+        @Use({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchor;
+        @Temp({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchorTemp;
+
+        public SubstrateAMD64IndirectCallOp(RuntimeConfiguration runtimeConfiguration, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
+                        LIRFrameState state, Value javaFrameAnchor,
+                        Value javaFrameAnchorTemp) {
+            super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
+            this.runtimeConfiguration = runtimeConfiguration;
+            this.javaFrameAnchor = javaFrameAnchor;
+            this.javaFrameAnchorTemp = javaFrameAnchorTemp;
+
+            assert differentRegisters(parameters, temps, targetAddress, javaFrameAnchor, javaFrameAnchorTemp);
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            maybeTransitionToNative(crb, masm, runtimeConfiguration, javaFrameAnchor, javaFrameAnchorTemp, state);
+            AMD64Call.indirectCall(crb, masm, asRegister(targetAddress), callTarget, state);
+        }
+    }
+
+    static void maybeTransitionToNative(CompilationResultBuilder crb, AMD64MacroAssembler masm, RuntimeConfiguration runtimeConfiguration, Value javaFrameAnchor, Value temp, LIRFrameState state) {
+        if (ValueUtil.isIllegal(javaFrameAnchor)) {
+            /* Not a call that needs to set up a JavaFrameAnchor. */
+            return;
+        }
+
+        Register anchor = ValueUtil.asRegister(javaFrameAnchor);
+        Register lastJavaIP = ValueUtil.asRegister(temp);
+
+        /*
+         * Record the last Java instruction pointer. Note that this is actually not the return
+         * address of the call, but that is fine. Patching the offset of the lea instruction would
+         * be possible but more complex than just recording the reference map information twice for
+         * different instructions.
+         *
+         * We record the instruction to load the current instruction pointer as a Call infopoint, so
+         * that the same metadata is emitted in the machine code as for a normal call instruction.
+         * We are already in the code emission from a single LIR instruction. So the register
+         * allocator cannot interfere anymore, the reference map for the two calls is produced from
+         * the same point regarding to register spilling.
+         *
+         * The lea loads the offset 0 relative to the end of the lea instruction, which is the same
+         * as for a call instruction. So the usual AMD64 specific semantics that all the metadata is
+         * registered for the end of the instruction just works.
+         */
+        int startPos = masm.position();
+        masm.leaq(lastJavaIP, new AMD64Address(AMD64.rip));
+        /*
+         * We always record an indirect call, because the direct/indirect flag of the safepoint is
+         * not used (the target method of the recorded call is null anyway).
+         */
+        crb.recordIndirectCall(startPos, masm.position(), null, state);
+
+        masm.movq(new AMD64Address(anchor, runtimeConfiguration.getJavaFrameAnchorLastIPOffset()), lastJavaIP);
+        masm.movq(new AMD64Address(anchor, runtimeConfiguration.getJavaFrameAnchorLastSPOffset()), AMD64.rsp);
+
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            /* Change the VMThread status from Java to Native. */
+            masm.movl(new AMD64Address(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()), VMThreads.StatusSupport.STATUS_IN_NATIVE);
         }
     }
 
@@ -281,7 +365,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             ResolvedJavaMethod targetMethod = callTarget.getMethod();
-            append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, info));
+            append(new SubstrateAMD64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, arguments, temps, info, Value.ILLEGAL, Value.ILLEGAL));
         }
 
         @Override
@@ -302,6 +386,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         public Value emitReadInstructionPointer() {
             return emitMove(new AMD64AddressValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()), AMD64.rip.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool())), 0));
+        }
+
+        @Override
+        public void emitVerificationMarker(Object marker) {
+            append(new VerificationMarkerOp(marker));
         }
 
         // private static LIRKind toStackKind(LIRKind kind) {
@@ -446,7 +535,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
-    public static final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
+    public final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
@@ -497,7 +586,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            append(new SubstrateAMD64DirectCallOp(targetMethod, result, parameters, temps, callState));
+            append(new SubstrateAMD64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, callState,
+                            setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget)));
         }
 
         @Override
@@ -511,7 +601,29 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             AllocatableValue targetAddress = targetRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            append(new AMD64Call.IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState));
+            append(new SubstrateAMD64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, targetAddress, callState,
+                            setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget)));
+        }
+
+        private AllocatableValue setupJavaFrameAnchor(CallTargetNode callTarget) {
+            if (!hasJavaFrameAnchor(callTarget)) {
+                return Value.ILLEGAL;
+            }
+
+            /* Register allocator cannot handle variables at call sites, need a fixed register. */
+            Register frameAnchorRegister = AMD64.r13;
+            AllocatableValue frameAnchor = frameAnchorRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
+            gen.emitMove(frameAnchor, operand(getJavaFrameAnchor(callTarget)));
+            return frameAnchor;
+        }
+
+        private AllocatableValue setupJavaFrameAnchorTemp(CallTargetNode callTarget) {
+            if (!hasJavaFrameAnchor(callTarget)) {
+                return Value.ILLEGAL;
+            }
+
+            /* Register allocator cannot handle variables at call sites, need a fixed register. */
+            return AMD64.r12.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
         }
 
         @Override
@@ -529,6 +641,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             Variable result = gen.newVariable(gen.getLIRKindTool().getWordKind());
             append(new AMD64CGlobalDataLoadAddressOp(node.getDataInfo(), result));
             setResult(node, result);
+        }
+
+        @Override
+        public Variable emitReadReturnAddress() {
+            assert FrameAccess.returnAddressSize() > 0;
+            return getLIRGeneratorTool().emitMove(StackSlot.get(getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), -FrameAccess.returnAddressSize(), true));
         }
     }
 
@@ -843,18 +961,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     @Override
-    public AddressLoweringPhase.AddressLowering newAddressLowering(CodeCacheProvider codeCache) {
+    public Phase newAddressLoweringPhase(CodeCacheProvider codeCache) {
         CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
         SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) codeCache.getRegisterConfig();
-        return new SubstrateAMD64AddressLowering(compressEncoding, registerConfig);
+        return new AddressLoweringPhase(new SubstrateAMD64AddressLowering(compressEncoding, registerConfig));
     }
 
     @Override
-    public CompiledCode createCompiledCode(ResolvedJavaMethod method,
-                    CompilationRequest compilationRequest,
-                    CompilationResult compilationResult,
-                    boolean isDefault,
-                    OptionValues options) {
+    public CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult, boolean isDefault, OptionValues options) {
         return new SubstrateCompiledCode(compilationResult);
     }
 

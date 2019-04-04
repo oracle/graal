@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,17 +30,19 @@
 package com.oracle.truffle.llvm.test.interop;
 
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.Sulong;
-import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
+import com.oracle.truffle.llvm.test.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 import java.io.File;
 import java.nio.file.Path;
@@ -238,7 +240,7 @@ public class LLVMInteropTest {
     @Test
     public void test013() {
         try (Runner runner = new Runner("interop013")) {
-            runner.export(new BoxedTestValue(42), "foreign");
+            runner.export(new BoxedIntValue(42), "foreign");
             Assert.assertEquals(42, runner.run());
         }
     }
@@ -246,7 +248,7 @@ public class LLVMInteropTest {
     @Test
     public void test014() {
         try (Runner runner = new Runner("interop014")) {
-            runner.export(new BoxedTestValue(42), "foreign");
+            runner.export(new BoxedIntValue(42), "foreign");
             Assert.assertEquals(42, runner.run(), 0.1);
         }
     }
@@ -1034,6 +1036,7 @@ public class LLVMInteropTest {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static class ForeignObject implements TruffleObject {
         protected int foo;
 
@@ -1041,44 +1044,60 @@ public class LLVMInteropTest {
             this.foo = i;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return ForeignObjectMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject o) {
-            return o instanceof ForeignObject;
+        @ExportMessage
+        boolean isMemberReadable(String member) {
+            return "foo".equals(member);
         }
-    }
 
-    @MessageResolution(receiverType = ForeignObject.class)
-    static class ForeignObjectMessageResolution {
-        @Resolve(message = "READ")
-        abstract static class ReadNode extends Node {
-            int access(ForeignObject object, Object key) {
-                Assert.assertEquals("foo", key);
-                return object.foo;
+        @ExportMessage
+        int readMember(String member) {
+            Assert.assertEquals("foo", member);
+            return foo;
+        }
+
+        @ExportMessage
+        boolean isMemberModifiable(String member) {
+            return "foo".equals(member);
+        }
+
+        @ExportMessage
+        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+            return false;
+        }
+
+        @ExportMessage(limit = "3")
+        void writeMember(String member, Object value,
+                        @CachedLibrary("value") InteropLibrary numbers) throws UnsupportedTypeException {
+            Assert.assertEquals("foo", member);
+            try {
+                foo = numbers.asInt(value) * 2;
+            } catch (InteropException ex) {
+                throw UnsupportedTypeException.create(new Object[]{value});
             }
         }
 
-        @Resolve(message = "WRITE")
-        abstract static class WriteNode extends Node {
-            int access(ForeignObject object, Object key, int value) {
-                Assert.assertEquals("foo", key);
-                return object.foo = value * 2;
-            }
+        @ExportMessage
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new ArrayObject("foo");
         }
 
-        @Resolve(message = "TO_NATIVE")
-        abstract static class ToNativeNode extends Node {
-            Object access(Object object) {
-                TruffleObject function = (TruffleObject) Sulong.getLLVMContextReference().get().getEnv().importSymbol("test_to_native");
-                try {
-                    return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), function, object);
-                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                    Assert.fail("TO_NATIVE should have created a handle");
-                    return null;
-                }
+        static TruffleObject getTestToNative() {
+            return (TruffleObject) LLVMLanguage.getLLVMContextReference().get().getEnv().importSymbol("test_to_native");
+        }
+
+        @ExportMessage
+        void toNative(
+                        @Cached(value = "getTestToNative()", allowUncached = true) TruffleObject testToNative,
+                        @CachedLibrary("testToNative") InteropLibrary interop) {
+            try {
+                interop.execute(testToNative, this);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                Assert.fail("TO_NATIVE should have created a handle");
             }
         }
     }

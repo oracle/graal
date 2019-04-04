@@ -35,7 +35,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
@@ -124,12 +123,11 @@ class URLProtocolsSupport {
 public final class JavaNetSubstitutions {
 
     public static final String FILE_PROTOCOL = "file";
+    public static final String RESOURCE_PROTOCOL = "resource";
     public static final String HTTP_PROTOCOL = "http";
     public static final String HTTPS_PROTOCOL = "https";
 
-    public static final String RESOURCE_PROTOCOL = "resource";
-
-    static final List<String> defaultProtocols = Collections.singletonList(FILE_PROTOCOL);
+    static final List<String> defaultProtocols = Arrays.asList(FILE_PROTOCOL, RESOURCE_PROTOCOL);
     static final List<String> onDemandProtocols = Arrays.asList(HTTP_PROTOCOL, HTTPS_PROTOCOL);
 
     static final String enableProtocolsOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableURLProtocols, "");

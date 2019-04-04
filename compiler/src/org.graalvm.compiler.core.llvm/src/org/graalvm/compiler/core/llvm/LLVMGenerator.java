@@ -639,14 +639,16 @@ public class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitConditionalMove(PlatformKind cmpKind, Value leftVal, Value rightVal, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
+    public Variable emitConditionalMove(PlatformKind cmpKind, Value leftVal, Value rightVal, Condition cond, boolean unorderedIsTrue, Value trueVal, Value falseVal) {
         LLVMValueRef condition = builder.buildCompare(cond, getVal(leftVal), getVal(rightVal), unorderedIsTrue);
 
         LLVMValueRef select;
-        if (isObject(typeOf(getVal(trueValue)))) {
-            select = buildSelect(condition, getVal(trueValue), getVal(falseValue));
+        LLVMValueRef trueValue = getVal(trueVal);
+        LLVMValueRef falseValue = getVal(falseVal);
+        if (isObject(typeOf(trueValue))) {
+            select = buildSelect(condition, trueValue, falseValue);
         } else {
-            select = builder.buildSelect(condition, getVal(trueValue), getVal(falseValue));
+            select = builder.buildSelect(condition, trueValue, falseValue);
         }
         return new LLVMVariable(select);
     }
@@ -733,7 +735,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
         }
         LLVMValueRef count = (constantLength > 0) ? builder.constantInt(constantLength) : getVal(length);
 
-        LLVMBasicBlockRef startBlock = getBlock(currentBlock);
+        LLVMBasicBlockRef startBlock = getBlockEnd(currentBlock);
         LLVMBasicBlockRef loopBlock = builder.appendBasicBlock(currentBlock.toString() + "array_equals_loop");
         LLVMBasicBlockRef endBlock = builder.appendBasicBlock(currentBlock.toString() + "array_equals_end");
         splitBlockEndMap.put(currentBlock, endBlock);
@@ -795,7 +797,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
         LLVMValueRef count1 = builder.buildDiv(getVal(length1), builder.constantInt(kind1.getByteCount()));
         LLVMValueRef count2 = builder.buildDiv(getVal(length2), builder.constantInt(kind2.getByteCount()));
 
-        LLVMBasicBlockRef startBlock = getBlock(currentBlock);
+        LLVMBasicBlockRef startBlock = getBlockEnd(currentBlock);
         LLVMBasicBlockRef loopBlock = builder.appendBasicBlock(currentBlock.toString() + "array_compareto_loop");
         LLVMBasicBlockRef endBlock = builder.appendBasicBlock(currentBlock.toString() + "array_compareto_end");
         splitBlockEndMap.put(currentBlock, endBlock);
@@ -880,7 +882,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
             return builder.buildIntegerConvert(value, valueWidth);
         }).toArray(LLVMValueRef[]::new);
 
-        LLVMBasicBlockRef startBlock = getBlock(currentBlock);
+        LLVMBasicBlockRef startBlock = getBlockEnd(currentBlock);
         LLVMBasicBlockRef loopBlock = builder.appendBasicBlock(getCurrentBlock().toString() + "_array_indexof_loop");
         LLVMBasicBlockRef endBlock = builder.appendBasicBlock(getCurrentBlock().toString() + "array_indexof_end");
         splitBlockEndMap.put(currentBlock, endBlock);
@@ -934,7 +936,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
     @Override
     public void emitBlackhole(Value operand) {
-        throw unimplemented();
+        builder.buildStackmap(builder.constantLong(LLVMUtils.DEFAULT_PATCHPOINT_ID), getVal(operand));
     }
 
     @Override
@@ -1006,7 +1008,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
     public VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<VirtualStackSlot> outObjectStackSlots) {
         builder.positionAtStart();
         LLVMValueRef alloca = builder.buildPtrToInt(builder.buildArrayAlloca(slots), builder.longType());
-        builder.positionAtEnd(getBlock(currentBlock));
+        builder.positionAtEnd(getBlockEnd(currentBlock));
 
         LLVMStackSlot stackSlot = new LLVMStackSlot(alloca);
         if (outObjectStackSlots != null) {

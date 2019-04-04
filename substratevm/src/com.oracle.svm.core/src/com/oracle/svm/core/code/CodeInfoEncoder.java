@@ -46,8 +46,9 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.PinnedAllocator;
-import com.oracle.svm.core.heap.ReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -193,7 +194,7 @@ public class CodeInfoEncoder {
     }
 
     private void encodeReferenceMaps() {
-        ReferenceMapEncoder referenceMapEncoder = new ReferenceMapEncoder();
+        CodeReferenceMapEncoder referenceMapEncoder = new CodeReferenceMapEncoder();
         for (IPData data : entries.values()) {
             referenceMapEncoder.add(data.referenceMap);
         }
@@ -415,7 +416,7 @@ class CodeInfoVerifier extends CodeInfoDecoder {
                     lookupCodeInfo(offset + compilationOffset, codeInfo);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    ReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), codeInfo.getReferenceMapEncoding(), codeInfo.getReferenceMapIndex(), visitor);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), codeInfo.getReferenceMapEncoding(), codeInfo.getReferenceMapIndex(), visitor);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
                     assert expected.equals(visitor.result);

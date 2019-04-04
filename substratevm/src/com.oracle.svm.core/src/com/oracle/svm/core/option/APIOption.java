@@ -29,10 +29,13 @@ import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.Function;
+
+import org.graalvm.compiler.options.Option;
 
 /**
- * If an {@link org.graalvm.compiler.options.Option} is additionally annotated with
- * {@link APIOption} it will be exposed as native-image option with the given name.
+ * If an {@link Option} is additionally annotated with {@link APIOption} it will be exposed as
+ * native-image option with the given name.
  */
 @Repeatable(APIOption.List.class)
 @Retention(RetentionPolicy.RUNTIME)
@@ -71,19 +74,24 @@ public @interface APIOption {
     String[] fixedValue() default {};
 
     /**
+     * Allow transforming option values before assigning them to the underlying {@link Option}.
+     **/
+    Class<? extends Function<Object, Object>>[] valueTransformer() default DefaultTransformer.class;
+
+    /**
      * APIOptionKind can be used to customize how an {@link APIOption} gets rewritten to its
-     * {@link org.graalvm.compiler.options.Option} counterpart.
+     * {@link Option} counterpart.
      */
     enum APIOptionKind {
         /**
-         * A boolean {@link org.graalvm.compiler.options.Option} gets passed as
+         * A boolean {@link Option} gets passed as
          * <code>-{H,R}:+&lt;OptionDescriptor#name&gt;</code>. For other options if there is a
          * substring after {@code =}, it gets appended to
          * <code>-{H,R}:&lt;OptionDescriptor#name&gt;=</code>.
          */
         Default,
         /**
-         * A boolean {@link org.graalvm.compiler.options.Option} gets passed as
+         * A boolean {@link Option} gets passed as
          * <code>-{H,R}:-&lt;OptionDescriptor#name&gt;</code>. For other options using
          * {@code Negated} is not allowed.
          */
@@ -103,6 +111,13 @@ public @interface APIOption {
             } else {
                 return "--" + annotation.name();
             }
+        }
+    }
+
+    class DefaultTransformer implements Function<Object, Object> {
+        @Override
+        public Object apply(Object o) {
+            return o;
         }
     }
 }

@@ -40,22 +40,31 @@
  */
 package com.oracle.truffle.api.test.source;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.TruffleLocator;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
 import java.util.Collections;
 import java.util.Enumeration;
 import static org.junit.Assert.assertNotNull;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
+import java.nio.charset.Charset;
 
 public final class CommonMIMETypeLocator extends TruffleLocator {
-    public static final class Detector extends FileTypeDetector {
+    public static final class Detector implements FileTypeDetector {
+
         @Override
-        public String probeContentType(Path path) throws IOException {
-            if (path.getFileName().toString().endsWith(".locme")) {
+        public String findMimeType(TruffleFile file) throws IOException {
+            String name = file.getName();
+            if (name != null && name.endsWith(".locme")) {
                 return "application/x-locator";
             }
+            return null;
+        }
+
+        @Override
+        public Charset findEncoding(TruffleFile file) throws IOException {
             return null;
         }
     }
@@ -72,15 +81,15 @@ public final class CommonMIMETypeLocator extends TruffleLocator {
 
         @Override
         protected URL findResource(String name) {
-            if (name.equals("META-INF/services/java.nio.file.spi.FileTypeDetector")) {
-                return getResource("com/oracle/truffle/api/test/source/CommonMimeTypeLocator");
+            if (name.equals("META-INF/truffle/language")) {
+                return getResource("com/oracle/truffle/api/test/source/CommonMIMETypeLocator");
             }
             return super.findResource(name);
         }
 
         @Override
         protected Enumeration<URL> findResources(String name) throws IOException {
-            if (name.equals("META-INF/services/java.nio.file.spi.FileTypeDetector")) {
+            if (name.equals("META-INF/truffle/language")) {
                 URL locator = ClassLoader.getSystemClassLoader().getResource(
                                 "com/oracle/truffle/api/test/source/CommonMIMETypeLocator");
                 assertNotNull("We have to find a locator registration", locator);
@@ -91,4 +100,6 @@ public final class CommonMIMETypeLocator extends TruffleLocator {
         }
     }
 
+    public static class LocatorLanguage extends ProxyLanguage {
+    }
 }

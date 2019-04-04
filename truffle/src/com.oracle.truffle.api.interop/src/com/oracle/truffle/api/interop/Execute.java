@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class Execute extends UnaryMessage {
     public static final int HASH = 423430;
     static final Message INSTANCE = new Execute();

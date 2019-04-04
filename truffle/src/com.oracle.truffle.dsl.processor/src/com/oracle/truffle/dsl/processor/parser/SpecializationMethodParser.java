@@ -53,7 +53,10 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -75,6 +78,9 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
         spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(Cached.class)));
+        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(CachedLibrary.class)));
+        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(CachedContext.class)));
+        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(CachedLanguage.class)));
         return spec;
     }
 
@@ -97,7 +103,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
             List<TypeMirror> rewriteOnTypes = new ArrayList<>();
 
             for (TypeMirror exceptionType : exceptionTypes) {
-                SpecializationThrowsData throwsData = new SpecializationThrowsData(method.getMarkerAnnotation(), rewriteValue, exceptionType);
+                SpecializationThrowsData throwsData = new SpecializationThrowsData(method.getMessageElement(), method.getMarkerAnnotation(), rewriteValue, exceptionType);
                 if (!ElementUtils.canThrowType(method.getMethod().getThrownTypes(), exceptionType)) {
                     method.addError("A rewriteOn checked exception was specified but not thrown in the method's throws clause. The @%s method must specify a throws clause with the exception type '%s'.",
                                     Specialization.class.getSimpleName(), ElementUtils.getQualifiedName(exceptionType));
@@ -110,14 +116,6 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                 }
                 rewriteOnTypes.add(throwsData.getJavaClass());
                 exceptionData.add(throwsData);
-            }
-
-            for (TypeMirror typeMirror : method.getMethod().getThrownTypes()) {
-                if (!ElementUtils.canThrowType(rewriteOnTypes, typeMirror)) {
-                    method.addError(rewriteValue, "A checked exception '%s' is thrown but is not specified using the rewriteOn property. " +
-                                    "Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.",
-                                    ElementUtils.getQualifiedName(typeMirror));
-                }
             }
 
             Collections.sort(exceptionData, new Comparator<SpecializationThrowsData>() {

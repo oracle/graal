@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,8 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -74,11 +72,6 @@ public abstract class ToPointer extends ForeignToLLVM {
         public LLVMInteropType.Structured execute() {
             return type;
         }
-    }
-
-    @Specialization
-    protected LLVMVirtualAllocationAddress fromLLVMByteArrayAddress(LLVMVirtualAllocationAddressTruffleObject value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return value.getObject();
     }
 
     @Specialization
@@ -147,7 +140,7 @@ public abstract class ToPointer extends ForeignToLLVM {
     }
 
     @TruffleBoundary
-    static Object slowPathPrimitiveConvert(Object value, LLVMInteropType.Structured type) {
+    static Object slowPathPrimitiveConvert(Object value, LLVMInteropType.Structured type) throws UnsupportedTypeException {
         if (value instanceof Number) {
             return new LLVMBoxedPrimitive(value);
         } else if (value instanceof Boolean) {
@@ -162,11 +155,11 @@ public abstract class ToPointer extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMInternalTruffleObject) {
             return LLVMManagedPointer.create((LLVMInternalTruffleObject) value);
-        } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
+        } else if (value instanceof TruffleObject && notLLVM(value)) {
             LLVMTypedForeignObject typed = LLVMTypedForeignObject.create((TruffleObject) value, type);
             return LLVMManagedPointer.create(typed);
         } else {
-            throw UnsupportedTypeException.raise(new Object[]{value});
+            throw UnsupportedTypeException.create(new Object[]{value});
         }
     }
 }

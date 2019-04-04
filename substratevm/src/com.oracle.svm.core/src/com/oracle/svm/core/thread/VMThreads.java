@@ -295,7 +295,7 @@ public abstract class VMThreads {
     public static class StatusSupport {
 
         /** The status of a {@link IsolateThread}. */
-        private static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt();
+        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt();
 
         /**
          * Boolean flag whether safepoints are disabled. This is a separate thread local in addition
@@ -312,11 +312,11 @@ public abstract class VMThreads {
          */
         private static final int STATUS_CREATED = 0;
         /** The thread is running in Java code. */
-        private static final int STATUS_IN_JAVA = STATUS_CREATED + 1;
+        public static final int STATUS_IN_JAVA = STATUS_CREATED + 1;
         /** The thread has been requested to stop at a safepoint. */
-        private static final int STATUS_IN_SAFEPOINT = STATUS_IN_JAVA + 1;
+        public static final int STATUS_IN_SAFEPOINT = STATUS_IN_JAVA + 1;
         /** The thread is running in native code. */
-        private static final int STATUS_IN_NATIVE = STATUS_IN_SAFEPOINT + 1;
+        public static final int STATUS_IN_NATIVE = STATUS_IN_SAFEPOINT + 1;
 
         private static String statusToString(int status, boolean safepointsDisabled) {
             switch (status) {

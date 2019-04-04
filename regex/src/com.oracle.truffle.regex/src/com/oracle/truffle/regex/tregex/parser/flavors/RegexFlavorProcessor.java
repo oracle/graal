@@ -60,6 +60,11 @@ public interface RegexFlavorProcessor {
     RegexSource toECMAScriptRegex() throws RegexSyntaxException, UnsupportedRegexException;
 
     /**
+     * Returns the number of capture groups contained in the expression, including capture group 0.
+     */
+    int getNumberOfCaptureGroups();
+
+    /**
      * Returns a map from the names of capture groups to their indices. If the regular expression
      * had no named capture groups, returns null.
      */

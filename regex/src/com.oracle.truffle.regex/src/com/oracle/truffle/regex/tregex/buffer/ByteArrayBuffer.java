@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,7 @@ public class ByteArrayBuffer extends AbstractArrayBuffer {
     }
 
     @Override
-    int getBufferSize() {
+    int getBufferLength() {
         return buf.length;
     }
 
@@ -72,14 +72,14 @@ public class ByteArrayBuffer extends AbstractArrayBuffer {
     }
 
     public void add(byte b) {
-        if (size == buf.length) {
-            grow(size * 2);
+        if (length == buf.length) {
+            grow(length * 2);
         }
-        buf[size] = b;
-        size++;
+        buf[length] = b;
+        length++;
     }
 
     public byte[] toArray() {
-        return Arrays.copyOf(buf, size);
+        return Arrays.copyOf(buf, length);
     }
 }

@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.TimeZone;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -34,7 +35,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.JavaUtilResourceBundleAccess;
 import jdk.internal.misc.SharedSecrets;
-import jdk.internal.module.Modules;
 // Checkstyle: stop
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.resources.LocaleData;
@@ -66,6 +66,8 @@ public class LocalizationResourceBundles extends LocalizationSupport {
         final String timeZoneNamesKey = jreLocaleProviderAdapterType.getUtilResourcesPackage() + ".TimeZoneNames";
         final ResourceBundle timeZoneNamesBundle = jreLocaleData.getTimeZoneNames(defaultLocale);
         localizationSupport.addBundleToCache(timeZoneNamesKey, timeZoneNamesBundle);
+        TimeZone.getDefault().getDisplayName();
+
         /* BreakIteratorInfo. */
         final String breakIteratorInfoKey = jreLocaleProviderAdapterType.getTextResourcesPackage() + ".BreakIteratorInfo";
         final ResourceBundle breakIteratorInfoBundle = jreLocaleData.getBreakIteratorInfo(defaultLocale);

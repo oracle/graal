@@ -41,6 +41,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
@@ -247,6 +248,10 @@ public class FeatureImpl {
             aField.registerAsAccessed();
         }
 
+        public void registerAsRead(AnalysisField aField) {
+            aField.registerAsRead(null);
+        }
+
         @Override
         public void registerAsUnsafeAccessed(Field field) {
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
@@ -448,9 +453,16 @@ public class FeatureImpl {
     }
 
     public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess {
+        SharedRuntimeConfigurationBuilder runtimeBuilder;
+
         BeforeCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
-                        NativeImageHeap heap, DebugContext debugContext) {
+                        NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtime) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, hMetaAccess, heap, debugContext);
+            runtimeBuilder = runtime;
+        }
+
+        public SharedRuntimeConfigurationBuilder getRuntimeBuilder() {
+            return runtimeBuilder;
         }
     }
 

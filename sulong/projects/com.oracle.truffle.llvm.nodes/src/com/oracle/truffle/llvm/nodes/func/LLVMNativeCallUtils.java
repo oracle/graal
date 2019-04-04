@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,31 +35,24 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 
 public final class LLVMNativeCallUtils {
 
-    static Node getBindNode() {
-        CompilerAsserts.neverPartOfCompilation();
-        return Message.INVOKE.createNode();
-    }
-
-    static TruffleObject bindNativeSymbol(Node bindNode, TruffleObject symbol, String signature) {
+    static Object bindNativeSymbol(InteropLibrary interop, TruffleObject symbol, String signature) {
         try {
-            return (TruffleObject) ForeignAccess.sendInvoke(bindNode, symbol, "bind", signature);
-        } catch (Throwable ex) {
+            return interop.invokeMember(symbol, "bind", signature);
+        } catch (InteropException ex) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Could not bind " + symbol + " " + signature, ex);
         }
     }
 
-    static Object callNativeFunction(boolean enabled, ContextReference<LLVMContext> context, Node nativeCall, TruffleObject function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
+    static Object callNativeFunction(boolean enabled, ContextReference<LLVMContext> context, InteropLibrary nativeCall, Object function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.partialEvaluationConstant(enabled);
         if (enabled) {
             if (descriptor != null) {
@@ -67,7 +60,7 @@ public final class LLVMNativeCallUtils {
             }
         }
         try {
-            return ForeignAccess.sendExecute(nativeCall, function, nativeArgs);
+            return nativeCall.execute(function, nativeArgs);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
@@ -86,10 +79,5 @@ public final class LLVMNativeCallUtils {
     @TruffleBoundary
     private static void traceNativeCall(LLVMContext context, LLVMFunctionDescriptor descriptor) {
         context.registerNativeCall(descriptor);
-    }
-
-    public static TruffleObject bindNativeSymbol(TruffleObject symbol, String signature) {
-        CompilerAsserts.neverPartOfCompilation();
-        return bindNativeSymbol(getBindNode(), symbol, signature);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,23 +30,21 @@
 package com.oracle.truffle.llvm.runtime.interop.nfi;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapperFactory.CallbackHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -56,7 +54,8 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
  * Wrapper object for LLVMFunctionDescriptor that is used when functions are passed to the NFI. This
  * is used because arguments have to be handled slightly differently in that case.
  */
-@MessageResolution(receiverType = LLVMNativeWrapper.class)
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class LLVMNativeWrapper implements TruffleObject {
 
     private final LLVMFunctionDescriptor function;
@@ -75,35 +74,32 @@ public final class LLVMNativeWrapper implements TruffleObject {
         return function.toString();
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMNativeWrapperForeign.ACCESS;
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
     }
 
-    @Resolve(message = "EXECUTE")
-    abstract static class ExecuteCallback extends Node {
-
-        @Child CallbackHelperNode callbackHelper = CallbackHelperNodeGen.create();
-
-        Object access(LLVMNativeWrapper receiver, Object[] args) {
-            return callbackHelper.execute(receiver.function, args);
-        }
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Cached CallbackHelperNode callbackHelper) {
+        return callbackHelper.execute(function, args);
     }
 
+    @GenerateUncached
+    @ImportStatic(LLVMLanguage.class)
     abstract static class CallbackHelperNode extends LLVMNode {
-
-        @CompilationFinal ContextReference<LLVMContext> ctxRef;
-        @Child LLVMGetStackNode getStack = LLVMGetStackNode.create();
 
         abstract Object execute(LLVMFunctionDescriptor function, Object[] args);
 
         @Specialization(guards = "function == cachedFunction")
         Object doCached(@SuppressWarnings("unused") LLVMFunctionDescriptor function, Object[] args,
                         @Cached("function") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedFunction,
+                        @Cached LLVMGetStackNode getStack,
+                        @Cached("getLLVMContextReference()") ContextReference<LLVMContext> ctxRef,
                         @Cached("createCallNode(cachedFunction)") DirectCallNode call,
                         @Cached("createFromNativeNodes(cachedFunction.getType())") LLVMNativeConvertNode[] convertArgs,
                         @Cached("createToNative(cachedFunction.getType().getReturnType())") LLVMNativeConvertNode convertRet) {
-            try (StackPointer stackPointer = newStackFrame()) {
+            try (StackPointer stackPointer = newStackFrame(getStack, ctxRef)) {
                 Object[] preparedArgs = prepareCallbackArguments(stackPointer, args, convertArgs);
                 Object ret = call.call(preparedArgs);
                 return convertRet.executeConvert(ret);
@@ -133,11 +129,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
             return DirectCallNode.create(callTarget);
         }
 
-        private StackPointer newStackFrame() {
-            if (ctxRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                ctxRef = LLVMLanguage.getLLVMContextReference();
-            }
+        private StackPointer newStackFrame(LLVMGetStackNode getStack, ContextReference<LLVMContext> ctxRef) {
             LLVMThreadingStack threadingStack = ctxRef.get().getThreadingStack();
             return getStack.executeWithTarget(threadingStack, Thread.currentThread()).newFrame();
         }

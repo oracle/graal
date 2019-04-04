@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class KeyInfoMsg extends KnownMessage {
     public static final int HASH = 423440;
     static final Message INSTANCE = new KeyInfoMsg();

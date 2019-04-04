@@ -94,15 +94,19 @@ public class UnsupportedFeatures {
      * @throws UnsupportedFeatureException if unsupported features are found
      */
     public void report(BigBang bb) {
-        if (!messages.isEmpty()) {
+        if (exist()) {
             List<Data> entries = new ArrayList<>(messages.values());
             Collections.sort(entries);
+
+            boolean singleEntry = entries.size() == 1;
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             PrintStream printStream = new PrintStream(outputStream);
 
             for (Data entry : entries) {
-                printStream.println("Error: " + entry.message);
+                if (!singleEntry) {
+                    printStream.println("Error: " + entry.message);
+                }
                 if (entry.trace != null) {
                     printStream.println("Trace: " + entry.trace);
                 }
@@ -111,15 +115,17 @@ public class UnsupportedFeatures {
                     ShortestInvokeChainPrinter.print(bb, entry.method, printStream);
                     printStream.println();
                 }
-                if (entry.originalException != null && !(entry.originalException instanceof UnsupportedFeatureException)) {
-                    printStream.print("Original exception that caused the problem: ");
-                    entry.originalException.printStackTrace(printStream);
+                if (!singleEntry) {
+                    if (entry.originalException != null && !(entry.originalException instanceof UnsupportedFeatureException)) {
+                        printStream.print("Original exception that caused the problem: ");
+                        entry.originalException.printStackTrace(printStream);
+                    }
                 }
             }
             printStream.close();
 
             String unsupportedFeaturesMessage;
-            if (entries.size() == 1) {
+            if (singleEntry) {
                 unsupportedFeaturesMessage = entries.get(0).message + "\nDetailed message:\n" + outputStream.toString();
                 throw new UnsupportedFeatureException(unsupportedFeaturesMessage, entries.get(0).originalException);
             } else {
@@ -128,6 +134,10 @@ public class UnsupportedFeatures {
             }
 
         }
+    }
+
+    public boolean exist() {
+        return !messages.isEmpty();
     }
 
     public void checkMethod(AnalysisMethod method, StructuredGraph graph) {

@@ -193,7 +193,7 @@ def _nodeCostDump(args, extraVMarguments=None):
     parser.add_argument('--markdown', action='store_const', const=True, help="Format to Markdown table", default=False)
     args, vmargs = parser.parse_known_args(args)
     additionalPrimarySuiteClassPath = '-Dprimary.suite.cp=' + mx.primary_suite().dir
-    vmargs.extend([additionalPrimarySuiteClassPath, '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.NodeCostDumpUtil'])
+    vmargs.extend([additionalPrimarySuiteClassPath, '-cp', mx.classpath('org.graalvm.compiler.hotspot.test'), '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.test.NodeCostDumpUtil'])
     out = mx.OutputCapture()
     regex = ""
     if args.regex:
@@ -250,23 +250,12 @@ def _ctw_system_properties_suffix():
 def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
 
-    defaultCtwopts = 'Inline=false'
-
     parser = ArgumentParser(prog='mx ctw', formatter_class=RawDescriptionHelpFormatter, epilog=_ctw_system_properties_suffix())
-    parser.add_argument('--ctwopts', action='store', help='space separated Graal options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', metavar='<options>')
     parser.add_argument('--cp', '--jar', action='store', help='jar or class path denoting classes to compile', metavar='<path>')
     if not isJDK8:
         parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
-    configArgs = [a for a in args if a.startswith('-DCompileTheWorld.Config=')]
     args, vmargs = parser.parse_known_args(args)
-
-    if args.ctwopts:
-        if configArgs:
-            mx.abort('Cannot specify both --ctwopts and -DCompileTheWorld.Config')
-        vmargs.append('-DCompileTheWorld.Config=' + re.sub(r'\s+', '#', args.ctwopts))
-    elif not configArgs:
-        vmargs.append('-DCompileTheWorld.Config=Inline=false')
 
     if mx.get_os() == 'darwin':
         # suppress menubar and dock when running on Mac
@@ -285,8 +274,9 @@ def ctw(args, extraVMarguments=None):
     exclusions = ','.join([a[len(exclusionPrefix):] for a in vmargs if a.startswith(exclusionPrefix)] + ['sun.awt.X11.*.*'])
     vmargs.append(exclusionPrefix + exclusions)
 
-    if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
-        vmargs.append('-XX:+BootstrapJVMCI')
+    if not _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCINativeLibrary', False):
+        if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
+            vmargs.append('-XX:+BootstrapJVMCI')
 
     mainClassAndArgs = []
     if isJDK8:
@@ -342,7 +332,7 @@ def verify_jvmci_ci_versions(args):
                         mx.abort(
                             os.linesep.join([
                                 "Multiple JVMCI versions found in {0} files:".format(msg),
-                                "  {0} in {1}:{2}:    {3}".format(version + ('-dev' if dev else ''), *last),
+                                "  {0} in {1}:{2}:    {3}".format(version + ('-dev' if dev else ''), *last), # pylint: disable=not-an-iterable
                                 "  {0} in {1}:{2}:    {3}".format(new_version + ('-dev' if new_dev else ''), filename, linenr, line),
                             ]))
                     last = (filename, linenr, line.rstrip())
@@ -396,7 +386,7 @@ class BootstrapTest:
         self.args = args
         self.suppress = suppress
         self.tags = tags
-        if tags is not None and (type(tags) is not list or all(not isinstance(x, basestring) for x in tags)):
+        if tags is not None and (not isinstance(tags, list) or all(not isinstance(x, basestring) for x in tags)):
             mx.abort("Gate tag argument must be a list of strings, tag argument:" + str(tags))
 
     def run(self, tasks, extraVMarguments=None):
@@ -532,7 +522,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
         if t:
             ctw([
-                    '--ctwopts', 'Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+                    '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
                     '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
                     '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                 ], _remove_empty_entries(extraVMarguments))
@@ -921,7 +911,7 @@ class GraalArchiveParticipant:
     def __opened__(self, arc, srcArc, services):
         self.services = services
 
-    def __add__(self, arcname, contents):
+    def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
         m = GraalArchiveParticipant.providersRE.match(arcname)
         if m:
             if self.isTest:
@@ -1180,7 +1170,10 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
         'compiler:GRAAL_REPLACEMENTS_PROCESSOR',
         'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
     ],
-    jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
+    jvmci_jars=[
+        'compiler:GRAAL',
+        'compiler:GRAAL_MANAGEMENT',
+    ],
     graal_compiler='graal',
 ))
 

@@ -36,7 +36,7 @@ import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
  */
 class SessionClass extends AbstractInspectorObject {
 
-    private static final TruffleObject KEYS = new Keys();
+    private static final TruffleObject KEYS = new Keys(new String[0]);
 
     private Supplier<InspectorExecutionContext> contextSupplier;
 
@@ -55,12 +55,12 @@ class SessionClass extends AbstractInspectorObject {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    protected Object createNew(Object[] arguments) {
+    protected Object instantiate(Object[] arguments) {
         return new Session(contextSupplier);
     }
 
     @Override
-    protected TruffleObject getKeys() {
+    protected TruffleObject getMembers(boolean includeInternal) {
         return KEYS;
     }
 
@@ -80,23 +80,9 @@ class SessionClass extends AbstractInspectorObject {
     }
 
     @Override
-    protected Object invokeMethod(String name, Object[] arguments) {
+    protected Object invokeMember(String name, Object[] arguments) throws UnknownIdentifierException {
         CompilerDirectives.transferToInterpreter();
-        throw UnknownIdentifierException.raise(name);
-    }
-
-    static final class Keys extends AbstractInspectorArray {
-
-        @Override
-        int getLength() {
-            return 0;
-        }
-
-        @Override
-        Object getElementAt(int index) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.raise(Integer.toString(index));
-        }
+        throw UnknownIdentifierException.create(name);
     }
 
 }

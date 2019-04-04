@@ -41,10 +41,8 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
 /**
@@ -54,10 +52,8 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 @NodeInfo(shortName = "isExecutable")
 public abstract class SLIsExecutableBuiltin extends SLBuiltinNode {
 
-    @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
-
-    @Specialization
-    public Object isExecutable(TruffleObject obj) {
-        return ForeignAccess.sendIsExecutable(isExecutable, obj);
+    @Specialization(limit = "3")
+    public boolean isExecutable(Object obj, @CachedLibrary("obj") InteropLibrary executables) {
+        return executables.isExecutable(obj);
     }
 }

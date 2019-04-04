@@ -34,4 +34,6 @@ public interface SubstrateLIRGenerator {
     void emitFarReturn(AllocatableValue result, Value sp, Value ip);
 
     void emitDeadEnd();
+
+    void emitVerificationMarker(Object marker);
 }

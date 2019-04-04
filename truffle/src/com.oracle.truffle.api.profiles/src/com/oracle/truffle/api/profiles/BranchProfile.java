@@ -68,14 +68,14 @@ public abstract class BranchProfile extends Profile {
 
     /**
      * Call when an unlikely branch is entered.
-     * 
+     *
      * @since 0.10
      */
     public abstract void enter();
 
     /**
      * Call to create a new instance of a branch profile.
-     * 
+     *
      * @since 0.10
      */
     public static BranchProfile create() {
@@ -84,6 +84,15 @@ public abstract class BranchProfile extends Profile {
         } else {
             return Disabled.INSTANCE;
         }
+    }
+
+    /**
+     * Returns the uncached version of the profile. The uncached version of a profile does nothing.
+     *
+     * @since 1.0
+     */
+    public static BranchProfile getUncached() {
+        return Disabled.INSTANCE;
     }
 
     static final class Enabled extends BranchProfile {

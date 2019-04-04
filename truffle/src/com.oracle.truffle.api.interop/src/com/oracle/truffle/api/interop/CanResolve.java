@@ -45,19 +45,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.library.Library;
+
 /**
- * Annotation to put on your node to provide a language check for the receiver object.
- *
- * There must be only one element with this annotation on it.
- *
- * This node needs to be an abstract class. Sub-classes will be automatically generated, which is
- * similar to Truffle's DSL for node specialization. The node needs to define one <code>test</code>
- * method, which implement the receiver language check.
- *
- * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObjectMR}
- *
  * @since 0.13
+ * @deprecated use {@link com.oracle.truffle.api.library} instead. See
+ *             {@link Library#accepts(Object)} for further details.
  */
+@Deprecated
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
 public @interface CanResolve {

@@ -55,9 +55,16 @@ import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.stack.JavaFrameAnchor;
+import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.info.AccessorInfo;
+import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.thread.VMThreadMTFeature;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -71,13 +78,16 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected final MetaAccessProvider metaAccess;
     protected RuntimeConfiguration runtimeConfig;
     protected WordTypes wordTypes;
-    protected Function<Providers, SubstrateBackend> backendProvider;
+    protected final Function<Providers, SubstrateBackend> backendProvider;
+    protected final NativeLibraries nativeLibraries;
 
-    public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, MetaAccessProvider metaAccess, Function<Providers, SubstrateBackend> backendProvider) {
+    public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, MetaAccessProvider metaAccess, Function<Providers, SubstrateBackend> backendProvider,
+                    NativeLibraries nativeLibraries) {
         this.options = options;
         this.hostVM = hostVM;
         this.metaAccess = metaAccess;
         this.backendProvider = backendProvider;
+        this.nativeLibraries = nativeLibraries;
     }
 
     public SharedRuntimeConfigurationBuilder build() {
@@ -163,6 +173,24 @@ public abstract class SharedRuntimeConfigurationBuilder {
             throw shouldNotReachHere(ex);
         }
 
-        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, instanceOfBitsOffset, componentHubOffset);
+        int javaFrameAnchorLastSPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaSP");
+        int javaFrameAnchorLastIPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaIP");
+
+        int vmThreadStatusOffset = -1;
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            vmThreadStatusOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
+        }
+
+        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, instanceOfBitsOffset, componentHubOffset, javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset, vmThreadStatusOffset);
+    }
+
+    private int findStructOffset(Class<?> clazz, String accessorName) {
+        try {
+            AccessorInfo accessorInfo = (AccessorInfo) nativeLibraries.findElementInfo(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(accessorName)));
+            StructFieldInfo structFieldInfo = (StructFieldInfo) accessorInfo.getParent();
+            return structFieldInfo.getOffsetInfo().getProperty();
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 }

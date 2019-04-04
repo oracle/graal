@@ -134,7 +134,7 @@ public class Signal {
     @CStruct
     public interface ucontext_t extends PointerBase {
         /*-
-            // Userlevel context.
+            // AMD64 userlevel context.
             typedef struct ucontext
               {
                 unsigned long int uc_flags;
@@ -158,9 +158,35 @@ public class Signal {
         @Platforms(Platform.LINUX_AMD64.class)
         GregsPointer uc_mcontext_gregs();
 
+        /*-
+        // AArch64 userlevel context.
+        typedef struct ucontext
+        {
+            unsigned long uc_flags;
+            struct ucontext *uc_link;
+            stack_t uc_stack;
+            __sigset_t uc_sigmask;
+            mcontext_t uc_mcontext;
+        } ucontext_t;
+        typedef struct sigcontext mcontext_t;
+        struct sigcontext {
+                __u64 fault_address;
+                // AArch64 registers
+                __u64 regs[31];
+                __u64 sp;
+                __u64 pc;
+                __u64 pstate;
+                // 4K reserved for FP/SIMD state and future expansion
+                __u8 __reserved[4096] __attribute__((__aligned__(16)));
+        };
+        */
+        @CFieldAddress("uc_mcontext")
+        @Platforms(Platform.LINUX_AArch64.class)
+        mcontext_t uc_mcontext();
+
         @CField("uc_mcontext")
         @Platforms(Platform.DARWIN_AMD64.class)
-        MContext64 uc_mcontext();
+        MContext64 uc_mcontext64();
 
     }
 
@@ -221,7 +247,25 @@ public class Signal {
 
         @CFieldOffset("__ss.__rflags")
         int efl_offset();
+    }
 
+    @CStruct
+    @Platforms(Platform.LINUX_AArch64.class)
+    public interface mcontext_t extends PointerBase {
+        @CField
+        long fault_address();
+
+        @CFieldAddress
+        GregsPointer regs();
+
+        @CField
+        long sp();
+
+        @CField
+        long pc();
+
+        @CField
+        long pstate();
     }
 
     /** Advanced interface to a C signal handler. */

@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.parser.factories;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -137,6 +139,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMFrameAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMI64ObjectSizeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantEndNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantStartNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIsConstantNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMLifetimeEndNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMLifetimeStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemCopyNodeGen;
@@ -388,10 +391,13 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugManagedValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -442,6 +448,7 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
@@ -1822,9 +1829,22 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
+    // matches the type suffix of an LLVM intrinsic function, including the dot
+    private static final Pattern INTRINSIC_TYPE_SUFFIX_PATTERN = Pattern.compile("\\S+(?<suffix>\\.(?:[vp]\\d+)?[if]\\d+)$");
+
+    private static String getTypeSuffix(String intrinsicName) {
+        assert intrinsicName != null;
+        final Matcher typeSuffixMatcher = INTRINSIC_TYPE_SUFFIX_PATTERN.matcher(intrinsicName);
+        if (typeSuffixMatcher.matches()) {
+            return typeSuffixMatcher.group("suffix");
+        }
+        return null;
+    }
+
     protected LLVMExpressionNode getLLVMBuiltin(FunctionDeclaration declaration, LLVMExpressionNode[] args, int callerArgumentCount, LLVMSourceLocation sourceSection) {
 
-        switch (declaration.getName()) {
+        String intrinsicName = declaration.getName();
+        switch (intrinsicName) {
             case "@llvm.memset.p0i8.i32":
             case "@llvm.memset.p0i8.i64":
                 return createMemsetIntrinsic(args, sourceSection);
@@ -2045,8 +2065,22 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.x86.sse2.movmsk.pd":
                 return LLVMX86_MovmskpdNodeGen.create(args[1], sourceSection);
             default:
-                return LLVMX86_MissingBuiltin.create(sourceSection, declaration.getName());
+                break;
         }
+
+        // strip the type suffix for intrinsics that are supported for more than one data type. If
+        // we do not implement the corresponding data type the node will just report a missing
+        // specialization at run-time
+        String typeSuffix = getTypeSuffix(intrinsicName);
+        if (typeSuffix != null) {
+            intrinsicName = intrinsicName.substring(0, intrinsicName.length() - typeSuffix.length());
+        }
+
+        if ("@llvm.is.constant".equals(intrinsicName)) {
+            return LLVMIsConstantNodeGen.create(args[1], sourceSection);
+        }
+
+        return LLVMX86_MissingBuiltin.create(sourceSection, declaration.getName());
     }
 
     @Override
@@ -2220,8 +2254,49 @@ public class BasicNodeFactory implements NodeFactory {
         return new LLVMDebugTrapNode(location);
     }
 
+    private TruffleObject asDebuggerIRValue(Object llvmType, Object value) {
+        final Type type;
+        if (llvmType instanceof Type) {
+            type = (Type) llvmType;
+        } else {
+            return null;
+        }
+
+        // e.g. debugger symbols
+        if (type instanceof MetaType) {
+            return null;
+        }
+
+        final LLVMSourceType sourceType = LLVMSourceTypeFactory.resolveType(type, context);
+        if (sourceType == null) {
+            return null;
+        }
+
+        // after frame-nulling the actual vector length does not correspond to the type anymore
+        if (value instanceof LLVMVector && ((LLVMVector) value).getLength() == 0) {
+            return null;
+        }
+
+        // after frame-nulling the actual bitsize does not correspond to the type anymore
+        if (value instanceof LLVMIVarBit && ((LLVMIVarBit) value).getBitSize() == 0) {
+            return null;
+        }
+
+        final LLVMDebugValue debugValue = createDebugValueBuilder().build(value);
+        if (debugValue == LLVMDebugValue.UNAVAILABLE) {
+            return null;
+        }
+
+        return LLVMDebugObject.instantiate(sourceType, 0L, debugValue, null);
+    }
+
     @Override
     public TruffleObject toGenericDebuggerValue(Object llvmType, Object value) {
+        final TruffleObject complexObject = asDebuggerIRValue(llvmType, value);
+        if (complexObject != null) {
+            return complexObject;
+        }
+
         return LLVMDebugManagedValue.create(llvmType, value);
     }
 

@@ -35,7 +35,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Poll;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;

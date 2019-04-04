@@ -84,6 +84,15 @@ public abstract class ByteValueProfile extends Profile {
         }
     }
 
+    /**
+     * Returns the uncached version of the profile. The uncached version of a profile does nothing.
+     *
+     * @since 1.0
+     */
+    public static ByteValueProfile getUncached() {
+        return Disabled.INSTANCE;
+    }
+
     static final class Enabled extends ByteValueProfile {
 
         private static final byte UNINITIALIZED = 0;

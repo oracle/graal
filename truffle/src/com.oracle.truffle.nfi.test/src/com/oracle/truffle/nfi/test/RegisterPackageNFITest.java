@@ -53,24 +53,30 @@ import org.junit.runner.RunWith;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import static com.oracle.truffle.nfi.test.NFITest.NFITestRootNode.getInterop;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(TruffleRunner.class)
 public class RegisterPackageNFITest extends NFITest {
 
+    private static final FunctionRegistry REGISTRY = new FunctionRegistry();
+
+    @ExportLibrary(InteropLibrary.class)
     static class FunctionRegistry implements TruffleObject {
 
-        private final Map<String, TruffleObject> functions;
+        private final Map<String, Object> functions;
 
         @TruffleBoundary
         FunctionRegistry() {
@@ -78,59 +84,47 @@ public class RegisterPackageNFITest extends NFITest {
         }
 
         @TruffleBoundary
-        void add(String name, TruffleObject function) {
+        void clear() {
+            functions.clear();
+        }
+
+        @TruffleBoundary
+        void add(String name, Object function) {
             functions.put(name, function);
         }
 
         @TruffleBoundary
-        TruffleObject get(String name) {
+        Object get(String name) {
             return functions.get(name);
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return FunctionRegistryMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
-    }
 
-    @MessageResolution(receiverType = FunctionRegistry.class)
-    static class FunctionRegistryMessageResolution {
+        @ExportMessage
+        Object execute(Object[] args,
+                        @Cached RegisterFunctionNode register) {
+            register.execute(this, (String) args[0], (String) args[1], args[2]);
+            return "";
+        }
 
-        @Resolve(message = "EXECUTE")
-        abstract static class ExecuteFunctionRegistry extends Node {
+        @GenerateUncached
+        abstract static class RegisterFunctionNode extends Node {
 
-            @Child Node bind = Message.INVOKE.createNode();
+            protected abstract void execute(FunctionRegistry receiver, String name, String signature, Object symbol);
 
-            private void register(FunctionRegistry receiver, String name, String signature, TruffleObject symbol) {
+            @Specialization(limit = "3")
+            static void register(FunctionRegistry receiver, String name, String signature, Object symbol,
+                            @CachedLibrary("symbol") InteropLibrary interop) {
                 try {
-                    TruffleObject boundSymbol = (TruffleObject) ForeignAccess.sendInvoke(bind, symbol, "bind", signature);
+                    Object boundSymbol = interop.invokeMember(symbol, "bind", signature);
                     receiver.add(name, boundSymbol);
                 } catch (InteropException ex) {
                     CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(ex);
                 }
-            }
-
-            Object access(FunctionRegistry receiver, Object[] args) {
-                register(receiver, (String) args[0], (String) args[1], (TruffleObject) args[2]);
-                return "";
-            }
-        }
-
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class IsExecutable extends Node {
-
-            @SuppressWarnings("unused")
-            boolean access(FunctionRegistry receiver) {
-                return true;
-            }
-        }
-
-        @CanResolve
-        abstract static class CanResolveFunctionRegistry extends Node {
-
-            boolean test(TruffleObject obj) {
-                return obj instanceof FunctionRegistry;
             }
         }
     }
@@ -138,43 +132,41 @@ public class RegisterPackageNFITest extends NFITest {
     static class LoadPackageNode extends Node {
 
         private final TruffleObject initializePackage = lookupAndBind("initialize_package", "((string,string,pointer):void):void");
-        @Child Node execute = Message.EXECUTE.createNode();
+        @Child InteropLibrary interop = getInterop(initializePackage);
 
         FunctionRegistry loadPackage() {
-            FunctionRegistry registry = new FunctionRegistry();
+            REGISTRY.clear();
             try {
-                ForeignAccess.sendExecute(execute, initializePackage, registry);
+                interop.execute(initializePackage, REGISTRY);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(ex);
             }
-            return registry;
+            return REGISTRY;
         }
     }
 
     public static class RegisterPackageTestNode extends NFITestRootNode {
 
         @Child LoadPackageNode loadPackage = new LoadPackageNode();
-
-        @Child Node unary = Message.EXECUTE.createNode();
-        @Child Node binary = Message.EXECUTE.createNode();
+        @Child InteropLibrary interop = getInterop();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
             FunctionRegistry registry = loadPackage.loadPackage();
 
-            TruffleObject add = registry.get("add");
-            TruffleObject square = registry.get("square");
-            TruffleObject sqrt = registry.get("sqrt");
+            Object add = registry.get("add");
+            Object square = registry.get("square");
+            Object sqrt = registry.get("sqrt");
 
             double a = (Double) frame.getArguments()[0];
             double b = (Double) frame.getArguments()[1];
 
-            double aSq = (Double) ForeignAccess.sendExecute(unary, square, a);
-            double bSq = (Double) ForeignAccess.sendExecute(unary, square, b);
+            double aSq = (Double) interop.execute(square, a);
+            double bSq = (Double) interop.execute(square, b);
 
-            double cSq = (Double) ForeignAccess.sendExecute(binary, add, aSq, bSq);
-            return ForeignAccess.sendExecute(unary, sqrt, cSq);
+            double cSq = (Double) interop.execute(add, aSq, bSq);
+            return interop.execute(sqrt, cSq);
         }
     }
 

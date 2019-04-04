@@ -62,8 +62,8 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, ResolvedJavaMethod callInlined,
                     SourceLanguagePositionProvider sourceLanguagePositionProvider) {
         TruffleConstantFieldProvider compilationLocalConstantProvider = new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess());
-        return new SubstratePEGraphDecoder(architecture, graph, providers.getMetaAccess(), providers.getConstantReflection(), compilationLocalConstantProvider, providers.getStampProvider(),
-                        loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, callInlined, sourceLanguagePositionProvider);
+        return new SubstratePEGraphDecoder(architecture, graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin,
+                        nodePlugins, callInlined, sourceLanguagePositionProvider);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,14 +33,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNodeGen.MakeAccessLocationNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
@@ -49,25 +47,25 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
     @ValueType
     protected static class AccessLocation {
 
-        final TruffleObject base;
+        final Object base;
         final Object identifier;
         final LLVMInteropType.Structured type;
 
-        AccessLocation(TruffleObject base, Object identifier, LLVMInteropType.Structured type) {
+        AccessLocation(Object base, Object identifier, LLVMInteropType.Structured type) {
             this.base = base;
             this.identifier = identifier;
             this.type = type;
         }
     }
 
-    protected abstract AccessLocation execute(LLVMInteropType.Structured type, TruffleObject foreign, long offset);
+    protected abstract AccessLocation execute(LLVMInteropType.Structured type, Object foreign, long offset);
 
     public static LLVMInteropAccessNode create() {
         return LLVMInteropAccessNodeGen.create();
     }
 
     @Specialization
-    AccessLocation doArray(LLVMInteropType.Array type, TruffleObject foreign, long offset,
+    AccessLocation doArray(LLVMInteropType.Array type, Object foreign, long offset,
                     @Cached("create()") MakeAccessLocation makeAccessLocation) {
         long index = Long.divideUnsigned(offset, type.elementSize);
         long restOffset = Long.remainderUnsigned(offset, type.elementSize);
@@ -75,14 +73,14 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
     }
 
     @Specialization(guards = "checkMember(type, cachedMember, offset)")
-    AccessLocation doStructMember(@SuppressWarnings("unused") LLVMInteropType.Struct type, TruffleObject foreign, long offset,
+    AccessLocation doStructMember(@SuppressWarnings("unused") LLVMInteropType.Struct type, Object foreign, long offset,
                     @Cached("findMember(type, offset)") StructMember cachedMember,
                     @Cached("create()") MakeAccessLocation makeAccessLocation) {
         return makeAccessLocation.execute(foreign, cachedMember.name, cachedMember.type, offset - cachedMember.startOffset);
     }
 
     @Specialization(replaces = "doStructMember")
-    AccessLocation doStruct(LLVMInteropType.Struct type, TruffleObject foreign, long offset,
+    AccessLocation doStruct(LLVMInteropType.Struct type, Object foreign, long offset,
                     @Cached("create()") MakeAccessLocation makeAccessLocation) {
         StructMember member = findMember(type, offset);
         return makeAccessLocation.execute(foreign, member.name, member.type, offset - member.startOffset);
@@ -105,14 +103,10 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
 
     abstract static class MakeAccessLocation extends LLVMNode {
 
-        protected abstract AccessLocation execute(TruffleObject foreign, Object identifier, LLVMInteropType type, long restOffset);
-
-        public static MakeAccessLocation create() {
-            return MakeAccessLocationNodeGen.create();
-        }
+        protected abstract AccessLocation execute(Object foreign, Object identifier, LLVMInteropType type, long restOffset);
 
         @Specialization
-        AccessLocation doValue(TruffleObject foreign, Object identifier, LLVMInteropType.Value type, long restOffset) {
+        AccessLocation doValue(Object foreign, Object identifier, LLVMInteropType.Value type, long restOffset) {
             if (restOffset != 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("cannot read from non-structured type with offset " + restOffset);
@@ -120,13 +114,13 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
             return new AccessLocation(foreign, identifier, type.baseType);
         }
 
-        @Specialization
-        AccessLocation doRecursive(TruffleObject foreign, Object identifier, LLVMInteropType.Structured type, long restOffset,
-                        @Cached("createRead()") Node read,
+        @Specialization(limit = "3")
+        AccessLocation doRecursiveObject(Object foreign, String identifier, LLVMInteropType.Structured type, long restOffset,
+                        @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached("create()") LLVMInteropAccessNode recursive) {
-            TruffleObject inner;
+            Object inner;
             try {
-                inner = (TruffleObject) ForeignAccess.sendRead(read, foreign, identifier);
+                inner = interop.readMember(foreign, identifier);
             } catch (UnknownIdentifierException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMPolyglotException(this, "Member '%s' not found.", identifier);
@@ -138,8 +132,22 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
             return recursive.execute(type, inner, restOffset);
         }
 
-        static Node createRead() {
-            return Message.READ.createNode();
+        @Specialization(limit = "3")
+        AccessLocation doRecursiveArray(Object foreign, long index, LLVMInteropType.Structured type, long restOffset,
+                        @CachedLibrary("foreign") InteropLibrary interop,
+                        @Cached("create()") LLVMInteropAccessNode recursive) {
+            Object inner;
+            try {
+                inner = interop.readArrayElement(foreign, index);
+            } catch (InvalidArrayIndexException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(this, "Invalid array index %d.", index);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(this, "Can not read array element %d.", index);
+            }
+
+            return recursive.execute(type, inner, restOffset);
         }
     }
 }

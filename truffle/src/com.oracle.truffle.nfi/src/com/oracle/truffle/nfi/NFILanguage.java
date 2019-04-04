@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,34 +43,21 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.nfi.NFILanguage.Context;
-import com.oracle.truffle.nfi.types.NativeSource;
-import com.oracle.truffle.nfi.types.Parser;
+import com.oracle.truffle.nfi.spi.NFIBackend;
 
 @TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true)
-public class NFILanguage extends TruffleLanguage<Context> {
+public class NFILanguage extends TruffleLanguage<NFIContext> {
 
     public static final String MIME_TYPE = "application/x-native";
 
-    static class Context {
-
-        Env env;
-
-        Context(Env env) {
-            this.env = env;
-        }
+    @Override
+    protected NFIContext createContext(Env env) {
+        return new NFIContext(env);
     }
 
     @Override
-    protected Context createContext(Env env) {
-        return new Context(env);
-    }
-
-    @Override
-    protected boolean patchContext(Context context, Env newEnv) {
-        context.env = newEnv;
+    protected boolean patchContext(NFIContext context, Env newEnv) {
+        context.patch(newEnv);
         return true;
     }
 
@@ -86,16 +73,14 @@ public class NFILanguage extends TruffleLanguage<Context> {
             backendId = source.getNFIBackendId();
         }
 
-        Source backendSource = Source.newBuilder(backendId, source.getLibraryDescriptor(), "<nfi-impl>").build();
-        CallTarget backendTarget = getContextReference().get().env.parse(backendSource);
-        DirectCallNode loadLibrary = DirectCallNode.create(backendTarget);
-
+        NFIBackend backend = getContextReference().get().getBackend(backendId);
+        CallTarget loadLibrary = backend.parse(source.getLibraryDescriptor());
         return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, loadLibrary, source));
     }
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof NFILibrary;
+        return object instanceof NFILibrary || object instanceof NFISymbol;
     }
 
     @Override

@@ -184,7 +184,7 @@ abstract class HostMethodDesc {
                 try {
                     return reflectInvoke(reflectionMethod, receiver, arguments);
                 } catch (IllegalArgumentException | IllegalAccessException ex) {
-                    throw UnsupportedTypeException.raise(ex, arguments);
+                    throw UnsupportedTypeException.create(arguments);
                 } catch (InvocationTargetException e) {
                     throw e.getCause();
                 }
@@ -226,7 +226,7 @@ abstract class HostMethodDesc {
                 try {
                     return reflectNewInstance(reflectionConstructor, arguments);
                 } catch (IllegalArgumentException | IllegalAccessException | InstantiationException ex) {
-                    throw UnsupportedTypeException.raise(ex, arguments);
+                    throw UnsupportedTypeException.create(arguments);
                 } catch (InvocationTargetException e) {
                     throw e.getCause();
                 }
@@ -260,7 +260,7 @@ abstract class HostMethodDesc {
                 try {
                     return invokeHandle(methodHandle, receiver, arguments);
                 } catch (ClassCastException ex) {
-                    throw UnsupportedTypeException.raise(ex, arguments);
+                    throw UnsupportedTypeException.create(arguments);
                 }
             }
 

@@ -128,10 +128,9 @@ public class SubstrateReplacements extends ReplacementsImpl {
     private Map<ResolvedJavaMethod, Integer> snippetStartOffsets;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateReplacements(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target,
-                    GraphMakerFactory graphMakerFactory) {
+    public SubstrateReplacements(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target, GraphMakerFactory graphMakerFactory) {
         // Snippets cannot have optimistic assumptions.
-        super(options, new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
+        super(new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
         this.builder = new Builder(graphMakerFactory);
     }
 
@@ -146,10 +145,10 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Collection<StructuredGraph> getSnippetGraphs(boolean trackNodeSourcePosition) {
+    public Collection<StructuredGraph> getSnippetGraphs(boolean trackNodeSourcePosition, OptionValues options) {
         List<StructuredGraph> result = new ArrayList<>(snippetStartOffsets.size());
         for (ResolvedJavaMethod method : snippetStartOffsets.keySet()) {
-            result.add(getSnippet(method, null, null, trackNodeSourcePosition, null));
+            result.add(getSnippet(method, null, null, trackNodeSourcePosition, null, options));
         }
         return result;
     }
@@ -175,7 +174,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+                    OptionValues options) {
         Integer startOffset = snippetStartOffsets.get(method);
         if (startOffset == null) {
             throw VMError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)"));
@@ -187,10 +187,10 @@ public class SubstrateReplacements extends ReplacementsImpl {
         }
 
         EncodedGraph encodedGraph = new EncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, null, null, null, false, trackNodeSourcePosition);
-        try (DebugContext debug = openDebugContext("SVMSnippet_", method)) {
+        try (DebugContext debug = openDebugContext("SVMSnippet_", method, options)) {
             StructuredGraph result = new StructuredGraph.Builder(options, debug).method(method).trackNodeSourcePosition(trackNodeSourcePosition).setIsSubstitution(true).build();
-            PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers.getMetaAccess(), providers.getConstantReflection(),
-                            providers.getConstantFieldProvider(), providers.getStampProvider(), null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null, null, null) {
+            PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
+                            null, null) {
                 @Override
                 protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, ResolvedJavaMethod originalMethod, BytecodeProvider intrinsicBytecodeProvider,
                                 boolean isSubstitution, boolean track) {
@@ -215,12 +215,12 @@ public class SubstrateReplacements extends ReplacementsImpl {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
+    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         assert DirectAnnotationAccess.isAnnotationPresent(method, Snippet.class) : "Snippet must be annotated with @" + Snippet.class.getSimpleName() + " " + method;
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
         assert builder.graphs.get(method) == null : "snippet registered twice: " + method.getName();
 
-        try (DebugContext debug = openDebugContext("Snippet_", method)) {
+        try (DebugContext debug = openDebugContext("Snippet_", method, options)) {
             StructuredGraph graph = makeGraph(debug, defaultBytecodeProvider, method, null, null, trackNodeSourcePosition, null);
 
             // Check if all methods which should be inlined are really inlined.
@@ -298,7 +298,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod original, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosiion) {
+    public StructuredGraph getSubstitution(ResolvedJavaMethod original, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosiion, OptionValues options) {
         return null;
     }
 

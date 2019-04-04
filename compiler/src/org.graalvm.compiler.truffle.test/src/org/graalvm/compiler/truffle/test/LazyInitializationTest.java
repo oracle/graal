@@ -230,7 +230,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (JVMCICompilerFactory.class.isAssignableFrom(cls) || cls.getName().equals("org.graalvm.compiler.hotspot.IsGraalPredicate")) {
+        if (JVMCICompilerFactory.class.isAssignableFrom(cls) || cls.getName().startsWith("org.graalvm.compiler.hotspot.IsGraalPredicate")) {
             // The compiler factories have to be loaded and instantiated by the JVMCI.
             return true;
         }

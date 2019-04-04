@@ -43,45 +43,79 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 
 /**
- * An exception thrown if a {@link TruffleObject} does not support a {@link Message}.
+ * An exception thrown if a {@link TruffleObject} does not support a interop message.
  *
  * @since 0.11
  */
+@SuppressWarnings("deprecation")
 public final class UnsupportedMessageException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
 
+    private static final Message LEGACY = new Message() {
+
+        @Override
+        public int hashCode() {
+            return 13;
+        }
+
+        @Override
+        public boolean equals(Object message) {
+            return this == message;
+        }
+    };
+
     private final Message message;
 
+    private UnsupportedMessageException() {
+        this.message = LEGACY;
+    }
+
     private UnsupportedMessageException(Message message) {
-        super("Message not supported: " + message.toString());
         this.message = message;
     }
 
     /**
-     * Returns the {@link Message} that was not supported by the {@link TruffleObject}.
+     * {@inheritDoc}
      *
-     * @return the unsupported message
-     * @since 0.11
+     * @since 1.0
      */
+    @Override
+    public String getMessage() {
+        return "Message not supported.";
+    }
+
+    /**
+     * @since 0.11
+     * @deprecated The unsupported message is no longer available. The unsupported message is known
+     *             by the caller anyway, therefore it is redundant. Will be removed without
+     *             replacement.
+     */
+    @Deprecated
     public Message getUnsupportedMessage() {
         return message;
     }
 
     /**
-     * Raises an {@link UnsupportedMessageException}, hidden as a {@link RuntimeException}, which
-     * allows throwing it without an explicit throws declaration. The {@link ForeignAccess} methods
-     * (e.g. <code> ForeignAccess.sendRead </code>) catch the exceptions and re-throw them as
-     * checked exceptions.
-     *
-     * @param message message that is not supported
-     *
-     * @return the exception
      * @since 0.11
+     * @deprecated use {@link #create()} instead. Interop exceptions should directly be thrown and
+     *             no longer be hidden as runtime exceptions.
      */
+    @Deprecated
     public static RuntimeException raise(Message message) {
         CompilerDirectives.transferToInterpreter();
         return silenceException(RuntimeException.class, new UnsupportedMessageException(message));
+    }
+
+    /**
+     * Creates an {@link UnsupportedMessageException} to indicate that an {@link InteropLibrary
+     * interop} message is not supported.
+     *
+     * @since 1.0
+     */
+    public static UnsupportedMessageException create() {
+        CompilerDirectives.transferToInterpreter();
+        return new UnsupportedMessageException();
     }
 
 }

@@ -42,14 +42,12 @@ package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject8.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject8.class)
 public class ValidTruffleObject8MR {
-    @Resolve(message = "EXECUTE")
+    @com.oracle.truffle.api.interop.Resolve(message = "EXECUTE")
     public abstract static class Execute3 extends Node {
 
         @ExpectError({"The last argument must be the arguments array. Required type: java.lang.Object[]"})
@@ -58,7 +56,7 @@ public class ValidTruffleObject8MR {
         }
     }
 
-    @Resolve(message = "INVOKE")
+    @com.oracle.truffle.api.interop.Resolve(message = "INVOKE")
     public abstract static class Invoke3 extends Node {
 
         @ExpectError({"The last argument must be the arguments array. Required type: java.lang.Object[]"})
@@ -67,7 +65,7 @@ public class ValidTruffleObject8MR {
         }
     }
 
-    @Resolve(message = "READ")
+    @com.oracle.truffle.api.interop.Resolve(message = "READ")
     public abstract static class ReadNode4 extends Node {
 
         @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String)"})
@@ -76,7 +74,7 @@ public class ValidTruffleObject8MR {
         }
     }
 
-    @Resolve(message = "NEW")
+    @com.oracle.truffle.api.interop.Resolve(message = "NEW")
     @ExpectError({"Class must be static"})
     public abstract class NewNode6 extends Node {
     }

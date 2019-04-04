@@ -68,12 +68,14 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.GCUtils;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings("deprecation")
-public class SourceInternalizationLegacyTest {
+public class SourceInternalizationLegacyTest extends AbstractPolyglotTest {
 
     @Test
     public void testSourceIdentity() throws RuntimeException, URISyntaxException, IOException {
+        setupEnv();
         assertNotSame(Source.newBuilder("1").mimeType("").language("").name("").build(),
                         Source.newBuilder("2").mimeType("").language("").name("").build());
         assertSame(Source.newBuilder("1").mimeType("").language("").name("").build(),

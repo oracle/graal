@@ -55,7 +55,9 @@ import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.RuntimeClassInitialization;
+import org.graalvm.nativeimage.RuntimeReflection;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -72,11 +74,11 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.JavaNetNetworkInterface.PlatformSupport;
-import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Ifaddrs;
 import com.oracle.svm.core.posix.headers.Ioctl;
@@ -91,8 +93,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-import org.graalvm.nativeimage.RuntimeReflection;
-import org.graalvm.nativeimage.c.function.CLibrary;
 
 @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
 @AutomaticFeature
@@ -1058,21 +1058,21 @@ final class Target_java_net_PlainDatagramSocketImpl {
         //  1795      switch (opt) {
         //  1796          case java_net_SocketOptions_IP_MULTICAST_LOOP:
         switch (opt) {
-         case SocketOptions.IP_MULTICAST_LOOP:
-            //  1798              if (level == IPPROTO_IP) {
-            if (level_Pointer.read() == NetinetIn.IPPROTO_IP()) {
-                //  1799                  return createBoolean(env, (int)!optval.c);
-                return Util_java_net_PlainDatagramSocketImpl.createBoolean(Util_java_net_PlainDatagramSocketImpl.not(optval_c_Pointer.read()));
-            } else {
-                //  1801                  return createBoolean(env, !optval.i);
-                return Util_java_net_PlainDatagramSocketImpl.createBoolean(Util_java_net_PlainDatagramSocketImpl.not(optval_i_Pointer.read()));
-            }
+            case SocketOptions.IP_MULTICAST_LOOP:
+                //  1798              if (level == IPPROTO_IP) {
+                if (level_Pointer.read() == NetinetIn.IPPROTO_IP()) {
+                    //  1799                  return createBoolean(env, (int)!optval.c);
+                    return Util_java_net_PlainDatagramSocketImpl.createBoolean(Util_java_net_PlainDatagramSocketImpl.not(optval_c_Pointer.read()));
+                } else {
+                    //  1801                  return createBoolean(env, !optval.i);
+                    return Util_java_net_PlainDatagramSocketImpl.createBoolean(Util_java_net_PlainDatagramSocketImpl.not(optval_i_Pointer.read()));
+                }
             //  1804          case java_net_SocketOptions_SO_BROADCAST:
             //  1805          case java_net_SocketOptions_SO_REUSEADDR:
             case SocketOptions.SO_BROADCAST:
             case SocketOptions.SO_REUSEADDR:
-            //  1806              return createBoolean(env, optval.i);
-                return Util_java_net_PlainDatagramSocketImpl.createBoolean(Util_java_net_PlainDatagramSocketImpl.not(optval_i_Pointer.read()));
+                //  1806              return createBoolean(env, optval.i);
+                return Util_java_net_PlainDatagramSocketImpl.createBoolean(optval_i_Pointer.read());
             //  1808          case java_net_SocketOptions_SO_SNDBUF:
             //  1809          case java_net_SocketOptions_SO_RCVBUF:
             //  1810          case java_net_SocketOptions_IP_TOS:
@@ -1109,7 +1109,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         CIntPointer optname_Pointer = StackValue.get(CIntPointer.class);
         int optlen;
         //  1364      int optval;
-        int optval;
+        CIntPointer optval_Pointer = StackValue.get(CIntPointer.class);
         //  1365      optlen = sizeof(int);
         optlen = SizeOf.get(CIntPointer.class);
         //  1366
@@ -1148,8 +1148,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
             //  1391          setMulticastInterface(env, this, fd, opt, value);
             Util_java_net_PlainDatagramSocketImpl.setMulticastInterface(fd, opt, value);
             //  1392          return;
-            /* Unreachable. */
-            //  1393      }
+            return;
         }
 
         //  1395      /*
@@ -1160,8 +1159,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
             //  1399          setMulticastLoopbackMode(env, this, fd, opt, value);
             Util_java_net_PlainDatagramSocketImpl.setMulticastLoopbackMode(fd, opt, value);
             //  1400          return;
-            /* Unreachable. */
-            //  1401      }
+            return;
         }
 
         //  1403      /*
@@ -1193,7 +1191,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                 //  1423                  CHECK_NULL(fid);
                 //  1424
                 //  1425                  optval = (*env)->GetIntField(env, value, fid);
-                optval = ((Integer)value).intValue();
+                optval_Pointer.write(((Integer)value).intValue());
                 //  1426                  break;
                 break;
             }
@@ -1216,7 +1214,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                 //  1442
                 //  1443                  /* SO_REUSEADDR or SO_BROADCAST */
                 //  1444                  optval = (on ? 1 : 0);
-                optval = (on ? 1 : 0);
+                optval_Pointer.write(on ? 1 : 0);
                 //  1445
                 //  1446                  break;
                 break;
@@ -1231,7 +1229,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         }
 
         //  1456      if (NET_SetSockOpt(fd, level, optname, (const void *)&optval, optlen) < 0) {
-        if (JavaNetNetUtilMD.NET_SetSockOpt(fd, level_Pointer.read(), optname_Pointer.read(), WordFactory.unsigned(optval), optlen) < 0) {
+        if (JavaNetNetUtilMD.NET_SetSockOpt(fd, level_Pointer.read(), optname_Pointer.read(), (WordPointer) optval_Pointer, optlen) < 0) {
             //  1457          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Error setting socket option");
             throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
             //  1458          return;
@@ -2467,31 +2465,29 @@ class Util_java_net_PlainDatagramSocketImpl {
     /* @formatter:on */
 
     static Boolean createBoolean(boolean b) {
-        return b;
+        return Boolean.valueOf(b);
+    }
+
+    static Boolean createBoolean(int i) {
+        return Boolean.valueOf(CTypeConversion.toBoolean(i));
     }
 
     static Integer createInteger(int i) {
-        return i;
+        return Integer.valueOf(i);
     }
 
     /**
      * Useful because you can't apply ! to non-booleans, to keep the code above a wee bit clearer.
      */
     static boolean not(byte b) {
-        if (b == 0) {
-            return true;
-        }
-        return false;
+        return !(CTypeConversion.toBoolean(b));
     }
 
     /**
      * Useful because you can't apply ! to non-booleans, to keep the code above a wee bit clearer.
      */
     static boolean not(int i) {
-        if (i == 0) {
-            return true;
-        }
-        return false;
+        return !(CTypeConversion.toBoolean(i));
     }
 }
 /* } Allow names with non-standard names: Checkstyle: resume */
@@ -5636,8 +5632,6 @@ final class Target_java_net_PlainSocketImpl {
             case SocketOptions.SO_LINGER:
             case SocketOptions.IP_TOS:
             {
-                /* Accessing values of java.lang.Integer the easy way. */
-                Integer valueInteger = (Integer) value;
                 // 934                 jclass cls;
                 // 935                 jfieldID fid;
                 // 936
@@ -5653,7 +5647,8 @@ final class Target_java_net_PlainSocketImpl {
                         // 944                         optval.ling.l_onoff = 1;
                         ((Socket.linger) optval_Pointer).set_l_onoff(1);
                         // 945                         optval.ling.l_linger = (*env)->GetIntField(env, value, fid);
-                        ((Socket.linger) optval_Pointer).set_l_linger(valueInteger.intValue());
+                        int valueAsInt = ((Integer)value).intValue();
+                        ((Socket.linger) optval_Pointer).set_l_linger(valueAsInt);
                     } else {
                         // 947                         optval.ling.l_onoff = 0;
                         ((Socket.linger) optval_Pointer).set_l_onoff(0);
@@ -5666,7 +5661,8 @@ final class Target_java_net_PlainSocketImpl {
                     LibC.memcpy(optval_Pointer, optval_Pointer, WordFactory.unsigned(optlen));
                 } else {
                     // 952                     optval.i = (*env)->GetIntField(env, value, fid);
-                    ((CIntPointer) optval_Pointer).write(valueInteger.intValue());
+                    int valueAsInt = ((Integer)value).intValue();
+                    ((CIntPointer) optval_Pointer).write(valueAsInt);
                     // 953                     optlen = sizeof(optval.i);
                     optlen = SizeOf.get(CIntPointer.class);
                     /* Copy to optval. */

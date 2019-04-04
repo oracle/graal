@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.c.function.CLibrary;
  * (jvm.lib or libjvm.a).
  *
  */
-@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class, Platform.WINDOWS.class})
+@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class, Platform.WINDOWS.class})
 @CLibrary("jvm")
 public class Jvm {
 

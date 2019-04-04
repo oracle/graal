@@ -43,11 +43,9 @@ package com.oracle.truffle.polyglot;
 import java.lang.reflect.Type;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-
 class PolyglotMapAndFunction<K, V> extends PolyglotMap<K, V> implements Function<Object[], Object> {
 
-    PolyglotMapAndFunction(PolyglotLanguageContext languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+    PolyglotMapAndFunction(PolyglotLanguageContext languageContext, Object obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
         super(languageContext, obj, keyClass, valueClass, valueType);
     }
 

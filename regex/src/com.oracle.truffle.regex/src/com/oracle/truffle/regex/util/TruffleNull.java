@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,12 @@
  */
 package com.oracle.truffle.regex.util;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.RegexLanguageObject;
 
+@ExportLibrary(InteropLibrary.class)
 public final class TruffleNull implements RegexLanguageObject {
 
     public static final TruffleNull INSTANCE = new TruffleNull();
@@ -38,25 +37,9 @@ public final class TruffleNull implements RegexLanguageObject {
     private TruffleNull() {
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return TruffleNullMessageResolutionForeign.ACCESS;
-    }
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof TruffleNull;
-    }
-
-    @MessageResolution(receiverType = TruffleNull.class)
-    static class TruffleNullMessageResolution {
-
-        @Resolve(message = "IS_NULL")
-        abstract static class TruffleNullIsNullNode extends Node {
-
-            @SuppressWarnings("unused")
-            public boolean access(TruffleNull obj) {
-                return true;
-            }
-        }
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isNull() {
+        return true;
     }
 }

@@ -63,6 +63,7 @@ import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
@@ -133,8 +134,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        return new AnalysisGraphBuilderPhase(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), graphBuilderConfig,
-                        optimisticOpts, initialIntrinsicContext, providers.getWordTypes());
+        return new AnalysisGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, providers.getWordTypes());
     }
 
     @Override
@@ -221,6 +221,7 @@ public final class SVMHost implements HostVM {
     }
 
     public AnalysisType lookupType(DynamicHub hub) {
+        assert hub != null : "Hub must not be null";
         return hubToType.get(hub);
     }
 

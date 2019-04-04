@@ -60,7 +60,6 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
@@ -105,7 +104,7 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
      */
     @Fold
     static boolean supportedByOS() {
-        return ImageSingletons.contains(StackOverflowCheck.OSSupport.class) && SubstrateOptions.CompilerBackend.getValue().equals("lir");
+        return ImageSingletons.contains(StackOverflowCheck.OSSupport.class);
     }
 
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")

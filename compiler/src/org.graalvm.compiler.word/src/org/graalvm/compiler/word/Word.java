@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.word;
 
-import static org.graalvm.compiler.word.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -59,7 +59,11 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 import org.graalvm.word.impl.WordBoxFactory;
 
+import sun.misc.Unsafe;
+
 public abstract class Word implements SignedWord, UnsignedWord, Pointer {
+
+    private static final Unsafe UNSAFE = getUnsafe();
 
     static {
         BoxFactoryImpl.initialize();

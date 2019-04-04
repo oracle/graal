@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,56 +25,46 @@
 package com.oracle.truffle.regex.runtime.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
+@GenerateUncached
 public abstract class ExpectStringOrTruffleObjectNode extends Node {
 
-    public abstract Object execute(Object arg);
+    public abstract Object execute(Object arg) throws UnsupportedTypeException;
 
     @Specialization
-    Object doString(String arg) {
-        return arg;
+    static Object doString(String input) {
+        return input;
     }
 
-    @Specialization
-    Object doTruffleObject(TruffleObject arg,
-                    @Cached("createIsBoxedNode()") Node isBoxed,
-                    @Cached("createUnboxNode()") Node unbox) {
+    @Specialization(guards = "inputs.isString(input)", limit = "2")
+    static Object doBoxedString(Object input, @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {
         try {
-            if (ForeignAccess.sendIsBoxed(isBoxed, arg)) {
-                Object unboxedObject = ForeignAccess.sendUnbox(unbox, arg);
-                if (unboxedObject instanceof String) {
-                    return unboxedObject;
-                }
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.raise(new Object[]{arg});
-            }
-            return arg;
+            return inputs.asString(input);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{arg});
+            throw UnsupportedTypeException.create(new Object[]{input});
         }
     }
 
-    @Fallback
-    Object doPrimitive(Object arg) {
-        throw UnsupportedTypeException.raise(new Object[]{arg});
-    }
-
-    static Node createIsBoxedNode() {
-        return Message.IS_BOXED.createNode();
-    }
-
-    static Node createUnboxNode() {
-        return Message.UNBOX.createNode();
+    @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
+    static Object doBoxedCharArray(Object input,
+                    @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {
+        try {
+            final long inputLength = inputs.getArraySize(input);
+            if (inputLength > Integer.MAX_VALUE) {
+                throw UnsupportedTypeException.create(new Object[]{input});
+            }
+            return input;
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{input});
+        }
     }
 
     public static ExpectStringOrTruffleObjectNode create() {

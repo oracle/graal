@@ -102,6 +102,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
     private final boolean useGHASHIntrinsics = getFlag("UseGHASHIntrinsics", Boolean.class, false);
+    private final boolean useBase64Intrinsics = getFlag("UseBASE64Intrinsics", Boolean.class, false);
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class, false);
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class, false);
     private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class, false);
@@ -130,6 +131,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
 
     public boolean useGHASHIntrinsics() {
         return useGHASHIntrinsics && ghashProcessBlocks != 0;
+    }
+
+    public boolean useBase64Intrinsics() {
+        return useBase64Intrinsics && base64EncodeBlock != 0;
     }
 
     public boolean useMontgomeryMultiplyIntrinsic() {
@@ -316,14 +321,16 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class);
     public final int jvmAccSynthetic = getConstant("JVM_ACC_SYNTHETIC", Integer.class);
 
-    public final int jvmciCompileStateCanPostOnExceptionsOffset = getJvmciCompileStateCanPostOnExceptionsOffset();
+    public final int jvmciCompileStateCanPostOnExceptionsOffset = getJvmciJvmtiCapabilityOffset("_jvmti_can_post_on_exceptions");
+    public final int jvmciCompileStateCanPopFrameOffset = getJvmciJvmtiCapabilityOffset("_jvmti_can_pop_frame");
+    public final int jvmciCompileStateCanAccessLocalVariablesOffset = getJvmciJvmtiCapabilityOffset("_jvmti_can_access_local_variables");
 
     // Integer.MIN_VALUE if not available
-    private int getJvmciCompileStateCanPostOnExceptionsOffset() {
-        int offset = getFieldOffset("JVMCICompileState::_jvmti_can_post_on_exceptions", Integer.class, "jbyte", Integer.MIN_VALUE);
+    private int getJvmciJvmtiCapabilityOffset(String name) {
+        int offset = getFieldOffset("JVMCICompileState::" + name, Integer.class, "jbyte", Integer.MIN_VALUE);
         if (offset == Integer.MIN_VALUE) {
             // JDK 12
-            offset = getFieldOffset("JVMCIEnv::_jvmti_can_post_on_exceptions", Integer.class, "jbyte", Integer.MIN_VALUE);
+            offset = getFieldOffset("JVMCIEnv::" + name, Integer.class, "jbyte", Integer.MIN_VALUE);
         }
         return offset;
     }
@@ -645,6 +652,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
 
     public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address", 0L);
     public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address", 0L);
+    public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address", 0L);
     public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address", 0L);
     public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address", 0L);
     public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address", 0L);

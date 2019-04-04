@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.windows;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -38,6 +41,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase;
 
 @Platforms(Platform.WINDOWS.class)
@@ -52,12 +56,27 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
     }
 
     @Override
+    public void exec(Path executable, String[] args) {
+        if (!Files.isExecutable(executable)) {
+            throw new RuntimeException("Path " + executable + " does not point to executable file");
+        }
+
+        try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
+                        CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args)) {
+            if (Process._execv(pathHolder.get(), argvHolder.get()) != 0) {
+                String msg = WindowsUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " failed");
+                throw new RuntimeException(msg);
+            }
+        }
+    }
+
+    @Override
     public long getProcessID() {
         throw VMError.unimplemented();
     }
 
     @Override
-    public long getProcessID(Process process) {
+    public long getProcessID(java.lang.Process process) {
         throw VMError.unimplemented();
     }
 

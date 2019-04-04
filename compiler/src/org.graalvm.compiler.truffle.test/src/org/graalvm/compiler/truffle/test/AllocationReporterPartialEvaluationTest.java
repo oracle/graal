@@ -31,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
@@ -57,7 +58,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
     public void testConsistentAssertions() {
         // Test that onEnter()/onReturnValue() are not broken
         // when only one of them is compiled with PE.
-        Context context = Context.newBuilder(AllocationReporterLanguage.ID).build();
+        Context context = Context.newBuilder(AllocationReporterLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build();
         context.initialize(AllocationReporterLanguage.ID);
         final TestAllocationReporter tester = context.getEngine().getInstruments().get(TestAllocationReporter.ID).lookup(TestAllocationReporter.class);
         assertNotNull(tester);

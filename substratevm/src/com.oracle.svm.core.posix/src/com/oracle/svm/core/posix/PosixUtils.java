@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.core.posix.headers.Errno.errno;
+import static com.oracle.svm.core.headers.Errno.errno;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_WRONLY;
 import static com.oracle.svm.core.posix.headers.Fcntl.open;
 import static com.oracle.svm.core.posix.headers.Unistd.close;
@@ -40,7 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Locale;

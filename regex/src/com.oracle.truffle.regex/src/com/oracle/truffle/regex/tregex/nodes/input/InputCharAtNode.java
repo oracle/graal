@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,17 +26,17 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.util.ForeignAccessUtil;
+import com.oracle.truffle.regex.runtime.nodes.ToCharNode;
 
-@ImportStatic(ForeignAccessUtil.class)
+@GenerateUncached
 public abstract class InputCharAtNode extends Node {
 
     public static InputCharAtNode create() {
@@ -46,24 +46,19 @@ public abstract class InputCharAtNode extends Node {
     public abstract char execute(Object input, int index);
 
     @Specialization
-    public char doCharAt(String input, int index) {
+    static char doString(String input, int index) {
         return input.charAt(index);
     }
 
-    @Specialization
-    public char doCharAt(TruffleObject input, int index, @Cached("createReadMessageNode()") Node readNode) {
+    @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
+    static char doBoxedCharArray(Object input, int index,
+                    @CachedLibrary("input") InteropLibrary inputs,
+                    @Cached ToCharNode toCharNode) {
         try {
-            Object c = ForeignAccess.sendRead(readNode, input, index);
-            if (c instanceof Character) {
-                return (char) c;
-            } else if (c instanceof Number) {
-                assert ((Number) c).intValue() < Character.MAX_VALUE;
-                return (char) ((Number) c).intValue();
-            }
+            return toCharNode.execute(inputs.readArrayElement(input, index));
+        } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
             CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{c});
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            // should never be reached
             throw new RuntimeException(e);
         }
     }

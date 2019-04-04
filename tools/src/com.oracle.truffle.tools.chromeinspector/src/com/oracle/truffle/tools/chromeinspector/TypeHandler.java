@@ -45,8 +45,8 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -56,6 +56,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class TypeHandler {
 
+    static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
     private final TruffleInstrument.Env env;
     private final AtomicReference<EventBinding<TypeProfileEventFactory>> currentBinding;
 
@@ -138,11 +139,6 @@ public final class TypeHandler {
         public ExecutionEventNode create(final EventContext context) {
             return new ExecutionEventNode() {
 
-                @Child private Node keysNode = Message.KEYS.createNode();
-                @Child private Node readNode = Message.READ.createNode();
-                @Child private Node readKeyNode = Message.READ.createNode();
-                @Child private Node getSizeNode = Message.GET_SIZE.createNode();
-
                 @Override
                 protected void onEnter(VirtualFrame frame) {
                     super.onEnter(frame);
@@ -170,18 +166,18 @@ public final class TypeHandler {
                     if (argsObject instanceof TruffleObject) {
                         final LanguageInfo language = node.getRootNode().getLanguageInfo();
                         try {
-                            TruffleObject keys = ForeignAccess.sendKeys(keysNode, (TruffleObject) argsObject);
-                            int size = ((Number) ForeignAccess.sendGetSize(getSizeNode, keys)).intValue();
-                            for (int i = 0; i < size; i++) {
-                                Object key = ForeignAccess.sendRead(readKeyNode, keys, i);
-                                Object argument = ForeignAccess.sendRead(readNode, (TruffleObject) argsObject, key);
+                            Object keys = INTEROP.getMembers(argsObject);
+                            long size = INTEROP.getArraySize(keys);
+                            for (long i = 0; i < size; i++) {
+                                String key = INTEROP.asString(INTEROP.readArrayElement(keys, i));
+                                Object argument = INTEROP.readMember(argsObject, key);
                                 final String retType = env.toString(language, env.findMetaObject(language, argument));
                                 SourceSection argSection = getArgSection(section, key);
                                 if (argSection != null) {
                                     profileMap.computeIfAbsent(argSection, s -> new SectionTypeProfile(s)).types.add(retType);
                                 }
                             }
-                        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                        } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
                             throw new AssertionError(e);
                         }
                     }

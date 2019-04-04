@@ -51,11 +51,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.jar.Attributes;
@@ -64,20 +66,17 @@ import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import java.io.OutputStream;
-import java.nio.file.StandardOpenOption;
 
 public class HostClassLoadingTest extends AbstractPolyglotTest {
 
@@ -114,7 +113,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
 
         // test with only host access rights
-        setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(true).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
         file = languageEnv.getTruffleFile(tempDir.toString());
         try {
             languageEnv.addToHostClassPath(file);
@@ -144,7 +143,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             assertFalse(((TruffleException) e).isInternalError());
         }
 
-        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(true).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
         file = languageEnv.getTruffleFile(tempDir.toString());
         // we should fail early
         languageEnv.addToHostClassPath(file);
@@ -158,7 +157,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
         // no rights by default
         AtomicInteger invocationCount = new AtomicInteger(0);
-        setupEnv(Context.newBuilder().hostClassFilter((s) -> {
+        setupEnv(Context.newBuilder().allowHostClassLookup((s) -> {
             invocationCount.incrementAndGet();
             assertEquals(TEST_REPLACE_QUALIFIED_CLASS_NAME, s);
             return true;
@@ -173,7 +172,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         assertNotNull(languageEnv.lookupHostSymbol(TEST_REPLACE_QUALIFIED_CLASS_NAME));
         assertEquals(2, invocationCount.get());
 
-        setupEnv(Context.newBuilder().hostClassFilter((s) -> {
+        setupEnv(Context.newBuilder().allowHostClassLookup((s) -> {
             invocationCount.incrementAndGet();
             assertEquals(TEST_REPLACE_QUALIFIED_CLASS_NAME, s);
             return false;
@@ -346,15 +345,15 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     private static Object read(Object o, String key) {
         try {
-            return ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) o, key);
+            return InteropLibrary.getFactory().getUncached().readMember(o, key);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
     }
 
-    private static Object write(Object o, String key, Object value) {
+    private static void write(Object o, String key, Object value) {
         try {
-            return ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) o, key, value);
+            InteropLibrary.getFactory().getUncached().writeMember(o, key, value);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new AssertionError(e);
         }
@@ -362,7 +361,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     private static Object newInstance(Object o, Object... args) {
         try {
-            return ForeignAccess.sendNew(Message.NEW.createNode(), (TruffleObject) o, args);
+            return InteropLibrary.getFactory().getUncached().instantiate(o, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
@@ -370,7 +369,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     private static Object execute(Object o, Object... args) {
         try {
-            return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), (TruffleObject) o, args);
+            return InteropLibrary.getFactory().getUncached().execute(o, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }

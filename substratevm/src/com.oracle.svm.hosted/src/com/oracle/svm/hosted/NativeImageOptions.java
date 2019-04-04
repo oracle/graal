@@ -122,6 +122,9 @@ public class NativeImageOptions {
         }
     };
 
+    @Option(help = "Initialize side-effectful application class initializers at image build time.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> EagerlyInitializeClasses = new HostedOptionKey<>(true);
+
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {
         boolean assertsEnabled = false;
@@ -129,9 +132,6 @@ public class NativeImageOptions {
         assert assertsEnabled = true;
         return assertsEnabled;
     }
-
-    @Option(help = "Report the original exception cause for unsupported features.")//
-    public static final HostedOptionKey<Boolean> ReportUnsupportedFeaturesCause = new HostedOptionKey<>(false);
 
     /**
      * Enum with all C standards.

@@ -29,94 +29,24 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen.LLVMObjectToNativeNodeGen;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-@NodeChild(type = LLVMExpressionNode.class)
+@GenerateUncached
 public abstract class LLVMToNativeNode extends LLVMNode {
-
-    public abstract LLVMNativePointer execute(VirtualFrame frame);
 
     public abstract LLVMNativePointer executeWithTarget(Object object);
 
     public static LLVMToNativeNode createToNativeWithTarget() {
-        return LLVMToNativeNodeGen.create(null);
+        return LLVMToNativeNodeGen.create();
     }
 
-    @Specialization
-    protected LLVMNativePointer doLongCase(long a) {
-        return LLVMNativePointer.create(a);
-    }
-
-    @Specialization
-    protected LLVMNativePointer doAddressCase(LLVMNativePointer a) {
-        return a;
-    }
-
-    @Specialization
-    protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        if (from.getValue() instanceof Long) {
-            return LLVMNativePointer.create((long) from.getValue());
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(this, "Cannot convert a primitive value (type: %s, value: %s) to an LLVMNativePointer).", String.valueOf(from.getValue().getClass()),
-                            String.valueOf(from.getValue()));
-        }
-    }
-
-    // this is a workaround because @Fallback does not support @Cached
-    @Specialization(guards = "isOther(pointer)")
-    protected LLVMNativePointer doOther(Object pointer,
-                    @Cached("createLLVMObjectToNative()") LLVMObjectToNativeNode toNative) {
-        return toNative.executeWithTarget(pointer);
-    }
-
-    protected static boolean isOther(Object pointer) {
-        return !(pointer instanceof Long || LLVMNativePointer.isInstance(pointer) || pointer instanceof LLVMBoxedPrimitive);
-    }
-
-    protected LLVMObjectToNativeNode createLLVMObjectToNative() {
-        return LLVMObjectToNativeNodeGen.create();
-    }
-
-    abstract static class LLVMObjectToNativeNode extends LLVMNode {
-        public abstract LLVMNativePointer executeWithTarget(Object pointer);
-
-        @Specialization(guards = {"lib.guard(pointer)", "lib.isPointer(pointer)"})
-        protected LLVMNativePointer handlePointerCached(Object pointer,
-                        @Cached("createCached(pointer)") LLVMObjectNativeLibrary lib) {
-            return handlePointer(pointer, lib);
-        }
-
-        @Specialization(replaces = "handlePointerCached", guards = {"lib.guard(pointer)", "lib.isPointer(pointer)"})
-        protected LLVMNativePointer handlePointer(Object pointer,
-                        @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
-            try {
-                return LLVMNativePointer.create(lib.asPointer(pointer));
-            } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Cannot convert " + pointer + " to LLVMNativePointer");
-            }
-        }
-
-        @Specialization(replaces = {"handlePointer", "handlePointerCached"}, guards = {"lib.guard(pointer)"})
-        protected LLVMNativePointer transitionToNative(Object pointer,
-                        @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
-            try {
-                Object n = lib.toNative(pointer);
-                return LLVMNativePointer.create(lib.asPointer(n));
-            } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Cannot convert " + pointer + " to LLVMNativePointer");
-            }
-        }
+    @Specialization(limit = "5")
+    static LLVMNativePointer doConvert(Object obj,
+                    @CachedLibrary("obj") LLVMNativeLibrary nativeLibrary) {
+        return nativeLibrary.toNativePointer(obj);
     }
 }

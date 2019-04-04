@@ -40,30 +40,22 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("deprecation")
 class InteropAccessor extends Accessor {
+
+    static final InteropAccessor ACCESSOR = new InteropAccessor();
+
+    @Override
+    protected EngineSupport engineSupport() {
+        return super.engineSupport();
+    }
 
     @Override
     protected InteropSupport interopSupport() {
         return new InteropSupport() {
-            @Override
-            public boolean canHandle(Object foreignAccess, Object receiver) {
-                ForeignAccess fa = (ForeignAccess) foreignAccess;
-                TruffleObject obj = (TruffleObject) receiver;
-                return fa.canHandle(obj);
-            }
-
-            @Override
-            public CallTarget canHandleTarget(Object access) {
-                ForeignAccess fa = (ForeignAccess) access;
-                return fa.checkLanguage();
-            }
 
             @Override
             public boolean isTruffleObject(Object value) {
@@ -153,141 +145,5 @@ class InteropAccessor extends Accessor {
 final class EmptyTruffleObject implements TruffleObject {
 
     static final EmptyTruffleObject INSTANCE = new EmptyTruffleObject();
-
-    public ForeignAccess getForeignAccess() {
-        return ForeignAccess.createAccess(new StandardFactory() {
-
-            public CallTarget accessWrite() {
-                return null;
-            }
-
-            public CallTarget accessUnbox() {
-                return null;
-            }
-
-            public CallTarget accessRead() {
-                return null;
-            }
-
-            public CallTarget accessNew(int argumentsLength) {
-                return null;
-            }
-
-            public CallTarget accessMessage(Message unknown) {
-                return null;
-            }
-
-            public CallTarget accessHasKeys() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
-            }
-
-            public CallTarget accessKeys() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
-            }
-
-            public CallTarget accessKeyInfo() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(EmptyKeys.INSTANCE));
-            }
-
-            public CallTarget accessIsNull() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            }
-
-            public CallTarget accessIsExecutable() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            }
-
-            public CallTarget accessIsBoxed() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            }
-
-            public CallTarget accessInvoke(int argumentsLength) {
-                return null;
-            }
-
-            public CallTarget accessHasSize() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            }
-
-            public CallTarget accessGetSize() {
-                return null;
-            }
-
-            public CallTarget accessExecute(int argumentsLength) {
-                return null;
-            }
-        }, null);
-    }
-
-}
-
-final class EmptyKeys implements TruffleObject {
-
-    static final EmptyKeys INSTANCE = new EmptyKeys();
-
-    public ForeignAccess getForeignAccess() {
-        return ForeignAccess.createAccess(new StandardFactory() {
-
-            public CallTarget accessWrite() {
-                return null;
-            }
-
-            public CallTarget accessUnbox() {
-                return null;
-            }
-
-            public CallTarget accessRead() {
-                return null;
-            }
-
-            public CallTarget accessNew(int argumentsLength) {
-                return null;
-            }
-
-            public CallTarget accessMessage(Message unknown) {
-                return null;
-            }
-
-            public CallTarget accessHasKeys() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            }
-
-            public CallTarget accessKeys() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
-            }
-
-            public CallTarget accessKeyInfo() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
-            }
-
-            public CallTarget accessIsNull() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            }
-
-            public CallTarget accessIsExecutable() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            }
-
-            public CallTarget accessIsBoxed() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-            }
-
-            public CallTarget accessInvoke(int argumentsLength) {
-                return null;
-            }
-
-            public CallTarget accessHasSize() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
-            }
-
-            public CallTarget accessGetSize() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
-            }
-
-            public CallTarget accessExecute(int argumentsLength) {
-                return null;
-            }
-        }, null);
-    }
 
 }

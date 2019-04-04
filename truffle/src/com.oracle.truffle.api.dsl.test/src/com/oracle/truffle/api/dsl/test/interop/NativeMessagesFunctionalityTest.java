@@ -45,18 +45,16 @@ import static org.junit.Assert.fail;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-
-@SuppressWarnings("static-method")
+@SuppressWarnings({"deprecation", "static-method"})
 public final class NativeMessagesFunctionalityTest {
 
     @Test
     public void test() throws Exception {
         ManagedTestObject m = new ManagedTestObject();
-        NativeTestObject n = (NativeTestObject) ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), m);
-        if (ForeignAccess.sendIsPointer(Message.IS_POINTER.createNode(), n)) {
-            long p = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), n);
+        ManagedTestObject n = (ManagedTestObject) com.oracle.truffle.api.interop.ForeignAccess.sendToNative(com.oracle.truffle.api.interop.Message.TO_NATIVE.createNode(), m);
+        Assert.assertSame(m, n);
+        if (com.oracle.truffle.api.interop.ForeignAccess.sendIsPointer(com.oracle.truffle.api.interop.Message.IS_POINTER.createNode(), n)) {
+            long p = com.oracle.truffle.api.interop.ForeignAccess.sendAsPointer(com.oracle.truffle.api.interop.Message.AS_POINTER.createNode(), n);
             Assert.assertEquals(m.hashCode(), p);
         } else {
             fail();

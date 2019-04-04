@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.polyglot.GuestToHostRootNode.createGuestToHost;
+import static com.oracle.truffle.polyglot.GuestToHostRootNode.guestToHostCall;
+
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
@@ -49,565 +52,561 @@ import org.graalvm.polyglot.proxy.ProxyNativeObject;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 @SuppressWarnings("deprecation")
-final class PolyglotProxy {
+@ExportLibrary(InteropLibrary.class)
+final class PolyglotProxy implements TruffleObject {
+
+    static final int LIMIT = 5;
+
+    private static final ProxyArray EMPTY = new ProxyArray() {
+
+        public void set(long index, Value value) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+
+        public long getSize() {
+            return 0;
+        }
+
+        public Object get(long index) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+    };
+    final PolyglotLanguageContext languageContext;
+    final Proxy proxy;
+
+    PolyglotProxy(PolyglotLanguageContext context, Proxy proxy) {
+        this.languageContext = context;
+        this.proxy = proxy;
+    }
+
+    @ExportMessage
+    boolean isInstantiable() {
+        return proxy instanceof ProxyInstantiable;
+    }
+
+    static class InstantiateNode extends GuestToHostRootNode {
+
+        protected InstantiateNode() {
+            super(ProxyInstantiable.class, "newInstance");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) throws UnsupportedMessageException {
+            try {
+                return ((ProxyInstantiable) proxy).newInstance((Value[]) arguments[ARGUMENT_OFFSET]);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+    }
+
+    private static final CallTarget INSTANTIATE = createGuestToHost(new InstantiateNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    Object instantiate(Object[] arguments, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyInstantiable) {
+            Value[] convertedArguments = languageContext.toHostValues(arguments, 0);
+            Object result = guestToHostCall(library, INSTANTIATE, languageContext, proxy, convertedArguments);
+            return languageContext.toGuestValue(result);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isExecutable() {
+        return proxy instanceof ProxyExecutable;
+    }
+
+    static class ExecuteNode extends GuestToHostRootNode {
+
+        protected ExecuteNode() {
+            super(ProxyExecutable.class, "execute");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) throws UnsupportedMessageException {
+            try {
+                return ((ProxyExecutable) proxy).execute((Value[]) arguments[ARGUMENT_OFFSET]);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+    }
+
+    private static final CallTarget EXECUTE = createGuestToHost(new ExecuteNode());
+
+    @ExportMessage
+    Object execute(Object[] arguments, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyExecutable) {
+            Value[] convertedArguments = languageContext.toHostValues(arguments, 0);
+            Object result = guestToHostCall(library, EXECUTE, languageContext, proxy, convertedArguments);
+            return languageContext.toGuestValue(result);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isPointer() {
+        return proxy instanceof ProxyNativeObject;
+    }
+
+    static class AsPointerNode extends GuestToHostRootNode {
+
+        protected AsPointerNode() {
+            super(ProxyNativeObject.class, "asPointer");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            return ((ProxyNativeObject) proxy).asPointer();
+        }
+    }
+
+    private static final CallTarget AS_POINTER = createGuestToHost(new AsPointerNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    long asPointer(@CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyNativeObject) {
+            return (long) guestToHostCall(library, AS_POINTER, languageContext, proxy);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean hasArrayElements() {
+        return proxy instanceof ProxyArray;
+    }
+
+    static class ArrayGetNode extends GuestToHostRootNode {
+
+        protected ArrayGetNode() {
+            super(ProxyArray.class, "get");
+        }
+
+        @Override
+        protected Object executeImpl(Object proxy, Object[] arguments) throws InvalidArrayIndexException, UnsupportedMessageException {
+            long index = (long) arguments[ARGUMENT_OFFSET];
+            try {
+                return boundaryGet((ProxyArray) proxy, index);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw InvalidArrayIndexException.create(index);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @TruffleBoundary
+        private static Object boundaryGet(ProxyArray proxy, long index) {
+            return proxy.get(index);
+        }
+    }
+
+    private static final CallTarget ARRAY_GET = createGuestToHost(new ArrayGetNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    Object readArrayElement(long index, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyArray) {
+            Object result = guestToHostCall(library, ARRAY_GET, languageContext, proxy, index);
+            return languageContext.toGuestValue(result);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    static class ArraySetNode extends GuestToHostRootNode {
+
+        protected ArraySetNode() {
+            super(ProxyArray.class, "set");
+        }
+
+        @Override
+        protected Object executeImpl(Object proxy, Object[] arguments) throws InvalidArrayIndexException, UnsupportedMessageException {
+            long index = (long) arguments[ARGUMENT_OFFSET];
+            try {
+                boundarySet((ProxyArray) proxy, index, (Value) arguments[ARGUMENT_OFFSET + 1]);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw InvalidArrayIndexException.create(index);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+            return null;
+        }
+
+        @TruffleBoundary
+        private static void boundarySet(ProxyArray proxy, long index, Value value) {
+            proxy.set(index, value);
+        }
+    }
+
+    private static final CallTarget ARRAY_SET = createGuestToHost(new ArraySetNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    void writeArrayElement(long index, Object value, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyArray) {
+            Value castValue = languageContext.asValue(value);
+            guestToHostCall(library, ARRAY_SET, languageContext, proxy, index, castValue);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    static class ArrayRemoveNode extends GuestToHostRootNode {
+
+        protected ArrayRemoveNode() {
+            super(ProxyArray.class, "remove");
+        }
+
+        @Override
+        protected Object executeImpl(Object proxy, Object[] arguments) throws InvalidArrayIndexException, UnsupportedMessageException {
+            long index = (long) arguments[ARGUMENT_OFFSET];
+            try {
+                return boundaryRemove((ProxyArray) proxy, index);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw InvalidArrayIndexException.create(index);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @TruffleBoundary
+        private static boolean boundaryRemove(ProxyArray proxy, long index) {
+            return proxy.remove(index);
+        }
+    }
+
+    private static final CallTarget ARRAY_REMOVE = createGuestToHost(new ArrayRemoveNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    void removeArrayElement(long index, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException, InvalidArrayIndexException {
+        if (proxy instanceof ProxyArray) {
+            boolean result = (boolean) guestToHostCall(library, ARRAY_REMOVE, languageContext, proxy, index);
+            if (!result) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    static class ArraySizeNode extends GuestToHostRootNode {
+
+        protected ArraySizeNode() {
+            super(ProxyArray.class, "getSize");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            return ((ProxyArray) proxy).getSize();
+        }
+    }
+
+    private static final CallTarget ARRAY_SIZE = createGuestToHost(new ArraySizeNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    long getArraySize(@CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyArray) {
+            return (long) guestToHostCall(library, ARRAY_SIZE, languageContext, proxy);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage(name = "isArrayElementReadable")
+    @ExportMessage(name = "isArrayElementModifiable")
+    @ExportMessage(name = "isArrayElementRemovable")
+    @TruffleBoundary
+    boolean isArrayElementExisting(long index, @CachedLibrary("this") InteropLibrary library) {
+        if (proxy instanceof ProxyArray) {
+            long size = (long) guestToHostCall(library, ARRAY_SIZE, languageContext, proxy);
+            return index >= 0 && index < size;
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean isArrayElementInsertable(long index, @CachedLibrary("this") InteropLibrary library) {
+        if (proxy instanceof ProxyArray) {
+            long size = (long) guestToHostCall(library, ARRAY_SIZE, languageContext, proxy);
+            return index < 0 || index >= size;
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    boolean hasMembers() {
+        return proxy instanceof ProxyObject;
+    }
+
+    static class GetMemberKeysNode extends GuestToHostRootNode {
+
+        protected GetMemberKeysNode() {
+            super(ProxyObject.class, "getMemberKeys");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            return ((ProxyObject) proxy).getMemberKeys();
+        }
+    }
+
+    private static final CallTarget MEMBER_KEYS = createGuestToHost(new GetMemberKeysNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyObject) {
+            Object result = guestToHostCall(library, MEMBER_KEYS, languageContext, proxy);
+            if (result == null) {
+                result = EMPTY;
+            }
+            Object guestValue = languageContext.toGuestValue(result);
+            if (!InteropLibrary.getFactory().getUncached().hasArrayElements(guestValue)) {
+                throw PolyglotImpl.wrapHostException(languageContext, new IllegalStateException(
+                                String.format("getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
+                                                languageContext.asValue(guestValue).toString())));
+            }
+            return guestValue;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    static class GetMemberNode extends GuestToHostRootNode {
+
+        protected GetMemberNode() {
+            super(ProxyObject.class, "getMember");
+        }
+
+        @Override
+        protected Object executeImpl(Object proxy, Object[] arguments) throws UnsupportedMessageException {
+            try {
+                return boundaryGetMember((ProxyObject) proxy, (String) arguments[ARGUMENT_OFFSET]);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @TruffleBoundary
+        private static Object boundaryGetMember(ProxyObject proxy, String argument) {
+            return proxy.getMember(argument);
+        }
+    }
+
+    private static final CallTarget GET_MEMBER = createGuestToHost(new GetMemberNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    Object readMember(String member, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException, UnknownIdentifierException {
+        if (proxy instanceof ProxyObject) {
+            if (!isMemberExisting(member, library)) {
+                throw UnknownIdentifierException.create(member);
+            }
+            Object result = guestToHostCall(library, GET_MEMBER, languageContext, proxy, member);
+            return languageContext.toGuestValue(result);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    static class PutMemberNode extends GuestToHostRootNode {
+
+        protected PutMemberNode() {
+            super(ProxyObject.class, "putMember");
+        }
+
+        @Override
+        protected Object executeImpl(Object proxy, Object[] arguments) throws UnsupportedMessageException {
+            try {
+                boundaryPutMember((ProxyObject) proxy, (String) arguments[ARGUMENT_OFFSET], (Value) arguments[ARGUMENT_OFFSET + 1]);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+            return null;
+        }
+
+        @TruffleBoundary
+        private static void boundaryPutMember(ProxyObject proxy, String member, Value value) {
+            proxy.putMember(member, value);
+        }
+    }
+
+    private static final CallTarget PUT_MEMBER = createGuestToHost(new PutMemberNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    void writeMember(String member, Object value, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyObject) {
+            Value castValue = languageContext.asValue(value);
+            guestToHostCall(library, PUT_MEMBER, languageContext, proxy, member, castValue);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object invokeMember(String member, Object[] arguments, @CachedLibrary("this") InteropLibrary library,
+                    @Shared("executables") @CachedLibrary(limit = "LIMIT") InteropLibrary executables)
+                    throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
+        if (proxy instanceof ProxyObject) {
+            if (!isMemberExisting(member, library)) {
+                throw UnknownIdentifierException.create(member);
+            }
+            Object memberObject;
+            try {
+                memberObject = readMember(member, library);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+            memberObject = languageContext.toGuestValue(memberObject);
+            if (executables.isExecutable(memberObject)) {
+                return executables.execute(memberObject, arguments);
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean isMemberInvocable(String member, @CachedLibrary("this") InteropLibrary library,
+                    @Shared("executables") @CachedLibrary(limit = "LIMIT") InteropLibrary executables) {
+        if (proxy instanceof ProxyObject) {
+            if (isMemberExisting(member, library)) {
+                try {
+                    return executables.isExecutable(readMember(member, library));
+                } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
+    static class RemoveMemberNode extends GuestToHostRootNode {
+
+        protected RemoveMemberNode() {
+            super(ProxyObject.class, "removeMember");
+        }
+
+        @Override
+        protected Object executeImpl(Object proxy, Object[] arguments) throws UnsupportedMessageException {
+            try {
+                return removeBoundary((ProxyObject) proxy, (String) arguments[ARGUMENT_OFFSET]);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @TruffleBoundary
+        private static boolean removeBoundary(ProxyObject proxy, String member) {
+            return proxy.removeMember(member);
+        }
+    }
+
+    private static final CallTarget REMOVE_MEMBER = createGuestToHost(new RemoveMemberNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    void removeMember(String member, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException, UnknownIdentifierException {
+        if (proxy instanceof ProxyObject) {
+            if (!isMemberExisting(member, library)) {
+                throw UnknownIdentifierException.create(member);
+            }
+            boolean result = (boolean) guestToHostCall(library, REMOVE_MEMBER, languageContext, proxy, member);
+            if (!result) {
+                throw UnknownIdentifierException.create(member);
+            }
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    static class HasMemberNode extends GuestToHostRootNode {
+
+        protected HasMemberNode() {
+            super(ProxyObject.class, "hasMember");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            return ((ProxyObject) proxy).hasMember((String) arguments[ARGUMENT_OFFSET]);
+        }
+    }
+
+    private static final CallTarget HAS_MEMBER = createGuestToHost(new HasMemberNode());
+
+    @ExportMessage(name = "isMemberReadable")
+    @ExportMessage(name = "isMemberModifiable")
+    @ExportMessage(name = "isMemberRemovable")
+    @TruffleBoundary
+    boolean isMemberExisting(String member, @CachedLibrary("this") InteropLibrary library) {
+        if (proxy instanceof ProxyObject) {
+            return (boolean) guestToHostCall(library, HAS_MEMBER, languageContext, proxy, member);
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean isMemberInsertable(String member, @CachedLibrary("this") InteropLibrary library) {
+        if (proxy instanceof ProxyObject) {
+            return !isMemberExisting(member, library);
+        } else {
+            return false;
+        }
+    }
 
     public static boolean isProxyGuestObject(TruffleObject value) {
-        return value instanceof EngineProxy;
+        return value instanceof PolyglotProxy;
     }
 
     public static boolean isProxyGuestObject(Object value) {
-        return value instanceof EngineProxy;
+        return value instanceof PolyglotProxy;
     }
 
     public static Object withContext(PolyglotLanguageContext context, Object valueReceiver) {
-        return new EngineProxy(context, ((EngineProxy) valueReceiver).proxy);
+        return new PolyglotProxy(context, ((PolyglotProxy) valueReceiver).proxy);
     }
 
     public static Proxy toProxyHostObject(TruffleObject value) {
-        return ((EngineProxy) value).proxy;
+        return ((PolyglotProxy) value).proxy;
     }
 
     public static TruffleObject toProxyGuestObject(PolyglotLanguageContext context, Proxy receiver) {
-        return new EngineProxy(context, receiver);
-    }
-
-    private static class EngineProxy implements TruffleObject {
-
-        final PolyglotLanguageContext languageContext;
-        final Proxy proxy;
-
-        EngineProxy(PolyglotLanguageContext context, Proxy proxy) {
-            this.languageContext = context;
-            this.proxy = proxy;
-        }
-
-        public ForeignAccess getForeignAccess() {
-            return EngineProxyFactory.INSTANCE;
-        }
-    }
-
-    private abstract static class ProxyRootNode extends RootNode {
-
-        protected ProxyRootNode() {
-            super(null);
-        }
-
-        @CompilationFinal boolean seenException = false;
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            Object[] arguments = frame.getArguments();
-            EngineProxy proxy = (EngineProxy) arguments[0];
-            PolyglotLanguageContext context = proxy.languageContext;
-            try {
-                return executeProxy(context, proxy.proxy, arguments);
-            } catch (Throwable t) {
-                if (!seenException) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    seenException = true;
-                }
-                throw PolyglotImpl.wrapHostException(context, t);
-            }
-        }
-
-        abstract Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments);
-
-    }
-
-    private static final class ProxyNewNode extends ProxyRootNode {
-
-        @Override
-        @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (proxy instanceof ProxyInstantiable) {
-                return context.toGuestValue(((ProxyInstantiable) proxy).newInstance(context.toHostValues(arguments, 1)));
-            } else {
-                throw UnsupportedMessageException.raise(Message.NEW);
-            }
-        }
-    }
-
-    private static final class ProxyIsInstantiableNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            return proxy instanceof ProxyInstantiable;
-        }
-    }
-
-    private static final class ProxyExecuteNode extends ProxyRootNode {
-
-        @Override
-        @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (proxy instanceof ProxyExecutable) {
-                return context.toGuestValue(((ProxyExecutable) proxy).execute(context.toHostValues(arguments, 1)));
-            } else {
-                throw UnsupportedMessageException.raise(Message.EXECUTE);
-            }
-        }
-    }
-
-    private static final class ProxyIsExecutableNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            return proxy instanceof ProxyExecutable;
-        }
-    }
-
-    private static final class ProxyIsPointerNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            return proxy instanceof ProxyNativeObject;
-        }
-    }
-
-    private static final class ProxyAsPointerNode extends ProxyRootNode {
-
-        @Override
-        @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (proxy instanceof ProxyNativeObject) {
-                return ((ProxyNativeObject) proxy).asPointer();
-            } else {
-                throw UnsupportedMessageException.raise(Message.AS_POINTER);
-            }
-        }
-    }
-
-    private static final class ProxyIsBoxedNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            return proxy instanceof org.graalvm.polyglot.proxy.ProxyPrimitive;
-        }
-    }
-
-    private static final class ProxyUnboxNode extends ProxyRootNode {
-
-        @Override
-        @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (proxy instanceof org.graalvm.polyglot.proxy.ProxyPrimitive) {
-                Object primitive = ((org.graalvm.polyglot.proxy.ProxyPrimitive) proxy).asPrimitive();
-                if (primitive instanceof String || primitive instanceof Boolean || //
-                                primitive instanceof Character || primitive instanceof Byte || primitive instanceof Short ||
-                                primitive instanceof Integer || primitive instanceof Long || primitive instanceof Float || primitive instanceof Double) {
-                    return primitive;
-                } else {
-                    throw new IllegalStateException(String.format("Invalid return value for %s. Only Java primitive values or String is allowed as return value fo asPrimitive().",
-                                    org.graalvm.polyglot.proxy.ProxyPrimitive.class.getSimpleName()));
-                }
-            } else {
-                throw UnsupportedMessageException.raise(Message.UNBOX);
-            }
-        }
-    }
-
-    private static final class ProxyHasSizeNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            return proxy instanceof ProxyArray;
-        }
-    }
-
-    private static final class ProxyGetSizeNode extends ProxyRootNode {
-
-        @Override
-        @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (proxy instanceof ProxyArray) {
-                return (int) ((ProxyArray) proxy).getSize();
-            } else {
-                throw UnsupportedMessageException.raise(Message.GET_SIZE);
-            }
-        }
-    }
-
-    private static final class ProxyHasKeysNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            return proxy instanceof ProxyObject;
-        }
-    }
-
-    private static final class ProxyKeysNode extends ProxyRootNode {
-        @Child private Node hasSize = Message.HAS_SIZE.createNode();
-
-        private static final ProxyArray EMPTY = new ProxyArray() {
-
-            public void set(long index, Value value) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
-
-            public long getSize() {
-                return 0;
-            }
-
-            public Object get(long index) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
-        };
-
-        @Override
-        @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            Object result;
-            if (proxy instanceof ProxyObject) {
-                final ProxyObject object = (ProxyObject) proxy;
-                result = object.getMemberKeys();
-                if (result == null) {
-                    result = EMPTY;
-                }
-            } else {
-                result = EMPTY;
-            }
-            Object guestValue = context.toGuestValue(result);
-            if (!(guestValue instanceof TruffleObject) || !ForeignAccess.sendHasSize(hasSize, (TruffleObject) guestValue)) {
-                throw PolyglotImpl.wrapHostException(context, new IllegalStateException(
-                                String.format("getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
-                                                context.asValue(guestValue).toString())));
-            }
-            return guestValue;
-        }
-    }
-
-    private static final class ProxyKeyInfoNode extends ProxyRootNode {
-
-        static final Integer KEY = KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (arguments.length >= 2) {
-                Object key = arguments[1];
-                if (proxy instanceof ProxyObject && key instanceof String) {
-                    return keyInfo((ProxyObject) proxy, (String) key);
-                } else if (proxy instanceof ProxyArray && key instanceof Number) {
-                    return keyInfo((ProxyArray) proxy, (Number) key);
-                }
-            }
-            return KeyInfo.NONE;
-        }
-
-        @TruffleBoundary
-        private static Integer keyInfo(ProxyArray proxy, Number key) {
-            long size = proxy.getSize();
-            long index = key.longValue();
-            if (index >= 0 && index < size) {
-                return KEY;
-            } else {
-                return KeyInfo.INSERTABLE;
-            }
-        }
-
-        @TruffleBoundary
-        private static Integer keyInfo(ProxyObject proxy, String key) {
-            if (proxy.hasMember(key)) {
-                return KEY;
-            } else {
-                return KeyInfo.INSERTABLE;
-            }
-        }
-    }
-
-    private static final class ProxyInvokeNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (arguments.length >= 2) {
-                Object key = arguments[1];
-                if (proxy instanceof ProxyObject && key instanceof String) {
-                    return invoke(context, (ProxyObject) proxy, (String) key, arguments);
-                }
-            }
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedMessageException.raise(Message.INVOKE);
-        }
-
-        @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
-        @Child private Node executeNode = Message.EXECUTE.createNode();
-
-        @TruffleBoundary
-        Object invoke(PolyglotLanguageContext context, ProxyObject object, String key, Object[] arguments) {
-            if (object.hasMember(key)) {
-                Object member = context.toGuestValue(object.getMember(key));
-                if (member instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutable, (TruffleObject) member)) {
-                    try {
-                        return ForeignAccess.sendExecute(executeNode, ((TruffleObject) member), copyFromStart(arguments, 2));
-                    } catch (InteropException e) {
-                        throw e.raise();
-                    }
-                } else {
-                    throw UnknownIdentifierException.raise(key);
-                }
-            } else {
-                throw UnknownIdentifierException.raise(key);
-            }
-        }
-    }
-
-    private static Object[] copyFromStart(Object[] arguments, int startIndex) {
-        Object[] newArguments = new Object[arguments.length - startIndex];
-        for (int i = startIndex; i < arguments.length; i++) {
-            newArguments[i - startIndex] = arguments[i];
-        }
-        return newArguments;
-    }
-
-    private static final class ProxyWriteNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (arguments.length >= 3) {
-                Object key = arguments[1];
-                Object value = arguments[2];
-                if (proxy instanceof ProxyArray && key instanceof Number) {
-                    setArray(context, (ProxyArray) proxy, (Number) key, value);
-                    return value;
-                } else if (proxy instanceof ProxyObject && key instanceof String) {
-                    putMember(context, (ProxyObject) proxy, (String) key, value);
-                    return value;
-                }
-            }
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedMessageException.raise(Message.WRITE);
-        }
-
-        @TruffleBoundary
-        static void putMember(PolyglotLanguageContext context, ProxyObject object, String key, Object value) {
-            try {
-                object.putMember(key, context.asValue(value));
-            } catch (UnsupportedOperationException e) {
-                throw UnsupportedMessageException.raise(Message.WRITE);
-            }
-        }
-
-        @TruffleBoundary
-        static void setArray(PolyglotLanguageContext context, ProxyArray object, Number index, Object value) {
-            Value castValue = context.asValue(value);
-            try {
-                object.set(index.longValue(), castValue);
-            } catch (ArrayIndexOutOfBoundsException e) {
-                throw UnknownIdentifierException.raise(e.getMessage());
-            } catch (UnsupportedOperationException e) {
-                throw UnsupportedMessageException.raise(Message.READ);
-            }
-        }
-
-    }
-
-    private static final class ProxyReadNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (arguments.length >= 2) {
-                Object key = arguments[1];
-                if (proxy instanceof ProxyArray && key instanceof Number) {
-                    return getArray(context, (ProxyArray) proxy, (Number) key);
-                } else if (proxy instanceof ProxyObject && key instanceof String) {
-                    return getMember(context, (ProxyObject) proxy, (String) key);
-                }
-            }
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedMessageException.raise(Message.READ);
-        }
-
-        @TruffleBoundary
-        static Object getMember(PolyglotLanguageContext context, ProxyObject object, String key) {
-            if (object.hasMember(key)) {
-                try {
-                    return context.toGuestValue(object.getMember(key));
-                } catch (UnsupportedOperationException e) {
-                    throw UnsupportedMessageException.raise(Message.READ);
-                }
-            } else {
-                throw UnknownIdentifierException.raise(key);
-            }
-        }
-
-        @TruffleBoundary
-        static Object getArray(PolyglotLanguageContext context, ProxyArray object, Number index) {
-            Object result;
-            try {
-                result = object.get(index.longValue());
-            } catch (ArrayIndexOutOfBoundsException e) {
-                throw UnknownIdentifierException.raise(e.getMessage());
-            } catch (UnsupportedOperationException e) {
-                throw UnsupportedMessageException.raise(Message.READ);
-            }
-            return context.toGuestValue(result);
-        }
-
-    }
-
-    private static final class ProxyRemoveNode extends ProxyRootNode {
-
-        @Override
-        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (arguments.length >= 2) {
-                Object key = arguments[1];
-                if (proxy instanceof ProxyArray && key instanceof Number) {
-                    return removeArrayElement((ProxyArray) proxy, (Number) key);
-                } else if (proxy instanceof ProxyObject && key instanceof String) {
-                    return removeMember((ProxyObject) proxy, (String) key);
-                }
-            }
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedMessageException.raise(Message.READ);
-        }
-
-        @TruffleBoundary
-        static boolean removeMember(ProxyObject object, String key) {
-            if (object.hasMember(key)) {
-                try {
-                    return object.removeMember(key);
-                } catch (UnsupportedOperationException e) {
-                    throw UnsupportedMessageException.raise(Message.READ);
-                }
-            } else {
-                throw UnknownIdentifierException.raise(key);
-            }
-        }
-
-        @TruffleBoundary
-        static boolean removeArrayElement(ProxyArray object, Number index) {
-            boolean result;
-            try {
-                result = object.remove(index.longValue());
-            } catch (ArrayIndexOutOfBoundsException e) {
-                throw UnknownIdentifierException.raise(e.getMessage());
-            } catch (UnsupportedOperationException e) {
-                throw UnsupportedMessageException.raise(Message.READ);
-            }
-            return result;
-        }
-
-    }
-
-    private static final class EngineProxyFactory implements StandardFactory {
-
-        private static final ForeignAccess INSTANCE = ForeignAccess.create(EngineProxy.class, new EngineProxyFactory());
-
-        @Override
-        public CallTarget accessWrite() {
-            return Truffle.getRuntime().createCallTarget(new ProxyWriteNode());
-        }
-
-        @Override
-        public CallTarget accessIsBoxed() {
-            return Truffle.getRuntime().createCallTarget(new ProxyIsBoxedNode());
-        }
-
-        @Override
-        public CallTarget accessUnbox() {
-            return Truffle.getRuntime().createCallTarget(new ProxyUnboxNode());
-        }
-
-        @Override
-        public CallTarget accessRead() {
-            return Truffle.getRuntime().createCallTarget(new ProxyReadNode());
-        }
-
-        @Override
-        public CallTarget accessRemove() {
-            return Truffle.getRuntime().createCallTarget(new ProxyRemoveNode());
-        }
-
-        @Override
-        public CallTarget accessIsInstantiable() {
-            return Truffle.getRuntime().createCallTarget(new ProxyIsInstantiableNode());
-        }
-
-        @Override
-        public CallTarget accessNew(int argumentsLength) {
-            return Truffle.getRuntime().createCallTarget(new ProxyNewNode());
-        }
-
-        @Override
-        public CallTarget accessHasKeys() {
-            return Truffle.getRuntime().createCallTarget(new ProxyHasKeysNode());
-        }
-
-        @Override
-        public CallTarget accessKeys() {
-            return Truffle.getRuntime().createCallTarget(new ProxyKeysNode());
-        }
-
-        @Override
-        public CallTarget accessKeyInfo() {
-            return Truffle.getRuntime().createCallTarget(new ProxyKeyInfoNode());
-        }
-
-        @Override
-        public CallTarget accessIsNull() {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-        }
-
-        @Override
-        public CallTarget accessIsExecutable() {
-            return Truffle.getRuntime().createCallTarget(new ProxyIsExecutableNode());
-        }
-
-        @Override
-        public CallTarget accessInvoke(int argumentsLength) {
-            return Truffle.getRuntime().createCallTarget(new ProxyInvokeNode());
-        }
-
-        @Override
-        public CallTarget accessHasSize() {
-            return Truffle.getRuntime().createCallTarget(new ProxyHasSizeNode());
-        }
-
-        @Override
-        public CallTarget accessGetSize() {
-            return Truffle.getRuntime().createCallTarget(new ProxyGetSizeNode());
-        }
-
-        @Override
-        public CallTarget accessExecute(int argumentsLength) {
-            return Truffle.getRuntime().createCallTarget(new ProxyExecuteNode());
-        }
-
-        @Override
-        public CallTarget accessIsPointer() {
-            return Truffle.getRuntime().createCallTarget(new ProxyIsPointerNode());
-        }
-
-        @Override
-        public CallTarget accessAsPointer() {
-            return Truffle.getRuntime().createCallTarget(new ProxyAsPointerNode());
-        }
-
-        @Override
-        public CallTarget accessToNative() {
-            return null;
-        }
-
-        @Override
-        public CallTarget accessMessage(Message unknown) {
-            return null;
-        }
+        return new PolyglotProxy(context, receiver);
     }
 
 }

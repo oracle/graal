@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.test.interop;
 
-import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
+import com.oracle.truffle.llvm.test.interop.values.BoxedIntValue;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,7 +64,7 @@ public final class TypeCheckTest extends InteropTestBase {
         tests.add(new Object[]{"byte", (byte) 5});
         tests.add(new Object[]{"short", (short) 5});
         tests.add(new Object[]{"int", 5});
-        tests.add(new Object[]{"boxedint", new BoxedTestValue(42)});
+        tests.add(new Object[]{"boxedint", new BoxedIntValue(42)});
         tests.add(new Object[]{"long", 5L});
         tests.add(new Object[]{"big_long", Long.MAX_VALUE});
         tests.add(new Object[]{"float", 5.7f});

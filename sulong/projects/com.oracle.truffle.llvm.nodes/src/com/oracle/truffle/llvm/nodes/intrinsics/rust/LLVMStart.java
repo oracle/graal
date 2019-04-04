@@ -33,13 +33,16 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.func.LLVMDispatchNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMDispatchNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMStartFactory.LLVMClosureDispatchNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -85,20 +88,21 @@ public abstract class LLVMStart extends LLVMIntrinsic {
     public abstract static class LLVMLangStartInternal extends LLVMStart {
 
         @TruffleBoundary
-        protected LangStartVtableType createLangStartVtable(Type vtableType) {
-            DataLayout dataSpecConverter = getContextReference().get().getDataSpecConverter();
+        protected LangStartVtableType createLangStartVtable(LLVMContext ctx, Type vtableType) {
+            DataLayout dataSpecConverter = ctx.getDataSpecConverter();
             return LangStartVtableType.create(dataSpecConverter, vtableType);
         }
 
         @Specialization
         @SuppressWarnings("unused")
         protected long doOp(StackPointer stackPointer, LLVMNativePointer mainPointer, LLVMNativePointer vtable, long argc, LLVMPointer argv,
+                        @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode fnDispatchNode,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
             LLVMMemory memory = getLLVMMemory();
-            LLVMGlobal vtableGlobal = getContextReference().get().findGlobal(vtable);
-            LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal.getPointeeType());
+            LLVMGlobal vtableGlobal = ctx.findGlobal(vtable);
+            LangStartVtableType langStartVtable = createLangStartVtable(ctx, vtableGlobal.getPointeeType());
             LLVMNativePointer fn = readFn(memory, vtable, langStartVtable);
             LLVMNativePointer dropInPlace = readDropInPlace(memory, vtable, langStartVtable);
             LLVMNativePointer main = coerceMainForFn(memory, langStartVtable, mainPointer);
@@ -180,7 +184,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
         @TruffleBoundary
         protected LLVMFunctionDescriptor getFunctionDescriptor(LLVMNativePointer fp) {
-            return getContextReference().get().getFunctionDescriptor(fp);
+            return lookupContextReference(LLVMLanguage.class).get().getFunctionDescriptor(fp);
         }
 
         @TruffleBoundary

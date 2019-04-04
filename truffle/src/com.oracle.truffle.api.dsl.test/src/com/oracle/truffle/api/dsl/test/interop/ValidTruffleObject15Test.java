@@ -44,22 +44,21 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 public class ValidTruffleObject15Test {
 
     @Test(expected = UnsupportedSpecializationException.class)
     public void expectUnsupportedSpecializationException() {
         ValidTruffleObject15 object = new ValidTruffleObject15();
-        Node read = Message.WRITE.createNode();
+        Node read = com.oracle.truffle.api.interop.Message.WRITE.createNode();
         try {
-            ForeignAccess.sendWrite(read, object, "name", new UnknownObject());
+            com.oracle.truffle.api.interop.ForeignAccess.sendWrite(read, object, "name", new UnknownObject());
         } catch (UnknownIdentifierException e) {
             Assert.fail();
         } catch (UnsupportedMessageException e) {
@@ -69,17 +68,20 @@ public class ValidTruffleObject15Test {
         }
     }
 
-    @Test(expected = UnsupportedTypeException.class)
-    public void expectTypeError() throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+    public void expectTypeError() throws UnknownIdentifierException {
         ValidTruffleObject15 object = new ValidTruffleObject15();
-        Node read = Message.WRITE.createNode();
-        ForeignAccess.sendWrite(read, object, new UnknownObject(), new UnknownObject());
+        Node read = com.oracle.truffle.api.interop.Message.WRITE.createNode();
+        try {
+            com.oracle.truffle.api.interop.ForeignAccess.sendWrite(read, object, new UnknownObject(), new UnknownObject());
+            Assert.fail();
+        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        }
     }
 
     private static final class UnknownObject implements TruffleObject {
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return null;
         }
 

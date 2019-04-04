@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ClassInitializationFeature;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.

@@ -121,6 +121,9 @@ class PolymorphicSpecializeDump {
                         dumpNode.edge = new DumpEdge(last);
                     }
                 } else {
+                    // Fortify: Suppress Null Dereference false positive
+                    assert last != null;
+
                     DumpNode n = makeNode(nodeChain.get(i));
                     last.edge = new DumpEdge(n);
                     last = n;

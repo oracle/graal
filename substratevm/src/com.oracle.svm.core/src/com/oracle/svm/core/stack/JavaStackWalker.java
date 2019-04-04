@@ -35,6 +35,7 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -63,7 +64,7 @@ public final class JavaStackWalker {
         CodePointer ip = WordFactory.nullPointer();
         if (anchor.isNonNull()) {
             sp = anchor.getLastJavaSP();
-            ip = FrameAccess.singleton().readReturnAddress(sp);
+            ip = anchor.getLastJavaIP();
         }
         // always call doWalk() to invoke visitor's methods
         return doWalk(anchor, sp, ip, visitor);
@@ -93,7 +94,14 @@ public final class JavaStackWalker {
                 } else {
                     totalFrameSize = CodeInfoTable.lookupTotalFrameSize(ip);
                 }
-                VMError.guarantee(totalFrameSize != -1, "Stack walk must walk only frames of known code");
+                if (totalFrameSize == -1) {
+                    Log.log().string("Stack walk must walk only frames of known code:")
+                                    .string("  startSP=").hex(startSP).string("  startIP=").hex(startIP)
+                                    .string("  sp=").hex(sp).string("  ip=").hex(ip)
+                                    .string("  deoptFrame=").object(deoptFrame)
+                                    .newline();
+                    throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code");
+                }
 
                 /* This is a Java frame, visit it. */
                 if (!visitor.visitFrame(sp, ip, deoptFrame)) {
@@ -111,7 +119,7 @@ public final class JavaStackWalker {
                         /* We have more Java frames after a block of C frames. */
                         assert anchor.getLastJavaSP().aboveThan(sp);
                         sp = anchor.getLastJavaSP();
-                        ip = FrameAccess.singleton().readReturnAddress(sp);
+                        ip = anchor.getLastJavaIP();
                         anchor = anchor.getPreviousAnchor();
                     } else {
                         /* Really at the end of the stack, we are done with walking. */

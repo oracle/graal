@@ -51,20 +51,19 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     static final String EXPECTED_RESULT = "narf";
 
     @SuppressWarnings({"static-method", "unused"})
@@ -89,21 +88,21 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
     @Test
     public void testFunctionalInterface() throws InteropException {
         TruffleObject server = (TruffleObject) env.asGuestValue(new HttpServer());
-        Object result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), server, "requestHandler", new TestExecutable());
+        Object result = INTEROP.invokeMember(server, "requestHandler", new TestExecutable());
         assertEquals(EXPECTED_RESULT, result);
     }
 
     @Test
     public void testLegacyFunctionalInterface() throws InteropException {
         TruffleObject server = (TruffleObject) env.asGuestValue(new HttpServer());
-        Object result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), server, "requestHandler2", new TestExecutable());
+        Object result = INTEROP.invokeMember(server, "requestHandler2", new TestExecutable());
         assertEquals(EXPECTED_RESULT, result);
     }
 
     @Test
     public void testThread() throws InteropException {
         TruffleObject threadClass = (TruffleObject) env.lookupHostSymbol("java.lang.Thread");
-        Object result = ForeignAccess.sendNew(Message.NEW.createNode(), threadClass, new TestExecutable());
+        Object result = INTEROP.instantiate(threadClass, new TestExecutable());
         assertTrue(env.isHostObject(result));
         Object thread = env.asHostObject(result);
         assertTrue(thread instanceof Thread);
@@ -112,7 +111,7 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
     @Test(expected = UnsupportedTypeException.class)
     public void testNonFunctionalInterface() throws InteropException {
         TruffleObject server = (TruffleObject) env.asGuestValue(new HttpServer());
-        ForeignAccess.sendInvoke(Message.INVOKE.createNode(), server, "unsupported", new TestExecutable());
+        INTEROP.invokeMember(server, "unsupported", new TestExecutable());
     }
 
     @Test
@@ -177,7 +176,7 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
         }
     }
 
-    @MessageResolution(receiverType = TestExecutable.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class TestExecutable implements TruffleObject {
         final String result;
 
@@ -193,20 +192,20 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
             return obj instanceof TestExecutable;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return TestExecutableForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
 
-        @Resolve(message = "EXECUTE")
-        abstract static class Execute extends Node {
-            String access(TestExecutable obj, @SuppressWarnings("unused") Object[] args) {
-                return obj.result;
-            }
+        @ExportMessage
+        Object execute(@SuppressWarnings("unused") Object[] arguments) {
+            return result;
         }
     }
 
-    @MessageResolution(receiverType = TestRunnable.class)
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"unused", "static-method"})
     static final class TestRunnable implements TruffleObject {
         final TruffleLanguage.Env env;
 
@@ -214,50 +213,37 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
             this.env = env;
         }
 
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof TestRunnable;
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return TestRunnableForeign.ACCESS;
+        @ExportMessage
+        Object execute(Object[] arguments) {
+            return "EXECUTE";
         }
 
-        @Resolve(message = "EXECUTE")
-        abstract static class Execute extends Node {
-            @SuppressWarnings("unused")
-            String access(TestRunnable obj, Object[] args) {
-                return "EXECUTE";
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberReadable(String member) {
+            return member.equals("get");
+        }
+
+        @ExportMessage
+        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+            return env.asGuestValue(Collections.singletonList("get"));
+        }
+
+        @ExportMessage
+        Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+            if (member.equals("get")) {
+                return new TestExecutable("READ+EXECUTE");
             }
-        }
-
-        @Resolve(message = "KEYS")
-        abstract static class Keys extends Node {
-            @TruffleBoundary
-            Object access(TestRunnable obj) {
-                return obj.env.asGuestValue(Collections.singletonList("get"));
-            }
-        }
-
-        @SuppressWarnings("unused")
-        @Resolve(message = "READ")
-        abstract static class Read extends Node {
-            @TruffleBoundary
-            Object access(TestRunnable obj, String name) {
-                if (name.equals("get")) {
-                    return new TestExecutable("READ+EXECUTE");
-                }
-                throw UnknownIdentifierException.raise(name);
-            }
-        }
-
-        @SuppressWarnings("unused")
-        @Resolve(message = "KEY_INFO")
-        abstract static class KeyI extends Node {
-            @TruffleBoundary
-            Object access(TestRunnable obj, String name) {
-                return name.equals("get") ? KeyInfo.READABLE : KeyInfo.NONE;
-            }
+            throw UnknownIdentifierException.create(member);
         }
     }
 }

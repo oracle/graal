@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,37 +29,31 @@
  */
 package com.oracle.truffle.llvm.test.interop.values;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = NullValue.class)
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class NullValue implements TruffleObject {
 
     static boolean isInstance(TruffleObject object) {
         return object instanceof NullValue;
     }
 
-    @Resolve(message = "IS_NULL")
-    abstract static class IsNullNode extends Node {
-
-        boolean access(@SuppressWarnings("unused") NullValue obj) {
-            return true;
-        }
+    @ExportMessage
+    boolean isNull() {
+        return true;
     }
 
-    @Resolve(message = "AS_POINTER")
-    abstract static class AsPointerNode extends Node {
-
-        long access(@SuppressWarnings("unused") NullValue obj) {
-            return 0;
-        }
+    @ExportMessage
+    boolean isPointer() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NullValueForeign.ACCESS;
+    @ExportMessage
+    long asPointer() {
+        return 0;
     }
 }

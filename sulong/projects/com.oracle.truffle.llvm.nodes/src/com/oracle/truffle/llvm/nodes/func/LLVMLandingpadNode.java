@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.nodes.op.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -127,7 +128,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         public LLVMBitcodeLibraryFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = getContextReference().get();
+                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
                 this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(context));
             }
             return canCatch;
@@ -167,7 +168,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         public LLVMBitcodeLibraryFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = getContextReference().get();
+                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
                 this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(context));
             }
             return canCatch;

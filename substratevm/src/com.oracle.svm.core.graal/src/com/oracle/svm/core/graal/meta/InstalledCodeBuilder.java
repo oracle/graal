@@ -66,8 +66,8 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.ReferenceMapDecoder;
-import com.oracle.svm.core.heap.ReferenceMapEncoder;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -136,7 +136,7 @@ public class InstalledCodeBuilder {
         @Override
         public boolean walk(final ObjectReferenceVisitor referenceVisitor) {
             if (pointerMapValid) {
-                return ReferenceMapDecoder.walkOffsetsFromPointer(baseAddr, referenceMapEncoding, referenceMapIndex, referenceVisitor);
+                return CodeReferenceMapDecoder.walkOffsetsFromPointer(baseAddr, referenceMapEncoding, referenceMapIndex, referenceVisitor);
             }
             return false;
         }
@@ -348,7 +348,7 @@ public class InstalledCodeBuilder {
             runtimeMethodInfo = metaInfoAllocator.newInstance(RuntimeMethodInfo.class);
             constantsWalker = metaInfoAllocator.newInstance(ConstantsWalker.class);
 
-            ReferenceMapEncoder encoder = new ReferenceMapEncoder();
+            CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
             encoder.add(objectConstants.referenceMap);
             constantsWalker.referenceMapEncoding = encoder.encodeAll(metaInfoAllocator);
             constantsWalker.referenceMapIndex = encoder.lookupEncoding(objectConstants.referenceMap);

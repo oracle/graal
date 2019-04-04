@@ -52,7 +52,6 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
@@ -64,6 +63,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -80,14 +80,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
@@ -95,7 +93,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordOperationPlugin;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -108,8 +105,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         public static final OptionKey<Boolean> UseEncodedSnippets = new OptionKey<>(false);
         // @formatter:on
     }
-
-    protected final OptionValues options;
 
     public Providers getProviders() {
         return providers;
@@ -124,11 +119,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public final TargetDescription target;
     private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
     private final DebugHandlersFactory debugHandlersFactory;
-
-    @Override
-    public OptionValues getOptions() {
-        return options;
-    }
 
     /**
      * The preprocessed replacement graphs.
@@ -218,9 +208,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     // it is stable across VM executions (in support of replay compilation).
     private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(OptionValues options, DebugHandlersFactory debugHandlersFactory, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider,
+    public ReplacementsImpl(DebugHandlersFactory debugHandlersFactory, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider,
                     TargetDescription target) {
-        this.options = options;
         this.providers = providers.copyWith(this);
         this.snippetReflection = snippetReflection;
         this.target = target;
@@ -235,7 +224,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     private static final AtomicInteger nextDebugContextId = new AtomicInteger();
 
-    public DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method) {
+    public DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options) {
         DebugContext outer = DebugContext.forCurrentThread();
         Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
         List<DebugHandlersFactory> factories = debugHandlersFactory == null ? Collections.emptyList() : Collections.singletonList(debugHandlersFactory);
@@ -244,13 +233,14 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     @Override
     @SuppressWarnings("try")
-    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+                    OptionValues options) {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
 
         StructuredGraph graph = UseSnippetGraphCache.getValue(options) ? graphs.get(method) : null;
         if (graph == null || (trackNodeSourcePosition && !graph.trackNodeSourcePosition())) {
-            try (DebugContext debug = openDebugContext("Snippet_", method);
+            try (DebugContext debug = openDebugContext("Snippet_", method, options);
                             DebugCloseable a = SnippetPreparationTime.start(debug)) {
                 StructuredGraph newGraph = makeGraph(debug, defaultBytecodeProvider, method, args, recursiveEntry, trackNodeSourcePosition, replaceePosition);
                 DebugContext.counter("SnippetNodeCount[%#s]", method).add(newGraph.getDebug(), newGraph.getNodeCount());
@@ -271,7 +261,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
+    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         // No initialization needed as snippet graphs are created on demand in getSnippet
     }
 
@@ -298,7 +288,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
+    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, OptionValues options) {
         StructuredGraph result;
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
         if (plugin != null && (!plugin.inlineOnly() || invokeBci >= 0)) {
@@ -308,7 +298,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 ResolvedJavaMethod substitute = msPlugin.getSubstitute(metaAccess);
                 StructuredGraph graph = UseSnippetGraphCache.getValue(options) ? graphs.get(substitute) : null;
                 if (graph == null || graph.trackNodeSourcePosition() != trackNodeSourcePosition) {
-                    try (DebugContext debug = openDebugContext("Substitution_", method)) {
+                    try (DebugContext debug = openDebugContext("Substitution_", method, options)) {
                         graph = makeGraph(debug, msPlugin.getBytecodeProvider(), substitute, null, method, trackNodeSourcePosition, replaceePosition);
                         if (!UseSnippetGraphCache.getValue(options)) {
                             return graph;
@@ -322,11 +312,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 result = graph;
             } else {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
-                ConstantReflectionProvider constantReflection = providers.getConstantReflection();
-                ConstantFieldProvider constantFieldProvider = providers.getConstantFieldProvider();
-                StampProvider stampProvider = providers.getStampProvider();
-                try (DebugContext debug = openDebugContext("Substitution_", method)) {
-                    result = new IntrinsicGraphBuilder(options, debug, metaAccess, constantReflection, constantFieldProvider, stampProvider, code, invokeBci).buildGraph(plugin);
+                try (DebugContext debug = openDebugContext("Substitution_", method, options)) {
+                    result = new IntrinsicGraphBuilder(options, debug, providers, code, invokeBci).buildGraph(plugin);
                 }
             }
         } else {
@@ -344,7 +331,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             assert !substMethod.equals(method);
             BytecodeProvider bytecodeProvider = subst.getOrigin();
             // @formatter:off
-            StructuredGraph graph = new StructuredGraph.Builder(options, debug, StructuredGraph.AllowAssumptions.YES).
+            StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug, StructuredGraph.AllowAssumptions.YES).
                     method(substMethod).
                     compilationId(compilationId).
                     recordInlinedMethods(bytecodeProvider.shouldRecordMethodDependencies()).
@@ -355,8 +342,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 Plugins plugins = new Plugins(getGraphBuilderPlugins());
                 GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
                 IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, bytecodeProvider, ROOT_COMPILATION);
-                new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
-                                OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
+                new GraphBuilderPhase.Instance(providers, config, OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
                 assert !graph.isFrozen();
                 return graph;
             } catch (Throwable e) {
@@ -434,7 +420,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            if (!GraalOptions.SnippetCounters.getValue(replacements.options) || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
+            if (!GraalOptions.SnippetCounters.getValue(graph.getOptions()) || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
                 int sideEffectCount = 0;
                 assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
                 new ConvertDeoptimizeToGuardPhase().apply(graph, null);
@@ -487,7 +473,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             // @formatter:off
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
-            final StructuredGraph graph = new StructuredGraph.Builder(replacements.options, debug).
+            final StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).
                             method(methodToParse).
                             trackNodeSourcePosition(trackNodeSourcePosition).
                             callerContext(replaceePosition).
@@ -521,8 +507,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                                     snippetAnnotation != null ? snippetAnnotation.allowPartialIntrinsicArgumentMismatch() : true);
                 }
 
-                createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), replacements.providers.getConstantFieldProvider(), config,
-                                OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
+                createGraphBuilder(replacements.providers, config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
 
                 new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
             } catch (Throwable e) {
@@ -531,10 +516,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             return graph;
         }
 
-        protected Instance createGraphBuilder(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-            return new GraphBuilderPhase.Instance(metaAccess, stampProvider, constantReflection, constantFieldProvider, graphBuilderConfig, optimisticOpts,
-                            initialIntrinsicContext);
+        protected Instance createGraphBuilder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+            return new GraphBuilderPhase.Instance(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         }
     }
 

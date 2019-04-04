@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.Test;
 import org.junit.runners.model.FrameworkField;
 import org.junit.runners.model.FrameworkMethod;
@@ -106,7 +107,7 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
         @Override
         public void evaluate() throws Throwable {
             Context prevContext = rule.context;
-            try (Context context = rule.contextBuilder.build()) {
+            try (Context context = rule.contextBuilder.allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 rule.context = context;
 
                 context.initialize("truffletestinvoker");

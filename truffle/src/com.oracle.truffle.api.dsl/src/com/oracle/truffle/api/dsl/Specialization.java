@@ -304,7 +304,7 @@ public @interface Specialization {
      * <b>Example usage:</b>
      *
      * <pre>
-     * static abstract class DynamicObject() { abstract Shape getShape(); ... } static
+     * abstract static class DynamicObject() { abstract Shape getShape(); ... } static
      * abstract class Shape() { abstract Assumption getUnmodifiedAssuption(); ... }
      * &#064;Specialization(guards = "operand.getShape() == cachedShape", assumptions =
      * "cachedShape.getUnmodifiedAssumption()") void doAssumeUnmodifiedShape(DynamicObject

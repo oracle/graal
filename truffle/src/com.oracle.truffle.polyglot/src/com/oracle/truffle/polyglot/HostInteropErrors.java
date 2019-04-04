@@ -45,12 +45,11 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 
 class HostInteropErrors {
 
     @TruffleBoundary
-    static RuntimeException nullCoercion(PolyglotLanguageContext languageContext, TruffleObject nullValue, Type targetType) {
+    static RuntimeException nullCoercion(PolyglotLanguageContext languageContext, Object nullValue, Type targetType) {
         return newNullPointerException(String.format("Cannot convert null value %s to Java type '%s'.",
                         getValueInfo(languageContext, nullValue),
                         targetType.getTypeName()));
@@ -59,7 +58,7 @@ class HostInteropErrors {
     @TruffleBoundary
     static RuntimeException cannotConvertPrimitive(PolyglotLanguageContext languageContext, Object value, Class<?> targetType) {
         String reason;
-        if (ToHostNode.isAssignableFromTrufflePrimitiveType(targetType)) {
+        if (ToHostNode.isPrimitiveTarget(targetType)) {
             reason = "Invalid or lossy primitive coercion.";
         } else {
             reason = "Unsupported target type.";
@@ -127,18 +126,21 @@ class HostInteropErrors {
                                         getValueInfo(context, value), formatComponentType(componentType), getValueInfo(context, receiver), identifier));
     }
 
+    @TruffleBoundary
     static RuntimeException invalidExecuteArgumentType(PolyglotLanguageContext context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
         throw newIllegalArgumentException(message);
     }
 
+    @TruffleBoundary
     static RuntimeException invalidInstantiateArgumentType(PolyglotLanguageContext context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when instantiating %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
         throw newIllegalArgumentException(message);
     }
 
+    @TruffleBoundary
     static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %s argument(s) but got %s.",
@@ -146,6 +148,7 @@ class HostInteropErrors {
         throw newIllegalArgumentException(message);
     }
 
+    @TruffleBoundary
     static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %s argument(s) but got %s.",

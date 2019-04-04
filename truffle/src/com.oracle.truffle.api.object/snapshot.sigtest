@@ -2,7 +2,17 @@
 #Version 
 
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
-meth public abstract com.oracle.truffle.api.interop.ForeignAccess getForeignAccess()
+meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess()
+ anno 0 java.lang.Deprecated()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.library.ExportLibrary
+ anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.ExportLibrary$Repeat)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation Repeat
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.Class<?> receiverType()
+meth public abstract java.lang.Class<? extends com.oracle.truffle.api.library.Library> value()
 
 CLSS public com.oracle.truffle.api.nodes.SlowPathException
 cons public init()
@@ -10,6 +20,7 @@ cons public init(java.lang.String)
 cons public init(java.lang.String,java.lang.Throwable)
 cons public init(java.lang.Throwable)
 meth public java.lang.Throwable fillInStackTrace()
+ anno 0 java.lang.Deprecated()
 supr java.lang.Exception
 hfds serialVersionUID
 
@@ -33,13 +44,14 @@ meth public abstract void setDouble(com.oracle.truffle.api.object.DynamicObject,
 
 CLSS public abstract com.oracle.truffle.api.object.DynamicObject
 cons protected init()
+ anno 0 java.lang.Deprecated()
+cons protected init(com.oracle.truffle.api.object.Shape)
 intf com.oracle.truffle.api.interop.TruffleObject
 meth public abstract boolean delete(java.lang.Object)
 meth public abstract boolean isEmpty()
 meth public abstract boolean set(java.lang.Object,java.lang.Object)
 meth public abstract boolean updateShape()
 meth public abstract com.oracle.truffle.api.object.DynamicObject copy(com.oracle.truffle.api.object.Shape)
-meth public final com.oracle.truffle.api.object.Shape getShape()
 meth public abstract int size()
 meth public abstract java.lang.Object get(java.lang.Object,java.lang.Object)
 meth public abstract void define(java.lang.Object,java.lang.Object,int)
@@ -47,9 +59,11 @@ meth public abstract void define(java.lang.Object,java.lang.Object,int,com.oracl
 meth public abstract void setShapeAndGrow(com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape)
 meth public abstract void setShapeAndResize(com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape)
 meth public final boolean containsKey(java.lang.Object)
+meth public final com.oracle.truffle.api.object.Shape getShape()
 meth public final java.lang.Object get(java.lang.Object)
 meth public final void define(java.lang.Object,java.lang.Object)
 supr java.lang.Object
+hfds SHAPE_OFFSET,UNSAFE,shape
 
 CLSS public abstract interface com.oracle.truffle.api.object.DynamicObjectFactory
 meth public abstract !varargs com.oracle.truffle.api.object.DynamicObject newInstance(java.lang.Object[])
@@ -86,6 +100,7 @@ meth public abstract void setInt(com.oracle.truffle.api.object.DynamicObject,int
 CLSS public abstract com.oracle.truffle.api.object.Layout
 cons protected init()
 fld public final static java.lang.String OPTION_PREFIX = "truffle.object."
+innr protected abstract static Access
 innr public final static !enum ImplicitCast
 innr public final static Builder
 meth protected static boolean getPolymorphicUnboxing(com.oracle.truffle.api.object.Layout$Builder)
@@ -101,6 +116,12 @@ meth public static com.oracle.truffle.api.object.Layout createLayout()
 meth public static com.oracle.truffle.api.object.Layout$Builder newLayout()
 supr java.lang.Object
 hfds LAYOUT_FACTORY
+
+CLSS protected abstract static com.oracle.truffle.api.object.Layout$Access
+ outer com.oracle.truffle.api.object.Layout
+cons protected init()
+meth public final void setShape(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
+supr java.lang.Object
 
 CLSS public final static com.oracle.truffle.api.object.Layout$Builder
  outer com.oracle.truffle.api.object.Layout
@@ -179,7 +200,9 @@ CLSS public com.oracle.truffle.api.object.ObjectType
 cons public init()
 meth public boolean equals(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
 meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(com.oracle.truffle.api.object.DynamicObject)
+ anno 0 java.lang.Deprecated()
 meth public int hashCode(com.oracle.truffle.api.object.DynamicObject)
+meth public java.lang.Class<?> dispatch()
 meth public java.lang.String toString(com.oracle.truffle.api.object.DynamicObject)
 supr java.lang.Object
 
@@ -288,12 +311,6 @@ CLSS public abstract interface java.io.Serializable
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
 meth public abstract int compareTo({java.lang.Comparable%0})
 
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
-
 CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
 cons protected init(java.lang.String,int)
 intf java.io.Serializable
@@ -369,6 +386,13 @@ CLSS public abstract interface !annotation java.lang.annotation.Documented
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
 intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Repeatable
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> value()
 
 CLSS public abstract interface !annotation java.lang.annotation.Retention
  anno 0 java.lang.annotation.Documented()

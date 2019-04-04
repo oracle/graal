@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.regex.tregex;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_AUTOMATON_SIZES;
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_PHASES;
@@ -32,12 +31,12 @@ import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TREGEX_COMPILAT
 
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.CompiledRegexObject;
+import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -92,11 +91,11 @@ final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    TruffleObject compile() {
+    CompiledRegexObject compile() {
         try {
-            CompiledRegex compiledRegex = compileInternal();
+            RegexExecRootNode compiledRegex = compileInternal();
             logAutomatonSizes(compiledRegex);
-            return new CompiledRegexObject(compiledRegex);
+            return new CompiledRegexObject(tRegexCompiler.getLanguage(), compiledRegex);
         } catch (UnsupportedRegexException e) {
             logAutomatonSizes(null);
             e.setReason("TRegex: " + e.getReason());
@@ -106,7 +105,7 @@ final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    private CompiledRegex compileInternal() {
+    private RegexExecRootNode compileInternal() {
         LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
         createAST();
         RegexProperties properties = ast.getProperties();
@@ -309,7 +308,7 @@ final class TRegexCompilationRequest {
         }
     }
 
-    private void logAutomatonSizes(CompiledRegex result) {
+    private void logAutomatonSizes(RegexExecRootNode result) {
         LOG_AUTOMATON_SIZES.finer(() -> Json.obj(
                         Json.prop("pattern", source.getPattern()),
                         Json.prop("flags", source.getFlags()),
@@ -323,7 +322,7 @@ final class TRegexCompilationRequest {
                         Json.prop("compilerResult", compilerResultToString(result))).toString() + ",");
     }
 
-    private static String compilerResultToString(CompiledRegex result) {
+    private static String compilerResultToString(RegexExecRootNode result) {
         if (result instanceof TRegexExecRootNode) {
             return "tregex";
         } else if (result instanceof LiteralRegexExecRootNode) {

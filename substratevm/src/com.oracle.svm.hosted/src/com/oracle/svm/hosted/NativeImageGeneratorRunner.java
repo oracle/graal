@@ -68,7 +68,9 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractBootImage;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 
 public class NativeImageGeneratorRunner implements ImageBuildTask {
 
@@ -109,7 +111,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 timerTask.cancel();
             }
         }
-        System.exit(exitStatus == 0 ? 0 : 1);
+        System.exit(exitStatus);
     }
 
     public static NativeImageClassLoader installNativeImageClassLoader(String[] classpath) {
@@ -169,17 +171,19 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     private static boolean isValidArchitecture() {
-        return GraalAccess.getOriginalTarget().arch instanceof AMD64;
+        final Architecture originalTargetArch = GraalAccess.getOriginalTarget().arch;
+        return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64;
     }
 
     private static boolean isValidOperatingSystem() {
-        return OS.getCurrent() == OS.LINUX || OS.getCurrent() == OS.DARWIN || OS.getCurrent() == OS.WINDOWS;
+        final OS currentOs = OS.getCurrent();
+        return currentOs == OS.LINUX || currentOs == OS.DARWIN || currentOs == OS.WINDOWS;
     }
 
     @SuppressWarnings("try")
     private int buildImage(String[] arguments, String[] classpath, ClassLoader classLoader) {
         if (!verifyValidJavaVersionAndPlatform()) {
-            return -1;
+            return 1;
         }
         Timer totalTimer = new Timer("[total]", false);
         ForkJoinPool analysisExecutor = null;
@@ -292,12 +296,15 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             }
             e.getReason().ifPresent(NativeImageGeneratorRunner::info);
             return 0;
+        } catch (FallbackFeature.FallbackImageRequest e) {
+            warn(e.getMessage());
+            return 2;
         } catch (UserException e) {
             reportUserError(e, parsedHostedOptions);
-            return -1;
+            return 1;
         } catch (AnalysisError e) {
             reportUserError(e, parsedHostedOptions);
-            return -1;
+            return 1;
         } catch (ParallelExecutionException pee) {
             boolean hasUserError = false;
             for (Throwable exception : pee.getExceptions()) {
@@ -310,7 +317,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 }
             }
             if (hasUserError) {
-                return -1;
+                return 1;
             }
 
             if (pee.getExceptions().size() > 1) {
@@ -319,10 +326,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             for (Throwable exception : pee.getExceptions()) {
                 NativeImageGeneratorRunner.reportFatalError(exception);
             }
-            return -1;
+            return 1;
         } catch (Throwable e) {
             NativeImageGeneratorRunner.reportFatalError(e);
-            return -1;
+            return 1;
         } finally {
             ImageSingletonsSupportImpl.HostedManagement.clearInThread();
         }
@@ -395,10 +402,19 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     /**
      * Report an informational message in SVM.
      *
-     * @param msg error message that is printed.
+     * @param msg message that is printed.
      */
     private static void info(String msg) {
         System.out.println("Info: " + msg);
+    }
+
+    /**
+     * Report a warning message in SVM.
+     *
+     * @param msg warning message that is printed.
+     */
+    private static void warn(String msg) {
+        System.err.println("Warning: " + msg);
     }
 
     @Override

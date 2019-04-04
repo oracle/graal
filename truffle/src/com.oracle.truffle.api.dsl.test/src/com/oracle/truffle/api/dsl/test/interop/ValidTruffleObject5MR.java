@@ -41,14 +41,12 @@
 package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject5.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject5.class)
 public class ValidTruffleObject5MR {
-    @Resolve(message = "EXECUTE")
+    @com.oracle.truffle.api.interop.Resolve(message = "EXECUTE")
     public abstract static class Execute5 extends Node {
 
         public Object access(VirtualFrame frame, ValidTruffleObject1 object, Object[] args) {
@@ -60,7 +58,7 @@ public class ValidTruffleObject5MR {
         }
     }
 
-    @Resolve(message = "INVOKE")
+    @com.oracle.truffle.api.interop.Resolve(message = "INVOKE")
     public abstract static class Invoke5 extends Node {
 
         protected int access(VirtualFrame frame, ValidTruffleObject1 receiver, String name, Object[] args) {
@@ -72,7 +70,7 @@ public class ValidTruffleObject5MR {
         }
     }
 
-    @Resolve(message = "NEW")
+    @com.oracle.truffle.api.interop.Resolve(message = "NEW")
     public abstract static class New5 extends Node {
 
         protected int access(VirtualFrame frame, ValidTruffleObject0 receiver, Object[] args) {
@@ -80,7 +78,7 @@ public class ValidTruffleObject5MR {
         }
     }
 
-    @Resolve(message = "READ")
+    @com.oracle.truffle.api.interop.Resolve(message = "READ")
     public abstract static class ReadNode5 extends Node {
 
         protected Object access(VirtualFrame frame, ValidTruffleObject1 receiver, Object name) {
@@ -96,7 +94,7 @@ public class ValidTruffleObject5MR {
         }
     }
 
-    @Resolve(message = "UNBOX")
+    @com.oracle.truffle.api.interop.Resolve(message = "UNBOX")
     public abstract static class Unbox5 extends Node {
 
         public Object access(VirtualFrame frame, ValidTruffleObject1 object) {
@@ -108,7 +106,7 @@ public class ValidTruffleObject5MR {
         }
     }
 
-    @Resolve(message = "WRITE")
+    @com.oracle.truffle.api.interop.Resolve(message = "WRITE")
     public abstract static class WriteNode5 extends Node {
 
         protected int access(VirtualFrame frame, ValidTruffleObject0 receiver, Object name, String value) {

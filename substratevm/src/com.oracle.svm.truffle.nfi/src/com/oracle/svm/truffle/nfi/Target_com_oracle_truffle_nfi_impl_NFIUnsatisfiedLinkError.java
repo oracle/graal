@@ -28,9 +28,9 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NFIUnsatisfiedLinkError", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError {
+public final class Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError {
 
     @Alias
-    Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(@SuppressWarnings("unused") String message) {
+    public Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(@SuppressWarnings("unused") String message) {
     }
 }
