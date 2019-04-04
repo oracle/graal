@@ -68,6 +68,6 @@ class FieldTable {
             }
         }
         return new CreationResult(tmpFields.toArray(Field.EMPTY_ARRAY), tmpStatics.toArray(Field.EMPTY_ARRAY), fields,
-                wordFields, staticWordFields, objectFields, staticObjectFields);
+                        wordFields, staticWordFields, objectFields, staticObjectFields);
     }
 }

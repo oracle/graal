@@ -60,16 +60,14 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Field[] declaredFields;
 
-    @CompilationFinal(dimensions = 1)
-    private Field[] fieldTable;
+    @CompilationFinal(dimensions = 1) private Field[] fieldTable;
 
     int wordFields;
     int staticWordFields;
     int objectFields;
     int staticObjectFields;
 
-    @CompilationFinal(dimensions = 1)
-    private Field[] staticFieldTable;
+    @CompilationFinal(dimensions = 1) private Field[] staticFieldTable;
 
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
@@ -126,7 +124,6 @@ public final class ObjectKlass extends Klass {
         this.staticWordFields = fieldCR.staticWordFields;
         this.objectFields = fieldCR.objectFields;
         this.staticObjectFields = fieldCR.staticObjectFields;
-
 
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
@@ -338,19 +335,19 @@ public final class ObjectKlass extends Klass {
         return linkedKlass.instanceFieldCount;
     }
 
-    public int getObjectFieldsCount(){
+    public int getObjectFieldsCount() {
         return objectFields;
     }
 
-    public int getWordFieldsCount(){
+    public int getWordFieldsCount() {
         return wordFields;
     }
 
-    public int getStaticObjectFieldsCount(){
+    public int getStaticObjectFieldsCount() {
         return staticObjectFields;
     }
 
-    public int getStaticWordFieldsCount(){
+    public int getStaticWordFieldsCount() {
         return staticWordFields;
     }
 

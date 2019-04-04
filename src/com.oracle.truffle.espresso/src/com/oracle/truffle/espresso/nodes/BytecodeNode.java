@@ -295,7 +295,7 @@ import com.oracle.truffle.object.DebugCounter;
  */
 public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
-    public static final boolean DEBUG_GENERAL = true;
+    public static final boolean DEBUG_GENERAL = false;
 
     public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
 
@@ -1080,6 +1080,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                             CompilerDirectives.transferToInterpreter();
                             if (DEBUG_GENERAL) {
                                 reportThrow(curBCI, getMethod());
+                                reportError(new EspressoException(nullCheck(peekObject(frame, top - 1))));
                             }
                             throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
 
@@ -1223,6 +1224,11 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         System.err.println("Internal error (caught in invocation): " + thisNode +
                         "\n\tBCI:" + curBCI);
         e.printStackTrace();
+    }
+
+    @TruffleBoundary
+    static private void reportError(EspressoException e) {
+        System.err.println("\tError thrown: " + e.getException().getKlass().toString() + ": " + e.getMessage());
     }
 
     private JavaKind peekKind(VirtualFrame frame, int slot) {

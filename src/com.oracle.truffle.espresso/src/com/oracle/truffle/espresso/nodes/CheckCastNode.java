@@ -26,7 +26,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -69,7 +68,7 @@ public abstract class CheckCastNode extends QuickNode {
         if (StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass())) {
             return 0;
         }
-        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ClassCastException.class,
+        throw typeToCheck.getMeta().throwExWithMessage(ClassCastException.class,
                         receiver.getKlass().getType() + " cannot be cast to: " + typeToCheck.getType() + " in context " + root.getMethod().toString());
     }
 }

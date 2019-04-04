@@ -213,6 +213,7 @@ public class MetaUtil {
         }
     }
 
+    // Or we could just return 0 ?
     public static int defaultWordFieldValue(JavaKind kind) {
         switch (kind) {
             case Char:

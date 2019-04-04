@@ -53,11 +53,9 @@ public final class Field implements ModifiersProvider {
     private volatile Klass typeKlassCache;
     private final JavaKind kind;
 
-    @CompilerDirectives.CompilationFinal
-    private int fieldIndex = -1;
+    @CompilerDirectives.CompilationFinal private int fieldIndex = -1;
 
-    @CompilerDirectives.CompilationFinal
-    private String genericSignature = null;
+    @CompilerDirectives.CompilationFinal private String genericSignature = null;
 
     public Symbol<Type> getType() {
         return type;

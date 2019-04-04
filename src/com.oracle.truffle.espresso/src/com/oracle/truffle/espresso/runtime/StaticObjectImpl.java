@@ -147,9 +147,10 @@ public class StaticObjectImpl extends StaticObject {
         return result;
     }
 
+    @TruffleBoundary
     public final int getWordFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return U.getIntVolatile(wordFields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex());
+        return U.getIntVolatile(wordFields, Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_INT_INDEX_SCALE * field.getFieldIndex());
     }
 
     public final void setFieldVolatile(Field field, Object value) {
@@ -169,7 +170,7 @@ public class StaticObjectImpl extends StaticObject {
 
     public final void setWordFieldVolatile(Field field, int value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        U.putIntVolatile(wordFields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex(), value);
+        U.putIntVolatile(wordFields, Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_INT_INDEX_SCALE * field.getFieldIndex(), value);
     }
 
     public final void setWordField(Field field, int value) {

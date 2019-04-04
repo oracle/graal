@@ -473,6 +473,7 @@ jclass JVM_FindPrimitiveClass(JNIEnv *env, const char *utf) {
 
 void JVM_ResolveClass(JNIEnv *env, jclass cls) {
   IMPLEMENTED(JVM_ResolveClass);
+  // "resolve" does nothing ?
   (*getEnv())->JVM_ResolveClass(env, cls);
 }
 

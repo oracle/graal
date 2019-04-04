@@ -541,7 +541,27 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        ((StaticObjectImpl) holder).setFieldVolatile(f, value);
+        if (f.getKind().isSubWord()) {
+            ((StaticObjectImpl) holder).setWordFieldVolatile(f, (int) value);
+        } else {
+            ((StaticObjectImpl) holder).setFieldVolatile(f, value);
+        }
+    }
+
+    @Substitution(hasReceiver = true)
+    public static synchronized void putIntVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int value) {
+        if (holder instanceof StaticObjectArray) {
+            U.putIntVolatile(((StaticObjectArray) holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        if (f.getKind().isSubWord()) {
+            ((StaticObjectImpl) holder).setWordFieldVolatile(f, value);
+        } else {
+            ((StaticObjectImpl) holder).setFieldVolatile(f, value);
+        }
     }
 
     @Substitution(methodName = "shouldBeInitialized", hasReceiver = true)
