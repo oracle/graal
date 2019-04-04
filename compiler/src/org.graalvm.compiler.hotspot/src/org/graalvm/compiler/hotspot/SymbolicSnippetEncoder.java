@@ -504,9 +504,6 @@ public class SymbolicSnippetEncoder {
     private synchronized EncodedSnippets encodeSnippets(DebugContext debug) {
         GraphEncoder encoder = new GraphEncoder(HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch, debug);
         for (StructuredGraph graph : preparedSnippetGraphs.values()) {
-            if (IS_BUILDING_NATIVE_IMAGE) {
-                debug.forceDump(graph, graph.toString());
-            }
             encoder.prepare(graph);
         }
         encoder.finishPrepare();
