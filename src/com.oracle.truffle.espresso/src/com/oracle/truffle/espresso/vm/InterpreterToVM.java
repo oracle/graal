@@ -263,7 +263,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static float getFieldFloat(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Float && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return (float) ((StaticObjectImpl) obj).getField(field);
+        return Float.intBitsToFloat(((StaticObjectImpl) obj).getWordField(field));
     }
 
     public static double getFieldDouble(StaticObject obj, Field field) {
@@ -313,7 +313,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static void setFieldFloat(float value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Float && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        ((StaticObjectImpl) obj).setField(field, value);
+        ((StaticObjectImpl) obj).setWordField(field, Float.floatToRawIntBits(value));
     }
 
     public static void setFieldDouble(double value, StaticObject obj, Field field) {

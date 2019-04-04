@@ -452,7 +452,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getFloatVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (float) ((StaticObjectImpl) holder).getFieldVolatile(f);
+        return Float.intBitsToFloat(((StaticObjectImpl) holder).getWordFieldVolatile(f));
     }
 
     @Substitution(hasReceiver = true)

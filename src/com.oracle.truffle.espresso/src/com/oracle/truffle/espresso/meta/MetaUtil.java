@@ -226,6 +226,8 @@ public class MetaUtil {
                 return (byte) 0;
             case Boolean:
                 return 0;
+            case Float:
+                return Float.floatToRawIntBits(0f);
             default:
                 CompilerAsserts.neverPartOfCompilation();
                 throw EspressoError.shouldNotReachHere("Invalid Word field type " + kind);

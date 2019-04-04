@@ -504,6 +504,6 @@ public enum JavaKind {
     }
 
     public boolean isSubWord() {
-        return isStackInt;
+        return isStackInt || this == Float;
     }
 }
