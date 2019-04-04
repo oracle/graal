@@ -681,6 +681,11 @@ public class ReplacementsParseTest extends ReplacementsTest {
                     public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
                         return null;
                     }
+
+                    @Override
+                    public boolean isAvailable(ForeignCallDescriptor descriptor) {
+                        return false;
+                    }
                 };
             }
             if (type == SnippetReflectionProvider.class) {
