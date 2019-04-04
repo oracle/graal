@@ -34,6 +34,7 @@ import java.util.Set;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.Verifier;
@@ -62,6 +63,7 @@ public abstract class AbstractInstaller implements Closeable {
     private boolean ignoreRequirements;
     private boolean failOnExisting;
     private Path installPath;
+    private boolean allowUpgrades;
 
     public AbstractInstaller(Feedback fb, ComponentInfo info,
                     ComponentRegistry reg, ComponentCollection cat, Archive a) {
@@ -70,6 +72,14 @@ public abstract class AbstractInstaller implements Closeable {
         this.registry = reg;
         this.archive = a;
         this.catalog = cat;
+    }
+
+    public boolean isAllowUpgrades() {
+        return allowUpgrades;
+    }
+
+    public void setAllowUpgrades(boolean allowUpgrades) {
+        this.allowUpgrades = allowUpgrades;
     }
 
     public boolean isFailOnExisting() {
@@ -130,11 +140,16 @@ public abstract class AbstractInstaller implements Closeable {
 
     public abstract void revertInstall();
 
-    public Verifier validateRequirements() {
+    public Verifier createVerifier() {
         return new Verifier(feedback, registry, catalog)
                         .ignoreRequirements(ignoreRequirements)
                         .replaceComponents(replaceComponents)
-                        .ignoreExisting(!failOnExisting)
+                        .ignoreExisting(!failOnExisting);
+    }
+
+    public Verifier validateRequirements() {
+        Verifier vrf = createVerifier();
+        return vrf.setVersionMatch(registry.getGraalVersion().match(Version.Match.Type.COMPATIBLE))
                         .validateRequirements(componentInfo);
     }
 

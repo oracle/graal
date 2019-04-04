@@ -36,10 +36,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.jar.JarFile;
 import org.graalvm.component.installer.BundleConstants;
-import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
-import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.jar.JarMetaLoader;
@@ -159,7 +157,7 @@ public class WebCatalog implements SoftwareChannel {
                 throw feedback.failure("REMOTE_CorruptedCatalogFile", null, catalogURL);
             } else {
                 throw new IncompatibleException(
-                                feedback.l10n("REMOTE_UnsupportedGraalVersion", null,
+                                feedback.l10n("REMOTE_UnsupportedGraalVersion",
                                                 graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION),
                                                 graalCaps.get(CommonConstants.CAP_OS_NAME),
                                                 graalCaps.get(CommonConstants.CAP_OS_ARCH)),
@@ -182,10 +180,9 @@ public class WebCatalog implements SoftwareChannel {
 
     public static class WebCatalogFactory implements SoftwareChannel.Factory {
         private CommandInput input;
-        private Feedback feedback;
 
         @Override
-        public SoftwareChannel createChannel(String urlSpec, CommandInput input, Feedback fb) {
+        public SoftwareChannel createChannel(String urlSpec, CommandInput in, Feedback fb) {
             int schColon = urlSpec.indexOf(':'); // NOI18N
             if (schColon == -1) {
                 return null;
@@ -193,7 +190,7 @@ public class WebCatalog implements SoftwareChannel {
             String scheme = urlSpec.toLowerCase().substring(0, schColon);
             if (acceptURLScheme(scheme)) {
                 WebCatalog c = new WebCatalog(urlSpec);
-                c.init(input, fb);
+                c.init(in, fb);
                 return c;
             }
             return null;
@@ -202,9 +199,7 @@ public class WebCatalog implements SoftwareChannel {
         @Override
         public void init(CommandInput in, Feedback out) {
             assert this.input == null;
-
             this.input = in;
-            this.feedback = out.withBundle(WebCatalog.class);
         }
     }
 }

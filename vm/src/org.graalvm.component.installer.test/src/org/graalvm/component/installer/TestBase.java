@@ -305,7 +305,11 @@ public class TestBase implements Feedback {
                 return s;
             }
         }
-        return key;
+        if (key.endsWith("@") && bundle != null) {
+            return MessageFormat.format(bundle.getString(key), params);
+        } else {
+            return key;
+        }
     }
 
     public String reallyl10n(ResourceBundle bundle, String key, Object... params) {

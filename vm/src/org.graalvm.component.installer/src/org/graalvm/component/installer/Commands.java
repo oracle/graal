@@ -180,4 +180,13 @@ public interface Commands {
      */
     String OPTION_ALL = "a";
     String LONG_OPTION_ALL = "all-versions";
+
+    /**
+     * Ignores missing components on upgrade.
+     */
+    String OPTION_IGNORE_MISSING_COMPONENTS = "x"; // NOI18N
+    String LONG_OPTION_IGNORE_MISSING_COMPONENTS = "ignore-missing"; // NOI18N
+
+    String OPTION_VERSION = "V";
+    String LONG_OPTION_VERSION = "use-version";
 }

@@ -116,6 +116,8 @@ public class ComponentInstallerTest extends TestBase {
             String optString = l.substring(oS + 1, oE);
             if (optString.startsWith("-")) {
                 optString = optString.substring(1);
+            } else {
+                optString = "";
             }
             for (int a = 0; a < optString.length(); a++) {
                 char o = optString.charAt(a);
@@ -142,7 +144,7 @@ public class ComponentInstallerTest extends TestBase {
             }
         }
         // filter out "system" commands
-        for (Iterator<String> it = allCmds.keySet().iterator(); it.hasNext(); ) {
+        for (Iterator<String> it = allCmds.keySet().iterator(); it.hasNext();) {
             String cmd = it.next();
             if (cmd.startsWith("#")) {
                 it.remove();

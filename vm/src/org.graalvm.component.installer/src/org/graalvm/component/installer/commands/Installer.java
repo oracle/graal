@@ -52,6 +52,7 @@ import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.Verifier;
 
 /**
  * The working internals of the 'install' command.
@@ -145,10 +146,12 @@ public class Installer extends AbstractInstaller {
      */
     @Override
     public boolean validateAll() throws IOException {
-        validateRequirements();
+        Verifier veri = validateRequirements();
         ComponentInfo existing = registry.findComponent(componentInfo.getId());
         if (existing != null) {
-            return false;
+            if (!veri.shouldInstall(componentInfo)) {
+                return false;
+            }
         }
         validateFiles();
         validateSymlinks();

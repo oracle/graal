@@ -48,9 +48,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.component.installer.BundleConstants;
+import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -105,7 +107,18 @@ public class DirectoryStorageTest extends TestBase {
             Files.copy(is, graalVMPath.resolve(SystemUtils.fileName("release")));
         }
         Map<String, String> result = storage.loadGraalVersionInfo();
-        assertEquals(7, result.size());
+        assertEquals(6, result.size());
+        assertEquals(CommonConstants.EDITION_CE, result.get(CommonConstants.CAP_EDITION));
+    }
+
+    @Test
+    public void testLoadGraalVersionSimpleEE() throws Exception {
+        try (InputStream is = getClass().getResourceAsStream("release_ee_simple.properties")) {
+            Files.copy(is, graalVMPath.resolve(SystemUtils.fileName("release")));
+        }
+        Map<String, String> result = storage.loadGraalVersionInfo();
+        assertEquals(6, result.size());
+        assertEquals("ee", result.get(CommonConstants.CAP_EDITION));
     }
 
     @Test
@@ -147,6 +160,19 @@ public class DirectoryStorageTest extends TestBase {
         assertEquals("org.graalvm.fastr", info.getId());
         assertEquals("1.0", info.getVersionString());
         assertEquals("0.32", info.getRequiredGraalValues().get("graalvm_version"));
+    }
+
+    @Test
+    public void testLoadProvidedCapabilities() throws Exception {
+        Path p = dataFile("data/core1.component");
+        ComponentInfo info;
+
+        try (InputStream is = Files.newInputStream(p)) {
+            info = storage.loadMetadataFrom(is);
+        }
+        assertEquals("org.graalvm", info.getId());
+        assertEquals(Version.fromString("1.0.1.0"), info.getProvidedValue("version", Version.class));
+        assertEquals("ee", info.getProvidedValue("edition", String.class));
     }
 
     /**
@@ -393,6 +419,26 @@ public class DirectoryStorageTest extends TestBase {
     }
 
     @Test
+    public void testSaveComponentWithCapabilities() throws Exception {
+        ComponentInfo info = new ComponentInfo("x", "y", "2.0");
+        info.provideValue("a", "foo");
+        info.provideValue("v", Version.fromString("1.1.1"));
+        Path p = registryPath.resolve(SystemUtils.fileName("x.component"));
+        assertFalse(Files.exists(p));
+        storage.saveComponent(info);
+        assertTrue(Files.exists(p));
+        List<String> lines = Files.readAllLines(p).stream()
+                        .filter((l) -> !l.startsWith("#"))
+                        .collect(Collectors.toList());
+        List<String> golden = Files.readAllLines(dataFile("golden-save-component2.properties")).stream()
+                        .filter((l) -> !l.startsWith("#"))
+                        .collect(Collectors.toList());
+
+        assertEquals(golden, lines);
+
+    }
+
+    @Test
     public void saveComponentOptionalTags() throws Exception {
         ComponentInfo info = new ComponentInfo("x", "y", "2.0");
         info.setPolyglotRebuild(true);
@@ -441,7 +487,7 @@ public class DirectoryStorageTest extends TestBase {
         copyDir("list1", registryPath);
         ComponentInfo info = loadLastComponent("fastr");
 
-        storage.recordLicenseAccepted(info, "cafebabe", "This is a dummy license");
+        storage.recordLicenseAccepted(info, "cafebabe", "This is a dummy license", null);
         Path p = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe.accepted/org.graalvm.fastr"));
         Path p2 = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe"));
         assertTrue(Files.isReadable(p));
@@ -460,16 +506,16 @@ public class DirectoryStorageTest extends TestBase {
         assertNotNull(storage.licenseAccepted(info, "cafebabe"));
         assertNull(storage.licenseAccepted(info2, "cafebabe"));
     }
-    
+
     /**
-     * Checks that graalvm.core is present  in the list.
+     * Checks that graalvm.core is present in the list.
      */
     @Test
     public void testCoreComponentPresent() throws Exception {
         copyDir("list1", registryPath);
         assertTrue("Must contain graalvm core", storage.listComponentIDs().contains(BundleConstants.GRAAL_COMPONENT_ID));
     }
-    
+
     @Test
     public void testKnowsNativeComponent() throws Exception {
         copyDir("list3", registryPath);

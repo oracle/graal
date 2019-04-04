@@ -85,6 +85,8 @@ public final class ComponentInfo {
 
     private final Set<String> workingDirectories = new LinkedHashSet<>();
 
+    private final Map<String, Object> providedValues = new HashMap<>();
+
     private URL remoteURL;
 
     private boolean polyglotRebuild;
@@ -92,7 +94,7 @@ public final class ComponentInfo {
     private byte[] shaDigest;
 
     private String postinstMessage;
-    
+
     private boolean nativeComponent;
 
     /**
@@ -289,8 +291,35 @@ public final class ComponentInfo {
     public boolean isNativeComponent() {
         return nativeComponent;
     }
-    
+
     public void setNativeComponent(boolean nativeComponent) {
         this.nativeComponent = nativeComponent;
+    }
+
+    public <T> void provideValue(String k, T v) {
+        providedValues.put(k, v);
+    }
+
+    public <T> T getProvidedValue(String k, Class<T> type) {
+        Object o = providedValues.get(k);
+        if (!type.isInstance(o)) {
+            if (type != String.class || o == null) {
+                return null;
+            }
+            o = o.toString();
+        }
+        @SuppressWarnings("unchecked")
+        T ret = (T) o;
+        return ret;
+    }
+
+    public Map<String, Object> getProvidedValues() {
+        return Collections.unmodifiableMap(providedValues);
+    }
+
+    public void addProvidedValues(Map<String, Object> vals) {
+        for (String s : vals.keySet()) {
+            provideValue(s, vals.get(s));
+        }
     }
 }

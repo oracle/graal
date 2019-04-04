@@ -86,6 +86,10 @@ public class ListInstalledCommand extends QueryCommandBase {
         return ids;
     }
 
+    protected String acceptExpression(String expr) {
+        return expr;
+    }
+
     @Override
     public int execute() throws IOException {
         if (input.optValue(Commands.OPTION_HELP) != null) {
@@ -95,7 +99,14 @@ public class ListInstalledCommand extends QueryCommandBase {
         init(input, feedback);
         expressions = new ArrayList<>();
         while (input.hasParameter()) {
-            expressions.add(input.nextParameter());
+            String s = input.nextParameter();
+            if (s == null || s.isEmpty()) {
+                continue;
+            }
+            String accepted = acceptExpression(s);
+            if (accepted != null) {
+                expressions.add(input.nextParameter());
+            }
         }
         if (process()) {
             printComponents();
@@ -104,7 +115,13 @@ public class ListInstalledCommand extends QueryCommandBase {
     }
 
     protected Version.Match getVersionFilter() {
-        return input.getLocalRegistry().getGraalVersion().match(Version.Match.Type.GREATER);
+        return input.getLocalRegistry().getGraalVersion().match(Version.Match.Type.INSTALLABLE);
+    }
+
+    protected List<ComponentInfo> filterDisplayedVersions(@SuppressWarnings("unused") String id, Collection<ComponentInfo> infos) {
+        List<ComponentInfo> ordered = new ArrayList<>(infos);
+        Collections.sort(ordered, ComponentInfo.versionComparator());
+        return ordered;
     }
 
     boolean process() {
@@ -119,12 +136,18 @@ public class ListInstalledCommand extends QueryCommandBase {
         for (String id : ids) {
             try {
                 Collection<ComponentInfo> infos = catalog.loadComponents(id, versionFilter, listFiles);
-                for (ComponentInfo ci : infos) {
-                    addComponent(null, ci);
+                if (infos != null) {
+                    for (ComponentInfo ci : filterDisplayedVersions(id, infos)) {
+                        addComponent(null, ci);
+                    }
                 }
             } catch (MetadataException ex) {
                 exceptions.add(ex);
             }
+        }
+        if (components.isEmpty()) {
+            feedback.message("LIST_NoComponentsFound");
+            return false;
         }
         if (!exceptions.isEmpty()) {
             feedback.error("LIST_ErrorInComponentMetadata", null);

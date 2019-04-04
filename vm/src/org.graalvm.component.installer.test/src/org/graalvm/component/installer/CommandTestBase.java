@@ -37,6 +37,7 @@ import java.util.jar.JarFile;
 import org.graalvm.component.installer.DownloadURLIterable.DownloadURLParam;
 import org.graalvm.component.installer.commands.MockStorage;
 import org.graalvm.component.installer.jar.JarMetaLoader;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
@@ -59,6 +60,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     protected Path targetPath;
 
     protected MockStorage storage;
+    protected MockStorage catalogStorage;
     protected ComponentCollection registry;
     protected ComponentRegistry localRegistry;
 
@@ -106,14 +108,23 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
         param = rparam = new DownloadURLParam(url, spec, spec, this, false);
     }
 
-    protected Iterable<ComponentParam> paramIterable;
+    protected ComponentIterable paramIterable;
 
     @Override
-    public Iterable<ComponentParam> existingFiles() throws FailedOperationException {
+    public ComponentIterable existingFiles() throws FailedOperationException {
         if (paramIterable != null) {
             return paramIterable;
         }
-        return new Iterable<ComponentParam>() {
+        return new ComponentIterable() {
+            @Override
+            public void setVerifyJars(boolean verify) {
+            }
+
+            @Override
+            public ComponentParam createParam(String cmdString, ComponentInfo nfo) {
+                return null;
+            }
+
             @Override
             public Iterator<ComponentParam> iterator() {
                 return new Iterator<ComponentParam>() {
@@ -141,6 +152,16 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
                     }
 
                 };
+            }
+
+            @Override
+            public ComponentIterable matchVersion(Version.Match m) {
+                return this;
+            }
+
+            @Override
+            public ComponentIterable allowIncompatible() {
+                return this;
             }
 
         };
@@ -174,11 +195,17 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     @Override
     public ComponentCollection getRegistry() {
+        if (registry == null) {
+            registry = new CatalogContents(this, catalogStorage, getLocalRegistry());
+        }
         return registry;
     }
 
     @Override
     public ComponentRegistry getLocalRegistry() {
+        if (localRegistry == null) {
+            localRegistry = new ComponentRegistry(this, storage);
+        }
         return localRegistry;
     }
 
@@ -191,7 +218,8 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     public void setUp() throws Exception {
         targetPath = folder.newFolder("inst").toPath();
         storage = new MockStorage();
-        registry = localRegistry = new ComponentRegistry(this, storage);
+        catalogStorage = new MockStorage();
+
     }
 
     @Override
@@ -206,6 +234,6 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     @Override
     public ComponentStorage getStorage() {
-        return storage;
+        return catalogStorage;
     }
 }

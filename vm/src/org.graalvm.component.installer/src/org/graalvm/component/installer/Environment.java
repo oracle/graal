@@ -58,7 +58,7 @@ public final class Environment implements Feedback, CommandInput {
     private Supplier<ComponentCollection> registrySupplier;
     private ComponentRegistry localRegistry;
     private boolean stacktraces;
-    private Iterable<ComponentParam> fileIterable;
+    private ComponentIterable fileIterable;
     private Map<URL, Path> fileMap = new HashMap<>();
     private boolean allOutputToErr;
     private boolean autoYesEnabled;
@@ -135,7 +135,7 @@ public final class Environment implements Feedback, CommandInput {
         }
     }
 
-    public void setFileIterable(Iterable<ComponentParam> fileIterable) {
+    public void setFileIterable(ComponentIterable fileIterable) {
         this.fileIterable = fileIterable;
     }
 
@@ -422,7 +422,7 @@ public final class Environment implements Feedback, CommandInput {
     }
 
     @Override
-    public Iterable<ComponentParam> existingFiles() {
+    public ComponentIterable existingFiles() {
         return fileIterable;
     }
 

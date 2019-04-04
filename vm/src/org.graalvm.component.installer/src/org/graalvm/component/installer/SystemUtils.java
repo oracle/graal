@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.graalvm.component.installer.model.ComponentRegistry;
 
 /**
  *
@@ -218,6 +219,14 @@ public class SystemUtils {
             return numbers + ".0";
         } else {
             return numbers + "-0." + rel + "." + relNo;
+        }
+    }
+
+    public static Path getGraalVMJDKRoot(ComponentRegistry reg) {
+        if ("macos".equals(reg.getGraalCapabilities().get(CommonConstants.CAP_OS_ARCH))) {
+            return Paths.get("Contents", "Home");
+        } else {
+            return Paths.get("");
         }
     }
 

@@ -33,7 +33,7 @@ import java.util.Objects;
 import java.util.Properties;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.Version;
-import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import static org.junit.Assert.assertEquals;
 import org.junit.Rule;
@@ -52,11 +52,11 @@ public class ListTest extends CommandTestBase {
 
     private void initRemoteStorage() throws MalformedURLException {
         this.remoteStorage = new RemotePropertiesStorage(
-                        this, localRegistry, catalogContents,
+                        this, getLocalRegistry(), catalogContents,
                         "linux_amd64",
                         Version.fromString("1.0.0-rc3-dev"),
                         new URL("http://go.to/graalvm"));
-        this.registry = new ComponentRegistry(this, remoteStorage);
+        this.registry = new CatalogContents(this, remoteStorage, localRegistry);
     }
 
     private StringBuilder outb = new StringBuilder();

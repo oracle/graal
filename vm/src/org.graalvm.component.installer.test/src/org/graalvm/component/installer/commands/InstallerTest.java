@@ -147,7 +147,9 @@ public class InstallerTest extends TestBase {
     @Test
     public void testFailOnExistingComponent() throws IOException {
         setupComponentInstall("truffleruby2.jar");
-        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.32");
+        // the version has to be the same as the installed component, or newer so that installer
+        // will not attempt to replace it.
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "1.1");
         storage.installed.add(fakeInfo);
 
         exception.expect(DependencyException.Conflict.class);
@@ -157,13 +159,35 @@ public class InstallerTest extends TestBase {
     }
 
     @Test
+    public void testDontFailOnComponentUpdate() throws IOException {
+        setupComponentInstall("truffleruby2.jar");
+        // the version has to be the same as the installed component, or newer so that installer
+        // will not attempt to replace it.
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.99");
+        storage.installed.add(fakeInfo);
+
+        installer.setFailOnExisting(true);
+        installer.validateRequirements();
+    }
+
+    @Test
     public void testSkipExistingComponent() throws IOException {
+        setupComponentInstall("truffleruby2.jar");
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "1.0");
+        storage.installed.add(fakeInfo);
+
+        installer.setFailOnExisting(false);
+        assertFalse("Must refuse installation", installer.validateAll());
+    }
+
+    @Test
+    public void testAcceptComponentUpgrade() throws IOException {
         setupComponentInstall("truffleruby2.jar");
         ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.32");
         storage.installed.add(fakeInfo);
 
         installer.setFailOnExisting(false);
-        assertFalse("Must refuse installation", installer.validateAll());
+        assertTrue("Must refuse installation", installer.validateAll());
     }
 
     /**
@@ -389,7 +413,7 @@ public class InstallerTest extends TestBase {
         installer.getComponentInfo().addRequiredValue(CommonConstants.CAP_GRAALVM_VERSION, "0.33");
 
         exception.expect(DependencyException.class);
-        exception.expectMessage("VERIFY_Dependency_Failed");
+        exception.expectMessage("VERIFY_UpdateGraalVM");
         installer.validateRequirements();
     }
 
@@ -401,7 +425,7 @@ public class InstallerTest extends TestBase {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.30");
 
         exception.expect(DependencyException.class);
-        exception.expectMessage("VERIFY_Dependency_Failed");
+        exception.expectMessage("VERIFY_UpdateGraalVM");
         installer.validateRequirements();
     }
 

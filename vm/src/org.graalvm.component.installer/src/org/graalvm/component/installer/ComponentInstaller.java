@@ -60,6 +60,7 @@ import org.graalvm.component.installer.commands.PostInstCommand;
 import org.graalvm.component.installer.commands.PreRemoveCommand;
 import org.graalvm.component.installer.commands.RebuildImageCommand;
 import org.graalvm.component.installer.commands.UninstallCommand;
+import org.graalvm.component.installer.commands.UpgradeCommand;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
@@ -98,7 +99,9 @@ public final class ComponentInstaller {
         commands.put("available", new AvailableCommand()); // NOI18N
         commands.put("info", new InfoCommand()); // NOI18N
         commands.put("rebuild-images", new RebuildImageCommand()); // NOI18N
-        
+        commands.put("upgrade", new UpgradeCommand()); // NOI18N
+        commands.put("update", new UpgradeCommand(false)); // NOI18N
+
         // commands used internally by system scripts, names intentionally hashed.
         commands.put("#postinstall", new PostInstCommand()); // NOI18N
         commands.put("#preremove", new PreRemoveCommand()); // NOI18N
@@ -160,15 +163,16 @@ public final class ComponentInstaller {
         this.mainArguments = args;
     }
 
-    private static void printUsage(CommandInput input, Feedback output) {
+    private static void printUsage(Feedback output) {
         SIMPLE_ENV.error("INFO_InstallerVersion", null, CommonConstants.INSTALLER_VERSION); // NOI18N
-        printHelp(input, output);
+        printHelp(output);
     }
 
-    private static void printHelp(CommandInput input, Feedback output) {
+    private static void printHelp(Feedback output) {
         StringBuilder extra = new StringBuilder();
 
         forSoftwareChannels(false, (ch) -> {
+            ch.init(SIMPLE_ENV, output);
             String s = ch.globalOptionsHelp();
             if (s != null) {
                 extra.append(s);
@@ -191,7 +195,7 @@ public final class ComponentInstaller {
 
     static RuntimeException err(String messageKey, Object... args) {
         printErr(messageKey, args);
-        printHelp(SIMPLE_ENV, SIMPLE_ENV);
+        printHelp(SIMPLE_ENV);
         System.exit(1);
         throw new RuntimeException("should not reach here");
     }
@@ -210,7 +214,7 @@ public final class ComponentInstaller {
         if (cmdHandler == null) {
             if (optValues.containsKey(Commands.OPTION_HELP)) {
                 // regular Environment cannot be initialized.
-                printUsage(SIMPLE_ENV, SIMPLE_ENV);
+                printUsage(SIMPLE_ENV);
                 return 0;
             }
             err("ERROR_MissingCommand"); // NOI18N
@@ -224,7 +228,7 @@ public final class ComponentInstaller {
             env.setLocalRegistry(new ComponentRegistry(env, new DirectoryStorage(
                             env, storagePath, graalHomePath)));
 
-            forSoftwareChannels(true, (ch) -> {            
+            forSoftwareChannels(true, (ch) -> {
                 ch.init(env, env);
             });
 
@@ -261,8 +265,9 @@ public final class ComponentInstaller {
                                 env,
                                 env,
                                 getCatalogURL(env));
-                env.setComponentRegistry(() -> new CatalogContents(env, downloader.getStorage(), env.getLocalRegistry()));
-                env.setFileIterable(new CatalogIterable(env, env, downloader));
+                ComponentCollection col = new CatalogContents(env, downloader.getStorage(), env.getLocalRegistry());
+                env.setComponentRegistry(() -> col);
+                env.setFileIterable(new CatalogIterable(env, env, col, downloader));
             }
             cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));
             return cmdHandler.execute();
@@ -336,7 +341,7 @@ public final class ComponentInstaller {
 
     public void run() {
         if (mainArguments.length < 1) {
-            printUsage(SIMPLE_ENV, SIMPLE_ENV);
+            printUsage(SIMPLE_ENV);
             System.exit(1);
         }
         try {

@@ -105,13 +105,16 @@ public class CatalogInstallTest extends CommandTestBase {
 
         setupCatalog(null);
         textParams.add("ruby");
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
         paramIterable.iterator().next();
     }
 
     /**
      * Checks that mismatched version is rejected based on catalog metadata, and the component URL
      * is not opened at all.
+     * 
+     * Because of versioning support, the "ruby" will not be even identifier as available, as it
+     * requires an incompatible graalvm version.
      */
     @Test
     public void testRejectMetaDontDownloadPackage() throws Exception {
@@ -121,18 +124,20 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), new URLConnection(rubyURL) {
             @Override
             public void connect() throws IOException {
-                throw new UnsupportedOperationException("Should not be touched");
+                throw new UnsupportedOperationException(
+                                "Should not be touched");
             }
         });
 
         exception.expect(DependencyException.Mismatch.class);
-        exception.expectMessage("VERIFY_Dependency_Failed");
+        exception.expectMessage("VERIFY_ObsoleteGraalVM");
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this, registry, downloader);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
-        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.init(this,
+                        withBundle(InstallCommand.class));
         cmd.execute();
     }
 
@@ -144,7 +149,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this, withBundle(InstallCommand.class));
@@ -166,7 +171,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this, withBundle(InstallCommand.class));

@@ -37,7 +37,7 @@ public interface CommandInput {
      * @return next file from commandline
      * @throws FailedOperationException if the named file does not exist.
      */
-    Iterable<ComponentParam> existingFiles() throws FailedOperationException;
+    ComponentIterable existingFiles() throws FailedOperationException;
 
     /**
      * Retrieves the next required parameter.
