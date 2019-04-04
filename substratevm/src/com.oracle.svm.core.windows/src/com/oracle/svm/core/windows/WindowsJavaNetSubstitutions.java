@@ -126,6 +126,10 @@ class WindowsJavaNetSubstitutionsFeature implements Feature {
             JNIRuntimeAccess.register(access.findClassByName("java.net.BindException").getDeclaredConstructor(String.class));
             JNIRuntimeAccess.register(access.findClassByName("java.net.UnknownHostException").getDeclaredConstructor(String.class));
 
+            /* Required for `initializeEncoding` function in jni_util.c */
+            JNIRuntimeAccess.register(String.class.getDeclaredConstructor(byte[].class, String.class));
+            JNIRuntimeAccess.register(String.class.getDeclaredMethod("getBytes", String.class));
+
             /* Windows specific classes */
             JNIRuntimeAccess.register(access.findClassByName("java.net.SocketInputStream"));
             JNIRuntimeAccess.register(access.findClassByName("java.net.SocketOutputStream"));
