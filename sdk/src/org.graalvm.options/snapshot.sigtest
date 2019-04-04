@@ -103,8 +103,12 @@ meth public static org.graalvm.options.OptionStability[] values()
 supr java.lang.Enum<org.graalvm.options.OptionStability>
 
 CLSS public final org.graalvm.options.OptionType<%0 extends java.lang.Object>
+cons public init(java.lang.String,java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>)
+cons public init(java.lang.String,java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>,java.util.function.Consumer<{org.graalvm.options.OptionType%0}>)
 cons public init(java.lang.String,{org.graalvm.options.OptionType%0},java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>)
+ anno 0 java.lang.Deprecated()
 cons public init(java.lang.String,{org.graalvm.options.OptionType%0},java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>,java.util.function.Consumer<{org.graalvm.options.OptionType%0}>)
+ anno 0 java.lang.Deprecated()
 meth public java.lang.String getName()
 meth public java.lang.String toString()
 meth public static <%0 extends java.lang.Object> org.graalvm.options.OptionType<{%%0}> defaultType(java.lang.Class<{%%0}>)
@@ -112,8 +116,9 @@ meth public static <%0 extends java.lang.Object> org.graalvm.options.OptionType<
 meth public void validate({org.graalvm.options.OptionType%0})
 meth public {org.graalvm.options.OptionType%0} convert(java.lang.String)
 meth public {org.graalvm.options.OptionType%0} getDefaultValue()
+ anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds DEFAULTTYPES,defaultValue,name,stringConverter,validator
+hfds DEFAULTTYPES,name,stringConverter,validator
 
 CLSS public abstract interface org.graalvm.options.OptionValues
 meth public abstract <%0 extends java.lang.Object> void set(org.graalvm.options.OptionKey<{%%0}>,{%%0})
@@ -121,6 +126,4 @@ meth public abstract <%0 extends java.lang.Object> {%%0} get(org.graalvm.options
 meth public abstract boolean hasBeenSet(org.graalvm.options.OptionKey<?>)
 meth public abstract org.graalvm.options.OptionDescriptors getDescriptors()
 meth public boolean hasSetOptions()
-
-CLSS abstract interface org.graalvm.options.package-info
 
