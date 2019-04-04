@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleRuntime.getIsolateThreadId;
+import static org.graalvm.libgraal.LibGraal.getIsolateThread;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -38,7 +38,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.OptionsEncoder;
+import org.graalvm.libgraal.OptionsEncoder;
 
 /**
  * Encapsulates a handle to a {@link HotSpotTruffleCompiler} object in the SVM heap.
@@ -53,7 +53,7 @@ final class SVMHotSpotTruffleCompiler extends SVMObject implements HotSpotTruffl
 
     @Override
     public TruffleCompilation openCompilation(CompilableTruffleAST compilable) {
-        SVMTruffleCompilation compilation = new SVMTruffleCompilation(this, HotSpotToSVMCalls.openCompilation(getIsolateThreadId(), handle, compilable));
+        SVMTruffleCompilation compilation = new SVMTruffleCompilation(this, HotSpotToSVMCalls.openCompilation(getIsolateThread(), handle, compilable));
         activeCompilations.put(compilable, new WeakReference<>(compilation));
         return compilation;
     }
@@ -71,27 +71,27 @@ final class SVMHotSpotTruffleCompiler extends SVMObject implements HotSpotTruffl
                     TruffleCompilationTask task,
                     TruffleCompilerListener listener) {
         byte[] encodedOptions = OptionsEncoder.encode(options);
-        HotSpotToSVMCalls.doCompile(getIsolateThreadId(), handle, ((IgvSupport) debug).handle, ((SVMTruffleCompilation) compilation).handle, encodedOptions, inlining, task, listener);
+        HotSpotToSVMCalls.doCompile(getIsolateThread(), handle, ((IgvSupport) debug).handle, ((SVMTruffleCompilation) compilation).handle, encodedOptions, inlining, task, listener);
     }
 
     @Override
     public String getCompilerConfigurationName() {
-        return HotSpotToSVMCalls.getCompilerConfigurationName(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getCompilerConfigurationName(getIsolateThread(), handle);
     }
 
     @Override
     public void shutdown() {
-        HotSpotToSVMCalls.shutdown(getIsolateThreadId(), handle);
+        HotSpotToSVMCalls.shutdown(getIsolateThread(), handle);
     }
 
     @Override
     public void installTruffleCallBoundaryMethods() {
-        HotSpotToSVMCalls.installTruffleCallBoundaryMethods(getIsolateThreadId(), handle);
+        HotSpotToSVMCalls.installTruffleCallBoundaryMethods(getIsolateThread(), handle);
     }
 
     @Override
     public int pendingTransferToInterpreterOffset() {
-        return HotSpotToSVMCalls.pendingTransferToInterpreterOffset(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.pendingTransferToInterpreterOffset(getIsolateThread(), handle);
     }
 
     void closeCompilation(SVMTruffleCompilation compilation) {

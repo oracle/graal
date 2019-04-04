@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
+package org.graalvm.libgraal;
 
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
-import org.graalvm.libgraal.LibGraal;
-
-import com.oracle.truffle.api.TruffleRuntime;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
- * Access to a {@link TruffleRuntime} that uses libgraal for compilation.
+ * JDK11+ version of {@code LibGraal}.
  */
-public class LibGraalTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
+public class LibGraal {
 
-    @Override
-    protected TruffleRuntime createRuntime() {
-        return new LibGraalTruffleRuntime();
+    private static IllegalStateException unavailable() {
+        throw new IllegalStateException("libgraal is not available");
     }
 
-    @Override
-    public int getPriority() {
-        if (LibGraal.isAvailable()) {
-            return Integer.MAX_VALUE;
-        }
-        return Integer.MIN_VALUE;
+    public static boolean isAvailable() {
+        return false;
+    }
+
+    public static long getIsolate() {
+        throw unavailable();
+    }
+
+    public static long getIsolateThread() {
+        throw unavailable();
+    }
+
+    @SuppressWarnings("unused")
+    public static long[] registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+        throw unavailable();
+    }
+
+    @SuppressWarnings("unused")
+    public static long translate(HotSpotJVMCIRuntime runtime, Object obj) {
+        throw unavailable();
+    }
+
+    @SuppressWarnings("unused")
+    public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
+        throw unavailable();
     }
 }

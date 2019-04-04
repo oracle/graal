@@ -180,10 +180,10 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
     public void run() {
         compileAndTime("simple");
         compileAndTime("complex");
-        OptionValues options = CompileTheWorld.loadOptions(getInitialOptions());
-        if (CompileTheWorld.Options.Classpath.getValue(options) != CompileTheWorld.SUN_BOOT_CLASS_PATH) {
+        OptionValues harnessOptions = CompileTheWorld.loadHarnessOptions();
+        if (CompileTheWorld.Options.Classpath.getValue(harnessOptions) != CompileTheWorld.SUN_BOOT_CLASS_PATH) {
             HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-            CompileTheWorld ctw = new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), options);
+            CompileTheWorld ctw = new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), harnessOptions, getInitialOptions());
             try {
                 ctw.compile();
             } catch (Throwable e) {
