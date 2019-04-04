@@ -284,7 +284,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         return defaultBytecodeProvider;
     }
 
-    private MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method) {
+    protected MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method) {
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
         if (plugin instanceof MethodSubstitutionPlugin) {
             MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;

@@ -40,6 +40,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -289,12 +290,26 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
+    protected MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method) {
+        // This override keeps graphBuilderPlugins from being reached during image generation.
+        return null;
+    }
+
+    @Override
     public boolean hasSubstitution(ResolvedJavaMethod method, int callerBci) {
+        // This override keeps graphBuilderPlugins from being reached during image generation.
         return false;
     }
 
     @Override
     public StructuredGraph getSubstitution(ResolvedJavaMethod original, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosiion, OptionValues options) {
+        // This override keeps graphBuilderPlugins from being reached during image generation.
+        return null;
+    }
+
+    @Override
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug) {
+        // This override keeps graphBuilderPlugins from being reached during image generation.
         return null;
     }
 
