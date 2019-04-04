@@ -115,6 +115,12 @@ public final class Agent {
                     proxyConfigPaths.add(token.substring("restrict-proxy=".length()));
                 } else if (token.startsWith("restrict-resource")) {
                     resourceConfigPaths.add(token.substring("restrict-resource=".length()));
+                } else if (token.startsWith("restrict-all-dir")) {
+                    Path directory = Paths.get(token.substring("restrict-all-dir=".length()));
+                    jniConfigPaths.add(directory.resolve("jni-config.json").toString());
+                    reflectConfigPaths.add(directory.resolve("reflect-config.json").toString());
+                    proxyConfigPaths.add(directory.resolve("proxy-config.json").toString());
+                    resourceConfigPaths.add(directory.resolve("resource-config.json").toString());
                 } else {
                     System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read CONFIGURE.md.");
                     return 1;
