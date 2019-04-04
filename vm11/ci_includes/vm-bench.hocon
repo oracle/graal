@@ -1,0 +1,24 @@
+bench_vm_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${common_vm_linux} { # repeat 'common_vm_linux' to override packages loaded by 'svm-common-linux'
+  resultFile: results.json
+  setup: ${common_vm.setup} [
+    [mx, --strip-jars, --no-sources, --env, ce, build]
+  ]
+  on_success: [
+    [bench-uploader.py, ${bench_vm_linux_base.resultFile}]
+  ]
+  logs: [${bench_vm_linux_base.resultFile}]
+  capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
+}
+
+builds += [
+  ${bench_vm_linux} ${bench_vm_linux_base} {
+    setup: ${common_vm.setup} [
+      [mx, --strip-jars, --no-sources, --env, ce-no_native, build]
+    ]
+    run: [
+      [mx, --strip-jars, --no-sources, --env, ce-no_native, benchmark, --results-file, ${bench_vm_linux_base.resultFile}, "gu:*"]
+    ]
+    name: bench-vm-ce-no-native-gu-linux
+    timelimit: "1:00:00"
+  }
+]
