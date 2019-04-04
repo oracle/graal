@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipException;
@@ -36,9 +37,11 @@ import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
+import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.MetadataException;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.Verifier;
 import org.graalvm.component.installer.persist.MetadataLoader;
@@ -61,12 +64,16 @@ public class InfoCommand extends QueryCommandBase {
         OPTIONS.put(Commands.LONG_OPTION_FULL_PATHS, Commands.OPTION_FULL_PATHS);
         OPTIONS.put(Commands.LONG_OPTION_IGNORE_OPEN_ERRORS, Commands.OPTION_IGNORE_OPEN_ERRORS);
         OPTIONS.put(Commands.LONG_OPTION_SUPPRESS_TABLE, Commands.OPTION_SUPPRESS_TABLE);
+
+        OPTIONS.put(Commands.OPTION_VERSION, "s");
+        OPTIONS.put(Commands.LONG_OPTION_VERSION, Commands.OPTION_VERSION);
     }
 
     private boolean ignoreOpenErrors;
     private boolean verifyJar;
     private boolean fullPath;
     private boolean suppressTable;
+    private Version.Match versionFilter;
 
     private final List<ComponentParam> components = new ArrayList<>();
     private final Map<ComponentInfo, MetadataLoader> map = new HashMap<>();
@@ -116,6 +123,54 @@ public class InfoCommand extends QueryCommandBase {
         verifyJar = input.optValue(Commands.OPTION_VERIFY_JARS) != null;
         suppressTable = input.optValue(Commands.OPTION_SUPPRESS_TABLE) != null;
         fullPath = input.optValue(Commands.OPTION_FULL_PATHS) != null;
+
+        String vf = input.optValue(Commands.OPTION_VERSION);
+        if (vf != null) {
+            versionFilter = Version.versionFilter(vf);
+        }
+    }
+
+    void collectComponents() throws IOException {
+        for (Iterator<ComponentParam> it = input.existingFiles().matchVersion(versionFilter).allowIncompatible().iterator(); it.hasNext();) {
+            ComponentParam cp;
+            try {
+                cp = it.next();
+            } catch (FailedOperationException ex) {
+                feedback.error("INFO_InvalidComponent", ex, ex.getLocalizedMessage());
+                continue;
+            }
+            try {
+                // verifyjar set to false, as Verifier is not supported in SVM
+                // components.add(ldr = new ComponentPackageLoader(new JarFile(f, false),
+                // feedback));
+                processComponentParam(cp);
+            } catch (ZipException ex) {
+                if (ignoreOpenErrors) {
+                    feedback.error("INFO_ErrorOpeningBundle", ex,
+                                    cp.getDisplayName(),
+                                    ex.getLocalizedMessage());
+                } else {
+                    throw ex;
+                }
+            } catch (MetadataException ex) {
+                if (ignoreOpenErrors) {
+                    feedback.error("INFO_CorruptedBundleMetadata", ex,
+                                    cp.getDisplayName(),
+                                    ex.getOffendingHeader(),
+                                    ex.getLocalizedMessage());
+                } else {
+                    throw ex;
+                }
+            } catch (IOException ex) {
+                if (ignoreOpenErrors) {
+                    feedback.error("INFO_ErrorReadingBundle", ex,
+                                    cp.getDisplayName(),
+                                    ex.getLocalizedMessage());
+                } else {
+                    throw ex;
+                }
+            }
+        }
     }
 
     @Override
@@ -129,40 +184,7 @@ public class InfoCommand extends QueryCommandBase {
             return 1;
         }
         try {
-            for (ComponentParam cp : input.existingFiles()) {
-                try {
-                    // verifyjar set to false, as Verifier is not supported in SVM
-                    // components.add(ldr = new ComponentPackageLoader(new JarFile(f, false),
-                    // feedback));
-                    processComponentParam(cp);
-                } catch (ZipException ex) {
-                    if (ignoreOpenErrors) {
-                        feedback.error("INFO_ErrorOpeningBundle", ex,
-                                        cp.getDisplayName(),
-                                        ex.getLocalizedMessage());
-                    } else {
-                        throw ex;
-                    }
-                } catch (MetadataException ex) {
-                    if (ignoreOpenErrors) {
-                        feedback.error("INFO_CorruptedBundleMetadata", ex,
-                                        cp.getDisplayName(),
-                                        ex.getOffendingHeader(),
-                                        ex.getLocalizedMessage());
-                    } else {
-                        throw ex;
-                    }
-                } catch (IOException ex) {
-                    if (ignoreOpenErrors) {
-                        feedback.error("INFO_ErrorReadingBundle", ex,
-                                        cp.getDisplayName(),
-                                        ex.getLocalizedMessage());
-                    } else {
-                        throw ex;
-                    }
-                }
-            }
-
+            collectComponents();
             printTable = getComponents().size() > 1 && !isVerbose() && !suppressTable;
             super.printComponents();
         } finally {

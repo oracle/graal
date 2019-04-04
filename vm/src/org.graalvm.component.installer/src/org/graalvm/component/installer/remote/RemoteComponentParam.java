@@ -59,7 +59,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         this.catalogInfo = catalogInfo;
         this.dispName = dispName;
         this.spec = spec;
-        this.feedback = feedback;
+        this.feedback = feedback.withBundle(RemoteComponentParam.class);
         this.progress = progress;
         this.remoteURL = catalogInfo.getRemoteURL();
     }
@@ -68,7 +68,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         this.catalogInfo = null;
         this.dispName = dispName;
         this.spec = spec;
-        this.feedback = feedback;
+        this.feedback = feedback.withBundle(RemoteComponentParam.class);
         this.remoteURL = remoteURL;
         this.progress = progress;
     }
@@ -226,7 +226,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
     }
 
     protected FileDownloader createDownloader() {
-        FileDownloader dn = new FileDownloader(feedback.l10n("REMOTE_ComponentFileLabel", spec), remoteURL, feedback);
+        FileDownloader dn = new FileDownloader(feedback.l10n("REMOTE_ComponentFileLabel", getDisplayName(), getSpecification()), remoteURL, feedback);
         return dn;
     }
 
@@ -337,7 +337,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
 
     @Override
     public String getShortName() {
-        return remoteURL.getFile();
+        return getComponentInfo().getId();
     }
 
     protected String getSpec() {

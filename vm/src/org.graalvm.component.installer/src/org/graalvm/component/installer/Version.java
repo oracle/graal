@@ -49,48 +49,80 @@ public final class Version implements Comparable<Version> {
     public static final Version NO_VERSION = new Version("0.0.0.0");
 
     private final String versionString;
+    private final String normalizedString;
     private final List<String> releaseParts;
     private final List<String> versionParts;
 
     Version(String versionString) throws IllegalArgumentException {
         this.versionString = versionString;
 
+        List<String> vp;
         int releaseDash = versionString.indexOf('-');
         if (releaseDash == -1) {
             releaseParts = Collections.emptyList();
-            versionParts = parseParts(versionString);
+            vp = parseParts(versionString);
         } else {
             String vS = versionString.substring(0, releaseDash);
             String rS = versionString.substring(releaseDash + 1);
-            versionParts = parseParts(vS);
+            vp = parseParts(vS);
             releaseParts = parseParts(rS);
         }
-        if (versionParts.size() < 2) {
+        if (vp.size() < 2) {
             throw new IllegalArgumentException("At least Year.Update is required. Got: " + versionString);
+        }
+        if (releaseParts.isEmpty() && vp.size() < 4 && !isOldStyleVersion(vp.get(0))) {
+            vp = new ArrayList<>(vp);
+            while (vp.size() < 4) {
+                vp.add("0");
+            }
+            this.normalizedString = print(vp, releaseParts);
+        } else {
+            normalizedString = versionString;
+        }
+        versionParts = vp;
+    }
+
+    static boolean isOldStyleVersion(String s) {
+        try {
+            return Integer.parseInt(s) < 19;
+        } catch (NumberFormatException ex) {
+            // expected
+            return false;
         }
     }
 
-    Version(List<String> vParts, List<String> rParts) {
-        this.versionParts = new ArrayList<>(vParts);
-        this.releaseParts = new ArrayList<>(rParts);
-
+    static String print(List<String> vParts, List<String> rParts) {
         StringBuilder sb = new StringBuilder();
-        for (String vp : versionParts) {
+        for (String vp : vParts) {
             if (sb.length() > 0) {
                 sb.append('.');
             }
             sb.append(vp);
         }
-        if (!releaseParts.isEmpty()) {
+        if (!rParts.isEmpty()) {
             sb.append('-');
-            for (String rp : releaseParts) {
+            for (String rp : rParts) {
                 if (sb.length() > 0) {
                     sb.append('.');
                 }
                 sb.append(rp);
             }
         }
-        this.versionString = sb.toString();
+        return sb.toString();
+    }
+
+    Version(List<String> vParts, List<String> rParts) {
+        this.versionParts = new ArrayList<>(vParts);
+        this.releaseParts = new ArrayList<>(rParts);
+        this.versionString = print(vParts, rParts);
+        if (releaseParts.isEmpty() && vParts.size() < 4 && isOldStyleVersion(vParts.get(0))) {
+            while (versionParts.size() < 4) {
+                versionParts.add("0");
+            }
+            this.normalizedString = print(versionParts, releaseParts);
+        } else {
+            normalizedString = versionString;
+        }
     }
 
     /**
@@ -104,7 +136,7 @@ public final class Version implements Comparable<Version> {
     public Version updatable() {
         List<String> vp = new ArrayList<>(versionParts);
         vp.subList(3, vp.size()).clear();
-        if (vp.size() < 3) {
+        while (vp.size() < 3) {
             vp.add("0");
         }
         return new Version(vp, Collections.emptyList());
@@ -137,14 +169,19 @@ public final class Version implements Comparable<Version> {
             return false;
         }
         final Version other = (Version) obj;
-        if (!Objects.equals(this.versionString, other.versionString)) {
-            return false;
-        }
-        return true;
+        /*
+         * if (!Objects.equals(this.versionString, other.versionString)) { return false; } return
+         * true;
+         */
+        return compareTo(other) == 0;
     }
 
     @Override
     public String toString() {
+        return normalizedString;
+    }
+
+    public String originalString() {
         return versionString;
     }
 
@@ -250,6 +287,10 @@ public final class Version implements Comparable<Version> {
         return versionString == null ? NO_VERSION : new Version(versionString);
     }
 
+    public static final String EXACT_VERSION = "="; // NOI18N
+    public static final String GREATER_VERSION = "+"; // NOI18N
+    public static final String COMPATIBLE_VERSION = "~"; // NOI18N
+
     /**
      * Parses ID and optional version specification into ID and version selector.
      * 
@@ -258,8 +299,9 @@ public final class Version implements Comparable<Version> {
      * @return id
      */
     public static String idAndVersion(String idSpec, Version.Match[] matchOut) {
-        int eqIndex = idSpec.indexOf('=');
-        int moreIndex = idSpec.indexOf('~');
+        int eqIndex = idSpec.indexOf(EXACT_VERSION);
+        int moreIndex = idSpec.indexOf(GREATER_VERSION);
+        int compatibleIndex = idSpec.indexOf(COMPATIBLE_VERSION);
         int i = -1;
         Version.Match.Type type = null;
 
@@ -267,8 +309,11 @@ public final class Version implements Comparable<Version> {
             type = Match.Type.EXACT;
             i = eqIndex;
         } else if (moreIndex > 0) {
-            type = Match.Type.GREATER;
+            type = Match.Type.INSTALLABLE;
             i = moreIndex;
+        } else if (compatibleIndex > 0) {
+            type = Match.Type.COMPATIBLE;
+            i = compatibleIndex;
         } else {
             matchOut[0] = Version.NO_VERSION.match(Match.Type.MOSTRECENT);
             return idSpec;
@@ -277,11 +322,85 @@ public final class Version implements Comparable<Version> {
         return idSpec.substring(0, i);
     }
 
+    /**
+     * Accepts version specification and creates a version filter.
+     * <p>
+     * Version-input must start with "+", "~", "=" or a digit. Non-version inputs will produce
+     * {@code null}.
+     * </p>
+     * <ul>
+     * <li>=version means exactly the version specified ({@link Match.Type#EXACT})
+     * <li>+version means the specified version, or above ({@link Match.Type#INSTALLABLE})
+     * <li>~version or version means that version or greater, but within a release range (
+     * {@link Match.Type#COMPATIBLE}
+     * </ul>
+     * 
+     * @param spec
+     * @return version match or {@code null}.
+     */
+    public static Version.Match versionFilter(String spec) {
+        if (spec == null || spec.isEmpty()) {
+            return null;
+        }
+
+        int eqIndex = spec.indexOf(EXACT_VERSION);
+        int moreIndex = spec.indexOf(GREATER_VERSION);
+        int compatibleIndex = spec.indexOf(COMPATIBLE_VERSION);
+        int i = -1;
+        Version.Match.Type type = null;
+
+        if (eqIndex >= 0) {
+            type = Match.Type.EXACT;
+            i = eqIndex;
+        } else if (moreIndex >= 0) {
+            type = Match.Type.INSTALLABLE;
+            i = moreIndex;
+        } else if (compatibleIndex >= 0) {
+            type = Match.Type.COMPATIBLE;
+            i = compatibleIndex;
+        } else {
+            if (Character.isDigit(spec.charAt(0))) {
+                return Version.fromString(spec).match(Match.Type.COMPATIBLE);
+            } else {
+                return null;
+            }
+        }
+        return Version.fromString(spec.substring(i + 1)).match(type);
+    }
+
     public static final class Match implements Predicate<Version> {
         public enum Type {
+            /**
+             * The exact version number.
+             */
             EXACT,
+
+            /**
+             * Versions greater or equal than the one defined.
+             */
+            INSTALLABLE,
+
+            /**
+             * Also greater, but also indicates the most recent one is needed.
+             */
+            MOSTRECENT,
+
+            /**
+             * Versions compatible. For version r.x.y.z, all versions with the same r.x.y are
+             * compatible.
+             */
+            COMPATIBLE,
+
+            /**
+             * Version which is equal or greater.
+             */
             GREATER,
-            MOSTRECENT
+
+            /**
+             * Dependency check. The tested install version must be the same, and the patchlevel
+             * must be lower or equal.
+             */
+            SATISFIES,
         }
 
         private final Type matchType;
@@ -297,20 +416,43 @@ public final class Version implements Comparable<Version> {
             if (t == null) {
                 return matchType != Type.EXACT;
             }
-            int d = version.compareTo(t);
             switch (matchType) {
                 case EXACT:
-                    return d == 0;
+                    return version.equals(t);
 
                 case GREATER:
+                    return version.compareTo(t) <= 0;
+
+                case INSTALLABLE:
+                    return version.installVersion().compareTo(t.installVersion()) <= 0;
+
                 case MOSTRECENT:
-                    return d <= 0;
+                    throw new IllegalArgumentException();
+
+                case COMPATIBLE:
+                    return version.installVersion().equals(t.installVersion());
+
+                case SATISFIES:
+                    int a = version.installVersion().compareTo(t.installVersion());
+                    if (a < 0) {
+                        return true;
+                    }
+                    return version.onlyVersion().compareTo(t.onlyVersion()) >= 0;
             }
             return false;
         }
 
+        public Version getVersion() {
+            return version;
+        }
+
         public Type getType() {
             return matchType;
+        }
+
+        @Override
+        public String toString() {
+            return matchType.toString() + "[" + version + "]";
         }
     }
 }

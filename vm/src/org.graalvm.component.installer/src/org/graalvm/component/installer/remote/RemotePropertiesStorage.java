@@ -135,7 +135,8 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
     }
 
     boolean acceptsVersion(Version vers) {
-        return localRegistry.getGraalVersion().compareTo(vers) <= 0;
+        // also accept other minor patc
+        return graalVersion.installVersion().compareTo(vers.installVersion()) <= 0;
     }
 
     @Override
@@ -167,9 +168,6 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
                 v = Version.fromString(vS);
             } catch (IllegalArgumentException ex) {
                 feedback.verboseOutput("REMOTE_BadComponentVersion", s);
-                continue;
-            }
-            if (v.compareTo(graalVersion) < 0) {
                 continue;
             }
             ComponentInfo ci = createVersionedComponent(compProps, id, v);

@@ -33,7 +33,13 @@ import org.graalvm.component.installer.model.ComponentInfo;
  * @author sdedic
  */
 public interface ComponentCollection {
-    ComponentInfo findComponent(String id);
+    default ComponentInfo findComponent(String id) {
+        return findComponent(id, null);
+    }
+
+    void setAllowDistUpdate(boolean distUpgrade);
+
+    ComponentInfo findComponent(String id, Version.Match vm);
 
     String shortenComponentId(ComponentInfo info);
 

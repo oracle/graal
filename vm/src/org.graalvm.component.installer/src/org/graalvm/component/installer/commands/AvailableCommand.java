@@ -24,10 +24,19 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.ComponentCollection;
+import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.Version;
+import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
  *
@@ -35,11 +44,15 @@ import org.graalvm.component.installer.ComponentCollection;
  */
 public class AvailableCommand extends ListInstalledCommand {
 
+    private Version.Match vmatch;
+
     @Override
     public Map<String, String> supportedOptions() {
         Map<String, String> opts = new HashMap<>(super.supportedOptions());
         opts.put(Commands.OPTION_ALL, "");
         opts.put(Commands.LONG_OPTION_ALL, Commands.OPTION_ALL);
+        opts.put(Commands.OPTION_VERSION, "s");
+        opts.put(Commands.LONG_OPTION_VERSION, Commands.OPTION_VERSION);
         return opts;
     }
 
@@ -47,6 +60,51 @@ public class AvailableCommand extends ListInstalledCommand {
     protected ComponentCollection initRegistry() {
         super.initRegistry();
         return input.getRegistry();
+    }
+
+    @Override
+    public void init(CommandInput commandInput, Feedback feedBack) {
+        super.init(commandInput, feedBack);
+        String v = commandInput.optValue(Commands.OPTION_VERSION);
+        if (v != null) {
+            vmatch = Version.versionFilter(v);
+        }
+    }
+
+    @Override
+    protected List<ComponentInfo> filterDisplayedVersions(String id, Collection<ComponentInfo> infos) {
+        if (input.optValue(Commands.OPTION_ALL) != null) {
+            return super.filterDisplayedVersions(id, infos);
+        }
+        Set<Version> seen = new HashSet<>();
+        Collection<ComponentInfo> filtered = new ArrayList<>();
+        for (ComponentInfo ci : infos) {
+            if (seen.add(ci.getVersion().installVersion())) {
+                filtered.add(ci);
+            }
+        }
+        return super.filterDisplayedVersions(id, filtered);
+    }
+
+    @Override
+    protected String acceptExpression(String expr) {
+        if (vmatch != null) {
+            return super.acceptExpression(expr);
+        }
+        Version.Match vm = Version.versionFilter(expr);
+        if (vm == null) {
+            vmatch = getRegistry().getGraalVersion().match(Version.Match.Type.INSTALLABLE);
+            return expr;
+        } else {
+            vmatch = vm;
+            // consume
+            return null;
+        }
+    }
+
+    @Override
+    protected Version.Match getVersionFilter() {
+        return vmatch == null ? super.getVersionFilter() : vmatch;
     }
 
 }

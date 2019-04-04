@@ -1,7 +1,26 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 package org.graalvm.component.installer.commands;
 
@@ -36,14 +55,14 @@ public class PreRemoveProcess {
     private final Feedback feedback;
     private final List<ComponentInfo> infos = new ArrayList<>();
     private boolean rebuildPolyglot;
-    
+
     private boolean dryRun;
     private boolean ignoreFailedDeletions;
     private boolean removeBaseDir;
 
     public PreRemoveProcess(Path instPath, Feedback fb) {
         this.feedback = fb;
-        
+
         installPath = instPath;
     }
 
@@ -77,9 +96,10 @@ public class PreRemoveProcess {
     public void addComponentInfo(ComponentInfo info) {
         this.infos.add(info);
     }
-    
+
     /**
      * Process all the components, prints message.
+     * 
      * @throws IOException if deletion fails
      */
     void run() throws IOException {
@@ -91,13 +111,13 @@ public class PreRemoveProcess {
             feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, installPath.resolve(p).normalize());
         }
     }
-    
+
     /**
-     * Called also from Uninstaller. Will delete one single file, possibly with altering
-     * permissions on the parent so the file can be deleted.
+     * Called also from Uninstaller. Will delete one single file, possibly with altering permissions
+     * on the parent so the file can be deleted.
+     * 
      * @param p file to delete
-     * @param rootPath root path to the graalVM
-     * @throws IOException 
+     * @throws IOException
      */
     void deleteOneFile(Path p) throws IOException {
         try {
@@ -112,7 +132,7 @@ public class PreRemoveProcess {
                 return;
             }
             throw ex;
-//            throw new UncheckedIOException(ex);
+            // throw new UncheckedIOException(ex);
         }
     }
 
@@ -162,6 +182,7 @@ public class PreRemoveProcess {
 
     /**
      * Also called from Uninstaller.
+     * 
      * @param rootPath root path to delete (inclusive)
      * @throws IOException if the deletion fails.
      */
@@ -181,7 +202,7 @@ public class PreRemoveProcess {
             throw ex.getCause();
         }
     }
-    
+
     void processComponent(ComponentInfo ci) throws IOException {
         Path langParentPath = SystemUtils.fromCommonRelative(CommonConstants.LANGUAGE_PARENT);
         rebuildPolyglot |= ci.isPolyglotRebuild();

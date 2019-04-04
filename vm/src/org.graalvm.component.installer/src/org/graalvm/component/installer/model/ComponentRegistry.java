@@ -49,7 +49,7 @@ import org.graalvm.component.installer.Version;
  * serialization.
  */
 public final class ComponentRegistry implements ComponentCollection {
-    private final ComponentStorage storage;
+    private final ManagementStorage storage;
     private final Feedback env;
 
     /**
@@ -82,7 +82,7 @@ public final class ComponentRegistry implements ComponentCollection {
      */
     private boolean allowDistUpdate;
 
-    public ComponentRegistry(Feedback env, ComponentStorage storage) {
+    public ComponentRegistry(Feedback env, ManagementStorage storage) {
         this.storage = storage;
         this.env = env;
     }
@@ -108,12 +108,20 @@ public final class ComponentRegistry implements ComponentCollection {
      * 
      * @param allowDistUpdate
      */
+    @Override
     public void setAllowDistUpdate(boolean allowDistUpdate) {
         this.allowDistUpdate = allowDistUpdate;
     }
 
     @Override
-    public ComponentInfo findComponent(String id) {
+    public ComponentInfo findComponent(String id, Version.Match vm) {
+        return findComponent(id);
+    }
+
+    @Override
+    public ComponentInfo findComponent(String idspec) {
+        Version.Match[] vmatch = new Version.Match[1];
+        String id = Version.idAndVersion(idspec, vmatch);
         if (!allLoaded) {
             return loadSingleComponent(id, false, false);
         }
@@ -416,8 +424,12 @@ public final class ComponentRegistry implements ComponentCollection {
     }
 
     public void acceptLicense(ComponentInfo info, String id, String text) {
+        acceptLicense(info, id, text, null);
+    }
+
+    public void acceptLicense(ComponentInfo info, String id, String text, Date d) {
         try {
-            storage.recordLicenseAccepted(info, id, text);
+            storage.recordLicenseAccepted(info, id, text, d);
         } catch (IOException ex) {
             env.error("ERROR_RecordLicenseAccepted", ex, ex.getLocalizedMessage());
         }
@@ -430,5 +442,17 @@ public final class ComponentRegistry implements ComponentCollection {
             graalVer = Version.fromString(SystemUtils.normalizeOldVersions(getGraalCapabilities().get(CommonConstants.CAP_GRAALVM_VERSION)));
         }
         return graalVer;
+    }
+
+    public Map<String, Collection<String>> getAcceptedLicenses() {
+        return storage.findAcceptedLicenses();
+    }
+
+    public String licenseText(String licId) {
+        return storage.licenseText(licId);
+    }
+
+    public boolean isMacOsX() {
+        return storage.loadGraalVersionInfo().get("os_name").toLowerCase().contains("macos");
     }
 }

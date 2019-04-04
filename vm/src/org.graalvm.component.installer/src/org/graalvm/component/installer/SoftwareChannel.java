@@ -45,8 +45,7 @@ public interface SoftwareChannel {
     /**
      * Loads and provides access to the component registry.
      * 
-     * @return registry instance
-    ComponentCollection getRegistry();
+     * @return registry instance ComponentCollection getRegistry();
      */
 
     ComponentStorage getStorage() throws IOException;
@@ -74,6 +73,7 @@ public interface SoftwareChannel {
      * refuse to operate and displays an appropriate error message
      * 
      * @param info
+     * 
      * @return boolean isNativeInstallable(ComponentInfo info);
      */
 
@@ -90,8 +90,8 @@ public interface SoftwareChannel {
         SoftwareChannel createChannel(String urlSpec, CommandInput input, Feedback output);
 
         /**
-         * Adds options to the set of global options. Global options allow to accept specific options
-         * from commandline, which would otherwise cause an error (unknown option).
+         * Adds options to the set of global options. Global options allow to accept specific
+         * options from commandline, which would otherwise cause an error (unknown option).
          * 
          * @return global options to add.
          */

@@ -42,12 +42,15 @@ public class Verifier {
     private final Feedback feedback;
     private final ComponentRegistry localRegistry;
     private final ComponentCollection catalog;
+    private boolean silent;
     private boolean replaceComponents;
     private boolean ignoreRequirements;
     private boolean collectErrors;
     private boolean ignoreExisting;
-    private Version.Match versionMatch;
+    private boolean collectVersion;
 
+    private Version.Match versionMatch;
+    private Version minVersion;
     private List<DependencyException> errors = new ArrayList<>();
 
     public Verifier(Feedback feedback, ComponentRegistry registry, ComponentCollection catalog) {
@@ -56,12 +59,34 @@ public class Verifier {
         this.catalog = catalog;
     }
 
+    public boolean isCollectVersion() {
+        return collectVersion;
+    }
+
+    public Verifier collectVersion(boolean collect) {
+        this.collectVersion = collect;
+        return this;
+    }
+
+    public Version getMinVersion() {
+        return minVersion;
+    }
+
+    public boolean isSilent() {
+        return silent;
+    }
+
+    public void setSilent(boolean silent) {
+        this.silent = silent;
+    }
+
     public Version.Match getVersionMatch() {
         return versionMatch;
     }
 
-    public void setVersionMatch(Version.Match versionMatch) {
+    public Verifier setVersionMatch(Version.Match versionMatch) {
         this.versionMatch = versionMatch;
+        return this;
     }
 
     public boolean hasErrors() {
@@ -117,6 +142,9 @@ public class Verifier {
     }
 
     public void printRequirements(ComponentInfo info) {
+        if (isSilent()) {
+            return;
+        }
         Map<String, String> requiredCaps = info.getRequiredGraalValues();
         Map<String, String> graalCaps = localRegistry.getGraalCapabilities();
 
@@ -140,7 +168,8 @@ public class Verifier {
             return true;
         }
         ComponentInfo existing = localRegistry.findComponent(componentInfo.getId());
-        return existing == null;
+        return existing == null ||
+                        existing.getVersion().compareTo(componentInfo.getVersion()) < 0;
     }
 
     @SuppressWarnings("StringEquality")
@@ -150,14 +179,13 @@ public class Verifier {
         // check the component is not in the registry
         ComponentInfo existing = localRegistry.findComponent(componentInfo.getId());
         if (existing != null) {
-            if (ignoreExisting) {
-                return this;
-            }
-            if (!replaceComponents) {
-                addOrThrow(new DependencyException.Conflict(
-                                existing.getId(), componentInfo.getVersionString(), existing.getVersionString(),
-                                feedback.l10n("VERIFY_ComponentExists",
-                                                existing.getName(), catalog.shortenComponentId(existing), existing.getVersionString())));
+            if (existing.getVersion().compareTo(componentInfo.getVersion()) >= 0) {
+                if (!ignoreExisting && !replaceComponents) {
+                    addOrThrow(new DependencyException.Conflict(
+                                    existing.getId(), componentInfo.getVersionString(), existing.getVersionString(),
+                                    feedback.l10n("VERIFY_ComponentExists",
+                                                    existing.getName(), catalog.shortenComponentId(existing), existing.getVersionString())));
+                }
             }
         }
         if (ignoreRequirements) {
@@ -166,7 +194,7 @@ public class Verifier {
         Map<String, String> requiredCaps = componentInfo.getRequiredGraalValues();
         Map<String, String> graalCaps = localRegistry.getGraalCapabilities();
 
-        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", catalog.shortenComponentId(componentInfo), componentInfo.getName(), componentInfo.getVersionString())) {
+        if (!isSilent() && feedback.verboseOutput("VERIFY_VerboseCheckRequirements", catalog.shortenComponentId(componentInfo), componentInfo.getName(), componentInfo.getVersionString())) {
             List<String> keys = new ArrayList<>(requiredCaps.keySet());
             Collections.sort(keys);
             String none = feedback.l10n("VERIFY_VerboseCapabilityNone");
@@ -180,15 +208,37 @@ public class Verifier {
             String reqVal = requiredCaps.get(s);
             String graalVal = graalCaps.get(s);
             boolean matches;
-
-            if (BundleConstants.GRAAL_VERSION.equals(reqVal) && versionMatch != null) {
-                Version cv = Version.fromString(
-                                SystemUtils.normalizeOldVersions(reqVal.toLowerCase()));
-                matches = versionMatch.test(cv);
+            if (BundleConstants.GRAAL_VERSION.equals(s)) {
+                if (versionMatch != null) {
+                    Version cv = Version.fromString(
+                                    SystemUtils.normalizeOldVersions(reqVal.toLowerCase()));
+                    matches = versionMatch.test(cv);
+                } else {
+                    matches = matches(reqVal, graalVal);
+                }
+                if (!matches) {
+                    Version rq = Version.fromString(reqVal);
+                    Version gv = localRegistry.getGraalVersion();
+                    int n = gv.compareTo(rq);
+                    if (n > 0) {
+                        addOrThrow(new DependencyException.Mismatch(
+                                        GRAALVM_CAPABILITY,
+                                        s, reqVal, graalVal,
+                                        feedback.l10n("VERIFY_ObsoleteGraalVM",
+                                                        componentInfo.getName(), reqVal, gv.toString())));
+                    } else if (collectVersion) {
+                        minVersion = rq;
+                    } else {
+                        addOrThrow(new DependencyException.Mismatch(
+                                        GRAALVM_CAPABILITY,
+                                        s, reqVal, graalVal,
+                                        feedback.l10n("VERIFY_UpdateGraalVM",
+                                                        componentInfo.getName(), reqVal, gv.toString())));
+                    }
+                }
+                continue;
             } else {
-                matches = !((reqVal != graalVal) &&
-                                (reqVal == null || graalVal == null ||
-                                                (reqVal.replace('-', '_').compareToIgnoreCase(graalVal.replace('-', '_')) != 0)));
+                matches = matches(reqVal, graalVal);
             }
             if (!matches) {
                 String val = graalVal != null ? graalVal : feedback.l10n("VERIFY_CapabilityMissing");
@@ -200,6 +250,10 @@ public class Verifier {
             }
         }
         return this;
+    }
+
+    private static boolean matches(String reqVal, String graalVal) {
+        return !((reqVal != graalVal) && (reqVal == null || graalVal == null || (reqVal.replace('-', '_').compareToIgnoreCase(graalVal.replace('-', '_')) != 0)));
     }
 
 }

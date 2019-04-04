@@ -27,15 +27,21 @@ package org.graalvm.component.installer.remote;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -255,6 +261,48 @@ public final class FileDownloader {
         return this;
     }
 
+    public static class CopyDirVisitor extends SimpleFileVisitor<Path> {
+
+        private Path fromPath;
+        private Path toPath;
+        private StandardCopyOption copyOption;
+
+        public CopyDirVisitor(Path fromPath, Path toPath, StandardCopyOption copyOption) {
+            this.fromPath = fromPath;
+            this.toPath = toPath;
+            this.copyOption = copyOption;
+        }
+
+        public CopyDirVisitor(Path fromPath, Path toPath) {
+            this(fromPath, toPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+                        throws IOException {
+
+            Path targetPath = toPath.resolve(fromPath.relativize(dir));
+            if (!Files.exists(targetPath)) {
+                Files.createDirectory(targetPath);
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                        throws IOException {
+
+            Files.copy(file, toPath.resolve(fromPath.relativize(file)), copyOption);
+            return FileVisitResult.CONTINUE;
+        }
+    }
+
+    private void copySubtree(Path from) throws IOException {
+        Path to = Files.createTempDirectory(createTempDir().toPath(), "download");
+        Files.walkFileTree(from, new CopyDirVisitor(from, to));
+        localFile = to.toFile();
+    }
+
     public void download() throws IOException {
         if (fileDescription != null) {
             if (!feedback.verboseOutput("MSG_DownloadingVerbose", getFileDescription(), getSourceURL())) {
@@ -268,6 +316,18 @@ public final class FileDownloader {
         if (localCache != null) {
             localFile = localCache.toFile();
             return;
+        }
+
+        if (sourceURL.getProtocol().equals("file")) {
+            try {
+                Path p = Paths.get(sourceURL.toURI());
+                if (Files.isDirectory(p)) {
+                    copySubtree(p);
+                    return;
+                }
+            } catch (URISyntaxException ex) {
+                throw new IOException(ex);
+            }
         }
 
         URLConnection conn = getConnectionFactory().createConnection(sourceURL, this::configureHeaders);

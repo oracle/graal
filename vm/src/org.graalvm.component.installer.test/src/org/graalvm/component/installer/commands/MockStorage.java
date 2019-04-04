@@ -41,12 +41,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.component.installer.model.ComponentInfo;
-import org.graalvm.component.installer.model.ComponentStorage;
+import org.graalvm.component.installer.model.ManagementStorage;
 
 /**
  * Mock implementation of component storage to avoid mess with disk files.
  */
-public class MockStorage implements ComponentStorage {
+public class MockStorage implements ManagementStorage {
     public static final Map<String, String> DEFAULT_GRAAL_INFO = new HashMap<>();
 
     static {
@@ -56,6 +56,7 @@ public class MockStorage implements ComponentStorage {
     }
 
     public Map<String, Map<String, Date>> acceptedLicenses = new HashMap<>();
+    public Map<String, String> licText = new HashMap<>();
     public List<ComponentInfo> installed = new ArrayList<>();
     public Map<String, String> graalInfo = new HashMap<>(DEFAULT_GRAAL_INFO);
     public Map<String, Collection<String>> replacedFiles = new HashMap<>();
@@ -115,16 +116,31 @@ public class MockStorage implements ComponentStorage {
     }
 
     @Override
-    public void recordLicenseAccepted(ComponentInfo info, String licenseID, String text) throws IOException {
+    public void recordLicenseAccepted(ComponentInfo info, String licenseID, String text, Date d) throws IOException {
         if (info == null) {
             acceptedLicenses.clear();
             return;
         }
         Map<String, Date> acc = acceptedLicenses.computeIfAbsent(info.getId(), (i) -> new HashMap<>());
         if (licenseID != null) {
-            acc.put(licenseID, new Date());
+            acc.put(licenseID, d != null ? d : new Date());
+            licText.putIfAbsent(licenseID, text);
         } else {
             acc.clear();
         }
+    }
+
+    @Override
+    public Map<String, Collection<String>> findAcceptedLicenses() {
+        Map<String, Collection<String>> result = new HashMap<>();
+        for (String id : acceptedLicenses.keySet()) {
+            result.put(id, acceptedLicenses.get(id).keySet());
+        }
+        return result;
+    }
+
+    @Override
+    public String licenseText(String licID) {
+        return licText.get(licID);
     }
 }

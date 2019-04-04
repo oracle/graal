@@ -27,13 +27,16 @@ package org.graalvm.component.installer.remote;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.URL;
+import java.util.Collection;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.MockURLConnection;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
+import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.NetworkTestBase;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
@@ -42,13 +45,17 @@ import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 public class RemoteCatalogDownloaderTest extends NetworkTestBase {
-    
+
     ComponentCollection openCatalog(SoftwareChannel ch) throws IOException {
-        ComponentCollection cc = new CatalogContents(this, ch.getStorage(), getLocalRegistry());
+        return openCatalog(ch, getLocalRegistry().getGraalVersion());
+    }
+
+    ComponentCollection openCatalog(SoftwareChannel ch, Version v) throws IOException {
+        ComponentCollection cc = new CatalogContents(this, ch.getStorage(), getLocalRegistry(), v);
         cc.getComponentIDs();
         return cc;
     }
-    
+
     @Test
     public void testDownloadCatalogBadGraalVersion() throws Exception {
         URL clu = getClass().getResource("catalog");
@@ -144,6 +151,11 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         rcd = new RemoteCatalogDownloader(this, this, list);
     }
 
+    private static ComponentInfo findComponent(ComponentCollection col, String id) {
+        Collection<ComponentInfo> infos = col.loadComponents(id, Version.NO_VERSION.match(Version.Match.Type.GREATER), false);
+        return infos == null ? null : infos.iterator().next();
+    }
+
     /**
      * Checks that if a single catalog does not correspond to graalvm version, other catalogs will
      * be read.
@@ -154,9 +166,9 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     public void testSingleNonMatchingCatalogIgnored() throws Exception {
         setupJoinedCatalog("catalogMultiPart1");
         ComponentCollection col = openCatalog(rcd);
-        assertNotNull(col.findComponent("r"));
-        assertNotNull(col.findComponent("ruby"));
-        assertNull(col.findComponent("python"));
+        assertNotNull(findComponent(col, "r"));
+        assertNotNull(findComponent(col, "ruby"));
+        assertNull(findComponent(col, "python"));
     }
 
     /**
@@ -166,8 +178,8 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     public void testMultipleCatalogsJoined() throws Exception {
         setupJoinedCatalog("catalogMultiPart1Mergeable");
         ComponentCollection col = openCatalog(rcd);
-        assertNotNull(col.findComponent("r"));
-        assertNotNull(col.findComponent("ruby"));
-        assertNotNull(col.findComponent("python"));
+        assertNotNull(findComponent(col, "r"));
+        assertNotNull(findComponent(col, "ruby"));
+        assertNotNull(findComponent(col, "python"));
     }
 }

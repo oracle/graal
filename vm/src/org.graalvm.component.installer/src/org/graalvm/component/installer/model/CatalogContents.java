@@ -50,11 +50,7 @@ public class CatalogContents implements ComponentCollection {
     private final ComponentStorage storage;
     private final Feedback env;
     private final Map<String, List<ComponentInfo>> components = new HashMap<>();
-
-    /**
-     * The registry of installed components.
-     */
-    private final ComponentRegistry installedRegistry;
+    private final Version graalVersion;
 
     private final Verifier verifier;
 
@@ -66,57 +62,35 @@ public class CatalogContents implements ComponentCollection {
     private boolean allowDistUpdate;
 
     public CatalogContents(Feedback env, ComponentStorage storage, ComponentRegistry installed) {
+        this(env, storage, installed, installed.getGraalVersion());
+    }
+
+    public CatalogContents(Feedback env, ComponentStorage storage, ComponentRegistry installed, Version version) {
         this.storage = storage;
         this.env = env.withBundle(Feedback.class);
-        this.installedRegistry = installed;
         this.verifier = new Verifier(env, installed, this);
+        this.graalVersion = version;
+        verifier.ignoreExisting(true);
+        verifier.setSilent(true);
         verifier.setCollectErrors(true);
-        verifier.setVersionMatch(installed.getGraalVersion().match(Version.Match.Type.GREATER));
+        verifier.setVersionMatch(graalVersion.match(Version.Match.Type.SATISFIES));
     }
 
     public boolean compatibleVersion(ComponentInfo info) {
+        // excludes components that depend on obsolete versions
+        // excludes components that depend on
         if (verifier.validateRequirements(info).hasErrors()) {
             return false;
         }
         Version v = info.getVersion();
-        Version gv = installedRegistry.getGraalVersion();
+        Version gv = graalVersion;
         if (allowDistUpdate) {
-            return gv.updatable().equals(v.updatable());
+            return gv.updatable().compareTo(v.updatable()) <= 0;
         } else {
-            return gv.onlyVersion().equals(v.installVersion());
+            Version giv = gv.installVersion();
+            Version civ = v.installVersion();
+            return giv.equals(civ);
         }
-    }
-
-    /**
-     * Should return a most recent Component, matching the current state. With a special option
-     * 
-     * @param id component id.
-     * @return most recent component, or {@code null} if does not exist
-     */
-    private ComponentInfo mostRecentComponent(String id, Version.Match versionSelect, boolean fallback) {
-        if (id == null) {
-            return null;
-        }
-        Collection<ComponentInfo> infos = components.get(id);
-        if (infos == NONE) {
-            return null;
-        }
-        if (infos == null) {
-            infos = loadComponents(id, versionSelect, fallback);
-        }
-        if (infos == null) {
-            return null;
-        }
-        return mostRecentComponent(infos, versionSelect, fallback);
-    }
-
-    private ComponentInfo mostRecentComponent(Collection<ComponentInfo> infos, Version.Match versionSelect, boolean fallback) {
-        if (infos == null) {
-            return null;
-        }
-        List<ComponentInfo> cis = new ArrayList<>(infos);
-        Collections.sort(cis, ComponentInfo.versionComparator());
-        return compatibleComponent(cis, versionSelect, fallback);
     }
 
     private ComponentInfo compatibleComponent(List<ComponentInfo> cis, Version.Match versionSelect, boolean fallback) {
@@ -124,17 +98,18 @@ public class CatalogContents implements ComponentCollection {
             return null;
         }
         ComponentInfo first = null;
-
+        Version.Match vm = versionMatch(versionSelect);
+        boolean explicit = versionSelect != null && versionSelect.getType() != Version.Match.Type.MOSTRECENT;
         for (int i = cis.size() - 1; i >= 0; i--) {
             ComponentInfo ci = cis.get(i);
             if (first == null) {
                 first = ci;
             }
             Version v = ci.getVersion();
-            if (!versionSelect.test(v)) {
+            if (!vm.test(v)) {
                 continue;
             }
-            if (compatibleVersion(ci)) {
+            if (explicit || compatibleVersion(ci)) {
                 return ci;
             }
         }
@@ -153,16 +128,32 @@ public class CatalogContents implements ComponentCollection {
      * 
      * @param allowDistUpdate
      */
+    @Override
     public void setAllowDistUpdate(boolean allowDistUpdate) {
         this.allowDistUpdate = allowDistUpdate;
     }
 
+    private Version.Match versionMatch(Version.Match m) {
+        if (m != null && m.getType() != Version.Match.Type.MOSTRECENT) {
+            return m;
+        }
+        Version v = m == null ? graalVersion : m.getVersion();
+        if (v == Version.NO_VERSION) {
+            v = graalVersion;
+        }
+        return v.match(allowDistUpdate ? Version.Match.Type.INSTALLABLE : Version.Match.Type.COMPATIBLE);
+    }
+
     @Override
-    public ComponentInfo findComponent(String id) {
-        return mostRecentComponent(id,
-                        installedRegistry.getGraalVersion().match(
-                                        allowDistUpdate ? Version.Match.Type.GREATER : Version.Match.Type.MOSTRECENT),
-                        true);
+    public ComponentInfo findComponent(String id, Version.Match vm) {
+        if (id == null) {
+            return null;
+        }
+        List<ComponentInfo> infos = doLoadComponents(id, false);
+        if (infos == null) {
+            return null;
+        }
+        return compatibleComponent(infos, vm, false);
     }
 
     @Override
@@ -178,8 +169,18 @@ public class CatalogContents implements ComponentCollection {
             }
             String shortId = id.substring(l + 1);
             try {
-                ComponentInfo reg = findComponent(shortId);
-                if (reg == null || reg.getId().equals(id)) {
+                Collection<ComponentInfo> regs = doLoadComponents(shortId, false);
+                if (regs == null) {
+                    return shortId;
+                }
+                boolean success = true;
+                for (ComponentInfo reg : regs) {
+                    if (!reg.getId().equals(id)) {
+                        success = false;
+                        break;
+                    }
+                }
+                if (success) {
                     return shortId;
                 }
             } catch (FailedOperationException ex) {
@@ -217,6 +218,25 @@ public class CatalogContents implements ComponentCollection {
 
     @Override
     public Collection<ComponentInfo> loadComponents(String id, Version.Match vmatch, boolean filelist) {
+        List<ComponentInfo> v = doLoadComponents(id, filelist);
+        if (v == null) {
+            return null;
+        }
+        if (vmatch.getType() == Version.Match.Type.MOSTRECENT) {
+            ComponentInfo comp = compatibleComponent(v, versionMatch(vmatch), true);
+            return comp == null ? Collections.emptyList() : Collections.singleton(comp);
+        }
+        List<ComponentInfo> versions = new ArrayList<>(v);
+        for (Iterator<ComponentInfo> it = versions.iterator(); it.hasNext();) {
+            ComponentInfo cv = it.next();
+            if (!vmatch.test(cv.getVersion())) {
+                it.remove();
+            }
+        }
+        return versions;
+    }
+
+    private List<ComponentInfo> doLoadComponents(String id, boolean filelist) {
         String fid = findAbbreviatedId(id);
         if (fid == null) {
             return null;
@@ -247,17 +267,6 @@ public class CatalogContents implements ComponentCollection {
         if (v == NONE) {
             return null;
         }
-        if (vmatch.getType() == Version.Match.Type.MOSTRECENT) {
-            ComponentInfo comp = compatibleComponent(v, vmatch, true);
-            return comp == null ? Collections.emptyList() : Collections.singleton(comp);
-        }
-        List<ComponentInfo> versions = new ArrayList<>(v);
-        for (Iterator<ComponentInfo> it = versions.iterator(); it.hasNext();) {
-            ComponentInfo cv = it.next();
-            if (!vmatch.test(cv.getVersion())) {
-                it.remove();
-            }
-        }
-        return versions;
+        return v;
     }
 }
