@@ -1835,7 +1835,7 @@ public final class TruffleFile {
         }
     }
 
-    private String createAttributeString(AttributeGroup group, Iterable<String> attributeNames) {
+    private static String createAttributeString(AttributeGroup group, Iterable<String> attributeNames) {
         String joinedNames = String.join(",", attributeNames);
         return group == AttributeGroup.BASIC ? joinedNames : group.name + ':' + joinedNames;
     }
