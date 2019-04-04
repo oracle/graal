@@ -43,8 +43,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 final class TruffleSplittingStrategy {
 
     private static Set<OptimizedCallTarget> waste = new HashSet<>();
-    private static final int RECURSIVE_SPLIT_DEPTH = 2;
-    private static final int EXPERIMENTAL_RECURSIVE_SPLIT_DEPTH = 3;
+    private static final int LEGACY_RECURSIVE_SPLIT_DEPTH = 2;
+    private static final int RECURSIVE_SPLIT_DEPTH = 3;
 
     static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         final EngineData engineData = call.getCurrentCallTarget().engineData;
@@ -91,7 +91,7 @@ final class TruffleSplittingStrategy {
             return false;
         }
         final EngineData engineData = getEngineData(call, tvmci);
-        if (!canSplit(options, call) || isRecursiveSplit(call, EXPERIMENTAL_RECURSIVE_SPLIT_DEPTH) ||
+        if (!canSplit(options, call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH) ||
                         engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
             return false;
         }
@@ -105,7 +105,7 @@ final class TruffleSplittingStrategy {
         final EngineData engineData = getEngineData(call, tvmci);
         final RuntimeOptionsCache options = engineData.options;
         if (options.isLegacySplitting() || options.isSplittingAllowForcedSplits()) {
-            if (!canSplit(options, call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
+            if (!canSplit(options, call) || isRecursiveSplit(call, LEGACY_RECURSIVE_SPLIT_DEPTH)) {
                 return;
             }
             engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
@@ -161,7 +161,7 @@ final class TruffleSplittingStrategy {
         }
 
         // Disable splitting if it will cause a deep split-only recursion
-        if (isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
+        if (isRecursiveSplit(call, LEGACY_RECURSIVE_SPLIT_DEPTH)) {
             return false;
         }
 
