@@ -41,9 +41,16 @@
 package org.graalvm.nativeimage.impl;
 
 public interface RuntimeClassInitializationSupport {
-    void eagerClassInitialization(Class<?>[] classes);
 
-    void delayClassInitialization(Class<?>[] classes);
+    void delay(String name, String reason);
 
-    void rerunClassInitialization(Class<?>[] classes);
+    void eager(String name, String reason);
+
+    void rerun(String name, String reason);
+
+    void delay(Class<?> aClass, String reason);
+
+    void rerun(Class<?> aClass, String reason);
+
+    void eager(Class<?> aClass, String reason);
 }

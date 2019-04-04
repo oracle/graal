@@ -38,13 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.hosted;
+package org.graalvm.nativeimage;
 
 import static org.graalvm.nativeimage.hosted.ClassInitialization.MESSAGE;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import sun.reflect.CallerSensitive;
@@ -78,9 +75,11 @@ import sun.reflect.Reflection;
  * initialized, which violates the class initialization specification.</li>
  * <ul>
  *
+ * @deprecated Replaced by {@link org.graalvm.nativeimage.hosted.ClassInitialization}.
  * @since 1.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
+@Deprecated
 public final class RuntimeClassInitialization {
 
     /**

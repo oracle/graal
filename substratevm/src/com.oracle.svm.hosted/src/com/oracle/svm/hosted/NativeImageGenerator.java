@@ -1512,7 +1512,7 @@ public class NativeImageGenerator {
         for (Class<?> clazz : loader.findAnnotatedClasses(CEnum.class)) {
             RuntimeClassInitialization.eagerClassInitialization(clazz);
             ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
-            classInitializationSupport.forceInitializeHosted(type);
+            classInitializationSupport.forceInitializeHosted(clazz, "classes annotated with CEnum are always initialized");
             nativeLibs.loadJavaType(type);
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CContext.class)) {

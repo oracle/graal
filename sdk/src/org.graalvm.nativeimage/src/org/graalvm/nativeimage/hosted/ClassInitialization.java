@@ -40,8 +40,6 @@
  */
 package org.graalvm.nativeimage.hosted;
 
-import static org.graalvm.nativeimage.hosted.ClassInitialization.MESSAGE;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -59,12 +57,11 @@ import sun.reflect.Reflection;
  * initialization method loads shared libraries ({@code System.loadLibrary}), allocates native
  * memory ({@code ByteBuffer.allocateDirect}), or starts threads.
  * <p>
- * This class provides two different registration methods: Classes registered via
- * {@link #delayClassInitialization} are not initialized at all during image generation, and only
- * initialized at runtime, i.e., the class initializer is executed once at runtime. Classes
- * registered via {@link RuntimeClassInitialization#rerunClassInitialization} are initialized during
- * image generation, and again initialized at runtime, i.e., the class initializer is executed
- * twice.
+ * This class provides two different registration methods: Classes registered via {@link #delay} are
+ * not initialized at all during image generation, and only initialized at runtime, i.e., the class
+ * initializer is executed once at runtime. Classes registered via {@link ClassInitialization#rerun}
+ * are initialized during image generation, and again initialized at runtime, i.e., the class
+ * initializer is executed twice.
  * <p>
  * Registering a class automatically registers all subclasses too. It would violate the class
  * initialization specification to have an uninitialized class that has an initialized subclass.
@@ -81,7 +78,9 @@ import sun.reflect.Reflection;
  * @since 1.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class RuntimeClassInitialization {
+public final class ClassInitialization {
+
+    public static final String MESSAGE = "from feature ";
 
     /**
      * Registers the provided classes, and all of their subclasses, for class initialization at
@@ -97,7 +96,7 @@ public final class RuntimeClassInitialization {
      * @since 1.0
      */
     @CallerSensitive
-    public static void delayClassInitialization(Class<?>... classes) {
+    public static void delay(Class<?>... classes) {
         Class<?> callerClass = Reflection.getCallerClass();
         for (Class<?> aClass : classes) {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).delay(aClass, MESSAGE + callerClass.getTypeName());
@@ -120,7 +119,7 @@ public final class RuntimeClassInitialization {
      * @since 1.0
      */
     @CallerSensitive
-    public static void rerunClassInitialization(Class<?>... classes) {
+    public static void rerun(Class<?>... classes) {
         Class<?> callerClass = Reflection.getCallerClass();
         for (Class<?> aClass : classes) {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerun(aClass, MESSAGE + callerClass.getTypeName());
@@ -141,13 +140,77 @@ public final class RuntimeClassInitialization {
      * @since 1.0
      */
     @CallerSensitive
-    public static void eagerClassInitialization(Class<?>... classes) {
+    public static void eager(Class<?>... classes) {
         Class<?> callerClass = Reflection.getCallerClass();
         for (Class<?> aClass : classes) {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).eager(aClass, MESSAGE + callerClass.getTypeName());
         }
     }
 
-    private RuntimeClassInitialization() {
+    /**
+     * Registers all classes in provided packages, and all of their subclasses, for class
+     * initialization at runtime. The classes are not initialized automatically during image
+     * generation, and also must not be initialized manually by the user during image generation.
+     * <p>
+     * Unfortunately, classes are initialized for many reasons, and it is not possible to intercept
+     * class initialization and report an error at this time. If a registered class gets
+     * initialized, an error can be reported only later and the user must manually debug the reason
+     * for class initialization. This can be done by, e.g., setting a breakpoint in the class
+     * initializer or adding debug printing (print the stack trace) in the class initializer.
+     *
+     * @since 1.0
+     */
+    @CallerSensitive
+    public static void delay(Package[] packages) {
+        Class<?> callerClass = Reflection.getCallerClass();
+        for (Package aPackage : packages) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).delay(aPackage.getName(), MESSAGE + callerClass.getTypeName());
+        }
+    }
+
+    /**
+     * Registers all classes in provided packages, and all of their subclasses, for class
+     * re-initialization at runtime. The classes are still initialized during image generation,
+     * i.e., the class initializers run twice.
+     * <p>
+     * Static fields of the registered classes start out with their default values at runtime, i.e.,
+     * values assigned by class initializers (or for any other reason) to static fields are not
+     * available at runtime.
+     * <p>
+     * It is up to the user to ensure that this behavior makes sense and does not lead to wrong
+     * application behavior.
+     *
+     * @since 1.0
+     */
+    @CallerSensitive
+    public static void rerun(Package... packages) {
+        Class<?> callerClass = Reflection.getCallerClass();
+        for (Package aPackage : packages) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerun(aPackage.getName(), MESSAGE + callerClass.getTypeName());
+        }
+    }
+
+    /**
+     * Registers all classes in provided packages as eagerly initialized during image-build time.
+     * <p>
+     * All static initializers of {@code classes} will be executed during image-build time and
+     * static fields that are assigned values will be available at runtime. {@code static final}
+     * fields will be considered as constant.
+     * <p>
+     * It is up to the user to ensure that this behavior makes sense and does not lead to wrong
+     * application behavior.
+     *
+     *
+     * @since 1.0
+     */
+    @CallerSensitive
+    public static void eager(Package... packages) {
+        Class<?> callerClass = Reflection.getCallerClass();
+        for (Package aPackage : packages) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).eager(aPackage.getName(), MESSAGE + callerClass.getTypeName());
+        }
+    }
+
+    private ClassInitialization() {
     }
 }

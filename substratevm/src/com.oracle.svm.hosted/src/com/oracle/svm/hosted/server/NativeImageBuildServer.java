@@ -40,7 +40,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.net.URLClassLoader;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
@@ -72,6 +71,7 @@ import org.graalvm.collections.EconomicSet;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageBuildTask;
+import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 
@@ -380,7 +380,7 @@ public final class NativeImageBuildServer {
 
     private static Integer executeCompilation(ArrayList<String> arguments) {
         final String[] classpath = NativeImageGeneratorRunner.extractImageClassPath(arguments);
-        URLClassLoader imageClassLoader;
+        NativeImageClassLoader imageClassLoader;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             imageClassLoader = NativeImageGeneratorRunner.installNativeImageClassLoader(classpath);

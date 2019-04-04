@@ -84,19 +84,19 @@ public final class ImageClassLoader {
     }
 
     private final Platform platform;
-    private final ClassLoader classLoader;
+    private final NativeImageClassLoader classLoader;
     private final String[] classpath;
     private final EconomicSet<Class<?>> systemClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    private ImageClassLoader(Platform platform, String[] classpath, ClassLoader classLoader) {
+    private ImageClassLoader(Platform platform, String[] classpath, NativeImageClassLoader classLoader) {
         this.platform = platform;
         this.classpath = classpath;
         this.classLoader = classLoader;
     }
 
-    public static ImageClassLoader create(Platform platform, String[] classpathAll, ClassLoader classLoader) {
+    public static ImageClassLoader create(Platform platform, String[] classpathAll, NativeImageClassLoader classLoader) {
         ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
         classpathFiltered.addAll(Arrays.asList(classpathAll));
 
@@ -464,5 +464,9 @@ public final class ImageClassLoader {
 
     public ClassLoader getClassLoader() {
         return classLoader;
+    }
+
+    public Package[] getPackages() {
+        return classLoader.getPackages();
     }
 }
