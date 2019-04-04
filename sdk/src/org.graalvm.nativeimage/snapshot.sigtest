@@ -141,8 +141,8 @@ innr public abstract interface static DuringSetupAccess
 innr public abstract interface static FeatureAccess
 innr public abstract interface static IsInConfigurationAccess
 innr public abstract interface static OnAnalysisExitAccess
+intf org.graalvm.nativeimage.hosted.Feature
 meth public boolean isInConfiguration(org.graalvm.nativeimage.Feature$IsInConfigurationAccess)
-meth public java.util.List<java.lang.Class<? extends org.graalvm.nativeimage.Feature>> getRequiredFeatures()
 meth public void afterAnalysis(org.graalvm.nativeimage.Feature$AfterAnalysisAccess)
 meth public void afterCompilation(org.graalvm.nativeimage.Feature$AfterCompilationAccess)
 meth public void afterHeapLayout(org.graalvm.nativeimage.Feature$AfterHeapLayoutAccess)
@@ -151,78 +151,79 @@ meth public void afterRegistration(org.graalvm.nativeimage.Feature$AfterRegistra
 meth public void beforeAnalysis(org.graalvm.nativeimage.Feature$BeforeAnalysisAccess)
 meth public void beforeCompilation(org.graalvm.nativeimage.Feature$BeforeCompilationAccess)
 meth public void beforeImageWrite(org.graalvm.nativeimage.Feature$BeforeImageWriteAccess)
-meth public void cleanup()
 meth public void duringAnalysis(org.graalvm.nativeimage.Feature$DuringAnalysisAccess)
 meth public void duringSetup(org.graalvm.nativeimage.Feature$DuringSetupAccess)
 meth public void onAnalysisExit(org.graalvm.nativeimage.Feature$OnAnalysisExitAccess)
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$AfterAnalysisAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$AfterAnalysisAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$AfterCompilationAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$CompilationAccess
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$AfterCompilationAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$AfterHeapLayoutAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$AfterHeapLayoutAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$AfterImageWriteAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
-meth public abstract java.nio.file.Path getImagePath()
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$AfterImageWriteAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$AfterRegistrationAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$AfterRegistrationAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$BeforeAnalysisAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
-meth public abstract void registerAsAccessed(java.lang.reflect.Field)
-meth public abstract void registerAsInHeap(java.lang.Class<?>)
-meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
-meth public abstract void registerAsUsed(java.lang.Class<?>)
-meth public void registerAsUnsafeWritten(java.lang.reflect.Field)
  anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$BeforeAnalysisAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$BeforeCompilationAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$CompilationAccess
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$BeforeImageWriteAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$BeforeImageWriteAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$CompilationAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
-meth public abstract long objectFieldOffset(java.lang.reflect.Field)
-meth public abstract void registerAsImmutable(java.lang.Object)
-meth public abstract void registerAsImmutable(java.lang.Object,java.util.function.Predicate<java.lang.Object>)
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$CompilationAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$DuringAnalysisAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$BeforeAnalysisAccess
-meth public abstract void requireAnalysisIteration()
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$DuringSetupAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
-meth public abstract void registerObjectReplacer(java.util.function.Function<java.lang.Object,java.lang.Object>)
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$DuringSetupAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$FeatureAccess
  outer org.graalvm.nativeimage.Feature
-meth public abstract java.lang.Class<?> findClassByName(java.lang.String)
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$IsInConfigurationAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$IsInConfigurationAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.Feature$OnAnalysisExitAccess
  outer org.graalvm.nativeimage.Feature
-intf org.graalvm.nativeimage.Feature$FeatureAccess
+ anno 0 java.lang.Deprecated()
+intf org.graalvm.nativeimage.hosted.Feature$OnAnalysisExitAccess
 
 CLSS public final org.graalvm.nativeimage.ImageInfo
 fld public final static java.lang.String PROPERTY_IMAGE_CODE_KEY = "org.graalvm.nativeimage.imagecode"
@@ -377,11 +378,10 @@ intf org.graalvm.nativeimage.Platform$WINDOWS
 supr java.lang.Object
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.Platforms
- anno 0 java.lang.Deprecated()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE, METHOD, CONSTRUCTOR, FIELD])
 intf java.lang.annotation.Annotation
-meth public abstract java.lang.Class<?>[] value()
+meth public abstract java.lang.Class<? extends org.graalvm.nativeimage.Platform>[] value()
 
 CLSS public final org.graalvm.nativeimage.ProcessProperties
 meth public !varargs static void exec(java.nio.file.Path,java.lang.String[])
@@ -913,12 +913,6 @@ intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$OnAnalysisExitAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
-
-CLSS public abstract interface !annotation org.graalvm.nativeimage.Platforms
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE, METHOD, CONSTRUCTOR, FIELD])
-intf java.lang.annotation.Annotation
-meth public abstract java.lang.Class<? extends org.graalvm.nativeimage.Platform>[] value()
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeClassInitialization
 meth public !varargs static void delayClassInitialization(java.lang.Class<?>[])
