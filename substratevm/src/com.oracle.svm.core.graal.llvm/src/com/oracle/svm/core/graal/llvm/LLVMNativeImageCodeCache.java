@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -510,6 +512,13 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     @Override
     public String[] getCCInputFiles(Path tempDirectory, String imageName) {
         String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
+        try {
+            Path src = Paths.get(bitcodeFileName);
+            Path dst = Paths.get(relocatableFileName).getParent().resolve(src.getFileName());
+            Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new GraalError("Error copying " + bitcodeFileName + ": " + e);
+        }
         return new String[]{relocatableFileName, bitcodeFileName};
     }
 }
