@@ -125,7 +125,9 @@ class NFIContext {
             nativeContext = 0;
         }
         nativeEnv.set(null);
-        nativePointerMap.clear();
+        synchronized (nativePointerMap) {
+            nativePointerMap.clear();
+        }
     }
 
     private ClosureNativePointer getClosureNativePointer(long codePointer) {
