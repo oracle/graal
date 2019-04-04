@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 class FieldTable {
-    public static class CreationResult {
+    static class CreationResult {
         Field[] fieldTable;
         Field[] staticFieldTable;
         Field[] declaredFields;
@@ -14,7 +14,7 @@ class FieldTable {
         int objectFields;
         int staticObjectFields;
 
-        public CreationResult(Field[] fieldTable, Field[] staticFieldTable, Field[] declaredFields, int wordFields, int staticWordFields, int objectFields, int staticObjectFields) {
+        CreationResult(Field[] fieldTable, Field[] staticFieldTable, Field[] declaredFields, int wordFields, int staticWordFields, int objectFields, int staticObjectFields) {
             this.fieldTable = fieldTable;
             this.staticFieldTable = staticFieldTable;
             this.declaredFields = declaredFields;

@@ -26,6 +26,8 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class LinkedField {
@@ -35,6 +37,8 @@ public final class LinkedField {
 
     private final ParserField parserField;
     private final LinkedKlass holderLinkedKlass;
+
+    private final JavaKind kind;
 
     protected ConstantPool getConstantPool() {
         return holderLinkedKlass.getConstantPool();
@@ -46,6 +50,7 @@ public final class LinkedField {
         this.parserField = parserField;
         this.holderLinkedKlass = holderLinkedKlass;
         this.slot = slot;
+        this.kind = Types.getJavaKind(getType());
     }
 
     public Symbol<Type> getType() {
@@ -62,6 +67,10 @@ public final class LinkedField {
 
     public int getFlags() {
         return parserField.getFlags();
+    }
+
+    public JavaKind getKind() {
+        return kind;
     }
 
     public Attribute getAttribute(Symbol<Name> name) {

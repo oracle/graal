@@ -921,12 +921,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public static void JVM_ResolveClass(@Host(Class.class) StaticObject cls) {
-        ((StaticObjectClass) cls).getMirrorKlass().safeInitialize();
-    }
-
-    @VmImpl
-    @JniImpl
     public static Object JVM_GetMethodTypeAnnotations(@Host(Object.class) StaticObject guestReflectionMethod) {
         StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
         assert methodRoot != null;

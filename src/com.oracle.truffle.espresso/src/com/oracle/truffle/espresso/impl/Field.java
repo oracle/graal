@@ -28,7 +28,6 @@ import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -51,7 +50,6 @@ public final class Field implements ModifiersProvider {
     private final Symbol<Type> type;
     private final Symbol<Name> name;
     private volatile Klass typeKlassCache;
-    private final JavaKind kind;
 
     @CompilerDirectives.CompilationFinal private int fieldIndex = -1;
 
@@ -78,11 +76,10 @@ public final class Field implements ModifiersProvider {
         this.holder = holder;
         this.type = linkedField.getType();
         this.name = linkedField.getName();
-        this.kind = Types.getJavaKind(type);
     }
 
     public JavaKind getKind() {
-        return kind;
+        return linkedField.getKind();
     }
 
     public int getModifiers() {
@@ -93,6 +90,9 @@ public final class Field implements ModifiersProvider {
         return holder;
     }
 
+    /**
+     * The slot serves as the position in the `field table` of the ObjectKlass
+     */
     public int getSlot() {
         return linkedField.getSlot();
     }
@@ -182,6 +182,9 @@ public final class Field implements ModifiersProvider {
         this.fieldIndex = index;
     }
 
+    /**
+     * The fieldIndex is the actual position in the field array of an actual instance
+     */
     public int getFieldIndex() {
         return fieldIndex;
     }

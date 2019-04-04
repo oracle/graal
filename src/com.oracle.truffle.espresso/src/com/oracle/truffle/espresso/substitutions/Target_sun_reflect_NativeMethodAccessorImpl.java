@@ -289,16 +289,6 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                             throw meta.throwExWithCause(meta.InvocationTargetException, Meta.initEx(meta.AbstractMethodError));
                         }
                     }
-                    // throw EspressoError.unimplemented("reflective interface calls");
-                    // This is what it should look like for interfaces.
-                    // try {
-                    // method = resolveInterfaceCall(klass, reflectedMethod, targetKlass, receiver);
-                    // } catch (EspressoException e) {
-                    // // Method resolution threw an exception; wrap it in an
-                    // InvocationTargetException
-                    // throw meta.throwExWithCause(meta.InvocationTargetException,
-                    // e.getException());
-                    // }
                 } else {
                     // if the method can be overridden, we resolve using the vtable index.
                     method = reflectedMethod;
