@@ -2281,6 +2281,10 @@ public class BytecodeParser implements GraphBuilderContext {
         return false;
     }
 
+    /**
+     * Inline a method substitution graph. This is necessary for libgraal as substitutions only
+     * exist as encoded graphs and can't be parsed directly into the caller.
+     */
     @Override
     @SuppressWarnings("try")
     public boolean intrinsify(ResolvedJavaMethod targetMethod, StructuredGraph substituteGraph, InvocationPlugin.Receiver receiver, ValueNode[] args) {
