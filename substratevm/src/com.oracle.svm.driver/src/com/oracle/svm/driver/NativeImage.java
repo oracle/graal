@@ -208,7 +208,9 @@ public class NativeImage {
         /**
          * @return path to Java executable
          */
-        Path getJavaExecutable();
+        default Path getJavaExecutable() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return true if Java modules system should be used
@@ -225,37 +227,51 @@ public class NativeImage {
         /**
          * @return classpath for SubstrateVM image builder components
          */
-        List<Path> getBuilderClasspath();
+        default List<Path> getBuilderClasspath() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return base clibrary paths needed for general image building
          */
-        List<Path> getBuilderCLibrariesPaths();
+        default List<Path> getBuilderCLibrariesPaths() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return path to content of the inspect web server (points-to analysis debugging)
          */
-        Path getBuilderInspectServerPath();
+        default Path getBuilderInspectServerPath() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return base image classpath needed for every image (e.g. LIBRARY_SUPPORT)
          */
-        List<Path> getImageProvidedClasspath();
+        default List<Path> getImageProvidedClasspath() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return JVMCI API classpath for image builder (jvmci + graal jars)
          */
-        List<Path> getBuilderJVMCIClasspath();
+        default List<Path> getBuilderJVMCIClasspath() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return entries for jvmci.class.path.append system property (if needed)
          */
-        List<Path> getBuilderJVMCIClasspathAppend();
+        default List<Path> getBuilderJVMCIClasspathAppend() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return boot-classpath for image builder (graal-sdk.jar)
          */
-        List<Path> getBuilderBootClasspath();
+        default List<Path> getBuilderBootClasspath() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return additional arguments for JVM that runs image builder
@@ -280,22 +296,30 @@ public class NativeImage {
         /**
          * @return entries for the --module-path of the image builder
          */
-        List<Path> getBuilderModulePath();
+        default List<Path> getBuilderModulePath() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return entries for the --upgrade-module-path of the image builder
          */
-        List<Path> getBuilderUpgradeModulePath();
+        default List<Path> getBuilderUpgradeModulePath() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return classpath for image (the classes the user wants to build an image from)
          */
-        List<Path> getImageClasspath();
+        default List<Path> getImageClasspath() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return native-image (i.e. image build) arguments
          */
-        List<String> getBuildArgs();
+        default List<String> getBuildArgs() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * TODO Remove GraalVM Lanucher specific code.
@@ -732,11 +756,19 @@ public class NativeImage {
         }
     }
 
+    interface NativeImagePropertiesProcessor {
+        void processNativeImageProperties(Path classpathEntry, Path nativeImagePropertyFile, Function<String, String> resolver) throws IOException;
+    }
+
     private void processClasspathNativeImageProperties(Path classpathEntry) {
+        processClasspathNativeImageProperties(classpathEntry, this::processNativeImageProperties);
+    }
+
+    private void processClasspathNativeImageProperties(Path classpathEntry, NativeImagePropertiesProcessor propertiesProcessor) {
         try {
             if (Files.isDirectory(classpathEntry)) {
                 Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImagePropertiesMetaInf));
-                processNativeImageProperties(nativeImageMetaInfBase);
+                processNativeImageProperties(classpathEntry, nativeImageMetaInfBase, propertiesProcessor);
             } else {
                 List<Path> jarFileMatches = Collections.emptyList();
                 if (classpathEntry.endsWith(ImageClassLoader.cpWildcardSubstitute)) {
@@ -755,7 +787,7 @@ public class NativeImage {
                     URI jarFileURI = URI.create("jar:" + jarFile.toUri());
                     try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
                         Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
-                        processNativeImageProperties(nativeImageMetaInfBase);
+                        processNativeImageProperties(jarFile, nativeImageMetaInfBase, propertiesProcessor);
                     }
                 }
             }
@@ -764,7 +796,7 @@ public class NativeImage {
         }
     }
 
-    private void processNativeImageProperties(Path nativeImageMetaInfBase) throws IOException {
+    private void processNativeImageProperties(Path classpathEntry, Path nativeImageMetaInfBase, NativeImagePropertiesProcessor propertiesProcessor) throws IOException {
         if (Files.isDirectory(nativeImageMetaInfBase)) {
             List<Path> nativeImageProperties = Files.walk(nativeImageMetaInfBase)
                             .filter(p -> p.endsWith(nativeImagePropertiesFilename))
@@ -783,7 +815,7 @@ public class NativeImage {
                 };
                 showVerboseMessage(isVerbose(), "Apply " + nativeImagePropertyFile.toUri());
                 try {
-                    processNativeImageProperties(loadProperties(Files.newInputStream(nativeImagePropertyFile)), resolver);
+                    propertiesProcessor.processNativeImageProperties(classpathEntry, nativeImagePropertyFile, resolver);
                 } catch (NativeImageError err) {
                     showError("Processing " + nativeImagePropertyFile.toUri() + " failed", err);
                 }
@@ -791,7 +823,8 @@ public class NativeImage {
         }
     }
 
-    private void processNativeImageProperties(Map<String, String> properties, Function<String, String> resolver) {
+    private void processNativeImageProperties(@SuppressWarnings("unused") Path classpathEntry, Path nativeImagePropertyFile, Function<String, String> resolver) throws IOException {
+        Map<String, String> properties = loadProperties(Files.newInputStream(nativeImagePropertyFile));
         String imageName = properties.get("ImageName");
         if (imageName != null) {
             addCustomImageBuilderArgs(oHName + resolver.apply(imageName));
@@ -1024,6 +1057,29 @@ public class NativeImage {
             }
             System.exit(1);
         }
+    }
+
+    public static Map<Path, List<String>> extractEmbeddedImageArgs(Path workDir, String[] imageClasspath) {
+        NativeImage nativeImage = new NativeImage(new BuildConfiguration() {
+            @Override
+            public Path getWorkingDirectory() {
+                return workDir;
+            }
+        });
+        Map<Path, List<String>> extractionResults = new HashMap<>();
+        NativeImagePropertiesProcessor extractor = (classpathEntry, nativeImagePropertyFile, resolver) -> {
+            Map<String, String> properties = loadProperties(Files.newInputStream(nativeImagePropertyFile));
+            nativeImage.imageBuilderArgs.clear();
+            NativeImageArgsProcessor args = nativeImage.new NativeImageArgsProcessor();
+            forEachPropertyValue(properties.get("Args"), args, resolver);
+            args.apply();
+            extractionResults.put(classpathEntry, new ArrayList<>(nativeImage.imageBuilderArgs));
+        };
+        for (String entry : imageClasspath) {
+            Path classpathEntry = nativeImage.canonicalize(ImageClassLoader.stringToClasspath(entry), false);
+            nativeImage.processClasspathNativeImageProperties(classpathEntry, extractor);
+        }
+        return extractionResults;
     }
 
     public static void build(BuildConfiguration config) {
