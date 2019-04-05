@@ -34,6 +34,8 @@ import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -74,6 +76,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -92,11 +95,12 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess.JNIRuntimeAccessibilitySupport;
 import com.oracle.svm.jni.hosted.JNIFeature;
+import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -116,7 +120,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(JNIFeature.class, GraalFeature.class);
+        return Arrays.asList(JNIFeature.class, GraalFeature.class, ReflectionFeature.class);
     }
 
     public static final class IsEnabled implements BooleanSupplier {
@@ -129,11 +133,11 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
     private EconomicSet<AnnotatedElement> visitedElements = EconomicSet.create();
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(MethodAnnotationSupport.class, new MethodAnnotationSupport());
 
         JNIRuntimeAccessibilitySupport registry = ImageSingletons.lookup(JNIRuntimeAccessibilitySupport.class);
-        registerJNIConfiguration(registry, ((AfterRegistrationAccessImpl) access).getImageClassLoader());
+        registerJNIConfiguration(registry, ((DuringSetupAccessImpl) access).getImageClassLoader());
     }
 
     /**
@@ -282,7 +286,14 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
                                         .toArray(new Class<?>[descriptor.getParameterCount(false)]);
                         try {
                             if ("<init>".equals(methodName)) {
-                                registry.register(clazz.getDeclaredConstructor(parameters));
+                                Constructor<?> cons = clazz.getDeclaredConstructor(parameters);
+                                registry.register(cons);
+                                if (Throwable.class.isAssignableFrom(clazz) && !Modifier.isAbstract(clazz.getModifiers())) {
+                                    if (usedInTranslatedException(parameters)) {
+                                        RuntimeReflection.register(clazz);
+                                        RuntimeReflection.register(cons);
+                                    }
+                                }
                             } else {
                                 registry.register(clazz.getDeclaredMethod(methodName, parameters));
                             }
@@ -303,6 +314,14 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
                 }
             }
         }
+    }
+
+    /**
+     * Determines if a throwable constructor with the signature specified by {@code parameters} is
+     * potentially called via reflection in {@code jdk.vm.ci.hotspot.TranslatedException}.
+     */
+    private static boolean usedInTranslatedException(Class<?>[] parameters) {
+        return parameters.length == 0 || (parameters.length == 1 && parameters[0] == String.class);
     }
 
     @Override
@@ -416,7 +435,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
             }
         }
 
-        // Rerun the iteration is new things have been seen.
+        // Rerun the iteration if new things have been seen.
         if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
             access.requireAnalysisIteration();
         }

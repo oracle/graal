@@ -640,6 +640,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.jni",
+                "com.oracle.svm.reflect",
                 "com.oracle.svm.graal",
                 "compiler:GRAAL"
             ],
