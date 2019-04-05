@@ -244,10 +244,10 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (memberName.getHiddenField(VMTARGET) != null) {
             return self; // Already planted
         }
-        StaticObjectClass clazz = (StaticObjectClass) memberName.getField(mnKlass.lookupDeclaredField(Name.clazz, Type.Class));
+        StaticObjectClass clazz = (StaticObjectClass) memberName.getField(meta.MNclazz);
         Klass defKlass = clazz.getMirrorKlass();
 
-        StaticObject name = (StaticObject) memberName.getField(mnKlass.lookupDeclaredField(Name.name, Type.String));
+        StaticObject name = (StaticObject) memberName.getField(meta.MNname);
         Symbol<Name> nSymbol = meta.getEspressoLanguage().getNames().lookup(Meta.toHostString(name));
 
         StaticObject type = (StaticObject) meta.getSignature.invokeDirect(self);
@@ -354,6 +354,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         assert (name == Name.invokeBasic);
         assert (defKlass.getType() == target.getContext().getMeta().MethodHandle.getType() && target.getName() == target.getContext().getMeta().invokeBasic.getName());
         memberName.setHiddenField(VMTARGET, target);
+        memberName.setCommonHiddenField(target);
         memberName.setWordField(flagField, getMethodFlags(target, refKind));
     }
 
@@ -367,6 +368,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     private static void plantResolvedMethod(StaticObjectImpl memberName, Method target, int refKind, Field flagField) {
         memberName.setHiddenField(VMTARGET, target);
+        memberName.setCommonHiddenField(target);
         memberName.setWordField(flagField, getMethodFlags(target, refKind));
 
     }
@@ -381,6 +383,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     private static void plantResolvedField(StaticObjectImpl memberName, Field field, int refKind, Field flagField) {
         memberName.setHiddenField(VMTARGET, field.getDeclaringKlass());
+        memberName.setCommonHiddenField(field);
         memberName.setHiddenField(VMINDEX, (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
         memberName.setWordField(flagField, getFieldFlags(refKind, field));
     }

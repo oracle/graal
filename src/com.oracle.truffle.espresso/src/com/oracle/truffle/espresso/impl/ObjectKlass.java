@@ -357,13 +357,13 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public final Field lookupField(int slot) {
+    public final Field lookupFieldTable(int slot) {
         assert (slot >= 0 && slot < getInstanceFieldSlots());
         return fieldTable[slot];
     }
 
     @Override
-    public final Field lookupStaticField(int slot) {
+    public final Field lookupStaticFieldTable(int slot) {
         assert (slot >= 0 && slot < getStaticFieldSlots());
         return staticFieldTable[slot];
     }
@@ -407,8 +407,12 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
-    final Field[] getFieldTable() {
+    public final Field[] getFieldTable() {
         return fieldTable;
+    }
+
+    public final Field[] getStaticFieldTable() {
+        return staticFieldTable;
     }
 
     final void setMirandas(ArrayList<InterfaceTables.Miranda> mirandas) {

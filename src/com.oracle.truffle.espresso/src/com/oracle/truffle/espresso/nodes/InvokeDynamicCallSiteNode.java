@@ -46,7 +46,8 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Symbol.Type>[] parsedSignature;
 
     InvokeDynamicCallSiteNode(StaticObjectImpl memberName, StaticObject appendix, Symbol<Type>[] parsedSignature) {
-        Method target = (Method) memberName.getHiddenField(VMTARGET);
+        Method target = (Method) memberName.getCommonHiddenField();
+        assert target == memberName.getHiddenField(VMTARGET);
         this.appendix = appendix;
         this.parsedSignature = parsedSignature;
         this.returnType = Signatures.returnType(parsedSignature);

@@ -66,12 +66,12 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public Field lookupField(int slot) {
+    public Field lookupFieldTable(int slot) {
         return null;
     }
 
     @Override
-    public Field lookupStaticField(int slot) {
+    public Field lookupStaticFieldTable(int slot) {
         return null;
     }
 

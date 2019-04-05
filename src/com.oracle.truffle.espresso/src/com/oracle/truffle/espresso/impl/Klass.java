@@ -463,9 +463,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return field;
     }
 
-    public abstract Field lookupField(int slot);
+    public abstract Field lookupFieldTable(int slot);
 
-    public abstract Field lookupStaticField(int slot);
+    public abstract Field lookupStaticFieldTable(int slot);
 
     public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         declaredMethodLookupCount.inc();

@@ -59,7 +59,7 @@ public final class Field implements ModifiersProvider {
         return type;
     }
 
-    public String getGenericSignature() {
+    public final String getGenericSignature() {
         if (genericSignature == null) {
             SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
             if (attr == null) {
@@ -95,6 +95,13 @@ public final class Field implements ModifiersProvider {
      */
     public int getSlot() {
         return linkedField.getSlot();
+    }
+
+    /**
+     * The fieldIndex is the actual position in the field array of an actual instance
+     */
+    public int getFieldIndex() {
+        return fieldIndex;
     }
 
     @Override
@@ -182,10 +189,4 @@ public final class Field implements ModifiersProvider {
         this.fieldIndex = index;
     }
 
-    /**
-     * The fieldIndex is the actual position in the field array of an actual instance
-     */
-    public int getFieldIndex() {
-        return fieldIndex;
-    }
 }

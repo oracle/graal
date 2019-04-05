@@ -41,7 +41,8 @@ public class MHInvokeGenericNode extends EspressoBaseNode {
         super(method);
         this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
         this.appendix = appendix;
-        Method target = (Method) memberName.getHiddenField(VMTARGET);
+        Method target = (Method) memberName.getCommonHiddenField();
+        assert target == memberName.getHiddenField(VMTARGET);
         this.callNode = DirectCallNode.create(target.getCallTarget());
     }
 

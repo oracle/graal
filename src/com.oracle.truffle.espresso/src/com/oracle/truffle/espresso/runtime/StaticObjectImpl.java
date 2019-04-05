@@ -53,6 +53,14 @@ public class StaticObjectImpl extends StaticObject {
     }
 
     private Map<String, Object> hiddenFields;
+    /**
+     * Use this thing carefully. Represents a single hidden field that is known to be accessed quite
+     * often, and for which performance is critical.
+     *
+     * /ex: the target method of a member name is often called within an invokeBasic node, and going
+     * through a PE boundary here is not a good option.
+     */
+    private Object commonHiddenField;
 
     private final Object[] fields;
     private final int[] wordFields;
@@ -92,26 +100,21 @@ public class StaticObjectImpl extends StaticObject {
     private void initFields(ObjectKlass klass, boolean isStatic) {
         CompilerAsserts.partialEvaluationConstant(klass);
         if (isStatic) {
-            for (Field f : klass.getDeclaredFields()) {
-                if (f.isStatic()) {
-                    if (f.getKind().isSubWord()) {
-                        wordFields[f.getFieldIndex()] = MetaUtil.defaultWordFieldValue(f.getKind());
-                    } else {
-                        fields[f.getFieldIndex()] = MetaUtil.defaultFieldValue(f.getKind());
-                    }
+            for (Field f : klass.getStaticFieldTable()) {
+                assert f.isStatic();
+                if (f.getKind().isSubWord()) {
+                    wordFields[f.getFieldIndex()] = MetaUtil.defaultWordFieldValue(f.getKind());
+                } else {
+                    fields[f.getFieldIndex()] = MetaUtil.defaultFieldValue(f.getKind());
                 }
             }
         } else {
-            // TODO(garcia) Go through fieldTable instead
-            for (ObjectKlass curKlass = klass; curKlass != null; curKlass = curKlass.getSuperKlass()) {
-                for (Field f : curKlass.getDeclaredFields()) {
-                    if (!f.isStatic()) {
-                        if (f.getKind().isSubWord()) {
-                            wordFields[f.getFieldIndex()] = MetaUtil.defaultWordFieldValue(f.getKind());
-                        } else {
-                            fields[f.getFieldIndex()] = MetaUtil.defaultFieldValue(f.getKind());
-                        }
-                    }
+            for (Field f : klass.getFieldTable()) {
+                assert !f.isStatic();
+                if (f.getKind().isSubWord()) {
+                    wordFields[f.getFieldIndex()] = MetaUtil.defaultWordFieldValue(f.getKind());
+                } else {
+                    fields[f.getFieldIndex()] = MetaUtil.defaultFieldValue(f.getKind());
                 }
             }
         }
@@ -133,6 +136,14 @@ public class StaticObjectImpl extends StaticObject {
         }
         assert result != null;
         return result;
+    }
+
+    public final Object getUnsafeField(int fieldIndex) {
+        return fields[fieldIndex];
+    }
+
+    public final int getUnsafeWordField(int fieldIndex) {
+        return wordFields[fieldIndex];
     }
 
     public final int getWordField(Field field) {
@@ -206,6 +217,16 @@ public class StaticObjectImpl extends StaticObject {
             return null;
         }
         return hiddenFields.get(name);
+    }
+
+    // Hidden fields are accessed during invokeBasics. Use this to circumvent the Boundary + hashMap
+    // lookup.
+    public void setCommonHiddenField(Object value) {
+        commonHiddenField = value;
+    }
+
+    public Object getCommonHiddenField() {
+        return commonHiddenField;
     }
 
     @Override
