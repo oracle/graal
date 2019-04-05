@@ -684,7 +684,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
 
                     @Override
                     public boolean isAvailable(ForeignCallDescriptor descriptor) {
-                        return false;
+                        return true;
                     }
                 };
             }
