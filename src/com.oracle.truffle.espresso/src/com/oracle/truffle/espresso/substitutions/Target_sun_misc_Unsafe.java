@@ -49,6 +49,8 @@ import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import sun.misc.Unsafe;
 
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_HOST_THREAD;
+
 @EspressoSubstitutions
 public final class Target_sun_misc_Unsafe {
 
@@ -894,7 +896,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true)
     public static void unpark(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject thread) {
-        Thread hostThread = (Thread) ((StaticObjectImpl) thread).getHiddenField(Target_java_lang_Thread.HIDDEN_HOST_THREAD);
+        Thread hostThread = (Thread) ((StaticObjectImpl) thread).getHiddenField(HIDDEN_HOST_THREAD);
         U.unpark(hostThread);
     }
 

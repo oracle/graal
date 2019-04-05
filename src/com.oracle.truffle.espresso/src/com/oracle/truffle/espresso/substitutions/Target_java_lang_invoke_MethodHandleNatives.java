@@ -54,6 +54,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_VMINDEX;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_VMTARGET;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.firstStaticSigPoly;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.lastSigPoly;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.None;
@@ -67,10 +69,6 @@ import static java.lang.Math.max;
 
 @EspressoSubstitutions
 public final class Target_java_lang_invoke_MethodHandleNatives {
-
-    public static final String VMTARGET = "vmtarget";
-    public static final String VMINDEX = "vmindex";
-
     /**
      * plants an already resolved target into a memberName
      * 
@@ -187,12 +185,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static long objectFieldOffset(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObjectImpl self) {
-        return (long) self.getHiddenField(VMINDEX);
+        return (long) self.getHiddenField(HIDDEN_VMINDEX);
     }
 
     @Substitution
     public static long staticFieldOffset(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObjectImpl self) {
-        return (long) self.getHiddenField(VMINDEX);
+        return (long) self.getHiddenField(HIDDEN_VMINDEX);
     }
 
     @Substitution
@@ -202,8 +200,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static @Host(Object.class) StaticObject getMemberVMInfo(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObjectImpl self) {
-        Object vmtarget = self.getHiddenField(VMTARGET);
-        Object vmindex = self.getHiddenField(VMINDEX);
+        Object vmtarget = self.getHiddenField(HIDDEN_VMTARGET);
+        Object vmindex = self.getHiddenField(HIDDEN_VMINDEX);
         StaticObject[] result = new StaticObject[2];
 
         Meta meta = self.getKlass().getMeta();
@@ -241,7 +239,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         Klass mnKlass = self.getKlass();
         Meta meta = mnKlass.getContext().getMeta();
         StaticObjectImpl memberName = (StaticObjectImpl) self;
-        if (memberName.getHiddenField(VMTARGET) != null) {
+        if (memberName.getHiddenField(HIDDEN_VMTARGET) != null) {
             return self; // Already planted
         }
         StaticObjectClass clazz = (StaticObjectClass) memberName.getField(meta.MNclazz);
@@ -276,7 +274,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             case MN_IS_CONSTRUCTOR:
                 Symbol<Signature> constructorSignature = meta.getEspressoLanguage().getSignatures().lookupValidSignature(desc);
                 plantMethodMemberName(memberName, constructorSignature, defKlass, nSymbol, flagField, refKind);
-                memberName.setHiddenField(VMINDEX, -3_000_000L);
+                memberName.setHiddenField(HIDDEN_VMINDEX, -3_000_000L);
                 break;
             case MN_IS_METHOD:
                 Signatures signatures = meta.getEspressoLanguage().getSignatures();
@@ -297,7 +295,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 }
                 flags = memberName.getWordField(flagField);
                 refKind = (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
-                memberName.setHiddenField(VMINDEX, (refKind == REF_invokeInterface || refKind == REF_invokeVirtual) ? 1_000_000L : -1_000_000L);
+                memberName.setHiddenField(HIDDEN_VMINDEX, (refKind == REF_invokeInterface || refKind == REF_invokeVirtual) ? 1_000_000L : -1_000_000L);
                 break;
             case MN_IS_FIELD:
                 Symbol<Type> t = meta.getEspressoLanguage().getTypes().lookup(desc);
@@ -353,8 +351,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantInvokeBasic(StaticObjectImpl memberName, Method target, Klass defKlass, Symbol<Name> name, Field flagField, int refKind) {
         assert (name == Name.invokeBasic);
         assert (defKlass.getType() == target.getContext().getMeta().MethodHandle.getType() && target.getName() == target.getContext().getMeta().invokeBasic.getName());
-        memberName.setHiddenField(VMTARGET, target);
-        memberName.setCommonHiddenField(target);
+        memberName.setHiddenField(HIDDEN_VMTARGET, target);
         memberName.setWordField(flagField, getMethodFlags(target, refKind));
     }
 
@@ -367,8 +364,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     private static void plantResolvedMethod(StaticObjectImpl memberName, Method target, int refKind, Field flagField) {
-        memberName.setHiddenField(VMTARGET, target);
-        memberName.setCommonHiddenField(target);
+        memberName.setHiddenField(HIDDEN_VMTARGET, target);
         memberName.setWordField(flagField, getMethodFlags(target, refKind));
 
     }
@@ -382,9 +378,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     private static void plantResolvedField(StaticObjectImpl memberName, Field field, int refKind, Field flagField) {
-        memberName.setHiddenField(VMTARGET, field.getDeclaringKlass());
-        memberName.setCommonHiddenField(field);
-        memberName.setHiddenField(VMINDEX, (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
+        memberName.setHiddenField(HIDDEN_VMTARGET, field.getDeclaringKlass());
+        memberName.setHiddenField(HIDDEN_VMINDEX, (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
         memberName.setWordField(flagField, getFieldFlags(refKind, field));
     }
 

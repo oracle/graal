@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -65,7 +64,6 @@ public abstract class InvokeVirtualNode extends QuickNode {
         this.vtableIndex = resolutionSeed.getVTableIndex();
     }
 
-    @TruffleBoundary
     static Method methodLookup(StaticObject receiver, int vtableIndex) {
         Klass clazz = receiver.getKlass();
         Method m = clazz.vtableLookup(vtableIndex);

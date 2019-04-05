@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.VMTARGET;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_VMTARGET;
 
 public abstract class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
@@ -103,8 +103,7 @@ public abstract class MHLinkToNode extends EspressoBaseNode {
         assert args.length >= 1;
         StaticObjectImpl memberName = (StaticObjectImpl) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
-        Method target = (Method) memberName.getCommonHiddenField();
-        assert target == memberName.getHiddenField(VMTARGET);
+        Method target = (Method) memberName.getHiddenField(HIDDEN_VMTARGET);
         return target;
     }
 }

@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -52,22 +49,11 @@ public class StaticObjectImpl extends StaticObject {
         }
     }
 
-    private Map<String, Object> hiddenFields;
-    /**
-     * Use this thing carefully. Represents a single hidden field that is known to be accessed quite
-     * often, and for which performance is critical.
-     *
-     * /ex: the target method of a member name is often called within an invokeBasic node, and going
-     * through a PE boundary here is not a good option.
-     */
-    private Object commonHiddenField;
-
     private final Object[] fields;
     private final int[] wordFields;
 
-    public StaticObjectImpl(ObjectKlass klass, Map<String, Object> hiddenFields, Object[] fields, int[] wordFields) {
+    public StaticObjectImpl(ObjectKlass klass, Object[] fields, int[] wordFields) {
         super(klass);
-        this.hiddenFields = hiddenFields;
         this.fields = fields;
         this.wordFields = wordFields;
     }
@@ -79,8 +65,7 @@ public class StaticObjectImpl extends StaticObject {
 
     // Shallow copy.
     public StaticObject copy() {
-        HashMap<String, Object> hiddenFieldsCopy = hiddenFields != null ? new HashMap<>(hiddenFields) : null;
-        return new StaticObjectImpl((ObjectKlass) getKlass(), hiddenFieldsCopy, fields.clone(), wordFields.clone());
+        return new StaticObjectImpl((ObjectKlass) getKlass(), fields.clone(), wordFields.clone());
     }
 
     public StaticObjectImpl(ObjectKlass klass) {
@@ -90,7 +75,6 @@ public class StaticObjectImpl extends StaticObject {
     public StaticObjectImpl(ObjectKlass klass, boolean isStatic) {
         super(klass);
         // assert !isStatic || klass.isInitialized();
-        this.hiddenFields = null;
         this.fields = isStatic ? new Object[klass.getStaticObjectFieldsCount()] : new Object[klass.getObjectFieldsCount()];
         this.wordFields = isStatic ? new int[klass.getStaticWordFieldsCount()] : new int[klass.getWordFieldsCount()];
         initFields(klass, isStatic);
@@ -111,10 +95,14 @@ public class StaticObjectImpl extends StaticObject {
         } else {
             for (Field f : klass.getFieldTable()) {
                 assert !f.isStatic();
-                if (f.getKind().isSubWord()) {
-                    wordFields[f.getFieldIndex()] = MetaUtil.defaultWordFieldValue(f.getKind());
+                if (f.isHidden()) {
+                    fields[f.getFieldIndex()] = null;
                 } else {
-                    fields[f.getFieldIndex()] = MetaUtil.defaultFieldValue(f.getKind());
+                    if (f.getKind().isSubWord()) {
+                        wordFields[f.getFieldIndex()] = MetaUtil.defaultWordFieldValue(f.getKind());
+                    } else {
+                        fields[f.getFieldIndex()] = MetaUtil.defaultFieldValue(f.getKind());
+                    }
                 }
             }
         }
@@ -138,6 +126,10 @@ public class StaticObjectImpl extends StaticObject {
         return result;
     }
 
+    public final Object[] getFields() {
+        return fields;
+    }
+
     public final Object getUnsafeField(int fieldIndex) {
         return fields[fieldIndex];
     }
@@ -158,7 +150,6 @@ public class StaticObjectImpl extends StaticObject {
         return result;
     }
 
-    @TruffleBoundary
     public final int getWordFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getIntVolatile(wordFields, Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_INT_INDEX_SCALE * field.getFieldIndex());
@@ -203,30 +194,12 @@ public class StaticObjectImpl extends StaticObject {
         return getKlass().getType().toString();
     }
 
-    @TruffleBoundary
-    public void setHiddenField(String name, Object value) {
-        if (hiddenFields == null) {
-            hiddenFields = new HashMap<>();
-        }
-        hiddenFields.putIfAbsent(name, value);
+    public void setHiddenField(int pos, Object value) {
+            fields[pos] = value;
     }
 
-    @TruffleBoundary
-    public Object getHiddenField(String name) {
-        if (hiddenFields == null) {
-            return null;
-        }
-        return hiddenFields.get(name);
-    }
-
-    // Hidden fields are accessed during invokeBasics. Use this to circumvent the Boundary + hashMap
-    // lookup.
-    public void setCommonHiddenField(Object value) {
-        commonHiddenField = value;
-    }
-
-    public Object getCommonHiddenField() {
-        return commonHiddenField;
+    public Object getHiddenField(int pos) {
+        return fields[pos];
     }
 
     @Override

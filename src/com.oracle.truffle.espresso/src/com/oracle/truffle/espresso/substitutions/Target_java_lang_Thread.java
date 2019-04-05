@@ -31,10 +31,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_HOST_THREAD;
+
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
-
-    public static final String HIDDEN_HOST_THREAD = "$$host_thread";
 
     // TODO(peterssen): Remove single thread shim, support real threads.
     @Substitution
@@ -60,7 +60,7 @@ public final class Target_java_lang_Thread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static boolean isAlive(@Host(Thread.class) StaticObject self) {
+    public static boolean  isAlive(@Host(Thread.class) StaticObject self) {
         Thread hostThread = (Thread) ((StaticObjectImpl) self).getHiddenField(HIDDEN_HOST_THREAD);
         if (hostThread == null) {
             return false;

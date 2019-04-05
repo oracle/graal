@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.HIDDEN_HOST_THREAD;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_HOST_THREAD;
 
 import java.io.InputStream;
 import java.io.OutputStream;

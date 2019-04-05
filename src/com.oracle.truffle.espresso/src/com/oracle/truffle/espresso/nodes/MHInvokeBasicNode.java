@@ -32,57 +32,59 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.VMTARGET;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_VMTARGET;
 
 public class MHInvokeBasicNode extends EspressoBaseNode {
 
+    final int form;
     @Child BasicNode node;
 
     public MHInvokeBasicNode(Method method) {
         super(method);
+        this.form = getMeta().form.getFieldIndex();
         this.node = BasicNodeGen.create(getMeta());
     }
 
     @Override
     public Object invokeNaked(VirtualFrame frame) {
         StaticObjectImpl mh = (StaticObjectImpl) frame.getArguments()[0];
-        return node.executeBasic(mh, frame.getArguments());
+        StaticObjectImpl lform = (StaticObjectImpl) mh.getUnsafeField(form);
+        return node.executeBasic(lform, frame.getArguments());
     }
 }
 
 abstract class BasicNode extends Node {
-    final static String vmtarget = VMTARGET;
-    final int form;
+
     final int vmentry;
     final int isCompiled;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 3;
 
     BasicNode(Meta meta) {
-        this.form = meta.form.getFieldIndex();
         this.vmentry = meta.vmentry.getFieldIndex();
         this.isCompiled = meta.isCompiled.getFieldIndex();
     }
 
-    abstract Object executeBasic(StaticObjectImpl methodHandle, Object[] args);
+    abstract Object executeBasic(StaticObjectImpl lform, Object[] args);
 
+    /**
+     * Cache on the lambdaForm, since we need to extract it anyway.
+     * With some luck, perhaps two different MH will have the same LF.
+     */
     @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"methodHandle == cachedHandle", "getBooleanField(lform, isCompiled)"})
-    Object directBasic(StaticObjectImpl methodHandle, Object[] args,
-                    @Cached("methodHandle") StaticObjectImpl cachedHandle,
-                    @Cached("getSOIField(methodHandle, form)") StaticObjectImpl lform,
+    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"lform == cachedlform", "getBooleanField(lform, isCompiled)"})
+    Object directBasic(StaticObjectImpl lform, Object[] args,
+                    @Cached("lform") StaticObjectImpl cachedlform,
                     @Cached("getMethodHiddenField(getSOIField(lform, vmentry))") Method target,
                     @Cached("create(target.getCallTarget())") DirectCallNode callNode) {
         return callNode.call(args);
     }
 
     @Specialization(replaces = "directBasic")
-    Object normalBasic(StaticObjectImpl methodHandle, Object[] args,
+    Object normalBasic(StaticObjectImpl lform, Object[] args,
                     @Cached("create()") IndirectCallNode callNode) {
-        StaticObjectImpl lform = (StaticObjectImpl) methodHandle.getUnsafeField(form);
         StaticObjectImpl mname = (StaticObjectImpl) lform.getUnsafeField(vmentry);
-        Method target = (Method) mname.getCommonHiddenField();
-        assert target == mname.getHiddenField(VMTARGET);
+        Method target = (Method) mname.getHiddenField(HIDDEN_VMTARGET);
         return callNode.call(target.getCallTarget(), args);
     }
 
@@ -91,7 +93,7 @@ abstract class BasicNode extends Node {
     }
 
     static Method getMethodHiddenField(StaticObjectImpl object) {
-        return (Method) object.getCommonHiddenField();
+        return (Method) object.getHiddenField(HIDDEN_VMTARGET);
     }
 
     static boolean getBooleanField(StaticObjectImpl object, int field) {

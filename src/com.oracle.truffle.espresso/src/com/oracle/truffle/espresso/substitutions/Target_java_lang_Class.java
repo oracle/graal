@@ -54,14 +54,16 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_CONSTRUCTOR_KEY;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_FIELD_KEY;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_METHOD_KEY;
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
+
+
 @EspressoSubstitutions
 public final class Target_java_lang_Class {
-
-    public static final String HIDDEN_METHOD_KEY = "$$method_info";
-    public static final String HIDDEN_FIELD_KEY = "$$field_info";
-    public static final String HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = "$$field_runtime_visible_type_annotations";
-    public static final String HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = "$$method_runtime_visible_type_annotations";
-
     @Substitution
     public static @Host(Class.class) StaticObject getPrimitiveClass(
                     @Host(String.class) StaticObject name) {
@@ -170,10 +172,7 @@ public final class Target_java_lang_Class {
                                 /* name */ context.getStrings().intern(f.getName()),
                                 /* type */ f.resolveTypeKlass().mirror(),
                                 /* modifiers */ f.getModifiers(),
-                                /* slot */ f.getSlot(), // +
-                                                        // Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET,
-                                                        // // Still doesn't make lambda accessors
-                                                        // work...
+                                /* slot */ f.getSlot(),
                                 /* signature */ meta.toGuestString(f.getGenericSignature()),
                                 // FIXME(peterssen): Fill annotations bytes.
                                 /* annotations */ runtimeVisibleAnnotations);
@@ -268,8 +267,8 @@ public final class Target_java_lang_Class {
                                 /* annotations */ runtimeVisibleAnnotations,
                                 /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
 
-                instance.setHiddenField(HIDDEN_METHOD_KEY, m);
-                instance.setHiddenField(HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
+                instance.setHiddenField(HIDDEN_CONSTRUCTOR_KEY, m);
+                instance.setHiddenField(HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
 
                 return instance;
             }

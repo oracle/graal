@@ -50,7 +50,7 @@ class FieldTable {
             Field f = new Field(linkedFields[i], thisKlass);
             fields[i] = f;
             if (f.isStatic()) {
-                assert (tmpStatics.size() == f.getSlot());
+                f.setSlot(tmpStatics.size());
                 if (f.getKind().isSubWord()) {
                     f.setFieldIndex(staticWordFields++);
                 } else {
@@ -58,7 +58,7 @@ class FieldTable {
                 }
                 tmpStatics.add(f);
             } else {
-                assert (tmpFields.size() == f.getSlot());
+                f.setSlot(tmpFields.size());
                 if (f.getKind().isSubWord()) {
                     f.setFieldIndex(wordFields++);
                 } else {
@@ -67,6 +67,9 @@ class FieldTable {
                 tmpFields.add(f);
             }
         }
+
+        objectFields += HiddenFields.setHiddenFields(thisKlass.getType(), tmpFields, thisKlass, objectFields);
+
         return new CreationResult(tmpFields.toArray(Field.EMPTY_ARRAY), tmpStatics.toArray(Field.EMPTY_ARRAY), fields,
                         wordFields, staticWordFields, objectFields, staticObjectFields);
     }

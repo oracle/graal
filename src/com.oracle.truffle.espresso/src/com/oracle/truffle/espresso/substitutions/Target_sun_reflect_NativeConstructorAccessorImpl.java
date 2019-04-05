@@ -11,6 +11,8 @@ import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
+import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_CONSTRUCTOR_KEY;
+
 @EspressoSubstitutions
 public class Target_sun_reflect_NativeConstructorAccessorImpl {
     @Substitution
@@ -25,7 +27,7 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
 
         Method reflectedMethod = null;
         while (reflectedMethod == null) {
-            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField(Target_java_lang_Class.HIDDEN_METHOD_KEY);
+            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField(HIDDEN_CONSTRUCTOR_KEY);
             if (reflectedMethod == null) {
                 curMethod = (StaticObject) meta.Constructor_root.get(curMethod);
             }

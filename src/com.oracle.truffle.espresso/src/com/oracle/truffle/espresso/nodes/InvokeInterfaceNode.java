@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -42,7 +41,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
-    protected abstract Object executeVirtual(StaticObject receiver, Object[] args);
+    protected abstract Object executeInterface(StaticObject receiver, Object[] args);
 
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
@@ -67,7 +66,6 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         this.declaringKlass = resolutionSeed.getDeclaringKlass();
     }
 
-    @TruffleBoundary
     static Method methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
         return receiver.getKlass().itableLookup(declaringKlass, itableIndex);
     }
@@ -84,8 +82,9 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         assert receiver != null;
         final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";
-        Object result = executeVirtual(receiver, args);
+        Object result = executeInterface(receiver, args);
         int resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
+
     }
 }
