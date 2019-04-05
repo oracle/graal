@@ -111,6 +111,21 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
         return getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, debugContext);
     }
 
+    StructuredGraph expectedGraph;
+    StructuredGraph actualGraph;
+
+    @Override
+    protected boolean checkHighTierGraph(StructuredGraph graph) {
+        // Capture the graphs after high tier
+        if (expectedGraph == null) {
+            expectedGraph = (StructuredGraph) graph.copy(graph.getDebug());
+        } else {
+            assert actualGraph == null;
+            actualGraph = (StructuredGraph) graph.copy(graph.getDebug());
+        }
+        return super.checkHighTierGraph(graph);
+    }
+
     @Test
     public void test() {
         StructuredGraph regularGraph = getIntrinsicGraph(false);
@@ -121,7 +136,9 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
         assertTrue(encodedGraph != null, "must produce a graph");
         getCode(method, encodedGraph);
 
-        assertEquals(regularGraph, encodedGraph, true, false);
+        // Compare the high tier graphs since the final graph might have scheduler
+        // differences because of different usage ordering.
+        assertEquals(expectedGraph, actualGraph, true, false);
     }
 
 }
