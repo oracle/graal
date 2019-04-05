@@ -100,21 +100,22 @@ def gate_body(args, tasks):
                 extra_vm_arguments += args.extra_vm_argument
             import mx_compiler
 
-            with Task('LibGraal:DaCapo-avrora', tasks, tags=[VmGateTasks.libgraal]) as t:
+            # run avrora on the GraalVM binary itself
+            with Task('LibGraal Compiler:GraalVM DaCapo-avrora', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     mx.run([join(mx_vm.graalvm_home(), 'bin', 'java'), '-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-jar', mx.library('DACAPO').get_path(True), 'avrora'])
 
-            with Task('LibGraal:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
+            with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     mx_compiler.ctw([
                             '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:+EnableJVMCI',
                             '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
-                            '-DCompileTheWorld.Verbose=false', '-DCompileTheWorld.MaxClasses=2000', '-XX:ReservedCodeCacheSize=300m',
+                            '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                         ], extra_vm_arguments)
 
-            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal: ')
+            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal Compiler:')
 
-            with Task('LibGraal:unittest-truffle', tasks, tags=[VmGateTasks.libgraal]) as t:
+            with Task('LibGraal Truffle:unittest', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     def _unittest_config_participant(config):
                         vmArgs, mainClass, mainClassArgs = config
