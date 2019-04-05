@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,9 +59,15 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.Objects;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
@@ -79,11 +85,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
-import java.nio.ByteBuffer;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.EnumSet;
 
 public class SourceBuilderTest extends AbstractPolyglotTest {
 
@@ -523,10 +524,23 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertNotNull("Resource found", resource);
         assertEquals("JAR protocol", "jar", resource.getProtocol());
         Source s = Source.newBuilder("TestJS", resource).build();
+        assertEquals(resource, s.getURL());
         Assert.assertArrayEquals(bytes, s.getBytes().toByteArray());
         assertEquals("x.tjs", s.getName());
+        assertEquals(sample.toURI() + "!/x.tjs", s.getPath());
 
         sample.delete();
+    }
+
+    @Test
+    public void testHttpURL() throws IOException, URISyntaxException {
+        setupEnv();
+        URL resource = new URL("http://example.org/test/File.html");
+        Source s = Source.newBuilder("TestJS", resource).content("Empty").build();
+        assertEquals(resource, s.getURL());
+        assertEquals(resource.toURI(), s.getURI());
+        assertEquals("File.html", s.getName());
+        assertEquals("/test/File.html", s.getPath());
     }
 
     @Test
