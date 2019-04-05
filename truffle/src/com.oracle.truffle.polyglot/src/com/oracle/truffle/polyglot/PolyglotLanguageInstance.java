@@ -83,16 +83,12 @@ final class PolyglotLanguageInstance implements VMObject {
             if (!language.engine.singleContext.isValid()) {
                 initializeMultiContext();
             } else {
-                this.needsInitializeMultiContext = !language.engine.boundEngine;
+                this.needsInitializeMultiContext = !language.engine.boundEngine && language.cache.getPolicy() != ContextPolicy.EXCLUSIVE;
             }
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
-        if (this.singleContext.isValid() && language.engine.noInnerContexts.isValid()) {
-            this.directContextSupplier = PolyglotReferences.createAssumeSingleContext(language, singleContext, language.engine.noInnerContexts, language.getContextReference());
-        } else {
-            this.directContextSupplier = language.getContextReference();
-        }
+        this.directContextSupplier = PolyglotReferences.createAssumeSingleContext(language, singleContext, language.engine.noInnerContexts, language.getContextReference());
         this.directLanguageSupplier = PolyglotReferences.createAlwaysSingleLanguage(language, this);
     }
 
@@ -149,15 +145,19 @@ final class PolyglotLanguageInstance implements VMObject {
      */
     ContextReference<Object> lookupContextSupplier(PolyglotLanguageInstance sourceLanguage) {
         assert this != sourceLanguage;
+        ContextReference<Object> ref;
         switch (getEffectiveContextPolicy(sourceLanguage)) {
             case EXCLUSIVE:
-                return this.directContextSupplier;
+                ref = PolyglotReferences.createAssumeSingleContext(language, language.engine.noInnerContexts, null, this.language.getContextReference());
+                break;
             case REUSE:
             case SHARED:
-                return this.language.getContextReference();
+                ref = this.language.getContextReference();
+                break;
             default:
                 throw new AssertionError();
         }
+        return ref;
     }
 
     /**
@@ -174,7 +174,7 @@ final class PolyglotLanguageInstance implements VMObject {
         assert this != sourceLanguage;
         switch (getEffectiveContextPolicy(sourceLanguage)) {
             case EXCLUSIVE:
-                return this.directLanguageSupplier;
+                return PolyglotReferences.createAssumeSingleLanguage(language, this, language.singleInstance, language.getLanguageReference());
             case REUSE:
             case SHARED:
                 return this.language.getLanguageReference();
